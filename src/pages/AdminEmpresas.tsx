@@ -45,6 +45,10 @@ export default function AdminEmpresas() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmpresaId, setAssignEmpresaId] = useState<string | null>(null);
   const [assignEmail, setAssignEmail] = useState("");
+  const [assignNome, setAssignNome] = useState("");
+  const [assignSenha, setAssignSenha] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     if (isSuperAdmin) loadData();
