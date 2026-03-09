@@ -20,6 +20,7 @@ interface UsuarioLiberado {
 
 const ACAO_ICONS: Record<string, string> = {
   view: "👁️",
+  create: "➕",
   edit: "✏️",
   delete: "🗑️",
 };
