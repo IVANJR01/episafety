@@ -133,15 +133,14 @@ function drawPageHeader(doc: jsPDF, data: FichaData, pageNum: number, totalPages
   return y;
 }
 
-function drawTableHeader(doc: jsPDF, y: number): number {
-  const colWidths = [22, 22, 14, 52, 16, 22, 22]; // = 170 = CONTENT_W
+function drawTableHeader(doc: jsPDF, y: number, colWidths: number[]): number {
   const headers = ["Entrega", "Devolução", "Qtde.", "Equipamento", "CA nº", "Motivo", "Assinatura"];
 
   doc.setFillColor(230, 230, 230);
   doc.rect(MARGIN, y, CONTENT_W, 7, "FD");
   doc.setDrawColor(0);
   doc.setLineWidth(0.3);
-  doc.setFontSize(7);
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
 
@@ -166,18 +165,19 @@ function drawFooter(doc: jsPDF) {
 
 export function gerarFichaEPI(data: FichaData) {
   const doc = new jsPDF("l", "mm", "a4");
-  const colWidths = [28, 28, 16, 90, 22, 40, 43];
-  const ROW_H = 18;
-  const MAX_Y = PAGE_H - 30; // leave space for footer
+  // Landscape A4: 297mm wide, margins 15 each side = 267mm content
+  // Entrega(28) + Devolução(28) + Qtde(18) + Equipamento(80) + CA nº(25) + Motivo(35) + Assinatura(53) = 267
+  const colWidths = [28, 28, 18, 80, 25, 35, 53];
+  const ROW_H = 16;
+  const MAX_Y = PAGE_H - 30;
 
-  // Calculate total pages
-  const headerHeight = 120; // approximate
+  const headerHeight = 120;
   const rowsPerPage = Math.floor((MAX_Y - headerHeight) / ROW_H);
   const totalPages = Math.max(1, Math.ceil(data.entregas.length / Math.max(1, rowsPerPage)));
 
   let pageNum = 1;
   let y = drawPageHeader(doc, data, pageNum, totalPages);
-  y = drawTableHeader(doc, y);
+  y = drawTableHeader(doc, y, colWidths);
 
   const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano", troca: "Troca", devolucao: "Devolução" };
   const statusLabels: Record<string, string> = { ativo: "Ativo", substituido: "Substituído", devolvido: "Devolvido", perdido: "Perdido", danificado: "Danificado", trocado: "Trocado" };
@@ -188,7 +188,7 @@ export function gerarFichaEPI(data: FichaData) {
       doc.addPage();
       pageNum++;
       y = drawPageHeader(doc, data, pageNum, totalPages);
-      y = drawTableHeader(doc, y);
+      y = drawTableHeader(doc, y, colWidths);
     }
 
     doc.setDrawColor(0);
@@ -207,61 +207,59 @@ export function gerarFichaEPI(data: FichaData) {
     x = MARGIN;
 
     // Entrega date
-    doc.text(formatDate(entrega.data), x + colWidths[0] / 2, y + ROW_H / 2, { align: "center" });
+    doc.text(formatDate(entrega.data), x + colWidths[0] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[0];
 
     // Devolução date
     if (entrega.data_devolucao) {
-      doc.text(formatDate(entrega.data_devolucao), x + colWidths[1] / 2, y + ROW_H / 2, { align: "center" });
+      doc.text(formatDate(entrega.data_devolucao), x + colWidths[1] / 2, y + ROW_H / 2 + 1, { align: "center" });
     }
     x += colWidths[1];
 
     // Qtde
-    doc.text(String(entrega.quantidade), x + colWidths[2] / 2, y + ROW_H / 2, { align: "center" });
+    doc.text(String(entrega.quantidade), x + colWidths[2] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[2];
 
-    // Equipamento - name bold, then details
+    // Equipamento
+    const eqX = x + 3;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
-    const epiName = entrega.epi_nome || "—";
-    doc.text(epiName, MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 5);
+    doc.text(entrega.epi_nome || "—", eqX, y + 6);
     
     if (entrega.epi_ca) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6);
-      doc.text(`Validade do C.A: —`, MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 9);
+      doc.text(`Validade do C.A: —`, eqX, y + 10);
     }
 
     if (entrega.observacao) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(5.5);
-      const obsLines = doc.splitTextToSize(entrega.observacao, colWidths[3] - 4);
-      doc.text(obsLines.slice(0, 2), MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 13);
+      const obsLines = doc.splitTextToSize(entrega.observacao, colWidths[3] - 6);
+      doc.text(obsLines.slice(0, 1), eqX, y + 14);
     }
-
     x += colWidths[3];
 
     // CA nº
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text(entrega.epi_ca || "—", x + colWidths[4] / 2, y + ROW_H / 2, { align: "center" });
+    doc.text(entrega.epi_ca || "—", x + colWidths[4] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[4];
 
-    // Motivo (tipo)
+    // Motivo
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     const motivo = tipoLabels[entrega.tipo] || entrega.tipo;
-    doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2, { align: "center" });
+    doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[5];
 
-    // Assinatura column - draw signature image if available
+    // Assinatura
     const sigX = x;
     if (data.assinaturaColaborador) {
       try {
-        doc.addImage(data.assinaturaColaborador, "PNG", sigX + 1, y + 1, colWidths[6] - 2, ROW_H * 0.55);
+        doc.addImage(data.assinaturaColaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
       } catch (e) { /* ignore */ }
     }
-    // Date/time under signature
     doc.setFontSize(5);
     doc.setTextColor(100);
     doc.text(data.dataAssinatura, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
