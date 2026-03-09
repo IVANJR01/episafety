@@ -40,6 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const visibleMainItems = mainNavItems.filter((i) => canAccess(i.moduleKey));
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
+  const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
 
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
