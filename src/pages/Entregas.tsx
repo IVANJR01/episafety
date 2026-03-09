@@ -126,13 +126,23 @@ export default function Entregas() {
     }
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
-    const entregaData = { ...form, status, observacao: form.observacao || null };
+    const entregaData = { ...form, status, observacao: form.observacao || null, empresa_id: empresaId };
 
-    await add(entregaData as any);
+    // Insert and get the ID back
+    const { data: inserted, error } = await (supabase.from as any)("entregas")
+      .insert(entregaData)
+      .select("id")
+      .single();
+
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      return;
+    }
 
     setPendingEntrega({
       funcionario_id: form.funcionario_id,
       epi_id: form.epi_id,
+      entrega_id: inserted.id,
     });
 
     setOpen(false);
@@ -153,17 +163,12 @@ export default function Entregas() {
       return;
     }
 
-    const now = new Date();
-    const funcEntregas = entregas.filter(e => e.funcionario_id === pendingEntrega.funcionario_id);
+    // Save signature directly on the specific entrega row
+    await (supabase.from as any)("entregas")
+      .update({ assinatura_colaborador: assinaturaColaborador })
+      .eq("id", pendingEntrega.entrega_id);
 
-    await (supabase.from as any)("fichas_entrega").insert({
-      funcionario_id: pendingEntrega.funcionario_id,
-      assinatura_colaborador: assinaturaColaborador,
-      data_assinatura: now.toISOString(),
-      entrega_ids: funcEntregas.map(e => e.id),
-      empresa_id: empresaId,
-    });
-
+    await refetch();
     toast({ title: "Assinatura salva com sucesso!" });
     setSignOpen(false);
     setPendingEntrega(null);
