@@ -17,7 +17,7 @@ import { gerarFichaEPI } from "@/lib/gerarFichaEPI";
 
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
-interface EPI { id: string; nome: string; estoque: number; ca: string | null; }
+interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
@@ -224,10 +224,13 @@ export default function Entregas() {
           );
           dataDevolucao = newer?.data || e.data;
         }
+        const epiObj = epis.find(ep => ep.id === e.epi_id);
         return {
           data: e.data, quantidade: e.quantidade,
-          epi_nome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
+          epi_nome: epiObj?.nome || "—",
           epi_ca: epiCa,
+          epi_descricao: epiObj?.descricao || null,
+          epi_validade: epiObj?.validade || null,
           observacao: e.observacao,
           tipo: e.tipo,
           status: e.status,
