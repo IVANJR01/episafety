@@ -71,8 +71,7 @@ function ProtectedRoute() {
 
 function AuthPage() {
   const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user) return <Navigate to="/" replace />;
+  if (!loading && user) return <Navigate to="/" replace />;
   return <Auth />;
 }
 
