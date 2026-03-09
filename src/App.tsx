@@ -76,7 +76,7 @@ function ProtectedRoute() {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<DashboardGuard />} />
         <Route path="/epis" element={<EPIs />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
