@@ -186,7 +186,7 @@ export default function DDS() {
       const { error: partError } = await (supabase.from as any)("dds_participantes").insert(participantesData);
       if (partError) throw partError;
 
-      toast({ title: "DDS registrado com sucesso!" });
+      toast({ title: "Lista de Presença registrada com sucesso!" });
       resetForm();
       setDialogOpen(false);
       refetch();
