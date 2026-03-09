@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function Install() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [installed, setInstalled] = useState(false);
+  const [showManual, setShowManual] = useState(false);
   const [activeTab, setActiveTab] = useState<"android" | "iphone">("android");
 
   useEffect(() => {
@@ -16,11 +17,18 @@ export default function Install() {
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("appinstalled", () => setInstalled(true));
 
-    // Detect iOS
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     if (isIOS) setActiveTab("iphone");
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    // Se após 1s não tiver o prompt, mostra instruções manuais
+    const timeout = setTimeout(() => {
+      setShowManual(true);
+    }, 1000);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleInstall = async () => {
@@ -30,6 +38,13 @@ export default function Install() {
     if (outcome === "accepted") setInstalled(true);
     setDeferredPrompt(null);
   };
+
+  // Auto-trigger install prompt as soon as available
+  useEffect(() => {
+    if (deferredPrompt && !installed) {
+      handleInstall();
+    }
+  }, [deferredPrompt]);
 
   return (
     <div className="min-h-screen bg-background">
