@@ -319,10 +319,11 @@ export default function Entregas() {
               <Label>Tipo</Label>
               <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                 <SelectContent>
                   <SelectItem value="entrega">📦 Entrega</SelectItem>
-                  <SelectItem value="troca">🔄 Troca</SelectItem>
-                  <SelectItem value="devolucao">↩️ Devolução</SelectItem>
+                  <SelectItem value="substituicao">🔄 Substituição</SelectItem>
+                  <SelectItem value="perda">❌ Perda</SelectItem>
+                  <SelectItem value="dano">⚠️ Dano</SelectItem>
                 </SelectContent>
               </Select>
             </div>
