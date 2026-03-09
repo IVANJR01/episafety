@@ -64,7 +64,45 @@ export default function Dashboard() {
     "hsl(173, 80%, 40%)",
   ];
 
-  const valorSaida = useMemo(() => {
+  // Média mensal de consumo por EPI
+  const mediaMensalEPI = useMemo(() => {
+    if (entregas.length === 0) return [];
+
+    // Collect all months with deliveries
+    const mesesSet = new Set<string>();
+    const consumoPorEpi: Record<string, Record<string, number>> = {};
+
+    entregas.forEach(e => {
+      const mes = e.data?.substring(0, 7);
+      if (!mes) return;
+      mesesSet.add(mes);
+      if (!consumoPorEpi[e.epi_id]) consumoPorEpi[e.epi_id] = {};
+      consumoPorEpi[e.epi_id][mes] = (consumoPorEpi[e.epi_id][mes] || 0) + e.quantidade;
+    });
+
+    const totalMeses = mesesSet.size || 1;
+
+    return epis
+      .map(epi => {
+        const mesesEpi = consumoPorEpi[epi.id] || {};
+        const totalEntregue = Object.values(mesesEpi).reduce((s, v) => s + v, 0);
+        const media = totalEntregue / totalMeses;
+        const custoMedio = media * (epi.valor || 0);
+        const mesesEstoque = media > 0 ? epi.estoque / media : null;
+
+        return {
+          id: epi.id,
+          nome: epi.nome,
+          totalEntregue,
+          media: Number(media.toFixed(1)),
+          custoMedio: Number(custoMedio.toFixed(2)),
+          estoqueAtual: epi.estoque,
+          mesesEstoque: mesesEstoque !== null ? Number(mesesEstoque.toFixed(1)) : null,
+        };
+      })
+      .filter(e => e.totalEntregue > 0)
+      .sort((a, b) => b.media - a.media);
+  }, [entregas, epis]);
     return entregas.reduce((sum, e) => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       return sum + (epi?.valor || 0) * e.quantidade;
