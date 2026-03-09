@@ -165,18 +165,19 @@ function drawFooter(doc: jsPDF) {
 
 export function gerarFichaEPI(data: FichaData) {
   const doc = new jsPDF("l", "mm", "a4");
-  const colWidths = [28, 28, 16, 90, 22, 40, 43];
-  const ROW_H = 18;
-  const MAX_Y = PAGE_H - 30; // leave space for footer
+  // Landscape A4: 297mm wide, margins 15 each side = 267mm content
+  // Entrega(28) + Devolução(28) + Qtde(18) + Equipamento(80) + CA nº(25) + Motivo(35) + Assinatura(53) = 267
+  const colWidths = [28, 28, 18, 80, 25, 35, 53];
+  const ROW_H = 16;
+  const MAX_Y = PAGE_H - 30;
 
-  // Calculate total pages
-  const headerHeight = 120; // approximate
+  const headerHeight = 120;
   const rowsPerPage = Math.floor((MAX_Y - headerHeight) / ROW_H);
   const totalPages = Math.max(1, Math.ceil(data.entregas.length / Math.max(1, rowsPerPage)));
 
   let pageNum = 1;
   let y = drawPageHeader(doc, data, pageNum, totalPages);
-  y = drawTableHeader(doc, y);
+  y = drawTableHeader(doc, y, colWidths);
 
   const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano", troca: "Troca", devolucao: "Devolução" };
   const statusLabels: Record<string, string> = { ativo: "Ativo", substituido: "Substituído", devolvido: "Devolvido", perdido: "Perdido", danificado: "Danificado", trocado: "Trocado" };
