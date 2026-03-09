@@ -302,8 +302,8 @@ export default function DDS() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-2xl font-bold text-foreground">DDS - Diálogo Diário de Segurança</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Lista de presença com assinatura digital</p>
+          <h1 className="text-lg sm:text-2xl font-bold text-foreground">Lista de Presença</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Registro de presença com assinatura digital</p>
         </div>
         {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
