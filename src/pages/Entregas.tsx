@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from "react";
 import { Plus, Trash2, FileText, Search, Loader2 } from "lucide-react";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export default function Entregas() {
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
+  const { empresaId } = useAuth();
 
   const [open, setOpen] = useState(false);
   const [fichaOpen, setFichaOpen] = useState(false);
@@ -35,9 +37,7 @@ export default function Entregas() {
   const [fichaSearch, setFichaSearch] = useState("");
   const [fichaFuncId, setFichaFuncId] = useState("");
 
-  // Pending entrega data waiting for signature
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
-
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
 
   const [form, setForm] = useState({
@@ -46,7 +46,6 @@ export default function Entregas() {
     tipo: "entrega" as string, observacao: "",
   });
 
-  // EPI search by CA
   const [epiCaSearch, setEpiCaSearch] = useState("");
   const [epiSearching, setEpiSearching] = useState(false);
   const [epiSearchResult, setEpiSearchResult] = useState<EPI | null>(null);
@@ -55,7 +54,6 @@ export default function Entregas() {
     if (!epiCaSearch.trim()) return;
     setEpiSearching(true);
     setEpiSearchResult(null);
-    // First check if EPI with this CA exists locally
     const found = epis.find(e => e.ca === epiCaSearch.trim());
     if (found) {
       setEpiSearchResult(found);
@@ -63,7 +61,6 @@ export default function Entregas() {
       setEpiSearching(false);
       return;
     }
-    // Not found locally - try consulting online and auto-register
     try {
       const { data, error } = await supabase.functions.invoke("consulta-ca", {
         body: { ca: epiCaSearch.trim() },
@@ -73,7 +70,6 @@ export default function Entregas() {
         setEpiSearching(false);
         return;
       }
-      // Auto-create EPI in the database
       const { data: newEpi, error: insertErr } = await (supabase.from as any)("epis").insert({
         nome: data.nome,
         ca: epiCaSearch.trim(),
@@ -83,6 +79,7 @@ export default function Entregas() {
         aprovado_para: data.aprovado_para || null,
         validade: data.validade || null,
         estoque: 0,
+        empresa_id: empresaId,
       }).select().single();
       if (insertErr) {
         toast({ title: "Erro ao cadastrar EPI", variant: "destructive" });
@@ -97,7 +94,6 @@ export default function Entregas() {
     setEpiSearching(false);
   };
 
-  // Search helpers
   const matchFunc = (func: Funcionario, term: string) => {
     if (!term) return true;
     const t = term.toLowerCase();
@@ -123,7 +119,6 @@ export default function Entregas() {
     return funcionarios.filter(f => matchFunc(f, formFuncSearch));
   }, [funcionarios, formFuncSearch]);
 
-  // Step 1: Click "Registrar" -> save entrega, then open signature dialog
   const handleSave = async () => {
     if (!form.funcionario_id || !form.epi_id) {
       toast({ title: "Preencha funcionário e EPI", variant: "destructive" });
@@ -133,10 +128,8 @@ export default function Entregas() {
     const status = statusMap[form.tipo] || "ativo";
     const entregaData = { ...form, status, observacao: form.observacao || null };
 
-    // Save the entrega
     await add(entregaData as any);
 
-    // Store pending data for signature step
     setPendingEntrega({
       funcionario_id: form.funcionario_id,
       epi_id: form.epi_id,
@@ -148,11 +141,9 @@ export default function Entregas() {
     setEpiCaSearch("");
     setEpiSearchResult(null);
 
-    // Open signature dialog
     setSignOpen(true);
   };
 
-  // Step 2: Save signature only (no PDF generation)
   const handleSaveSignature = async () => {
     if (!pendingEntrega) return;
 
@@ -165,12 +156,12 @@ export default function Entregas() {
     const now = new Date();
     const funcEntregas = entregas.filter(e => e.funcionario_id === pendingEntrega.funcionario_id);
 
-    // Save signature record
     await (supabase.from as any)("fichas_entrega").insert({
       funcionario_id: pendingEntrega.funcionario_id,
       assinatura_colaborador: assinaturaColaborador,
       data_assinatura: now.toISOString(),
       entrega_ids: funcEntregas.map(e => e.id),
+      empresa_id: empresaId,
     });
 
     toast({ title: "Assinatura salva com sucesso!" });
@@ -196,7 +187,6 @@ export default function Entregas() {
     const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").limit(1);
     const emp = empresaData?.[0] || {};
 
-    // Load latest saved signature for this employee
     const { data: fichaData } = await (supabase.from as any)("fichas_entrega")
       .select("assinatura_colaborador, data_assinatura")
       .eq("funcionario_id", fichaFuncId)
@@ -261,7 +251,6 @@ export default function Entregas() {
         </div>
       </div>
 
-      {/* Search bar */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input className="pl-9" placeholder="Buscar por CPF, matrícula ou nome do funcionário..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
@@ -315,7 +304,6 @@ export default function Entregas() {
         </CardContent>
       </Card>
 
-      {/* Nova Movimentação Dialog */}
       <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiSearchResult(null); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nova Movimentação</DialogTitle></DialogHeader>
@@ -357,7 +345,6 @@ export default function Entregas() {
               )}
             </div>
 
-            {/* EPI by CA */}
             <div>
               <Label>EPI (buscar por C.A.)</Label>
               <div className="flex gap-2">
@@ -389,7 +376,6 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      {/* Assinatura pós-registro Dialog */}
       <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -415,7 +401,6 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      {/* Gerar Ficha Dialog */}
       <Dialog open={fichaOpen} onOpenChange={setFichaOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -448,7 +433,6 @@ export default function Entregas() {
                 </p>
               )}
             </div>
-            
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFichaOpen(false)}>Cancelar</Button>

@@ -8,11 +8,13 @@ interface AuthContextType {
   loading: boolean;
   authorized: boolean;
   modulosPermitidos: string[];
+  empresaId: string | null;
+  isSuperAdmin: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], signOut: async () => {},
+  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, isSuperAdmin: false, signOut: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -38,42 +40,77 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
   }
 }
 
+async function loadProfile(userId: string): Promise<{ empresaId: string | null }> {
+  try {
+    const { data } = await (supabase.from as any)("profiles")
+      .select("empresa_id")
+      .eq("user_id", userId)
+      .limit(1);
+    if (data && data.length > 0) {
+      return { empresaId: data[0].empresa_id };
+    }
+  } catch {}
+  return { empresaId: null };
+}
+
+async function checkSuperAdmin(userId: string): Promise<boolean> {
+  try {
+    const { data } = await (supabase.from as any)("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "super_admin")
+      .limit(1);
+    return data && data.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(true);
   const [modulosPermitidos, setModulosPermitidos] = useState<string[]>([]);
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const handleAuthCheck = useCallback(async (currentUser: User | null) => {
     if (currentUser) {
       try {
-        const result = await checkAuthorized(currentUser.email);
-        setAuthorized(result.authorized);
-        setModulosPermitidos(result.modulos);
+        const [authResult, profileResult, superAdmin] = await Promise.all([
+          checkAuthorized(currentUser.email),
+          loadProfile(currentUser.id),
+          checkSuperAdmin(currentUser.id),
+        ]);
+        setAuthorized(authResult.authorized);
+        setModulosPermitidos(authResult.modulos);
+        setEmpresaId(profileResult.empresaId);
+        setIsSuperAdmin(superAdmin);
       } catch {
         setAuthorized(true);
         setModulosPermitidos([]);
+        setEmpresaId(null);
+        setIsSuperAdmin(false);
       }
     } else {
       setAuthorized(true);
       setModulosPermitidos([]);
+      setEmpresaId(null);
+      setIsSuperAdmin(false);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      // Use setTimeout to avoid deadlock with async calls inside onAuthStateChange
       setTimeout(() => {
         handleAuthCheck(session?.user ?? null);
       }, 0);
     });
 
-    // THEN get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -88,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, isSuperAdmin, signOut }}>
       {children}
     </AuthContext.Provider>
   );

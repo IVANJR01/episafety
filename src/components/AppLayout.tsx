@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown } from "lucide-react";
 import logoEpiSafety from "@/assets/logo-episafety.png";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -27,7 +27,7 @@ const cadastroItems: NavItem[] = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { signOut, user, modulosPermitidos } = useAuth();
+  const { signOut, user, modulosPermitidos, isSuperAdmin } = useAuth();
 
   // If no permissions set (empty array = no restriction OR all access), show everything
   const hasRestrictions = modulosPermitidos.length > 0;
@@ -113,6 +113,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
               )}
             </>
+          )}
+
+          {isSuperAdmin && (
+            <Link
+              to="/admin/empresas"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === "/admin/empresas"
+                  ? "bg-sidebar-accent text-primary"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              }`}
+            >
+              <Crown className="w-4 h-4 shrink-0" />
+              <span className="truncate">Admin Empresas</span>
+            </Link>
           )}
         </nav>
 
