@@ -131,6 +131,7 @@ export default function EPIs() {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Fabricante</TableHead>
                   <TableHead>Validade</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="text-right">Estoque</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
