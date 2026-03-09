@@ -45,7 +45,7 @@ export default function Funcionarios() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Funcionários</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar funcionários</p>
         </div>
-        {canEdit && (
+        {canCreate && (
           <Button onClick={openNew} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />Novo Funcionário
           </Button>
