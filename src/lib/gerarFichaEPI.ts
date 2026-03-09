@@ -35,9 +35,9 @@ interface FichaData {
   dataAssinatura: string;
 }
 
-const MARGIN = 20;
-const PAGE_W = 210;
-const PAGE_H = 297;
+const MARGIN = 15;
+const PAGE_W = 297;
+const PAGE_H = 210;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 
 const DECLARACAO = `DECLARO ter recebido o(s) Equipamento(s) de Proteção Individual - EPI's., abaixo especificado(s) nos termos do artigo 166 e 167 da CLT, com redação dada pela Lei Federal nº 6.514/77, objetivando a proteção da incolumidade física, bem como a neutralização de possíveis agentes insalubres conforme o art. 191, inciso II, da norma jurídica mencionada, e ainda, o treinamento para o uso correto do(s) mesmo(s). COMPROMETO-ME a utilizá-los sempre para os fins a que se destinam, estando ciente que o não uso incorrerá contra a minha pessoa em ato faltoso, sujeitando-me as penalidades legais. RESPONSABILIZO-ME por sua guarda, conservação, uso correto, e a devolução ao SESMT em qualquer estado que se encontre o equipamento, indenizando a empresa no caso de perda, extravio ou danos por uso incorreto (art. 462, parágrafo 1º, da CLT), e, a comunicação ao superior hierárquico ou Técnico em Segurança do Trabalho caso ocorra qualquer alteração que o torne impróprio para o uso, sendo possível a retirada ou troca de EPI sempre que necessário.`;
