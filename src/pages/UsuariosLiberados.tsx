@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save } from "lucide-react";
+import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,8 @@ export default function UsuariosLiberados() {
   const [usuarios, setUsuarios] = useState<UsuarioLiberado[]>([]);
   const [novoEmail, setNovoEmail] = useState("");
   const [novoNome, setNovoNome] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [savingPerms, setSavingPerms] = useState<string | null>(null);
@@ -49,26 +51,66 @@ export default function UsuariosLiberados() {
   };
 
   const handleAddUser = async () => {
-    if (!novoEmail.trim()) return;
+    if (!novoEmail.trim() || !novaSenha.trim()) {
+      toast({ title: "Preencha e-mail e senha", variant: "destructive" });
+      return;
+    }
+    if (novaSenha.length < 6) {
+      toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+
     setAddingUser(true);
-    const allModules = MODULOS.map(m => m.key);
-    const { error } = await (supabase.from as any)("usuarios_liberados").insert({
-      email: novoEmail.trim().toLowerCase(),
-      nome: novoNome.trim(),
-      modulos_permitidos: allModules,
-      empresa_id: empresaId,
-    });
-    if (error) {
-      toast({
-        title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar",
-        description: error.message,
-        variant: "destructive",
+    try {
+      // 1. Create auth user via edge function
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
+        body: {
+          email: novoEmail.trim().toLowerCase(),
+          password: novaSenha,
+          nome: novoNome.trim(),
+        },
       });
-    } else {
-      toast({ title: "Usuário liberado com sucesso!" });
-      setNovoEmail("");
-      setNovoNome("");
-      await loadUsuarios();
+
+      if (fnError || fnData?.error) {
+        toast({
+          title: "Erro ao criar conta",
+          description: fnData?.error || fnError?.message || "Erro desconhecido",
+          variant: "destructive",
+        });
+        setAddingUser(false);
+        return;
+      }
+
+      // 2. Add to usuarios_liberados
+      const allModules = MODULOS.map(m => m.key);
+      const { error } = await (supabase.from as any)("usuarios_liberados").insert({
+        email: novoEmail.trim().toLowerCase(),
+        nome: novoNome.trim(),
+        modulos_permitidos: allModules,
+        empresa_id: empresaId,
+      });
+
+      if (error) {
+        toast({
+          title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        // 3. Update profile empresa_id if we have one
+        if (empresaId && fnData?.user_id) {
+          await (supabase.from as any)("profiles")
+            .update({ empresa_id: empresaId })
+            .eq("user_id", fnData.user_id);
+        }
+        toast({ title: "Usuário criado e liberado com sucesso!" });
+        setNovoEmail("");
+        setNovoNome("");
+        setNovaSenha("");
+        await loadUsuarios();
+      }
+    } catch (err: any) {
+      toast({ title: "Erro inesperado", description: err.message, variant: "destructive" });
     }
     setAddingUser(false);
   };
@@ -137,29 +179,48 @@ export default function UsuariosLiberados() {
             Controle de Acesso
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Cadastre os e-mails autorizados e defina quais módulos cada usuário pode acessar.
+            Cadastre os e-mails autorizados, defina uma senha e escolha quais módulos cada usuário pode acessar.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              placeholder="Nome do usuário"
-              value={novoNome}
-              onChange={e => setNovoNome(e.target.value)}
-              className="sm:w-40"
-            />
-            <Input
-              type="email"
-              placeholder="email@exemplo.com"
-              value={novoEmail}
-              onChange={e => setNovoEmail(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleAddUser()}
-              className="flex-1"
-            />
-            <Button onClick={handleAddUser} disabled={addingUser || !novoEmail.trim()}>
-              <UserPlus className="w-4 h-4 mr-2" />
-              Adicionar
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                placeholder="Nome do usuário"
+                value={novoNome}
+                onChange={e => setNovoNome(e.target.value)}
+                className="sm:w-40"
+              />
+              <Input
+                type="email"
+                placeholder="email@exemplo.com"
+                value={novoEmail}
+                onChange={e => setNovoEmail(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Senha (mín. 6 caracteres)"
+                  value={novaSenha}
+                  onChange={e => setNovaSenha(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleAddUser()}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Button onClick={handleAddUser} disabled={addingUser || !novoEmail.trim() || !novaSenha.trim()}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                {addingUser ? "Criando..." : "Adicionar"}
+              </Button>
+            </div>
           </div>
 
           {usuarios.length === 0 ? (
