@@ -52,6 +52,7 @@ export type Database = {
       }
       entregas: {
         Row: {
+          assinatura_colaborador: string | null
           created_at: string
           created_by: string | null
           data: string
@@ -65,6 +66,7 @@ export type Database = {
           tipo: Database["public"]["Enums"]["tipo_entrega"]
         }
         Insert: {
+          assinatura_colaborador?: string | null
           created_at?: string
           created_by?: string | null
           data?: string
@@ -78,6 +80,7 @@ export type Database = {
           tipo?: Database["public"]["Enums"]["tipo_entrega"]
         }
         Update: {
+          assinatura_colaborador?: string | null
           created_at?: string
           created_by?: string | null
           data?: string
