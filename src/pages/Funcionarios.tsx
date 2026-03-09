@@ -10,10 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 interface Funcionario {
   id: string; nome: string; matricula: string | null; setor: string | null;
-  cargo: string | null; data_admissao: string | null;
+  cargo: string | null; data_admissao: string | null; cpf: string | null;
 }
 
-const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "" };
+const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "" };
 
 export default function Funcionarios() {
   const { data: items, loading, add, update, remove } = useSupabaseCrud<Funcionario>("funcionarios", "created_at");
@@ -24,13 +24,13 @@ export default function Funcionarios() {
   const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
   const openEdit = (f: Funcionario) => {
     setEditing(f);
-    setForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "" });
+    setForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "" });
     setOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
-    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null };
+    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null };
     if (editing) await update(editing.id, data);
     else await add(data);
     setOpen(false);
@@ -55,6 +55,7 @@ export default function Funcionarios() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>CPF</TableHead>
                   <TableHead>Matrícula</TableHead>
                   <TableHead>Setor</TableHead>
                   <TableHead>Cargo</TableHead>
@@ -64,10 +65,11 @@ export default function Funcionarios() {
               </TableHeader>
               <TableBody>
                 {items.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado</TableCell></TableRow>
                 ) : items.map(f => (
                   <TableRow key={f.id}>
                     <TableCell className="font-medium">{f.nome}</TableCell>
+                    <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{f.matricula || "—"}</TableCell>
                     <TableCell>{f.setor || "—"}</TableCell>
                     <TableCell>{f.cargo || "—"}</TableCell>
@@ -92,12 +94,15 @@ export default function Funcionarios() {
           <div className="grid gap-4 py-2">
             <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Nome completo" /></div>
             <div className="grid grid-cols-2 gap-4">
+              <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm({...form, cpf: e.target.value})} placeholder="000.000.000-00" /></div>
               <div><Label>Matrícula</Label><Input value={form.matricula} onChange={e => setForm({...form, matricula: e.target.value})} placeholder="Nº matrícula" /></div>
-              <div><Label>Data Admissão</Label><Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div><Label>Data Admissão</Label><Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} /></div>
               <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({...form, setor: e.target.value})} placeholder="Ex: Produção" /></div>
-              <div><Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" /></div>
+            </div>
+            <div>
+              <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>

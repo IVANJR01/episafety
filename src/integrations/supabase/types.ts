@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      empresa_config: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          endereco: string | null
+          id: string
+          logo_url: string | null
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          logo_url?: string | null
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       entregas: {
         Row: {
           created_at: string
@@ -154,9 +184,60 @@ export type Database = {
           },
         ]
       }
+      fichas_entrega: {
+        Row: {
+          assinatura_colaborador: string | null
+          assinatura_responsavel: string | null
+          created_at: string
+          created_by: string | null
+          data_assinatura: string | null
+          entrega_ids: string[] | null
+          funcionario_id: string
+          id: string
+          pdf_url: string | null
+          responsavel_cargo: string | null
+          responsavel_nome: string | null
+        }
+        Insert: {
+          assinatura_colaborador?: string | null
+          assinatura_responsavel?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_assinatura?: string | null
+          entrega_ids?: string[] | null
+          funcionario_id: string
+          id?: string
+          pdf_url?: string | null
+          responsavel_cargo?: string | null
+          responsavel_nome?: string | null
+        }
+        Update: {
+          assinatura_colaborador?: string | null
+          assinatura_responsavel?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_assinatura?: string | null
+          entrega_ids?: string[] | null
+          funcionario_id?: string
+          id?: string
+          pdf_url?: string | null
+          responsavel_cargo?: string | null
+          responsavel_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichas_entrega_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funcionarios: {
         Row: {
           cargo: string | null
+          cpf: string | null
           created_at: string
           created_by: string | null
           data_admissao: string | null
@@ -168,6 +249,7 @@ export type Database = {
         }
         Insert: {
           cargo?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string | null
           data_admissao?: string | null
@@ -179,6 +261,7 @@ export type Database = {
         }
         Update: {
           cargo?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string | null
           data_admissao?: string | null
