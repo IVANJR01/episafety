@@ -18,6 +18,7 @@ const navItems = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { signOut, user } = useAuth();
 
   return (
     <div className="flex h-screen overflow-hidden">
