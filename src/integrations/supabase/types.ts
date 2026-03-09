@@ -535,6 +535,7 @@ export type Database = {
           created_by: string | null
           email: string
           id: string
+          modulos_permitidos: string[] | null
           nome: string | null
         }
         Insert: {
@@ -542,6 +543,7 @@ export type Database = {
           created_by?: string | null
           email: string
           id?: string
+          modulos_permitidos?: string[] | null
           nome?: string | null
         }
         Update: {
@@ -549,6 +551,7 @@ export type Database = {
           created_by?: string | null
           email?: string
           id?: string
+          modulos_permitidos?: string[] | null
           nome?: string | null
         }
         Relationships: []

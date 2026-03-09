@@ -7,28 +7,29 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   authorized: boolean;
+  modulosPermitidos: string[];
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, authorized: true, signOut: async () => {},
+  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], signOut: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-async function checkAuthorized(email: string | undefined): Promise<boolean> {
-  if (!email) return false;
-  // Check if there are any allowed users configured
+async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[] }> {
+  if (!email) return { authorized: false, modulos: [] };
   const { count } = await (supabase.from as any)("usuarios_liberados")
     .select("id", { count: "exact", head: true });
-  // If no users configured, allow all authenticated users
-  if (!count || count === 0) return true;
-  // Check if user's email is in the allowed list
+  if (!count || count === 0) return { authorized: true, modulos: [] }; // no restriction
   const { data } = await (supabase.from as any)("usuarios_liberados")
-    .select("id")
+    .select("id, modulos_permitidos")
     .eq("email", email.toLowerCase())
     .limit(1);
-  return data && data.length > 0;
+  if (data && data.length > 0) {
+    return { authorized: true, modulos: data[0].modulos_permitidos || [] };
+  }
+  return { authorized: false, modulos: [] };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -36,16 +37,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(true);
+  const [modulosPermitidos, setModulosPermitidos] = useState<string[]>([]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        const isAuth = await checkAuthorized(session.user.email);
-        setAuthorized(isAuth);
+        const result = await checkAuthorized(session.user.email);
+        setAuthorized(result.authorized);
+        setModulosPermitidos(result.modulos);
       } else {
         setAuthorized(true);
+        setModulosPermitidos([]);
       }
       setLoading(false);
     });
@@ -54,8 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        const isAuth = await checkAuthorized(session.user.email);
-        setAuthorized(isAuth);
+        const result = await checkAuthorized(session.user.email);
+        setAuthorized(result.authorized);
+        setModulosPermitidos(result.modulos);
       }
       setLoading(false);
     });
@@ -68,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, authorized, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, signOut }}>
       {children}
     </AuthContext.Provider>
   );
