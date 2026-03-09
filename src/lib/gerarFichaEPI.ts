@@ -29,9 +29,6 @@ interface FichaData {
   funcionario: FuncionarioData;
   entregas: EntregaItem[];
   assinaturaColaborador: string | null;
-  assinaturaResponsavel: string | null;
-  responsavelNome: string;
-  responsavelCargo: string;
   dataAssinatura: string;
 }
 

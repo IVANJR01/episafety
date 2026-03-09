@@ -31,14 +31,11 @@ export default function Entregas() {
   const [open, setOpen] = useState(false);
   const [fichaOpen, setFichaOpen] = useState(false);
   const [fichaFuncId, setFichaFuncId] = useState("");
-  const [responsavelNome, setResponsavelNome] = useState("");
-  const [responsavelCargo, setResponsavelCargo] = useState("");
   const [empresaNome, setEmpresaNome] = useState("");
   const [empresaCnpj, setEmpresaCnpj] = useState("");
   const [empresaEndereco, setEmpresaEndereco] = useState("");
 
   const sigColabRef = useRef<SignatureCanvasRef>(null);
-  const sigRespRef = useRef<SignatureCanvasRef>(null);
 
   const [form, setForm] = useState({
     funcionario_id: "", epi_id: "", quantidade: 1,
@@ -69,8 +66,6 @@ export default function Entregas() {
   const openFicha = (funcId?: string) => {
     loadEmpresa();
     setFichaFuncId(funcId || "");
-    setResponsavelNome("");
-    setResponsavelCargo("");
     setFichaOpen(true);
   };
 
@@ -84,7 +79,6 @@ export default function Entregas() {
     if (funcEntregas.length === 0) { toast({ title: "Nenhuma entrega encontrada para este funcionário", variant: "destructive" }); return; }
 
     const assinaturaColaborador = sigColabRef.current?.getDataURL() || null;
-    const assinaturaResponsavel = sigRespRef.current?.getDataURL() || null;
 
     const now = new Date();
     const dataAssinatura = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`;
@@ -100,9 +94,6 @@ export default function Entregas() {
         observacao: e.observacao,
       })),
       assinaturaColaborador,
-      assinaturaResponsavel,
-      responsavelNome,
-      responsavelCargo,
       dataAssinatura,
     });
 
@@ -110,9 +101,6 @@ export default function Entregas() {
     await (supabase.from as any)("fichas_entrega").insert({
       funcionario_id: fichaFuncId,
       assinatura_colaborador: assinaturaColaborador,
-      assinatura_responsavel: assinaturaResponsavel,
-      responsavel_nome: responsavelNome,
-      responsavel_cargo: responsavelCargo,
       data_assinatura: now.toISOString(),
       entrega_ids: funcEntregas.map(e => e.id),
     });
@@ -269,20 +257,8 @@ export default function Entregas() {
               )}
             </div>
 
-            {/* Responsável */}
-            <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-              <h3 className="text-sm font-semibold">Responsável pela Entrega</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Nome</Label><Input value={responsavelNome} onChange={e => setResponsavelNome(e.target.value)} placeholder="Nome do responsável" /></div>
-                <div><Label className="text-xs">Cargo</Label><Input value={responsavelCargo} onChange={e => setResponsavelCargo(e.target.value)} placeholder="Cargo/Função" /></div>
-              </div>
-            </div>
-
-            {/* Assinaturas */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SignatureCanvas ref={sigColabRef} label="Assinatura do Colaborador" height={120} />
-              <SignatureCanvas ref={sigRespRef} label="Assinatura do Responsável" height={120} />
-            </div>
+            {/* Assinatura */}
+            <SignatureCanvas ref={sigColabRef} label="Assinatura do Colaborador" height={120} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFichaOpen(false)}>Cancelar</Button>
