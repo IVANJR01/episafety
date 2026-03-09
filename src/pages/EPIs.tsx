@@ -39,7 +39,8 @@ export default function EPIs() {
       nome: e.nome, ca: e.ca || "", validade: e.validade || "",
       estoque: e.estoque, estoque_minimo: e.estoque_minimo,
       categoria: e.categoria || "", descricao: e.descricao || "",
-      fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || ""
+      fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || "",
+      valor: e.valor || 0
     });
     setOpen(true);
   };
