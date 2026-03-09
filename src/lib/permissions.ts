@@ -39,7 +39,12 @@ export function hasPermission(
   if (modulosPermitidos.includes(moduleKey)) return true;
 
   // Check specific action
-  return modulosPermitidos.includes(`${moduleKey}:${action}`);
+  if (modulosPermitidos.includes(`${moduleKey}:${action}`)) return true;
+
+  // Legacy compat: old "edit" permission (before create was split) grants "create" too
+  if (action === "create" && modulosPermitidos.includes(`${moduleKey}:edit`)) return true;
+
+  return false;
 }
 
 /**
