@@ -37,9 +37,6 @@ function ProtectedRoutes() {
         <Route path="/funcionarios" element={<Funcionarios />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/inspecoes" element={<Inspecoes />} />
-        <Route path="/treinamentos" element={<Treinamentos />} />
-        <Route path="/ordens-servico" element={<OrdensServico />} />
-        <Route path="/pcmso" element={<PCMSO />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
