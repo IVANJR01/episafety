@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Plus, Trash2, FileText } from "lucide-react";
+import { useState, useRef, useMemo } from "react";
+import { Plus, Trash2, FileText, Search } from "lucide-react";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,10 +30,9 @@ export default function Entregas() {
 
   const [open, setOpen] = useState(false);
   const [fichaOpen, setFichaOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [fichaSearch, setFichaSearch] = useState("");
   const [fichaFuncId, setFichaFuncId] = useState("");
-  const [empresaNome, setEmpresaNome] = useState("");
-  const [empresaCnpj, setEmpresaCnpj] = useState("");
-  const [empresaEndereco, setEmpresaEndereco] = useState("");
 
   const sigColabRef = useRef<SignatureCanvasRef>(null);
 
@@ -43,29 +42,53 @@ export default function Entregas() {
     tipo: "entrega" as string, observacao: "",
   });
 
+  // Search helper: match funcionario by nome, cpf, or matricula
+  const matchFunc = (func: Funcionario, term: string) => {
+    if (!term) return true;
+    const t = term.toLowerCase();
+    return (
+      func.nome.toLowerCase().includes(t) ||
+      (func.cpf && func.cpf.includes(t)) ||
+      (func.matricula && func.matricula.toLowerCase().includes(t))
+    );
+  };
+
+  // Filter entregas by search
+  const filteredEntregas = useMemo(() => {
+    if (!searchTerm) return entregas;
+    return entregas.filter(e => {
+      const func = funcionarios.find(f => f.id === e.funcionario_id);
+      return func && matchFunc(func, searchTerm);
+    });
+  }, [entregas, funcionarios, searchTerm]);
+
+  // Filtered funcionarios for ficha dialog
+  const fichaFilteredFuncs = useMemo(() => {
+    if (!fichaSearch) return funcionarios;
+    return funcionarios.filter(f => matchFunc(f, fichaSearch));
+  }, [funcionarios, fichaSearch]);
+
+  // Filtered funcionarios for new movimentação dialog
+  const [formFuncSearch, setFormFuncSearch] = useState("");
+  const formFilteredFuncs = useMemo(() => {
+    if (!formFuncSearch) return funcionarios;
+    return funcionarios.filter(f => matchFunc(f, formFuncSearch));
+  }, [funcionarios, formFuncSearch]);
+
   const handleSave = async () => {
     if (!form.funcionario_id || !form.epi_id) return;
     const status = form.tipo === "devolucao" ? "devolvido" : form.tipo === "troca" ? "trocado" : "ativo";
     await add({ ...form, status, observacao: form.observacao || null } as any);
     setOpen(false);
     setForm({ funcionario_id: "", epi_id: "", quantidade: 1, data: new Date().toISOString().split("T")[0], tipo: "entrega", observacao: "" });
+    setFormFuncSearch("");
   };
 
   const getName = (list: { id: string; nome: string }[], id: string) => list.find(i => i.id === id)?.nome || "—";
 
-  // Load empresa config
-  const loadEmpresa = async () => {
-    const { data } = await (supabase.from as any)("empresa_config").select("*").limit(1);
-    if (data && data.length > 0) {
-      setEmpresaNome(data[0].nome || "");
-      setEmpresaCnpj(data[0].cnpj || "");
-      setEmpresaEndereco(data[0].endereco || "");
-    }
-  };
-
   const openFicha = (funcId?: string) => {
-    loadEmpresa();
     setFichaFuncId(funcId || "");
+    setFichaSearch("");
     setFichaOpen(true);
   };
 
@@ -78,13 +101,16 @@ export default function Entregas() {
     const funcEntregas = entregas.filter(e => e.funcionario_id === fichaFuncId);
     if (funcEntregas.length === 0) { toast({ title: "Nenhuma entrega encontrada para este funcionário", variant: "destructive" }); return; }
 
-    const assinaturaColaborador = sigColabRef.current?.getDataURL() || null;
+    // Auto-load empresa data
+    const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").limit(1);
+    const emp = empresaData?.[0] || {};
 
+    const assinaturaColaborador = sigColabRef.current?.getDataURL() || null;
     const now = new Date();
     const dataAssinatura = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`;
 
     const doc = gerarFichaEPI({
-      empresa: { nome: empresaNome, cnpj: empresaCnpj, endereco: empresaEndereco, logo_url: null },
+      empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: null },
       funcionario: { nome: func.nome, cargo: func.cargo, setor: func.setor, cpf: func.cpf, matricula: func.matricula, data_admissao: func.data_admissao },
       entregas: funcEntregas.map(e => ({
         data: e.data,
@@ -104,14 +130,6 @@ export default function Entregas() {
       data_assinatura: now.toISOString(),
       entrega_ids: funcEntregas.map(e => e.id),
     });
-
-    // Save empresa config
-    const { data: existing } = await (supabase.from as any)("empresa_config").select("id").limit(1);
-    if (existing && existing.length > 0) {
-      await (supabase.from as any)("empresa_config").update({ nome: empresaNome, cnpj: empresaCnpj, endereco: empresaEndereco }).eq("id", existing[0].id);
-    } else {
-      await (supabase.from as any)("empresa_config").insert({ nome: empresaNome, cnpj: empresaCnpj, endereco: empresaEndereco });
-    }
 
     doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);
     toast({ title: "Ficha gerada com sucesso!", description: "O PDF foi baixado." });
@@ -133,6 +151,17 @@ export default function Entregas() {
         </div>
       </div>
 
+      {/* Search bar */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          className="pl-9"
+          placeholder="Buscar por CPF, matrícula ou nome do funcionário..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -152,9 +181,9 @@ export default function Entregas() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entregas.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma movimentação registrada</TableCell></TableRow>
-                ) : entregas.map(e => (
+                {filteredEntregas.length === 0 ? (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</TableCell></TableRow>
+                ) : filteredEntregas.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="font-mono text-xs">{e.data}</TableCell>
                     <TableCell><Badge variant={tipoBadge[e.tipo] || "default"}>{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
@@ -184,7 +213,7 @@ export default function Entregas() {
       </Card>
 
       {/* Nova Movimentação Dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) setFormFuncSearch(""); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nova Movimentação</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
@@ -201,10 +230,33 @@ export default function Entregas() {
             </div>
             <div>
               <Label>Funcionário</Label>
-              <Select value={form.funcionario_id} onValueChange={v => setForm({...form, funcionario_id: v})}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>{funcionarios.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent>
-              </Select>
+              <Input
+                placeholder="Buscar por CPF, matrícula ou nome..."
+                value={formFuncSearch}
+                onChange={e => { setFormFuncSearch(e.target.value); setForm({...form, funcionario_id: ""}); }}
+                className="mb-2"
+              />
+              {formFuncSearch && formFilteredFuncs.length > 0 && !form.funcionario_id && (
+                <div className="border rounded-md max-h-40 overflow-y-auto">
+                  {formFilteredFuncs.map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      onClick={() => { setForm({...form, funcionario_id: f.id}); setFormFuncSearch(f.nome); }}
+                    >
+                      <span className="font-medium">{f.nome}</span>
+                      {f.cpf && <span className="text-muted-foreground ml-2">CPF: {f.cpf}</span>}
+                      {f.matricula && <span className="text-muted-foreground ml-2">Mat: {f.matricula}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {form.funcionario_id && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  ✓ {getName(funcionarios, form.funcionario_id)} selecionado
+                </p>
+              )}
             </div>
             <div>
               <Label>EPI</Label>
@@ -233,26 +285,36 @@ export default function Entregas() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 py-2">
-            {/* Empresa */}
-            <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-              <h3 className="text-sm font-semibold">Dados da Empresa</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Nome da Empresa</Label><Input value={empresaNome} onChange={e => setEmpresaNome(e.target.value)} placeholder="Nome da empresa" /></div>
-                <div><Label className="text-xs">CNPJ</Label><Input value={empresaCnpj} onChange={e => setEmpresaCnpj(e.target.value)} placeholder="00.000.000/0000-00" /></div>
-              </div>
-              <div><Label className="text-xs">Endereço</Label><Input value={empresaEndereco} onChange={e => setEmpresaEndereco(e.target.value)} placeholder="Endereço completo" /></div>
-            </div>
+            <p className="text-xs text-muted-foreground">Os dados da empresa serão carregados automaticamente das configurações do sistema.</p>
 
-            {/* Funcionário */}
+            {/* Funcionário search */}
             <div>
               <Label>Colaborador</Label>
-              <Select value={fichaFuncId} onValueChange={setFichaFuncId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o colaborador..." /></SelectTrigger>
-                <SelectContent>{funcionarios.map(f => <SelectItem key={f.id} value={f.id}>{f.nome} — {f.cargo || "Sem cargo"}</SelectItem>)}</SelectContent>
-              </Select>
+              <Input
+                placeholder="Buscar por CPF, matrícula ou nome..."
+                value={fichaSearch}
+                onChange={e => { setFichaSearch(e.target.value); setFichaFuncId(""); }}
+                className="mb-2"
+              />
+              {fichaSearch && fichaFilteredFuncs.length > 0 && !fichaFuncId && (
+                <div className="border rounded-md max-h-40 overflow-y-auto">
+                  {fichaFilteredFuncs.map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      onClick={() => { setFichaFuncId(f.id); setFichaSearch(f.nome); }}
+                    >
+                      <span className="font-medium">{f.nome}</span>
+                      {f.cpf && <span className="text-muted-foreground ml-2">CPF: {f.cpf}</span>}
+                      {f.matricula && <span className="text-muted-foreground ml-2">Mat: {f.matricula}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
               {fichaFuncId && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {entregas.filter(e => e.funcionario_id === fichaFuncId).length} entrega(s) encontrada(s)
+                  ✓ {getName(funcionarios, fichaFuncId)} — {entregas.filter(e => e.funcionario_id === fichaFuncId).length} entrega(s) encontrada(s)
                 </p>
               )}
             </div>
