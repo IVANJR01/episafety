@@ -247,16 +247,11 @@ export function gerarFichaEPI(data: FichaData) {
     doc.text(entrega.epi_ca || "—", x + colWidths[4] / 2, y + ROW_H / 2, { align: "center" });
     x += colWidths[4];
 
-    // Motivo (tipo) + Status
+    // Motivo (tipo)
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     const motivo = tipoLabels[entrega.tipo] || entrega.tipo;
-    const status = statusLabels[entrega.status] || entrega.status;
-    doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2 - 2, { align: "center" });
-    doc.setFontSize(5.5);
-    doc.setTextColor(100);
-    doc.text(`(${status})`, x + colWidths[5] / 2, y + ROW_H / 2 + 3, { align: "center" });
-    doc.setTextColor(0);
+    doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2, { align: "center" });
     x += colWidths[5];
 
     // Assinatura column - draw signature image if available
