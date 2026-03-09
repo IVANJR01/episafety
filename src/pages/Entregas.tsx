@@ -224,10 +224,13 @@ export default function Entregas() {
           );
           dataDevolucao = newer?.data || e.data;
         }
+        const epiObj = epis.find(ep => ep.id === e.epi_id);
         return {
           data: e.data, quantidade: e.quantidade,
-          epi_nome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
+          epi_nome: epiObj?.nome || "—",
           epi_ca: epiCa,
+          epi_descricao: epiObj?.descricao || null,
+          epi_validade: epiObj?.validade || null,
           observacao: e.observacao,
           tipo: e.tipo,
           status: e.status,

@@ -226,20 +226,22 @@ export function gerarFichaEPI(data: FichaData) {
     const eqX = x + 3;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
-    doc.text(entrega.epi_nome || "—", eqX, y + 6);
+    doc.text(entrega.epi_nome || "—", eqX, y + 5);
     
-    if (entrega.epi_ca) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6);
-      doc.text(`Validade do C.A: —`, eqX, y + 10);
+    // Description
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5.5);
+    if (entrega.epi_descricao) {
+      const descLines = doc.splitTextToSize(entrega.epi_descricao, colWidths[3] - 6);
+      doc.text(descLines.slice(0, 2), eqX, y + 9);
     }
 
-    if (entrega.observacao) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(5.5);
-      const obsLines = doc.splitTextToSize(entrega.observacao, colWidths[3] - 6);
-      doc.text(obsLines.slice(0, 1), eqX, y + 14);
-    }
+    // Validade do C.A.
+    doc.setFontSize(5.5);
+    doc.setTextColor(80);
+    const validadeText = entrega.epi_validade ? `Validade do C.A: ${formatDate(entrega.epi_validade)}` : "Validade do C.A: —";
+    doc.text(validadeText, eqX, y + (entrega.epi_descricao ? 14 : 9));
+    doc.setTextColor(0);
     x += colWidths[3];
 
     // CA nº
