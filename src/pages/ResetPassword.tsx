@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { HardHat, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
+import logoEpiSafety from "@/assets/logo-episafety.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
