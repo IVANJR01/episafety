@@ -41,6 +41,28 @@ export default function Dashboard() {
     return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
   }, [epis]);
 
+  const estoqueChartData = useMemo(() => {
+    return epis
+      .filter(e => (e.valor || 0) * e.estoque > 0)
+      .map(e => ({
+        nome: e.nome.length > 20 ? e.nome.substring(0, 20) + "..." : e.nome,
+        valor: Number(((e.valor || 0) * e.estoque).toFixed(2)),
+      }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 8);
+  }, [epis]);
+
+  const CHART_COLORS = [
+    "hsl(var(--primary))",
+    "hsl(25, 95%, 53%)",
+    "hsl(142, 71%, 45%)",
+    "hsl(47, 95%, 53%)",
+    "hsl(199, 89%, 48%)",
+    "hsl(262, 83%, 58%)",
+    "hsl(346, 77%, 50%)",
+    "hsl(173, 80%, 40%)",
+  ];
+
   const valorSaida = useMemo(() => {
     return entregas.reduce((sum, e) => {
       const epi = epis.find(ep => ep.id === e.epi_id);
