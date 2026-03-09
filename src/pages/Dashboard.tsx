@@ -37,6 +37,17 @@ export default function Dashboard() {
 
   const custoTotal = custoMensal.reduce((s, m) => s + m.total, 0);
 
+  const valorEstoqueAtual = useMemo(() => {
+    return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
+  }, [epis]);
+
+  const valorSaida = useMemo(() => {
+    return entregas.reduce((sum, e) => {
+      const epi = epis.find(ep => ep.id === e.epi_id);
+      return sum + (epi?.valor || 0) * e.quantidade;
+    }, 0);
+  }, [entregas, epis]);
+
   const stats = [
     { label: "EPIs Cadastrados", value: epis.length, icon: Package, color: "text-primary" },
     { label: "Funcionários", value: funcionarios.length, icon: Users, color: "text-success" },
