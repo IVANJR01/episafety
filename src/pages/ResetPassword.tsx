@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { HardHat } from "lucide-react";
+import { HardHat, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,23 +27,19 @@ export default function ResetPassword() {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true);
       }
-      // If user arrived via recovery link, session will exist
       if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "PASSWORD_RECOVERY")) {
         setIsRecovery(true);
       }
       setChecking(false);
     });
 
-    // Also check if there's already an active session (recovery link already processed)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        // Check if we got here from a recovery flow
         const hash = window.location.hash;
         const params = new URLSearchParams(hash.replace('#', ''));
         if (params.get('type') === 'recovery' || hash.includes('type=recovery')) {
           setIsRecovery(true);
         }
-        // If there's an active session and we're on this page, allow password reset
         setIsRecovery(true);
       }
       setChecking(false);
@@ -52,14 +48,24 @@ export default function ResetPassword() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const passwordRules = useMemo(() => [
+    { label: "Mínimo 8 caracteres", valid: password.length >= 8 },
+    { label: "Letra maiúscula", valid: /[A-Z]/.test(password) },
+    { label: "Letra minúscula", valid: /[a-z]/.test(password) },
+    { label: "Número", valid: /[0-9]/.test(password) },
+    { label: "Caractere especial (!@#$%...)", valid: /[^A-Za-z0-9]/.test(password) },
+  ], [password]);
+
+  const allRulesValid = passwordRules.every(r => r.valid);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      toast({ title: "As senhas não coincidem", variant: "destructive" });
+    if (!allRulesValid) {
+      toast({ title: "A senha não atende todos os requisitos", variant: "destructive" });
       return;
     }
-    if (password.length < 6) {
-      toast({ title: "A senha deve ter pelo menos 6 caracteres", variant: "destructive" });
+    if (password !== confirmPassword) {
+      toast({ title: "As senhas não coincidem", variant: "destructive" });
       return;
     }
 
@@ -118,13 +124,34 @@ export default function ResetPassword() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Nova Senha</Label>
-              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
+              {password.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {passwordRules.map((rule) => (
+                    <li key={rule.label} className="flex items-center gap-2 text-xs">
+                      {rule.valid ? (
+                        <Check className="w-3.5 h-3.5 text-green-600" />
+                      ) : (
+                        <X className="w-3.5 h-3.5 text-destructive" />
+                      )}
+                      <span className={rule.valid ? "text-green-600" : "text-muted-foreground"}>
+                        {rule.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div>
               <Label>Confirmar Senha</Label>
-              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" required />
+              {confirmPassword.length > 0 && confirmPassword !== password && (
+                <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                  <X className="w-3.5 h-3.5" /> As senhas não coincidem
+                </p>
+              )}
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !allRulesValid || password !== confirmPassword}>
               {loading ? "Atualizando..." : "Atualizar Senha"}
             </Button>
           </form>
