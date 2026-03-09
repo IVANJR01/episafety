@@ -25,12 +25,12 @@ export default function Auth() {
     try {
       if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${window.location.origin}/reset-password`
         });
         if (error) throw error;
         toast({
           title: "E-mail enviado!",
-          description: "Verifique sua caixa de entrada para redefinir a senha.",
+          description: "Verifique sua caixa de entrada para redefinir a senha."
         });
         setMode("login");
       } else if (mode === "login") {
@@ -40,7 +40,7 @@ export default function Auth() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { nome }, emailRedirectTo: window.location.origin },
+          options: { data: { nome }, emailRedirectTo: window.location.origin }
         });
         if (error) throw error;
         toast({ title: "Conta criada!", description: "Verifique seu email para confirmar o cadastro." });
@@ -56,7 +56,7 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          <img src={logoEpiSafety} alt="EPISafety" className="mx-auto w-16 h-16 object-contain" />
+          <img alt="EPISafety" className="mx-auto w-16 h-16 object-contain" src="/lovable-uploads/8df588ff-740d-4376-9653-dc6f07556c80.png" />
           <div>
             <CardTitle className="text-2xl">EPISafety</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">Segurança do Trabalho</p>
@@ -64,60 +64,60 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div>
+            {mode === "signup" &&
+            <div>
                 <Label>Nome</Label>
-                <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" required />
+                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" required />
               </div>
-            )}
+            }
             <div>
               <Label>Email</Label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" required />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required />
             </div>
-            {mode !== "forgot" && (
-              <div>
+            {mode !== "forgot" &&
+            <div>
                 <Label>Senha</Label>
-                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
               </div>
-            )}
-            {mode === "login" && (
-              <div className="flex justify-end">
+            }
+            {mode === "login" &&
+            <div className="flex justify-end">
                 <button
-                  type="button"
-                  onClick={() => setMode("forgot")}
-                  className="text-xs text-primary hover:underline"
-                >
+                type="button"
+                onClick={() => setMode("forgot")}
+                className="text-xs text-primary hover:underline">
+                
                   Esqueci minha senha
                 </button>
               </div>
-            )}
+            }
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading
-                ? "Aguarde..."
-                : mode === "login"
-                ? "Entrar"
-                : mode === "signup"
-                ? "Criar Conta"
-                : "Enviar Link de Recuperação"}
+              {loading ?
+              "Aguarde..." :
+              mode === "login" ?
+              "Entrar" :
+              mode === "signup" ?
+              "Criar Conta" :
+              "Enviar Link de Recuperação"}
             </Button>
           </form>
           <div className="mt-4 text-center">
-            {mode === "forgot" ? (
-              <button type="button" onClick={() => setMode("login")} className="text-sm text-primary hover:underline">
+            {mode === "forgot" ?
+            <button type="button" onClick={() => setMode("login")} className="text-sm text-primary hover:underline">
                 Voltar ao login
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                className="text-sm text-primary hover:underline"
-              >
+              </button> :
+
+            <button
+              type="button"
+              onClick={() => setMode(mode === "login" ? "signup" : "login")}
+              className="text-sm text-primary hover:underline">
+              
                 {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
               </button>
-            )}
+            }
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>);
+
 }
