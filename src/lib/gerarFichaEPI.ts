@@ -52,6 +52,16 @@ function formatDate(dateStr: string): string {
   return dateStr;
 }
 
+function formatDateTime(isoStr: string): string {
+  if (!isoStr) return "—";
+  try {
+    const d = new Date(isoStr);
+    return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  } catch {
+    return formatDate(isoStr);
+  }
+}
+
 function drawPageHeader(doc: jsPDF, data: FichaData, pageNum: number, totalPages: number) {
   let y = 10;
 
