@@ -422,7 +422,7 @@ export default function Entregas() {
             <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={150} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); toast({ title: "Entrega registrada sem assinatura." }); }}>
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); refetch(); toast({ title: "Entrega registrada sem assinatura." }); }}>
               Pular
             </Button>
             <Button onClick={handleSaveSignature}>
