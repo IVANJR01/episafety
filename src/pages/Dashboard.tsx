@@ -1,4 +1,4 @@
-import { Package, Users, ClipboardList, AlertTriangle, Search, GraduationCap, FileText, Stethoscope } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, Search } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -6,38 +6,21 @@ interface EPI { id: string; nome: string; estoque: number; estoque_minimo: numbe
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; }
 interface Inspecao { id: string; titulo: string; local: string | null; data: string; status: string; }
-interface Treinamento { id: string; }
-interface OrdemServico { id: string; }
-interface Exame { id: string; funcionario_id: string; data_vencimento: string | null; tipo: string; }
 
 export default function Dashboard() {
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
   const { data: inspecoes } = useSupabaseQuery<Inspecao>("inspecoes");
-  const { data: treinamentos } = useSupabaseQuery<Treinamento>("treinamentos");
-  const { data: ordensServico } = useSupabaseQuery<OrdemServico>("ordens_servico");
-  const { data: exames } = useSupabaseQuery<Exame>("exames");
 
   const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
-
-  const hoje = new Date();
-  const em30dias = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const examesVencendo = exames.filter(e => {
-    if (!e.data_vencimento) return false;
-    const venc = new Date(e.data_vencimento);
-    return venc <= em30dias && venc >= hoje;
-  });
 
   const stats = [
     { label: "EPIs Cadastrados", value: epis.length, icon: Package, color: "text-primary" },
     { label: "Funcionários", value: funcionarios.length, icon: Users, color: "text-success" },
     { label: "Entregas", value: entregas.length, icon: ClipboardList, color: "text-muted-foreground" },
     { label: "Inspeções", value: inspecoes.length, icon: Search, color: "text-primary" },
-    { label: "Treinamentos", value: treinamentos.length, icon: GraduationCap, color: "text-success" },
-    { label: "Ordens de Serviço", value: ordensServico.length, icon: FileText, color: "text-muted-foreground" },
-    { label: "Exames (PCMSO)", value: exames.length, icon: Stethoscope, color: "text-primary" },
-    { label: "Alertas", value: alertasEstoque.length + examesVencendo.length, icon: AlertTriangle, color: "text-warning" },
+    { label: "Alertas", value: alertasEstoque.length, icon: AlertTriangle, color: "text-warning" },
   ];
 
   const recentEntregas = entregas.slice(0, 5).map(e => ({
@@ -55,7 +38,7 @@ export default function Dashboard() {
         <p className="text-muted-foreground text-sm mt-1">Visão geral da Segurança do Trabalho</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {stats.map(s => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-4 p-5">
@@ -72,12 +55,12 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {(alertasEstoque.length > 0 || examesVencendo.length > 0) && (
+        {alertasEstoque.length > 0 && (
           <Card className="border-warning/30">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-warning" />
-                Alertas
+                Alertas de Estoque
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -85,12 +68,6 @@ export default function Dashboard() {
                 <div key={a.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-warning/5">
                   <span><span className="font-medium">{a.nome}</span> — estoque baixo</span>
                   <span className="text-warning font-mono text-xs">{a.estoque} un.</span>
-                </div>
-              ))}
-              {examesVencendo.map(e => (
-                <div key={e.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-warning/5">
-                  <span><span className="font-medium">{funcionarios.find(f => f.id === e.funcionario_id)?.nome}</span> — exame vencendo</span>
-                  <span className="text-warning font-mono text-xs">{e.data_vencimento}</span>
                 </div>
               ))}
             </CardContent>
