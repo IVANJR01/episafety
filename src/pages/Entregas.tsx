@@ -446,7 +446,7 @@ export default function Entregas() {
                 </p>
               )}
             </div>
-            <SignatureCanvas ref={sigColabRef} label="Assinatura do Colaborador" height={120} />
+            
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFichaOpen(false)}>Cancelar</Button>
