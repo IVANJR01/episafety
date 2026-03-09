@@ -173,15 +173,30 @@ export default function Entregas() {
     const doc = gerarFichaEPI({
       empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: null },
       funcionario: { nome: func.nome, cargo: func.cargo, setor: func.setor, cpf: func.cpf, matricula: func.matricula, data_admissao: func.data_admissao },
-      entregas: funcEntregas.map(e => ({
-        data: e.data,
-        quantidade: e.quantidade,
-        epi_nome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
-        epi_ca: epis.find(ep => ep.id === e.epi_id)?.ca || null,
-        observacao: e.observacao,
-        tipo: e.tipo,
-        status: e.status,
-      })),
+      entregas: funcEntregas.map(e => {
+        const epiCa = epis.find(ep => ep.id === e.epi_id)?.ca || null;
+        let dataDevolucao: string | null = null;
+        if ((e.status === "substituido" || e.status === "devolvido") && epiCa) {
+          // Find the newer entry with same CA that caused the substitution
+          const newer = funcEntregas.find(other =>
+            other.id !== e.id &&
+            new Date(other.created_at) > new Date(e.created_at) &&
+            (other.tipo === "substituicao" || other.tipo === "devolucao") &&
+            epis.find(ep => ep.id === other.epi_id)?.ca === epiCa
+          );
+          dataDevolucao = newer?.data || e.data;
+        }
+        return {
+          data: e.data,
+          quantidade: e.quantidade,
+          epi_nome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
+          epi_ca: epiCa,
+          observacao: e.observacao,
+          tipo: e.tipo,
+          status: e.status,
+          data_devolucao: dataDevolucao,
+        };
+      }),
       assinaturaColaborador,
       dataAssinatura,
     });
