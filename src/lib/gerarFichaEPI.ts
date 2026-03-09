@@ -222,25 +222,33 @@ export function gerarFichaEPI(data: FichaData) {
     doc.text(String(entrega.quantidade), x + colWidths[2] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[2];
 
-    // Equipamento
-    const eqX = x + 3;
+    // Equipamento - with proper text clipping
+    const eqX = x + 2;
+    const eqMaxW = colWidths[3] - 4;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
-    doc.text(entrega.epi_nome || "—", eqX, y + 5);
+    // Truncate name if too long
+    let epiNome = entrega.epi_nome || "—";
+    while (doc.getTextWidth(epiNome) > eqMaxW && epiNome.length > 3) {
+      epiNome = epiNome.substring(0, epiNome.length - 4) + "...";
+    }
+    doc.text(epiNome, eqX, y + 5);
     
-    // Description
+    // Description - properly wrapped and limited
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5.5);
     if (entrega.epi_descricao) {
-      const descLines = doc.splitTextToSize(entrega.epi_descricao, colWidths[3] - 6);
+      const descLines = doc.splitTextToSize(entrega.epi_descricao, eqMaxW);
       doc.text(descLines.slice(0, 2), eqX, y + 9);
     }
 
     // Validade do C.A.
     doc.setFontSize(5.5);
     doc.setTextColor(80);
-    const validadeText = entrega.epi_validade ? `Validade do C.A: ${formatDate(entrega.epi_validade)}` : "Validade do C.A: —";
-    doc.text(validadeText, eqX, y + (entrega.epi_descricao ? 14 : 9));
+    const validadeText = entrega.epi_validade ? `Val. C.A: ${formatDate(entrega.epi_validade)}` : "";
+    if (validadeText) {
+      doc.text(validadeText, eqX, y + (entrega.epi_descricao ? 14 : 9));
+    }
     doc.setTextColor(0);
     x += colWidths[3];
 
@@ -264,9 +272,11 @@ export function gerarFichaEPI(data: FichaData) {
         doc.addImage(data.assinaturaColaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
       } catch (e) { /* ignore */ }
     }
+    // Use individual delivery date instead of single dataAssinatura
     doc.setFontSize(5);
     doc.setTextColor(100);
-    doc.text(data.dataAssinatura, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
+    const sigDate = formatDate(entrega.data);
+    doc.text(sigDate, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
     doc.setTextColor(0);
 
     y += ROW_H;
