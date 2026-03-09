@@ -35,198 +35,252 @@ interface FichaData {
   dataAssinatura: string;
 }
 
-export function gerarFichaEPI(data: FichaData) {
-  const doc = new jsPDF("p", "mm", "a4");
-  const pageWidth = 210;
-  const margin = 15;
-  const contentWidth = pageWidth - margin * 2;
-  let y = margin;
+const MARGIN = 20;
+const PAGE_W = 210;
+const PAGE_H = 297;
+const CONTENT_W = PAGE_W - MARGIN * 2;
 
-  const drawLine = (y1: number) => {
-    doc.setDrawColor(200);
-    doc.line(margin, y1, pageWidth - margin, y1);
-  };
+const DECLARACAO = `DECLARO ter recebido o(s) Equipamento(s) de Proteção Individual - EPI's., abaixo especificado(s) nos termos do artigo 166 e 167 da CLT, com redação dada pela Lei Federal nº 6.514/77, objetivando a proteção da incolumidade física, bem como a neutralização de possíveis agentes insalubres conforme o art. 191, inciso II, da norma jurídica mencionada, e ainda, o treinamento para o uso correto do(s) mesmo(s). COMPROMETO-ME a utilizá-los sempre para os fins a que se destinam, estando ciente que o não uso incorrerá contra a minha pessoa em ato faltoso, sujeitando-me as penalidades legais. RESPONSABILIZO-ME por sua guarda, conservação, uso correto, e a devolução ao SESMT em qualquer estado que se encontre o equipamento, indenizando a empresa no caso de perda, extravio ou danos por uso incorreto (art. 462, parágrafo 1º, da CLT), e, a comunicação ao superior hierárquico ou Técnico em Segurança do Trabalho caso ocorra qualquer alteração que o torne impróprio para o uso, sendo possível a retirada ou troca de EPI sempre que necessário.`;
 
-  // === HEADER ===
-  doc.setFillColor(30, 41, 59); // dark slate
-  doc.rect(0, 0, pageWidth, 32, "F");
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "—";
+  const parts = dateStr.split("-");
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return dateStr;
+}
 
-  doc.setTextColor(255, 255, 255);
+function drawPageHeader(doc: jsPDF, data: FichaData, pageNum: number, totalPages: number) {
+  let y = 10;
+
+  // Top info line
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(80);
+  const now = new Date();
+  doc.text(`Documento gerado em: ${now.toLocaleDateString("pt-BR")}`, MARGIN, y);
+  doc.text(`Pág. ${pageNum} de ${totalPages}`, PAGE_W - MARGIN, y, { align: "right" });
+
+  y = 28;
+
+  // Company name centered
+  doc.setTextColor(0);
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text(data.empresa.nome || "Empresa", margin, 14);
-
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  if (data.empresa.cnpj) doc.text(`CNPJ: ${data.empresa.cnpj}`, margin, 21);
-  if (data.empresa.endereco) doc.text(data.empresa.endereco, margin, 27);
-
-  // Title
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("TERMO DE FORNECIMENTO E REPOSIÇÃO DE EPI", pageWidth - margin, 14, { align: "right" });
-
-  y = 40;
-  doc.setTextColor(0, 0, 0);
-
-  // === EMPLOYEE INFO ===
-  doc.setFillColor(241, 245, 249);
-  doc.rect(margin, y, contentWidth, 28, "F");
-  doc.setDrawColor(200);
-  doc.rect(margin, y, contentWidth, 28, "S");
-
-  y += 6;
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text("NOME DO COLABORADOR", margin + 3, y);
-  doc.text("FUNÇÃO / SETOR", margin + contentWidth * 0.55, y);
-
-  y += 5;
-  doc.setFontSize(10);
-  doc.setTextColor(0);
-  doc.setFont("helvetica", "bold");
-  doc.text(data.funcionario.nome, margin + 3, y);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${data.funcionario.cargo || "—"} / ${data.funcionario.setor || "—"}`, margin + contentWidth * 0.55, y);
+  doc.text(data.empresa.nome || "EMPRESA", PAGE_W / 2, y, { align: "center" });
 
   y += 7;
-  doc.setFontSize(8);
-  doc.setTextColor(100);
-  doc.text("CPF", margin + 3, y);
-  doc.text("MATRÍCULA", margin + contentWidth * 0.35, y);
-  doc.text("DATA DE ADMISSÃO", margin + contentWidth * 0.65, y);
+  doc.setFontSize(12);
+  doc.text("Ficha de EPI - Trabalhadores", PAGE_W / 2, y, { align: "center" });
 
-  y += 5;
-  doc.setFontSize(10);
-  doc.setTextColor(0);
-  doc.text(data.funcionario.cpf || "—", margin + 3, y);
-  doc.text(data.funcionario.matricula || "—", margin + contentWidth * 0.35, y);
-  doc.text(data.funcionario.data_admissao || "—", margin + contentWidth * 0.65, y);
+  y += 7;
+  const cnpjText = data.empresa.cnpj ? ` (${data.empresa.cnpj})` : "";
+  doc.text(`${data.empresa.nome || "EMPRESA"}${cnpjText}`, PAGE_W / 2, y, { align: "center" });
 
   y += 10;
 
-  // === DECLARATION ===
-  doc.setFontSize(7);
-  doc.setTextColor(80);
-  const declaracao = `DECLARO ter recebido o(s) Equipamento(s) de Proteção Individual - EPI's abaixo especificado(s) nos termos do artigo 166 e 167 da CLT, com redação dada pela Lei Federal nº 6.514/77, objetivando a proteção da incolumidade física. COMPROMETO-ME a utilizá-los sempre para os fins a que se destinam, estando ciente que o não uso incorrerá contra a minha pessoa em ato faltoso, sujeitando-me as penalidades legais. RESPONSABILIZO-ME por sua guarda, conservação, uso correto, e a devolução ao setor responsável.`;
-  const lines = doc.splitTextToSize(declaracao, contentWidth);
-  doc.text(lines, margin, y);
-  y += lines.length * 3.5 + 5;
-
-  // === TABLE HEADER ===
-  doc.setFillColor(30, 41, 59);
-  doc.rect(margin, y, contentWidth, 8, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-
-  const cols = [
-    { label: "DATA ENTREGA", x: margin + 2, w: 25 },
-    { label: "QTD", x: margin + 27, w: 12 },
-    { label: "CA", x: margin + 39, w: 20 },
-    { label: "DISCRIMINAÇÃO DO EPI", x: margin + 59, w: 75 },
-    { label: "OBSERVAÇÃO", x: margin + 134, w: 46 },
+  // Employee info table
+  const colWidths = [0.40, 0.30, 0.12, 0.18]; // proportions
+  const headers = ["Nome do Trabalhador", "Função", "Matrícula", "Data de admissão"];
+  const values = [
+    data.funcionario.nome,
+    data.funcionario.cargo || "—",
+    data.funcionario.matricula || "—",
+    formatDate(data.funcionario.data_admissao || ""),
   ];
 
-  cols.forEach(col => doc.text(col.label, col.x, y + 5.5));
-  y += 8;
+  const rowH = 7;
+  let x = MARGIN;
 
-  // === TABLE ROWS ===
+  // Header row
+  doc.setFillColor(230, 230, 230);
+  doc.rect(MARGIN, y, CONTENT_W, rowH, "FD");
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.3);
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0);
+
+  for (let i = 0; i < headers.length; i++) {
+    const w = CONTENT_W * colWidths[i];
+    doc.rect(x, y, w, rowH, "S");
+    doc.text(headers[i], x + 2, y + 5);
+    x += w;
+  }
+
+  y += rowH;
+  x = MARGIN;
+
+  // Values row
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  for (let i = 0; i < values.length; i++) {
+    const w = CONTENT_W * colWidths[i];
+    doc.rect(x, y, w, rowH, "S");
+    doc.text(values[i], x + 2, y + 5);
+    x += w;
+  }
+
+  y += rowH + 3;
+
+  // Declaration text
+  doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0);
-  doc.setFontSize(8);
+  const lines = doc.splitTextToSize(DECLARACAO, CONTENT_W);
+  doc.text(lines, MARGIN, y);
+  y += lines.length * 3 + 4;
 
-  const rowHeight = 7;
-  data.entregas.forEach((entrega, i) => {
-    if (y + rowHeight > 240) {
+  return y;
+}
+
+function drawTableHeader(doc: jsPDF, y: number): number {
+  const colWidths = [22, 22, 14, 52, 16, 22, 22]; // = 170 = CONTENT_W
+  const headers = ["Entrega", "Devolução", "Qtde.", "Equipamento", "CA nº", "Motivo", "Assinatura"];
+
+  doc.setFillColor(230, 230, 230);
+  doc.rect(MARGIN, y, CONTENT_W, 7, "FD");
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.3);
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0);
+
+  let x = MARGIN;
+  for (let i = 0; i < headers.length; i++) {
+    doc.rect(x, y, colWidths[i], 7, "S");
+    doc.text(headers[i], x + colWidths[i] / 2, y + 5, { align: "center" });
+    x += colWidths[i];
+  }
+
+  return y + 7;
+}
+
+function drawFooter(doc: jsPDF) {
+  const footerY = PAGE_H - 15;
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text("Gerado no sistema EPI Control", PAGE_W / 2, footerY, { align: "center" });
+  doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, footerY + 4, { align: "center" });
+}
+
+export function gerarFichaEPI(data: FichaData) {
+  const doc = new jsPDF("p", "mm", "a4");
+  const colWidths = [22, 22, 14, 52, 16, 22, 22];
+  const ROW_H = 18;
+  const MAX_Y = PAGE_H - 30; // leave space for footer
+
+  // Calculate total pages
+  const headerHeight = 120; // approximate
+  const rowsPerPage = Math.floor((MAX_Y - headerHeight) / ROW_H);
+  const totalPages = Math.max(1, Math.ceil(data.entregas.length / Math.max(1, rowsPerPage)));
+
+  let pageNum = 1;
+  let y = drawPageHeader(doc, data, pageNum, totalPages);
+  y = drawTableHeader(doc, y);
+
+  const tipoLabels: Record<string, string> = { entrega: "Entrega", troca: "Substituição", devolucao: "Devolução" };
+
+  data.entregas.forEach((entrega, idx) => {
+    if (y + ROW_H > MAX_Y) {
+      drawFooter(doc);
       doc.addPage();
-      y = margin;
+      pageNum++;
+      y = drawPageHeader(doc, data, pageNum, totalPages);
+      y = drawTableHeader(doc, y);
     }
 
-    if (i % 2 === 0) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(margin, y, contentWidth, rowHeight, "F");
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+
+    let x = MARGIN;
+    for (let i = 0; i < colWidths.length; i++) {
+      doc.rect(x, y, colWidths[i], ROW_H, "S");
+      x += colWidths[i];
     }
-    doc.setDrawColor(230);
-    doc.rect(margin, y, contentWidth, rowHeight, "S");
 
-    doc.text(entrega.data || "—", cols[0].x, y + 5);
-    doc.text(String(entrega.quantidade), cols[1].x, y + 5);
-    doc.text(entrega.epi_ca || "—", cols[2].x, y + 5);
-    doc.text(entrega.epi_nome || "—", cols[3].x, y + 5);
-    doc.text(entrega.observacao || "—", cols[4].x, y + 5);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(0);
 
-    y += rowHeight;
+    x = MARGIN;
+
+    // Entrega date
+    doc.text(formatDate(entrega.data), x + colWidths[0] / 2, y + ROW_H / 2, { align: "center" });
+    x += colWidths[0];
+
+    // Devolução (empty for now)
+    x += colWidths[1];
+
+    // Qtde
+    doc.text(String(entrega.quantidade), x + colWidths[2] / 2, y + ROW_H / 2, { align: "center" });
+    x += colWidths[2];
+
+    // Equipamento - name bold, then details
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    const epiName = entrega.epi_nome || "—";
+    doc.text(epiName, MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 5);
+    
+    if (entrega.epi_ca) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6);
+      doc.text(`Validade do C.A: —`, MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 9);
+    }
+
+    if (entrega.observacao) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(5.5);
+      const obsLines = doc.splitTextToSize(entrega.observacao, colWidths[3] - 4);
+      doc.text(obsLines.slice(0, 2), MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 13);
+    }
+
+    x += colWidths[3];
+
+    // CA nº
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text(entrega.epi_ca || "—", x + colWidths[4] / 2, y + ROW_H / 2, { align: "center" });
+    x += colWidths[4];
+
+    // Motivo
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text("Entrega", x + colWidths[5] / 2, y + ROW_H / 2, { align: "center" });
+    x += colWidths[5];
+
+    // Assinatura column - draw signature image if available
+    const sigX = x;
+    if (data.assinaturaColaborador) {
+      try {
+        doc.addImage(data.assinaturaColaborador, "PNG", sigX + 1, y + 1, colWidths[6] - 2, ROW_H * 0.55);
+      } catch (e) { /* ignore */ }
+    }
+    // Date/time under signature
+    doc.setFontSize(5);
+    doc.setTextColor(100);
+    doc.text(data.dataAssinatura, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
+    doc.setTextColor(0);
+
+    y += ROW_H;
   });
 
-  // Empty rows to fill
-  const minRows = 15;
+  // Fill empty rows to minimum
+  const minRows = 5;
   for (let i = data.entregas.length; i < minRows; i++) {
-    if (y + rowHeight > 240) break;
-    doc.setDrawColor(230);
-    doc.rect(margin, y, contentWidth, rowHeight, "S");
-    y += rowHeight;
+    if (y + ROW_H > MAX_Y) break;
+    let x = MARGIN;
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.3);
+    for (let j = 0; j < colWidths.length; j++) {
+      doc.rect(x, y, colWidths[j], ROW_H, "S");
+      x += colWidths[j];
+    }
+    y += ROW_H;
   }
 
-  y += 8;
-
-  // === SIGNATURES ===
-  if (y + 60 > 280) {
-    doc.addPage();
-    y = margin;
-  }
-
-  const sigWidth = contentWidth / 2 - 5;
-
-  // Collaborator signature
-  doc.setFontSize(8);
-  doc.setTextColor(100);
-  doc.text("Assinatura do Colaborador", margin, y);
-  doc.text("Assinatura do Responsável", margin + sigWidth + 10, y);
-  y += 3;
-
-  if (data.assinaturaColaborador) {
-    try {
-      doc.addImage(data.assinaturaColaborador, "PNG", margin, y, sigWidth, 30);
-    } catch (e) { /* ignore */ }
-  }
-  doc.setDrawColor(150);
-  doc.line(margin, y + 32, margin + sigWidth, y + 32);
-
-  if (data.assinaturaResponsavel) {
-    try {
-      doc.addImage(data.assinaturaResponsavel, "PNG", margin + sigWidth + 10, y, sigWidth, 30);
-    } catch (e) { /* ignore */ }
-  }
-  doc.line(margin + sigWidth + 10, y + 32, pageWidth - margin, y + 32);
-
-  y += 35;
-  doc.setFontSize(8);
-  doc.setTextColor(0);
-  doc.setFont("helvetica", "bold");
-  doc.text(data.funcionario.nome, margin, y);
-  doc.text(data.responsavelNome || "—", margin + sigWidth + 10, y);
-
-  y += 4;
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100);
-  doc.text(data.funcionario.cargo || "", margin, y);
-  doc.text(data.responsavelCargo || "", margin + sigWidth + 10, y);
-
-  y += 5;
-  doc.setFontSize(7);
-  doc.text(`Assinado em: ${data.dataAssinatura}`, margin, y);
-  doc.text(`Assinado em: ${data.dataAssinatura}`, margin + sigWidth + 10, y);
-
-  // === FOOTER ===
-  const footerY = 285;
-  doc.setDrawColor(200);
-  doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-  doc.setFontSize(6);
-  doc.setTextColor(150);
-  doc.text("Documento gerado eletronicamente pelo sistema EPI Control. Assinaturas digitais possuem validade conforme legislação vigente.", margin, footerY);
-  doc.text(`Código: FICHA-${Date.now().toString(36).toUpperCase()}`, pageWidth - margin, footerY, { align: "right" });
+  // Footer
+  drawFooter(doc);
 
   return doc;
 }
