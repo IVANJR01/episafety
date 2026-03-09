@@ -13,6 +13,7 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [checking, setChecking] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -22,10 +23,30 @@ export default function ResetPassword() {
       setIsRecovery(true);
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true);
       }
+      // If user arrived via recovery link, session will exist
+      if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "PASSWORD_RECOVERY")) {
+        setIsRecovery(true);
+      }
+      setChecking(false);
+    });
+
+    // Also check if there's already an active session (recovery link already processed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // Check if we got here from a recovery flow
+        const hash = window.location.hash;
+        const params = new URLSearchParams(hash.replace('#', ''));
+        if (params.get('type') === 'recovery' || hash.includes('type=recovery')) {
+          setIsRecovery(true);
+        }
+        // If there's an active session and we're on this page, allow password reset
+        setIsRecovery(true);
+      }
+      setChecking(false);
     });
 
     return () => subscription.unsubscribe();
