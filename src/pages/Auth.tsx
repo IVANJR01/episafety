@@ -117,6 +117,18 @@ export default function Auth() {
               </button>
             }
           </div>
+
+          <div className="mt-6 pt-4 border-t border-border">
+            <a
+              href="https://episafety.lovable.app/install"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
+            >
+              <Smartphone className="w-4 h-4" />
+              Baixar App no Celular
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>);
