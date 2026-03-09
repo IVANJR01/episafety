@@ -317,7 +317,7 @@ export default function UsuariosLiberados() {
                             return (
                               <div
                                 key={mod.key}
-                                className={`grid grid-cols-[1fr_repeat(3,_60px)] sm:grid-cols-[1fr_repeat(3,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
+                                className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
                                   modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
                                 }`}
                               >
