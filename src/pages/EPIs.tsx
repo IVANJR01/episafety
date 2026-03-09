@@ -233,6 +233,11 @@ export default function EPIs() {
               />
             </div>
 
+            <div>
+              <Label>Valor Unitário (R$)</Label>
+              <Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({...form, valor: Number(e.target.value)})} placeholder="0.00" />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Estoque</Label><Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} /></div>
               <div><Label>Estoque Mín.</Label><Input type="number" value={form.estoque_minimo} onChange={e => setForm({...form, estoque_minimo: Number(e.target.value)})} /></div>
