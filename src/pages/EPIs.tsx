@@ -1,37 +1,102 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 interface EPI {
   id: string; nome: string; ca: string | null; validade: string | null;
   estoque: number; estoque_minimo: number; categoria: string | null;
+  descricao: string | null; fabricante: string | null; aprovado_para: string | null;
 }
 
-const emptyForm = { nome: "", ca: "", validade: "", estoque: 0, estoque_minimo: 5, categoria: "" };
+const emptyForm = {
+  nome: "", ca: "", validade: "", estoque: 0, estoque_minimo: 5,
+  categoria: "", descricao: "", fabricante: "", aprovado_para: ""
+};
 
 export default function EPIs() {
   const { data: epis, loading, add, update, remove } = useSupabaseCrud<EPI>("epis", "created_at");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EPI | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [consultando, setConsultando] = useState(false);
+  const { toast } = useToast();
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
   const openEdit = (e: EPI) => {
     setEditing(e);
-    setForm({ nome: e.nome, ca: e.ca || "", validade: e.validade || "", estoque: e.estoque, estoque_minimo: e.estoque_minimo, categoria: e.categoria || "" });
+    setForm({
+      nome: e.nome, ca: e.ca || "", validade: e.validade || "",
+      estoque: e.estoque, estoque_minimo: e.estoque_minimo,
+      categoria: e.categoria || "", descricao: e.descricao || "",
+      fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || ""
+    });
     setOpen(true);
+  };
+
+  const consultarCA = async () => {
+    if (!form.ca.trim()) {
+      toast({ title: "Informe o nº do CA", variant: "destructive" });
+      return;
+    }
+    setConsultando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("consulta-ca", {
+        body: { ca: form.ca.trim() }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data.data) {
+        const d = data.data;
+        setForm(prev => ({
+          ...prev,
+          nome: d.nome || prev.nome,
+          categoria: d.categoria || prev.categoria,
+          validade: d.validade || prev.validade,
+          descricao: d.descricao || prev.descricao,
+          fabricante: d.fabricante || prev.fabricante,
+          aprovado_para: d.aprovado_para || prev.aprovado_para,
+        }));
+        toast({
+          title: "CA encontrado!",
+          description: `${d.nome || "EPI"} - ${d.situacao || ""}`,
+        });
+      } else {
+        toast({
+          title: "CA não encontrado",
+          description: data?.error || "Verifique o número e tente novamente",
+          variant: "destructive"
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro na consulta",
+        description: err.message || "Falha ao consultar CA",
+        variant: "destructive"
+      });
+    } finally {
+      setConsultando(false);
+    }
   };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
-    const data = { nome: form.nome, ca: form.ca || null, validade: form.validade || null, estoque: form.estoque, estoque_minimo: form.estoque_minimo, categoria: form.categoria || null };
+    const data = {
+      nome: form.nome, ca: form.ca || null, validade: form.validade || null,
+      estoque: form.estoque, estoque_minimo: form.estoque_minimo,
+      categoria: form.categoria || null, descricao: form.descricao || null,
+      fabricante: form.fabricante || null, aprovado_para: form.aprovado_para || null
+    };
     if (editing) {
       await update(editing.id, data);
     } else {
@@ -61,6 +126,7 @@ export default function EPIs() {
                   <TableHead>Nome</TableHead>
                   <TableHead>CA</TableHead>
                   <TableHead>Categoria</TableHead>
+                  <TableHead>Fabricante</TableHead>
                   <TableHead>Validade</TableHead>
                   <TableHead className="text-right">Estoque</TableHead>
                   <TableHead className="w-24"></TableHead>
@@ -68,12 +134,13 @@ export default function EPIs() {
               </TableHeader>
               <TableBody>
                 {epis.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
                 ) : epis.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium">{e.nome}</TableCell>
                     <TableCell className="font-mono text-xs">{e.ca || "—"}</TableCell>
                     <TableCell><Badge variant="secondary">{e.categoria || "—"}</Badge></TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{e.fabricante || "—"}</TableCell>
                     <TableCell>{e.validade || "—"}</TableCell>
                     <TableCell className="text-right">
                       <span className={e.estoque <= e.estoque_minimo ? "text-destructive font-semibold" : ""}>{e.estoque}</span>
@@ -93,16 +160,73 @@ export default function EPIs() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar EPI" : "Novo EPI"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
-            <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Ex: Capacete de Segurança" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>CA</Label><Input value={form.ca} onChange={e => setForm({...form, ca: e.target.value})} placeholder="Nº do CA" /></div>
-              <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm({...form, categoria: e.target.value})} placeholder="Ex: Cabeça" /></div>
+            <div>
+              <Label>Nº do CA</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={form.ca}
+                  onChange={e => setForm({...form, ca: e.target.value})}
+                  placeholder="Ex: 37536"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={consultarCA}
+                  disabled={consultando || !form.ca.trim()}
+                >
+                  {consultando ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  <span className="ml-2">Consultar</span>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Insira o CA e clique em Consultar para preencher automaticamente
+              </p>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Validade</Label><Input type="date" value={form.validade} onChange={e => setForm({...form, validade: e.target.value})} /></div>
+
+            <div>
+              <Label>Nome</Label>
+              <Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Ex: Capacete de Segurança" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm({...form, categoria: e.target.value})} placeholder="Ex: Cabeça" /></div>
+              <div><Label>Validade do CA</Label><Input type="date" value={form.validade} onChange={e => setForm({...form, validade: e.target.value})} /></div>
+            </div>
+
+            <div>
+              <Label>Fabricante</Label>
+              <Input value={form.fabricante} onChange={e => setForm({...form, fabricante: e.target.value})} placeholder="Preenchido automaticamente pela consulta" />
+            </div>
+
+            <div>
+              <Label>Aprovado Para</Label>
+              <Textarea
+                value={form.aprovado_para}
+                onChange={e => setForm({...form, aprovado_para: e.target.value})}
+                placeholder="Proteção contra..."
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <Label>Descrição</Label>
+              <Textarea
+                value={form.descricao}
+                onChange={e => setForm({...form, descricao: e.target.value})}
+                placeholder="Descrição técnica do EPI"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div><Label>Estoque</Label><Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} /></div>
               <div><Label>Estoque Mín.</Label><Input type="number" value={form.estoque_minimo} onChange={e => setForm({...form, estoque_minimo: Number(e.target.value)})} /></div>
             </div>
