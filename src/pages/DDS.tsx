@@ -308,7 +308,7 @@ export default function DDS() {
         {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button><Plus className="w-4 h-4 mr-2" /> Novo DDS</Button>
+              <Button><Plus className="w-4 h-4 mr-2" /> Nova Lista</Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
