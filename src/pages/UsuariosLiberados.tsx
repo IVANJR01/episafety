@@ -20,6 +20,7 @@ interface UsuarioLiberado {
 
 const ACAO_ICONS: Record<string, string> = {
   view: "👁️",
+  create: "➕",
   edit: "✏️",
   delete: "🗑️",
 };
@@ -299,7 +300,7 @@ export default function UsuariosLiberados() {
 
                         <div className="space-y-1">
                           {/* Header row */}
-                          <div className="grid grid-cols-[1fr_repeat(3,_60px)] sm:grid-cols-[1fr_repeat(3,_80px)] gap-1 items-center px-2 py-1">
+                          <div className="grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-1">
                             <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
                             {ACOES.map(a => (
                               <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
@@ -316,7 +317,7 @@ export default function UsuariosLiberados() {
                             return (
                               <div
                                 key={mod.key}
-                                className={`grid grid-cols-[1fr_repeat(3,_60px)] sm:grid-cols-[1fr_repeat(3,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
+                                className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
                                   modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
                                 }`}
                               >

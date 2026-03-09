@@ -28,7 +28,7 @@ const emptyForm = {
 
 export default function EPIs() {
   const { data: epis, loading, add, update, remove } = useSupabaseCrud<EPI>("epis", "created_at");
-  const { canEdit, canDelete } = usePermissions("epis");
+  const { canEdit, canCreate, canDelete } = usePermissions("epis");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EPI | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -124,7 +124,7 @@ export default function EPIs() {
           <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
             <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
           </Button>
-          {canEdit && (
+          {canCreate && (
             <Button onClick={openNew} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />Novo EPI
             </Button>

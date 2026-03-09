@@ -29,7 +29,7 @@ export default function Entregas() {
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
-  const { canEdit, canDelete } = usePermissions("entregas");
+  const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { empresaId } = useAuth();
 
   const [open, setOpen] = useState(false);
@@ -245,7 +245,7 @@ export default function Entregas() {
               <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
             </Button>
           )}
-          {canEdit && (
+          {canCreate && (
             <Button onClick={() => setOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
             </Button>
