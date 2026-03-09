@@ -17,7 +17,7 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoutes() {
+function ProtectedRoute() {
   const { user, loading, authorized, signOut } = useAuth();
 
   if (loading) {
@@ -61,7 +61,6 @@ function ProtectedRoutes() {
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
-        {/* Redirect old routes */}
         <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />
         <Route path="*" element={<NotFound />} />
@@ -70,7 +69,7 @@ function ProtectedRoutes() {
   );
 }
 
-function AuthRoute() {
+function AuthPage() {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (user) return <Navigate to="/" replace />;
