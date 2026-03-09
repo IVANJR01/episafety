@@ -130,7 +130,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setMobileOpen(true)} className="p-1">
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-semibold text-sm">EPI Control</span>
+          <span className="font-semibold text-sm">EPISafety</span>
         </header>
         <div className="p-6 lg:p-8 max-w-7xl">{children}</div>
       </main>
