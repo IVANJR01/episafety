@@ -9,7 +9,6 @@ import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
-import Inspecoes from "@/pages/Inspecoes";
 import Relatorios from "@/pages/Relatorios";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
