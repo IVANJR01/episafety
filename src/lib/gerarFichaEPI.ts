@@ -22,6 +22,8 @@ interface EntregaItem {
   epi_nome: string;
   epi_ca: string | null;
   observacao: string | null;
+  tipo: string;
+  status: string;
 }
 
 interface FichaData {
@@ -176,7 +178,8 @@ export function gerarFichaEPI(data: FichaData) {
   let y = drawPageHeader(doc, data, pageNum, totalPages);
   y = drawTableHeader(doc, y);
 
-  const tipoLabels: Record<string, string> = { entrega: "Entrega", troca: "Substituição", devolucao: "Devolução" };
+  const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano", troca: "Troca", devolucao: "Devolução" };
+  const statusLabels: Record<string, string> = { ativo: "Ativo", substituido: "Substituído", devolvido: "Devolvido", perdido: "Perdido", danificado: "Danificado", trocado: "Trocado" };
 
   data.entregas.forEach((entrega, idx) => {
     if (y + ROW_H > MAX_Y) {
@@ -240,10 +243,16 @@ export function gerarFichaEPI(data: FichaData) {
     doc.text(entrega.epi_ca || "—", x + colWidths[4] / 2, y + ROW_H / 2, { align: "center" });
     x += colWidths[4];
 
-    // Motivo
+    // Motivo (tipo) + Status
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    doc.text("Entrega", x + colWidths[5] / 2, y + ROW_H / 2, { align: "center" });
+    const motivo = tipoLabels[entrega.tipo] || entrega.tipo;
+    const status = statusLabels[entrega.status] || entrega.status;
+    doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2 - 2, { align: "center" });
+    doc.setFontSize(5.5);
+    doc.setTextColor(100);
+    doc.text(`(${status})`, x + colWidths[5] / 2, y + ROW_H / 2 + 3, { align: "center" });
+    doc.setTextColor(0);
     x += colWidths[5];
 
     // Assinatura column - draw signature image if available
