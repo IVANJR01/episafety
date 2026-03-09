@@ -66,8 +66,6 @@ export default function Entregas() {
   const openFicha = (funcId?: string) => {
     loadEmpresa();
     setFichaFuncId(funcId || "");
-    setResponsavelNome("");
-    setResponsavelCargo("");
     setFichaOpen(true);
   };
 
