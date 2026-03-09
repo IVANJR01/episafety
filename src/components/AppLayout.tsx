@@ -19,7 +19,7 @@ const mainNavItems: NavItem[] = [
 ];
 
 const afterCadastroItems: NavItem[] = [
-  { path: "/dds", label: "DDS", icon: MessageSquare, moduleKey: "dds" },
+  { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
 ];
 
 const cadastroItems: NavItem[] = [
