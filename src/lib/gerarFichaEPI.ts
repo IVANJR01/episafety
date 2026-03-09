@@ -18,6 +18,7 @@ interface FuncionarioData {
 
 interface EntregaItem {
   data: string;
+  created_at: string;
   quantidade: number;
   epi_nome: string;
   epi_ca: string | null;
