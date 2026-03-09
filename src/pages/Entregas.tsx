@@ -79,7 +79,6 @@ export default function Entregas() {
     if (funcEntregas.length === 0) { toast({ title: "Nenhuma entrega encontrada para este funcionário", variant: "destructive" }); return; }
 
     const assinaturaColaborador = sigColabRef.current?.getDataURL() || null;
-    const assinaturaResponsavel = sigRespRef.current?.getDataURL() || null;
 
     const now = new Date();
     const dataAssinatura = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`;
