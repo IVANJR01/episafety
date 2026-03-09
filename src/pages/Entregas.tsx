@@ -94,9 +94,6 @@ export default function Entregas() {
         observacao: e.observacao,
       })),
       assinaturaColaborador,
-      assinaturaResponsavel,
-      responsavelNome,
-      responsavelCargo,
       dataAssinatura,
     });
 
