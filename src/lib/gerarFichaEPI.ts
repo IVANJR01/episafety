@@ -277,11 +277,11 @@ export function gerarFichaEPI(data: FichaData) {
     doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[5];
 
-    // Assinatura
+    // Assinatura - per-row signature
     const sigX = x;
-    if (data.assinaturaColaborador) {
+    if (entrega.assinatura_colaborador) {
       try {
-        doc.addImage(data.assinaturaColaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
+        doc.addImage(entrega.assinatura_colaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
       } catch (e) { /* ignore */ }
     }
     // Use individual delivery date+time
