@@ -1,0 +1,1 @@
+ALTER TABLE public.epis ADD COLUMN valor numeric(10,2) DEFAULT 0;

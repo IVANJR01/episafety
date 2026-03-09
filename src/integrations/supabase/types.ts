@@ -119,6 +119,7 @@ export type Database = {
           nome: string
           updated_at: string
           validade: string | null
+          valor: number | null
         }
         Insert: {
           aprovado_para?: string | null
@@ -134,6 +135,7 @@ export type Database = {
           nome: string
           updated_at?: string
           validade?: string | null
+          valor?: number | null
         }
         Update: {
           aprovado_para?: string | null
@@ -149,6 +151,7 @@ export type Database = {
           nome?: string
           updated_at?: string
           validade?: string | null
+          valor?: number | null
         }
         Relationships: []
       }
