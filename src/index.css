@@ -63,6 +63,8 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+    @apply bg-background text-foreground font-sans antialiased;
+  }
 }
 
 /* Safe area for iPhone notch/home indicator */

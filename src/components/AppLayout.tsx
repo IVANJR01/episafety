@@ -151,8 +151,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 overflow-auto pb-20 lg:pb-0">
-        {/* Mobile top header - simplified */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 pb-3 pt-14 bg-background border-b border-border lg:hidden">
+        {/* iOS status bar background */}
+        <div className="sticky top-0 z-40 h-[env(safe-area-inset-top,44px)] min-h-[44px] bg-primary lg:hidden" />
+
+        {/* Mobile top header */}
+        <header className="sticky top-[env(safe-area-inset-top,44px)] z-30 flex items-center justify-between px-4 py-3 bg-background border-b border-border lg:hidden">
           <div className="flex items-center gap-2">
             <img alt="EPISafety" className="w-7 h-7 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
             <span className="font-semibold text-sm">EPISafety</span>
