@@ -149,6 +149,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
           })}
 
+          {isSuperAdmin && (
             <Link
               to="/admin/empresas"
               onClick={() => setMobileOpen(false)}
