@@ -124,9 +124,11 @@ export default function EPIs() {
           <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
             <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
           </Button>
-          <Button onClick={openNew} className="flex-1 sm:flex-none text-xs sm:text-sm">
-            <Plus className="w-4 h-4 mr-1 sm:mr-2" />Novo EPI
-          </Button>
+          {canEdit && (
+            <Button onClick={openNew} className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <Plus className="w-4 h-4 mr-1 sm:mr-2" />Novo EPI
+            </Button>
+          )}
         </div>
       </div>
 
