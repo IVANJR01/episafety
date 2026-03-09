@@ -372,23 +372,23 @@ export default function DDS() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <FileText className="w-4 h-4" />
-              <span className="text-xs">Total DDS</span>
+          <CardContent className="pt-3 pb-2 px-3 sm:pt-4 sm:pb-3 sm:px-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground mb-1">
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="text-[10px] sm:text-xs">Total DDS</span>
             </div>
-            <p className="text-2xl font-bold">{ddsList.length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{ddsList.length}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Calendar className="w-4 h-4" />
-              <span className="text-xs">Este mês</span>
+          <CardContent className="pt-3 pb-2 px-3 sm:pt-4 sm:pb-3 sm:px-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground mb-1">
+              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="text-[10px] sm:text-xs">Este mês</span>
             </div>
-            <p className="text-2xl font-bold">
+            <p className="text-xl sm:text-2xl font-bold">
               {ddsList.filter((d) => {
                 const now = new Date();
                 const dDate = new Date(d.data);
