@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { HardHat, LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, X } from "lucide-react";
+import { HardHat, LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, Search, FileText, GraduationCap, Stethoscope, ChevronDown } from "lucide-react";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/epis", label: "EPIs", icon: Package },
-  { path: "/funcionarios", label: "Funcionários", icon: Users },
+  { path: "/epis", label: "Controle de EPI", icon: Package },
   { path: "/entregas", label: "Entregas", icon: ClipboardList },
+  { path: "/funcionarios", label: "Funcionários", icon: Users },
+  { path: "/inspecoes", label: "Inspeções", icon: Search },
+  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap },
+  { path: "/ordens-servico", label: "Ordens de Serviço", icon: FileText },
+  { path: "/pcmso", label: "PCMSO / Exames", icon: Stethoscope },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3 },
 ];
 
@@ -16,24 +20,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 bg-foreground/30 lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform lg:translate-x-0 flex flex-col ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
           <div className="p-2 rounded-lg bg-primary">
             <HardHat className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
             <h1 className="font-bold text-sm text-sidebar-primary-foreground">EPI Control</h1>
-            <p className="text-xs text-sidebar-foreground/60">Gestão de EPIs</p>
+            <p className="text-xs text-sidebar-foreground/60">Segurança do Trabalho</p>
           </div>
         </div>
 
-        <nav className="p-3 space-y-1">
+        <nav className="p-3 space-y-0.5 flex-1 overflow-y-auto">
           {navItems.map(item => {
             const active = location.pathname === item.path;
             return (
@@ -47,15 +49,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
-                <item.icon className="w-4 h-4" />
-                {item.label}
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
         </nav>
+
+        <div className="p-4 border-t border-sidebar-border">
+          <p className="text-xs text-sidebar-foreground/40 text-center">EPI Control v1.0</p>
+        </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 overflow-auto">
         <header className="sticky top-0 z-30 flex items-center gap-4 px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border lg:hidden">
           <button onClick={() => setMobileOpen(true)} className="p-1">

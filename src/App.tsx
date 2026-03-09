@@ -8,6 +8,10 @@ import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
+import Inspecoes from "@/pages/Inspecoes";
+import Treinamentos from "@/pages/Treinamentos";
+import OrdensServico from "@/pages/OrdensServico";
+import PCMSO from "@/pages/PCMSO";
 import Relatorios from "@/pages/Relatorios";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +29,10 @@ const App = () => (
             <Route path="/epis" element={<EPIs />} />
             <Route path="/funcionarios" element={<Funcionarios />} />
             <Route path="/entregas" element={<Entregas />} />
+            <Route path="/inspecoes" element={<Inspecoes />} />
+            <Route path="/treinamentos" element={<Treinamentos />} />
+            <Route path="/ordens-servico" element={<OrdensServico />} />
+            <Route path="/pcmso" element={<PCMSO />} />
             <Route path="/relatorios" element={<Relatorios />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
