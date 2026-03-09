@@ -257,20 +257,8 @@ export default function Entregas() {
               )}
             </div>
 
-            {/* Responsável */}
-            <div className="p-4 rounded-lg bg-muted/50 space-y-3">
-              <h3 className="text-sm font-semibold">Responsável pela Entrega</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Nome</Label><Input value={responsavelNome} onChange={e => setResponsavelNome(e.target.value)} placeholder="Nome do responsável" /></div>
-                <div><Label className="text-xs">Cargo</Label><Input value={responsavelCargo} onChange={e => setResponsavelCargo(e.target.value)} placeholder="Cargo/Função" /></div>
-              </div>
-            </div>
-
-            {/* Assinaturas */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SignatureCanvas ref={sigColabRef} label="Assinatura do Colaborador" height={120} />
-              <SignatureCanvas ref={sigRespRef} label="Assinatura do Responsável" height={120} />
-            </div>
+            {/* Assinatura */}
+            <SignatureCanvas ref={sigColabRef} label="Assinatura do Colaborador" height={120} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFichaOpen(false)}>Cancelar</Button>

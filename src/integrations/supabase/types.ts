@@ -196,7 +196,6 @@ export type Database = {
       fichas_entrega: {
         Row: {
           assinatura_colaborador: string | null
-          assinatura_responsavel: string | null
           created_at: string
           created_by: string | null
           data_assinatura: string | null
@@ -204,12 +203,9 @@ export type Database = {
           funcionario_id: string
           id: string
           pdf_url: string | null
-          responsavel_cargo: string | null
-          responsavel_nome: string | null
         }
         Insert: {
           assinatura_colaborador?: string | null
-          assinatura_responsavel?: string | null
           created_at?: string
           created_by?: string | null
           data_assinatura?: string | null
@@ -217,12 +213,9 @@ export type Database = {
           funcionario_id: string
           id?: string
           pdf_url?: string | null
-          responsavel_cargo?: string | null
-          responsavel_nome?: string | null
         }
         Update: {
           assinatura_colaborador?: string | null
-          assinatura_responsavel?: string | null
           created_at?: string
           created_by?: string | null
           data_assinatura?: string | null
@@ -230,8 +223,6 @@ export type Database = {
           funcionario_id?: string
           id?: string
           pdf_url?: string | null
-          responsavel_cargo?: string | null
-          responsavel_nome?: string | null
         }
         Relationships: [
           {
