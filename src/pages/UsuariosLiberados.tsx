@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { MODULOS, ACOES, allPermissions, allActionsForModule } from "@/lib/permissions";
 
 interface UsuarioLiberado {
   id: string;
@@ -17,15 +18,11 @@ interface UsuarioLiberado {
   created_at: string;
 }
 
-const MODULOS = [
-  { key: "dashboard", label: "Dashboard", path: "/" },
-  { key: "epis", label: "Controle de EPI", path: "/epis" },
-  { key: "entregas", label: "Entregas", path: "/entregas" },
-  { key: "relatorios", label: "Relatórios", path: "/relatorios" },
-  { key: "cadastro_empresas", label: "Cadastro → Empresas", path: "/cadastro/empresas" },
-  { key: "cadastro_funcionarios", label: "Cadastro → Funcionários", path: "/cadastro/funcionarios" },
-  { key: "cadastro_usuarios", label: "Cadastro → Usuários Liberados", path: "/cadastro/usuarios" },
-];
+const ACAO_ICONS: Record<string, string> = {
+  view: "👁️",
+  edit: "✏️",
+  delete: "🗑️",
+};
 
 export default function UsuariosLiberados() {
   const { toast } = useToast();
@@ -62,7 +59,6 @@ export default function UsuariosLiberados() {
 
     setAddingUser(true);
     try {
-      // 1. Create auth user via edge function
       const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
         body: {
           email: novoEmail.trim().toLowerCase(),
@@ -81,12 +77,12 @@ export default function UsuariosLiberados() {
         return;
       }
 
-      // 2. Add to usuarios_liberados
-      const allModules = MODULOS.map(m => m.key);
+      // Give all permissions by default
+      const allPerms = allPermissions();
       const { error } = await (supabase.from as any)("usuarios_liberados").insert({
         email: novoEmail.trim().toLowerCase(),
         nome: novoNome.trim(),
-        modulos_permitidos: allModules,
+        modulos_permitidos: allPerms,
         empresa_id: empresaId,
       });
 
@@ -97,7 +93,6 @@ export default function UsuariosLiberados() {
           variant: "destructive",
         });
       } else {
-        // 3. Update profile empresa_id if we have one
         if (empresaId && fnData?.user_id) {
           await (supabase.from as any)("profiles")
             .update({ empresa_id: empresaId })
@@ -125,15 +120,33 @@ export default function UsuariosLiberados() {
     }
   };
 
-  const toggleModulo = (userId: string, moduloKey: string) => {
+  const togglePerm = (userId: string, permKey: string) => {
     setUsuarios(prev =>
       prev.map(u => {
         if (u.id !== userId) return u;
         const current = u.modulos_permitidos || [];
-        const updated = current.includes(moduloKey)
-          ? current.filter(m => m !== moduloKey)
-          : [...current, moduloKey];
+        const updated = current.includes(permKey)
+          ? current.filter(p => p !== permKey)
+          : [...current, permKey];
         return { ...u, modulos_permitidos: updated };
+      })
+    );
+  };
+
+  const toggleModuleAll = (userId: string, moduleKey: string) => {
+    setUsuarios(prev =>
+      prev.map(u => {
+        if (u.id !== userId) return u;
+        const current = u.modulos_permitidos || [];
+        const modulePerms = allActionsForModule(moduleKey);
+        const hasAll = modulePerms.every(p => current.includes(p));
+        // Also remove legacy bare key
+        const cleaned = current.filter(p => p !== moduleKey && !modulePerms.includes(p));
+        if (hasAll) {
+          return { ...u, modulos_permitidos: cleaned };
+        } else {
+          return { ...u, modulos_permitidos: [...cleaned, ...modulePerms] };
+        }
       })
     );
   };
@@ -155,7 +168,7 @@ export default function UsuariosLiberados() {
 
   const selectAll = (userId: string) => {
     setUsuarios(prev =>
-      prev.map(u => u.id === userId ? { ...u, modulos_permitidos: MODULOS.map(m => m.key) } : u)
+      prev.map(u => u.id === userId ? { ...u, modulos_permitidos: allPermissions() } : u)
     );
   };
 
@@ -165,21 +178,32 @@ export default function UsuariosLiberados() {
     );
   };
 
+  const getModulePermCount = (perms: string[], moduleKey: string): number => {
+    // Legacy bare key counts as all
+    if (perms.includes(moduleKey)) return ACOES.length;
+    return ACOES.filter(a => perms.includes(`${moduleKey}:${a.key}`)).length;
+  };
+
+  const hasModulePerm = (perms: string[], moduleKey: string, action: string): boolean => {
+    if (perms.includes(moduleKey)) return true; // legacy
+    return perms.includes(`${moduleKey}:${action}`);
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Usuários Liberados</h1>
-        <p className="text-muted-foreground text-sm mt-1">Gerencie quem pode acessar o sistema e suas permissões</p>
+        <p className="text-muted-foreground text-sm mt-1">Gerencie quem pode acessar o sistema e suas permissões detalhadas</p>
       </div>
 
-      <Card className="max-w-3xl">
+      <Card className="max-w-4xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Shield className="w-5 h-5" />
             Controle de Acesso
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Cadastre os e-mails autorizados, defina uma senha e escolha quais módulos cada usuário pode acessar.
+            Cadastre os e-mails autorizados, defina uma senha e escolha quais módulos e ações cada usuário pode realizar.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -232,6 +256,9 @@ export default function UsuariosLiberados() {
               {usuarios.map(u => {
                 const isExpanded = expandedId === u.id;
                 const perms = u.modulos_permitidos || [];
+                const totalPerms = MODULOS.reduce((s, m) => s + getModulePermCount(perms, m.key), 0);
+                const maxPerms = MODULOS.length * ACOES.length;
+
                 return (
                   <div key={u.id} className="rounded-lg border bg-card">
                     <div className="flex items-center justify-between p-3">
@@ -247,7 +274,7 @@ export default function UsuariosLiberados() {
                       </button>
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-muted-foreground mr-2">
-                          {perms.length}/{MODULOS.length} módulos
+                          {totalPerms}/{maxPerms} permissões
                         </span>
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveUser(u.id)}>
                           <Trash2 className="w-4 h-4 text-destructive" />
@@ -258,7 +285,7 @@ export default function UsuariosLiberados() {
                     {isExpanded && (
                       <div className="px-4 pb-4 border-t pt-3 space-y-3">
                         <div className="flex items-center justify-between">
-                          <Label className="text-sm font-medium">Módulos Permitidos</Label>
+                          <Label className="text-sm font-medium">Permissões por Módulo</Label>
                           <div className="flex gap-2">
                             <button onClick={() => selectAll(u.id)} className="text-xs text-primary hover:underline">
                               Selecionar todos
@@ -269,20 +296,54 @@ export default function UsuariosLiberados() {
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {MODULOS.map(mod => (
-                            <label
-                              key={mod.key}
-                              className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                            >
-                              <Checkbox
-                                checked={perms.includes(mod.key)}
-                                onCheckedChange={() => toggleModulo(u.id, mod.key)}
-                              />
-                              <span className="text-sm">{mod.label}</span>
-                            </label>
-                          ))}
+
+                        <div className="space-y-1">
+                          {/* Header row */}
+                          <div className="grid grid-cols-[1fr_repeat(3,_60px)] sm:grid-cols-[1fr_repeat(3,_80px)] gap-1 items-center px-2 py-1">
+                            <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
+                            {ACOES.map(a => (
+                              <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
+                                {ACAO_ICONS[a.key]} {a.label}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* Module rows */}
+                          {MODULOS.map(mod => {
+                            const modulePermCount = getModulePermCount(perms, mod.key);
+                            const hasAllModule = modulePermCount === ACOES.length;
+
+                            return (
+                              <div
+                                key={mod.key}
+                                className={`grid grid-cols-[1fr_repeat(3,_60px)] sm:grid-cols-[1fr_repeat(3,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
+                                  modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
+                                }`}
+                              >
+                                <label
+                                  className="flex items-center gap-2 cursor-pointer"
+                                  onClick={() => toggleModuleAll(u.id, mod.key)}
+                                >
+                                  <Checkbox
+                                    checked={hasAllModule}
+                                    className="pointer-events-none"
+                                  />
+                                  <span className="text-sm font-medium">{mod.label}</span>
+                                </label>
+
+                                {ACOES.map(acao => (
+                                  <div key={acao.key} className="flex justify-center">
+                                    <Checkbox
+                                      checked={hasModulePerm(perms, mod.key, acao.key)}
+                                      onCheckedChange={() => togglePerm(u.id, `${mod.key}:${acao.key}`)}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
                         </div>
+
                         <div className="flex justify-end pt-1">
                           <Button
                             size="sm"
