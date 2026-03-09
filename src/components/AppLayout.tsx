@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { canAccessModule, MODULOS } from "@/lib/permissions";
 
 interface NavItem {
   path: string;
@@ -31,8 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { signOut, user, modulosPermitidos, isSuperAdmin } = useAuth();
 
-  const hasRestrictions = modulosPermitidos.length > 0;
-  const canAccess = (moduleKey: string) => !hasRestrictions || modulosPermitidos.includes(moduleKey);
+  const canAccess = (moduleKey: string) => canAccessModule(modulosPermitidos, moduleKey);
 
   const visibleMainItems = mainNavItems.filter((i) => canAccess(i.moduleKey));
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
