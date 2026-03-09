@@ -136,7 +136,6 @@ export default function Install() {
             </Card>
 
             {/* Tab selector */}
-            {/* Tab selector */}
             <div className="flex bg-muted rounded-xl p-1 gap-1">
               <button
                 onClick={() => setActiveTab("android")}
