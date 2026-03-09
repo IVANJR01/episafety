@@ -9,6 +9,7 @@ const navItems = [
   { path: "/entregas", label: "Entregas", icon: ClipboardList },
   { path: "/funcionarios", label: "Funcionários", icon: Users },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  { path: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
