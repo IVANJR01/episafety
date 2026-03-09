@@ -1,17 +1,15 @@
-import { Package, Users, ClipboardList, AlertTriangle, Search } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; }
-interface Inspecao { id: string; titulo: string; local: string | null; data: string; status: string; }
 
 export default function Dashboard() {
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
-  const { data: inspecoes } = useSupabaseQuery<Inspecao>("inspecoes");
 
   const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
 
@@ -19,7 +17,6 @@ export default function Dashboard() {
     { label: "EPIs Cadastrados", value: epis.length, icon: Package, color: "text-primary" },
     { label: "Funcionários", value: funcionarios.length, icon: Users, color: "text-success" },
     { label: "Entregas", value: entregas.length, icon: ClipboardList, color: "text-muted-foreground" },
-    { label: "Inspeções", value: inspecoes.length, icon: Search, color: "text-primary" },
     { label: "Alertas", value: alertasEstoque.length, icon: AlertTriangle, color: "text-warning" },
   ];
 
@@ -29,8 +26,6 @@ export default function Dashboard() {
     epiNome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
   }));
 
-  const inspecoesPendentes = inspecoes.filter(i => i.status !== "concluida").slice(0, 5);
-
   return (
     <div className="space-y-8">
       <div>
@@ -38,7 +33,7 @@ export default function Dashboard() {
         <p className="text-muted-foreground text-sm mt-1">Visão geral da Segurança do Trabalho</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(s => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-4 p-5">
@@ -90,29 +85,6 @@ export default function Dashboard() {
                       <span className="text-muted-foreground"> — {e.epiNome} ({e.quantidade}x)</span>
                     </div>
                     <span className="text-xs text-muted-foreground font-mono">{e.data}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Inspeções Pendentes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {inspecoesPendentes.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma inspeção pendente</p>
-            ) : (
-              <div className="space-y-2">
-                {inspecoesPendentes.map(i => (
-                  <div key={i.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-muted/50">
-                    <div>
-                      <span className="font-medium">{i.titulo}</span>
-                      <span className="text-muted-foreground"> — {i.local || "—"}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground font-mono">{i.data}</span>
                   </div>
                 ))}
               </div>

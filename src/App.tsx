@@ -9,7 +9,6 @@ import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
-import Inspecoes from "@/pages/Inspecoes";
 import Relatorios from "@/pages/Relatorios";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -36,7 +35,6 @@ function ProtectedRoutes() {
         <Route path="/epis" element={<EPIs />} />
         <Route path="/funcionarios" element={<Funcionarios />} />
         <Route path="/entregas" element={<Entregas />} />
-        <Route path="/inspecoes" element={<Inspecoes />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
