@@ -38,7 +38,6 @@ export default function Entregas() {
   // Pending entrega data waiting for signature
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
 
-  const sigColabRef = useRef<SignatureCanvasRef>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
 
   const [form, setForm] = useState({
