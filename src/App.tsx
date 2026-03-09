@@ -35,7 +35,6 @@ function ProtectedRoutes() {
         <Route path="/epis" element={<EPIs />} />
         <Route path="/funcionarios" element={<Funcionarios />} />
         <Route path="/entregas" element={<Entregas />} />
-        <Route path="/inspecoes" element={<Inspecoes />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
