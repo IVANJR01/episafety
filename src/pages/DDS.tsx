@@ -79,7 +79,7 @@ export default function DDS() {
   const [selectedFuncionarios, setSelectedFuncionarios] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const sigRefs = useRef<Map<string, SignatureCanvasRef>>(new Map());
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [participantes, setParticipantes] = useState<(DDSParticipante & { funcionario?: Funcionario })[]>([]);
   const [loadingParticipantes, setLoadingParticipantes] = useState(false);
