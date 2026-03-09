@@ -49,6 +49,9 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
     }
     return { authorized: false, modulos: [] };
   } catch {
+    // On error, try cache instead of granting full access
+    const cached = loadAuthCache();
+    if (cached) return { authorized: cached.authorized, modulos: cached.modulos };
     return { authorized: true, modulos: [] };
   }
 }
