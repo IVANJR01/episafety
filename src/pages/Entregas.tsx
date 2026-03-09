@@ -2,6 +2,7 @@ import { useState, useRef, useMemo } from "react";
 import { Plus, Trash2, FileText, Search, Loader2 } from "lucide-react";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
