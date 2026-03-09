@@ -144,6 +144,49 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Stock value chart */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" />
+            Valor do Estoque Atual por EPI
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
+          </p>
+        </CardHeader>
+        <CardContent>
+          {estoqueChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum EPI com valor em estoque</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={estoqueChartData}
+                  dataKey="valor"
+                  nameKey="nome"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={110}
+                  paddingAngle={2}
+                  label={({ nome, percent }) => `${nome} (${(percent * 100).toFixed(0)}%)`}
+                  labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                >
+                  {estoqueChartData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Valor"]}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {alertasEstoque.length > 0 && (
           <Card className="border-warning/30">
