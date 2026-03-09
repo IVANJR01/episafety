@@ -39,9 +39,7 @@ export default function Dashboard() {
     }));
   }, [entregas, epis, valorEstoqueAtual]);
 
-  const valorEstoqueAtual = useMemo(() => {
-    return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
-  }, [epis]);
+  // valorEstoqueAtual already defined above
 
   const estoqueChartData = useMemo(() => {
     return epis
