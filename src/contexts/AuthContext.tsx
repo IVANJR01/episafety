@@ -44,9 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        const result = await checkAuthorized(session.user.email);
-        setAuthorized(result.authorized);
-        setModulosPermitidos(result.modulos);
+        try {
+          const result = await checkAuthorized(session.user.email);
+          setAuthorized(result.authorized);
+          setModulosPermitidos(result.modulos);
+        } catch {
+          setAuthorized(true);
+          setModulosPermitidos([]);
+        }
       } else {
         setAuthorized(true);
         setModulosPermitidos([]);
@@ -58,9 +63,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        const result = await checkAuthorized(session.user.email);
-        setAuthorized(result.authorized);
-        setModulosPermitidos(result.modulos);
+        try {
+          const result = await checkAuthorized(session.user.email);
+          setAuthorized(result.authorized);
+          setModulosPermitidos(result.modulos);
+        } catch {
+          setAuthorized(true);
+          setModulosPermitidos([]);
+        }
       }
       setLoading(false);
     });
