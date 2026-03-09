@@ -71,7 +71,25 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      // Check if we have a valid session first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ 
+          title: "Sessão expirada", 
+          description: "Solicite um novo link de recuperação na tela de login.", 
+          variant: "destructive" 
+        });
+        setLoading(false);
+        return;
+      }
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Tempo limite excedido. Tente novamente.")), 15000)
+      );
+      
+      const updatePromise = supabase.auth.updateUser({ password });
+      const { error } = await Promise.race([updatePromise, timeoutPromise]) as any;
+      
       if (error) throw error;
       toast({ title: "Senha atualizada com sucesso!" });
       navigate("/");
