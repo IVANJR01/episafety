@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarFichaDDS } from "@/lib/gerarFichaDDS";
+import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,7 +138,7 @@ export default function DDS() {
     setSaving(true);
     try {
       const ddsId = crypto.randomUUID();
-      const { error: ddsError } = await (supabase.from as any)("dds").insert({
+      const ddsPayload = {
         id: ddsId,
         empresa_id: empresaId,
         data,
@@ -146,19 +147,41 @@ export default function DDS() {
         local: local.trim() || null,
         duracao: duracao.trim() || null,
         observacao: observacao.trim() || null,
-      });
-      if (ddsError) throw ddsError;
+      };
 
       const participantesData = selectedFuncionarios.map((funcId) => {
         const sigRef = sigRefs.current.get(funcId);
         const assinatura = sigRef && !sigRef.isEmpty() ? sigRef.getDataURL() : null;
         return {
+          id: crypto.randomUUID(),
           dds_id: ddsId,
           funcionario_id: funcId,
           assinatura,
           empresa_id: empresaId,
         };
       });
+
+      if (!isOnline()) {
+        // Save offline
+        addToSyncQueue({ table: "dds", type: "insert", payload: ddsPayload });
+        participantesData.forEach((p) => {
+          addToSyncQueue({ table: "dds_participantes", type: "insert", payload: p });
+        });
+
+        // Update local cache
+        const cachedDDS = getCachedData<DDS>("dds") || [];
+        cachedDDS.unshift({ ...ddsPayload, created_by: null, created_at: new Date().toISOString() } as DDS);
+        setCachedData("dds", cachedDDS);
+
+        toast({ title: "DDS salvo offline", description: "Será sincronizado quando houver conexão." });
+        resetForm();
+        setDialogOpen(false);
+        refetch();
+        return;
+      }
+
+      const { error: ddsError } = await (supabase.from as any)("dds").insert(ddsPayload);
+      if (ddsError) throw ddsError;
 
       const { error: partError } = await (supabase.from as any)("dds_participantes").insert(participantesData);
       if (partError) throw partError;
@@ -168,7 +191,48 @@ export default function DDS() {
       setDialogOpen(false);
       refetch();
     } catch (err: any) {
-      toast({ title: "Erro ao salvar DDS", description: err.message, variant: "destructive" });
+      // If it's a network error, save offline as fallback
+      if (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError") || err.message?.includes("fetch")) {
+        const ddsId2 = crypto.randomUUID();
+        const ddsPayload2 = {
+          id: ddsId2,
+          empresa_id: empresaId,
+          data,
+          tema: tema.trim(),
+          palestrante: palestrante.trim() || null,
+          local: local.trim() || null,
+          duracao: duracao.trim() || null,
+          observacao: observacao.trim() || null,
+        };
+        addToSyncQueue({ table: "dds", type: "insert", payload: ddsPayload2 });
+
+        selectedFuncionarios.forEach((funcId) => {
+          const sigRef = sigRefs.current.get(funcId);
+          const assinatura = sigRef && !sigRef.isEmpty() ? sigRef.getDataURL() : null;
+          addToSyncQueue({
+            table: "dds_participantes",
+            type: "insert",
+            payload: {
+              id: crypto.randomUUID(),
+              dds_id: ddsId2,
+              funcionario_id: funcId,
+              assinatura,
+              empresa_id: empresaId,
+            },
+          });
+        });
+
+        const cachedDDS = getCachedData<DDS>("dds") || [];
+        cachedDDS.unshift({ ...ddsPayload2, created_by: null, created_at: new Date().toISOString() } as DDS);
+        setCachedData("dds", cachedDDS);
+
+        toast({ title: "Conexão perdida", description: "DDS salvo offline. Será sincronizado automaticamente." });
+        resetForm();
+        setDialogOpen(false);
+        refetch();
+      } else {
+        toast({ title: "Erro ao salvar DDS", description: err.message, variant: "destructive" });
+      }
     } finally {
       setSaving(false);
     }
