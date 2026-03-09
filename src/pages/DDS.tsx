@@ -1,13 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 import { supabase } from "@/integrations/supabase/client";
+import { gerarFichaDDS } from "@/lib/gerarFichaDDS";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import SignatureCanvas, { SignatureCanvasRef } from "@/components/SignatureCanvas";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Eye, Trash2, FileText, Users, Calendar, MapPin, Clock, Mic } from "lucide-react";
+import { Plus, Eye, Trash2, FileText, Users, Calendar, Download } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface DDS {
   id: string;
@@ -48,11 +48,19 @@ interface Funcionario {
   cargo: string | null;
 }
 
+interface Empresa {
+  id: string;
+  nome: string;
+  cnpj: string | null;
+  logo_url: string | null;
+}
+
 export default function DDS() {
   const { empresaId, modulosPermitidos, isSuperAdmin } = useAuth();
   const { toast } = useToast();
-  const { data: ddsList, loading, refetch, add, remove } = useSupabaseCrud<DDS>("dds", "created_at");
+  const { data: ddsList, loading, refetch, remove } = useSupabaseCrud<DDS>("dds", "created_at");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios", "nome");
+  const { data: empresas } = useSupabaseQuery<Empresa>("empresa_config");
 
   const canCreate = isSuperAdmin || hasPermission(modulosPermitidos, "dds", "create");
   const canDelete = isSuperAdmin || hasPermission(modulosPermitidos, "dds", "delete");
@@ -61,7 +69,6 @@ export default function DDS() {
   const [detailDDS, setDetailDDS] = useState<DDS | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Form state
   const [tema, setTema] = useState("");
   const [data, setData] = useState(new Date().toISOString().split("T")[0]);
   const [palestrante, setPalestrante] = useState("");
@@ -71,12 +78,12 @@ export default function DDS() {
   const [selectedFuncionarios, setSelectedFuncionarios] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Signature refs per participant
   const sigRefs = useRef<Map<string, SignatureCanvasRef>>(new Map());
 
-  // Detail view state
   const [participantes, setParticipantes] = useState<(DDSParticipante & { funcionario?: Funcionario })[]>([]);
   const [loadingParticipantes, setLoadingParticipantes] = useState(false);
+
+  const empresa = empresas.find((e) => e.id === empresaId) || { id: "", nome: "Empresa", cnpj: null, logo_url: null };
 
   const resetForm = () => {
     setTema("");
@@ -101,7 +108,6 @@ export default function DDS() {
 
     setSaving(true);
     try {
-      // Create DDS record
       const ddsId = crypto.randomUUID();
       const { error: ddsError } = await (supabase.from as any)("dds").insert({
         id: ddsId,
@@ -115,7 +121,6 @@ export default function DDS() {
       });
       if (ddsError) throw ddsError;
 
-      // Create participants with signatures
       const participantesData = selectedFuncionarios.map((funcId) => {
         const sigRef = sigRefs.current.get(funcId);
         const assinatura = sigRef && !sigRef.isEmpty() ? sigRef.getDataURL() : null;
@@ -146,19 +151,45 @@ export default function DDS() {
     await remove(id);
   };
 
-  const openDetail = async (dds: DDS) => {
-    setDetailDDS(dds);
-    setDetailOpen(true);
+  const loadParticipantes = async (ddsId: string) => {
     setLoadingParticipantes(true);
     const { data: parts } = await (supabase.from as any)("dds_participantes")
       .select("*")
-      .eq("dds_id", dds.id);
+      .eq("dds_id", ddsId);
     const enriched = (parts || []).map((p: DDSParticipante) => ({
       ...p,
       funcionario: funcionarios.find((f) => f.id === p.funcionario_id),
     }));
     setParticipantes(enriched);
     setLoadingParticipantes(false);
+    return enriched;
+  };
+
+  const openDetail = async (dds: DDS) => {
+    setDetailDDS(dds);
+    setDetailOpen(true);
+    await loadParticipantes(dds.id);
+  };
+
+  const handleDownloadPDF = async (dds: DDS) => {
+    const parts = await loadParticipantes(dds.id);
+    const doc = gerarFichaDDS({
+      empresa: { nome: empresa.nome, cnpj: empresa.cnpj, logo_url: empresa.logo_url },
+      data: dds.data,
+      tema: dds.tema,
+      palestrante: dds.palestrante,
+      local: dds.local,
+      duracao: dds.duracao,
+      observacao: dds.observacao,
+      participantes: parts.map((p: any) => ({
+        nome: p.funcionario?.nome || "—",
+        matricula: p.funcionario?.matricula || null,
+        setor: p.funcionario?.setor || null,
+        cargo: p.funcionario?.cargo || null,
+        assinatura: p.assinatura,
+      })),
+    });
+    doc.save(`DDS_${dds.tema.replace(/\s+/g, "_").substring(0, 30)}_${dds.data}.pdf`);
   };
 
   const toggleFuncionario = (id: string) => {
@@ -192,7 +223,6 @@ export default function DDS() {
                 <DialogTitle>Registrar DDS</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                {/* Header fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Tema *</Label>
@@ -231,7 +261,6 @@ export default function DDS() {
                   <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Observações adicionais..." rows={2} />
                 </div>
 
-                {/* Participant selection */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-base font-semibold">Participantes e Assinaturas</Label>
@@ -290,7 +319,6 @@ export default function DDS() {
         )}
       </div>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4 pb-3 px-4">
@@ -318,7 +346,6 @@ export default function DDS() {
         </Card>
       </div>
 
-      {/* DDS List */}
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -356,8 +383,11 @@ export default function DDS() {
                     <TableCell className="hidden md:table-cell">{dds.local || "—"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openDetail(dds)}>
+                        <Button size="sm" variant="ghost" onClick={() => openDetail(dds)} title="Ver detalhes">
                           <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDownloadPDF(dds)} title="Baixar PDF">
+                          <Download className="w-4 h-4" />
                         </Button>
                         {canDelete && (
                           <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(dds.id)}>
@@ -394,9 +424,14 @@ export default function DDS() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Participantes ({participantes.length})
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Users className="w-4 h-4" /> Participantes ({participantes.length})
+                  </h3>
+                  <Button size="sm" variant="outline" onClick={() => handleDownloadPDF(detailDDS)}>
+                    <Download className="w-4 h-4 mr-2" /> Baixar PDF
+                  </Button>
+                </div>
                 {loadingParticipantes ? (
                   <div className="flex justify-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
@@ -405,23 +440,24 @@ export default function DDS() {
                   <div className="space-y-3">
                     {participantes.map((p) => (
                       <div key={p.id} className="border rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium">{p.funcionario?.nome || "—"}</p>
                             <p className="text-xs text-muted-foreground">
                               {p.funcionario?.matricula && `Mat: ${p.funcionario.matricula}`}
                               {p.funcionario?.setor && ` • ${p.funcionario.setor}`}
                             </p>
                           </div>
-                          <Badge variant={p.assinatura ? "default" : "secondary"}>
-                            {p.assinatura ? "Assinado" : "Sem assinatura"}
-                          </Badge>
-                        </div>
-                        {p.assinatura && (
-                          <div className="border rounded bg-background p-1">
-                            <img src={p.assinatura} alt="Assinatura" className="h-16 object-contain mx-auto" />
+                          <div className="shrink-0">
+                            {p.assinatura ? (
+                              <div className="border rounded bg-background p-1 w-[120px]">
+                                <img src={p.assinatura} alt="Assinatura" className="h-10 w-full object-contain" />
+                              </div>
+                            ) : (
+                              <Badge variant="secondary">Sem assinatura</Badge>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     ))}
                   </div>
