@@ -179,8 +179,8 @@ function drawFooter(doc: jsPDF) {
 export function gerarFichaEPI(data: FichaData) {
   const doc = new jsPDF("l", "mm", "a4");
   // Landscape A4: 297mm wide, margins 15 each side = 267mm content
-  // Entrega(28) + Devolução(28) + Qtde(18) + Equipamento(80) + CA nº(25) + Motivo(35) + Assinatura(53) = 267
-  const colWidths = [28, 28, 18, 80, 25, 35, 53];
+  // Entrega(32) + Devolução(24) + Qtde(16) + Equipamento(78) + CA nº(24) + Motivo(33) + Assinatura(60) = 267
+  const colWidths = [32, 24, 16, 78, 24, 33, 60];
   const ROW_H = 18;
   const MAX_Y = PAGE_H - 30;
 
