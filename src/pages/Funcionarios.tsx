@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, User } from "lucide-react";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao
 
 export default function Funcionarios() {
   const { data: items, loading, add, update, remove } = useSupabaseCrud<Funcionario>("funcionarios", "created_at");
+  const { canEdit, canDelete } = usePermissions("cadastro_funcionarios");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Funcionario | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -43,9 +45,11 @@ export default function Funcionarios() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Funcionários</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar funcionários</p>
         </div>
-        <Button onClick={openNew} className="w-full sm:w-auto">
-          <Plus className="w-4 h-4 mr-2" />Novo Funcionário
-        </Button>
+        {canEdit && (
+          <Button onClick={openNew} className="w-full sm:w-auto">
+            <Plus className="w-4 h-4 mr-2" />Novo Funcionário
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -70,8 +74,8 @@ export default function Funcionarios() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                      {canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                      {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -112,8 +116,8 @@ export default function Funcionarios() {
                       <TableCell className="font-mono text-xs">{f.data_admissao || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                          {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                          {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>

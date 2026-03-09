@@ -2,6 +2,7 @@ import { useState, useRef, useMemo } from "react";
 import { Plus, Trash2, FileText, Search, Loader2 } from "lucide-react";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export default function Entregas() {
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
+  const { canEdit, canDelete } = usePermissions("entregas");
   const { empresaId } = useAuth();
 
   const [open, setOpen] = useState(false);
@@ -241,9 +243,11 @@ export default function Entregas() {
           <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
             <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
           </Button>
-          <Button onClick={() => setOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm">
-            <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
-          </Button>
+          {canEdit && (
+            <Button onClick={() => setOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
+            </Button>
+          )}
         </div>
       </div>
 
@@ -278,7 +282,7 @@ export default function Entregas() {
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
                         <Button size="icon" variant="ghost" className="h-7 w-7" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3 h-3" /></Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(e.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                        {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(e.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>}
                       </div>
                     </div>
                   </div>
@@ -323,7 +327,7 @@ export default function Entregas() {
                       <TableCell>
                         <div className="flex gap-1 justify-end">
                           <Button size="icon" variant="ghost" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                          {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>

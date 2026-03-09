@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface EPI {
   id: string; nome: string; ca: string | null; validade: string | null;
@@ -27,6 +28,7 @@ const emptyForm = {
 
 export default function EPIs() {
   const { data: epis, loading, add, update, remove } = useSupabaseCrud<EPI>("epis", "created_at");
+  const { canEdit, canDelete } = usePermissions("epis");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EPI | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -122,9 +124,11 @@ export default function EPIs() {
           <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
             <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
           </Button>
-          <Button onClick={openNew} className="flex-1 sm:flex-none text-xs sm:text-sm">
-            <Plus className="w-4 h-4 mr-1 sm:mr-2" />Novo EPI
-          </Button>
+          {canEdit && (
+            <Button onClick={openNew} className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <Plus className="w-4 h-4 mr-1 sm:mr-2" />Novo EPI
+            </Button>
+          )}
         </div>
       </div>
 
@@ -153,8 +157,8 @@ export default function EPIs() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                      {canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                      {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs">
@@ -204,8 +208,8 @@ export default function EPIs() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                          {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                          {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>
