@@ -245,9 +245,11 @@ export default function Entregas() {
               <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
             </Button>
           )}
-          {canEdit && (
+          {canCreate && (
             <Button onClick={() => setOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
+            </Button>
+          )}
             </Button>
           )}
         </div>
