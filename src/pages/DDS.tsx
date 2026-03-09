@@ -95,7 +95,33 @@ export default function DDS() {
     setDuracao("15 minutos");
     setObservacao("");
     setSelectedFuncionarios([]);
+    setSearchQuery("");
     sigRefs.current.clear();
+  };
+
+  // Search: filter funcionarios by CPF, matrícula or nome
+  const normalizeStr = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const searchResults = searchQuery.trim().length >= 2
+    ? funcionarios.filter((f) => {
+        const q = normalizeStr(searchQuery.trim());
+        return (
+          normalizeStr(f.nome).includes(q) ||
+          (f.matricula && normalizeStr(f.matricula).includes(q)) ||
+          (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
+        );
+      }).filter((f) => !selectedFuncionarios.includes(f.id))
+    : [];
+
+  const selectedFuncs = funcionarios.filter((f) => selectedFuncionarios.includes(f.id));
+
+  const addParticipante = (id: string) => {
+    setSelectedFuncionarios((prev) => [...prev, id]);
+    setSearchQuery("");
+  };
+
+  const removeParticipante = (id: string) => {
+    setSelectedFuncionarios((prev) => prev.filter((f) => f !== id));
+    sigRefs.current.delete(id);
   };
 
   const handleSave = async () => {
