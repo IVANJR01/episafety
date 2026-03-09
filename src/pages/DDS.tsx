@@ -345,7 +345,7 @@ export default function DDS() {
                   </div>
                   <div className="space-y-2">
                     <Label>Local</Label>
-                    <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Local do DDS" />
+                    <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Local" />
                   </div>
                 </div>
                 <div className="space-y-2">
