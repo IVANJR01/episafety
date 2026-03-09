@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import SignatureCanvas, { SignatureCanvasRef } from "@/components/SignatureCanvas";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Eye, Trash2, FileText, Users, Calendar, Download } from "lucide-react";
+import { Plus, Eye, Trash2, FileText, Users, Calendar, Download, Search, X } from "lucide-react";
 import { format } from "date-fns";
 
 interface DDS {
