@@ -19,6 +19,19 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+const AUTH_CACHE_KEY = "offline_auth_cache";
+
+function saveAuthCache(data: { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean }) {
+  try { localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function loadAuthCache(): { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean } | null {
+  try {
+    const raw = localStorage.getItem(AUTH_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[] }> {
   if (!email) return { authorized: false, modulos: [] };
   try {
@@ -78,20 +91,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleAuthCheck = useCallback(async (currentUser: User | null) => {
     if (currentUser) {
       try {
-        const [authResult, profileResult, superAdmin] = await Promise.all([
-          checkAuthorized(currentUser.email),
-          loadProfile(currentUser.id),
-          checkSuperAdmin(currentUser.id),
-        ]);
-        setAuthorized(authResult.authorized);
-        setModulosPermitidos(authResult.modulos);
-        setEmpresaId(profileResult.empresaId);
-        setIsSuperAdmin(superAdmin);
+        if (!navigator.onLine) {
+          // Offline: use cached auth data
+          const cached = loadAuthCache();
+          if (cached) {
+            setAuthorized(cached.authorized);
+            setModulosPermitidos(cached.modulos);
+            setEmpresaId(cached.empresaId);
+            setIsSuperAdmin(cached.isSuperAdmin);
+          } else {
+            // No cache, assume authorized to not block user
+            setAuthorized(true);
+            setModulosPermitidos([]);
+            setEmpresaId(null);
+            setIsSuperAdmin(false);
+          }
+        } else {
+          const [authResult, profileResult, superAdmin] = await Promise.all([
+            checkAuthorized(currentUser.email),
+            loadProfile(currentUser.id),
+            checkSuperAdmin(currentUser.id),
+          ]);
+          setAuthorized(authResult.authorized);
+          setModulosPermitidos(authResult.modulos);
+          setEmpresaId(profileResult.empresaId);
+          setIsSuperAdmin(superAdmin);
+          // Save to cache for offline use
+          saveAuthCache({
+            authorized: authResult.authorized,
+            modulos: authResult.modulos,
+            empresaId: profileResult.empresaId,
+            isSuperAdmin: superAdmin,
+          });
+        }
       } catch {
-        setAuthorized(true);
-        setModulosPermitidos([]);
-        setEmpresaId(null);
-        setIsSuperAdmin(false);
+        // Network error - try cache
+        const cached = loadAuthCache();
+        if (cached) {
+          setAuthorized(cached.authorized);
+          setModulosPermitidos(cached.modulos);
+          setEmpresaId(cached.empresaId);
+          setIsSuperAdmin(cached.isSuperAdmin);
+        } else {
+          setAuthorized(true);
+          setModulosPermitidos([]);
+          setEmpresaId(null);
+          setIsSuperAdmin(false);
+        }
       }
     } else {
       setAuthorized(true);
