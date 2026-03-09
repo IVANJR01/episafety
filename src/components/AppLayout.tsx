@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { HardHat, LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, Search, FileText, GraduationCap, Stethoscope, ChevronDown } from "lucide-react";
+import { HardHat, LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, Search, FileText, GraduationCap, Stethoscope, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -17,6 +18,7 @@ const navItems = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { signOut, user } = useAuth();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -56,8 +58,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
-          <p className="text-xs text-sidebar-foreground/40 text-center">EPI Control v1.0</p>
+        <div className="p-4 border-t border-sidebar-border space-y-2">
+          <p className="text-xs text-sidebar-foreground/40 text-center truncate">{user?.email}</p>
+          <button onClick={signOut} className="flex items-center gap-2 w-full px-4 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
+            <LogOut className="w-4 h-4" />
+            <span>Sair</span>
+          </button>
         </div>
       </aside>
 

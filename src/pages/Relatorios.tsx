@@ -1,15 +1,19 @@
 import { useState } from "react";
-import { entregaStorage, epiStorage, funcionarioStorage } from "@/lib/storage";
+import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; }
+interface Funcionario { id: string; nome: string; setor: string | null; }
+interface EPI { id: string; nome: string; }
+
 export default function Relatorios() {
-  const entregas = entregaStorage.getAll();
-  const funcionarios = funcionarioStorage.getAll();
-  const epis = epiStorage.getAll();
+  const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
+  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
+  const { data: epis } = useSupabaseQuery<EPI>("epis");
 
   const [filtroFunc, setFiltroFunc] = useState("");
   const [filtroSetor, setFiltroSetor] = useState("");
@@ -19,8 +23,8 @@ export default function Relatorios() {
   const setores = [...new Set(funcionarios.map(f => f.setor).filter(Boolean))];
 
   const filtered = entregas.filter(e => {
-    const func = funcionarios.find(f => f.id === e.funcionarioId);
-    if (filtroFunc && filtroFunc !== "all" && e.funcionarioId !== filtroFunc) return false;
+    const func = funcionarios.find(f => f.id === e.funcionario_id);
+    if (filtroFunc && filtroFunc !== "all" && e.funcionario_id !== filtroFunc) return false;
     if (filtroSetor && filtroSetor !== "all" && func?.setor !== filtroSetor) return false;
     if (dataInicio && e.data < dataInicio) return false;
     if (dataFim && e.data > dataFim) return false;
@@ -28,10 +32,8 @@ export default function Relatorios() {
   });
 
   const totalItens = filtered.reduce((a, e) => a + e.quantidade, 0);
-
-  // Summary by EPI
   const byEpi: Record<string, number> = {};
-  filtered.forEach(e => { byEpi[e.epiId] = (byEpi[e.epiId] || 0) + e.quantidade; });
+  filtered.forEach(e => { byEpi[e.epi_id] = (byEpi[e.epi_id] || 0) + e.quantidade; });
 
   return (
     <div className="space-y-6">
@@ -60,7 +62,7 @@ export default function Relatorios() {
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  {setores.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {setores.map(s => <SelectItem key={s!} value={s!}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -80,7 +82,6 @@ export default function Relatorios() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">Por EPI</CardTitle></CardHeader>
           <CardContent>
@@ -114,13 +115,13 @@ export default function Relatorios() {
               {filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Sem resultados</TableCell></TableRow>
               ) : filtered.map(e => {
-                const func = funcionarios.find(f => f.id === e.funcionarioId);
+                const func = funcionarios.find(f => f.id === e.funcionario_id);
                 return (
                   <TableRow key={e.id}>
                     <TableCell className="font-mono text-xs">{e.data}</TableCell>
                     <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
                     <TableCell>{func?.setor || "—"}</TableCell>
-                    <TableCell>{epis.find(ep => ep.id === e.epiId)?.nome || "—"}</TableCell>
+                    <TableCell>{epis.find(ep => ep.id === e.epi_id)?.nome || "—"}</TableCell>
                     <TableCell className="text-right">{e.quantidade}</TableCell>
                   </TableRow>
                 );

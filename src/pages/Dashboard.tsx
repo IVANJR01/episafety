@@ -1,24 +1,31 @@
 import { Package, Users, ClipboardList, AlertTriangle, Search, GraduationCap, FileText, Stethoscope } from "lucide-react";
-import { epiStorage, funcionarioStorage, entregaStorage, inspecaoStorage, treinamentoStorage, ordemServicoStorage, exameStorage } from "@/lib/storage";
+import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; }
+interface Funcionario { id: string; nome: string; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; }
+interface Inspecao { id: string; titulo: string; local: string | null; data: string; status: string; }
+interface Treinamento { id: string; }
+interface OrdemServico { id: string; }
+interface Exame { id: string; funcionario_id: string; data_vencimento: string | null; tipo: string; }
+
 export default function Dashboard() {
-  const epis = epiStorage.getAll();
-  const funcionarios = funcionarioStorage.getAll();
-  const entregas = entregaStorage.getAll();
-  const inspecoes = inspecaoStorage.getAll();
-  const treinamentos = treinamentoStorage.getAll();
-  const ordensServico = ordemServicoStorage.getAll();
-  const exames = exameStorage.getAll();
+  const { data: epis } = useSupabaseQuery<EPI>("epis");
+  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
+  const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
+  const { data: inspecoes } = useSupabaseQuery<Inspecao>("inspecoes");
+  const { data: treinamentos } = useSupabaseQuery<Treinamento>("treinamentos");
+  const { data: ordensServico } = useSupabaseQuery<OrdemServico>("ordens_servico");
+  const { data: exames } = useSupabaseQuery<Exame>("exames");
 
-  const alertasEstoque = epis.filter(e => e.estoque <= e.estoqueMinimo);
+  const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
 
-  // Exames vencendo em 30 dias
   const hoje = new Date();
   const em30dias = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
   const examesVencendo = exames.filter(e => {
-    if (!e.dataVencimento) return false;
-    const venc = new Date(e.dataVencimento);
+    if (!e.data_vencimento) return false;
+    const venc = new Date(e.data_vencimento);
     return venc <= em30dias && venc >= hoje;
   });
 
@@ -33,10 +40,10 @@ export default function Dashboard() {
     { label: "Alertas", value: alertasEstoque.length + examesVencendo.length, icon: AlertTriangle, color: "text-warning" },
   ];
 
-  const recentEntregas = entregas.slice(-5).reverse().map(e => ({
+  const recentEntregas = entregas.slice(0, 5).map(e => ({
     ...e,
-    funcionarioNome: funcionarios.find(f => f.id === e.funcionarioId)?.nome || "—",
-    epiNome: epis.find(ep => ep.id === e.epiId)?.nome || "—",
+    funcionarioNome: funcionarios.find(f => f.id === e.funcionario_id)?.nome || "—",
+    epiNome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
   }));
 
   const inspecoesPendentes = inspecoes.filter(i => i.status !== "concluida").slice(0, 5);
@@ -65,7 +72,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Alertas */}
         {(alertasEstoque.length > 0 || examesVencendo.length > 0) && (
           <Card className="border-warning/30">
             <CardHeader className="pb-3">
@@ -83,15 +89,14 @@ export default function Dashboard() {
               ))}
               {examesVencendo.map(e => (
                 <div key={e.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-warning/5">
-                  <span><span className="font-medium">{funcionarios.find(f => f.id === e.funcionarioId)?.nome}</span> — exame vencendo</span>
-                  <span className="text-warning font-mono text-xs">{e.dataVencimento}</span>
+                  <span><span className="font-medium">{funcionarios.find(f => f.id === e.funcionario_id)?.nome}</span> — exame vencendo</span>
+                  <span className="text-warning font-mono text-xs">{e.data_vencimento}</span>
                 </div>
               ))}
             </CardContent>
           </Card>
         )}
 
-        {/* Últimas Entregas */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Últimas Entregas</CardTitle>
@@ -115,7 +120,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Inspeções Pendentes */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Inspeções Pendentes</CardTitle>
@@ -129,7 +133,7 @@ export default function Dashboard() {
                   <div key={i.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-muted/50">
                     <div>
                       <span className="font-medium">{i.titulo}</span>
-                      <span className="text-muted-foreground"> — {i.local}</span>
+                      <span className="text-muted-foreground"> — {i.local || "—"}</span>
                     </div>
                     <span className="text-xs text-muted-foreground font-mono">{i.data}</span>
                   </div>

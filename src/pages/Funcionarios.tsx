@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { funcionarioStorage, Funcionario } from "@/lib/storage";
+import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,29 +8,33 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const empty: Omit<Funcionario, "id"> = { nome: "", matricula: "", setor: "", cargo: "", dataAdmissao: "" };
+interface Funcionario {
+  id: string; nome: string; matricula: string | null; setor: string | null;
+  cargo: string | null; data_admissao: string | null;
+}
+
+const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "" };
 
 export default function Funcionarios() {
-  const [items, setItems] = useState(funcionarioStorage.getAll());
+  const { data: items, loading, add, update, remove } = useSupabaseCrud<Funcionario>("funcionarios", "created_at");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Funcionario | null>(null);
-  const [form, setForm] = useState<Omit<Funcionario, "id">>(empty);
+  const [form, setForm] = useState(emptyForm);
 
-  const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const openEdit = (f: Funcionario) => { setEditing(f); setForm({ nome: f.nome, matricula: f.matricula, setor: f.setor, cargo: f.cargo, dataAdmissao: f.dataAdmissao }); setOpen(true); };
-
-  const handleSave = () => {
-    if (!form.nome.trim()) return;
-    if (editing) {
-      funcionarioStorage.update({ ...editing, ...form });
-    } else {
-      funcionarioStorage.add({ ...form, id: crypto.randomUUID() });
-    }
-    setItems(funcionarioStorage.getAll());
-    setOpen(false);
+  const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+  const openEdit = (f: Funcionario) => {
+    setEditing(f);
+    setForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "" });
+    setOpen(true);
   };
 
-  const handleDelete = (id: string) => { funcionarioStorage.delete(id); setItems(funcionarioStorage.getAll()); };
+  const handleSave = async () => {
+    if (!form.nome.trim()) return;
+    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null };
+    if (editing) await update(editing.id, data);
+    else await add(data);
+    setOpen(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -44,37 +48,41 @@ export default function Funcionarios() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Matrícula</TableHead>
-                <TableHead>Setor</TableHead>
-                <TableHead>Cargo</TableHead>
-                <TableHead>Admissão</TableHead>
-                <TableHead className="w-24"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado</TableCell></TableRow>
-              ) : items.map(f => (
-                <TableRow key={f.id}>
-                  <TableCell className="font-medium">{f.nome}</TableCell>
-                  <TableCell className="font-mono text-xs">{f.matricula}</TableCell>
-                  <TableCell>{f.setor}</TableCell>
-                  <TableCell>{f.cargo}</TableCell>
-                  <TableCell className="font-mono text-xs">{f.dataAdmissao || "—"}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 justify-end">
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                    </div>
-                  </TableCell>
+          {loading ? (
+            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Matrícula</TableHead>
+                  <TableHead>Setor</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Admissão</TableHead>
+                  <TableHead className="w-24"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {items.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado</TableCell></TableRow>
+                ) : items.map(f => (
+                  <TableRow key={f.id}>
+                    <TableCell className="font-medium">{f.nome}</TableCell>
+                    <TableCell className="font-mono text-xs">{f.matricula || "—"}</TableCell>
+                    <TableCell>{f.setor || "—"}</TableCell>
+                    <TableCell>{f.cargo || "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">{f.data_admissao || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 justify-end">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -85,7 +93,7 @@ export default function Funcionarios() {
             <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Nome completo" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Matrícula</Label><Input value={form.matricula} onChange={e => setForm({...form, matricula: e.target.value})} placeholder="Nº matrícula" /></div>
-              <div><Label>Data Admissão</Label><Input type="date" value={form.dataAdmissao} onChange={e => setForm({...form, dataAdmissao: e.target.value})} /></div>
+              <div><Label>Data Admissão</Label><Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({...form, setor: e.target.value})} placeholder="Ex: Produção" /></div>
