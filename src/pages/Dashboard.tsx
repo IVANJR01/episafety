@@ -17,26 +17,27 @@ export default function Dashboard() {
   const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
 
   // Calculate monthly costs
-  const custoMensal = useMemo(() => {
-    const meses: Record<string, number> = {};
+  const valorEstoqueAtual = useMemo(() => {
+    return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
+  }, [epis]);
+
+  const custoMensalData = useMemo(() => {
+    const mesesSaida: Record<string, number> = {};
     entregas.forEach(e => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       const valor = epi?.valor || 0;
-      const mes = e.data?.substring(0, 7); // YYYY-MM
+      const mes = e.data?.substring(0, 7);
       if (mes) {
-        meses[mes] = (meses[mes] || 0) + valor * e.quantidade;
+        mesesSaida[mes] = (mesesSaida[mes] || 0) + valor * e.quantidade;
       }
     });
-    return Object.entries(meses)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-6)
-      .map(([mes, total]) => ({
-        mes: mes.split("-").reverse().join("/"),
-        total: Number(total.toFixed(2)),
-      }));
-  }, [entregas, epis]);
-
-  const custoTotal = custoMensal.reduce((s, m) => s + m.total, 0);
+    const meses = Object.keys(mesesSaida).sort().slice(-6);
+    return meses.map(mes => ({
+      mes: mes.split("-").reverse().join("/"),
+      saida: Number(mesesSaida[mes].toFixed(2)),
+      estoque: Number(valorEstoqueAtual.toFixed(2)),
+    }));
+  }, [entregas, epis, valorEstoqueAtual]);
 
   const valorEstoqueAtual = useMemo(() => {
     return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
