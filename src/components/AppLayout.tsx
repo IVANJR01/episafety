@@ -28,7 +28,7 @@ const cadastroItems: NavItem[] = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { signOut, user, modulosPermitidos } = useAuth();
+  const { signOut, user, modulosPermitidos, isSuperAdmin } = useAuth();
 
   // If no permissions set (empty array = no restriction OR all access), show everything
   const hasRestrictions = modulosPermitidos.length > 0;
