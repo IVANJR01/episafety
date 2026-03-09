@@ -1,6 +1,7 @@
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 
@@ -62,6 +63,46 @@ export default function Dashboard() {
     "hsl(346, 77%, 50%)",
     "hsl(173, 80%, 40%)",
   ];
+
+  // Média mensal de consumo por EPI
+  const mediaMensalEPI = useMemo(() => {
+    if (entregas.length === 0) return [];
+
+    // Collect all months with deliveries
+    const mesesSet = new Set<string>();
+    const consumoPorEpi: Record<string, Record<string, number>> = {};
+
+    entregas.forEach(e => {
+      const mes = e.data?.substring(0, 7);
+      if (!mes) return;
+      mesesSet.add(mes);
+      if (!consumoPorEpi[e.epi_id]) consumoPorEpi[e.epi_id] = {};
+      consumoPorEpi[e.epi_id][mes] = (consumoPorEpi[e.epi_id][mes] || 0) + e.quantidade;
+    });
+
+    const totalMeses = mesesSet.size || 1;
+
+    return epis
+      .map(epi => {
+        const mesesEpi = consumoPorEpi[epi.id] || {};
+        const totalEntregue = Object.values(mesesEpi).reduce((s, v) => s + v, 0);
+        const media = totalEntregue / totalMeses;
+        const custoMedio = media * (epi.valor || 0);
+        const mesesEstoque = media > 0 ? epi.estoque / media : null;
+
+        return {
+          id: epi.id,
+          nome: epi.nome,
+          totalEntregue,
+          media: Number(media.toFixed(1)),
+          custoMedio: Number(custoMedio.toFixed(2)),
+          estoqueAtual: epi.estoque,
+          mesesEstoque: mesesEstoque !== null ? Number(mesesEstoque.toFixed(1)) : null,
+        };
+      })
+      .filter(e => e.totalEntregue > 0)
+      .sort((a, b) => b.media - a.media);
+  }, [entregas, epis]);
 
   const valorSaida = useMemo(() => {
     return entregas.reduce((sum, e) => {
@@ -183,6 +224,53 @@ export default function Dashboard() {
                 />
               </PieChart>
             </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Média mensal de consumo */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            Média Mensal de Consumo por EPI
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Base para planejamento de compras — quanto maior o consumo, mais atenção ao reabastecimento
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          {mediaMensalEPI.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>EPI</TableHead>
+                  <TableHead className="text-right">Média/Mês</TableHead>
+                  <TableHead className="text-right">Custo Médio/Mês</TableHead>
+                  <TableHead className="text-right">Estoque Atual</TableHead>
+                  <TableHead className="text-right">Duração Estoque</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mediaMensalEPI.map(e => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-medium">{e.nome}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{e.media} un.</TableCell>
+                    <TableCell className="text-right font-mono text-sm">R$ {e.custoMedio.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{e.estoqueAtual} un.</TableCell>
+                    <TableCell className="text-right">
+                      {e.mesesEstoque !== null ? (
+                        <span className={`font-mono text-sm font-semibold ${e.mesesEstoque <= 1 ? "text-destructive" : e.mesesEstoque <= 3 ? "text-warning" : "text-green-600"}`}>
+                          {e.mesesEstoque} {e.mesesEstoque === 1 ? "mês" : "meses"}
+                        </span>
+                      ) : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
