@@ -58,7 +58,7 @@ function drawHeader(doc: jsPDF, data: DDSData, pageNum: number, totalPages: numb
 
   y += 7;
   doc.setFontSize(11);
-  doc.text("LISTA DE PRESENÇA - DDS", PAGE_W / 2, y, { align: "center" });
+  doc.text("LISTA DE PRESENÇA", PAGE_W / 2, y, { align: "center" });
 
   if (data.empresa.cnpj) {
     y += 5;
