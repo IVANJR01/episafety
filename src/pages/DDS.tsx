@@ -127,7 +127,7 @@ export default function DDS() {
 
   const handleSave = async () => {
     if (!tema.trim()) {
-      toast({ title: "Preencha o tema do DDS", variant: "destructive" });
+      toast({ title: "Preencha o tema da Lista de Presença", variant: "destructive" });
       return;
     }
     if (selectedFuncionarios.length === 0) {
