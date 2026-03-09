@@ -56,13 +56,14 @@ function ProtectedRoutes() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/epis" element={<EPIs />} />
-        <Route path="/funcionarios" element={<Funcionarios />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/cadastro/empresas" element={<Empresas />} />
+        <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
-        {/* Redirect old route */}
+        {/* Redirect old routes */}
         <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />
+        <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
