@@ -427,7 +427,7 @@ export default function DDS() {
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancelar</Button>
                   <Button onClick={handleSave} disabled={saving}>
-                    {saving ? "Salvando..." : "Salvar DDS"}
+                    {saving ? "Salvando..." : "Salvar"}
                   </Button>
                 </div>
               </div>
