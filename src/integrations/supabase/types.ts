@@ -100,36 +100,45 @@ export type Database = {
       }
       epis: {
         Row: {
+          aprovado_para: string | null
           ca: string | null
           categoria: string | null
           created_at: string
           created_by: string | null
+          descricao: string | null
           estoque: number
           estoque_minimo: number
+          fabricante: string | null
           id: string
           nome: string
           updated_at: string
           validade: string | null
         }
         Insert: {
+          aprovado_para?: string | null
           ca?: string | null
           categoria?: string | null
           created_at?: string
           created_by?: string | null
+          descricao?: string | null
           estoque?: number
           estoque_minimo?: number
+          fabricante?: string | null
           id?: string
           nome: string
           updated_at?: string
           validade?: string | null
         }
         Update: {
+          aprovado_para?: string | null
           ca?: string | null
           categoria?: string | null
           created_at?: string
           created_by?: string | null
+          descricao?: string | null
           estoque?: number
           estoque_minimo?: number
+          fabricante?: string | null
           id?: string
           nome?: string
           updated_at?: string
