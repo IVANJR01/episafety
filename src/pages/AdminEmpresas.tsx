@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Trash2, Users, UserPlus, X } from "lucide-react";
+import { Building2, Plus, Trash2, Users, UserPlus, X, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,10 @@ export default function AdminEmpresas() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmpresaId, setAssignEmpresaId] = useState<string | null>(null);
   const [assignEmail, setAssignEmail] = useState("");
+  const [assignNome, setAssignNome] = useState("");
+  const [assignSenha, setAssignSenha] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     if (isSuperAdmin) loadData();
@@ -101,23 +105,80 @@ export default function AdminEmpresas() {
 
   const handleAssignUser = async () => {
     if (!assignEmail.trim() || !assignEmpresaId) return;
-    // Find profile by email
-    const profile = profiles.find(p => p.email?.toLowerCase() === assignEmail.trim().toLowerCase());
-    if (!profile) {
-      toast({ title: "Usuário não encontrado", description: "O e-mail precisa estar cadastrado no sistema.", variant: "destructive" });
+
+    // Check if user already exists
+    const existingProfile = profiles.find(p => p.email?.toLowerCase() === assignEmail.trim().toLowerCase());
+
+    if (existingProfile) {
+      // Just link to empresa
+      const { error } = await (supabase.from as any)("profiles")
+        .update({ empresa_id: assignEmpresaId })
+        .eq("user_id", existingProfile.user_id);
+      if (error) {
+        toast({ title: "Erro ao vincular", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: `Usuário ${existingProfile.nome || existingProfile.email} vinculado com sucesso!` });
+        setAssignOpen(false);
+        setAssignEmail("");
+        setAssignNome("");
+        setAssignSenha("");
+        await loadData();
+      }
       return;
     }
-    const { error } = await (supabase.from as any)("profiles")
-      .update({ empresa_id: assignEmpresaId })
-      .eq("user_id", profile.user_id);
-    if (error) {
-      toast({ title: "Erro ao vincular", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `Usuário ${profile.nome || profile.email} vinculado com sucesso!` });
+
+    // Create new user
+    if (!assignSenha.trim()) {
+      toast({ title: "Informe uma senha para criar o novo usuário", variant: "destructive" });
+      return;
+    }
+    if (assignSenha.length < 6) {
+      toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
+        body: {
+          email: assignEmail.trim().toLowerCase(),
+          password: assignSenha,
+          nome: assignNome.trim(),
+        },
+      });
+
+      if (fnError || fnData?.error) {
+        toast({ title: "Erro ao criar conta", description: fnData?.error || fnError?.message, variant: "destructive" });
+        setAssigning(false);
+        return;
+      }
+
+      // Update profile with empresa_id
+      if (fnData?.user_id) {
+        await (supabase.from as any)("profiles")
+          .update({ empresa_id: assignEmpresaId })
+          .eq("user_id", fnData.user_id);
+
+        // Also add to usuarios_liberados with all modules
+        const allModules = ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
+        await (supabase.from as any)("usuarios_liberados").insert({
+          email: assignEmail.trim().toLowerCase(),
+          nome: assignNome.trim(),
+          modulos_permitidos: allModules,
+          empresa_id: assignEmpresaId,
+        });
+      }
+
+      toast({ title: "Usuário criado e vinculado com sucesso!" });
       setAssignOpen(false);
       setAssignEmail("");
+      setAssignNome("");
+      setAssignSenha("");
       await loadData();
+    } catch (err: any) {
+      toast({ title: "Erro inesperado", description: err.message, variant: "destructive" });
     }
+    setAssigning(false);
   };
 
   const handleUnassignUser = async (userId: string) => {
@@ -169,7 +230,7 @@ export default function AdminEmpresas() {
                       {emp.cnpj && <span className="text-xs text-muted-foreground font-normal ml-2">CNPJ: {emp.cnpj}</span>}
                     </CardTitle>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => { setAssignEmpresaId(emp.id); setAssignEmail(""); setAssignOpen(true); }}>
+                      <Button size="sm" variant="outline" onClick={() => { setAssignEmpresaId(emp.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
                         <UserPlus className="w-3.5 h-3.5 mr-1" />Vincular Usuário
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => handleDeleteEmpresa(emp.id)}>
@@ -221,17 +282,43 @@ export default function AdminEmpresas() {
       {/* Assign User Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Vincular Usuário à Empresa</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Criar / Vincular Usuário à Empresa</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Digite o e-mail do usuário já cadastrado no sistema para vinculá-lo a esta empresa.
+              Se o e-mail já existir, o usuário será vinculado. Caso contrário, uma nova conta será criada com a senha informada.
             </p>
             <div>
-              <Label>E-mail do Usuário</Label>
+              <Label>Nome</Label>
+              <Input value={assignNome} onChange={e => setAssignNome(e.target.value)} placeholder="Nome do usuário" />
+            </div>
+            <div>
+              <Label>E-mail</Label>
               <Input type="email" value={assignEmail} onChange={e => setAssignEmail(e.target.value)} placeholder="usuario@email.com" />
             </div>
+            <div>
+              <Label>Senha (para novo usuário)</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={assignSenha}
+                  onChange={e => setAssignSenha(e.target.value)}
+                  placeholder="Mín. 6 caracteres"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
           </div>
-          <DialogFooter><Button onClick={handleAssignUser} disabled={!assignEmail.trim()}>Vincular</Button></DialogFooter>
+          <DialogFooter>
+            <Button onClick={handleAssignUser} disabled={!assignEmail.trim() || assigning}>
+              {assigning ? "Criando..." : "Criar e Vincular"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
