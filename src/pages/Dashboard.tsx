@@ -37,6 +37,17 @@ export default function Dashboard() {
 
   const custoTotal = custoMensal.reduce((s, m) => s + m.total, 0);
 
+  const valorEstoqueAtual = useMemo(() => {
+    return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
+  }, [epis]);
+
+  const valorSaida = useMemo(() => {
+    return entregas.reduce((sum, e) => {
+      const epi = epis.find(ep => ep.id === e.epi_id);
+      return sum + (epi?.valor || 0) * e.quantidade;
+    }, 0);
+  }, [entregas, epis]);
+
   const stats = [
     { label: "EPIs Cadastrados", value: epis.length, icon: Package, color: "text-primary" },
     { label: "Funcionários", value: funcionarios.length, icon: Users, color: "text-success" },
@@ -76,15 +87,20 @@ export default function Dashboard() {
       {/* Monthly cost chart */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-primary" />
-              Custo Mensal de EPIs
-            </span>
-            <span className="text-sm font-mono text-muted-foreground">
-              Total últimos meses: R$ {custoTotal.toFixed(2)}
-            </span>
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-primary" />
+            Custo Mensal de EPIs
           </CardTitle>
+          <div className="flex flex-wrap gap-4 mt-2">
+            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+              <span className="text-xs text-muted-foreground">Valor de Saída (Total):</span>
+              <span className="text-sm font-bold font-mono text-foreground">R$ {valorSaida.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+              <span className="text-xs text-muted-foreground">Valor do Estoque Atual:</span>
+              <span className="text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {custoMensal.length === 0 ? (
