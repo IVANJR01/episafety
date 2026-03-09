@@ -290,49 +290,74 @@ export default function DDS() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Participantes e Assinaturas</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={selectAll}>
-                      {selectedFuncionarios.length === funcionarios.length ? "Desmarcar todos" : "Selecionar todos"}
-                    </Button>
+                  <Label className="text-base font-semibold">Participantes e Assinaturas</Label>
+
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar por matrícula, CPF ou nome..."
+                      className="pl-9"
+                    />
                   </div>
 
-                  {funcionarios.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Nenhum funcionário cadastrado.</p>
+                  {/* Search results dropdown */}
+                  {searchResults.length > 0 && (
+                    <div className="border rounded-lg max-h-[200px] overflow-y-auto divide-y">
+                      {searchResults.map((func) => (
+                        <button
+                          key={func.id}
+                          type="button"
+                          onClick={() => addParticipante(func.id)}
+                          className="w-full text-left px-3 py-2 hover:bg-accent transition-colors"
+                        >
+                          <p className="text-sm font-medium">{func.nome}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {func.cpf && `CPF: ${func.cpf}`}
+                            {func.matricula && ` • Mat: ${func.matricula}`}
+                            {func.setor && ` • ${func.setor}`}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhum funcionário encontrado.</p>
                   )}
 
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
-                    {funcionarios.map((func) => {
-                      const selected = selectedFuncionarios.includes(func.id);
-                      return (
+                  {/* Selected participants with signatures */}
+                  {selectedFuncs.length > 0 && (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                      <p className="text-sm text-muted-foreground">{selectedFuncs.length} participante(s) selecionado(s)</p>
+                      {selectedFuncs.map((func) => (
                         <div key={func.id} className="border rounded-lg p-3 space-y-2">
                           <div className="flex items-center gap-3">
-                            <Checkbox
-                              checked={selected}
-                              onCheckedChange={() => toggleFuncionario(func.id)}
-                            />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{func.nome}</p>
                               <p className="text-xs text-muted-foreground">
-                                {func.matricula && `Mat: ${func.matricula}`}
+                                {func.cpf && `CPF: ${func.cpf}`}
+                                {func.matricula && ` • Mat: ${func.matricula}`}
                                 {func.setor && ` • ${func.setor}`}
                               </p>
                             </div>
+                            <Button type="button" size="sm" variant="ghost" className="text-destructive shrink-0" onClick={() => removeParticipante(func.id)}>
+                              <X className="w-4 h-4" />
+                            </Button>
                           </div>
-                          {selected && (
-                            <SignatureCanvas
-                              label="Assinatura"
-                              height={100}
-                              ref={(el) => {
-                                if (el) sigRefs.current.set(func.id, el);
-                                else sigRefs.current.delete(func.id);
-                              }}
-                            />
-                          )}
+                          <SignatureCanvas
+                            label="Assinatura"
+                            height={100}
+                            ref={(el) => {
+                              if (el) sigRefs.current.set(func.id, el);
+                              else sigRefs.current.delete(func.id);
+                            }}
+                          />
                         </div>
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
