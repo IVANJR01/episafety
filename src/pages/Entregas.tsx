@@ -19,8 +19,8 @@ interface Entrega { id: string; funcionario_id: string; epi_id: string; quantida
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; }
 
-const tipoLabels: Record<string, string> = { entrega: "Entrega", troca: "Troca", devolucao: "Devolução" };
-const tipoBadge: Record<string, "default" | "secondary" | "outline"> = { entrega: "default", troca: "secondary", devolucao: "outline" };
+const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
+const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
 
 export default function Entregas() {
   const { data: entregas, loading, add, remove } = useSupabaseCrud<Entrega>("entregas", "created_at");
