@@ -63,6 +63,7 @@ function ProtectedRoute() {
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
+        <Route path="/admin/empresas" element={<AdminEmpresas />} />
         <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />
         <Route path="*" element={<NotFound />} />
