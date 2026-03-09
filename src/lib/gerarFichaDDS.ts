@@ -58,7 +58,7 @@ function drawHeader(doc: jsPDF, data: DDSData, pageNum: number, totalPages: numb
 
   y += 7;
   doc.setFontSize(11);
-  doc.text("LISTA DE PRESENÇA - DDS", PAGE_W / 2, y, { align: "center" });
+  doc.text("LISTA DE PRESENÇA", PAGE_W / 2, y, { align: "center" });
 
   if (data.empresa.cnpj) {
     y += 5;
@@ -221,7 +221,7 @@ export function gerarFichaDDS(data: DDSData) {
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0);
-      doc.text(`${data.empresa.nome} — DDS: ${data.tema} — ${formatDate(data.data)}`, MARGIN, 12);
+      doc.text(`${data.empresa.nome} — Lista de Presença: ${data.tema} — ${formatDate(data.data)}`, MARGIN, 12);
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100);

@@ -127,7 +127,7 @@ export default function DDS() {
 
   const handleSave = async () => {
     if (!tema.trim()) {
-      toast({ title: "Preencha o tema do DDS", variant: "destructive" });
+      toast({ title: "Preencha o tema da Lista de Presença", variant: "destructive" });
       return;
     }
     if (selectedFuncionarios.length === 0) {
@@ -173,7 +173,7 @@ export default function DDS() {
         cachedDDS.unshift({ ...ddsPayload, created_by: null, created_at: new Date().toISOString() } as DDS);
         setCachedData("dds", cachedDDS);
 
-        toast({ title: "DDS salvo offline", description: "Será sincronizado quando houver conexão." });
+        toast({ title: "Lista de Presença salva offline", description: "Será sincronizada quando houver conexão." });
         resetForm();
         setDialogOpen(false);
         refetch();
@@ -186,7 +186,7 @@ export default function DDS() {
       const { error: partError } = await (supabase.from as any)("dds_participantes").insert(participantesData);
       if (partError) throw partError;
 
-      toast({ title: "DDS registrado com sucesso!" });
+      toast({ title: "Lista de Presença registrada com sucesso!" });
       resetForm();
       setDialogOpen(false);
       refetch();
@@ -226,12 +226,12 @@ export default function DDS() {
         cachedDDS.unshift({ ...ddsPayload2, created_by: null, created_at: new Date().toISOString() } as DDS);
         setCachedData("dds", cachedDDS);
 
-        toast({ title: "Conexão perdida", description: "DDS salvo offline. Será sincronizado automaticamente." });
+        toast({ title: "Conexão perdida", description: "Lista de Presença salva offline. Será sincronizada automaticamente." });
         resetForm();
         setDialogOpen(false);
         refetch();
       } else {
-        toast({ title: "Erro ao salvar DDS", description: err.message, variant: "destructive" });
+        toast({ title: "Erro ao salvar Lista de Presença", description: err.message, variant: "destructive" });
       }
     } finally {
       setSaving(false);
@@ -239,7 +239,7 @@ export default function DDS() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir este DDS?")) return;
+    if (!confirm("Excluir esta Lista de Presença?")) return;
     await remove(id);
   };
 
@@ -281,7 +281,7 @@ export default function DDS() {
         assinatura: p.assinatura,
       })),
     });
-    doc.save(`DDS_${dds.tema.replace(/\s+/g, "_").substring(0, 30)}_${dds.data}.pdf`);
+    doc.save(`Lista_Presenca_${dds.tema.replace(/\s+/g, "_").substring(0, 30)}_${dds.data}.pdf`);
   };
 
   const toggleFuncionario = (id: string) => {
@@ -302,17 +302,17 @@ export default function DDS() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-2xl font-bold text-foreground">DDS - Diálogo Diário de Segurança</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Lista de presença com assinatura digital</p>
+          <h1 className="text-lg sm:text-2xl font-bold text-foreground">Lista de Presença</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Registro de presença com assinatura digital</p>
         </div>
         {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button><Plus className="w-4 h-4 mr-2" /> Novo DDS</Button>
+              <Button><Plus className="w-4 h-4 mr-2" /> Nova Lista</Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Registrar DDS</DialogTitle>
+                <DialogTitle>Registrar Lista de Presença</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -345,7 +345,7 @@ export default function DDS() {
                   </div>
                   <div className="space-y-2">
                     <Label>Local</Label>
-                    <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Local do DDS" />
+                    <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Local" />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -427,7 +427,7 @@ export default function DDS() {
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancelar</Button>
                   <Button onClick={handleSave} disabled={saving}>
-                    {saving ? "Salvando..." : "Salvar DDS"}
+                    {saving ? "Salvando..." : "Salvar"}
                   </Button>
                 </div>
               </div>
@@ -441,7 +441,7 @@ export default function DDS() {
           <CardContent className="pt-3 pb-2 px-3 sm:pt-4 sm:pb-3 sm:px-4">
             <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground mb-1">
               <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="text-[10px] sm:text-xs">Total DDS</span>
+              <span className="text-[10px] sm:text-xs">Total Listas</span>
             </div>
             <p className="text-xl sm:text-2xl font-bold">{ddsList.length}</p>
           </CardContent>
@@ -471,7 +471,7 @@ export default function DDS() {
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground">Nenhum DDS registrado ainda.</p>
+            <p className="text-muted-foreground">Nenhuma lista de presença registrada ainda.</p>
           </CardContent>
         </Card>
       ) : (
@@ -566,7 +566,7 @@ export default function DDS() {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do DDS</DialogTitle>
+            <DialogTitle>Detalhes da Lista de Presença</DialogTitle>
           </DialogHeader>
           {detailDDS && (
             <div className="space-y-4">
