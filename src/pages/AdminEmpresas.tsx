@@ -282,17 +282,43 @@ export default function AdminEmpresas() {
       {/* Assign User Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Vincular Usuário à Empresa</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Criar / Vincular Usuário à Empresa</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Digite o e-mail do usuário já cadastrado no sistema para vinculá-lo a esta empresa.
+              Se o e-mail já existir, o usuário será vinculado. Caso contrário, uma nova conta será criada com a senha informada.
             </p>
             <div>
-              <Label>E-mail do Usuário</Label>
+              <Label>Nome</Label>
+              <Input value={assignNome} onChange={e => setAssignNome(e.target.value)} placeholder="Nome do usuário" />
+            </div>
+            <div>
+              <Label>E-mail</Label>
               <Input type="email" value={assignEmail} onChange={e => setAssignEmail(e.target.value)} placeholder="usuario@email.com" />
             </div>
+            <div>
+              <Label>Senha (para novo usuário)</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={assignSenha}
+                  onChange={e => setAssignSenha(e.target.value)}
+                  placeholder="Mín. 6 caracteres"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
           </div>
-          <DialogFooter><Button onClick={handleAssignUser} disabled={!assignEmail.trim()}>Vincular</Button></DialogFooter>
+          <DialogFooter>
+            <Button onClick={handleAssignUser} disabled={!assignEmail.trim() || assigning}>
+              {assigning ? "Criando..." : "Criar e Vincular"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
