@@ -130,7 +130,8 @@ export default function Entregas() {
       toast({ title: "Preencha funcionário e EPI", variant: "destructive" });
       return;
     }
-    const status = form.tipo === "devolucao" ? "devolvido" : form.tipo === "troca" ? "trocado" : "ativo";
+    const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
+    const status = statusMap[form.tipo] || "ativo";
     const entregaData = { ...form, status, observacao: form.observacao || null };
 
     // Save the entrega
