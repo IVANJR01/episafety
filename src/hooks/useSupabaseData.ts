@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string) {
   const [data, setData] = useState<T[]>([]);
@@ -28,9 +29,11 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string) {
 export function useSupabaseCrud<T extends { id: string } = any>(table: string, orderBy?: string) {
   const { data, loading, refetch } = useSupabaseQuery<T>(table, orderBy);
   const { toast } = useToast();
+  const { empresaId } = useAuth();
 
   const add = async (item: Partial<T>) => {
-    const { error } = await (supabase.from as any)(table).insert(item);
+    const payload = { ...item, empresa_id: empresaId } as any;
+    const { error } = await (supabase.from as any)(table).insert(payload);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
       return false;

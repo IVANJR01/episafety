@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Building2, Save, Upload, X, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Empresas() {
   const { toast } = useToast();
+  const { empresaId } = useAuth();
   const [saving, setSaving] = useState(false);
   const [existingId, setExistingId] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -24,10 +26,11 @@ export default function Empresas() {
 
   useEffect(() => {
     loadEmpresa();
-  }, []);
+  }, [empresaId]);
 
   const loadEmpresa = async () => {
-    const { data } = await (supabase.from as any)("empresa_config").select("*").limit(1);
+    if (!empresaId) return;
+    const { data } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
     if (data && data.length > 0) {
       const e = data[0];
       setExistingId(e.id);
@@ -69,7 +72,6 @@ export default function Empresas() {
       const publicUrl = urlData.publicUrl;
       setLogoUrl(publicUrl);
 
-      // Save logo_url to DB if empresa already exists
       if (existingId) {
         await (supabase.from as any)("empresa_config")
           .update({ logo_url: publicUrl })
@@ -100,8 +102,10 @@ export default function Empresas() {
       if (existingId) {
         await (supabase.from as any)("empresa_config").update(payload).eq("id", existingId);
       } else {
-        const { data } = await (supabase.from as any)("empresa_config").insert(payload).select("id").single();
-        if (data) setExistingId(data.id);
+        // This shouldn't happen for regular users - companies are created by super admin
+        toast({ title: "Empresa não encontrada. Contacte o administrador.", variant: "destructive" });
+        setSaving(false);
+        return;
       }
       toast({ title: "Dados da empresa salvos com sucesso!" });
     } catch {
@@ -109,6 +113,22 @@ export default function Empresas() {
     }
     setSaving(false);
   };
+
+  if (!empresaId) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Empresas</h1>
+          <p className="text-muted-foreground text-sm mt-1">Dados da empresa</p>
+        </div>
+        <Card className="max-w-2xl">
+          <CardContent className="py-8 text-center">
+            <p className="text-muted-foreground">Você ainda não está vinculado a nenhuma empresa. Contacte o administrador do sistema.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -125,7 +145,6 @@ export default function Empresas() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Logo / Marca */}
           <div className="space-y-2">
             <Label>Logo / Marca da Empresa</Label>
             <div className="flex items-center gap-4">

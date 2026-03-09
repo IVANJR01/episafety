@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ const MODULOS = [
 
 export default function UsuariosLiberados() {
   const { toast } = useToast();
+  const { empresaId } = useAuth();
   const [usuarios, setUsuarios] = useState<UsuarioLiberado[]>([]);
   const [novoEmail, setNovoEmail] = useState("");
   const [novoNome, setNovoNome] = useState("");
@@ -49,12 +51,12 @@ export default function UsuariosLiberados() {
   const handleAddUser = async () => {
     if (!novoEmail.trim()) return;
     setAddingUser(true);
-    // By default, give access to all modules
     const allModules = MODULOS.map(m => m.key);
     const { error } = await (supabase.from as any)("usuarios_liberados").insert({
       email: novoEmail.trim().toLowerCase(),
       nome: novoNome.trim(),
       modulos_permitidos: allModules,
+      empresa_id: empresaId,
     });
     if (error) {
       toast({
@@ -139,7 +141,6 @@ export default function UsuariosLiberados() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Add form */}
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
               placeholder="Nome do usuário"
@@ -161,7 +162,6 @@ export default function UsuariosLiberados() {
             </Button>
           </div>
 
-          {/* List */}
           {usuarios.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               Nenhum usuário liberado. Qualquer usuário autenticado poderá acessar.
