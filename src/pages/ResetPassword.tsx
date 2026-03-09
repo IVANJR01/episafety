@@ -76,13 +76,26 @@ export default function ResetPassword() {
     }
   };
 
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <p className="text-muted-foreground">Verificando link de recuperação...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!isRecovery) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center space-y-4">
             <p className="text-muted-foreground">Link de recuperação inválido ou expirado.</p>
-            <Button onClick={() => navigate("/login")} variant="outline">Voltar ao login</Button>
+            <p className="text-sm text-muted-foreground">Use o botão "Esqueci minha senha" na tela de login para solicitar um novo link.</p>
+            <Button onClick={() => navigate("/")} variant="outline">Voltar ao login</Button>
           </CardContent>
         </Card>
       </div>
