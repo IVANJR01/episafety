@@ -2,7 +2,7 @@ import { Package, Users, ClipboardList, AlertTriangle, DollarSign } from "lucide
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
@@ -40,6 +40,28 @@ export default function Dashboard() {
   const valorEstoqueAtual = useMemo(() => {
     return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
   }, [epis]);
+
+  const estoqueChartData = useMemo(() => {
+    return epis
+      .filter(e => (e.valor || 0) * e.estoque > 0)
+      .map(e => ({
+        nome: e.nome.length > 20 ? e.nome.substring(0, 20) + "..." : e.nome,
+        valor: Number(((e.valor || 0) * e.estoque).toFixed(2)),
+      }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 8);
+  }, [epis]);
+
+  const CHART_COLORS = [
+    "hsl(var(--primary))",
+    "hsl(25, 95%, 53%)",
+    "hsl(142, 71%, 45%)",
+    "hsl(47, 95%, 53%)",
+    "hsl(199, 89%, 48%)",
+    "hsl(262, 83%, 58%)",
+    "hsl(346, 77%, 50%)",
+    "hsl(173, 80%, 40%)",
+  ];
 
   const valorSaida = useMemo(() => {
     return entregas.reduce((sum, e) => {
@@ -117,6 +139,49 @@ export default function Dashboard() {
                 />
                 <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Stock value chart */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" />
+            Valor do Estoque Atual por EPI
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
+          </p>
+        </CardHeader>
+        <CardContent>
+          {estoqueChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum EPI com valor em estoque</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={estoqueChartData}
+                  dataKey="valor"
+                  nameKey="nome"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={110}
+                  paddingAngle={2}
+                  label={({ nome, percent }) => `${nome} (${(percent * 100).toFixed(0)}%)`}
+                  labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                >
+                  {estoqueChartData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Valor"]}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                />
+              </PieChart>
             </ResponsiveContainer>
           )}
         </CardContent>
