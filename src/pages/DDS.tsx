@@ -441,7 +441,7 @@ export default function DDS() {
           <CardContent className="pt-3 pb-2 px-3 sm:pt-4 sm:pb-3 sm:px-4">
             <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground mb-1">
               <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="text-[10px] sm:text-xs">Total DDS</span>
+              <span className="text-[10px] sm:text-xs">Total Listas</span>
             </div>
             <p className="text-xl sm:text-2xl font-bold">{ddsList.length}</p>
           </CardContent>
