@@ -1,10 +1,12 @@
-import { Package, Users, ClipboardList, AlertTriangle } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; }
+interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; }
 
 export default function Dashboard() {
   const { data: epis } = useSupabaseQuery<EPI>("epis");
@@ -12,6 +14,28 @@ export default function Dashboard() {
   const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
 
   const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
+
+  // Calculate monthly costs
+  const custoMensal = useMemo(() => {
+    const meses: Record<string, number> = {};
+    entregas.forEach(e => {
+      const epi = epis.find(ep => ep.id === e.epi_id);
+      const valor = epi?.valor || 0;
+      const mes = e.data?.substring(0, 7); // YYYY-MM
+      if (mes) {
+        meses[mes] = (meses[mes] || 0) + valor * e.quantidade;
+      }
+    });
+    return Object.entries(meses)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([mes, total]) => ({
+        mes: mes.split("-").reverse().join("/"),
+        total: Number(total.toFixed(2)),
+      }));
+  }, [entregas, epis]);
+
+  const custoTotal = custoMensal.reduce((s, m) => s + m.total, 0);
 
   const stats = [
     { label: "EPIs Cadastrados", value: epis.length, icon: Package, color: "text-primary" },
@@ -48,6 +72,39 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Monthly cost chart */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-primary" />
+              Custo Mensal de EPIs
+            </span>
+            <span className="text-sm font-mono text-muted-foreground">
+              Total últimos meses: R$ {custoTotal.toFixed(2)}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {custoMensal.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum dado de custo disponível</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={custoMensal}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="mes" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => `R$${v}`} />
+                <Tooltip
+                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Custo"]}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                />
+                <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {alertasEstoque.length > 0 && (

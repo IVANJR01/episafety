@@ -16,11 +16,12 @@ interface EPI {
   id: string; nome: string; ca: string | null; validade: string | null;
   estoque: number; estoque_minimo: number; categoria: string | null;
   descricao: string | null; fabricante: string | null; aprovado_para: string | null;
+  valor: number | null;
 }
 
 const emptyForm = {
   nome: "", ca: "", validade: "", estoque: 0, estoque_minimo: 5,
-  categoria: "", descricao: "", fabricante: "", aprovado_para: ""
+  categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: 0
 };
 
 export default function EPIs() {
@@ -38,7 +39,8 @@ export default function EPIs() {
       nome: e.nome, ca: e.ca || "", validade: e.validade || "",
       estoque: e.estoque, estoque_minimo: e.estoque_minimo,
       categoria: e.categoria || "", descricao: e.descricao || "",
-      fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || ""
+      fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || "",
+      valor: e.valor || 0
     });
     setOpen(true);
   };
@@ -95,7 +97,8 @@ export default function EPIs() {
       nome: form.nome, ca: form.ca || null, validade: form.validade || null,
       estoque: form.estoque, estoque_minimo: form.estoque_minimo,
       categoria: form.categoria || null, descricao: form.descricao || null,
-      fabricante: form.fabricante || null, aprovado_para: form.aprovado_para || null
+      fabricante: form.fabricante || null, aprovado_para: form.aprovado_para || null,
+      valor: form.valor || 0
     };
     if (editing) {
       await update(editing.id, data);
@@ -128,13 +131,14 @@ export default function EPIs() {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Fabricante</TableHead>
                   <TableHead>Validade</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="text-right">Estoque</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {epis.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
                 ) : epis.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium">{e.nome}</TableCell>
@@ -142,6 +146,9 @@ export default function EPIs() {
                     <TableCell><Badge variant="secondary">{e.categoria || "—"}</Badge></TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{e.fabricante || "—"}</TableCell>
                     <TableCell>{e.validade || "—"}</TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {e.valor ? `R$ ${Number(e.valor).toFixed(2)}` : "—"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <span className={e.estoque <= e.estoque_minimo ? "text-destructive font-semibold" : ""}>{e.estoque}</span>
                     </TableCell>
@@ -224,6 +231,11 @@ export default function EPIs() {
                 placeholder="Descrição técnica do EPI"
                 rows={3}
               />
+            </div>
+
+            <div>
+              <Label>Valor Unitário (R$)</Label>
+              <Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({...form, valor: Number(e.target.value)})} placeholder="0.00" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
