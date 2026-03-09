@@ -24,7 +24,7 @@ const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
 
 export default function Entregas() {
-  const { data: entregas, loading, add, remove } = useSupabaseCrud<Entrega>("entregas", "created_at");
+  const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
