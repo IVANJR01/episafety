@@ -178,7 +178,8 @@ export function gerarFichaEPI(data: FichaData) {
   let y = drawPageHeader(doc, data, pageNum, totalPages);
   y = drawTableHeader(doc, y);
 
-  const tipoLabels: Record<string, string> = { entrega: "Entrega", troca: "Substituição", devolucao: "Devolução" };
+  const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano", troca: "Troca", devolucao: "Devolução" };
+  const statusLabels: Record<string, string> = { ativo: "Ativo", substituido: "Substituído", devolvido: "Devolvido", perdido: "Perdido", danificado: "Danificado", trocado: "Trocado" };
 
   data.entregas.forEach((entrega, idx) => {
     if (y + ROW_H > MAX_Y) {
