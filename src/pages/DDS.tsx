@@ -471,7 +471,7 @@ export default function DDS() {
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground">Nenhum DDS registrado ainda.</p>
+            <p className="text-muted-foreground">Nenhuma lista de presença registrada ainda.</p>
           </CardContent>
         </Card>
       ) : (
