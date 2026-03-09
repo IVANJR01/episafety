@@ -13,6 +13,7 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [checking, setChecking] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -22,10 +23,30 @@ export default function ResetPassword() {
       setIsRecovery(true);
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true);
       }
+      // If user arrived via recovery link, session will exist
+      if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "PASSWORD_RECOVERY")) {
+        setIsRecovery(true);
+      }
+      setChecking(false);
+    });
+
+    // Also check if there's already an active session (recovery link already processed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // Check if we got here from a recovery flow
+        const hash = window.location.hash;
+        const params = new URLSearchParams(hash.replace('#', ''));
+        if (params.get('type') === 'recovery' || hash.includes('type=recovery')) {
+          setIsRecovery(true);
+        }
+        // If there's an active session and we're on this page, allow password reset
+        setIsRecovery(true);
+      }
+      setChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -55,13 +76,26 @@ export default function ResetPassword() {
     }
   };
 
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <p className="text-muted-foreground">Verificando link de recuperação...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!isRecovery) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center space-y-4">
             <p className="text-muted-foreground">Link de recuperação inválido ou expirado.</p>
-            <Button onClick={() => navigate("/login")} variant="outline">Voltar ao login</Button>
+            <p className="text-sm text-muted-foreground">Use o botão "Esqueci minha senha" na tela de login para solicitar um novo link.</p>
+            <Button onClick={() => navigate("/")} variant="outline">Voltar ao login</Button>
           </CardContent>
         </Card>
       </div>
