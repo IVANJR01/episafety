@@ -58,8 +58,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
-          <p className="text-xs text-sidebar-foreground/40 text-center">EPI Control v1.0</p>
+        <div className="p-4 border-t border-sidebar-border space-y-2">
+          <p className="text-xs text-sidebar-foreground/40 text-center truncate">{user?.email}</p>
+          <button onClick={signOut} className="flex items-center gap-2 w-full px-4 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
+            <LogOut className="w-4 h-4" />
+            <span>Sair</span>
+          </button>
         </div>
       </aside>
 
