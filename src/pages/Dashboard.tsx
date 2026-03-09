@@ -228,6 +228,53 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Média mensal de consumo */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            Média Mensal de Consumo por EPI
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Base para planejamento de compras — quanto maior o consumo, mais atenção ao reabastecimento
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          {mediaMensalEPI.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>EPI</TableHead>
+                  <TableHead className="text-right">Média/Mês</TableHead>
+                  <TableHead className="text-right">Custo Médio/Mês</TableHead>
+                  <TableHead className="text-right">Estoque Atual</TableHead>
+                  <TableHead className="text-right">Duração Estoque</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mediaMensalEPI.map(e => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-medium">{e.nome}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{e.media} un.</TableCell>
+                    <TableCell className="text-right font-mono text-sm">R$ {e.custoMedio.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">{e.estoqueAtual} un.</TableCell>
+                    <TableCell className="text-right">
+                      {e.mesesEstoque !== null ? (
+                        <span className={`font-mono text-sm font-semibold ${e.mesesEstoque <= 1 ? "text-destructive" : e.mesesEstoque <= 3 ? "text-warning" : "text-green-600"}`}>
+                          {e.mesesEstoque} {e.mesesEstoque === 1 ? "mês" : "meses"}
+                        </span>
+                      ) : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {alertasEstoque.length > 0 && (
           <Card className="border-warning/30">
