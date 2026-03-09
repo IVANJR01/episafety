@@ -291,8 +291,8 @@ export default function Entregas() {
                     <TableCell>{getName(epis, e.epi_id)}</TableCell>
                     <TableCell className="text-right">{e.quantidade}</TableCell>
                     <TableCell>
-                      <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : "text-muted-foreground"}`}>
-                        {e.status === "ativo" ? "Ativo" : e.status === "devolvido" ? "Devolvido" : "Trocado"}
+                      <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
+                        {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
