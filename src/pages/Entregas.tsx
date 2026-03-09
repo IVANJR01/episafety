@@ -240,9 +240,11 @@ export default function Entregas() {
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Entrega, troca e devolução de EPIs</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
-            <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
-          </Button>
+          {canEdit && (
+            <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
+            </Button>
+          )}
           {canEdit && (
             <Button onClick={() => setOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
@@ -281,7 +283,7 @@ export default function Entregas() {
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3 h-3" /></Button>
+                        {canEdit && <Button size="icon" variant="ghost" className="h-7 w-7" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3 h-3" /></Button>}
                         {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(e.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>}
                       </div>
                     </div>
@@ -326,7 +328,7 @@ export default function Entregas() {
                       <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3.5 h-3.5" /></Button>
+                          {canEdit && <Button size="icon" variant="ghost" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3.5 h-3.5" /></Button>}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
                       </TableCell>
