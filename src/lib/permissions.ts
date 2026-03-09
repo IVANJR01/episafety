@@ -20,6 +20,7 @@ export const MODULOS = [
   { key: "cadastro_empresas", label: "Cadastro → Empresas", path: "/cadastro/empresas" },
   { key: "cadastro_funcionarios", label: "Cadastro → Funcionários", path: "/cadastro/funcionarios" },
   { key: "cadastro_usuarios", label: "Cadastro → Usuários Liberados", path: "/cadastro/usuarios" },
+  { key: "dds", label: "DDS", path: "/dds" },
 ] as const;
 
 /**

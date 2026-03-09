@@ -16,6 +16,7 @@ const mainNavItems: NavItem[] = [
   { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
   { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
+  { path: "/dds", label: "DDS", icon: MessageSquare, moduleKey: "dds" },
 ];
 
 const cadastroItems: NavItem[] = [
