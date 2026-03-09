@@ -188,7 +188,7 @@ export function gerarFichaEPI(data: FichaData) {
       doc.addPage();
       pageNum++;
       y = drawPageHeader(doc, data, pageNum, totalPages);
-      y = drawTableHeader(doc, y);
+      y = drawTableHeader(doc, y, colWidths);
     }
 
     doc.setDrawColor(0);
