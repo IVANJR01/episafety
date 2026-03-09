@@ -133,15 +133,14 @@ function drawPageHeader(doc: jsPDF, data: FichaData, pageNum: number, totalPages
   return y;
 }
 
-function drawTableHeader(doc: jsPDF, y: number): number {
-  const colWidths = [22, 22, 14, 52, 16, 22, 22]; // = 170 = CONTENT_W
+function drawTableHeader(doc: jsPDF, y: number, colWidths: number[]): number {
   const headers = ["Entrega", "Devolução", "Qtde.", "Equipamento", "CA nº", "Motivo", "Assinatura"];
 
   doc.setFillColor(230, 230, 230);
   doc.rect(MARGIN, y, CONTENT_W, 7, "FD");
   doc.setDrawColor(0);
   doc.setLineWidth(0.3);
-  doc.setFontSize(7);
+  doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0);
 
