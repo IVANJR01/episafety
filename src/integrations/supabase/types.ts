@@ -529,6 +529,30 @@ export type Database = {
         }
         Relationships: []
       }
+      usuarios_liberados: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          nome: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          nome?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          nome?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

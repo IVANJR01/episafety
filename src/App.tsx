@@ -17,7 +17,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, authorized, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -28,6 +28,27 @@ function ProtectedRoutes() {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4 max-w-md p-8">
+          <div className="text-5xl">🔒</div>
+          <h1 className="text-xl font-bold">Acesso Não Autorizado</h1>
+          <p className="text-muted-foreground text-sm">
+            Seu e-mail (<strong>{user.email}</strong>) não está na lista de usuários liberados.
+            Entre em contato com o administrador do sistema.
+          </p>
+          <button
+            onClick={signOut}
+            className="mt-4 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AppLayout>
