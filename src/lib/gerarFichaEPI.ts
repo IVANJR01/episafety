@@ -28,14 +28,13 @@ interface EntregaItem {
   tipo: string;
   status: string;
   data_devolucao: string | null;
+  assinatura_colaborador: string | null;
 }
 
 interface FichaData {
   empresa: EmpresaData;
   funcionario: FuncionarioData;
   entregas: EntregaItem[];
-  assinaturaColaborador: string | null;
-  dataAssinatura: string;
 }
 
 const MARGIN = 15;
