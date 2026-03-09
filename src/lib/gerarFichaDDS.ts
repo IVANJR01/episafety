@@ -221,7 +221,7 @@ export function gerarFichaDDS(data: DDSData) {
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0);
-      doc.text(`${data.empresa.nome} — DDS: ${data.tema} — ${formatDate(data.data)}`, MARGIN, 12);
+      doc.text(`${data.empresa.nome} — Lista de Presença: ${data.tema} — ${formatDate(data.data)}`, MARGIN, 12);
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100);
