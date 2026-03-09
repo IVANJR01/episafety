@@ -19,8 +19,8 @@ interface Entrega { id: string; funcionario_id: string; epi_id: string; quantida
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; }
 
-const tipoLabels: Record<string, string> = { entrega: "Entrega", troca: "Troca", devolucao: "Devolução" };
-const tipoBadge: Record<string, "default" | "secondary" | "outline"> = { entrega: "default", troca: "secondary", devolucao: "outline" };
+const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
+const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
 
 export default function Entregas() {
   const { data: entregas, loading, add, remove } = useSupabaseCrud<Entrega>("entregas", "created_at");
@@ -130,7 +130,8 @@ export default function Entregas() {
       toast({ title: "Preencha funcionário e EPI", variant: "destructive" });
       return;
     }
-    const status = form.tipo === "devolucao" ? "devolvido" : form.tipo === "troca" ? "trocado" : "ativo";
+    const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
+    const status = statusMap[form.tipo] || "ativo";
     const entregaData = { ...form, status, observacao: form.observacao || null };
 
     // Save the entrega
@@ -290,8 +291,8 @@ export default function Entregas() {
                     <TableCell>{getName(epis, e.epi_id)}</TableCell>
                     <TableCell className="text-right">{e.quantidade}</TableCell>
                     <TableCell>
-                      <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : "text-muted-foreground"}`}>
-                        {e.status === "ativo" ? "Ativo" : e.status === "devolvido" ? "Devolvido" : "Trocado"}
+                      <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
+                        {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
@@ -318,10 +319,11 @@ export default function Entregas() {
               <Label>Tipo</Label>
               <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                 <SelectContent>
                   <SelectItem value="entrega">📦 Entrega</SelectItem>
-                  <SelectItem value="troca">🔄 Troca</SelectItem>
-                  <SelectItem value="devolucao">↩️ Devolução</SelectItem>
+                  <SelectItem value="substituicao">🔄 Substituição</SelectItem>
+                  <SelectItem value="perda">❌ Perda</SelectItem>
+                  <SelectItem value="dano">⚠️ Dano</SelectItem>
                 </SelectContent>
               </Select>
             </div>

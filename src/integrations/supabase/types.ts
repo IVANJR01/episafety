@@ -542,11 +542,23 @@ export type Database = {
     Enums: {
       app_role: "admin" | "tecnico" | "usuario"
       resultado_exame: "apto" | "inapto" | "apto_com_restricao" | "pendente"
-      status_entrega: "ativo" | "devolvido" | "trocado"
+      status_entrega:
+        | "ativo"
+        | "devolvido"
+        | "trocado"
+        | "substituido"
+        | "perdido"
+        | "danificado"
       status_inspecao: "pendente" | "em_andamento" | "concluida"
       status_ordem: "emitida" | "assinada" | "cancelada"
       status_treinamento: "agendado" | "realizado" | "cancelado"
-      tipo_entrega: "entrega" | "troca" | "devolucao"
+      tipo_entrega:
+        | "entrega"
+        | "troca"
+        | "devolucao"
+        | "substituicao"
+        | "perda"
+        | "dano"
       tipo_exame:
         | "admissional"
         | "periodico"
@@ -682,11 +694,25 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "tecnico", "usuario"],
       resultado_exame: ["apto", "inapto", "apto_com_restricao", "pendente"],
-      status_entrega: ["ativo", "devolvido", "trocado"],
+      status_entrega: [
+        "ativo",
+        "devolvido",
+        "trocado",
+        "substituido",
+        "perdido",
+        "danificado",
+      ],
       status_inspecao: ["pendente", "em_andamento", "concluida"],
       status_ordem: ["emitida", "assinada", "cancelada"],
       status_treinamento: ["agendado", "realizado", "cancelado"],
-      tipo_entrega: ["entrega", "troca", "devolucao"],
+      tipo_entrega: [
+        "entrega",
+        "troca",
+        "devolucao",
+        "substituicao",
+        "perda",
+        "dano",
+      ],
       tipo_exame: [
         "admissional",
         "periodico",
