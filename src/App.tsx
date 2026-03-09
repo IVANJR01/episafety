@@ -13,6 +13,7 @@ import Relatorios from "@/pages/Relatorios";
 import Empresas from "@/pages/Empresas";
 import UsuariosLiberados from "@/pages/UsuariosLiberados";
 import Auth from "@/pages/Auth";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -84,6 +85,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<AuthPage />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/*" element={<ProtectedRoute />} />
           </Routes>
         </AuthProvider>
