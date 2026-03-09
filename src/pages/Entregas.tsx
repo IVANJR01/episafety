@@ -240,9 +240,11 @@ export default function Entregas() {
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Entrega, troca e devolução de EPIs</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
-            <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
-          </Button>
+          {canEdit && (
+            <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
+              <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
+            </Button>
+          )}
           {canEdit && (
             <Button onClick={() => setOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
