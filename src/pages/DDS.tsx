@@ -281,7 +281,7 @@ export default function DDS() {
         assinatura: p.assinatura,
       })),
     });
-    doc.save(`DDS_${dds.tema.replace(/\s+/g, "_").substring(0, 30)}_${dds.data}.pdf`);
+    doc.save(`Lista_Presenca_${dds.tema.replace(/\s+/g, "_").substring(0, 30)}_${dds.data}.pdf`);
   };
 
   const toggleFuncionario = (id: string) => {
