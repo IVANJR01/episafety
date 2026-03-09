@@ -196,9 +196,19 @@ export default function Entregas() {
 
     const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").limit(1);
     const emp = empresaData?.[0] || {};
-    const assinaturaColaborador = sigColabRef.current?.getDataURL() || null;
+
+    // Load latest saved signature for this employee
+    const { data: fichaData } = await (supabase.from as any)("fichas_entrega")
+      .select("assinatura_colaborador, data_assinatura")
+      .eq("funcionario_id", fichaFuncId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const savedSignature = fichaData?.[0]?.assinatura_colaborador || null;
+    const savedDataAssinatura = fichaData?.[0]?.data_assinatura
+      ? new Date(fichaData[0].data_assinatura).toLocaleDateString("pt-BR") + " às " + new Date(fichaData[0].data_assinatura).toLocaleTimeString("pt-BR")
+      : null;
+
     const now = new Date();
-    const dataAssinatura = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`;
 
     const doc = gerarFichaEPI({
       empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: null },
@@ -225,12 +235,8 @@ export default function Entregas() {
           data_devolucao: dataDevolucao,
         };
       }),
-      assinaturaColaborador, dataAssinatura,
-    });
-
-    await (supabase.from as any)("fichas_entrega").insert({
-      funcionario_id: fichaFuncId, assinatura_colaborador: assinaturaColaborador,
-      data_assinatura: now.toISOString(), entrega_ids: funcEntregas.map(e => e.id),
+      assinaturaColaborador: savedSignature,
+      dataAssinatura: savedDataAssinatura || `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`,
     });
 
     doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);
