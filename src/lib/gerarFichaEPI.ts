@@ -21,6 +21,8 @@ interface EntregaItem {
   quantidade: number;
   epi_nome: string;
   epi_ca: string | null;
+  epi_descricao: string | null;
+  epi_validade: string | null;
   observacao: string | null;
   tipo: string;
   status: string;
