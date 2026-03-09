@@ -1,19 +1,20 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { hasPermission, type Acao } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 
 /**
  * Hook to check permissions for a specific module.
- * Returns helpers: canView, canEdit, canDelete
+ * Returns helpers: canView, canCreate, canEdit, canDelete
  */
 export function usePermissions(moduleKey: string) {
   const { modulosPermitidos, isSuperAdmin } = useAuth();
 
   if (isSuperAdmin) {
-    return { canView: true, canEdit: true, canDelete: true };
+    return { canView: true, canCreate: true, canEdit: true, canDelete: true };
   }
 
   return {
     canView: hasPermission(modulosPermitidos, moduleKey, "view"),
+    canCreate: hasPermission(modulosPermitidos, moduleKey, "create"),
     canEdit: hasPermission(modulosPermitidos, moduleKey, "edit"),
     canDelete: hasPermission(modulosPermitidos, moduleKey, "delete"),
   };

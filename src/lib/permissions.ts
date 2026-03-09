@@ -5,7 +5,8 @@
 
 export const ACOES = [
   { key: "view", label: "Visualizar" },
-  { key: "edit", label: "Editar / Criar" },
+  { key: "create", label: "Criar / Adicionar" },
+  { key: "edit", label: "Editar" },
   { key: "delete", label: "Excluir" },
 ] as const;
 
