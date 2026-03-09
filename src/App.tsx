@@ -17,6 +17,7 @@ import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
 import AdminEmpresas from "@/pages/AdminEmpresas";
 import Install from "@/pages/Install";
+import Privacidade from "@/pages/Privacidade";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
