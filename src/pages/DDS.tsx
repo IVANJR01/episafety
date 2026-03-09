@@ -239,7 +239,7 @@ export default function DDS() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir este DDS?")) return;
+    if (!confirm("Excluir esta Lista de Presença?")) return;
     await remove(id);
   };
 
