@@ -229,6 +229,8 @@ export default function Entregas() {
         epi_nome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
         epi_ca: epis.find(ep => ep.id === e.epi_id)?.ca || null,
         observacao: e.observacao,
+        tipo: e.tipo,
+        status: e.status,
       })),
       assinaturaColaborador, dataAssinatura,
     });
