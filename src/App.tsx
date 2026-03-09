@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { canAccessModule } from "@/lib/permissions";
 import AppLayout from "@/components/AppLayout";
 import OfflineBanner from "@/components/OfflineBanner";
 import Dashboard from "@/pages/Dashboard";
@@ -21,6 +22,22 @@ import Privacidade from "@/pages/Privacidade";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function DashboardGuard() {
+  const { modulosPermitidos, isSuperAdmin } = useAuth();
+  if (isSuperAdmin || canAccessModule(modulosPermitidos, "dashboard")) {
+    return <Dashboard />;
+  }
+  // Redirect to first accessible route
+  const fallbacks = ["/entregas", "/epis", "/relatorios", "/cadastro/empresas", "/cadastro/funcionarios", "/cadastro/usuarios"];
+  const moduleKeys = ["entregas", "epis", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
+  for (let i = 0; i < fallbacks.length; i++) {
+    if (canAccessModule(modulosPermitidos, moduleKeys[i])) {
+      return <Navigate to={fallbacks[i]} replace />;
+    }
+  }
+  return <Dashboard />;
+}
 
 function ProtectedRoute() {
   const { user, loading, authorized, signOut } = useAuth();
@@ -59,7 +76,7 @@ function ProtectedRoute() {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<DashboardGuard />} />
         <Route path="/epis" element={<EPIs />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
