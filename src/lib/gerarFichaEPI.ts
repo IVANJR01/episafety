@@ -207,61 +207,59 @@ export function gerarFichaEPI(data: FichaData) {
     x = MARGIN;
 
     // Entrega date
-    doc.text(formatDate(entrega.data), x + colWidths[0] / 2, y + ROW_H / 2, { align: "center" });
+    doc.text(formatDate(entrega.data), x + colWidths[0] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[0];
 
     // Devolução date
     if (entrega.data_devolucao) {
-      doc.text(formatDate(entrega.data_devolucao), x + colWidths[1] / 2, y + ROW_H / 2, { align: "center" });
+      doc.text(formatDate(entrega.data_devolucao), x + colWidths[1] / 2, y + ROW_H / 2 + 1, { align: "center" });
     }
     x += colWidths[1];
 
     // Qtde
-    doc.text(String(entrega.quantidade), x + colWidths[2] / 2, y + ROW_H / 2, { align: "center" });
+    doc.text(String(entrega.quantidade), x + colWidths[2] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[2];
 
-    // Equipamento - name bold, then details
+    // Equipamento
+    const eqX = x + 3;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
-    const epiName = entrega.epi_nome || "—";
-    doc.text(epiName, MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 5);
+    doc.text(entrega.epi_nome || "—", eqX, y + 6);
     
     if (entrega.epi_ca) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6);
-      doc.text(`Validade do C.A: —`, MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 9);
+      doc.text(`Validade do C.A: —`, eqX, y + 10);
     }
 
     if (entrega.observacao) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(5.5);
-      const obsLines = doc.splitTextToSize(entrega.observacao, colWidths[3] - 4);
-      doc.text(obsLines.slice(0, 2), MARGIN + colWidths[0] + colWidths[1] + colWidths[2] + 2, y + 13);
+      const obsLines = doc.splitTextToSize(entrega.observacao, colWidths[3] - 6);
+      doc.text(obsLines.slice(0, 1), eqX, y + 14);
     }
-
     x += colWidths[3];
 
     // CA nº
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text(entrega.epi_ca || "—", x + colWidths[4] / 2, y + ROW_H / 2, { align: "center" });
+    doc.text(entrega.epi_ca || "—", x + colWidths[4] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[4];
 
-    // Motivo (tipo)
+    // Motivo
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     const motivo = tipoLabels[entrega.tipo] || entrega.tipo;
-    doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2, { align: "center" });
+    doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[5];
 
-    // Assinatura column - draw signature image if available
+    // Assinatura
     const sigX = x;
     if (data.assinaturaColaborador) {
       try {
-        doc.addImage(data.assinaturaColaborador, "PNG", sigX + 1, y + 1, colWidths[6] - 2, ROW_H * 0.55);
+        doc.addImage(data.assinaturaColaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
       } catch (e) { /* ignore */ }
     }
-    // Date/time under signature
     doc.setFontSize(5);
     doc.setTextColor(100);
     doc.text(data.dataAssinatura, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
