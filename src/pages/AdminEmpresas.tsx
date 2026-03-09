@@ -230,7 +230,7 @@ export default function AdminEmpresas() {
                       {emp.cnpj && <span className="text-xs text-muted-foreground font-normal ml-2">CNPJ: {emp.cnpj}</span>}
                     </CardTitle>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => { setAssignEmpresaId(emp.id); setAssignEmail(""); setAssignOpen(true); }}>
+                      <Button size="sm" variant="outline" onClick={() => { setAssignEmpresaId(emp.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
                         <UserPlus className="w-3.5 h-3.5 mr-1" />Vincular Usuário
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => handleDeleteEmpresa(emp.id)}>
