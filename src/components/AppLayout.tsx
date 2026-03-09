@@ -152,7 +152,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-auto pb-20 lg:pb-0">
         {/* Mobile top header - simplified */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] bg-background/80 backdrop-blur-sm border-b border-border lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-background/80 backdrop-blur-sm border-b border-border lg:hidden safe-area-top">
           <div className="flex items-center gap-2">
             <img alt="EPISafety" className="w-7 h-7 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
             <span className="font-semibold text-sm">EPISafety</span>
