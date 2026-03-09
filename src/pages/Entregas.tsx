@@ -31,8 +31,6 @@ export default function Entregas() {
   const [open, setOpen] = useState(false);
   const [fichaOpen, setFichaOpen] = useState(false);
   const [fichaFuncId, setFichaFuncId] = useState("");
-  const [responsavelNome, setResponsavelNome] = useState("");
-  const [responsavelCargo, setResponsavelCargo] = useState("");
   const [empresaNome, setEmpresaNome] = useState("");
   const [empresaCnpj, setEmpresaCnpj] = useState("");
   const [empresaEndereco, setEmpresaEndereco] = useState("");
