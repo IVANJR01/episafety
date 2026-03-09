@@ -208,8 +208,8 @@ export default function EPIs() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                          {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                          {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>
