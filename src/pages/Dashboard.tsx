@@ -103,6 +103,8 @@ export default function Dashboard() {
       .filter(e => e.totalEntregue > 0)
       .sort((a, b) => b.media - a.media);
   }, [entregas, epis]);
+
+  const valorSaida = useMemo(() => {
     return entregas.reduce((sum, e) => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       return sum + (epi?.valor || 0) * e.quantidade;
