@@ -406,8 +406,8 @@ export default function Entregas() {
             <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); toast({ title: "Entrega registrada sem assinatura." }); }}>
               Pular
             </Button>
-            <Button onClick={handleSignAndGenerate}>
-              <FileText className="w-4 h-4 mr-2" />Assinar e Gerar Ficha
+            <Button onClick={handleSaveSignature}>
+              ✍️ Salvar Assinatura
             </Button>
           </DialogFooter>
         </DialogContent>
