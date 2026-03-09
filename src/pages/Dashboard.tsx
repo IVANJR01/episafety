@@ -209,19 +209,18 @@ export default function Dashboard() {
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Nenhum EPI com valor em estoque</p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={320}>
               <PieChart>
                 <Pie
                   data={estoqueChartData}
                   dataKey="valor"
                   nameKey="nome"
                   cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={110}
+                  cy="45%"
+                  innerRadius={50}
+                  outerRadius={90}
                   paddingAngle={2}
-                  label={({ nome, percent }) => `${nome} (${(percent * 100).toFixed(0)}%)`}
-                  labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                  label={false}
                 >
                   {estoqueChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -230,6 +229,13 @@ export default function Dashboard() {
                 <Tooltip
                   formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Valor"]}
                   contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                />
+                <Legend
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  align="center"
+                  formatter={(value: string) => value}
+                  wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
