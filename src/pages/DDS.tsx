@@ -231,7 +231,7 @@ export default function DDS() {
         setDialogOpen(false);
         refetch();
       } else {
-        toast({ title: "Erro ao salvar DDS", description: err.message, variant: "destructive" });
+        toast({ title: "Erro ao salvar Lista de Presença", description: err.message, variant: "destructive" });
       }
     } finally {
       setSaving(false);
