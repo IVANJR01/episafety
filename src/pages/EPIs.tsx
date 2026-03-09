@@ -138,7 +138,7 @@ export default function EPIs() {
               </TableHeader>
               <TableBody>
                 {epis.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
                 ) : epis.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="font-medium">{e.nome}</TableCell>
