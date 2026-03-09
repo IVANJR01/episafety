@@ -16,6 +16,9 @@ const mainNavItems: NavItem[] = [
   { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
   { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
+];
+
+const afterCadastroItems: NavItem[] = [
   { path: "/dds", label: "DDS", icon: MessageSquare, moduleKey: "dds" },
 ];
 
@@ -37,6 +40,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const visibleMainItems = mainNavItems.filter((i) => canAccess(i.moduleKey));
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
+  const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
 
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
@@ -125,6 +129,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </>
           )}
+
+          {visibleAfterCadastroItems.map((item) => {
+            const active = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
 
           {isSuperAdmin && (
             <Link
