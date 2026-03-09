@@ -9,9 +9,6 @@ const navItems = [
   { path: "/entregas", label: "Entregas", icon: ClipboardList },
   { path: "/funcionarios", label: "Funcionários", icon: Users },
   { path: "/inspecoes", label: "Inspeções", icon: Search },
-  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap },
-  { path: "/ordens-servico", label: "Ordens de Serviço", icon: FileText },
-  { path: "/pcmso", label: "PCMSO / Exames", icon: Stethoscope },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3 },
 ];
 
