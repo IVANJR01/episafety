@@ -105,23 +105,80 @@ export default function AdminEmpresas() {
 
   const handleAssignUser = async () => {
     if (!assignEmail.trim() || !assignEmpresaId) return;
-    // Find profile by email
-    const profile = profiles.find(p => p.email?.toLowerCase() === assignEmail.trim().toLowerCase());
-    if (!profile) {
-      toast({ title: "Usuário não encontrado", description: "O e-mail precisa estar cadastrado no sistema.", variant: "destructive" });
+
+    // Check if user already exists
+    const existingProfile = profiles.find(p => p.email?.toLowerCase() === assignEmail.trim().toLowerCase());
+
+    if (existingProfile) {
+      // Just link to empresa
+      const { error } = await (supabase.from as any)("profiles")
+        .update({ empresa_id: assignEmpresaId })
+        .eq("user_id", existingProfile.user_id);
+      if (error) {
+        toast({ title: "Erro ao vincular", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: `Usuário ${existingProfile.nome || existingProfile.email} vinculado com sucesso!` });
+        setAssignOpen(false);
+        setAssignEmail("");
+        setAssignNome("");
+        setAssignSenha("");
+        await loadData();
+      }
       return;
     }
-    const { error } = await (supabase.from as any)("profiles")
-      .update({ empresa_id: assignEmpresaId })
-      .eq("user_id", profile.user_id);
-    if (error) {
-      toast({ title: "Erro ao vincular", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: `Usuário ${profile.nome || profile.email} vinculado com sucesso!` });
+
+    // Create new user
+    if (!assignSenha.trim()) {
+      toast({ title: "Informe uma senha para criar o novo usuário", variant: "destructive" });
+      return;
+    }
+    if (assignSenha.length < 6) {
+      toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
+        body: {
+          email: assignEmail.trim().toLowerCase(),
+          password: assignSenha,
+          nome: assignNome.trim(),
+        },
+      });
+
+      if (fnError || fnData?.error) {
+        toast({ title: "Erro ao criar conta", description: fnData?.error || fnError?.message, variant: "destructive" });
+        setAssigning(false);
+        return;
+      }
+
+      // Update profile with empresa_id
+      if (fnData?.user_id) {
+        await (supabase.from as any)("profiles")
+          .update({ empresa_id: assignEmpresaId })
+          .eq("user_id", fnData.user_id);
+
+        // Also add to usuarios_liberados with all modules
+        const allModules = ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
+        await (supabase.from as any)("usuarios_liberados").insert({
+          email: assignEmail.trim().toLowerCase(),
+          nome: assignNome.trim(),
+          modulos_permitidos: allModules,
+          empresa_id: assignEmpresaId,
+        });
+      }
+
+      toast({ title: "Usuário criado e vinculado com sucesso!" });
       setAssignOpen(false);
       setAssignEmail("");
+      setAssignNome("");
+      setAssignSenha("");
       await loadData();
+    } catch (err: any) {
+      toast({ title: "Erro inesperado", description: err.message, variant: "destructive" });
     }
+    setAssigning(false);
   };
 
   const handleUnassignUser = async (userId: string) => {
