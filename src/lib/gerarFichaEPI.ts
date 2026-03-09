@@ -24,6 +24,7 @@ interface EntregaItem {
   observacao: string | null;
   tipo: string;
   status: string;
+  data_devolucao: string | null;
 }
 
 interface FichaData {
@@ -209,7 +210,10 @@ export function gerarFichaEPI(data: FichaData) {
     doc.text(formatDate(entrega.data), x + colWidths[0] / 2, y + ROW_H / 2, { align: "center" });
     x += colWidths[0];
 
-    // Devolução (empty for now)
+    // Devolução date
+    if (entrega.data_devolucao) {
+      doc.text(formatDate(entrega.data_devolucao), x + colWidths[1] / 2, y + ROW_H / 2, { align: "center" });
+    }
     x += colWidths[1];
 
     // Qtde
