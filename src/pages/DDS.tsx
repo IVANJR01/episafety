@@ -566,7 +566,7 @@ export default function DDS() {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do DDS</DialogTitle>
+            <DialogTitle>Detalhes da Lista de Presença</DialogTitle>
           </DialogHeader>
           {detailDDS && (
             <div className="space-y-4">
