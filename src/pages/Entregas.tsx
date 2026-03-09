@@ -29,6 +29,7 @@ export default function Entregas() {
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
+  const { canEdit, canDelete } = usePermissions("entregas");
   const { empresaId } = useAuth();
 
   const [open, setOpen] = useState(false);
