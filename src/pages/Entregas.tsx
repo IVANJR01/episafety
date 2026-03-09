@@ -36,7 +36,6 @@ export default function Entregas() {
   const [empresaEndereco, setEmpresaEndereco] = useState("");
 
   const sigColabRef = useRef<SignatureCanvasRef>(null);
-  const sigRespRef = useRef<SignatureCanvasRef>(null);
 
   const [form, setForm] = useState({
     funcionario_id: "", epi_id: "", quantidade: 1,
