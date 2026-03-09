@@ -1,9 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
 
-export function useSupabaseQuery<T>(table: string, orderBy?: string) {
-  const [data, setData] = useState<T[]>([]);
+type TableName = keyof Database["public"]["Tables"];
+type Row<T extends TableName> = Database["public"]["Tables"][T]["Row"];
+type Insert<T extends TableName> = Database["public"]["Tables"][T]["Insert"];
+type Update<T extends TableName> = Database["public"]["Tables"][T]["Update"];
+
+export function useSupabaseQuery<T extends TableName>(table: T, orderBy?: string) {
+  const [data, setData] = useState<Row<T>[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -15,7 +21,7 @@ export function useSupabaseQuery<T>(table: string, orderBy?: string) {
     if (error) {
       toast({ title: "Erro ao carregar", description: error.message, variant: "destructive" });
     } else {
-      setData((rows as T[]) || []);
+      setData((rows as Row<T>[]) || []);
     }
     setLoading(false);
   }, [table, orderBy]);
@@ -25,11 +31,11 @@ export function useSupabaseQuery<T>(table: string, orderBy?: string) {
   return { data, loading, refetch: fetch };
 }
 
-export function useSupabaseCrud<T extends { id: string }>(table: string, orderBy?: string) {
+export function useSupabaseCrud<T extends TableName>(table: T, orderBy?: string) {
   const { data, loading, refetch } = useSupabaseQuery<T>(table, orderBy);
   const { toast } = useToast();
 
-  const add = async (item: Omit<T, "id" | "created_at" | "updated_at" | "created_by">) => {
+  const add = async (item: Insert<T>) => {
     const { error } = await supabase.from(table).insert(item as any);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
@@ -39,7 +45,7 @@ export function useSupabaseCrud<T extends { id: string }>(table: string, orderBy
     return true;
   };
 
-  const update = async (id: string, updates: Partial<T>) => {
+  const update = async (id: string, updates: Update<T>) => {
     const { error } = await supabase.from(table).update(updates as any).eq("id", id);
     if (error) {
       toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
