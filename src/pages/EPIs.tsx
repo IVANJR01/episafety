@@ -157,8 +157,8 @@ export default function EPIs() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                      {canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                      {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs">
