@@ -250,8 +250,6 @@ export default function Entregas() {
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
             </Button>
           )}
-            </Button>
-          )}
         </div>
       </div>
 
