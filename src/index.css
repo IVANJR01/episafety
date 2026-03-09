@@ -58,12 +58,7 @@
     @apply border-border;
   }
   html {
-    padding-top: max(env(safe-area-inset-top, 0px), 44px);
-  }
-  @media (min-width: 1024px) {
-    html {
-      padding-top: 0px;
-    }
+    padding-top: 0;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
