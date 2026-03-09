@@ -312,7 +312,7 @@ export default function DDS() {
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Registrar DDS</DialogTitle>
+                <DialogTitle>Registrar Lista de Presença</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
