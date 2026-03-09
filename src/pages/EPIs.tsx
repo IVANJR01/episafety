@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, Loader2, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, Download, Package } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,9 +56,7 @@ export default function EPIs() {
       const { data, error } = await supabase.functions.invoke("consulta-ca", {
         body: { ca: form.ca.trim() }
       });
-
       if (error) throw error;
-
       if (data?.success && data.data) {
         const d = data.data;
         setForm(prev => ({
@@ -70,23 +68,12 @@ export default function EPIs() {
           fabricante: d.fabricante || prev.fabricante,
           aprovado_para: d.aprovado_para || prev.aprovado_para,
         }));
-        toast({
-          title: "CA encontrado!",
-          description: `${d.nome || "EPI"} - ${d.situacao || ""}`,
-        });
+        toast({ title: "CA encontrado!", description: `${d.nome || "EPI"} - ${d.situacao || ""}` });
       } else {
-        toast({
-          title: "CA não encontrado",
-          description: data?.error || "Verifique o número e tente novamente",
-          variant: "destructive"
-        });
+        toast({ title: "CA não encontrado", description: data?.error || "Verifique o número e tente novamente", variant: "destructive" });
       }
     } catch (err: any) {
-      toast({
-        title: "Erro na consulta",
-        description: err.message || "Falha ao consultar CA",
-        variant: "destructive"
-      });
+      toast({ title: "Erro na consulta", description: err.message || "Falha ao consultar CA", variant: "destructive" });
     } finally {
       setConsultando(false);
     }
@@ -101,36 +88,23 @@ export default function EPIs() {
       fabricante: form.fabricante || null, aprovado_para: form.aprovado_para || null,
       valor: form.valor || 0
     };
-    if (editing) {
-      await update(editing.id, data);
-    } else {
-      await add(data);
-    }
+    if (editing) await update(editing.id, data);
+    else await add(data);
     setOpen(false);
   };
 
   const exportarExcel = () => {
     const dados = epis.map(e => ({
-      "Nome": e.nome,
-      "CA": e.ca || "",
-      "Categoria": e.categoria || "",
-      "Fabricante": e.fabricante || "",
-      "Validade CA": e.validade || "",
+      "Nome": e.nome, "CA": e.ca || "", "Categoria": e.categoria || "",
+      "Fabricante": e.fabricante || "", "Validade CA": e.validade || "",
       "Aprovado Para": e.aprovado_para || "",
       "Valor Unitário (R$)": e.valor ? Number(e.valor).toFixed(2) : "0.00",
-      "Estoque Atual": e.estoque,
-      "Estoque Mínimo": e.estoque_minimo,
+      "Estoque Atual": e.estoque, "Estoque Mínimo": e.estoque_minimo,
       "Valor Total Estoque (R$)": ((e.valor || 0) * e.estoque).toFixed(2),
       "Status": e.estoque <= e.estoque_minimo ? "BAIXO" : "OK",
     }));
-
     const ws = XLSX.utils.json_to_sheet(dados);
-    const colWidths = [
-      { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 12 },
-      { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 8 },
-    ];
-    ws["!cols"] = colWidths;
-
+    ws["!cols"] = [{ wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 8 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Estoque EPIs");
     XLSX.writeFile(wb, `Relatorio_Estoque_EPIs_${new Date().toISOString().split("T")[0]}.xlsx`);
@@ -138,67 +112,110 @@ export default function EPIs() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">EPIs</h1>
-          <p className="text-muted-foreground text-sm mt-1">Gerenciar equipamentos de proteção</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">EPIs</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar equipamentos de proteção</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0}>
-            <Download className="w-4 h-4 mr-2" />Exportar Excel
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
+            <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
           </Button>
-          <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo EPI</Button>
+          <Button onClick={openNew} className="flex-1 sm:flex-none text-xs sm:text-sm">
+            <Plus className="w-4 h-4 mr-1 sm:mr-2" />Novo EPI
+          </Button>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>CA</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Fabricante</TableHead>
-                  <TableHead>Validade</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="text-right">Estoque</TableHead>
-                  <TableHead className="w-24"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {epis.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
-                ) : epis.map(e => (
-                  <TableRow key={e.id}>
-                    <TableCell className="font-medium">{e.nome}</TableCell>
-                    <TableCell className="font-mono text-xs">{e.ca || "—"}</TableCell>
-                    <TableCell><Badge variant="secondary">{e.categoria || "—"}</Badge></TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{e.fabricante || "—"}</TableCell>
-                    <TableCell>{e.validade || "—"}</TableCell>
-                    <TableCell className="text-right font-mono text-xs">
-                      {e.valor ? `R$ ${Number(e.valor).toFixed(2)}` : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className={e.estoque <= e.estoque_minimo ? "text-destructive font-semibold" : ""}>{e.estoque}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 justify-end">
-                        <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+      {loading ? (
+        <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+      ) : (
+        <>
+          {/* Mobile card layout */}
+          <div className="space-y-3 lg:hidden">
+            {epis.length === 0 ? (
+              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nenhum EPI cadastrado</CardContent></Card>
+            ) : epis.map(e => (
+              <Card key={e.id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${e.estoque <= e.estoque_minimo ? "bg-destructive/10" : "bg-primary/10"}`}>
+                        <Package className={`w-4 h-4 ${e.estoque <= e.estoque_minimo ? "text-destructive" : "text-primary"}`} />
                       </div>
-                    </TableCell>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{e.nome}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {e.ca && <span className="text-xs font-mono text-muted-foreground">CA: {e.ca}</span>}
+                          {e.categoria && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{e.categoria}</Badge>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <div className="flex gap-3">
+                      <div>
+                        <span className="text-muted-foreground">Estoque: </span>
+                        <span className={`font-mono font-semibold ${e.estoque <= e.estoque_minimo ? "text-destructive" : ""}`}>{e.estoque}</span>
+                      </div>
+                      {e.valor ? <div><span className="text-muted-foreground">Valor: </span><span className="font-mono">R$ {Number(e.valor).toFixed(2)}</span></div> : null}
+                    </div>
+                    {e.validade && <span className="text-muted-foreground font-mono">{e.validade}</span>}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <Card className="hidden lg:block">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>CA</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Fabricante</TableHead>
+                    <TableHead>Validade</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right">Estoque</TableHead>
+                    <TableHead className="w-24"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {epis.length === 0 ? (
+                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
+                  ) : epis.map(e => (
+                    <TableRow key={e.id}>
+                      <TableCell className="font-medium">{e.nome}</TableCell>
+                      <TableCell className="font-mono text-xs">{e.ca || "—"}</TableCell>
+                      <TableCell><Badge variant="secondary">{e.categoria || "—"}</Badge></TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{e.fabricante || "—"}</TableCell>
+                      <TableCell>{e.validade || "—"}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">{e.valor ? `R$ ${Number(e.valor).toFixed(2)}` : "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <span className={e.estoque <= e.estoque_minimo ? "text-destructive font-semibold" : ""}>{e.estoque}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 justify-end">
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -207,71 +224,23 @@ export default function EPIs() {
             <div>
               <Label>Nº do CA</Label>
               <div className="flex gap-2">
-                <Input
-                  value={form.ca}
-                  onChange={e => setForm({...form, ca: e.target.value})}
-                  placeholder="Ex: 37536"
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={consultarCA}
-                  disabled={consultando || !form.ca.trim()}
-                >
-                  {consultando ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
-                  <span className="ml-2">Consultar</span>
+                <Input value={form.ca} onChange={e => setForm({...form, ca: e.target.value})} placeholder="Ex: 37536" className="flex-1" />
+                <Button type="button" variant="secondary" onClick={consultarCA} disabled={consultando || !form.ca.trim()}>
+                  {consultando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  <span className="ml-2 hidden sm:inline">Consultar</span>
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Insira o CA e clique em Consultar para preencher automaticamente
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Insira o CA e clique em Consultar para preencher automaticamente</p>
             </div>
-
-            <div>
-              <Label>Nome</Label>
-              <Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Ex: Capacete de Segurança" />
-            </div>
-
+            <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Ex: Capacete de Segurança" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm({...form, categoria: e.target.value})} placeholder="Ex: Cabeça" /></div>
               <div><Label>Validade do CA</Label><Input type="date" value={form.validade} onChange={e => setForm({...form, validade: e.target.value})} /></div>
             </div>
-
-            <div>
-              <Label>Fabricante</Label>
-              <Input value={form.fabricante} onChange={e => setForm({...form, fabricante: e.target.value})} placeholder="Preenchido automaticamente pela consulta" />
-            </div>
-
-            <div>
-              <Label>Aprovado Para</Label>
-              <Textarea
-                value={form.aprovado_para}
-                onChange={e => setForm({...form, aprovado_para: e.target.value})}
-                placeholder="Proteção contra..."
-                rows={2}
-              />
-            </div>
-
-            <div>
-              <Label>Descrição</Label>
-              <Textarea
-                value={form.descricao}
-                onChange={e => setForm({...form, descricao: e.target.value})}
-                placeholder="Descrição técnica do EPI"
-                rows={3}
-              />
-            </div>
-
-            <div>
-              <Label>Valor Unitário (R$)</Label>
-              <Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({...form, valor: Number(e.target.value)})} placeholder="0.00" />
-            </div>
-
+            <div><Label>Fabricante</Label><Input value={form.fabricante} onChange={e => setForm({...form, fabricante: e.target.value})} placeholder="Preenchido automaticamente pela consulta" /></div>
+            <div><Label>Aprovado Para</Label><Textarea value={form.aprovado_para} onChange={e => setForm({...form, aprovado_para: e.target.value})} placeholder="Proteção contra..." rows={2} /></div>
+            <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Descrição técnica do EPI" rows={3} /></div>
+            <div><Label>Valor Unitário (R$)</Label><Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({...form, valor: Number(e.target.value)})} placeholder="0.00" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Estoque</Label><Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} /></div>
               <div><Label>Estoque Mín.</Label><Input type="number" value={form.estoque_minimo} onChange={e => setForm({...form, estoque_minimo: Number(e.target.value)})} /></div>
