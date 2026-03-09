@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const empty: Omit<Funcionario, "id"> = { nome: "", matricula: "", setor: "", cargo: "" };
+const empty: Omit<Funcionario, "id"> = { nome: "", matricula: "", setor: "", cargo: "", dataAdmissao: "" };
 
 export default function Funcionarios() {
   const [items, setItems] = useState(funcionarioStorage.getAll());
@@ -17,7 +17,7 @@ export default function Funcionarios() {
   const [form, setForm] = useState<Omit<Funcionario, "id">>(empty);
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const openEdit = (f: Funcionario) => { setEditing(f); setForm({ nome: f.nome, matricula: f.matricula, setor: f.setor, cargo: f.cargo }); setOpen(true); };
+  const openEdit = (f: Funcionario) => { setEditing(f); setForm({ nome: f.nome, matricula: f.matricula, setor: f.setor, cargo: f.cargo, dataAdmissao: f.dataAdmissao }); setOpen(true); };
 
   const handleSave = () => {
     if (!form.nome.trim()) return;
@@ -51,18 +51,20 @@ export default function Funcionarios() {
                 <TableHead>Matrícula</TableHead>
                 <TableHead>Setor</TableHead>
                 <TableHead>Cargo</TableHead>
+                <TableHead>Admissão</TableHead>
                 <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado</TableCell></TableRow>
               ) : items.map(f => (
                 <TableRow key={f.id}>
                   <TableCell className="font-medium">{f.nome}</TableCell>
                   <TableCell className="font-mono text-xs">{f.matricula}</TableCell>
                   <TableCell>{f.setor}</TableCell>
                   <TableCell>{f.cargo}</TableCell>
+                  <TableCell className="font-mono text-xs">{f.dataAdmissao || "—"}</TableCell>
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -81,7 +83,10 @@ export default function Funcionarios() {
           <DialogHeader><DialogTitle>{editing ? "Editar Funcionário" : "Novo Funcionário"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Nome completo" /></div>
-            <div><Label>Matrícula</Label><Input value={form.matricula} onChange={e => setForm({...form, matricula: e.target.value})} placeholder="Nº matrícula" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Matrícula</Label><Input value={form.matricula} onChange={e => setForm({...form, matricula: e.target.value})} placeholder="Nº matrícula" /></div>
+              <div><Label>Data Admissão</Label><Input type="date" value={form.dataAdmissao} onChange={e => setForm({...form, dataAdmissao: e.target.value})} /></div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({...form, setor: e.target.value})} placeholder="Ex: Produção" /></div>
               <div><Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" /></div>
