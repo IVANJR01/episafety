@@ -18,7 +18,7 @@ const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao
 
 export default function Funcionarios() {
   const { data: items, loading, add, update, remove } = useSupabaseCrud<Funcionario>("funcionarios", "created_at");
-  const { canEdit, canDelete } = usePermissions("cadastro_funcionarios");
+  const { canEdit, canCreate, canDelete } = usePermissions("cadastro_funcionarios");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Funcionario | null>(null);
   const [form, setForm] = useState(emptyForm);
