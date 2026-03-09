@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown } from "lucide-react";
 import logoEpiSafety from "@/assets/logo-episafety.png";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface NavItem {
   path: string;
