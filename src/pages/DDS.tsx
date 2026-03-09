@@ -46,6 +46,7 @@ interface Funcionario {
   matricula: string | null;
   setor: string | null;
   cargo: string | null;
+  cpf: string | null;
 }
 
 interface Empresa {
