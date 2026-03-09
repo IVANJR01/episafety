@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Building2, Save } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Building2, Save, Upload, X, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ export default function Empresas() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [existingId, setExistingId] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     nome: "",
     cnpj: "",
@@ -28,6 +31,7 @@ export default function Empresas() {
     if (data && data.length > 0) {
       const e = data[0];
       setExistingId(e.id);
+      setLogoUrl(e.logo_url || null);
       setForm({
         nome: e.nome || "",
         cnpj: e.cnpj || "",
@@ -38,13 +42,65 @@ export default function Empresas() {
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Selecione um arquivo de imagem", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const fileName = `logo-empresa-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("logos")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("logos")
+        .getPublicUrl(fileName);
+
+      const publicUrl = urlData.publicUrl;
+      setLogoUrl(publicUrl);
+
+      // Save logo_url to DB if empresa already exists
+      if (existingId) {
+        await (supabase.from as any)("empresa_config")
+          .update({ logo_url: publicUrl })
+          .eq("id", existingId);
+      }
+
+      toast({ title: "Logo enviada com sucesso!" });
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar logo", description: err.message, variant: "destructive" });
+    }
+    setUploading(false);
+  };
+
+  const handleRemoveLogo = async () => {
+    setLogoUrl(null);
+    if (existingId) {
+      await (supabase.from as any)("empresa_config")
+        .update({ logo_url: null })
+        .eq("id", existingId);
+    }
+    toast({ title: "Logo removida" });
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
+      const payload = { ...form, logo_url: logoUrl };
       if (existingId) {
-        await (supabase.from as any)("empresa_config").update(form).eq("id", existingId);
+        await (supabase.from as any)("empresa_config").update(payload).eq("id", existingId);
       } else {
-        const { data } = await (supabase.from as any)("empresa_config").insert(form).select("id").single();
+        const { data } = await (supabase.from as any)("empresa_config").insert(payload).select("id").single();
         if (data) setExistingId(data.id);
       }
       toast({ title: "Dados da empresa salvos com sucesso!" });
@@ -68,7 +124,54 @@ export default function Empresas() {
             Dados da Empresa
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Logo / Marca */}
+          <div className="space-y-2">
+            <Label>Logo / Marca da Empresa</Label>
+            <div className="flex items-center gap-4">
+              {logoUrl ? (
+                <div className="relative group">
+                  <img
+                    src={logoUrl}
+                    alt="Logo da empresa"
+                    className="w-24 h-24 object-contain rounded-lg border border-border bg-muted p-1"
+                  />
+                  <button
+                    onClick={handleRemoveLogo}
+                    className="absolute -top-2 -right-2 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Remover logo"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="w-24 h-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                  <Image className="w-8 h-8 text-muted-foreground/40" />
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {uploading ? "Enviando..." : logoUrl ? "Trocar Logo" : "Enviar Logo"}
+                </Button>
+                <p className="text-xs text-muted-foreground">PNG, JPG ou SVG. Recomendado: fundo transparente.</p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <Label>Nome da Empresa</Label>
