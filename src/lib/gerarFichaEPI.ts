@@ -24,6 +24,7 @@ interface EntregaItem {
   observacao: string | null;
   tipo: string;
   status: string;
+  data_devolucao: string | null;
 }
 
 interface FichaData {
