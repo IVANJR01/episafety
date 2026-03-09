@@ -166,7 +166,7 @@ function drawFooter(doc: jsPDF) {
 
 export function gerarFichaEPI(data: FichaData) {
   const doc = new jsPDF("l", "mm", "a4");
-  const colWidths = [22, 22, 14, 52, 16, 22, 22];
+  const colWidths = [28, 28, 16, 90, 22, 40, 43];
   const ROW_H = 18;
   const MAX_Y = PAGE_H - 30; // leave space for footer
 
