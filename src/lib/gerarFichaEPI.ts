@@ -285,11 +285,11 @@ export function gerarFichaEPI(data: FichaData) {
         doc.addImage(data.assinaturaColaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
       } catch (e) { /* ignore */ }
     }
-    // Use individual delivery date instead of single dataAssinatura
-    doc.setFontSize(5);
+    // Use individual delivery date+time
+    doc.setFontSize(4.5);
     doc.setTextColor(100);
-    const sigDate = formatDate(entrega.data);
-    doc.text(sigDate, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
+    const sigDateTime = formatDateTime(entrega.created_at);
+    doc.text(sigDateTime, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
     doc.setTextColor(0);
 
     y += ROW_H;
