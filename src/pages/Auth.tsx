@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logoEpiSafety from "@/assets/logo-episafety.png";
 import { supabase } from "@/integrations/supabase/client";
 import { HardHat } from "lucide-react";
 import { Button } from "@/components/ui/button";
