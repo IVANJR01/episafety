@@ -146,6 +146,9 @@ export default function EPIs() {
                     <TableCell><Badge variant="secondary">{e.categoria || "—"}</Badge></TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{e.fabricante || "—"}</TableCell>
                     <TableCell>{e.validade || "—"}</TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {e.valor ? `R$ ${Number(e.valor).toFixed(2)}` : "—"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <span className={e.estoque <= e.estoque_minimo ? "text-destructive font-semibold" : ""}>{e.estoque}</span>
                     </TableCell>
