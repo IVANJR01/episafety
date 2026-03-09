@@ -1,0 +1,1 @@
+ALTER TABLE public.entregas ADD COLUMN assinatura_colaborador text DEFAULT NULL;

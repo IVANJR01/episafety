@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
 import { gerarFichaEPI } from "@/lib/gerarFichaEPI";
 
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; }
 
@@ -24,7 +24,7 @@ const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
 
 export default function Entregas() {
-  const { data: entregas, loading, add, remove } = useSupabaseCrud<Entrega>("entregas", "created_at");
+  const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
@@ -126,13 +126,23 @@ export default function Entregas() {
     }
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
-    const entregaData = { ...form, status, observacao: form.observacao || null };
+    const entregaData = { ...form, status, observacao: form.observacao || null, empresa_id: empresaId };
 
-    await add(entregaData as any);
+    // Insert and get the ID back
+    const { data: inserted, error } = await (supabase.from as any)("entregas")
+      .insert(entregaData)
+      .select("id")
+      .single();
+
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+      return;
+    }
 
     setPendingEntrega({
       funcionario_id: form.funcionario_id,
       epi_id: form.epi_id,
+      entrega_id: inserted.id,
     });
 
     setOpen(false);
@@ -153,17 +163,12 @@ export default function Entregas() {
       return;
     }
 
-    const now = new Date();
-    const funcEntregas = entregas.filter(e => e.funcionario_id === pendingEntrega.funcionario_id);
+    // Save signature directly on the specific entrega row
+    await (supabase.from as any)("entregas")
+      .update({ assinatura_colaborador: assinaturaColaborador })
+      .eq("id", pendingEntrega.entrega_id);
 
-    await (supabase.from as any)("fichas_entrega").insert({
-      funcionario_id: pendingEntrega.funcionario_id,
-      assinatura_colaborador: assinaturaColaborador,
-      data_assinatura: now.toISOString(),
-      entrega_ids: funcEntregas.map(e => e.id),
-      empresa_id: empresaId,
-    });
-
+    await refetch();
     toast({ title: "Assinatura salva com sucesso!" });
     setSignOpen(false);
     setPendingEntrega(null);
@@ -186,16 +191,6 @@ export default function Entregas() {
 
     const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").limit(1);
     const emp = empresaData?.[0] || {};
-
-    const { data: fichaData } = await (supabase.from as any)("fichas_entrega")
-      .select("assinatura_colaborador, data_assinatura")
-      .eq("funcionario_id", fichaFuncId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const savedSignature = fichaData?.[0]?.assinatura_colaborador || null;
-    const savedDataAssinatura = fichaData?.[0]?.data_assinatura
-      ? new Date(fichaData[0].data_assinatura).toLocaleDateString("pt-BR") + " às " + new Date(fichaData[0].data_assinatura).toLocaleTimeString("pt-BR")
-      : null;
 
     const now = new Date();
 
@@ -225,10 +220,9 @@ export default function Entregas() {
           tipo: e.tipo,
           status: e.status,
           data_devolucao: dataDevolucao,
+          assinatura_colaborador: e.assinatura_colaborador || null,
         };
       }),
-      assinaturaColaborador: savedSignature,
-      dataAssinatura: savedDataAssinatura || `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`,
     });
 
     doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);
@@ -428,7 +422,7 @@ export default function Entregas() {
             <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={150} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); toast({ title: "Entrega registrada sem assinatura." }); }}>
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); refetch(); toast({ title: "Entrega registrada sem assinatura." }); }}>
               Pular
             </Button>
             <Button onClick={handleSaveSignature}>
