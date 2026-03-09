@@ -7,8 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
+type AuthMode = "login" | "signup" | "forgot";
+
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
@@ -20,7 +22,17 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast({
+          title: "E-mail enviado!",
+          description: "Verifique sua caixa de entrada para redefinir a senha.",
+        });
+        setMode("login");
+      } else if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
@@ -53,7 +65,7 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {mode === "signup" && (
               <div>
                 <Label>Nome</Label>
                 <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" required />
@@ -63,22 +75,47 @@ export default function Auth() {
               <Label>Email</Label>
               <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" required />
             </div>
-            <div>
-              <Label>Senha</Label>
-              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
-            </div>
+            {mode !== "forgot" && (
+              <div>
+                <Label>Senha</Label>
+                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+              </div>
+            )}
+            {mode === "login" && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setMode("forgot")}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Aguarde..." : isLogin ? "Entrar" : "Criar Conta"}
+              {loading
+                ? "Aguarde..."
+                : mode === "login"
+                ? "Entrar"
+                : mode === "signup"
+                ? "Criar Conta"
+                : "Enviar Link de Recuperação"}
             </Button>
           </form>
           <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-primary hover:underline"
-            >
-              {isLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
-            </button>
+            {mode === "forgot" ? (
+              <button type="button" onClick={() => setMode("login")} className="text-sm text-primary hover:underline">
+                Voltar ao login
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                className="text-sm text-primary hover:underline"
+              >
+                {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
