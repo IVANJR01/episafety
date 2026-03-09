@@ -154,14 +154,14 @@ export default function Dashboard() {
             <DollarSign className="w-4 h-4 text-primary" />
             Custo Mensal de EPIs
           </CardTitle>
-          <div className="flex flex-wrap gap-4 mt-2">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 mt-2">
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-              <span className="text-xs text-muted-foreground">Valor de Saída (Total):</span>
-              <span className="text-sm font-bold font-mono text-foreground">R$ {valorSaida.toFixed(2)}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Saída (Total):</span>
+              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorSaida.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-              <span className="text-xs text-muted-foreground">Valor do Estoque Atual:</span>
-              <span className="text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Estoque Atual:</span>
+              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
             </div>
           </div>
         </CardHeader>
