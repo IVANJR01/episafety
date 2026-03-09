@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -108,6 +109,34 @@ export default function EPIs() {
     setOpen(false);
   };
 
+  const exportarExcel = () => {
+    const dados = epis.map(e => ({
+      "Nome": e.nome,
+      "CA": e.ca || "",
+      "Categoria": e.categoria || "",
+      "Fabricante": e.fabricante || "",
+      "Validade CA": e.validade || "",
+      "Aprovado Para": e.aprovado_para || "",
+      "Valor Unitário (R$)": e.valor ? Number(e.valor).toFixed(2) : "0.00",
+      "Estoque Atual": e.estoque,
+      "Estoque Mínimo": e.estoque_minimo,
+      "Valor Total Estoque (R$)": ((e.valor || 0) * e.estoque).toFixed(2),
+      "Status": e.estoque <= e.estoque_minimo ? "BAIXO" : "OK",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const colWidths = [
+      { wch: 30 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 12 },
+      { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 8 },
+    ];
+    ws["!cols"] = colWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Estoque EPIs");
+    XLSX.writeFile(wb, `Relatorio_Estoque_EPIs_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast({ title: "Relatório exportado com sucesso!" });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -115,7 +144,12 @@ export default function EPIs() {
           <h1 className="text-2xl font-bold tracking-tight">EPIs</h1>
           <p className="text-muted-foreground text-sm mt-1">Gerenciar equipamentos de proteção</p>
         </div>
-        <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo EPI</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0}>
+            <Download className="w-4 h-4 mr-2" />Exportar Excel
+          </Button>
+          <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo EPI</Button>
+        </div>
       </div>
 
       <Card>
