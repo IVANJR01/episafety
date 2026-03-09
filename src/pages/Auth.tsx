@@ -1,6 +1,7 @@
 import { useState } from "react";
+import logoEpiSafety from "@/assets/logo-episafety.png";
 import { supabase } from "@/integrations/supabase/client";
-import { HardHat } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,11 +56,9 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto p-3 rounded-xl bg-primary w-fit">
-            <HardHat className="w-8 h-8 text-primary-foreground" />
-          </div>
+          <img src={logoEpiSafety} alt="EPISafety" className="mx-auto w-16 h-16 object-contain" />
           <div>
-            <CardTitle className="text-2xl">EPI Control</CardTitle>
+            <CardTitle className="text-2xl">EPISafety</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">Segurança do Trabalho</p>
           </div>
         </CardHeader>
