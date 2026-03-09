@@ -101,9 +101,6 @@ export default function Entregas() {
     await (supabase.from as any)("fichas_entrega").insert({
       funcionario_id: fichaFuncId,
       assinatura_colaborador: assinaturaColaborador,
-      assinatura_responsavel: assinaturaResponsavel,
-      responsavel_nome: responsavelNome,
-      responsavel_cargo: responsavelCargo,
       data_assinatura: now.toISOString(),
       entrega_ids: funcEntregas.map(e => e.id),
     });
