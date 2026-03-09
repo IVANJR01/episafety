@@ -91,20 +91,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleAuthCheck = useCallback(async (currentUser: User | null) => {
     if (currentUser) {
       try {
-        const [authResult, profileResult, superAdmin] = await Promise.all([
-          checkAuthorized(currentUser.email),
-          loadProfile(currentUser.id),
-          checkSuperAdmin(currentUser.id),
-        ]);
-        setAuthorized(authResult.authorized);
-        setModulosPermitidos(authResult.modulos);
-        setEmpresaId(profileResult.empresaId);
-        setIsSuperAdmin(superAdmin);
+        if (!navigator.onLine) {
+          // Offline: use cached auth data
+          const cached = loadAuthCache();
+          if (cached) {
+            setAuthorized(cached.authorized);
+            setModulosPermitidos(cached.modulos);
+            setEmpresaId(cached.empresaId);
+            setIsSuperAdmin(cached.isSuperAdmin);
+          } else {
+            // No cache, assume authorized to not block user
+            setAuthorized(true);
+            setModulosPermitidos([]);
+            setEmpresaId(null);
+            setIsSuperAdmin(false);
+          }
+        } else {
+          const [authResult, profileResult, superAdmin] = await Promise.all([
+            checkAuthorized(currentUser.email),
+            loadProfile(currentUser.id),
+            checkSuperAdmin(currentUser.id),
+          ]);
+          setAuthorized(authResult.authorized);
+          setModulosPermitidos(authResult.modulos);
+          setEmpresaId(profileResult.empresaId);
+          setIsSuperAdmin(superAdmin);
+          // Save to cache for offline use
+          saveAuthCache({
+            authorized: authResult.authorized,
+            modulos: authResult.modulos,
+            empresaId: profileResult.empresaId,
+            isSuperAdmin: superAdmin,
+          });
+        }
       } catch {
-        setAuthorized(true);
-        setModulosPermitidos([]);
-        setEmpresaId(null);
-        setIsSuperAdmin(false);
+        // Network error - try cache
+        const cached = loadAuthCache();
+        if (cached) {
+          setAuthorized(cached.authorized);
+          setModulosPermitidos(cached.modulos);
+          setEmpresaId(cached.empresaId);
+          setIsSuperAdmin(cached.isSuperAdmin);
+        } else {
+          setAuthorized(true);
+          setModulosPermitidos([]);
+          setEmpresaId(null);
+          setIsSuperAdmin(false);
+        }
       }
     } else {
       setAuthorized(true);
