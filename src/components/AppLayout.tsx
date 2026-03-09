@@ -7,12 +7,12 @@ const mainNavItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/epis", label: "Controle de EPI", icon: Package },
   { path: "/entregas", label: "Entregas", icon: ClipboardList },
-  { path: "/funcionarios", label: "Funcionários", icon: Users },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3 },
 ];
 
 const cadastroItems = [
   { path: "/cadastro/empresas", label: "Empresas", icon: Building2 },
+  { path: "/cadastro/funcionarios", label: "Funcionários", icon: Users },
   { path: "/cadastro/usuarios", label: "Usuários Liberados", icon: Shield },
 ];
 
