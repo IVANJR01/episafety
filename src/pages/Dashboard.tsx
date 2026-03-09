@@ -151,33 +151,43 @@ export default function Dashboard() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-primary" />
-            Custo Mensal de EPIs
+            Custo Mensal de EPIs — Saída vs Estoque
           </CardTitle>
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 mt-2">
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+              <div className="w-3 h-3 rounded-sm" style={{ background: 'hsl(var(--primary))' }} />
               <span className="text-[10px] sm:text-xs text-muted-foreground">Saída (Total):</span>
               <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorSaida.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+              <div className="w-3 h-3 rounded-sm" style={{ background: 'hsl(142, 71%, 45%)' }} />
               <span className="text-[10px] sm:text-xs text-muted-foreground">Estoque Atual:</span>
               <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {custoMensal.length === 0 ? (
+          {custoMensalData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Nenhum dado de custo disponível</p>
           ) : (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={custoMensal}>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={custoMensalData} barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="mes" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => `R$${v}`} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={v => `R$${v}`} />
                 <Tooltip
-                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Custo"]}
+                  formatter={(value: number, name: string) => [
+                    `R$ ${value.toFixed(2)}`,
+                    name === "saida" ? "Saída Mensal" : "Estoque Atual"
+                  ]}
                   contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                 />
-                <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Legend
+                  formatter={(value: string) => value === "saida" ? "Saída Mensal" : "Estoque Atual"}
+                  wrapperStyle={{ fontSize: '12px' }}
+                />
+                <Bar dataKey="saida" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="estoque" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
