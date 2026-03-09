@@ -209,18 +209,22 @@ export default function Dashboard() {
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Nenhum EPI com valor em estoque</p>
           ) : (
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 360 : 320}>
               <PieChart>
                 <Pie
                   data={estoqueChartData}
                   dataKey="valor"
                   nameKey="nome"
                   cx="50%"
-                  cy="45%"
-                  innerRadius={50}
-                  outerRadius={90}
+                  cy={window.innerWidth < 640 ? "40%" : "50%"}
+                  innerRadius={window.innerWidth < 640 ? 40 : window.innerWidth < 1024 ? 55 : 65}
+                  outerRadius={window.innerWidth < 640 ? 70 : window.innerWidth < 1024 ? 90 : 110}
                   paddingAngle={2}
-                  label={false}
+                  label={window.innerWidth >= 1024
+                    ? ({ nome, percent }: { nome: string; percent: number }) => `${nome} (${(percent * 100).toFixed(0)}%)`
+                    : false
+                  }
+                  labelLine={window.innerWidth >= 1024 ? { stroke: 'hsl(var(--muted-foreground))' } : false}
                 >
                   {estoqueChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -234,8 +238,15 @@ export default function Dashboard() {
                   layout="horizontal"
                   verticalAlign="bottom"
                   align="center"
-                  formatter={(value: string) => value}
-                  wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                  formatter={(value: string, entry: any) => {
+                    const item = estoqueChartData.find(d => d.nome === value);
+                    const total = estoqueChartData.reduce((s, d) => s + d.valor, 0);
+                    const pct = item && total > 0 ? ((item.valor / total) * 100).toFixed(0) : "0";
+                    return window.innerWidth < 640
+                      ? `${value} (${pct}%)`
+                      : `${value} — R$ ${item?.valor.toFixed(2)} (${pct}%)`;
+                  }}
+                  wrapperStyle={{ fontSize: window.innerWidth < 640 ? '10px' : '12px', paddingTop: '8px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
