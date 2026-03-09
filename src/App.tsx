@@ -10,7 +10,8 @@ import EPIs from "@/pages/EPIs";
 import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
 import Relatorios from "@/pages/Relatorios";
-import Configuracoes from "@/pages/Configuracoes";
+import Empresas from "@/pages/Empresas";
+import UsuariosLiberados from "@/pages/UsuariosLiberados";
 import Auth from "@/pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -58,7 +59,10 @@ function ProtectedRoutes() {
         <Route path="/funcionarios" element={<Funcionarios />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
-        <Route path="/configuracoes" element={<Configuracoes />} />
+        <Route path="/cadastro/empresas" element={<Empresas />} />
+        <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
+        {/* Redirect old route */}
+        <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
