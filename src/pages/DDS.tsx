@@ -226,7 +226,7 @@ export default function DDS() {
         cachedDDS.unshift({ ...ddsPayload2, created_by: null, created_at: new Date().toISOString() } as DDS);
         setCachedData("dds", cachedDDS);
 
-        toast({ title: "Conexão perdida", description: "DDS salvo offline. Será sincronizado automaticamente." });
+        toast({ title: "Conexão perdida", description: "Lista de Presença salva offline. Será sincronizada automaticamente." });
         resetForm();
         setDialogOpen(false);
         refetch();
