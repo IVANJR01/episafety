@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { canAccessModule } from "@/lib/permissions";
 import AppLayout from "@/components/AppLayout";
 import OfflineBanner from "@/components/OfflineBanner";
+import InstallBanner from "@/components/InstallBanner";
 import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import Funcionarios from "@/pages/Funcionarios";
