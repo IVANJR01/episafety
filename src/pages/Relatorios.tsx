@@ -20,8 +20,8 @@ export default function Relatorios() {
 
   const filtered = entregas.filter(e => {
     const func = funcionarios.find(f => f.id === e.funcionarioId);
-    if (filtroFunc && e.funcionarioId !== filtroFunc) return false;
-    if (filtroSetor && func?.setor !== filtroSetor) return false;
+    if (filtroFunc && filtroFunc !== "all" && e.funcionarioId !== filtroFunc) return false;
+    if (filtroSetor && filtroSetor !== "all" && func?.setor !== filtroSetor) return false;
     if (dataInicio && e.data < dataInicio) return false;
     if (dataFim && e.data > dataFim) return false;
     return true;
