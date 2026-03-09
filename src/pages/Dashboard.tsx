@@ -125,22 +125,22 @@ export default function Dashboard() {
   }));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-sm mt-1">Visão geral da Segurança do Trabalho</p>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Visão geral da Segurança do Trabalho</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {stats.map(s => (
           <Card key={s.label}>
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className={`p-3 rounded-xl bg-muted ${s.color}`}>
-                <s.icon className="w-5 h-5" />
+            <CardContent className="flex items-center gap-3 p-3 sm:p-5">
+              <div className={`p-2 sm:p-3 rounded-xl bg-muted ${s.color}`}>
+                <s.icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
+                <p className="text-lg sm:text-2xl font-bold">{s.value}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{s.label}</p>
               </div>
             </CardContent>
           </Card>
@@ -154,14 +154,14 @@ export default function Dashboard() {
             <DollarSign className="w-4 h-4 text-primary" />
             Custo Mensal de EPIs
           </CardTitle>
-          <div className="flex flex-wrap gap-4 mt-2">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 mt-2">
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-              <span className="text-xs text-muted-foreground">Valor de Saída (Total):</span>
-              <span className="text-sm font-bold font-mono text-foreground">R$ {valorSaida.toFixed(2)}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Saída (Total):</span>
+              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorSaida.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-              <span className="text-xs text-muted-foreground">Valor do Estoque Atual:</span>
-              <span className="text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Estoque Atual:</span>
+              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
             </div>
           </div>
         </CardHeader>
