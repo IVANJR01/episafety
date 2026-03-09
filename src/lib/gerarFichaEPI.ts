@@ -18,6 +18,7 @@ interface FuncionarioData {
 
 interface EntregaItem {
   data: string;
+  created_at: string;
   quantidade: number;
   epi_nome: string;
   epi_ca: string | null;
@@ -49,6 +50,16 @@ function formatDate(dateStr: string): string {
   const parts = dateStr.split("-");
   if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
   return dateStr;
+}
+
+function formatDateTime(isoStr: string): string {
+  if (!isoStr) return "—";
+  try {
+    const d = new Date(isoStr);
+    return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  } catch {
+    return formatDate(isoStr);
+  }
 }
 
 function drawPageHeader(doc: jsPDF, data: FichaData, pageNum: number, totalPages: number) {
@@ -168,8 +179,8 @@ function drawFooter(doc: jsPDF) {
 export function gerarFichaEPI(data: FichaData) {
   const doc = new jsPDF("l", "mm", "a4");
   // Landscape A4: 297mm wide, margins 15 each side = 267mm content
-  // Entrega(28) + Devolução(28) + Qtde(18) + Equipamento(80) + CA nº(25) + Motivo(35) + Assinatura(53) = 267
-  const colWidths = [28, 28, 18, 80, 25, 35, 53];
+  // Entrega(32) + Devolução(24) + Qtde(16) + Equipamento(78) + CA nº(24) + Motivo(33) + Assinatura(60) = 267
+  const colWidths = [32, 24, 16, 78, 24, 33, 60];
   const ROW_H = 18;
   const MAX_Y = PAGE_H - 30;
 
@@ -208,8 +219,10 @@ export function gerarFichaEPI(data: FichaData) {
 
     x = MARGIN;
 
-    // Entrega date
-    doc.text(formatDate(entrega.data), x + colWidths[0] / 2, y + ROW_H / 2 + 1, { align: "center" });
+    // Entrega date+time
+    const entregaDateTime = formatDateTime(entrega.created_at);
+    const entregaLines = doc.splitTextToSize(entregaDateTime, colWidths[0] - 4);
+    doc.text(entregaLines, x + colWidths[0] / 2, y + ROW_H / 2 - (entregaLines.length > 1 ? 2 : 0), { align: "center" });
     x += colWidths[0];
 
     // Devolução date
@@ -272,11 +285,11 @@ export function gerarFichaEPI(data: FichaData) {
         doc.addImage(data.assinaturaColaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
       } catch (e) { /* ignore */ }
     }
-    // Use individual delivery date instead of single dataAssinatura
-    doc.setFontSize(5);
+    // Use individual delivery date+time
+    doc.setFontSize(4.5);
     doc.setTextColor(100);
-    const sigDate = formatDate(entrega.data);
-    doc.text(sigDate, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
+    const sigDateTime = formatDateTime(entrega.created_at);
+    doc.text(sigDateTime, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
     doc.setTextColor(0);
 
     y += ROW_H;

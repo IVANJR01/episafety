@@ -216,7 +216,7 @@ export default function Entregas() {
         }
         const epiObj = epis.find(ep => ep.id === e.epi_id);
         return {
-          data: e.data, quantidade: e.quantidade,
+          data: e.data, created_at: e.created_at, quantidade: e.quantidade,
           epi_nome: epiObj?.nome || "—",
           epi_ca: epiCa,
           epi_descricao: epiObj?.descricao || null,
