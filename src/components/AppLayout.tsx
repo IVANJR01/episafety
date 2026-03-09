@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { HardHat, LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, Search, FileText, GraduationCap, Stethoscope, LogOut } from "lucide-react";
+import { HardHat, LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, Search, FileText, GraduationCap, Stethoscope, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { path: "/entregas", label: "Entregas", icon: ClipboardList },
   { path: "/funcionarios", label: "Funcionários", icon: Users },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  { path: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
