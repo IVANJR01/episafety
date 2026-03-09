@@ -153,55 +153,20 @@ export default function Entregas() {
     setSignOpen(true);
   };
 
-  // Step 2: After signature, generate ficha PDF
-  const handleSignAndGenerate = async () => {
+  // Step 2: Save signature only (no PDF generation)
+  const handleSaveSignature = async () => {
     if (!pendingEntrega) return;
 
-    const func = funcionarios.find(f => f.id === pendingEntrega.funcionario_id);
-    if (!func) return;
+    const assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+    if (!assinaturaColaborador) {
+      toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
+      return;
+    }
 
+    const now = new Date();
     const funcEntregas = entregas.filter(e => e.funcionario_id === pendingEntrega.funcionario_id);
 
-    // Auto-load empresa data
-    const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").limit(1);
-    const emp = empresaData?.[0] || {};
-
-    const assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
-    const now = new Date();
-    const dataAssinatura = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`;
-
-    const doc = gerarFichaEPI({
-      empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: null },
-      funcionario: { nome: func.nome, cargo: func.cargo, setor: func.setor, cpf: func.cpf, matricula: func.matricula, data_admissao: func.data_admissao },
-      entregas: funcEntregas.map(e => {
-        const epiCa = epis.find(ep => ep.id === e.epi_id)?.ca || null;
-        let dataDevolucao: string | null = null;
-        if ((e.status === "substituido" || e.status === "devolvido") && epiCa) {
-          // Find the newer entry with same CA that caused the substitution
-          const newer = funcEntregas.find(other =>
-            other.id !== e.id &&
-            new Date(other.created_at) > new Date(e.created_at) &&
-            (other.tipo === "substituicao" || other.tipo === "devolucao") &&
-            epis.find(ep => ep.id === other.epi_id)?.ca === epiCa
-          );
-          dataDevolucao = newer?.data || e.data;
-        }
-        return {
-          data: e.data,
-          quantidade: e.quantidade,
-          epi_nome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
-          epi_ca: epiCa,
-          observacao: e.observacao,
-          tipo: e.tipo,
-          status: e.status,
-          data_devolucao: dataDevolucao,
-        };
-      }),
-      assinaturaColaborador,
-      dataAssinatura,
-    });
-
-    // Save ficha record
+    // Save signature record
     await (supabase.from as any)("fichas_entrega").insert({
       funcionario_id: pendingEntrega.funcionario_id,
       assinatura_colaborador: assinaturaColaborador,
@@ -209,8 +174,7 @@ export default function Entregas() {
       entrega_ids: funcEntregas.map(e => e.id),
     });
 
-    doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);
-    toast({ title: "Entrega registrada e ficha gerada!", description: "O PDF foi baixado." });
+    toast({ title: "Assinatura salva com sucesso!" });
     setSignOpen(false);
     setPendingEntrega(null);
   };
