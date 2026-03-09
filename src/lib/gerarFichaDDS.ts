@@ -107,12 +107,12 @@ function drawHeader(doc: jsPDF, data: DDSData, pageNum: number, totalPages: numb
 
   x = MARGIN + col1W * 2 + col2W * 2;
   const remainW = CONTENT_W - (col1W * 2 + col2W * 2);
-  const labelW = remainW * 0.35;
-  const valueW = remainW * 0.65;
+  const labelW = remainW * 0.4;
+  const valueW = remainW * 0.6;
   doc.setFillColor(230, 230, 230);
   doc.rect(x, y, labelW, infoRowH, "FD");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.text("PALESTRANTE:", x + 2, y + 5.5);
 
   doc.rect(x + labelW, y, valueW, infoRowH, "S");
