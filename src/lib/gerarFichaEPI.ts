@@ -22,6 +22,8 @@ interface EntregaItem {
   epi_nome: string;
   epi_ca: string | null;
   observacao: string | null;
+  tipo: string;
+  status: string;
 }
 
 interface FichaData {
