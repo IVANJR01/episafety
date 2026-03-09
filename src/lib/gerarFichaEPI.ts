@@ -219,8 +219,10 @@ export function gerarFichaEPI(data: FichaData) {
 
     x = MARGIN;
 
-    // Entrega date
-    doc.text(formatDate(entrega.data), x + colWidths[0] / 2, y + ROW_H / 2 + 1, { align: "center" });
+    // Entrega date+time
+    const entregaDateTime = formatDateTime(entrega.created_at);
+    const entregaLines = doc.splitTextToSize(entregaDateTime, colWidths[0] - 4);
+    doc.text(entregaLines, x + colWidths[0] / 2, y + ROW_H / 2 - (entregaLines.length > 1 ? 2 : 0), { align: "center" });
     x += colWidths[0];
 
     // Devolução date
