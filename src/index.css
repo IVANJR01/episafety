@@ -58,8 +58,12 @@
     @apply border-border;
   }
   html {
-    /* Fallback for Capacitor iOS where env() may not work */
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: max(env(safe-area-inset-top, 0px), 44px);
+  }
+  @media (min-width: 1024px) {
+    html {
+      padding-top: 0px;
+    }
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
