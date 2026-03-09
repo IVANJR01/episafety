@@ -192,16 +192,6 @@ export default function Entregas() {
     const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").limit(1);
     const emp = empresaData?.[0] || {};
 
-    const { data: fichaData } = await (supabase.from as any)("fichas_entrega")
-      .select("assinatura_colaborador, data_assinatura")
-      .eq("funcionario_id", fichaFuncId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const savedSignature = fichaData?.[0]?.assinatura_colaborador || null;
-    const savedDataAssinatura = fichaData?.[0]?.data_assinatura
-      ? new Date(fichaData[0].data_assinatura).toLocaleDateString("pt-BR") + " às " + new Date(fichaData[0].data_assinatura).toLocaleTimeString("pt-BR")
-      : null;
-
     const now = new Date();
 
     const doc = gerarFichaEPI({
@@ -230,10 +220,9 @@ export default function Entregas() {
           tipo: e.tipo,
           status: e.status,
           data_devolucao: dataDevolucao,
+          assinatura_colaborador: e.assinatura_colaborador || null,
         };
       }),
-      assinaturaColaborador: savedSignature,
-      dataAssinatura: savedDataAssinatura || `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`,
     });
 
     doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);
