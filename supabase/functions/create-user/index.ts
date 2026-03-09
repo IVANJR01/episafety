@@ -13,7 +13,6 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     // Verify the caller is authenticated
     const authHeader = req.headers.get("Authorization");
@@ -28,13 +27,12 @@ Deno.serve(async (req) => {
     // Extract the token
     const token = authHeader.replace("Bearer ", "");
     
-    // Verify caller using supabase auth
-    const verifyClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
+    // Use service role client to verify the JWT token
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     
-    const { data: { user: caller }, error: authError } = await verifyClient.auth.getUser(token);
+    const { data: { user: caller }, error: authError } = await adminClient.auth.getUser(token);
     if (authError || !caller) {
       console.error("Auth verification failed:", authError?.message);
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
