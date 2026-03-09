@@ -19,6 +19,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import AdminEmpresas from "@/pages/AdminEmpresas";
 import Install from "@/pages/Install";
 import Privacidade from "@/pages/Privacidade";
+import DDS from "@/pages/DDS";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -93,6 +94,7 @@ function ProtectedRoute() {
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
+        <Route path="/dds" element={<DDS />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
         <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />

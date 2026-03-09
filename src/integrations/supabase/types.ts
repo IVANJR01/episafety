@@ -14,6 +14,105 @@ export type Database = {
   }
   public: {
     Tables: {
+      dds: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: string
+          duracao: string | null
+          empresa_id: string | null
+          id: string
+          local: string | null
+          observacao: string | null
+          palestrante: string | null
+          tema: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          duracao?: string | null
+          empresa_id?: string | null
+          id?: string
+          local?: string | null
+          observacao?: string | null
+          palestrante?: string | null
+          tema: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          duracao?: string | null
+          empresa_id?: string | null
+          id?: string
+          local?: string | null
+          observacao?: string | null
+          palestrante?: string | null
+          tema?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dds_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dds_participantes: {
+        Row: {
+          assinatura: string | null
+          created_at: string
+          dds_id: string
+          empresa_id: string | null
+          funcionario_id: string
+          id: string
+        }
+        Insert: {
+          assinatura?: string | null
+          created_at?: string
+          dds_id: string
+          empresa_id?: string | null
+          funcionario_id: string
+          id?: string
+        }
+        Update: {
+          assinatura?: string | null
+          created_at?: string
+          dds_id?: string
+          empresa_id?: string | null
+          funcionario_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dds_participantes_dds_id_fkey"
+            columns: ["dds_id"]
+            isOneToOne: false
+            referencedRelation: "dds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dds_participantes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dds_participantes_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresa_config: {
         Row: {
           cnpj: string | null
