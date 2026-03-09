@@ -14,6 +14,7 @@ import Empresas from "@/pages/Empresas";
 import UsuariosLiberados from "@/pages/UsuariosLiberados";
 import Auth from "@/pages/Auth";
 import ResetPassword from "@/pages/ResetPassword";
+import AdminEmpresas from "@/pages/AdminEmpresas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
