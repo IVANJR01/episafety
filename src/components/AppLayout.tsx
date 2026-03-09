@@ -8,7 +8,6 @@ const navItems = [
   { path: "/epis", label: "Controle de EPI", icon: Package },
   { path: "/entregas", label: "Entregas", icon: ClipboardList },
   { path: "/funcionarios", label: "Funcionários", icon: Users },
-  { path: "/inspecoes", label: "Inspeções", icon: Search },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3 },
 ];
 
