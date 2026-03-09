@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, AlertTriangle } from "lucide-react";
-import { exameStorage, funcionarioStorage, Exame } from "@/lib/storage";
+import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+
+interface Exame {
+  id: string; funcionario_id: string; tipo: string; data: string;
+  data_vencimento: string | null; resultado: string; medico: string | null; observacao: string | null;
+}
+interface Funcionario { id: string; nome: string; }
 
 const tipoLabels: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", demissional: "Demissional",
@@ -23,43 +29,35 @@ const resultadoConfig: Record<string, { label: string; variant: "default" | "out
   pendente: { label: "Pendente", variant: "outline" },
 };
 
-const emptyForm = (): Omit<Exame, "id"> => ({
-  funcionarioId: "", tipo: "periodico", data: new Date().toISOString().split("T")[0],
-  dataVencimento: "", resultado: "pendente", medico: "", observacao: "",
-});
-
 export default function PCMSO() {
-  const [items, setItems] = useState(exameStorage.getAll());
+  const { data: items, loading, add, update, remove } = useSupabaseCrud<Exame>("exames", "created_at");
+  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Exame | null>(null);
-  const [form, setForm] = useState<Omit<Exame, "id">>(emptyForm());
+  const [form, setForm] = useState({ funcionario_id: "", tipo: "periodico", data: new Date().toISOString().split("T")[0], data_vencimento: "", resultado: "pendente", medico: "", observacao: "" });
 
-  const funcionarios = funcionarioStorage.getAll();
-
-  const openNew = () => { setEditing(null); setForm(emptyForm()); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ funcionario_id: "", tipo: "periodico", data: new Date().toISOString().split("T")[0], data_vencimento: "", resultado: "pendente", medico: "", observacao: "" }); setOpen(true); };
   const openEdit = (e: Exame) => {
     setEditing(e);
-    setForm({ funcionarioId: e.funcionarioId, tipo: e.tipo, data: e.data, dataVencimento: e.dataVencimento, resultado: e.resultado, medico: e.medico, observacao: e.observacao });
+    setForm({ funcionario_id: e.funcionario_id, tipo: e.tipo, data: e.data, data_vencimento: e.data_vencimento || "", resultado: e.resultado, medico: e.medico || "", observacao: e.observacao || "" });
     setOpen(true);
   };
 
-  const handleSave = () => {
-    if (!form.funcionarioId) return;
-    if (editing) { exameStorage.update({ ...editing, ...form }); }
-    else { exameStorage.add({ ...form, id: crypto.randomUUID() }); }
-    setItems(exameStorage.getAll());
+  const handleSave = async () => {
+    if (!form.funcionario_id) return;
+    const data = { funcionario_id: form.funcionario_id, tipo: form.tipo, data: form.data, data_vencimento: form.data_vencimento || null, resultado: form.resultado, medico: form.medico || null, observacao: form.observacao || null };
+    if (editing) await update(editing.id, data);
+    else await add(data);
     setOpen(false);
   };
 
-  const handleDelete = (id: string) => { exameStorage.delete(id); setItems(exameStorage.getAll()); };
   const getFuncName = (id: string) => funcionarios.find(f => f.id === id)?.nome || "—";
 
-  // Exames vencendo em 30 dias
   const hoje = new Date();
   const em30dias = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
   const vencendo = items.filter(e => {
-    if (!e.dataVencimento) return false;
-    const venc = new Date(e.dataVencimento);
+    if (!e.data_vencimento) return false;
+    const venc = new Date(e.data_vencimento);
     return venc <= em30dias && venc >= hoje;
   });
 
@@ -83,8 +81,8 @@ export default function PCMSO() {
             <div className="space-y-1">
               {vencendo.map(e => (
                 <div key={e.id} className="flex justify-between text-sm p-1.5 rounded bg-warning/5">
-                  <span>{getFuncName(e.funcionarioId)} — {tipoLabels[e.tipo]}</span>
-                  <span className="text-warning font-mono text-xs">{e.dataVencimento}</span>
+                  <span>{getFuncName(e.funcionario_id)} — {tipoLabels[e.tipo] || e.tipo}</span>
+                  <span className="text-warning font-mono text-xs">{e.data_vencimento}</span>
                 </div>
               ))}
             </div>
@@ -94,39 +92,43 @@ export default function PCMSO() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Funcionário</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Vencimento</TableHead>
-                <TableHead>Resultado</TableHead>
-                <TableHead>Médico</TableHead>
-                <TableHead className="w-24"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
-              ) : items.map(e => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-medium">{getFuncName(e.funcionarioId)}</TableCell>
-                  <TableCell><Badge variant="secondary">{tipoLabels[e.tipo]}</Badge></TableCell>
-                  <TableCell className="font-mono text-xs">{e.data}</TableCell>
-                  <TableCell className="font-mono text-xs">{e.dataVencimento || "—"}</TableCell>
-                  <TableCell><Badge variant={resultadoConfig[e.resultado].variant}>{resultadoConfig[e.resultado].label}</Badge></TableCell>
-                  <TableCell>{e.medico}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 justify-end">
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                    </div>
-                  </TableCell>
+          {loading ? (
+            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Funcionário</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Resultado</TableHead>
+                  <TableHead>Médico</TableHead>
+                  <TableHead className="w-24"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {items.length === 0 ? (
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                ) : items.map(e => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-medium">{getFuncName(e.funcionario_id)}</TableCell>
+                    <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
+                    <TableCell className="font-mono text-xs">{e.data}</TableCell>
+                    <TableCell className="font-mono text-xs">{e.data_vencimento || "—"}</TableCell>
+                    <TableCell><Badge variant={resultadoConfig[e.resultado]?.variant || "outline"}>{resultadoConfig[e.resultado]?.label || e.resultado}</Badge></TableCell>
+                    <TableCell>{e.medico || "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 justify-end">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -136,7 +138,7 @@ export default function PCMSO() {
           <div className="grid gap-4 py-2">
             <div>
               <Label>Funcionário</Label>
-              <Select value={form.funcionarioId} onValueChange={v => setForm({...form, funcionarioId: v})}>
+              <Select value={form.funcionario_id} onValueChange={v => setForm({...form, funcionario_id: v})}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>{funcionarios.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent>
               </Select>
@@ -144,7 +146,7 @@ export default function PCMSO() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Tipo</Label>
-                <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v as any})}>
+                <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admissional">Admissional</SelectItem>
@@ -157,7 +159,7 @@ export default function PCMSO() {
               </div>
               <div>
                 <Label>Resultado</Label>
-                <Select value={form.resultado} onValueChange={v => setForm({...form, resultado: v as any})}>
+                <Select value={form.resultado} onValueChange={v => setForm({...form, resultado: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pendente">Pendente</SelectItem>
@@ -170,7 +172,7 @@ export default function PCMSO() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Data do Exame</Label><Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} /></div>
-              <div><Label>Vencimento</Label><Input type="date" value={form.dataVencimento} onChange={e => setForm({...form, dataVencimento: e.target.value})} /></div>
+              <div><Label>Vencimento</Label><Input type="date" value={form.data_vencimento} onChange={e => setForm({...form, data_vencimento: e.target.value})} /></div>
             </div>
             <div><Label>Médico</Label><Input value={form.medico} onChange={e => setForm({...form, medico: e.target.value})} placeholder="Nome do médico" /></div>
             <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e => setForm({...form, observacao: e.target.value})} placeholder="Observações" /></div>

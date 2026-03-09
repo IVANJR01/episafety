@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Plus, Trash2, ArrowLeftRight, RotateCcw } from "lucide-react";
-import { entregaStorage, epiStorage, funcionarioStorage, Entrega } from "@/lib/storage";
+import { Plus, Trash2 } from "lucide-react";
+import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,35 +11,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
-const tipoLabels = { entrega: "Entrega", troca: "Troca", devolucao: "Devolução" };
-const tipoBadgeVariant = { entrega: "default" as const, troca: "secondary" as const, devolucao: "outline" as const };
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; }
+interface Funcionario { id: string; nome: string; }
+interface EPI { id: string; nome: string; estoque: number; }
+
+const tipoLabels: Record<string, string> = { entrega: "Entrega", troca: "Troca", devolucao: "Devolução" };
+const tipoBadge: Record<string, "default" | "secondary" | "outline"> = { entrega: "default", troca: "secondary", devolucao: "outline" };
 
 export default function Entregas() {
-  const [entregas, setEntregas] = useState(entregaStorage.getAll());
+  const { data: entregas, loading, add, remove } = useSupabaseCrud<Entrega>("entregas", "created_at");
+  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
+  const { data: epis } = useSupabaseQuery<EPI>("epis");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    funcionarioId: "", epiId: "", quantidade: 1,
+    funcionario_id: "", epi_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
-    tipo: "entrega" as "entrega" | "troca" | "devolucao",
-    observacao: "",
+    tipo: "entrega" as string, observacao: "",
   });
 
-  const funcionarios = funcionarioStorage.getAll();
-  const epis = epiStorage.getAll();
-
-  const handleSave = () => {
-    if (!form.funcionarioId || !form.epiId) return;
-    entregaStorage.add({
-      ...form,
-      id: crypto.randomUUID(),
-      status: form.tipo === "devolucao" ? "devolvido" : form.tipo === "troca" ? "trocado" : "ativo",
-    });
-    setEntregas(entregaStorage.getAll());
+  const handleSave = async () => {
+    if (!form.funcionario_id || !form.epi_id) return;
+    const status = form.tipo === "devolucao" ? "devolvido" : form.tipo === "troca" ? "trocado" : "ativo";
+    await add({ ...form, status, observacao: form.observacao || null } as any);
     setOpen(false);
-    setForm({ funcionarioId: "", epiId: "", quantidade: 1, data: new Date().toISOString().split("T")[0], tipo: "entrega", observacao: "" });
+    setForm({ funcionario_id: "", epi_id: "", quantidade: 1, data: new Date().toISOString().split("T")[0], tipo: "entrega", observacao: "" });
   };
-
-  const handleDelete = (id: string) => { entregaStorage.delete(id); setEntregas(entregaStorage.getAll()); };
 
   const getName = (list: { id: string; nome: string }[], id: string) => list.find(i => i.id === id)?.nome || "—";
 
@@ -55,42 +51,46 @@ export default function Entregas() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Funcionário</TableHead>
-                <TableHead>EPI</TableHead>
-                <TableHead className="text-right">Qtd</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Obs</TableHead>
-                <TableHead className="w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {entregas.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma movimentação registrada</TableCell></TableRow>
-              ) : [...entregas].reverse().map(e => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-mono text-xs">{e.data}</TableCell>
-                  <TableCell><Badge variant={tipoBadgeVariant[e.tipo]}>{tipoLabels[e.tipo]}</Badge></TableCell>
-                  <TableCell className="font-medium">{getName(funcionarios, e.funcionarioId)}</TableCell>
-                  <TableCell>{getName(epis, e.epiId)}</TableCell>
-                  <TableCell className="text-right">{e.quantidade}</TableCell>
-                  <TableCell>
-                    <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : "text-muted-foreground"}`}>
-                      {e.status === "ativo" ? "Ativo" : e.status === "devolvido" ? "Devolvido" : "Trocado"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
-                  <TableCell>
-                    <Button size="icon" variant="ghost" onClick={() => handleDelete(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                  </TableCell>
+          {loading ? (
+            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Funcionário</TableHead>
+                  <TableHead>EPI</TableHead>
+                  <TableHead className="text-right">Qtd</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Obs</TableHead>
+                  <TableHead className="w-16"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {entregas.length === 0 ? (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma movimentação registrada</TableCell></TableRow>
+                ) : entregas.map(e => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-mono text-xs">{e.data}</TableCell>
+                    <TableCell><Badge variant={tipoBadge[e.tipo] || "default"}>{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
+                    <TableCell className="font-medium">{getName(funcionarios, e.funcionario_id)}</TableCell>
+                    <TableCell>{getName(epis, e.epi_id)}</TableCell>
+                    <TableCell className="text-right">{e.quantidade}</TableCell>
+                    <TableCell>
+                      <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : "text-muted-foreground"}`}>
+                        {e.status === "ativo" ? "Ativo" : e.status === "devolvido" ? "Devolvido" : "Trocado"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
+                    <TableCell>
+                      <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -100,7 +100,7 @@ export default function Entregas() {
           <div className="grid gap-4 py-2">
             <div>
               <Label>Tipo</Label>
-              <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v as any})}>
+              <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v})}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="entrega">📦 Entrega</SelectItem>
@@ -111,14 +111,14 @@ export default function Entregas() {
             </div>
             <div>
               <Label>Funcionário</Label>
-              <Select value={form.funcionarioId} onValueChange={v => setForm({...form, funcionarioId: v})}>
+              <Select value={form.funcionario_id} onValueChange={v => setForm({...form, funcionario_id: v})}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>{funcionarios.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label>EPI</Label>
-              <Select value={form.epiId} onValueChange={v => setForm({...form, epiId: v})}>
+              <Select value={form.epi_id} onValueChange={v => setForm({...form, epi_id: v})}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>{epis.map(e => <SelectItem key={e.id} value={e.id}>{e.nome} (estoque: {e.estoque})</SelectItem>)}</SelectContent>
               </Select>
