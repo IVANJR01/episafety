@@ -235,11 +235,11 @@ export default function DDS() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">DDS - Diálogo Diário de Segurança</h1>
-          <p className="text-sm text-muted-foreground">Lista de presença com assinatura digital</p>
+          <h1 className="text-lg sm:text-2xl font-bold text-foreground">DDS - Diálogo Diário de Segurança</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Lista de presença com assinatura digital</p>
         </div>
         {canCreate && (
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
@@ -372,23 +372,23 @@ export default function DDS() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <FileText className="w-4 h-4" />
-              <span className="text-xs">Total DDS</span>
+          <CardContent className="pt-3 pb-2 px-3 sm:pt-4 sm:pb-3 sm:px-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground mb-1">
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="text-[10px] sm:text-xs">Total DDS</span>
             </div>
-            <p className="text-2xl font-bold">{ddsList.length}</p>
+            <p className="text-xl sm:text-2xl font-bold">{ddsList.length}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Calendar className="w-4 h-4" />
-              <span className="text-xs">Este mês</span>
+          <CardContent className="pt-3 pb-2 px-3 sm:pt-4 sm:pb-3 sm:px-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground mb-1">
+              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="text-[10px] sm:text-xs">Este mês</span>
             </div>
-            <p className="text-2xl font-bold">
+            <p className="text-xl sm:text-2xl font-bold">
               {ddsList.filter((d) => {
                 const now = new Date();
                 const dDate = new Date(d.data);
@@ -411,50 +411,91 @@ export default function DDS() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Tema</TableHead>
-                  <TableHead className="hidden sm:table-cell">Palestrante</TableHead>
-                  <TableHead className="hidden sm:table-cell">Duração</TableHead>
-                  <TableHead className="hidden md:table-cell">Local</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ddsList.map((dds) => (
-                  <TableRow key={dds.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {format(new Date(dds.data + "T00:00:00"), "dd/MM/yyyy")}
-                    </TableCell>
-                    <TableCell className="font-medium max-w-[200px] truncate">{dds.tema}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{dds.palestrante || "—"}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{dds.duracao || "—"}</TableCell>
-                    <TableCell className="hidden md:table-cell">{dds.local || "—"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openDetail(dds)} title="Ver detalhes">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDownloadPDF(dds)} title="Baixar PDF">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        {canDelete && (
-                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(dds.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+        <>
+          {/* Mobile: cards */}
+          <div className="space-y-3 sm:hidden">
+            {ddsList.map((dds) => (
+              <Card key={dds.id}>
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate">{dds.tema}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {format(new Date(dds.data + "T00:00:00"), "dd/MM/yyyy")}
+                        {dds.duracao && ` • ${dds.duracao}`}
+                      </p>
+                    </div>
+                  </div>
+                  {(dds.palestrante || dds.local) && (
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      {dds.palestrante && <p>Palestrante: {dds.palestrante}</p>}
+                      {dds.local && <p>Local: {dds.local}</p>}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1 pt-1 border-t border-border">
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 text-xs" onClick={() => openDetail(dds)}>
+                      <Eye className="w-3.5 h-3.5 mr-1" /> Detalhes
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 text-xs" onClick={() => handleDownloadPDF(dds)}>
+                      <Download className="w-3.5 h-3.5 mr-1" /> PDF
+                    </Button>
+                    {canDelete && (
+                      <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive" onClick={() => handleDelete(dds.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <Card className="hidden sm:block">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Tema</TableHead>
+                    <TableHead className="hidden md:table-cell">Palestrante</TableHead>
+                    <TableHead className="hidden md:table-cell">Duração</TableHead>
+                    <TableHead className="hidden lg:table-cell">Local</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {ddsList.map((dds) => (
+                    <TableRow key={dds.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(dds.data + "T00:00:00"), "dd/MM/yyyy")}
+                      </TableCell>
+                      <TableCell className="font-medium max-w-[200px] truncate">{dds.tema}</TableCell>
+                      <TableCell className="hidden md:table-cell">{dds.palestrante || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{dds.duracao || "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{dds.local || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openDetail(dds)} title="Ver detalhes">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDownloadPDF(dds)} title="Baixar PDF">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          {canDelete && (
+                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(dds.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Detail dialog */}
