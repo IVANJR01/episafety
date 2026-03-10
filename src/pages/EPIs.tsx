@@ -93,6 +93,7 @@ export default function EPIs() {
     };
     if (editing) await update(editing.id, data);
     else await add(data);
+    resetForm();
     setOpen(false);
   };
 
