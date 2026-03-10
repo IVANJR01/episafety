@@ -395,10 +395,16 @@ export default function InspecoesSE() {
       x += colWidths[1];
 
       // Situação (wrap text)
-      const situacao = item.situacao_detectada?.substring(0, 80) || "";
+      const situacao = item.situacao_detectada?.substring(0, 70) || "";
       const situacaoLines = doc.splitTextToSize(situacao, colWidths[2] - 2);
       doc.text(situacaoLines, x + 1, textY);
       x += colWidths[2];
+
+      // Ref. Normativa
+      const refNorm = item.referencia_normativa?.substring(0, 50) || "";
+      const refLines = doc.splitTextToSize(refNorm, colWidths[3] - 2);
+      doc.text(refLines, x + 1, textY);
+      x += colWidths[3];
 
       // Foto Antes
       const cache = photoCache[item.id];
