@@ -260,7 +260,7 @@ export default function Funcionarios() {
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div><span className="text-muted-foreground">CPF:</span> <span className="font-mono">{f.cpf || "—"}</span></div>
                     <div><span className="text-muted-foreground">Matrícula:</span> <span className="font-mono">{f.matricula || "—"}</span></div>
-                    {f.data_admissao && <div><span className="text-muted-foreground">Admissão:</span> <span className="font-mono">{f.data_admissao}</span></div>}
+                    {f.data_admissao && <div><span className="text-muted-foreground">Admissão:</span> <span className="font-mono">{f.data_admissao.split("-").reverse().join("/")}</span></div>}
                   </div>
                 </CardContent>
               </Card>
