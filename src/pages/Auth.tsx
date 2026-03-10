@@ -144,43 +144,6 @@ export default function Auth() {
               Instalar App
             </Button>
           )}
-            {mode === "signup" &&
-            <div>
-                <Label>Nome</Label>
-                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" required />
-              </div>
-            }
-            <div>
-              <Label>Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required />
-            </div>
-            {mode !== "forgot" &&
-            <div>
-                <Label>Senha</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
-              </div>
-            }
-            {mode === "login" &&
-            <div className="flex justify-end">
-                <button
-                type="button"
-                onClick={() => setMode("forgot")}
-                className="text-xs text-primary hover:underline">
-                
-                  Esqueci minha senha
-                </button>
-              </div>
-            }
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ?
-              "Aguarde..." :
-              mode === "login" ?
-              "Entrar" :
-              mode === "signup" ?
-              "Criar Conta" :
-              "Enviar Link de Recuperação"}
-            </Button>
-          </form>
           <div className="mt-4 text-center">
             {mode === "forgot" ?
             <button type="button" onClick={() => setMode("login")} className="text-sm text-primary hover:underline">
