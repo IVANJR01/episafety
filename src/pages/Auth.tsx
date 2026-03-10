@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import logoEpiSafety from "@/assets/logo-episafety.png";
 import { supabase } from "@/integrations/supabase/client";
-import { Download } from "lucide-react";
+
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,28 +17,18 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      const promptEvent = e as any;
+      promptEvent.prompt();
+      promptEvent.userChoice.then(() => {});
     };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
-
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      setDeferredPrompt(null);
-    } else {
-      // Fallback: abre instruções para iOS ou navegadores sem suporte
-      window.open("/install", "_self");
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,16 +129,6 @@ export default function Auth() {
             }
           </div>
 
-          <div className="mt-6 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={handleInstall}
-              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Instalar App
-            </button>
-          </div>
         </CardContent>
       </Card>
     </div>);
