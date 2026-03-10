@@ -134,12 +134,11 @@ export default function Funcionarios() {
           if (EXPECTED_COLUMNS.includes(norm)) headerMap[h] = norm;
         });
 
-        // Build set of existing CPFs for duplicate detection
-        const existingCpfs = new Set(
-          items
-            .filter((f: Funcionario) => f.cpf)
-            .map((f: Funcionario) => f.cpf!.replace(/\D/g, ""))
-        );
+        // Build map of existing CPFs to their IDs for update detection
+        const existingCpfMap = new Map<string, string>();
+        items.forEach((f: Funcionario) => {
+          if (f.cpf) existingCpfMap.set(f.cpf.replace(/\D/g, ""), f.id);
+        });
 
         const seenCpfs = new Set<string>();
 
@@ -152,13 +151,16 @@ export default function Funcionarios() {
             mapped[norm] = val;
           });
 
-          // Check for duplicates by CPF
           let validation = validateRow(mapped);
+          let action: "insert" | "update" = "insert";
+          let existingId: string | undefined;
+
           if (validation.valid && mapped.cpf) {
             const cpfDigits = mapped.cpf.replace(/\D/g, "");
             if (cpfDigits.length >= 11) {
-              if (existingCpfs.has(cpfDigits)) {
-                validation = { valid: false, error: "CPF já cadastrado no sistema" };
+              if (existingCpfMap.has(cpfDigits)) {
+                action = "update";
+                existingId = existingCpfMap.get(cpfDigits);
               } else if (seenCpfs.has(cpfDigits)) {
                 validation = { valid: false, error: "CPF duplicado na planilha" };
               } else {
@@ -167,7 +169,7 @@ export default function Funcionarios() {
             }
           }
 
-          return { ...mapped, ...validation };
+          return { ...mapped, ...validation, action, existingId };
         });
 
         setImportRows(rows);
