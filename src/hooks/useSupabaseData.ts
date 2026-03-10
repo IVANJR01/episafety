@@ -51,8 +51,8 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
   return { data, loading, refetch: fetch };
 }
 
-export function useSupabaseCrud<T extends { id: string } = any>(table: string, orderBy?: string) {
-  const { data, loading, refetch } = useSupabaseQuery<T>(table, orderBy);
+export function useSupabaseCrud<T extends { id: string } = any>(table: string, orderBy?: string, ascending?: boolean) {
+  const { data, loading, refetch } = useSupabaseQuery<T>(table, orderBy, ascending);
   const { toast } = useToast();
   const { empresaId } = useAuth();
 
