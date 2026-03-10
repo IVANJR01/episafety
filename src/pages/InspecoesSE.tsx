@@ -228,8 +228,11 @@ export default function InspecoesSE() {
           if (error) throw error;
         } else {
           addToSyncQueue({ table: "conformidades", type: "update", payload: { id: editingId, ...payload } });
+          // Update local cache optimistically
+          const cached = getCachedData<Conformidade>("conformidades") || [];
+          setCachedData("conformidades", cached.map(c => c.id === editingId ? { ...c, ...payload } : c));
         }
-        toast({ title: "Registro atualizado!" });
+        toast({ title: editingId && !isOnline() ? "Atualizado offline" : "Registro atualizado!" });
       } else {
         payload.empresa_id = empresaId;
         payload.created_by = user?.id;
