@@ -134,6 +134,15 @@ export default function Funcionarios() {
           if (EXPECTED_COLUMNS.includes(norm)) headerMap[h] = norm;
         });
 
+        // Build set of existing CPFs for duplicate detection
+        const existingCpfs = new Set(
+          items
+            .filter((f: Funcionario) => f.cpf)
+            .map((f: Funcionario) => f.cpf!.replace(/\D/g, ""))
+        );
+
+        const seenCpfs = new Set<string>();
+
         const rows: ImportRow[] = jsonData.map(raw => {
           const mapped: any = { nome: "", cpf: "", matricula: "", setor: "", cargo: "", data_admissao: "" };
           Object.entries(headerMap).forEach(([orig, norm]) => {
@@ -142,7 +151,22 @@ export default function Funcionarios() {
             if (norm === "cpf" && val) val = formatCPF(val);
             mapped[norm] = val;
           });
-          const validation = validateRow(mapped);
+
+          // Check for duplicates by CPF
+          let validation = validateRow(mapped);
+          if (validation.valid && mapped.cpf) {
+            const cpfDigits = mapped.cpf.replace(/\D/g, "");
+            if (cpfDigits.length >= 11) {
+              if (existingCpfs.has(cpfDigits)) {
+                validation = { valid: false, error: "CPF já cadastrado no sistema" };
+              } else if (seenCpfs.has(cpfDigits)) {
+                validation = { valid: false, error: "CPF duplicado na planilha" };
+              } else {
+                seenCpfs.add(cpfDigits);
+              }
+            }
+          }
+
           return { ...mapped, ...validation };
         });
 
@@ -444,6 +468,7 @@ export default function Funcionarios() {
                       <TableHead>Setor</TableHead>
                       <TableHead>Cargo</TableHead>
                       <TableHead>Admissão</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -458,6 +483,7 @@ export default function Funcionarios() {
                         <TableCell className="text-xs">{r.setor || "—"}</TableCell>
                         <TableCell className="text-xs">{r.cargo || "—"}</TableCell>
                         <TableCell className="text-xs font-mono">{r.data_admissao || "—"}</TableCell>
+                        <TableCell className="text-xs text-destructive">{r.error || ""}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
