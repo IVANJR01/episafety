@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Pencil, Trash2, Search, Loader2, Download, Package } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
@@ -31,14 +32,14 @@ export default function EPIs() {
   const { canEdit, canCreate, canDelete } = usePermissions("epis");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EPI | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const { form, setForm, resetForm, hasDraft } = useFormDraft("epis", emptyForm);
   const [consultando, setConsultando] = useState(false);
   const { toast } = useToast();
 
-  const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+  const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (e: EPI) => {
     setEditing(e);
-    setForm({
+    resetForm({
       nome: e.nome, ca: e.ca || "", validade: e.validade || "",
       estoque: e.estoque, estoque_minimo: e.estoque_minimo,
       categoria: e.categoria || "", descricao: e.descricao || "",
@@ -92,6 +93,7 @@ export default function EPIs() {
     };
     if (editing) await update(editing.id, data);
     else await add(data);
+    resetForm();
     setOpen(false);
   };
 

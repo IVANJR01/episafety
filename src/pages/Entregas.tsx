@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from "react";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Trash2, FileText, Search, Loader2 } from "lucide-react";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,11 +43,12 @@ export default function Entregas() {
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
 
-  const [form, setForm] = useState({
+  const entregaDefaults = {
     funcionario_id: "", epi_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
     tipo: "entrega" as string, observacao: "",
-  });
+  };
+  const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
 
   const [epiCaSearch, setEpiCaSearch] = useState("");
   const [epiSearching, setEpiSearching] = useState(false);
@@ -164,7 +166,7 @@ export default function Entregas() {
     });
 
     setOpen(false);
-    setForm({ funcionario_id: "", epi_id: "", quantidade: 1, data: new Date().toISOString().split("T")[0], tipo: "entrega", observacao: "" });
+    resetForm();
     setFormFuncSearch("");
     setEpiCaSearch("");
     setEpiSearchResult(null);

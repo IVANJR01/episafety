@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Pencil, Trash2, User } from "lucide-react";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -21,12 +22,12 @@ export default function Funcionarios() {
   const { canEdit, canCreate, canDelete } = usePermissions("cadastro_funcionarios");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Funcionario | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const { form, setForm, resetForm, hasDraft } = useFormDraft("funcionarios", emptyForm);
 
-  const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+  const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (f: Funcionario) => {
     setEditing(f);
-    setForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "" });
+    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "" });
     setOpen(true);
   };
 
@@ -35,6 +36,7 @@ export default function Funcionarios() {
     const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null };
     if (editing) await update(editing.id, data);
     else await add(data);
+    resetForm();
     setOpen(false);
   };
 
@@ -46,8 +48,9 @@ export default function Funcionarios() {
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar funcionários</p>
         </div>
         {canCreate && (
-          <Button onClick={openNew} className="w-full sm:w-auto">
+          <Button onClick={openNew} className="w-full sm:w-auto relative">
             <Plus className="w-4 h-4 mr-2" />Novo Funcionário
+            {hasDraft() && <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse" title="Rascunho salvo" />}
           </Button>
         )}
       </div>
