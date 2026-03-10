@@ -317,7 +317,7 @@ export default function InspecoesSE() {
 
     // Table columns: N°, Data, Situação, Antes, Depois, Gravidade, Ação, Responsável, Local, Realizado, Status
     const headers = ["N°", "Data", "Situação", "Antes", "Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const colWidths = [8, 18, 45, 25, 25, 20, 40, 25, 30, 18, 18];
+    const colWidths = [8, 18, 40, 37, 37, 18, 35, 22, 25, 18, 18];
     let y = headerY + 12;
 
     // Header row
