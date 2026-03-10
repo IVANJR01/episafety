@@ -468,6 +468,7 @@ export default function Funcionarios() {
                       <TableHead>Setor</TableHead>
                       <TableHead>Cargo</TableHead>
                       <TableHead>Admissão</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
