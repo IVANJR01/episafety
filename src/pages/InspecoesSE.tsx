@@ -411,7 +411,7 @@ export default function InspecoesSE() {
     // Table columns - use full page width
     const headers = ["N°", "Data", "Situação Detectada", "Ref. Normativa", "Foto Antes", "Foto Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
     const usableWidth = pageWidth - MARGIN * 2;
-    const colWidths = [9, 18, 38, 26, 36, 36, 20, 38, 22, 22, 18, 16];
+    const colWidths = [9, 17, 36, 24, 36, 36, 20, 36, 20, 20, 17, 28];
     const totalCols = colWidths.reduce((a, b) => a + b, 0);
     // Scale columns to fill usable width
     const scale = usableWidth / totalCols;
