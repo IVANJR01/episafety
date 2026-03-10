@@ -221,6 +221,20 @@ export default function Funcionarios() {
   const validCount = importRows.filter(r => r.valid).length;
   const invalidCount = importRows.filter(r => !r.valid).length;
 
+  // Search/filter state
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredItems = items.filter((f: Funcionario) => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
+    const nomeMatch = f.nome.toLowerCase().includes(term);
+    const cpfMatch = f.cpf ? f.cpf.replace(/\D/g, "").includes(term.replace(/\D/g, "")) : false;
+    const matriculaMatch = f.matricula ? f.matricula.toLowerCase().includes(term) : false;
+    const setorMatch = f.setor ? f.setor.toLowerCase().includes(term) : false;
+    const cargoMatch = f.cargo ? f.cargo.toLowerCase().includes(term) : false;
+    return nomeMatch || cpfMatch || matriculaMatch || setorMatch || cargoMatch;
+  });
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -243,6 +257,30 @@ export default function Funcionarios() {
             </Button>
           </div>
         )}
+      </div>
+
+      {/* Search bar */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, CPF, matrícula, setor ou cargo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {filteredItems.length} de {items.length} funcionário(s)
+        </span>
       </div>
 
       {loading ? (
