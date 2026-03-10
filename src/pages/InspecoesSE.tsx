@@ -245,22 +245,55 @@ export default function InspecoesSE() {
     }
   }
 
-  function generatePDF() {
+  async function generatePDF() {
+    // Load empresa logo
+    let logoDataUrl: string | null = null;
+    try {
+      if (empresaId && isOnline()) {
+        const { data: empresa } = await (supabase.from as any)("empresa_config")
+          .select("logo_url, nome")
+          .eq("id", empresaId)
+          .limit(1)
+          .single();
+        if (empresa?.logo_url) {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          await new Promise<void>((resolve) => {
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              canvas.width = img.width;
+              canvas.height = img.height;
+              canvas.getContext("2d")!.drawImage(img, 0, 0);
+              logoDataUrl = canvas.toDataURL("image/png");
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = empresa.logo_url;
+          });
+        }
+      }
+    } catch {}
+
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Header
+    // Header with logo
+    let headerY = 10;
+    if (logoDataUrl) {
+      doc.addImage(logoDataUrl, "PNG", 10, 5, 30, 15);
+      headerY = 12;
+    }
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("GESTÃO DE CONFORMIDADES - INSPEÇÕES", pageWidth / 2, 15, { align: "center" });
+    doc.text("GESTÃO DE CONFORMIDADES - INSPEÇÕES", pageWidth / 2, headerY, { align: "center" });
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, 21, { align: "center" });
+    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 6, { align: "center" });
 
     // Table
     const headers = ["N°", "Data", "Situação", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
     const colWidths = [10, 22, 60, 25, 55, 30, 35, 22, 22];
-    let y = 28;
+    let y = headerY + 12;
 
     // Header row
     doc.setFillColor(41, 65, 122);
