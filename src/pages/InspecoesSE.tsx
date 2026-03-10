@@ -117,7 +117,10 @@ export default function InspecoesSE() {
           gravidade: data.gravidade || p.gravidade,
           acao_corretiva: data.acao_corretiva || p.acao_corretiva,
         }));
-        toast({ title: "Sugestão aplicada!", description: `NR: ${data.referencia_normativa}` });
+        const desc = data.trecho_norma
+          ? `NR: ${data.referencia_normativa}\n📖 ${data.trecho_norma}`
+          : `NR: ${data.referencia_normativa}`;
+        toast({ title: "Sugestão aplicada!", description: desc });
       }
     } catch (err: any) {
       toast({ title: "Erro ao consultar IA", description: err?.message || "Tente novamente", variant: "destructive" });

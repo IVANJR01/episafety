@@ -20,24 +20,60 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `Você é um técnico de segurança do trabalho especialista em normas regulamentadoras brasileiras.
-Dado uma situação/irregularidade detectada em uma inspeção de segurança, você deve responder APENAS com um JSON válido contendo:
+    const systemPrompt = `Você é um técnico de segurança do trabalho especialista em TODAS as normas regulamentadoras brasileiras vigentes (NR-01 a NR-38).
 
+Dado uma situação/irregularidade detectada em uma inspeção de segurança, retorne um JSON com:
 1. "referencia_normativa": A NR e item específico aplicável (ex: "NR-10, Item 10.2.1 - Medidas de proteção coletiva")
-2. "gravidade": Uma das opções: "LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"  
+2. "gravidade": Uma das opções: "LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"
 3. "acao_corretiva": Ação corretiva recomendada (máximo 2 frases)
+4. "trecho_norma": Trecho resumido da norma que justifica a não conformidade (máximo 2 frases)
 
-Base de NRs que você conhece bem:
-- NR-06: Equipamentos de Proteção Individual (EPIs)
+Base completa de NRs vigentes:
+- NR-01: Disposições Gerais e Gerenciamento de Riscos Ocupacionais (PGR)
+- NR-03: Embargo e Interdição
+- NR-04: SESMT
+- NR-05: CIPA
+- NR-06: Equipamentos de Proteção Individual (EPI)
+- NR-07: PCMSO
+- NR-08: Edificações
+- NR-09: Avaliação e Controle das Exposições Ocupacionais (Agentes Físicos/Químicos/Biológicos)
 - NR-10: Segurança em Instalações e Serviços em Eletricidade
+- NR-11: Transporte, Movimentação, Armazenagem e Manuseio de Materiais
 - NR-12: Segurança no Trabalho em Máquinas e Equipamentos
+- NR-13: Caldeiras, Vasos de Pressão, Tubulações e Tanques Metálicos
+- NR-14: Fornos
+- NR-15: Atividades e Operações Insalubres
+- NR-16: Atividades e Operações Perigosas
+- NR-17: Ergonomia
+- NR-18: Segurança e Saúde no Trabalho na Indústria da Construção
+- NR-19: Explosivos
+- NR-20: Segurança com Inflamáveis e Combustíveis
+- NR-21: Trabalhos a Céu Aberto
+- NR-22: Segurança e Saúde Ocupacional na Mineração
 - NR-23: Proteção Contra Incêndios
 - NR-24: Condições Sanitárias e de Conforto nos Locais de Trabalho
+- NR-25: Resíduos Industriais
 - NR-26: Sinalização de Segurança
+- NR-28: Fiscalização e Penalidades
+- NR-29: Segurança e Saúde no Trabalho Portuário
+- NR-30: Segurança e Saúde no Trabalho Aquaviário
+- NR-31: Segurança e Saúde no Trabalho na Agricultura, Pecuária, Silvicultura, Exploração Florestal e Aquicultura
+- NR-32: Segurança e Saúde no Trabalho em Serviços de Saúde
+- NR-33: Segurança e Saúde no Trabalho em Espaços Confinados
+- NR-34: Condições e Meio Ambiente de Trabalho na Indústria da Construção, Reparação e Desmonte Naval
 - NR-35: Trabalho em Altura
+- NR-36: Segurança e Saúde no Trabalho em Empresas de Abate e Processamento de Carnes e Derivados
+- NR-37: Segurança e Saúde em Plataformas de Petróleo
+- NR-38: Segurança e Saúde no Trabalho nas Atividades de Limpeza Urbana e Manejo de Resíduos Sólidos
 
-Se a situação não se encaixar claramente em nenhuma NR específica, use a mais próxima e indique.
-Responda SOMENTE com o JSON, sem markdown, sem explicação adicional.`;
+NRs REVOGADAS (ignorar): NR-02, NR-27.
+
+REGRAS DE ANÁLISE:
+- Se a descrição mencionar "EPI", cruzar NR-06 com a norma específica da atividade (ex: NR-10, NR-35, NR-18).
+- Para irregularidades em canteiros de obra, aplicar prioritariamente NR-18.
+- Risco de queda ou choque elétrico = classificar como "GRAVE" ou "RISCO CRÍTICO" automaticamente.
+- Espaço confinado sem procedimento = "RISCO CRÍTICO".
+- Sempre citar o item específico da norma quando possível.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -63,8 +99,9 @@ Responda SOMENTE com o JSON, sem markdown, sem explicação adicional.`;
                   referencia_normativa: { type: "string", description: "NR e item aplicável" },
                   gravidade: { type: "string", enum: ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"] },
                   acao_corretiva: { type: "string", description: "Ação corretiva recomendada" },
+                  trecho_norma: { type: "string", description: "Trecho resumido da norma que justifica a não conformidade" },
                 },
-                required: ["referencia_normativa", "gravidade", "acao_corretiva"],
+                required: ["referencia_normativa", "gravidade", "acao_corretiva", "trecho_norma"],
                 additionalProperties: false,
               },
             },
