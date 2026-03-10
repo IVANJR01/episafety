@@ -212,9 +212,9 @@ export default function EPIs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {epis.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
-                  ) : epis.map(e => (
+                  {episFiltrados.length === 0 ? (
+                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</TableCell></TableRow>
+                  ) : episFiltrados.map(e => (
                     <TableRow key={e.id}>
                       <TableCell className="font-medium">{e.nome}</TableCell>
                       <TableCell className="font-mono text-xs">{e.ca || "—"}</TableCell>
