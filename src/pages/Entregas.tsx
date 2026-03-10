@@ -399,18 +399,30 @@ export default function Entregas() {
             </div>
 
             <div>
-              <Label>EPI (buscar por C.A.)</Label>
+              <Label>EPI (buscar por C.A. ou nome)</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Digite o número do C.A."
+                  placeholder="Digite o C.A. ou nome do EPI..."
                   value={epiCaSearch}
-                  onChange={e => { setEpiCaSearch(e.target.value); setEpiSearchResult(null); setForm(f => ({...f, epi_id: ""})); }}
+                  onChange={e => { setEpiCaSearch(e.target.value); setEpiSearchResult(null); setEpiDropdownResults([]); setForm(f => ({...f, epi_id: ""})); }}
                   onKeyDown={e => e.key === "Enter" && handleSearchCA()}
                 />
                 <Button type="button" variant="outline" onClick={handleSearchCA} disabled={epiSearching}>
                   {epiSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
+              {epiDropdownResults.length > 0 && !epiSearchResult && (
+                <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
+                  {epiDropdownResults.map(epi => (
+                    <button key={epi.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                      onClick={() => { setEpiSearchResult(epi); setForm(f => ({...f, epi_id: epi.id})); setEpiCaSearch(epi.nome); setEpiDropdownResults([]); }}>
+                      <span className="font-medium">{epi.nome}</span>
+                      {epi.ca && <span className="text-muted-foreground ml-2">C.A.: {epi.ca}</span>}
+                      <span className="text-muted-foreground ml-2">Estoque: {epi.estoque}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {epiSearchResult && (
                 <div className="mt-2 p-3 rounded-md bg-muted/50 text-sm space-y-1">
                   <p className="font-medium">✓ {epiSearchResult.nome}</p>
