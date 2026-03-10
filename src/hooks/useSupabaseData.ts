@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData, addToSyncQueue, isOnline } from "@/lib/offlineStorage";
 
-export function useSupabaseQuery<T = any>(table: string, orderBy?: string) {
+export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -26,7 +26,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string) {
     }
 
     let query = (supabase.from as any)(table).select("*");
-    if (orderBy) query = query.order(orderBy, { ascending: false });
+    if (orderBy) query = query.order(orderBy, { ascending: ascending ?? false });
     const { data: rows, error } = await query;
     if (error) {
       // On network error, try cache
@@ -44,15 +44,15 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string) {
       setCachedData(table, result);
     }
     setLoading(false);
-  }, [table, orderBy]);
+  }, [table, orderBy, ascending]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   return { data, loading, refetch: fetch };
 }
 
-export function useSupabaseCrud<T extends { id: string } = any>(table: string, orderBy?: string) {
-  const { data, loading, refetch } = useSupabaseQuery<T>(table, orderBy);
+export function useSupabaseCrud<T extends { id: string } = any>(table: string, orderBy?: string, ascending?: boolean) {
+  const { data, loading, refetch } = useSupabaseQuery<T>(table, orderBy, ascending);
   const { toast } = useToast();
   const { empresaId } = useAuth();
 
