@@ -36,6 +36,7 @@ export default function Funcionarios() {
     const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null };
     if (editing) await update(editing.id, data);
     else await add(data);
+    resetForm();
     setOpen(false);
   };
 
