@@ -329,7 +329,7 @@ export default function InspecoesSE() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold">Gestão de Conformidades</h1>
+          <h1 className="text-xl font-bold">Inspeções</h1>
           <p className="text-sm text-muted-foreground">
             {items.length} registro(s) — <span className="text-amber-600">{pendentes} pendente(s)</span> — <span className="text-green-600">{solucionados} solucionado(s)</span>
           </p>
