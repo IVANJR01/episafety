@@ -42,14 +42,20 @@ export default function Dashboard() {
   // valorEstoqueAtual already defined above
 
   const estoqueChartData = useMemo(() => {
-    return epis
+    const items = epis
       .filter(e => (e.valor || 0) * e.estoque > 0)
       .map(e => ({
-        nome: e.nome.length > 20 ? e.nome.substring(0, 20) + "..." : e.nome,
+        nome: e.nome.length > 25 ? e.nome.substring(0, 22) + "..." : e.nome,
         valor: Number(((e.valor || 0) * e.estoque).toFixed(2)),
       }))
-      .sort((a, b) => b.valor - a.valor)
-      .slice(0, 8);
+      .sort((a, b) => b.valor - a.valor);
+
+    const top = items.slice(0, 5);
+    const rest = items.slice(5);
+    if (rest.length > 0) {
+      top.push({ nome: "Outros", valor: Number(rest.reduce((s, d) => s + d.valor, 0).toFixed(2)) });
+    }
+    return top;
   }, [epis]);
 
   const CHART_COLORS = [
