@@ -245,7 +245,29 @@ export default function InspecoesSE() {
     }
   }
 
+  async function loadImageAsDataUrl(url: string): Promise<string | null> {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      return await new Promise<string | null>((resolve) => {
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          canvas.getContext("2d")!.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+    } catch {
+      return null;
+    }
+  }
+
   async function generatePDF() {
+    toast({ title: "Gerando PDF...", description: "Aguarde, carregando imagens." });
+
     // Load empresa logo
     let logoDataUrl: string | null = null;
     try {
@@ -256,26 +278,29 @@ export default function InspecoesSE() {
           .limit(1)
           .single();
         if (empresa?.logo_url) {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          await new Promise<void>((resolve) => {
-            img.onload = () => {
-              const canvas = document.createElement("canvas");
-              canvas.width = img.width;
-              canvas.height = img.height;
-              canvas.getContext("2d")!.drawImage(img, 0, 0);
-              logoDataUrl = canvas.toDataURL("image/png");
-              resolve();
-            };
-            img.onerror = () => resolve();
-            img.src = empresa.logo_url;
-          });
+          logoDataUrl = await loadImageAsDataUrl(empresa.logo_url);
         }
       }
     } catch {}
 
+    // Pre-load all item photos
+    const filtered = getFilteredItems();
+    const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
+    await Promise.all(
+      filtered.map(async (item) => {
+        const [antes, depois] = await Promise.all([
+          item.foto_antes ? loadImageAsDataUrl(item.foto_antes) : Promise.resolve(null),
+          item.foto_depois ? loadImageAsDataUrl(item.foto_depois) : Promise.resolve(null),
+        ]);
+        photoCache[item.id] = { antes, depois };
+      })
+    );
+
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
+    const ROW_H = 20; // taller rows to fit images
+    const IMG_H = 16;
+    const IMG_W = 22;
 
     // Header with logo
     let headerY = 10;
@@ -290,16 +315,16 @@ export default function InspecoesSE() {
     doc.setFont("helvetica", "normal");
     doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 6, { align: "center" });
 
-    // Table
-    const headers = ["N°", "Data", "Situação", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const colWidths = [10, 22, 60, 25, 55, 30, 35, 22, 22];
+    // Table columns: N°, Data, Situação, Antes, Depois, Gravidade, Ação, Responsável, Local, Realizado, Status
+    const headers = ["N°", "Data", "Situação", "Antes", "Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
+    const colWidths = [8, 18, 45, 25, 25, 20, 40, 25, 30, 18, 18];
     let y = headerY + 12;
 
     // Header row
     doc.setFillColor(41, 65, 122);
     doc.rect(10, y, pageWidth - 20, 8, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(7);
+    doc.setFontSize(6);
     doc.setFont("helvetica", "bold");
     let x = 10;
     headers.forEach((h, i) => {
@@ -310,39 +335,90 @@ export default function InspecoesSE() {
 
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
+    doc.setFontSize(6);
 
-    const filtered = getFilteredItems();
     filtered.forEach((item, idx) => {
-      if (y > 190) {
+      if (y + ROW_H > 195) {
         doc.addPage();
         y = 15;
       }
       const bgColor = idx % 2 === 0 ? 245 : 255;
       doc.setFillColor(bgColor, bgColor, bgColor);
-      doc.rect(10, y, pageWidth - 20, 7, "F");
+      doc.rect(10, y, pageWidth - 20, ROW_H, "F");
 
-      const row = [
-        String(item.numero || idx + 1),
-        item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "",
-        item.situacao_detectada?.substring(0, 60) || "",
-        item.gravidade || "",
-        item.acao_corretiva?.substring(0, 50) || "",
-        item.responsavel || "",
-        item.local || "",
-        item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "",
-        item.status || "",
-      ];
-
+      const textY = y + 5;
       x = 10;
-      row.forEach((cell, i) => {
-        doc.text(cell, x + 1, y + 5);
-        x += colWidths[i];
-      });
-      y += 7;
+
+      // N°
+      doc.text(String(item.numero || idx + 1), x + 1, textY);
+      x += colWidths[0];
+
+      // Data
+      doc.text(item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "", x + 1, textY);
+      x += colWidths[1];
+
+      // Situação (wrap text)
+      const situacao = item.situacao_detectada?.substring(0, 80) || "";
+      const situacaoLines = doc.splitTextToSize(situacao, colWidths[2] - 2);
+      doc.text(situacaoLines, x + 1, textY);
+      x += colWidths[2];
+
+      // Foto Antes
+      const cache = photoCache[item.id];
+      if (cache?.antes) {
+        try {
+          doc.addImage(cache.antes, "JPEG", x + 1, y + 1.5, IMG_W - 2, IMG_H);
+        } catch {}
+      } else {
+        doc.setTextColor(150);
+        doc.text("Sem foto", x + 1, textY);
+        doc.setTextColor(0);
+      }
+      x += colWidths[3];
+
+      // Foto Depois
+      if (cache?.depois) {
+        try {
+          doc.addImage(cache.depois, "JPEG", x + 1, y + 1.5, IMG_W - 2, IMG_H);
+        } catch {}
+      } else {
+        doc.setTextColor(150);
+        doc.text("Sem foto", x + 1, textY);
+        doc.setTextColor(0);
+      }
+      x += colWidths[4];
+
+      // Gravidade
+      doc.text(item.gravidade || "", x + 1, textY);
+      x += colWidths[5];
+
+      // Ação Corretiva
+      const acao = item.acao_corretiva?.substring(0, 60) || "";
+      const acaoLines = doc.splitTextToSize(acao, colWidths[6] - 2);
+      doc.text(acaoLines, x + 1, textY);
+      x += colWidths[6];
+
+      // Responsável
+      doc.text(item.responsavel || "", x + 1, textY);
+      x += colWidths[7];
+
+      // Local
+      const localLines = doc.splitTextToSize(item.local || "", colWidths[8] - 2);
+      doc.text(localLines, x + 1, textY);
+      x += colWidths[8];
+
+      // Realizado
+      doc.text(item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "", x + 1, textY);
+      x += colWidths[9];
+
+      // Status
+      doc.text(item.status || "", x + 1, textY);
+
+      y += ROW_H;
     });
 
     doc.save(`Conformidades_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    toast({ title: "PDF gerado com sucesso!" });
   }
 
   function getFilteredItems() {
