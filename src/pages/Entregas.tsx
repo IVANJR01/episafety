@@ -357,7 +357,7 @@ export default function Entregas() {
         </>
       )}
 
-      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiSearchResult(null); } }}>
+      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiSearchResult(null); setEpiDropdownResults([]); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nova Movimentação</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
