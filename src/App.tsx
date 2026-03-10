@@ -21,6 +21,7 @@ import AdminEmpresas from "@/pages/AdminEmpresas";
 import Install from "@/pages/Install";
 import Privacidade from "@/pages/Privacidade";
 import DDS from "@/pages/DDS";
+import InspecoesSE from "@/pages/InspecoesSE";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
