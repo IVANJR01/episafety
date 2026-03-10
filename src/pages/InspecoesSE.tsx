@@ -281,6 +281,7 @@ export default function InspecoesSE() {
           setCachedData("conformidades", cached);
         }
         toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+        resetDraft();
         setDialogOpen(false);
         loadData();
       } else {
