@@ -22,7 +22,7 @@ interface Funcionario {
 
 interface ImportRow {
   nome: string; cpf: string; matricula: string; setor: string; cargo: string; data_admissao: string;
-  valid: boolean; error?: string;
+  valid: boolean; error?: string; action?: "insert" | "update"; existingId?: string;
 }
 
 const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "" };
