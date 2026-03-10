@@ -35,6 +35,7 @@ interface Conformidade {
   status: string;
   empresa_id: string | null;
   created_at: string;
+  referencia_normativa: string | null;
 }
 
 const emptyForm = {
