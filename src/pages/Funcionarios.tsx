@@ -25,6 +25,14 @@ interface ImportRow {
 
 const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "" };
 
+function formatCPF(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
 const EXPECTED_COLUMNS = ["nome", "cpf", "matricula", "setor", "cargo", "data_admissao"];
 
 function normalizeHeader(h: string): string {
@@ -315,7 +323,7 @@ export default function Funcionarios() {
           <div className="grid gap-4 py-2">
             <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Nome completo" /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm({...form, cpf: e.target.value})} placeholder="000.000.000-00" /></div>
+              <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm({...form, cpf: formatCPF(e.target.value)})} placeholder="000.000.000-00" maxLength={14} /></div>
               <div><Label>Matrícula</Label><Input value={form.matricula} onChange={e => setForm({...form, matricula: e.target.value})} placeholder="Nº matrícula" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
