@@ -202,6 +202,10 @@ export default function InspecoesSE() {
       if (isOnline()) {
         if (fotoAntesFile) foto_antes = await uploadPhoto(fotoAntesFile);
         if (fotoDepoisFile) foto_depois = await uploadPhoto(fotoDepoisFile);
+      } else {
+        // Store base64 previews for offline viewing
+        if (fotoAntesPreview) foto_antes = fotoAntesPreview;
+        if (fotoDepoisPreview) foto_depois = fotoDepoisPreview;
       }
 
       const payload: any = {
@@ -224,8 +228,11 @@ export default function InspecoesSE() {
           if (error) throw error;
         } else {
           addToSyncQueue({ table: "conformidades", type: "update", payload: { id: editingId, ...payload } });
+          // Update local cache optimistically
+          const cached = getCachedData<Conformidade>("conformidades") || [];
+          setCachedData("conformidades", cached.map(c => c.id === editingId ? { ...c, ...payload } : c));
         }
-        toast({ title: "Registro atualizado!" });
+        toast({ title: editingId && !isOnline() ? "Atualizado offline" : "Registro atualizado!" });
       } else {
         payload.empresa_id = empresaId;
         payload.created_by = user?.id;
@@ -234,9 +241,15 @@ export default function InspecoesSE() {
           if (error) throw error;
         } else {
           payload.id = crypto.randomUUID();
+          payload.numero = (items.length > 0 ? Math.max(...items.map(i => i.numero || 0)) : 0) + 1;
+          payload.created_at = new Date().toISOString();
           addToSyncQueue({ table: "conformidades", type: "insert", payload });
+          // Update local cache optimistically
+          const cached = getCachedData<Conformidade>("conformidades") || [];
+          cached.push(payload as Conformidade);
+          setCachedData("conformidades", cached);
         }
-        toast({ title: "Registro criado!" });
+        toast({ title: !isOnline() ? "Salvo offline" : "Registro criado!", description: !isOnline() ? "Será sincronizado quando houver conexão." : undefined });
       }
 
       setDialogOpen(false);
@@ -248,13 +261,21 @@ export default function InspecoesSE() {
           gravidade: form.gravidade, acao_corretiva: form.acao_corretiva || null,
           responsavel: form.responsavel || null, local: form.local || null,
           data_realizado: form.data_realizado || null, status: form.status,
-          foto_antes: null, foto_depois: null, empresa_id: empresaId, created_by: user?.id,
+          foto_antes: fotoAntesPreview || null, foto_depois: fotoDepoisPreview || null,
+          empresa_id: empresaId, created_by: user?.id,
+          referencia_normativa: form.referencia_normativa || null,
         };
+        const cached = getCachedData<Conformidade>("conformidades") || [];
         if (editingId) {
           addToSyncQueue({ table: "conformidades", type: "update", payload: { id: editingId, ...payload } });
+          setCachedData("conformidades", cached.map(c => c.id === editingId ? { ...c, ...payload } : c));
         } else {
           payload.id = crypto.randomUUID();
+          payload.numero = (items.length > 0 ? Math.max(...items.map(i => i.numero || 0)) : 0) + 1;
+          payload.created_at = new Date().toISOString();
           addToSyncQueue({ table: "conformidades", type: "insert", payload });
+          cached.push(payload as Conformidade);
+          setCachedData("conformidades", cached);
         }
         toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
         setDialogOpen(false);
@@ -274,8 +295,11 @@ export default function InspecoesSE() {
         if (error) throw error;
       } else {
         addToSyncQueue({ table: "conformidades", type: "delete", payload: { id } });
+        // Update local cache optimistically
+        const cached = getCachedData<Conformidade>("conformidades") || [];
+        setCachedData("conformidades", cached.filter(c => c.id !== id));
       }
-      toast({ title: "Registro excluído" });
+      toast({ title: !isOnline() ? "Excluído offline" : "Registro excluído" });
       loadData();
     } catch {
       toast({ title: "Erro ao excluir", variant: "destructive" });
