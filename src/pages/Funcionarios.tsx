@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, User } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,20 +9,78 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 
 interface Funcionario {
   id: string; nome: string; matricula: string | null; setor: string | null;
   cargo: string | null; data_admissao: string | null; cpf: string | null;
 }
 
+interface ImportRow {
+  nome: string; cpf: string; matricula: string; setor: string; cargo: string; data_admissao: string;
+  valid: boolean; error?: string;
+}
+
 const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "" };
 
+const EXPECTED_COLUMNS = ["nome", "cpf", "matricula", "setor", "cargo", "data_admissao"];
+
+function normalizeHeader(h: string): string {
+  const map: Record<string, string> = {
+    "nome": "nome", "nome completo": "nome", "funcionario": "nome", "funcionário": "nome",
+    "cpf": "cpf", "c.p.f": "cpf", "c.p.f.": "cpf",
+    "matricula": "matricula", "matrícula": "matricula", "mat": "matricula", "registro": "matricula",
+    "setor": "setor", "departamento": "setor", "área": "setor", "area": "setor",
+    "cargo": "cargo", "função": "cargo", "funcao": "cargo", "função/cargo": "cargo",
+    "data admissao": "data_admissao", "data admissão": "data_admissao", "data_admissao": "data_admissao",
+    "data de admissão": "data_admissao", "data de admissao": "data_admissao", "admissao": "data_admissao",
+    "admissão": "data_admissao",
+  };
+  const normalized = h.trim().toLowerCase().replace(/[_\-]/g, " ");
+  return map[normalized] || normalized;
+}
+
+function parseExcelDate(value: any): string {
+  if (!value) return "";
+  if (typeof value === "number") {
+    // Excel serial date
+    const date = XLSX.SSF.parse_date_code(value);
+    if (date) {
+      return `${date.y}-${String(date.m).padStart(2, "0")}-${String(date.d).padStart(2, "0")}`;
+    }
+  }
+  const str = String(value).trim();
+  // Try DD/MM/YYYY
+  const brMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (brMatch) return `${brMatch[3]}-${brMatch[2].padStart(2, "0")}-${brMatch[1].padStart(2, "0")}`;
+  // Try YYYY-MM-DD
+  const isoMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+  return str;
+}
+
+function validateRow(row: Omit<ImportRow, "valid" | "error">): { valid: boolean; error?: string } {
+  if (!row.nome || !row.nome.trim()) return { valid: false, error: "Nome é obrigatório" };
+  return { valid: true };
+}
+
 export default function Funcionarios() {
-  const { data: items, loading, add, update, remove } = useSupabaseCrud<Funcionario>("funcionarios", "created_at");
+  const { data: items, loading, add, update, remove, refetch } = useSupabaseCrud<Funcionario>("funcionarios", "created_at");
   const { canEdit, canCreate, canDelete } = usePermissions("cadastro_funcionarios");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Funcionario | null>(null);
   const { form, setForm, resetForm, hasDraft } = useFormDraft("funcionarios", emptyForm);
+  const { toast } = useToast();
+
+  // Import state
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (f: Funcionario) => {
@@ -40,6 +98,99 @@ export default function Funcionarios() {
     setOpen(false);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+
+        if (jsonData.length === 0) {
+          toast({ title: "Planilha vazia", description: "Nenhuma linha encontrada.", variant: "destructive" });
+          return;
+        }
+
+        // Map headers
+        const rawHeaders = Object.keys(jsonData[0]);
+        const headerMap: Record<string, string> = {};
+        rawHeaders.forEach(h => {
+          const norm = normalizeHeader(h);
+          if (EXPECTED_COLUMNS.includes(norm)) headerMap[h] = norm;
+        });
+
+        const rows: ImportRow[] = jsonData.map(raw => {
+          const mapped: any = { nome: "", cpf: "", matricula: "", setor: "", cargo: "", data_admissao: "" };
+          Object.entries(headerMap).forEach(([orig, norm]) => {
+            let val = raw[orig] != null ? String(raw[orig]).trim() : "";
+            if (norm === "data_admissao") val = parseExcelDate(raw[orig]);
+            mapped[norm] = val;
+          });
+          const validation = validateRow(mapped);
+          return { ...mapped, ...validation };
+        });
+
+        setImportRows(rows);
+        setImportResult(null);
+        setImportOpen(true);
+      } catch {
+        toast({ title: "Erro ao ler arquivo", description: "Verifique se o arquivo é uma planilha válida (.xlsx, .xls, .csv)", variant: "destructive" });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    // Reset input
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const handleImport = async () => {
+    const validRows = importRows.filter(r => r.valid);
+    if (validRows.length === 0) return;
+
+    setImporting(true);
+    setImportProgress(0);
+    let success = 0, errors = 0;
+
+    for (let i = 0; i < validRows.length; i++) {
+      const r = validRows[i];
+      const payload = {
+        nome: r.nome,
+        cpf: r.cpf || null,
+        matricula: r.matricula || null,
+        setor: r.setor || null,
+        cargo: r.cargo || null,
+        data_admissao: r.data_admissao || null,
+      };
+      const ok = await add(payload);
+      if (ok) success++; else errors++;
+      setImportProgress(Math.round(((i + 1) / validRows.length) * 100));
+    }
+
+    setImporting(false);
+    setImportResult({ success, errors });
+    if (success > 0) {
+      toast({ title: "Importação concluída", description: `${success} funcionário(s) importado(s) com sucesso.` });
+      await refetch();
+    }
+  };
+
+  const downloadTemplate = () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["Nome", "CPF", "Matrícula", "Setor", "Cargo", "Data Admissão"],
+      ["João da Silva", "123.456.789-00", "001", "Produção", "Operador", "01/01/2024"],
+    ]);
+    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
+    XLSX.writeFile(wb, "modelo_funcionarios.xlsx");
+  };
+
+  const validCount = importRows.filter(r => r.valid).length;
+  const invalidCount = importRows.filter(r => !r.valid).length;
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -48,10 +199,16 @@ export default function Funcionarios() {
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar funcionários</p>
         </div>
         {canCreate && (
-          <Button onClick={openNew} className="w-full sm:w-auto relative">
-            <Plus className="w-4 h-4 mr-2" />Novo Funcionário
-            {hasDraft() && <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse" title="Rascunho salvo" />}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => fileRef.current?.click()} className="w-full sm:w-auto">
+              <Upload className="w-4 h-4 mr-2" />Importar Planilha
+            </Button>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
+            <Button onClick={openNew} className="w-full sm:w-auto relative">
+              <Plus className="w-4 h-4 mr-2" />Novo Funcionário
+              {hasDraft() && <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse" title="Rascunho salvo" />}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -132,6 +289,7 @@ export default function Funcionarios() {
         </>
       )}
 
+      {/* Dialog novo/editar */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? "Editar Funcionário" : "Novo Funcionário"}</DialogTitle></DialogHeader>
@@ -150,6 +308,96 @@ export default function Funcionarios() {
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog importação */}
+      <Dialog open={importOpen} onOpenChange={(v) => { if (!importing) { setImportOpen(v); if (!v) { setImportRows([]); setImportResult(null); } } }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-primary" />
+              Importar Funcionários
+            </DialogTitle>
+          </DialogHeader>
+
+          {importResult ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <CheckCircle2 className="w-12 h-12 text-green-500" />
+              <div className="text-center">
+                <p className="text-lg font-semibold">{importResult.success} importado(s) com sucesso</p>
+                {importResult.errors > 0 && <p className="text-sm text-destructive mt-1">{importResult.errors} erro(s)</p>}
+              </div>
+              <Button onClick={() => { setImportOpen(false); setImportRows([]); setImportResult(null); }}>Fechar</Button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-3 pb-2">
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <span className="font-medium">{validCount}</span> válido(s)
+                  </span>
+                  {invalidCount > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-destructive" />
+                      <span className="font-medium">{invalidCount}</span> com erro
+                    </span>
+                  )}
+                  <span className="text-muted-foreground">Total: {importRows.length}</span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={downloadTemplate} className="text-xs">
+                  <Download className="w-3.5 h-3.5 mr-1" />Modelo
+                </Button>
+              </div>
+
+              {importing && (
+                <div className="space-y-2">
+                  <Progress value={importProgress} className="h-2" />
+                  <p className="text-xs text-muted-foreground text-center">Importando... {importProgress}%</p>
+                </div>
+              )}
+
+              <div className="overflow-auto flex-1 border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>CPF</TableHead>
+                      <TableHead>Matrícula</TableHead>
+                      <TableHead>Setor</TableHead>
+                      <TableHead>Cargo</TableHead>
+                      <TableHead>Admissão</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importRows.map((r, i) => (
+                      <TableRow key={i} className={r.valid ? "" : "bg-destructive/5"}>
+                        <TableCell className="px-2">
+                          {r.valid ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-destructive" />}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium">{r.nome || <span className="text-destructive italic">vazio</span>}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.cpf || "—"}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.matricula || "—"}</TableCell>
+                        <TableCell className="text-xs">{r.setor || "—"}</TableCell>
+                        <TableCell className="text-xs">{r.cargo || "—"}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.data_admissao || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => { setImportOpen(false); setImportRows([]); }} disabled={importing}>Cancelar</Button>
+                <Button onClick={handleImport} disabled={importing || validCount === 0}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Importar {validCount} funcionário(s)
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
