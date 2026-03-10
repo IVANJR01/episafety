@@ -29,6 +29,9 @@ const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(({ label, width = 
       padRef.current = new SignaturePad(canvas, {
         backgroundColor: "rgb(255, 255, 255)",
         penColor: "rgb(0, 0, 0)",
+        minWidth: 0.5,
+        maxWidth: 1.8,
+        velocityFilterWeight: 0.7,
       });
     }
     return () => { padRef.current?.off(); };
