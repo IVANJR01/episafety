@@ -84,7 +84,7 @@ export default function Dashboard() {
       consumoPorEpi[e.epi_id][mes] = (consumoPorEpi[e.epi_id][mes] || 0) + e.quantidade;
     });
 
-    const mesesOrdenados = Array.from(mesesSet).sort().slice(-6);
+    const mesesOrdenados = Array.from(mesesSet).sort().slice(-12);
     const totalMeses = mesesOrdenados.length || 1;
 
     const items = epis
