@@ -167,7 +167,7 @@ export default function Entregas() {
     });
 
     setOpen(false);
-    setForm({ funcionario_id: "", epi_id: "", quantidade: 1, data: new Date().toISOString().split("T")[0], tipo: "entrega", observacao: "" });
+    resetForm();
     setFormFuncSearch("");
     setEpiCaSearch("");
     setEpiSearchResult(null);
