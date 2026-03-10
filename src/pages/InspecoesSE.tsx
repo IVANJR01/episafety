@@ -629,6 +629,14 @@ export default function InspecoesSE() {
                 {/* Situação */}
                 <p className="text-sm leading-snug">{item.situacao_detectada}</p>
 
+                {/* Ref Normativa */}
+                {item.referencia_normativa && (
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-medium text-primary">{item.referencia_normativa}</span>
+                  </div>
+                )}
+
                 {/* Gravidade + Local */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <GravidadeBadge gravidade={item.gravidade} />
