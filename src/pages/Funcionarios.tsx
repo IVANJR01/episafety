@@ -504,9 +504,9 @@ export default function Funcionarios() {
                   </TableHeader>
                   <TableBody>
                     {importRows.map((r, i) => (
-                      <TableRow key={i} className={r.valid ? "" : "bg-destructive/5"}>
+                      <TableRow key={i} className={!r.valid ? "bg-destructive/5" : r.action === "update" ? "bg-blue-500/5" : ""}>
                         <TableCell className="px-2">
-                          {r.valid ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-destructive" />}
+                          {!r.valid ? <AlertCircle className="w-4 h-4 text-destructive" /> : r.action === "update" ? <Pencil className="w-4 h-4 text-blue-500" /> : <CheckCircle2 className="w-4 h-4 text-green-500" />}
                         </TableCell>
                         <TableCell className="text-xs font-medium">{r.nome || <span className="text-destructive italic">vazio</span>}</TableCell>
                         <TableCell className="text-xs font-mono">{r.cpf || "—"}</TableCell>
@@ -514,7 +514,9 @@ export default function Funcionarios() {
                         <TableCell className="text-xs">{r.setor || "—"}</TableCell>
                         <TableCell className="text-xs">{r.cargo || "—"}</TableCell>
                         <TableCell className="text-xs font-mono">{r.data_admissao || "—"}</TableCell>
-                        <TableCell className="text-xs text-destructive">{r.error || ""}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.error ? <span className="text-destructive">{r.error}</span> : r.action === "update" ? <span className="text-blue-500">Atualizar</span> : <span className="text-green-600">Novo</span>}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
