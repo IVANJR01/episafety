@@ -131,7 +131,8 @@ export default function InspecoesSE() {
 
   function openNew() {
     setEditingId(null);
-    setForm(emptyForm);
+    if (!hasDraft()) resetDraft();
+    else setForm(form); // keep draft
     clearPhotoPreviews();
     setDialogOpen(true);
   }
