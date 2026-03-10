@@ -132,6 +132,7 @@ export default function Auth() {
 
         </CardContent>
       </Card>
+      <InstallBanner autoTrigger={true} />
     </div>);
 
 }
