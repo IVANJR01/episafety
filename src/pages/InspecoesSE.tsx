@@ -436,7 +436,7 @@ export default function InspecoesSE() {
       x += colWidths[6];
 
       // Ação Corretiva
-      const acao = item.acao_corretiva?.substring(0, 50) || "";
+      const acao = item.acao_corretiva || "";
       const acaoLines = doc.splitTextToSize(acao, colWidths[7] - 2);
       doc.text(acaoLines, x + 1, textY);
       x += colWidths[7];
