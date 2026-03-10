@@ -52,14 +52,30 @@ export default function Entregas() {
   const [epiSearching, setEpiSearching] = useState(false);
   const [epiSearchResult, setEpiSearchResult] = useState<EPI | null>(null);
 
+  const [epiDropdownResults, setEpiDropdownResults] = useState<EPI[]>([]);
+
   const handleSearchCA = async () => {
     if (!epiCaSearch.trim()) return;
     setEpiSearching(true);
     setEpiSearchResult(null);
-    const found = epis.find(e => e.ca === epiCaSearch.trim());
-    if (found) {
-      setEpiSearchResult(found);
-      setForm(f => ({ ...f, epi_id: found.id }));
+    setEpiDropdownResults([]);
+    const term = epiCaSearch.trim().toLowerCase();
+    // Search by CA exact match first
+    const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
+    if (foundByCA) {
+      setEpiSearchResult(foundByCA);
+      setForm(f => ({ ...f, epi_id: foundByCA.id }));
+      setEpiSearching(false);
+      return;
+    }
+    // Search by name/description locally
+    const matchedByName = epis.filter(e =>
+      e.nome.toLowerCase().includes(term) ||
+      (e.descricao && e.descricao.toLowerCase().includes(term)) ||
+      (e.ca && e.ca.includes(term))
+    );
+    if (matchedByName.length > 0) {
+      setEpiDropdownResults(matchedByName);
       setEpiSearching(false);
       return;
     }
