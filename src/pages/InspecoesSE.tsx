@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2 } from "lucide-react";
+import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -35,6 +35,7 @@ interface Conformidade {
   status: string;
   empresa_id: string | null;
   created_at: string;
+  referencia_normativa: string | null;
 }
 
 const emptyForm = {
@@ -46,6 +47,7 @@ const emptyForm = {
   local: "",
   data_realizado: "",
   status: "PENDENTE",
+  referencia_normativa: "",
 };
 
 export default function InspecoesSE() {
@@ -65,6 +67,7 @@ export default function InspecoesSE() {
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("all");
@@ -93,6 +96,35 @@ export default function InspecoesSE() {
     setLoading(false);
   }
 
+  async function askAI() {
+    if (!form.situacao_detectada.trim() || form.situacao_detectada.trim().length < 5) {
+      toast({ title: "Digite pelo menos 5 caracteres na situação detectada", variant: "destructive" });
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const res = await supabase.functions.invoke("sugerir-nr", {
+        body: { situacao: form.situacao_detectada },
+      });
+      if (res.error) throw res.error;
+      const data = res.data;
+      if (data.error) {
+        toast({ title: "Erro da IA", description: data.error, variant: "destructive" });
+      } else {
+        setForm(p => ({
+          ...p,
+          referencia_normativa: data.referencia_normativa || p.referencia_normativa,
+          gravidade: data.gravidade || p.gravidade,
+          acao_corretiva: data.acao_corretiva || p.acao_corretiva,
+        }));
+        toast({ title: "Sugestão aplicada!", description: `NR: ${data.referencia_normativa}` });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro ao consultar IA", description: err?.message || "Tente novamente", variant: "destructive" });
+    }
+    setAiLoading(false);
+  }
+
   function openNew() {
     setEditingId(null);
     setForm(emptyForm);
@@ -111,6 +143,7 @@ export default function InspecoesSE() {
       local: item.local || "",
       data_realizado: item.data_realizado || "",
       status: item.status,
+      referencia_normativa: item.referencia_normativa || "",
     });
     setExistingFotoAntes(item.foto_antes);
     setExistingFotoDepois(item.foto_depois);
@@ -179,6 +212,7 @@ export default function InspecoesSE() {
         status: form.status,
         foto_antes: foto_antes || null,
         foto_depois: foto_depois || null,
+        referencia_normativa: form.referencia_normativa || null,
       };
 
       if (editingId) {
@@ -495,6 +529,7 @@ export default function InspecoesSE() {
                   <TableHead className="w-[80px]">Antes</TableHead>
                   <TableHead className="w-[80px]">Depois</TableHead>
                   <TableHead className="w-[120px]">Gravidade</TableHead>
+                  <TableHead>Ref. Normativa</TableHead>
                   <TableHead>O Que Fazer</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead>Local</TableHead>
@@ -523,6 +558,13 @@ export default function InspecoesSE() {
                     </TableCell>
                     <TableCell>
                       <GravidadeBadge gravidade={item.gravidade} />
+                    </TableCell>
+                    <TableCell className="text-xs max-w-[150px]">
+                      {item.referencia_normativa ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
+                          <Sparkles className="w-3 h-3" />{item.referencia_normativa}
+                        </span>
+                      ) : "—"}
                     </TableCell>
                     <TableCell className="text-xs max-w-[150px] truncate">{item.acao_corretiva || "—"}</TableCell>
                     <TableCell className="text-xs">{item.responsavel || "—"}</TableCell>
@@ -586,6 +628,14 @@ export default function InspecoesSE() {
 
                 {/* Situação */}
                 <p className="text-sm leading-snug">{item.situacao_detectada}</p>
+
+                {/* Ref Normativa */}
+                {item.referencia_normativa && (
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-medium text-primary">{item.referencia_normativa}</span>
+                  </div>
+                )}
 
                 {/* Gravidade + Local */}
                 <div className="flex items-center gap-2 flex-wrap">
@@ -665,6 +715,15 @@ export default function InspecoesSE() {
             <div>
               <Label>Situação Detectada *</Label>
               <Textarea placeholder="Descreva a não conformidade ou irregularidade..." value={form.situacao_detectada} onChange={e => setForm(p => ({ ...p, situacao_detectada: e.target.value }))} rows={3} />
+              <Button type="button" variant="outline" size="sm" className="mt-2 gap-1.5" onClick={askAI} disabled={aiLoading || form.situacao_detectada.trim().length < 5}>
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {aiLoading ? "Analisando..." : "Sugerir NR, Gravidade e Ação (IA)"}
+              </Button>
+            </div>
+
+            <div>
+              <Label>Referência Normativa</Label>
+              <Input placeholder="Ex: NR-10, Item 10.2.1" value={form.referencia_normativa} onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))} />
             </div>
 
             {/* Photos */}
