@@ -528,6 +528,62 @@ export type Database = {
           },
         ]
       }
+      inspecoes_subestacao: {
+        Row: {
+          clima: string | null
+          created_at: string
+          created_by: string | null
+          data_inspecao: string
+          empresa_id: string | null
+          fotos: string[] | null
+          id: string
+          identificacao_se: string
+          inspetor: string
+          itens_json: Json
+          observacoes: string | null
+          status_geral: string
+          updated_at: string
+        }
+        Insert: {
+          clima?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_inspecao?: string
+          empresa_id?: string | null
+          fotos?: string[] | null
+          id?: string
+          identificacao_se: string
+          inspetor: string
+          itens_json?: Json
+          observacoes?: string | null
+          status_geral?: string
+          updated_at?: string
+        }
+        Update: {
+          clima?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_inspecao?: string
+          empresa_id?: string | null
+          fotos?: string[] | null
+          id?: string
+          identificacao_se?: string
+          inspetor?: string
+          itens_json?: Json
+          observacoes?: string | null
+          status_geral?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspecoes_subestacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           created_at: string
