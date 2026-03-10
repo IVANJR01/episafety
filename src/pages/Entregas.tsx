@@ -47,7 +47,6 @@ export default function Entregas() {
     funcionario_id: "", epi_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
     tipo: "entrega" as string, observacao: "",
-    _funcSearch: "", _epiSearch: "",
   };
   const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
 
