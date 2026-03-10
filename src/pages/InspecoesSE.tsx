@@ -298,9 +298,9 @@ export default function InspecoesSE() {
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
-    const ROW_H = 20; // taller rows to fit images
-    const IMG_H = 16;
-    const IMG_W = 22;
+    const ROW_H = 35; // taller rows for bigger images
+    const IMG_H = 30;
+    const IMG_W = 35;
 
     // Header with logo
     let headerY = 10;
@@ -317,7 +317,7 @@ export default function InspecoesSE() {
 
     // Table columns: N°, Data, Situação, Antes, Depois, Gravidade, Ação, Responsável, Local, Realizado, Status
     const headers = ["N°", "Data", "Situação", "Antes", "Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const colWidths = [8, 18, 45, 25, 25, 20, 40, 25, 30, 18, 18];
+    const colWidths = [8, 18, 40, 37, 37, 18, 35, 22, 25, 18, 18];
     let y = headerY + 12;
 
     // Header row
