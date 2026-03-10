@@ -699,6 +699,15 @@ export default function InspecoesSE() {
             <div>
               <Label>Situação Detectada *</Label>
               <Textarea placeholder="Descreva a não conformidade ou irregularidade..." value={form.situacao_detectada} onChange={e => setForm(p => ({ ...p, situacao_detectada: e.target.value }))} rows={3} />
+              <Button type="button" variant="outline" size="sm" className="mt-2 gap-1.5" onClick={askAI} disabled={aiLoading || form.situacao_detectada.trim().length < 5}>
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                {aiLoading ? "Analisando..." : "Sugerir NR, Gravidade e Ação (IA)"}
+              </Button>
+            </div>
+
+            <div>
+              <Label>Referência Normativa</Label>
+              <Input placeholder="Ex: NR-10, Item 10.2.1" value={form.referencia_normativa} onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))} />
             </div>
 
             {/* Photos */}
