@@ -136,6 +136,7 @@ export default function Funcionarios() {
           Object.entries(headerMap).forEach(([orig, norm]) => {
             let val = raw[orig] != null ? String(raw[orig]).trim() : "";
             if (norm === "data_admissao") val = parseExcelDate(raw[orig]);
+            if (norm === "cpf" && val) val = formatCPF(val);
             mapped[norm] = val;
           });
           const validation = validateRow(mapped);
