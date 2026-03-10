@@ -417,7 +417,7 @@ export default function InspecoesSE() {
         doc.text("Sem foto", x + 1, textY);
         doc.setTextColor(0);
       }
-      x += colWidths[3];
+      x += colWidths[4];
 
       // Foto Depois
       if (cache?.depois) {
@@ -429,30 +429,30 @@ export default function InspecoesSE() {
         doc.text("Sem foto", x + 1, textY);
         doc.setTextColor(0);
       }
-      x += colWidths[4];
+      x += colWidths[5];
 
       // Gravidade
       doc.text(item.gravidade || "", x + 1, textY);
-      x += colWidths[5];
+      x += colWidths[6];
 
       // Ação Corretiva
-      const acao = item.acao_corretiva?.substring(0, 60) || "";
-      const acaoLines = doc.splitTextToSize(acao, colWidths[6] - 2);
+      const acao = item.acao_corretiva?.substring(0, 50) || "";
+      const acaoLines = doc.splitTextToSize(acao, colWidths[7] - 2);
       doc.text(acaoLines, x + 1, textY);
-      x += colWidths[6];
+      x += colWidths[7];
 
       // Responsável
       doc.text(item.responsavel || "", x + 1, textY);
-      x += colWidths[7];
+      x += colWidths[8];
 
       // Local
-      const localLines = doc.splitTextToSize(item.local || "", colWidths[8] - 2);
+      const localLines = doc.splitTextToSize(item.local || "", colWidths[9] - 2);
       doc.text(localLines, x + 1, textY);
-      x += colWidths[8];
+      x += colWidths[9];
 
       // Realizado
       doc.text(item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "", x + 1, textY);
-      x += colWidths[9];
+      x += colWidths[10];
 
       // Status
       doc.text(item.status || "", x + 1, textY);
