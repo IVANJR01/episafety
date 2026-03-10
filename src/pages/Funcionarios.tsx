@@ -77,7 +77,7 @@ function validateRow(row: Omit<ImportRow, "valid" | "error">): { valid: boolean;
 }
 
 export default function Funcionarios() {
-  const { data: items, loading, add, update, remove, refetch } = useSupabaseCrud<Funcionario>("funcionarios", "created_at");
+  const { data: items, loading, add, update, remove, refetch } = useSupabaseCrud<Funcionario>("funcionarios", "nome", true);
   const { canEdit, canCreate, canDelete } = usePermissions("cadastro_funcionarios");
   const { empresaId } = useAuth();
   const [open, setOpen] = useState(false);
