@@ -215,19 +215,34 @@ export default function Dashboard() {
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Nenhum EPI com valor em estoque</p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={340}>
               <PieChart>
                 <Pie
                   data={estoqueChartData}
                   dataKey="valor"
                   nameKey="nome"
                   cx="50%"
-                  cy="45%"
-                  innerRadius={55}
-                  outerRadius={95}
+                  cy="42%"
+                  innerRadius={50}
+                  outerRadius={90}
                   paddingAngle={3}
-                  label={false}
-                  labelLine={false}
+                  label={({ nome, percent, x, y, midAngle }: any) => {
+                    const RADIAN = Math.PI / 180;
+                    const radius = 105;
+                    const cx2 = x + (midAngle > 90 && midAngle < 270 ? -8 : 8);
+                    return (
+                      <text
+                        x={cx2}
+                        y={y}
+                        textAnchor={midAngle > 90 && midAngle < 270 ? "end" : "start"}
+                        dominantBaseline="central"
+                        style={{ fontSize: '11px', fill: 'hsl(var(--foreground))' }}
+                      >
+                        {nome} ({(percent * 100).toFixed(0)}%)
+                      </text>
+                    );
+                  }}
+                  labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
                 >
                   {estoqueChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -245,7 +260,7 @@ export default function Dashboard() {
                     const item = estoqueChartData.find(d => d.nome === value);
                     return `${value} — R$ ${item?.valor.toFixed(2) || "0.00"}`;
                   }}
-                  wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                  wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
