@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search } from "lucide-react";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -221,6 +221,20 @@ export default function Funcionarios() {
   const validCount = importRows.filter(r => r.valid).length;
   const invalidCount = importRows.filter(r => !r.valid).length;
 
+  // Search/filter state
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredItems = items.filter((f: Funcionario) => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
+    const nomeMatch = f.nome.toLowerCase().includes(term);
+    const cpfMatch = f.cpf ? f.cpf.replace(/\D/g, "").includes(term.replace(/\D/g, "")) : false;
+    const matriculaMatch = f.matricula ? f.matricula.toLowerCase().includes(term) : false;
+    const setorMatch = f.setor ? f.setor.toLowerCase().includes(term) : false;
+    const cargoMatch = f.cargo ? f.cargo.toLowerCase().includes(term) : false;
+    return nomeMatch || cpfMatch || matriculaMatch || setorMatch || cargoMatch;
+  });
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -245,15 +259,41 @@ export default function Funcionarios() {
         )}
       </div>
 
+      {/* Search bar */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, CPF, matrícula, setor ou cargo..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {filteredItems.length} de {items.length} funcionário(s)
+        </span>
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
       ) : (
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
-            {items.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nenhum funcionário cadastrado</CardContent></Card>
-            ) : items.map(f => (
+            {filteredItems.length === 0 ? (
+              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">
+                {searchTerm ? "Nenhum funcionário encontrado para esta busca" : "Nenhum funcionário cadastrado"}
+              </CardContent></Card>
+            ) : filteredItems.map(f => (
               <Card key={f.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -297,9 +337,11 @@ export default function Funcionarios() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado</TableCell></TableRow>
-                  ) : items.map(f => (
+                  {filteredItems.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      {searchTerm ? "Nenhum funcionário encontrado para esta busca" : "Nenhum funcionário cadastrado"}
+                    </TableCell></TableRow>
+                  ) : filteredItems.map(f => (
                     <TableRow key={f.id}>
                       <TableCell className="font-medium">{f.nome}</TableCell>
                       <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
