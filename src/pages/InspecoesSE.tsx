@@ -333,8 +333,9 @@ export default function InspecoesSE() {
   async function generatePDF() {
     toast({ title: "Gerando PDF...", description: "Aguarde, carregando imagens." });
 
-    // Load empresa logo
+    // Load empresa logo & name
     let logoDataUrl: string | null = null;
+    let empresaNome = "";
     try {
       if (empresaId && isOnline()) {
         const { data: empresa } = await (supabase.from as any)("empresa_config")
@@ -345,6 +346,7 @@ export default function InspecoesSE() {
         if (empresa?.logo_url) {
           logoDataUrl = await loadImageAsDataUrl(empresa.logo_url);
         }
+        empresaNome = empresa?.nome || "";
       }
     } catch {}
 
@@ -363,130 +365,254 @@ export default function InspecoesSE() {
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
-    const ROW_H = 35; // taller rows for bigger images
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const ROW_H = 36;
     const IMG_H = 30;
-    const IMG_W = 35;
+    const IMG_W = 34;
+    const MARGIN = 10;
+    const tableWidth = pageWidth - MARGIN * 2;
 
-    // Header with logo
-    let headerY = 10;
+    // Color helpers
+    const getGravidadeColor = (g: string): [number, number, number] => {
+      const upper = (g || "").toUpperCase();
+      if (upper.includes("CRÍTICO") || upper.includes("CRITICO") || upper.includes("GRAVE")) return [220, 38, 38]; // red
+      if (upper.includes("MODERADO")) return [202, 138, 4]; // amber/yellow
+      if (upper.includes("LEVE")) return [37, 99, 235]; // blue
+      return [0, 0, 0];
+    };
+
+    const getStatusColor = (s: string): [number, number, number] => {
+      const upper = (s || "").toUpperCase();
+      if (upper === "PENDENTE") return [220, 38, 38]; // red
+      if (upper === "SOLUCIONADO") return [22, 163, 74]; // green
+      return [0, 0, 0];
+    };
+
+    const getStatusBgColor = (s: string): [number, number, number] => {
+      const upper = (s || "").toUpperCase();
+      if (upper === "PENDENTE") return [254, 226, 226]; // light red bg
+      if (upper === "SOLUCIONADO") return [220, 252, 231]; // light green bg
+      return [245, 245, 245];
+    };
+
+    const getGravidadeBgColor = (g: string): [number, number, number] => {
+      const upper = (g || "").toUpperCase();
+      if (upper.includes("CRÍTICO") || upper.includes("CRITICO") || upper.includes("GRAVE")) return [254, 226, 226]; // light red
+      if (upper.includes("MODERADO")) return [254, 249, 195]; // light yellow
+      if (upper.includes("LEVE")) return [219, 234, 254]; // light blue
+      return [245, 245, 245];
+    };
+
+    // --- Header ---
+    let headerY = 8;
     if (logoDataUrl) {
-      doc.addImage(logoDataUrl, "PNG", 10, 5, 30, 15);
-      headerY = 12;
+      doc.addImage(logoDataUrl, "PNG", MARGIN, 5, 30, 15);
     }
-    doc.setFontSize(14);
+    doc.setFontSize(15);
     doc.setFont("helvetica", "bold");
-    doc.text("GESTÃO DE CONFORMIDADES - INSPEÇÕES", pageWidth / 2, headerY, { align: "center" });
-    doc.setFontSize(9);
+    doc.text("GESTÃO DE CONFORMIDADES - INSPEÇÕES", pageWidth / 2, headerY + 5, { align: "center" });
+    if (empresaNome) {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(empresaNome, pageWidth / 2, headerY + 11, { align: "center" });
+    }
+    doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 6, { align: "center" });
-
-    // Table columns: N°, Data, Situação, Ref. Normativa, Antes, Depois, Gravidade, Ação Corretiva, Responsável, Local, Realizado, Status
-    const headers = ["N°", "Data", "Situação", "Ref. Normativa", "Antes", "Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const colWidths = [8, 16, 32, 24, 34, 34, 16, 30, 20, 22, 16, 16];
-    let y = headerY + 12;
-
-    // Header row
-    doc.setFillColor(41, 65, 122);
-    doc.rect(10, y, pageWidth - 20, 8, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(6);
-    doc.setFont("helvetica", "bold");
-    let x = 10;
-    headers.forEach((h, i) => {
-      doc.text(h, x + 1, y + 5.5);
-      x += colWidths[i];
-    });
-    y += 8;
-
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 16, { align: "center" });
     doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
 
+    // Table columns
+    const headers = ["N°", "Data", "Situação Detectada", "Ref. Normativa", "Foto Antes", "Foto Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
+    const colWidths = [8, 16, 34, 24, 35, 35, 16, 30, 20, 20, 16, 14];
+    // Center table
+    const totalCols = colWidths.reduce((a, b) => a + b, 0);
+    const tableStartX = (pageWidth - totalCols) / 2;
+
+    let y = headerY + 22;
+
+    // Draw table header
+    const drawTableHeader = () => {
+      doc.setFillColor(30, 58, 110);
+      doc.rect(tableStartX, y, totalCols, 9, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(6.5);
+      doc.setFont("helvetica", "bold");
+      let x = tableStartX;
+      headers.forEach((h, i) => {
+        const textW = doc.getTextWidth(h);
+        doc.text(h, x + (colWidths[i] - textW) / 2, y + 6);
+        x += colWidths[i];
+      });
+      y += 9;
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "normal");
+    };
+
+    drawTableHeader();
+
+    // Draw rows
     filtered.forEach((item, idx) => {
-      if (y + ROW_H > 195) {
+      if (y + ROW_H > pageHeight - 10) {
+        // Footer before page break
+        doc.setFontSize(6);
+        doc.setTextColor(150);
+        doc.text(`Página ${doc.getNumberOfPages()}`, pageWidth / 2, pageHeight - 5, { align: "center" });
+        doc.setTextColor(0);
         doc.addPage();
-        y = 15;
+        y = 12;
+        drawTableHeader();
       }
-      const bgColor = idx % 2 === 0 ? 245 : 255;
-      doc.setFillColor(bgColor, bgColor, bgColor);
-      doc.rect(10, y, pageWidth - 20, ROW_H, "F");
+
+      // Row background - alternate with slight tint based on status
+      const rowBg = idx % 2 === 0 ? [250, 250, 250] : [255, 255, 255];
+      doc.setFillColor(rowBg[0], rowBg[1], rowBg[2]);
+      doc.rect(tableStartX, y, totalCols, ROW_H, "F");
+
+      // Thin border around row
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      doc.rect(tableStartX, y, totalCols, ROW_H, "S");
+
+      // Vertical cell lines
+      let xLine = tableStartX;
+      colWidths.forEach((w) => {
+        doc.line(xLine, y, xLine, y + ROW_H);
+        xLine += w;
+      });
 
       const textY = y + 5;
-      x = 10;
+      let x = tableStartX;
+      doc.setFontSize(6);
 
-      // N°
-      doc.text(String(item.numero || idx + 1), x + 1, textY);
+      // N° - centered
+      const numStr = String(item.numero || idx + 1);
+      const numW = doc.getTextWidth(numStr);
+      doc.setFont("helvetica", "bold");
+      doc.text(numStr, x + (colWidths[0] - numW) / 2, textY);
+      doc.setFont("helvetica", "normal");
       x += colWidths[0];
 
-      // Data
-      doc.text(item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "", x + 1, textY);
+      // Data - centered
+      const dataStr = item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "";
+      const dataW = doc.getTextWidth(dataStr);
+      doc.text(dataStr, x + (colWidths[1] - dataW) / 2, textY);
       x += colWidths[1];
 
       // Situação (wrap text)
-      const situacao = item.situacao_detectada?.substring(0, 70) || "";
-      const situacaoLines = doc.splitTextToSize(situacao, colWidths[2] - 2);
-      doc.text(situacaoLines, x + 1, textY);
+      const situacao = item.situacao_detectada || "";
+      const situacaoLines = doc.splitTextToSize(situacao, colWidths[2] - 3);
+      doc.text(situacaoLines, x + 1.5, textY);
       x += colWidths[2];
 
-      // Ref. Normativa
-      const refNorm = item.referencia_normativa?.substring(0, 50) || "";
-      const refLines = doc.splitTextToSize(refNorm, colWidths[3] - 2);
-      doc.text(refLines, x + 1, textY);
+      // Ref. Normativa - centered
+      const refNorm = item.referencia_normativa || "";
+      const refLines = doc.splitTextToSize(refNorm, colWidths[3] - 3);
+      doc.text(refLines, x + 1.5, textY);
       x += colWidths[3];
 
-      // Foto Antes
+      // Foto Antes - centered image
       const cache = photoCache[item.id];
       if (cache?.antes) {
         try {
-          doc.addImage(cache.antes, "JPEG", x + 1, y + 1.5, IMG_W - 2, IMG_H);
+          const imgX = x + (colWidths[4] - (IMG_W - 2)) / 2;
+          doc.addImage(cache.antes, "JPEG", imgX, y + 2, IMG_W - 2, IMG_H);
         } catch {}
       } else {
-        doc.setTextColor(150);
-        doc.text("Sem foto", x + 1, textY);
+        doc.setTextColor(180, 180, 180);
+        doc.setFontSize(5.5);
+        const sfW = doc.getTextWidth("Sem foto");
+        doc.text("Sem foto", x + (colWidths[4] - sfW) / 2, y + ROW_H / 2);
         doc.setTextColor(0);
+        doc.setFontSize(6);
       }
       x += colWidths[4];
 
-      // Foto Depois
+      // Foto Depois - centered image
       if (cache?.depois) {
         try {
-          doc.addImage(cache.depois, "JPEG", x + 1, y + 1.5, IMG_W - 2, IMG_H);
+          const imgX = x + (colWidths[5] - (IMG_W - 2)) / 2;
+          doc.addImage(cache.depois, "JPEG", imgX, y + 2, IMG_W - 2, IMG_H);
         } catch {}
       } else {
-        doc.setTextColor(150);
-        doc.text("Sem foto", x + 1, textY);
+        doc.setTextColor(180, 180, 180);
+        doc.setFontSize(5.5);
+        const sfW = doc.getTextWidth("Sem foto");
+        doc.text("Sem foto", x + (colWidths[5] - sfW) / 2, y + ROW_H / 2);
         doc.setTextColor(0);
+        doc.setFontSize(6);
       }
       x += colWidths[5];
 
-      // Gravidade
-      doc.text(item.gravidade || "", x + 1, textY);
+      // Gravidade - colored badge
+      const gravText = item.gravidade || "";
+      const [gr, gg, gb] = getGravidadeColor(gravText);
+      const [gbr, gbg, gbb] = getGravidadeBgColor(gravText);
+      doc.setFontSize(5.5);
+      const gravW = doc.getTextWidth(gravText);
+      const badgeW = gravW + 4;
+      const badgeX = x + (colWidths[6] - badgeW) / 2;
+      const badgeY = textY - 3;
+      doc.setFillColor(gbr, gbg, gbb);
+      doc.roundedRect(badgeX, badgeY, badgeW, 5, 1.5, 1.5, "F");
+      doc.setTextColor(gr, gg, gb);
+      doc.setFont("helvetica", "bold");
+      doc.text(gravText, badgeX + 2, textY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(6);
       x += colWidths[6];
 
-      // Ação Corretiva
+      // Ação Corretiva - full text wrapped
       const acao = item.acao_corretiva || "";
-      const acaoLines = doc.splitTextToSize(acao, colWidths[7] - 2);
-      doc.text(acaoLines, x + 1, textY);
+      const acaoLines = doc.splitTextToSize(acao, colWidths[7] - 3);
+      doc.text(acaoLines, x + 1.5, textY);
       x += colWidths[7];
 
-      // Responsável
-      doc.text(item.responsavel || "", x + 1, textY);
+      // Responsável - centered
+      const resp = item.responsavel || "";
+      const respLines = doc.splitTextToSize(resp, colWidths[8] - 3);
+      doc.text(respLines, x + 1.5, textY);
       x += colWidths[8];
 
-      // Local
-      const localLines = doc.splitTextToSize(item.local || "", colWidths[9] - 2);
-      doc.text(localLines, x + 1, textY);
+      // Local - centered
+      const localText = item.local || "";
+      const localLines = doc.splitTextToSize(localText, colWidths[9] - 3);
+      doc.text(localLines, x + 1.5, textY);
       x += colWidths[9];
 
-      // Realizado
-      doc.text(item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "", x + 1, textY);
+      // Realizado - centered
+      const realStr = item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "—";
+      const realW = doc.getTextWidth(realStr);
+      doc.text(realStr, x + (colWidths[10] - realW) / 2, textY);
       x += colWidths[10];
 
-      // Status
-      doc.text(item.status || "", x + 1, textY);
+      // Status - colored badge
+      const statusText = item.status || "";
+      const [sr, sg, sb] = getStatusColor(statusText);
+      const [sbr, sbg, sbb] = getStatusBgColor(statusText);
+      doc.setFontSize(5.5);
+      const statW = doc.getTextWidth(statusText);
+      const sBadgeW = statW + 4;
+      const sBadgeX = x + (colWidths[11] - sBadgeW) / 2;
+      const sBadgeY = textY - 3;
+      doc.setFillColor(sbr, sbg, sbb);
+      doc.roundedRect(sBadgeX, sBadgeY, sBadgeW, 5, 1.5, 1.5, "F");
+      doc.setTextColor(sr, sg, sb);
+      doc.setFont("helvetica", "bold");
+      doc.text(statusText, sBadgeX + 2, textY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(6);
 
       y += ROW_H;
     });
+
+    // Footer on last page
+    doc.setFontSize(6);
+    doc.setTextColor(150);
+    doc.text(`Página ${doc.getNumberOfPages()}`, pageWidth / 2, pageHeight - 5, { align: "center" });
+    doc.setTextColor(0);
 
     doc.save(`Conformidades_${format(new Date(), "yyyy-MM-dd")}.pdf`);
     toast({ title: "PDF gerado com sucesso!" });
