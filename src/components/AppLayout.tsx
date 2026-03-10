@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
 
@@ -36,6 +36,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { signOut, user, modulosPermitidos, isSuperAdmin } = useAuth();
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
 
   const canAccess = (moduleKey: string) => isSuperAdmin || canAccessModule(modulosPermitidos, moduleKey);
 
@@ -49,6 +51,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Bottom nav items: first 4 main items + "Mais" button
   const bottomNavItems = visibleMainItems.slice(0, 4);
   const hasMore = visibleCadastroItems.length > 0 || isSuperAdmin;
+
+  useEffect(() => {
+    // Captura o evento beforeinstallprompt para usar no botão de instalação
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+
+    // Verifica se já está instalado
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+      || (navigator as any).standalone === true;
+    if (isStandalone) {
+      setShowInstallButton(false);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, []);
+
+  const handleInstallClick = () => {
+    if (installPrompt) {
+      const promptEvent = installPrompt as any;
+      promptEvent.prompt();
+      promptEvent.userChoice.then((result: any) => {
+        if (result.outcome === "accepted") {
+          setShowInstallButton(false);
+        }
+      });
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -167,6 +203,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-4 border-t border-sidebar-border space-y-2">
+          {showInstallButton && (
+            <button
+              onClick={handleInstallClick}
+              className="flex items-center gap-2 w-full px-4 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+              title="Instalar aplicativo na tela inicial"
+            >
+              <Download className="w-4 h-4" />
+              <span>Instalar App</span>
+            </button>
+          )}
           <p className="text-xs text-sidebar-foreground/40 text-center truncate">{user?.email}</p>
           <button onClick={signOut} className="flex items-center gap-2 w-full px-4 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
             <LogOut className="w-4 h-4" />
