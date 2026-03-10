@@ -483,6 +483,7 @@ export default function Funcionarios() {
                         <TableCell className="text-xs">{r.setor || "—"}</TableCell>
                         <TableCell className="text-xs">{r.cargo || "—"}</TableCell>
                         <TableCell className="text-xs font-mono">{r.data_admissao || "—"}</TableCell>
+                        <TableCell className="text-xs text-destructive">{r.error || ""}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
