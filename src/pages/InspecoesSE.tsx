@@ -47,6 +47,7 @@ const emptyForm = {
   local: "",
   data_realizado: "",
   status: "PENDENTE",
+  referencia_normativa: "",
 };
 
 export default function InspecoesSE() {
