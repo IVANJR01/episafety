@@ -22,7 +22,7 @@ interface Funcionario {
 
 interface ImportRow {
   nome: string; cpf: string; matricula: string; setor: string; cargo: string; data_admissao: string;
-  valid: boolean; error?: string;
+  valid: boolean; error?: string; action?: "insert" | "update"; existingId?: string;
 }
 
 const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "" };
@@ -134,12 +134,11 @@ export default function Funcionarios() {
           if (EXPECTED_COLUMNS.includes(norm)) headerMap[h] = norm;
         });
 
-        // Build set of existing CPFs for duplicate detection
-        const existingCpfs = new Set(
-          items
-            .filter((f: Funcionario) => f.cpf)
-            .map((f: Funcionario) => f.cpf!.replace(/\D/g, ""))
-        );
+        // Build map of existing CPFs to their IDs for update detection
+        const existingCpfMap = new Map<string, string>();
+        items.forEach((f: Funcionario) => {
+          if (f.cpf) existingCpfMap.set(f.cpf.replace(/\D/g, ""), f.id);
+        });
 
         const seenCpfs = new Set<string>();
 
@@ -152,13 +151,16 @@ export default function Funcionarios() {
             mapped[norm] = val;
           });
 
-          // Check for duplicates by CPF
           let validation = validateRow(mapped);
+          let action: "insert" | "update" = "insert";
+          let existingId: string | undefined;
+
           if (validation.valid && mapped.cpf) {
             const cpfDigits = mapped.cpf.replace(/\D/g, "");
             if (cpfDigits.length >= 11) {
-              if (existingCpfs.has(cpfDigits)) {
-                validation = { valid: false, error: "CPF já cadastrado no sistema" };
+              if (existingCpfMap.has(cpfDigits)) {
+                action = "update";
+                existingId = existingCpfMap.get(cpfDigits);
               } else if (seenCpfs.has(cpfDigits)) {
                 validation = { valid: false, error: "CPF duplicado na planilha" };
               } else {
@@ -167,7 +169,7 @@ export default function Funcionarios() {
             }
           }
 
-          return { ...mapped, ...validation };
+          return { ...mapped, ...validation, action, existingId };
         });
 
         setImportRows(rows);
@@ -189,30 +191,49 @@ export default function Funcionarios() {
     setImporting(true);
     setImportProgress(10);
 
-    const payloads = validRows.map(r => ({
-      nome: r.nome,
-      cpf: r.cpf || null,
-      matricula: r.matricula || null,
-      setor: r.setor || null,
-      cargo: r.cargo || null,
-      data_admissao: r.data_admissao || null,
-      empresa_id: empresaId,
-    }));
+    const toInsert = validRows.filter(r => r.action === "insert");
+    const toUpdate = validRows.filter(r => r.action === "update");
 
-    const { error, data: inserted } = await (supabase.from as any)("funcionarios").insert(payloads).select();
-    
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Bulk insert new rows
+    if (toInsert.length > 0) {
+      const payloads = toInsert.map(r => ({
+        nome: r.nome, cpf: r.cpf || null, matricula: r.matricula || null,
+        setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null,
+        empresa_id: empresaId,
+      }));
+      const { error, data: inserted } = await (supabase.from as any)("funcionarios").insert(payloads).select();
+      if (!error) successCount += inserted?.length || toInsert.length;
+      else errorCount += toInsert.length;
+    }
+
+    setImportProgress(50);
+
+    // Update existing rows
+    if (toUpdate.length > 0) {
+      for (const r of toUpdate) {
+        const { error } = await (supabase.from as any)("funcionarios")
+          .update({ nome: r.nome, matricula: r.matricula || null, setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null })
+          .eq("id", r.existingId);
+        if (!error) successCount++;
+        else errorCount++;
+      }
+    }
+
     setImportProgress(100);
     setImporting(false);
-
-    if (error) {
-      toast({ title: "Erro na importação", description: error.message, variant: "destructive" });
-      setImportResult({ success: 0, errors: validRows.length });
-    } else {
-      const count = inserted?.length || validRows.length;
-      setImportResult({ success: count, errors: 0 });
-      toast({ title: "Importação concluída", description: `${count} funcionário(s) importado(s) com sucesso.` });
-      await refetch();
-    }
+    setImportResult({ success: successCount, errors: errorCount });
+    
+    const msgs: string[] = [];
+    const inserted = toInsert.length - (errorCount > 0 ? Math.min(errorCount, toInsert.length) : 0);
+    const updated = toUpdate.length - Math.max(0, errorCount - toInsert.length);
+    if (inserted > 0) msgs.push(`${inserted} novo(s)`);
+    if (updated > 0) msgs.push(`${updated} atualizado(s)`);
+    
+    toast({ title: "Importação concluída", description: msgs.join(", ") + "." });
+    await refetch();
   };
 
   const exportToExcel = () => {
@@ -243,6 +264,8 @@ export default function Funcionarios() {
   };
 
   const validCount = importRows.filter(r => r.valid).length;
+  const insertCount = importRows.filter(r => r.valid && r.action === "insert").length;
+  const updateCount = importRows.filter(r => r.valid && r.action === "update").length;
   const invalidCount = importRows.filter(r => !r.valid).length;
 
   // Search/filter state
@@ -433,10 +456,18 @@ export default function Funcionarios() {
             <>
               <div className="flex items-center justify-between gap-3 pb-2">
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    <span className="font-medium">{validCount}</span> válido(s)
-                  </span>
+                  {insertCount > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <span className="font-medium">{insertCount}</span> novo(s)
+                    </span>
+                  )}
+                  {updateCount > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <Pencil className="w-4 h-4 text-blue-500" />
+                      <span className="font-medium">{updateCount}</span> atualização(ões)
+                    </span>
+                  )}
                   {invalidCount > 0 && (
                     <span className="flex items-center gap-1.5">
                       <AlertCircle className="w-4 h-4 text-destructive" />
@@ -473,9 +504,9 @@ export default function Funcionarios() {
                   </TableHeader>
                   <TableBody>
                     {importRows.map((r, i) => (
-                      <TableRow key={i} className={r.valid ? "" : "bg-destructive/5"}>
+                      <TableRow key={i} className={!r.valid ? "bg-destructive/5" : r.action === "update" ? "bg-blue-500/5" : ""}>
                         <TableCell className="px-2">
-                          {r.valid ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-destructive" />}
+                          {!r.valid ? <AlertCircle className="w-4 h-4 text-destructive" /> : r.action === "update" ? <Pencil className="w-4 h-4 text-blue-500" /> : <CheckCircle2 className="w-4 h-4 text-green-500" />}
                         </TableCell>
                         <TableCell className="text-xs font-medium">{r.nome || <span className="text-destructive italic">vazio</span>}</TableCell>
                         <TableCell className="text-xs font-mono">{r.cpf || "—"}</TableCell>
@@ -483,7 +514,9 @@ export default function Funcionarios() {
                         <TableCell className="text-xs">{r.setor || "—"}</TableCell>
                         <TableCell className="text-xs">{r.cargo || "—"}</TableCell>
                         <TableCell className="text-xs font-mono">{r.data_admissao || "—"}</TableCell>
-                        <TableCell className="text-xs text-destructive">{r.error || ""}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.error ? <span className="text-destructive">{r.error}</span> : r.action === "update" ? <span className="text-blue-500">Atualizar</span> : <span className="text-green-600">Novo</span>}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -494,7 +527,7 @@ export default function Funcionarios() {
                 <Button variant="outline" onClick={() => { setImportOpen(false); setImportRows([]); }} disabled={importing}>Cancelar</Button>
                 <Button onClick={handleImport} disabled={importing || validCount === 0}>
                   <Upload className="w-4 h-4 mr-2" />
-                  Importar {validCount} funcionário(s)
+                  Importar {validCount} ({insertCount > 0 ? `${insertCount} novo(s)` : ""}{insertCount > 0 && updateCount > 0 ? ", " : ""}{updateCount > 0 ? `${updateCount} atualização` : ""})
                 </Button>
               </DialogFooter>
             </>
