@@ -352,9 +352,9 @@ export default function InspecoesSE() {
     doc.setFont("helvetica", "normal");
     doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 6, { align: "center" });
 
-    // Table columns: N°, Data, Situação, Antes, Depois, Gravidade, Ação, Responsável, Local, Realizado, Status
-    const headers = ["N°", "Data", "Situação", "Antes", "Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const colWidths = [8, 18, 40, 37, 37, 18, 35, 22, 25, 18, 18];
+    // Table columns: N°, Data, Situação, Ref. Normativa, Antes, Depois, Gravidade, Ação Corretiva, Responsável, Local, Realizado, Status
+    const headers = ["N°", "Data", "Situação", "Ref. Normativa", "Antes", "Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
+    const colWidths = [8, 16, 32, 24, 34, 34, 16, 30, 20, 22, 16, 16];
     let y = headerY + 12;
 
     // Header row
@@ -395,10 +395,16 @@ export default function InspecoesSE() {
       x += colWidths[1];
 
       // Situação (wrap text)
-      const situacao = item.situacao_detectada?.substring(0, 80) || "";
+      const situacao = item.situacao_detectada?.substring(0, 70) || "";
       const situacaoLines = doc.splitTextToSize(situacao, colWidths[2] - 2);
       doc.text(situacaoLines, x + 1, textY);
       x += colWidths[2];
+
+      // Ref. Normativa
+      const refNorm = item.referencia_normativa?.substring(0, 50) || "";
+      const refLines = doc.splitTextToSize(refNorm, colWidths[3] - 2);
+      doc.text(refLines, x + 1, textY);
+      x += colWidths[3];
 
       // Foto Antes
       const cache = photoCache[item.id];
@@ -411,7 +417,7 @@ export default function InspecoesSE() {
         doc.text("Sem foto", x + 1, textY);
         doc.setTextColor(0);
       }
-      x += colWidths[3];
+      x += colWidths[4];
 
       // Foto Depois
       if (cache?.depois) {
@@ -423,30 +429,30 @@ export default function InspecoesSE() {
         doc.text("Sem foto", x + 1, textY);
         doc.setTextColor(0);
       }
-      x += colWidths[4];
+      x += colWidths[5];
 
       // Gravidade
       doc.text(item.gravidade || "", x + 1, textY);
-      x += colWidths[5];
+      x += colWidths[6];
 
       // Ação Corretiva
-      const acao = item.acao_corretiva?.substring(0, 60) || "";
-      const acaoLines = doc.splitTextToSize(acao, colWidths[6] - 2);
+      const acao = item.acao_corretiva?.substring(0, 50) || "";
+      const acaoLines = doc.splitTextToSize(acao, colWidths[7] - 2);
       doc.text(acaoLines, x + 1, textY);
-      x += colWidths[6];
+      x += colWidths[7];
 
       // Responsável
       doc.text(item.responsavel || "", x + 1, textY);
-      x += colWidths[7];
+      x += colWidths[8];
 
       // Local
-      const localLines = doc.splitTextToSize(item.local || "", colWidths[8] - 2);
+      const localLines = doc.splitTextToSize(item.local || "", colWidths[9] - 2);
       doc.text(localLines, x + 1, textY);
-      x += colWidths[8];
+      x += colWidths[9];
 
       // Realizado
       doc.text(item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "", x + 1, textY);
-      x += colWidths[9];
+      x += colWidths[10];
 
       // Status
       doc.text(item.status || "", x + 1, textY);
