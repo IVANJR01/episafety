@@ -289,9 +289,11 @@ export default function Funcionarios() {
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
-            {items.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nenhum funcionário cadastrado</CardContent></Card>
-            ) : items.map(f => (
+            {filteredItems.length === 0 ? (
+              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">
+                {searchTerm ? "Nenhum funcionário encontrado para esta busca" : "Nenhum funcionário cadastrado"}
+              </CardContent></Card>
+            ) : filteredItems.map(f => (
               <Card key={f.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
