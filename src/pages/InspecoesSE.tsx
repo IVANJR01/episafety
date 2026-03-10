@@ -96,6 +96,35 @@ export default function InspecoesSE() {
     setLoading(false);
   }
 
+  async function askAI() {
+    if (!form.situacao_detectada.trim() || form.situacao_detectada.trim().length < 5) {
+      toast({ title: "Digite pelo menos 5 caracteres na situação detectada", variant: "destructive" });
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const res = await supabase.functions.invoke("sugerir-nr", {
+        body: { situacao: form.situacao_detectada },
+      });
+      if (res.error) throw res.error;
+      const data = res.data;
+      if (data.error) {
+        toast({ title: "Erro da IA", description: data.error, variant: "destructive" });
+      } else {
+        setForm(p => ({
+          ...p,
+          referencia_normativa: data.referencia_normativa || p.referencia_normativa,
+          gravidade: data.gravidade || p.gravidade,
+          acao_corretiva: data.acao_corretiva || p.acao_corretiva,
+        }));
+        toast({ title: "Sugestão aplicada!", description: `NR: ${data.referencia_normativa}` });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro ao consultar IA", description: err?.message || "Tente novamente", variant: "destructive" });
+    }
+    setAiLoading(false);
+  }
+
   function openNew() {
     setEditingId(null);
     setForm(emptyForm);
