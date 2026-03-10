@@ -157,9 +157,9 @@ export default function EPIs() {
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
-            {epis.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nenhum EPI cadastrado</CardContent></Card>
-            ) : epis.map(e => (
+            {episFiltrados.length === 0 ? (
+              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</CardContent></Card>
+            ) : episFiltrados.map(e => (
               <Card key={e.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
