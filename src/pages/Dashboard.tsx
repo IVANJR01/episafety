@@ -69,11 +69,10 @@ export default function Dashboard() {
     "hsl(173, 80%, 40%)",
   ];
 
-  // Média mensal de consumo por EPI
-  const mediaMensalEPI = useMemo(() => {
-    if (entregas.length === 0) return [];
+  // Consumo mensal por EPI com detalhamento por mês
+  const { mediaMensalEPI, mesesOrdenados } = useMemo(() => {
+    if (entregas.length === 0) return { mediaMensalEPI: [], mesesOrdenados: [] as string[] };
 
-    // Collect all months with deliveries
     const mesesSet = new Set<string>();
     const consumoPorEpi: Record<string, Record<string, number>> = {};
 
@@ -85,14 +84,14 @@ export default function Dashboard() {
       consumoPorEpi[e.epi_id][mes] = (consumoPorEpi[e.epi_id][mes] || 0) + e.quantidade;
     });
 
-    const totalMeses = mesesSet.size || 1;
+    const mesesOrdenados = Array.from(mesesSet).sort().slice(-6);
+    const totalMeses = mesesOrdenados.length || 1;
 
-    return epis
+    const items = epis
       .map(epi => {
         const mesesEpi = consumoPorEpi[epi.id] || {};
         const totalEntregue = Object.values(mesesEpi).reduce((s, v) => s + v, 0);
         const media = totalEntregue / totalMeses;
-        const custoMedio = media * (epi.valor || 0);
         const mesesEstoque = media > 0 ? epi.estoque / media : null;
 
         return {
@@ -100,13 +99,15 @@ export default function Dashboard() {
           nome: epi.nome,
           totalEntregue,
           media: Number(media.toFixed(1)),
-          custoMedio: Number(custoMedio.toFixed(2)),
           estoqueAtual: epi.estoque,
           mesesEstoque: mesesEstoque !== null ? Number(mesesEstoque.toFixed(1)) : null,
+          porMes: mesesEpi,
         };
       })
       .filter(e => e.totalEntregue > 0)
       .sort((a, b) => b.media - a.media);
+
+    return { mediaMensalEPI: items, mesesOrdenados };
   }, [entregas, epis]);
 
   const valorSaida = useMemo(() => {
@@ -283,34 +284,44 @@ export default function Dashboard() {
           {mediaMensalEPI.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>EPI</TableHead>
-                  <TableHead className="text-right">Média/Mês</TableHead>
-                  <TableHead className="text-right">Custo Médio/Mês</TableHead>
-                  <TableHead className="text-right">Estoque Atual</TableHead>
-                  <TableHead className="text-right">Duração Estoque</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mediaMensalEPI.map(e => (
-                  <TableRow key={e.id}>
-                    <TableCell className="font-medium">{e.nome}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{e.media} un.</TableCell>
-                    <TableCell className="text-right font-mono text-sm">R$ {e.custoMedio.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">{e.estoqueAtual} un.</TableCell>
-                    <TableCell className="text-right">
-                      {e.mesesEstoque !== null ? (
-                        <span className={`font-mono text-sm font-semibold ${e.mesesEstoque <= 1 ? "text-destructive" : e.mesesEstoque <= 3 ? "text-warning" : "text-green-600"}`}>
-                          {e.mesesEstoque} {e.mesesEstoque === 1 ? "mês" : "meses"}
-                        </span>
-                      ) : "—"}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="sticky left-0 bg-card z-10">EPI</TableHead>
+                    {mesesOrdenados.map(m => (
+                      <TableHead key={m} className="text-center whitespace-nowrap">
+                        {m.split("-").reverse().join("/")}
+                      </TableHead>
+                    ))}
+                    <TableHead className="text-right">Média/Mês</TableHead>
+                    <TableHead className="text-right">Estoque</TableHead>
+                    <TableHead className="text-right">Duração</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {mediaMensalEPI.map(e => (
+                    <TableRow key={e.id}>
+                      <TableCell className="font-medium sticky left-0 bg-card z-10 max-w-[180px] truncate">{e.nome}</TableCell>
+                      {mesesOrdenados.map(m => (
+                        <TableCell key={m} className="text-center font-mono text-sm">
+                          {e.porMes[m] || <span className="text-muted-foreground">0</span>}
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-right font-mono text-sm font-semibold">{e.media}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{e.estoqueAtual}</TableCell>
+                      <TableCell className="text-right">
+                        {e.mesesEstoque !== null ? (
+                          <span className={`font-mono text-sm font-semibold ${e.mesesEstoque <= 1 ? "text-destructive" : e.mesesEstoque <= 3 ? "text-warning" : "text-green-600"}`}>
+                            {e.mesesEstoque}m
+                          </span>
+                        ) : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
