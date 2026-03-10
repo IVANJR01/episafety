@@ -388,20 +388,6 @@ export default function InspecoesSE() {
       return [0, 0, 0];
     };
 
-    const getStatusBgColor = (s: string): [number, number, number] => {
-      const upper = (s || "").toUpperCase();
-      if (upper === "PENDENTE") return [254, 226, 226]; // light red bg
-      if (upper === "SOLUCIONADO") return [220, 252, 231]; // light green bg
-      return [245, 245, 245];
-    };
-
-    const getGravidadeBgColor = (g: string): [number, number, number] => {
-      const upper = (g || "").toUpperCase();
-      if (upper.includes("CRÍTICO") || upper.includes("CRITICO") || upper.includes("GRAVE")) return [254, 226, 226]; // light red
-      if (upper.includes("MODERADO")) return [254, 249, 195]; // light yellow
-      if (upper.includes("LEVE")) return [219, 234, 254]; // light blue
-      return [245, 245, 245];
-    };
 
     // --- Header ---
     let headerY = 8;
