@@ -28,6 +28,7 @@ export type Database = {
           id: string
           local: string | null
           numero: number
+          referencia_normativa: string | null
           responsavel: string | null
           situacao_detectada: string
           status: string
@@ -46,6 +47,7 @@ export type Database = {
           id?: string
           local?: string | null
           numero?: number
+          referencia_normativa?: string | null
           responsavel?: string | null
           situacao_detectada: string
           status?: string
@@ -64,6 +66,7 @@ export type Database = {
           id?: string
           local?: string | null
           numero?: number
+          referencia_normativa?: string | null
           responsavel?: string | null
           situacao_detectada?: string
           status?: string

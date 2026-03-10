@@ -1,0 +1,1 @@
+ALTER TABLE public.conformidades ADD COLUMN IF NOT EXISTS referencia_normativa text DEFAULT NULL;
