@@ -264,6 +264,8 @@ export default function Funcionarios() {
   };
 
   const validCount = importRows.filter(r => r.valid).length;
+  const insertCount = importRows.filter(r => r.valid && r.action === "insert").length;
+  const updateCount = importRows.filter(r => r.valid && r.action === "update").length;
   const invalidCount = importRows.filter(r => !r.valid).length;
 
   // Search/filter state
