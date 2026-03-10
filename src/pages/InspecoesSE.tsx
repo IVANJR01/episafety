@@ -67,6 +67,7 @@ export default function InspecoesSE() {
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("all");
