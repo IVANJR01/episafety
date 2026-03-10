@@ -216,8 +216,11 @@ export default function Funcionarios() {
         </div>
         {canCreate && (
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={exportToExcel} className="w-full sm:w-auto" disabled={items.length === 0}>
+              <Download className="w-4 h-4 mr-2" />Exportar
+            </Button>
             <Button variant="outline" onClick={() => fileRef.current?.click()} className="w-full sm:w-auto">
-              <Upload className="w-4 h-4 mr-2" />Importar Planilha
+              <Upload className="w-4 h-4 mr-2" />Importar
             </Button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
             <Button onClick={openNew} className="w-full sm:w-auto relative">
