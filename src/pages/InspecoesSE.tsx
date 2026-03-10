@@ -202,6 +202,10 @@ export default function InspecoesSE() {
       if (isOnline()) {
         if (fotoAntesFile) foto_antes = await uploadPhoto(fotoAntesFile);
         if (fotoDepoisFile) foto_depois = await uploadPhoto(fotoDepoisFile);
+      } else {
+        // Store base64 previews for offline viewing
+        if (fotoAntesPreview) foto_antes = fotoAntesPreview;
+        if (fotoDepoisPreview) foto_depois = fotoDepoisPreview;
       }
 
       const payload: any = {
