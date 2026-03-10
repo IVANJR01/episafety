@@ -261,13 +261,21 @@ export default function InspecoesSE() {
           gravidade: form.gravidade, acao_corretiva: form.acao_corretiva || null,
           responsavel: form.responsavel || null, local: form.local || null,
           data_realizado: form.data_realizado || null, status: form.status,
-          foto_antes: null, foto_depois: null, empresa_id: empresaId, created_by: user?.id,
+          foto_antes: fotoAntesPreview || null, foto_depois: fotoDepoisPreview || null,
+          empresa_id: empresaId, created_by: user?.id,
+          referencia_normativa: form.referencia_normativa || null,
         };
+        const cached = getCachedData<Conformidade>("conformidades") || [];
         if (editingId) {
           addToSyncQueue({ table: "conformidades", type: "update", payload: { id: editingId, ...payload } });
+          setCachedData("conformidades", cached.map(c => c.id === editingId ? { ...c, ...payload } : c));
         } else {
           payload.id = crypto.randomUUID();
+          payload.numero = (items.length > 0 ? Math.max(...items.map(i => i.numero || 0)) : 0) + 1;
+          payload.created_at = new Date().toISOString();
           addToSyncQueue({ table: "conformidades", type: "insert", payload });
+          cached.push(payload as Conformidade);
+          setCachedData("conformidades", cached);
         }
         toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
         setDialogOpen(false);
