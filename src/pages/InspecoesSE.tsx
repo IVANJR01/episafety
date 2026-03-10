@@ -183,6 +183,7 @@ export default function InspecoesSE() {
         status: form.status,
         foto_antes: foto_antes || null,
         foto_depois: foto_depois || null,
+        referencia_normativa: form.referencia_normativa || null,
       };
 
       if (editingId) {
