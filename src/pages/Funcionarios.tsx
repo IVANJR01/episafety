@@ -337,9 +337,11 @@ export default function Funcionarios() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado</TableCell></TableRow>
-                  ) : items.map(f => (
+                  {filteredItems.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      {searchTerm ? "Nenhum funcionário encontrado para esta busca" : "Nenhum funcionário cadastrado"}
+                    </TableCell></TableRow>
+                  ) : filteredItems.map(f => (
                     <TableRow key={f.id}>
                       <TableCell className="font-medium">{f.nome}</TableCell>
                       <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
