@@ -527,7 +527,7 @@ export default function Funcionarios() {
                 <Button variant="outline" onClick={() => { setImportOpen(false); setImportRows([]); }} disabled={importing}>Cancelar</Button>
                 <Button onClick={handleImport} disabled={importing || validCount === 0}>
                   <Upload className="w-4 h-4 mr-2" />
-                  Importar {validCount} funcionário(s)
+                  Importar {validCount} ({insertCount > 0 ? `${insertCount} novo(s)` : ""}{insertCount > 0 && updateCount > 0 ? ", " : ""}{updateCount > 0 ? `${updateCount} atualização` : ""})
                 </Button>
               </DialogFooter>
             </>
