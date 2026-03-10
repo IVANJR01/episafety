@@ -75,50 +75,62 @@ function drawHeader(doc: jsPDF, data: DDSData, pageNum: number, totalPages: numb
   doc.setLineWidth(0.3);
 
   // Row 1: Data | Duração | Palestrante
-  const col1W = CONTENT_W * 0.2;
-  const col2W = CONTENT_W * 0.2;
-  const col3W = CONTENT_W * 0.6;
+  // Distribute columns: Data(15%) | Duração(15%) | Palestrante(70%)
+  const dataLabelW = CONTENT_W * 0.08;
+  const dataValueW = CONTENT_W * 0.12;
+  const duracaoLabelW = CONTENT_W * 0.08;
+  const duracaoValueW = CONTENT_W * 0.12;
+  const palLabelW = CONTENT_W * 0.12;
+  const palValueW = CONTENT_W - dataLabelW - dataValueW - duracaoLabelW - duracaoValueW - palLabelW;
 
   doc.setFillColor(230, 230, 230);
   
-  // Labels
   let x = MARGIN;
-  doc.rect(x, y, col1W, infoRowH, "FD");
+
+  // Data label
+  doc.rect(x, y, dataLabelW, infoRowH, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.text("DATA:", x + 2, y + 5.5);
-  
-  doc.rect(x + col1W, y, col1W, infoRowH, "S");
+  x += dataLabelW;
+
+  // Data value
+  doc.rect(x, y, dataValueW, infoRowH, "S");
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(formatDate(data.data), x + col1W + 2, y + 5.5);
+  doc.text(formatDate(data.data), x + 2, y + 5.5);
+  x += dataValueW;
 
-  x = MARGIN + col1W * 2;
+  // Duração label
   doc.setFillColor(230, 230, 230);
-  doc.rect(x, y, col2W, infoRowH, "FD");
+  doc.rect(x, y, duracaoLabelW, infoRowH, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.text("DURAÇÃO:", x + 2, y + 5.5);
+  x += duracaoLabelW;
 
-  doc.rect(x + col2W, y, col2W, infoRowH, "S");
+  // Duração value
+  doc.rect(x, y, duracaoValueW, infoRowH, "S");
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(data.duracao || "—", x + col2W + 2, y + 5.5);
+  doc.text(data.duracao || "—", x + 2, y + 5.5);
+  x += duracaoValueW;
 
-  x = MARGIN + col1W * 2 + col2W * 2;
-  const remainW = CONTENT_W - (col1W * 2 + col2W * 2);
-  const labelW = remainW * 0.4;
-  const valueW = remainW * 0.6;
+  // Palestrante label
   doc.setFillColor(230, 230, 230);
-  doc.rect(x, y, labelW, infoRowH, "FD");
+  doc.rect(x, y, palLabelW, infoRowH, "FD");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
+  doc.setFontSize(7);
   doc.text("PALESTRANTE:", x + 2, y + 5.5);
+  x += palLabelW;
 
-  doc.rect(x + labelW, y, valueW, infoRowH, "S");
+  // Palestrante value - gets all remaining space
+  doc.rect(x, y, palValueW, infoRowH, "S");
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(data.palestrante || "—", x + labelW + 2, y + 5.5);
+  const palText = data.palestrante || "—";
+  const palTruncated = doc.splitTextToSize(palText, palValueW - 4);
+  doc.text(palTruncated[0] || "—", x + 2, y + 5.5);
 
   y += infoRowH;
 
