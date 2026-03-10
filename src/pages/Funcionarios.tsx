@@ -191,30 +191,49 @@ export default function Funcionarios() {
     setImporting(true);
     setImportProgress(10);
 
-    const payloads = validRows.map(r => ({
-      nome: r.nome,
-      cpf: r.cpf || null,
-      matricula: r.matricula || null,
-      setor: r.setor || null,
-      cargo: r.cargo || null,
-      data_admissao: r.data_admissao || null,
-      empresa_id: empresaId,
-    }));
+    const toInsert = validRows.filter(r => r.action === "insert");
+    const toUpdate = validRows.filter(r => r.action === "update");
 
-    const { error, data: inserted } = await (supabase.from as any)("funcionarios").insert(payloads).select();
-    
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Bulk insert new rows
+    if (toInsert.length > 0) {
+      const payloads = toInsert.map(r => ({
+        nome: r.nome, cpf: r.cpf || null, matricula: r.matricula || null,
+        setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null,
+        empresa_id: empresaId,
+      }));
+      const { error, data: inserted } = await (supabase.from as any)("funcionarios").insert(payloads).select();
+      if (!error) successCount += inserted?.length || toInsert.length;
+      else errorCount += toInsert.length;
+    }
+
+    setImportProgress(50);
+
+    // Update existing rows
+    if (toUpdate.length > 0) {
+      for (const r of toUpdate) {
+        const { error } = await (supabase.from as any)("funcionarios")
+          .update({ nome: r.nome, matricula: r.matricula || null, setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null })
+          .eq("id", r.existingId);
+        if (!error) successCount++;
+        else errorCount++;
+      }
+    }
+
     setImportProgress(100);
     setImporting(false);
-
-    if (error) {
-      toast({ title: "Erro na importação", description: error.message, variant: "destructive" });
-      setImportResult({ success: 0, errors: validRows.length });
-    } else {
-      const count = inserted?.length || validRows.length;
-      setImportResult({ success: count, errors: 0 });
-      toast({ title: "Importação concluída", description: `${count} funcionário(s) importado(s) com sucesso.` });
-      await refetch();
-    }
+    setImportResult({ success: successCount, errors: errorCount });
+    
+    const msgs: string[] = [];
+    const inserted = toInsert.length - (errorCount > 0 ? Math.min(errorCount, toInsert.length) : 0);
+    const updated = toUpdate.length - Math.max(0, errorCount - toInsert.length);
+    if (inserted > 0) msgs.push(`${inserted} novo(s)`);
+    if (updated > 0) msgs.push(`${updated} atualizado(s)`);
+    
+    toast({ title: "Importação concluída", description: msgs.join(", ") + "." });
+    await refetch();
   };
 
   const exportToExcel = () => {
