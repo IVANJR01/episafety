@@ -133,17 +133,21 @@ export default function Auth() {
               "Enviar Link de Recuperação"}
             </Button>
           </form>
-          {showInstallButton && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleInstallClick}
-              className="w-full mt-4 gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Instalar App
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (installPrompt) {
+                handleInstallClick();
+              } else {
+                window.location.href = "/install";
+              }
+            }}
+            className="w-full mt-4 gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Instalar App
+          </Button>
           <div className="mt-4 text-center">
             {mode === "forgot" ?
             <button type="button" onClick={() => setMode("login")} className="text-sm text-primary hover:underline">
