@@ -26,7 +26,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     }
 
     let query = (supabase.from as any)(table).select("*");
-    if (orderBy) query = query.order(orderBy, { ascending: false });
+    if (orderBy) query = query.order(orderBy, { ascending: ascending ?? false });
     const { data: rows, error } = await query;
     if (error) {
       // On network error, try cache
