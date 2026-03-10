@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search } from "lucide-react";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
