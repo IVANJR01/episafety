@@ -475,7 +475,7 @@ export default function InspecoesSE() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Content */}
       {loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">Carregando...</p>
       ) : filtered.length === 0 ? (
@@ -483,59 +483,95 @@ export default function InspecoesSE() {
           Nenhum registro encontrado.
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[50px]">N°</TableHead>
-                <TableHead className="w-[100px]">Data</TableHead>
-                <TableHead>Situação Detectada</TableHead>
-                <TableHead className="w-[80px]">Antes</TableHead>
-                <TableHead className="w-[80px]">Depois</TableHead>
-                <TableHead className="w-[120px]">Gravidade</TableHead>
-                <TableHead>O Que Fazer</TableHead>
-                <TableHead>Responsável</TableHead>
-                <TableHead>Local</TableHead>
-                <TableHead className="w-[100px]">Realizado</TableHead>
-                <TableHead className="w-[110px]">Status</TableHead>
-                <TableHead className="w-[80px]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((item, idx) => (
-                <TableRow key={item.id} className="cursor-pointer hover:bg-muted/30" onClick={() => openEdit(item)}>
-                  <TableCell className="font-medium">{item.numero || idx + 1}</TableCell>
-                  <TableCell className="text-xs">
-                    {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "—"}
-                  </TableCell>
-                  <TableCell className="text-xs max-w-[200px] truncate">{item.situacao_detectada}</TableCell>
-                  <TableCell>
-                    {item.foto_antes ? (
-                      <img src={item.foto_antes} alt="Antes" className="w-14 h-10 object-cover rounded border" />
-                    ) : <span className="text-xs text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    {item.foto_depois ? (
-                      <img src={item.foto_depois} alt="Depois" className="w-14 h-10 object-cover rounded border" />
-                    ) : <span className="text-xs text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    <GravidadeBadge gravidade={item.gravidade} />
-                  </TableCell>
-                  <TableCell className="text-xs max-w-[150px] truncate">{item.acao_corretiva || "—"}</TableCell>
-                  <TableCell className="text-xs">{item.responsavel || "—"}</TableCell>
-                  <TableCell className="text-xs">{item.local || "—"}</TableCell>
-                  <TableCell className="text-xs">
-                    {item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "—"}
-                  </TableCell>
-                  <TableCell>
+        <>
+          {/* Desktop Table */}
+          <div className="hidden md:block border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-[50px]">N°</TableHead>
+                  <TableHead className="w-[100px]">Data</TableHead>
+                  <TableHead>Situação Detectada</TableHead>
+                  <TableHead className="w-[80px]">Antes</TableHead>
+                  <TableHead className="w-[80px]">Depois</TableHead>
+                  <TableHead className="w-[120px]">Gravidade</TableHead>
+                  <TableHead>O Que Fazer</TableHead>
+                  <TableHead>Responsável</TableHead>
+                  <TableHead>Local</TableHead>
+                  <TableHead className="w-[100px]">Realizado</TableHead>
+                  <TableHead className="w-[110px]">Status</TableHead>
+                  <TableHead className="w-[80px]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((item, idx) => (
+                  <TableRow key={item.id} className="cursor-pointer hover:bg-muted/30" onClick={() => openEdit(item)}>
+                    <TableCell className="font-medium">{item.numero || idx + 1}</TableCell>
+                    <TableCell className="text-xs">
+                      {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate">{item.situacao_detectada}</TableCell>
+                    <TableCell>
+                      {item.foto_antes ? (
+                        <img src={item.foto_antes} alt="Antes" className="w-14 h-10 object-cover rounded border" />
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {item.foto_depois ? (
+                        <img src={item.foto_depois} alt="Depois" className="w-14 h-10 object-cover rounded border" />
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      <GravidadeBadge gravidade={item.gravidade} />
+                    </TableCell>
+                    <TableCell className="text-xs max-w-[150px] truncate">{item.acao_corretiva || "—"}</TableCell>
+                    <TableCell className="text-xs">{item.responsavel || "—"}</TableCell>
+                    <TableCell className="text-xs">{item.local || "—"}</TableCell>
+                    <TableCell className="text-xs">
+                      {item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
+                        className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
+                        {item.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        {canDelete && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(item.id)}>
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((item, idx) => (
+              <div key={item.id} className="border rounded-lg p-3 space-y-3 bg-card" onClick={() => openEdit(item)}>
+                {/* Top row: N°, Status, Actions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-muted-foreground">#{item.numero || idx + 1}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
-                      className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
+                      className={item.status === "SOLUCIONADO" ? "bg-green-600 text-white text-[10px]" : "bg-amber-500 text-white text-[10px]"}>
                       {item.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                    <div className="flex gap-0.5" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
@@ -545,12 +581,61 @@ export default function InspecoesSE() {
                         </Button>
                       )}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  </div>
+                </div>
+
+                {/* Situação */}
+                <p className="text-sm leading-snug">{item.situacao_detectada}</p>
+
+                {/* Gravidade + Local */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <GravidadeBadge gravidade={item.gravidade} />
+                  {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
+                </div>
+
+                {/* Photos */}
+                {(item.foto_antes || item.foto_depois) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {item.foto_antes ? (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1 font-medium">ANTES</p>
+                        <img src={item.foto_antes} alt="Antes" className="w-full h-24 object-cover rounded-lg border" />
+                      </div>
+                    ) : <div />}
+                    {item.foto_depois ? (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1 font-medium">DEPOIS</p>
+                        <img src={item.foto_depois} alt="Depois" className="w-full h-24 object-cover rounded-lg border" />
+                      </div>
+                    ) : <div />}
+                  </div>
+                )}
+
+                {/* Ação + Responsável */}
+                {item.acao_corretiva && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-medium">AÇÃO CORRETIVA</p>
+                    <p className="text-xs">{item.acao_corretiva}</p>
+                  </div>
+                )}
+                <div className="flex gap-4 text-xs">
+                  {item.responsavel && (
+                    <div>
+                      <span className="text-muted-foreground">Resp: </span>
+                      <span>{item.responsavel}</span>
+                    </div>
+                  )}
+                  {item.data_realizado && (
+                    <div>
+                      <span className="text-muted-foreground">Realizado: </span>
+                      <span>{format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy")}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Edit/Create Dialog */}
