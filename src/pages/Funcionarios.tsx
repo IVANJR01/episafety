@@ -177,6 +177,22 @@ export default function Funcionarios() {
     }
   };
 
+  const exportToExcel = () => {
+    const rows = items.map(f => ({
+      "Nome": f.nome,
+      "CPF": f.cpf || "",
+      "Matrícula": f.matricula || "",
+      "Setor": f.setor || "",
+      "Cargo": f.cargo || "",
+      "Data Admissão": f.data_admissao || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
+    XLSX.writeFile(wb, "funcionarios.xlsx");
+  };
+
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
       ["Nome", "CPF", "Matrícula", "Setor", "Cargo", "Data Admissão"],
@@ -200,8 +216,11 @@ export default function Funcionarios() {
         </div>
         {canCreate && (
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={exportToExcel} className="w-full sm:w-auto" disabled={items.length === 0}>
+              <Download className="w-4 h-4 mr-2" />Exportar
+            </Button>
             <Button variant="outline" onClick={() => fileRef.current?.click()} className="w-full sm:w-auto">
-              <Upload className="w-4 h-4 mr-2" />Importar Planilha
+              <Upload className="w-4 h-4 mr-2" />Importar
             </Button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
             <Button onClick={openNew} className="w-full sm:w-auto relative">
