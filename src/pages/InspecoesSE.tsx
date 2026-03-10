@@ -388,20 +388,6 @@ export default function InspecoesSE() {
       return [0, 0, 0];
     };
 
-    const getStatusBgColor = (s: string): [number, number, number] => {
-      const upper = (s || "").toUpperCase();
-      if (upper === "PENDENTE") return [254, 226, 226]; // light red bg
-      if (upper === "SOLUCIONADO") return [220, 252, 231]; // light green bg
-      return [245, 245, 245];
-    };
-
-    const getGravidadeBgColor = (g: string): [number, number, number] => {
-      const upper = (g || "").toUpperCase();
-      if (upper.includes("CRÍTICO") || upper.includes("CRITICO") || upper.includes("GRAVE")) return [254, 226, 226]; // light red
-      if (upper.includes("MODERADO")) return [254, 249, 195]; // light yellow
-      if (upper.includes("LEVE")) return [219, 234, 254]; // light blue
-      return [245, 245, 245];
-    };
 
     // --- Header ---
     let headerY = 8;
@@ -422,27 +408,31 @@ export default function InspecoesSE() {
     doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 16, { align: "center" });
     doc.setTextColor(0, 0, 0);
 
-    // Table columns
+    // Table columns - use full page width
     const headers = ["N°", "Data", "Situação Detectada", "Ref. Normativa", "Foto Antes", "Foto Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const colWidths = [8, 16, 34, 24, 35, 35, 16, 30, 20, 20, 16, 14];
-    // Center table
+    const usableWidth = pageWidth - MARGIN * 2;
+    const colWidths = [9, 18, 38, 26, 36, 36, 20, 38, 22, 22, 18, 16];
     const totalCols = colWidths.reduce((a, b) => a + b, 0);
-    const tableStartX = (pageWidth - totalCols) / 2;
+    // Scale columns to fill usable width
+    const scale = usableWidth / totalCols;
+    const scaledWidths = colWidths.map(w => w * scale);
+    const totalScaled = scaledWidths.reduce((a, b) => a + b, 0);
+    const tableStartX = (pageWidth - totalScaled) / 2;
 
     let y = headerY + 22;
 
     // Draw table header
     const drawTableHeader = () => {
       doc.setFillColor(30, 58, 110);
-      doc.rect(tableStartX, y, totalCols, 9, "F");
+      doc.rect(tableStartX, y, totalScaled, 9, "F");
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(6.5);
       doc.setFont("helvetica", "bold");
       let x = tableStartX;
       headers.forEach((h, i) => {
         const textW = doc.getTextWidth(h);
-        doc.text(h, x + (colWidths[i] - textW) / 2, y + 6);
-        x += colWidths[i];
+        doc.text(h, x + (scaledWidths[i] - textW) / 2, y + 6);
+        x += scaledWidths[i];
       });
       y += 9;
       doc.setTextColor(0, 0, 0);
@@ -452,11 +442,12 @@ export default function InspecoesSE() {
     drawTableHeader();
 
     // Helper: draw vertically & horizontally centered wrapped text
-    const drawCenteredText = (text: string, cellX: number, cellY: number, cellW: number, cellH: number, fontSize = 6, bold = false) => {
+    const drawCenteredText = (text: string, cellX: number, cellY: number, cellW: number, cellH: number, fontSize = 6, bold = false, color?: [number, number, number]) => {
       doc.setFontSize(fontSize);
       if (bold) doc.setFont("helvetica", "bold");
       else doc.setFont("helvetica", "normal");
-      const lines: string[] = doc.splitTextToSize(text, cellW - 3);
+      if (color) doc.setTextColor(color[0], color[1], color[2]);
+      const lines: string[] = doc.splitTextToSize(text, cellW - 4);
       const lineH = fontSize * 0.4;
       const blockH = lines.length * lineH;
       const startY = cellY + (cellH - blockH) / 2 + lineH;
@@ -464,6 +455,8 @@ export default function InspecoesSE() {
         const lw = doc.getTextWidth(line);
         doc.text(line, cellX + (cellW - lw) / 2, startY + li * lineH);
       });
+      if (color) doc.setTextColor(0, 0, 0);
+      if (bold) doc.setFont("helvetica", "normal");
     };
 
     // Draw rows
@@ -481,16 +474,16 @@ export default function InspecoesSE() {
       // Row background
       const rowBg = idx % 2 === 0 ? [250, 250, 250] : [255, 255, 255];
       doc.setFillColor(rowBg[0], rowBg[1], rowBg[2]);
-      doc.rect(tableStartX, y, totalCols, ROW_H, "F");
+      doc.rect(tableStartX, y, totalScaled, ROW_H, "F");
 
       // Border
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.2);
-      doc.rect(tableStartX, y, totalCols, ROW_H, "S");
+      doc.rect(tableStartX, y, totalScaled, ROW_H, "S");
 
       // Vertical cell lines
       let xLine = tableStartX;
-      colWidths.forEach((w) => {
+      scaledWidths.forEach((w) => {
         doc.line(xLine, y, xLine, y + ROW_H);
         xLine += w;
       });
@@ -498,103 +491,74 @@ export default function InspecoesSE() {
       let x = tableStartX;
 
       // N° - centered bold
-      doc.setTextColor(0, 0, 0);
-      drawCenteredText(String(item.numero || idx + 1), x, y, colWidths[0], ROW_H, 6.5, true);
-      x += colWidths[0];
+      drawCenteredText(String(item.numero || idx + 1), x, y, scaledWidths[0], ROW_H, 7, true);
+      x += scaledWidths[0];
 
       // Data - centered
       const dataStr = item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "";
-      drawCenteredText(dataStr, x, y, colWidths[1], ROW_H, 6);
-      x += colWidths[1];
+      drawCenteredText(dataStr, x, y, scaledWidths[1], ROW_H, 6);
+      x += scaledWidths[1];
 
       // Situação - centered wrapped
-      drawCenteredText(item.situacao_detectada || "", x, y, colWidths[2], ROW_H, 5.5);
-      x += colWidths[2];
+      drawCenteredText(item.situacao_detectada || "", x, y, scaledWidths[2], ROW_H, 5.5);
+      x += scaledWidths[2];
 
       // Ref. Normativa - centered wrapped
-      drawCenteredText(item.referencia_normativa || "", x, y, colWidths[3], ROW_H, 5.5);
-      x += colWidths[3];
+      drawCenteredText(item.referencia_normativa || "", x, y, scaledWidths[3], ROW_H, 5.5);
+      x += scaledWidths[3];
 
       // Foto Antes - centered image
       const cache = photoCache[item.id];
       if (cache?.antes) {
         try {
-          const imgX = x + (colWidths[4] - (IMG_W - 2)) / 2;
+          const imgX = x + (scaledWidths[4] - (IMG_W - 2)) / 2;
           const imgY = y + (ROW_H - IMG_H) / 2;
           doc.addImage(cache.antes, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
         } catch {}
       } else {
-        doc.setTextColor(180, 180, 180);
-        drawCenteredText("Sem foto", x, y, colWidths[4], ROW_H, 5.5);
-        doc.setTextColor(0, 0, 0);
+        drawCenteredText("Sem foto", x, y, scaledWidths[4], ROW_H, 5.5, false, [180, 180, 180]);
       }
-      x += colWidths[4];
+      x += scaledWidths[4];
 
       // Foto Depois - centered image
       if (cache?.depois) {
         try {
-          const imgX = x + (colWidths[5] - (IMG_W - 2)) / 2;
+          const imgX = x + (scaledWidths[5] - (IMG_W - 2)) / 2;
           const imgY = y + (ROW_H - IMG_H) / 2;
           doc.addImage(cache.depois, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
         } catch {}
       } else {
-        doc.setTextColor(180, 180, 180);
-        drawCenteredText("Sem foto", x, y, colWidths[5], ROW_H, 5.5);
-        doc.setTextColor(0, 0, 0);
+        drawCenteredText("Sem foto", x, y, scaledWidths[5], ROW_H, 5.5, false, [180, 180, 180]);
       }
-      x += colWidths[5];
+      x += scaledWidths[5];
 
-      // Gravidade - colored badge centered
+      // Gravidade - bold colored text centered (no badge bg)
       const gravText = item.gravidade || "";
-      const [gr, gg, gb] = getGravidadeColor(gravText);
-      const [gbr, gbg, gbb] = getGravidadeBgColor(gravText);
-      doc.setFontSize(5.5);
-      doc.setFont("helvetica", "bold");
-      const gravW = doc.getTextWidth(gravText);
-      const badgeW = gravW + 4;
-      const badgeX = x + (colWidths[6] - badgeW) / 2;
-      const badgeY = y + (ROW_H - 5) / 2;
-      doc.setFillColor(gbr, gbg, gbb);
-      doc.roundedRect(badgeX, badgeY, badgeW, 5, 1.5, 1.5, "F");
-      doc.setTextColor(gr, gg, gb);
-      doc.text(gravText, badgeX + 2, badgeY + 3.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
-      x += colWidths[6];
+      const gravColor = getGravidadeColor(gravText);
+      drawCenteredText(gravText, x, y, scaledWidths[6], ROW_H, 6, true, gravColor);
+      x += scaledWidths[6];
 
       // Ação Corretiva - centered wrapped
-      drawCenteredText(item.acao_corretiva || "", x, y, colWidths[7], ROW_H, 5.5);
-      x += colWidths[7];
+      drawCenteredText(item.acao_corretiva || "", x, y, scaledWidths[7], ROW_H, 5.5);
+      x += scaledWidths[7];
 
       // Responsável - centered
-      drawCenteredText(item.responsavel || "", x, y, colWidths[8], ROW_H, 5.5);
-      x += colWidths[8];
+      drawCenteredText(item.responsavel || "", x, y, scaledWidths[8], ROW_H, 6);
+      x += scaledWidths[8];
 
       // Local - centered
-      drawCenteredText(item.local || "", x, y, colWidths[9], ROW_H, 5.5);
-      x += colWidths[9];
+      drawCenteredText(item.local || "", x, y, scaledWidths[9], ROW_H, 6);
+      x += scaledWidths[9];
 
       // Realizado - centered
       const realStr = item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "—";
-      drawCenteredText(realStr, x, y, colWidths[10], ROW_H, 6);
-      x += colWidths[10];
+      drawCenteredText(realStr, x, y, scaledWidths[10], ROW_H, 6);
+      x += scaledWidths[10];
 
-      // Status - colored badge centered
+      // Status - bold colored text centered (no badge bg)
       const statusText = item.status || "";
-      const [sr, sg, sb] = getStatusColor(statusText);
-      const [sbr, sbg, sbb] = getStatusBgColor(statusText);
-      doc.setFontSize(5.5);
-      doc.setFont("helvetica", "bold");
-      const statW = doc.getTextWidth(statusText);
-      const sBadgeW = statW + 4;
-      const sBadgeX = x + (colWidths[11] - sBadgeW) / 2;
-      const sBadgeY = y + (ROW_H - 5) / 2;
-      doc.setFillColor(sbr, sbg, sbb);
-      doc.roundedRect(sBadgeX, sBadgeY, sBadgeW, 5, 1.5, 1.5, "F");
-      doc.setTextColor(sr, sg, sb);
-      doc.text(statusText, sBadgeX + 2, sBadgeY + 3.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
+      const statusColor = getStatusColor(statusText);
+      drawCenteredText(statusText, x, y, scaledWidths[11], ROW_H, 6, true, statusColor);
 
       y += ROW_H;
     });
