@@ -532,10 +532,25 @@ export default function InspecoesSE() {
       }
       x += scaledWidths[5];
 
-      // Gravidade - bold colored text centered (no badge bg)
+      // Gravidade - filled cell background with white text for critical levels
       const gravText = item.gravidade || "";
-      const gravColor = getGravidadeColor(gravText);
-      drawCenteredText(gravText, x, y, scaledWidths[6], ROW_H, 6, true, gravColor);
+      const gravUpper = gravText.toUpperCase();
+      const isGravCritical = gravUpper.includes("CRÍTICO") || gravUpper.includes("CRITICO") || gravUpper.includes("GRAVE") || gravUpper.includes("ALTA");
+      const isGravModerado = gravUpper.includes("MODERADO");
+      if (isGravCritical) {
+        doc.setFillColor(220, 38, 38);
+        doc.rect(x, y, scaledWidths[6], ROW_H, "F");
+        drawCenteredText(gravText, x, y, scaledWidths[6], ROW_H, 6.5, true, [255, 255, 255]);
+      } else if (isGravModerado) {
+        doc.setFillColor(234, 179, 8);
+        doc.rect(x, y, scaledWidths[6], ROW_H, "F");
+        drawCenteredText(gravText, x, y, scaledWidths[6], ROW_H, 6.5, true, [255, 255, 255]);
+      } else {
+        // Leve - blue bg
+        doc.setFillColor(59, 130, 246);
+        doc.rect(x, y, scaledWidths[6], ROW_H, "F");
+        drawCenteredText(gravText, x, y, scaledWidths[6], ROW_H, 6.5, true, [255, 255, 255]);
+      }
       x += scaledWidths[6];
 
       // Ação Corretiva - centered wrapped
@@ -555,10 +570,21 @@ export default function InspecoesSE() {
       drawCenteredText(realStr, x, y, scaledWidths[10], ROW_H, 6);
       x += scaledWidths[10];
 
-      // Status - bold colored text centered (no badge bg)
+      // Status - filled cell background with white text
       const statusText = item.status || "";
-      const statusColor = getStatusColor(statusText);
-      drawCenteredText(statusText, x, y, scaledWidths[11], ROW_H, 6, true, statusColor);
+      const isPendente = statusText.toUpperCase() === "PENDENTE";
+      const isSolucionado = statusText.toUpperCase() === "SOLUCIONADO";
+      if (isPendente) {
+        doc.setFillColor(220, 38, 38);
+        doc.rect(x, y, scaledWidths[11], ROW_H, "F");
+        drawCenteredText(statusText, x, y, scaledWidths[11], ROW_H, 6.5, true, [255, 255, 255]);
+      } else if (isSolucionado) {
+        doc.setFillColor(22, 163, 74);
+        doc.rect(x, y, scaledWidths[11], ROW_H, "F");
+        drawCenteredText(statusText, x, y, scaledWidths[11], ROW_H, 6.5, true, [255, 255, 255]);
+      } else {
+        drawCenteredText(statusText, x, y, scaledWidths[11], ROW_H, 6, true);
+      }
 
       y += ROW_H;
     });
