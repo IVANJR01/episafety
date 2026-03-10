@@ -559,6 +559,13 @@ export default function InspecoesSE() {
                     <TableCell>
                       <GravidadeBadge gravidade={item.gravidade} />
                     </TableCell>
+                    <TableCell className="text-xs max-w-[150px]">
+                      {item.referencia_normativa ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
+                          <Sparkles className="w-3 h-3" />{item.referencia_normativa}
+                        </span>
+                      ) : "—"}
+                    </TableCell>
                     <TableCell className="text-xs max-w-[150px] truncate">{item.acao_corretiva || "—"}</TableCell>
                     <TableCell className="text-xs">{item.responsavel || "—"}</TableCell>
                     <TableCell className="text-xs">{item.local || "—"}</TableCell>
