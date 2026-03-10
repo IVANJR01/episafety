@@ -113,6 +113,7 @@ export default function InspecoesSE() {
       local: item.local || "",
       data_realizado: item.data_realizado || "",
       status: item.status,
+      referencia_normativa: item.referencia_normativa || "",
     });
     setExistingFotoAntes(item.foto_antes);
     setExistingFotoDepois(item.foto_depois);
