@@ -254,6 +254,7 @@ export default function InspecoesSE() {
         toast({ title: !isOnline() ? "Salvo offline" : "Registro criado!", description: !isOnline() ? "Será sincronizado quando houver conexão." : undefined });
       }
 
+      resetDraft();
       setDialogOpen(false);
       loadData();
     } catch (err: any) {
