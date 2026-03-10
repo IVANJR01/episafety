@@ -136,7 +136,7 @@ function drawHeader(doc: jsPDF, data: DDSData, pageNum: number, totalPages: numb
 
   // Row 2: Tema (full width)
   doc.setFillColor(230, 230, 230);
-  const temaLabelW = col1W;
+  const temaLabelW = dataLabelW + dataValueW; // same width as Data label+value
   doc.rect(MARGIN, y, temaLabelW, infoRowH, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
