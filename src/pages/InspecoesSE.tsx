@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,7 +59,7 @@ export default function InspecoesSE() {
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const { form, setForm, resetForm: resetDraft, hasDraft } = useFormDraft("inspecoes_se", emptyForm);
   const [fotoAntesFile, setFotoAntesFile] = useState<File | null>(null);
   const [fotoAntesPreview, setFotoAntesPreview] = useState<string | null>(null);
   const [fotoDepoisFile, setFotoDepoisFile] = useState<File | null>(null);
@@ -130,7 +131,8 @@ export default function InspecoesSE() {
 
   function openNew() {
     setEditingId(null);
-    setForm(emptyForm);
+    if (!hasDraft()) resetDraft();
+    else setForm(form); // keep draft
     clearPhotoPreviews();
     setDialogOpen(true);
   }
@@ -252,6 +254,7 @@ export default function InspecoesSE() {
         toast({ title: !isOnline() ? "Salvo offline" : "Registro criado!", description: !isOnline() ? "Será sincronizado quando houver conexão." : undefined });
       }
 
+      resetDraft();
       setDialogOpen(false);
       loadData();
     } catch (err: any) {
@@ -278,6 +281,7 @@ export default function InspecoesSE() {
           setCachedData("conformidades", cached);
         }
         toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+        resetDraft();
         setDialogOpen(false);
         loadData();
       } else {
