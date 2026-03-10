@@ -271,16 +271,21 @@ export default function Funcionarios() {
   // Search/filter state
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredItems = items.filter((f: Funcionario) => {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return true;
-    const nomeMatch = f.nome.toLowerCase().includes(term);
-    const cpfMatch = f.cpf ? f.cpf.replace(/\D/g, "").includes(term.replace(/\D/g, "")) : false;
-    const matriculaMatch = f.matricula ? f.matricula.toLowerCase().includes(term) : false;
-    const setorMatch = f.setor ? f.setor.toLowerCase().includes(term) : false;
-    const cargoMatch = f.cargo ? f.cargo.toLowerCase().includes(term) : false;
-    return nomeMatch || cpfMatch || matriculaMatch || setorMatch || cargoMatch;
-  });
+  const normalize = (str: string) =>
+    str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+  const filteredItems = searchTerm.trim()
+    ? items.filter((f: Funcionario) => {
+        const term = normalize(searchTerm);
+        const termDigits = term.replace(/\D/g, "");
+        if (normalize(f.nome).includes(term)) return true;
+        if (f.cpf && termDigits && f.cpf.replace(/\D/g, "").includes(termDigits)) return true;
+        if (f.matricula && normalize(f.matricula).includes(term)) return true;
+        if (f.setor && normalize(f.setor).includes(term)) return true;
+        if (f.cargo && normalize(f.cargo).includes(term)) return true;
+        return false;
+      })
+    : items;
 
   return (
     <div className="space-y-4 sm:space-y-6">
