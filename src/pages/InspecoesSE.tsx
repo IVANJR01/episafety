@@ -352,9 +352,9 @@ export default function InspecoesSE() {
     doc.setFont("helvetica", "normal");
     doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 6, { align: "center" });
 
-    // Table columns: N°, Data, Situação, Antes, Depois, Gravidade, Ação, Responsável, Local, Realizado, Status
-    const headers = ["N°", "Data", "Situação", "Antes", "Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const colWidths = [8, 18, 40, 37, 37, 18, 35, 22, 25, 18, 18];
+    // Table columns: N°, Data, Situação, Ref. Normativa, Antes, Depois, Gravidade, Ação Corretiva, Responsável, Local, Realizado, Status
+    const headers = ["N°", "Data", "Situação", "Ref. Normativa", "Antes", "Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
+    const colWidths = [8, 16, 32, 24, 34, 34, 16, 30, 20, 22, 16, 16];
     let y = headerY + 12;
 
     // Header row
