@@ -3,9 +3,10 @@ import { X } from "lucide-react";
 
 const DISMISSED_KEY = "pwa-install-banner-dismissed";
 
-export default function InstallBanner() {
+export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: boolean }) {
   const [visible, setVisible] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [installEvent, setInstallEvent] = useState<any>(null);
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches
@@ -18,14 +19,23 @@ export default function InstallBanner() {
 
     const handler = (e: Event) => {
       e.preventDefault();
-      // Auto-trigger install prompt immediately
-      const promptEvent = e as any;
-      promptEvent.prompt();
-      promptEvent.userChoice.then((result: any) => {
-        if (result.outcome === "accepted") {
-          setVisible(false);
+      setInstallEvent(e);
+      // Auto-trigger only if explicitly requested (login page)
+      if (autoTrigger) {
+        const promptEvent = e as any;
+        promptEvent.prompt();
+        promptEvent.userChoice.then((result: any) => {
+          if (result.outcome === "accepted") {
+            setVisible(false);
+          }
+        });
+      } else {
+        // Just store the event and show banner for iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIOS) {
+          setVisible(true);
         }
-      });
+      }
     };
 
     window.addEventListener("beforeinstallprompt", handler);
@@ -33,7 +43,7 @@ export default function InstallBanner() {
     // iOS fallback: show banner with instructions
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     let timeout: ReturnType<typeof setTimeout>;
-    if (isIOS) {
+    if (isIOS && !autoTrigger) {
       timeout = setTimeout(() => setVisible(true), 1500);
     }
 
@@ -41,7 +51,7 @@ export default function InstallBanner() {
       window.removeEventListener("beforeinstallprompt", handler);
       if (timeout) clearTimeout(timeout);
     };
-  }, []);
+  }, [autoTrigger]);
 
   const handleDismiss = () => {
     setVisible(false);
@@ -50,7 +60,6 @@ export default function InstallBanner() {
 
   if (!visible || isStandalone) return null;
 
-  // Only shows for iOS (Android auto-prompts above)
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-300">
       <div className="max-w-lg mx-auto bg-primary text-primary-foreground rounded-xl shadow-lg p-3 flex items-center gap-3">
