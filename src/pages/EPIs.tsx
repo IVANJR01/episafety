@@ -34,7 +34,14 @@ export default function EPIs() {
   const [editing, setEditing] = useState<EPI | null>(null);
   const { form, setForm, resetForm, hasDraft } = useFormDraft("epis", emptyForm);
   const [consultando, setConsultando] = useState(false);
+  const [busca, setBusca] = useState("");
   const { toast } = useToast();
+
+  const episFiltrados = epis.filter(e => {
+    if (!busca.trim()) return true;
+    const termo = busca.toLowerCase();
+    return e.nome.toLowerCase().includes(termo) || (e.ca && e.ca.toLowerCase().includes(termo));
+  });
 
   const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (e: EPI) => {
