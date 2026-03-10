@@ -34,7 +34,14 @@ export default function EPIs() {
   const [editing, setEditing] = useState<EPI | null>(null);
   const { form, setForm, resetForm, hasDraft } = useFormDraft("epis", emptyForm);
   const [consultando, setConsultando] = useState(false);
+  const [busca, setBusca] = useState("");
   const { toast } = useToast();
+
+  const episFiltrados = epis.filter(e => {
+    if (!busca.trim()) return true;
+    const termo = busca.toLowerCase();
+    return e.nome.toLowerCase().includes(termo) || (e.ca && e.ca.toLowerCase().includes(termo));
+  });
 
   const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (e: EPI) => {
@@ -123,7 +130,7 @@ export default function EPIs() {
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar equipamentos de proteção</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
+           <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
             <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
           </Button>
           {canCreate && (
@@ -134,15 +141,25 @@ export default function EPIs() {
         </div>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nome ou CA..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
       ) : (
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
-            {epis.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Nenhum EPI cadastrado</CardContent></Card>
-            ) : epis.map(e => (
+            {episFiltrados.length === 0 ? (
+              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</CardContent></Card>
+            ) : episFiltrados.map(e => (
               <Card key={e.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
@@ -195,9 +212,9 @@ export default function EPIs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {epis.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum EPI cadastrado</TableCell></TableRow>
-                  ) : epis.map(e => (
+                  {episFiltrados.length === 0 ? (
+                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</TableCell></TableRow>
+                  ) : episFiltrados.map(e => (
                     <TableRow key={e.id}>
                       <TableCell className="font-medium">{e.nome}</TableCell>
                       <TableCell className="font-mono text-xs">{e.ca || "—"}</TableCell>
