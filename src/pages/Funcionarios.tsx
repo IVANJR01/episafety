@@ -456,10 +456,18 @@ export default function Funcionarios() {
             <>
               <div className="flex items-center justify-between gap-3 pb-2">
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    <span className="font-medium">{validCount}</span> válido(s)
-                  </span>
+                  {insertCount > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <span className="font-medium">{insertCount}</span> novo(s)
+                    </span>
+                  )}
+                  {updateCount > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <Pencil className="w-4 h-4 text-blue-500" />
+                      <span className="font-medium">{updateCount}</span> atualização(ões)
+                    </span>
+                  )}
                   {invalidCount > 0 && (
                     <span className="flex items-center gap-1.5">
                       <AlertCircle className="w-4 h-4 text-destructive" />
