@@ -48,8 +48,9 @@ export default function Funcionarios() {
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar funcionários</p>
         </div>
         {canCreate && (
-          <Button onClick={openNew} className="w-full sm:w-auto">
+          <Button onClick={openNew} className="w-full sm:w-auto relative">
             <Plus className="w-4 h-4 mr-2" />Novo Funcionário
+            {hasDraft() && <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse" title="Rascunho salvo" />}
           </Button>
         )}
       </div>
