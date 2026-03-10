@@ -260,7 +260,7 @@ export default function Funcionarios() {
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div><span className="text-muted-foreground">CPF:</span> <span className="font-mono">{f.cpf || "—"}</span></div>
                     <div><span className="text-muted-foreground">Matrícula:</span> <span className="font-mono">{f.matricula || "—"}</span></div>
-                    {f.data_admissao && <div><span className="text-muted-foreground">Admissão:</span> <span className="font-mono">{f.data_admissao}</span></div>}
+                    {f.data_admissao && <div><span className="text-muted-foreground">Admissão:</span> <span className="font-mono">{f.data_admissao.split("-").reverse().join("/")}</span></div>}
                   </div>
                 </CardContent>
               </Card>
@@ -292,7 +292,7 @@ export default function Funcionarios() {
                       <TableCell className="font-mono text-xs">{f.matricula || "—"}</TableCell>
                       <TableCell>{f.setor || "—"}</TableCell>
                       <TableCell>{f.cargo || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{f.data_admissao || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{f.data_admissao ? f.data_admissao.split("-").reverse().join("/") : "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
                           {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
