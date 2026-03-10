@@ -241,9 +241,15 @@ export default function InspecoesSE() {
           if (error) throw error;
         } else {
           payload.id = crypto.randomUUID();
+          payload.numero = (items.length > 0 ? Math.max(...items.map(i => i.numero || 0)) : 0) + 1;
+          payload.created_at = new Date().toISOString();
           addToSyncQueue({ table: "conformidades", type: "insert", payload });
+          // Update local cache optimistically
+          const cached = getCachedData<Conformidade>("conformidades") || [];
+          cached.push(payload as Conformidade);
+          setCachedData("conformidades", cached);
         }
-        toast({ title: "Registro criado!" });
+        toast({ title: !isOnline() ? "Salvo offline" : "Registro criado!", description: !isOnline() ? "Será sincronizado quando houver conexão." : undefined });
       }
 
       setDialogOpen(false);
