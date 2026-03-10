@@ -529,6 +529,7 @@ export default function InspecoesSE() {
                   <TableHead className="w-[80px]">Antes</TableHead>
                   <TableHead className="w-[80px]">Depois</TableHead>
                   <TableHead className="w-[120px]">Gravidade</TableHead>
+                  <TableHead>Ref. Normativa</TableHead>
                   <TableHead>O Que Fazer</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead>Local</TableHead>
