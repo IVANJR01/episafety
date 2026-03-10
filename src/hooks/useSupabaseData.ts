@@ -44,7 +44,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
       setCachedData(table, result);
     }
     setLoading(false);
-  }, [table, orderBy]);
+  }, [table, orderBy, ascending]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
