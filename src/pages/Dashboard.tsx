@@ -69,11 +69,10 @@ export default function Dashboard() {
     "hsl(173, 80%, 40%)",
   ];
 
-  // Média mensal de consumo por EPI
-  const mediaMensalEPI = useMemo(() => {
-    if (entregas.length === 0) return [];
+  // Consumo mensal por EPI com detalhamento por mês
+  const { mediaMensalEPI, mesesOrdenados } = useMemo(() => {
+    if (entregas.length === 0) return { mediaMensalEPI: [], mesesOrdenados: [] as string[] };
 
-    // Collect all months with deliveries
     const mesesSet = new Set<string>();
     const consumoPorEpi: Record<string, Record<string, number>> = {};
 
@@ -85,14 +84,14 @@ export default function Dashboard() {
       consumoPorEpi[e.epi_id][mes] = (consumoPorEpi[e.epi_id][mes] || 0) + e.quantidade;
     });
 
-    const totalMeses = mesesSet.size || 1;
+    const mesesOrdenados = Array.from(mesesSet).sort().slice(-6);
+    const totalMeses = mesesOrdenados.length || 1;
 
-    return epis
+    const items = epis
       .map(epi => {
         const mesesEpi = consumoPorEpi[epi.id] || {};
         const totalEntregue = Object.values(mesesEpi).reduce((s, v) => s + v, 0);
         const media = totalEntregue / totalMeses;
-        const custoMedio = media * (epi.valor || 0);
         const mesesEstoque = media > 0 ? epi.estoque / media : null;
 
         return {
@@ -100,13 +99,15 @@ export default function Dashboard() {
           nome: epi.nome,
           totalEntregue,
           media: Number(media.toFixed(1)),
-          custoMedio: Number(custoMedio.toFixed(2)),
           estoqueAtual: epi.estoque,
           mesesEstoque: mesesEstoque !== null ? Number(mesesEstoque.toFixed(1)) : null,
+          porMes: mesesEpi,
         };
       })
       .filter(e => e.totalEntregue > 0)
       .sort((a, b) => b.media - a.media);
+
+    return { mediaMensalEPI: items, mesesOrdenados };
   }, [entregas, epis]);
 
   const valorSaida = useMemo(() => {
