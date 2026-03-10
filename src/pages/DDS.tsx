@@ -72,13 +72,30 @@ export default function DDS() {
   const [detailDDS, setDetailDDS] = useState<DDS | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const [tema, setTema] = useState("");
-  const [data, setData] = useState(new Date().toISOString().split("T")[0]);
-  const [palestrante, setPalestrante] = useState("");
-  const [local, setLocal] = useState("");
-  const [duracao, setDuracao] = useState("15 minutos");
-  const [observacao, setObservacao] = useState("");
-  const [selectedFuncionarios, setSelectedFuncionarios] = useState<string[]>([]);
+  const ddsDefaults = {
+    tema: "", data: new Date().toISOString().split("T")[0],
+    palestrante: "", local: "", duracao: "15 minutos",
+    observacao: "", selectedFuncionarios: [] as string[],
+  };
+  const { form: ddsForm, setForm: setDdsForm, resetForm: resetDdsDraft, hasDraft: hasDdsDraft } = useFormDraft("dds_form", ddsDefaults);
+
+  const tema = ddsForm.tema;
+  const data = ddsForm.data;
+  const palestrante = ddsForm.palestrante;
+  const local = ddsForm.local;
+  const duracao = ddsForm.duracao;
+  const observacao = ddsForm.observacao;
+  const selectedFuncionarios = ddsForm.selectedFuncionarios;
+
+  const setTema = (v: string) => setDdsForm(f => ({ ...f, tema: v }));
+  const setData = (v: string) => setDdsForm(f => ({ ...f, data: v }));
+  const setPalestrante = (v: string) => setDdsForm(f => ({ ...f, palestrante: v }));
+  const setLocal = (v: string) => setDdsForm(f => ({ ...f, local: v }));
+  const setDuracao = (v: string) => setDdsForm(f => ({ ...f, duracao: v }));
+  const setObservacao = (v: string) => setDdsForm(f => ({ ...f, observacao: v }));
+  const setSelectedFuncionarios = (v: string[] | ((prev: string[]) => string[])) => {
+    setDdsForm(f => ({ ...f, selectedFuncionarios: typeof v === 'function' ? v(f.selectedFuncionarios) : v }));
+  };
   const [saving, setSaving] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,13 +107,7 @@ export default function DDS() {
   const empresa = empresas.find((e) => e.id === empresaId) || { id: "", nome: "Empresa", cnpj: null, logo_url: null };
 
   const resetForm = () => {
-    setTema("");
-    setData(new Date().toISOString().split("T")[0]);
-    setPalestrante("");
-    setLocal("");
-    setDuracao("15 minutos");
-    setObservacao("");
-    setSelectedFuncionarios([]);
+    resetDdsDraft();
     setSearchQuery("");
     sigRefs.current.clear();
   };
