@@ -160,28 +160,30 @@ export default function Funcionarios() {
     if (validRows.length === 0) return;
 
     setImporting(true);
-    setImportProgress(0);
-    let success = 0, errors = 0;
+    setImportProgress(10);
 
-    for (let i = 0; i < validRows.length; i++) {
-      const r = validRows[i];
-      const payload = {
-        nome: r.nome,
-        cpf: r.cpf || null,
-        matricula: r.matricula || null,
-        setor: r.setor || null,
-        cargo: r.cargo || null,
-        data_admissao: r.data_admissao || null,
-      };
-      const ok = await add(payload);
-      if (ok) success++; else errors++;
-      setImportProgress(Math.round(((i + 1) / validRows.length) * 100));
-    }
+    const payloads = validRows.map(r => ({
+      nome: r.nome,
+      cpf: r.cpf || null,
+      matricula: r.matricula || null,
+      setor: r.setor || null,
+      cargo: r.cargo || null,
+      data_admissao: r.data_admissao || null,
+      empresa_id: empresaId,
+    }));
 
+    const { error, data: inserted } = await (supabase.from as any)("funcionarios").insert(payloads).select();
+    
+    setImportProgress(100);
     setImporting(false);
-    setImportResult({ success, errors });
-    if (success > 0) {
-      toast({ title: "Importação concluída", description: `${success} funcionário(s) importado(s) com sucesso.` });
+
+    if (error) {
+      toast({ title: "Erro na importação", description: error.message, variant: "destructive" });
+      setImportResult({ success: 0, errors: validRows.length });
+    } else {
+      const count = inserted?.length || validRows.length;
+      setImportResult({ success: count, errors: 0 });
+      toast({ title: "Importação concluída", description: `${count} funcionário(s) importado(s) com sucesso.` });
       await refetch();
     }
   };
