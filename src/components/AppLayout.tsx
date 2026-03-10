@@ -52,6 +52,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const bottomNavItems = visibleMainItems.slice(0, 4);
   const hasMore = visibleCadastroItems.length > 0 || isSuperAdmin;
 
+  useEffect(() => {
+    // Captura o evento beforeinstallprompt para usar no botão de instalação
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+
+    // Verifica se já está instalado
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+      || (navigator as any).standalone === true;
+    if (isStandalone) {
+      setShowInstallButton(false);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, []);
+
+  const handleInstallClick = () => {
+    if (installPrompt) {
+      const promptEvent = installPrompt as any;
+      promptEvent.prompt();
+      promptEvent.userChoice.then((result: any) => {
+        if (result.outcome === "accepted") {
+          setShowInstallButton(false);
+        }
+      });
+    }
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Mobile overlay */}
