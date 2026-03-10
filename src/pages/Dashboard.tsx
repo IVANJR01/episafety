@@ -42,14 +42,20 @@ export default function Dashboard() {
   // valorEstoqueAtual already defined above
 
   const estoqueChartData = useMemo(() => {
-    return epis
+    const items = epis
       .filter(e => (e.valor || 0) * e.estoque > 0)
       .map(e => ({
-        nome: e.nome.length > 20 ? e.nome.substring(0, 20) + "..." : e.nome,
+        nome: e.nome.length > 25 ? e.nome.substring(0, 22) + "..." : e.nome,
         valor: Number(((e.valor || 0) * e.estoque).toFixed(2)),
       }))
-      .sort((a, b) => b.valor - a.valor)
-      .slice(0, 8);
+      .sort((a, b) => b.valor - a.valor);
+
+    const top = items.slice(0, 5);
+    const rest = items.slice(5);
+    if (rest.length > 0) {
+      top.push({ nome: "Outros", valor: Number(rest.reduce((s, d) => s + d.valor, 0).toFixed(2)) });
+    }
+    return top;
   }, [epis]);
 
   const CHART_COLORS = [
@@ -209,22 +215,19 @@ export default function Dashboard() {
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Nenhum EPI com valor em estoque</p>
           ) : (
-            <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 360 : 320}>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={estoqueChartData}
                   dataKey="valor"
                   nameKey="nome"
                   cx="50%"
-                  cy={window.innerWidth < 640 ? "40%" : "50%"}
-                  innerRadius={window.innerWidth < 640 ? 40 : window.innerWidth < 1024 ? 55 : 65}
-                  outerRadius={window.innerWidth < 640 ? 70 : window.innerWidth < 1024 ? 90 : 110}
-                  paddingAngle={2}
-                  label={window.innerWidth >= 1024
-                    ? ({ nome, percent }: { nome: string; percent: number }) => `${nome} (${(percent * 100).toFixed(0)}%)`
-                    : false
-                  }
-                  labelLine={window.innerWidth >= 1024 ? { stroke: 'hsl(var(--muted-foreground))' } : false}
+                  cy="45%"
+                  innerRadius={55}
+                  outerRadius={95}
+                  paddingAngle={3}
+                  label={false}
+                  labelLine={false}
                 >
                   {estoqueChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -238,15 +241,11 @@ export default function Dashboard() {
                   layout="horizontal"
                   verticalAlign="bottom"
                   align="center"
-                  formatter={(value: string, entry: any) => {
+                  formatter={(value: string) => {
                     const item = estoqueChartData.find(d => d.nome === value);
-                    const total = estoqueChartData.reduce((s, d) => s + d.valor, 0);
-                    const pct = item && total > 0 ? ((item.valor / total) * 100).toFixed(0) : "0";
-                    return window.innerWidth < 640
-                      ? `${value} (${pct}%)`
-                      : `${value} — R$ ${item?.valor.toFixed(2)} (${pct}%)`;
+                    return `${value} — R$ ${item?.valor.toFixed(2) || "0.00"}`;
                   }}
-                  wrapperStyle={{ fontSize: window.innerWidth < 640 ? '10px' : '12px', paddingTop: '8px' }}
+                  wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
