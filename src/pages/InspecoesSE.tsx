@@ -298,9 +298,9 @@ export default function InspecoesSE() {
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
-    const ROW_H = 20; // taller rows to fit images
-    const IMG_H = 16;
-    const IMG_W = 22;
+    const ROW_H = 35; // taller rows for bigger images
+    const IMG_H = 30;
+    const IMG_W = 35;
 
     // Header with logo
     let headerY = 10;
