@@ -177,6 +177,22 @@ export default function Funcionarios() {
     }
   };
 
+  const exportToExcel = () => {
+    const rows = items.map(f => ({
+      "Nome": f.nome,
+      "CPF": f.cpf || "",
+      "Matrícula": f.matricula || "",
+      "Setor": f.setor || "",
+      "Cargo": f.cargo || "",
+      "Data Admissão": f.data_admissao || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
+    XLSX.writeFile(wb, "funcionarios.xlsx");
+  };
+
   const downloadTemplate = () => {
     const ws = XLSX.utils.aoa_to_sheet([
       ["Nome", "CPF", "Matrícula", "Setor", "Cargo", "Data Admissão"],
