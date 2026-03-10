@@ -134,7 +134,7 @@ export default function Entregas() {
     return funcionarios.filter(f => matchFunc(f, fichaSearch));
   }, [funcionarios, fichaSearch]);
 
-  const [formFuncSearch, setFormFuncSearch] = useState("");
+  const [formFuncSearch, setFormFuncSearch] = useState(form._funcSearch || "");
   const formFilteredFuncs = useMemo(() => {
     if (!formFuncSearch) return funcionarios;
     return funcionarios.filter(f => matchFunc(f, formFuncSearch));
