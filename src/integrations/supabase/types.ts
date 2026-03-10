@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      conformidades: {
+        Row: {
+          acao_corretiva: string | null
+          created_at: string
+          created_by: string | null
+          data_inspecao: string
+          data_realizado: string | null
+          empresa_id: string | null
+          foto_antes: string | null
+          foto_depois: string | null
+          gravidade: string
+          id: string
+          local: string | null
+          numero: number
+          responsavel: string | null
+          situacao_detectada: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          acao_corretiva?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_inspecao?: string
+          data_realizado?: string | null
+          empresa_id?: string | null
+          foto_antes?: string | null
+          foto_depois?: string | null
+          gravidade?: string
+          id?: string
+          local?: string | null
+          numero?: number
+          responsavel?: string | null
+          situacao_detectada: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          acao_corretiva?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_inspecao?: string
+          data_realizado?: string | null
+          empresa_id?: string | null
+          foto_antes?: string | null
+          foto_depois?: string | null
+          gravidade?: string
+          id?: string
+          local?: string | null
+          numero?: number
+          responsavel?: string | null
+          situacao_detectada?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conformidades_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dds: {
         Row: {
           created_at: string
