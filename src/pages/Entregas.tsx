@@ -209,7 +209,7 @@ export default function Entregas() {
     const funcEntregas = entregas.filter(e => e.funcionario_id === fichaFuncId);
     if (funcEntregas.length === 0) { toast({ title: "Nenhuma entrega encontrada para este funcionário", variant: "destructive" }); return; }
 
-    const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").limit(1);
+    const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
     const emp = empresaData?.[0] || {};
 
     const now = new Date();
