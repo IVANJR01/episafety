@@ -3,6 +3,8 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +79,7 @@ function validateRow(row: Omit<ImportRow, "valid" | "error">): { valid: boolean;
 export default function Funcionarios() {
   const { data: items, loading, add, update, remove, refetch } = useSupabaseCrud<Funcionario>("funcionarios", "created_at");
   const { canEdit, canCreate, canDelete } = usePermissions("cadastro_funcionarios");
+  const { empresaId } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Funcionario | null>(null);
   const { form, setForm, resetForm, hasDraft } = useFormDraft("funcionarios", emptyForm);
@@ -160,28 +163,30 @@ export default function Funcionarios() {
     if (validRows.length === 0) return;
 
     setImporting(true);
-    setImportProgress(0);
-    let success = 0, errors = 0;
+    setImportProgress(10);
 
-    for (let i = 0; i < validRows.length; i++) {
-      const r = validRows[i];
-      const payload = {
-        nome: r.nome,
-        cpf: r.cpf || null,
-        matricula: r.matricula || null,
-        setor: r.setor || null,
-        cargo: r.cargo || null,
-        data_admissao: r.data_admissao || null,
-      };
-      const ok = await add(payload);
-      if (ok) success++; else errors++;
-      setImportProgress(Math.round(((i + 1) / validRows.length) * 100));
-    }
+    const payloads = validRows.map(r => ({
+      nome: r.nome,
+      cpf: r.cpf || null,
+      matricula: r.matricula || null,
+      setor: r.setor || null,
+      cargo: r.cargo || null,
+      data_admissao: r.data_admissao || null,
+      empresa_id: empresaId,
+    }));
 
+    const { error, data: inserted } = await (supabase.from as any)("funcionarios").insert(payloads).select();
+    
+    setImportProgress(100);
     setImporting(false);
-    setImportResult({ success, errors });
-    if (success > 0) {
-      toast({ title: "Importação concluída", description: `${success} funcionário(s) importado(s) com sucesso.` });
+
+    if (error) {
+      toast({ title: "Erro na importação", description: error.message, variant: "destructive" });
+      setImportResult({ success: 0, errors: validRows.length });
+    } else {
+      const count = inserted?.length || validRows.length;
+      setImportResult({ success: count, errors: 0 });
+      toast({ title: "Importação concluída", description: `${count} funcionário(s) importado(s) com sucesso.` });
       await refetch();
     }
   };
