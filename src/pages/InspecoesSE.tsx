@@ -451,10 +451,24 @@ export default function InspecoesSE() {
 
     drawTableHeader();
 
+    // Helper: draw vertically & horizontally centered wrapped text
+    const drawCenteredText = (text: string, cellX: number, cellY: number, cellW: number, cellH: number, fontSize = 6, bold = false) => {
+      doc.setFontSize(fontSize);
+      if (bold) doc.setFont("helvetica", "bold");
+      else doc.setFont("helvetica", "normal");
+      const lines: string[] = doc.splitTextToSize(text, cellW - 3);
+      const lineH = fontSize * 0.4;
+      const blockH = lines.length * lineH;
+      const startY = cellY + (cellH - blockH) / 2 + lineH;
+      lines.forEach((line: string, li: number) => {
+        const lw = doc.getTextWidth(line);
+        doc.text(line, cellX + (cellW - lw) / 2, startY + li * lineH);
+      });
+    };
+
     // Draw rows
     filtered.forEach((item, idx) => {
       if (y + ROW_H > pageHeight - 10) {
-        // Footer before page break
         doc.setFontSize(6);
         doc.setTextColor(150);
         doc.text(`Página ${doc.getNumberOfPages()}`, pageWidth / 2, pageHeight - 5, { align: "center" });
@@ -464,12 +478,12 @@ export default function InspecoesSE() {
         drawTableHeader();
       }
 
-      // Row background - alternate with slight tint based on status
+      // Row background
       const rowBg = idx % 2 === 0 ? [250, 250, 250] : [255, 255, 255];
       doc.setFillColor(rowBg[0], rowBg[1], rowBg[2]);
       doc.rect(tableStartX, y, totalCols, ROW_H, "F");
 
-      // Thin border around row
+      // Border
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.2);
       doc.rect(tableStartX, y, totalCols, ROW_H, "S");
@@ -481,34 +495,24 @@ export default function InspecoesSE() {
         xLine += w;
       });
 
-      const textY = y + 5;
       let x = tableStartX;
-      doc.setFontSize(6);
 
-      // N° - centered
-      const numStr = String(item.numero || idx + 1);
-      const numW = doc.getTextWidth(numStr);
-      doc.setFont("helvetica", "bold");
-      doc.text(numStr, x + (colWidths[0] - numW) / 2, textY);
-      doc.setFont("helvetica", "normal");
+      // N° - centered bold
+      doc.setTextColor(0, 0, 0);
+      drawCenteredText(String(item.numero || idx + 1), x, y, colWidths[0], ROW_H, 6.5, true);
       x += colWidths[0];
 
       // Data - centered
       const dataStr = item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "";
-      const dataW = doc.getTextWidth(dataStr);
-      doc.text(dataStr, x + (colWidths[1] - dataW) / 2, textY);
+      drawCenteredText(dataStr, x, y, colWidths[1], ROW_H, 6);
       x += colWidths[1];
 
-      // Situação (wrap text)
-      const situacao = item.situacao_detectada || "";
-      const situacaoLines = doc.splitTextToSize(situacao, colWidths[2] - 3);
-      doc.text(situacaoLines, x + 1.5, textY);
+      // Situação - centered wrapped
+      drawCenteredText(item.situacao_detectada || "", x, y, colWidths[2], ROW_H, 5.5);
       x += colWidths[2];
 
-      // Ref. Normativa - centered
-      const refNorm = item.referencia_normativa || "";
-      const refLines = doc.splitTextToSize(refNorm, colWidths[3] - 3);
-      doc.text(refLines, x + 1.5, textY);
+      // Ref. Normativa - centered wrapped
+      drawCenteredText(item.referencia_normativa || "", x, y, colWidths[3], ROW_H, 5.5);
       x += colWidths[3];
 
       // Foto Antes - centered image
@@ -516,15 +520,13 @@ export default function InspecoesSE() {
       if (cache?.antes) {
         try {
           const imgX = x + (colWidths[4] - (IMG_W - 2)) / 2;
-          doc.addImage(cache.antes, "JPEG", imgX, y + 2, IMG_W - 2, IMG_H);
+          const imgY = y + (ROW_H - IMG_H) / 2;
+          doc.addImage(cache.antes, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
         } catch {}
       } else {
         doc.setTextColor(180, 180, 180);
-        doc.setFontSize(5.5);
-        const sfW = doc.getTextWidth("Sem foto");
-        doc.text("Sem foto", x + (colWidths[4] - sfW) / 2, y + ROW_H / 2);
-        doc.setTextColor(0);
-        doc.setFontSize(6);
+        drawCenteredText("Sem foto", x, y, colWidths[4], ROW_H, 5.5);
+        doc.setTextColor(0, 0, 0);
       }
       x += colWidths[4];
 
@@ -532,78 +534,67 @@ export default function InspecoesSE() {
       if (cache?.depois) {
         try {
           const imgX = x + (colWidths[5] - (IMG_W - 2)) / 2;
-          doc.addImage(cache.depois, "JPEG", imgX, y + 2, IMG_W - 2, IMG_H);
+          const imgY = y + (ROW_H - IMG_H) / 2;
+          doc.addImage(cache.depois, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
         } catch {}
       } else {
         doc.setTextColor(180, 180, 180);
-        doc.setFontSize(5.5);
-        const sfW = doc.getTextWidth("Sem foto");
-        doc.text("Sem foto", x + (colWidths[5] - sfW) / 2, y + ROW_H / 2);
-        doc.setTextColor(0);
-        doc.setFontSize(6);
+        drawCenteredText("Sem foto", x, y, colWidths[5], ROW_H, 5.5);
+        doc.setTextColor(0, 0, 0);
       }
       x += colWidths[5];
 
-      // Gravidade - colored badge
+      // Gravidade - colored badge centered
       const gravText = item.gravidade || "";
       const [gr, gg, gb] = getGravidadeColor(gravText);
       const [gbr, gbg, gbb] = getGravidadeBgColor(gravText);
       doc.setFontSize(5.5);
+      doc.setFont("helvetica", "bold");
       const gravW = doc.getTextWidth(gravText);
       const badgeW = gravW + 4;
       const badgeX = x + (colWidths[6] - badgeW) / 2;
-      const badgeY = textY - 3;
+      const badgeY = y + (ROW_H - 5) / 2;
       doc.setFillColor(gbr, gbg, gbb);
       doc.roundedRect(badgeX, badgeY, badgeW, 5, 1.5, 1.5, "F");
       doc.setTextColor(gr, gg, gb);
-      doc.setFont("helvetica", "bold");
-      doc.text(gravText, badgeX + 2, textY);
+      doc.text(gravText, badgeX + 2, badgeY + 3.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.setFontSize(6);
       x += colWidths[6];
 
-      // Ação Corretiva - full text wrapped
-      const acao = item.acao_corretiva || "";
-      const acaoLines = doc.splitTextToSize(acao, colWidths[7] - 3);
-      doc.text(acaoLines, x + 1.5, textY);
+      // Ação Corretiva - centered wrapped
+      drawCenteredText(item.acao_corretiva || "", x, y, colWidths[7], ROW_H, 5.5);
       x += colWidths[7];
 
       // Responsável - centered
-      const resp = item.responsavel || "";
-      const respLines = doc.splitTextToSize(resp, colWidths[8] - 3);
-      doc.text(respLines, x + 1.5, textY);
+      drawCenteredText(item.responsavel || "", x, y, colWidths[8], ROW_H, 5.5);
       x += colWidths[8];
 
       // Local - centered
-      const localText = item.local || "";
-      const localLines = doc.splitTextToSize(localText, colWidths[9] - 3);
-      doc.text(localLines, x + 1.5, textY);
+      drawCenteredText(item.local || "", x, y, colWidths[9], ROW_H, 5.5);
       x += colWidths[9];
 
       // Realizado - centered
       const realStr = item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "—";
-      const realW = doc.getTextWidth(realStr);
-      doc.text(realStr, x + (colWidths[10] - realW) / 2, textY);
+      drawCenteredText(realStr, x, y, colWidths[10], ROW_H, 6);
       x += colWidths[10];
 
-      // Status - colored badge
+      // Status - colored badge centered
       const statusText = item.status || "";
       const [sr, sg, sb] = getStatusColor(statusText);
       const [sbr, sbg, sbb] = getStatusBgColor(statusText);
       doc.setFontSize(5.5);
+      doc.setFont("helvetica", "bold");
       const statW = doc.getTextWidth(statusText);
       const sBadgeW = statW + 4;
       const sBadgeX = x + (colWidths[11] - sBadgeW) / 2;
-      const sBadgeY = textY - 3;
+      const sBadgeY = y + (ROW_H - 5) / 2;
       doc.setFillColor(sbr, sbg, sbb);
       doc.roundedRect(sBadgeX, sBadgeY, sBadgeW, 5, 1.5, 1.5, "F");
       doc.setTextColor(sr, sg, sb);
-      doc.setFont("helvetica", "bold");
-      doc.text(statusText, sBadgeX + 2, textY);
+      doc.text(statusText, sBadgeX + 2, sBadgeY + 3.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.setFontSize(6);
 
       y += ROW_H;
     });
