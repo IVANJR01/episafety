@@ -292,7 +292,7 @@ export default function Funcionarios() {
                       <TableCell className="font-mono text-xs">{f.matricula || "—"}</TableCell>
                       <TableCell>{f.setor || "—"}</TableCell>
                       <TableCell>{f.cargo || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{f.data_admissao || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{f.data_admissao ? f.data_admissao.split("-").reverse().join("/") : "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
                           {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
