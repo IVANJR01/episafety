@@ -287,8 +287,11 @@ export default function InspecoesSE() {
         if (error) throw error;
       } else {
         addToSyncQueue({ table: "conformidades", type: "delete", payload: { id } });
+        // Update local cache optimistically
+        const cached = getCachedData<Conformidade>("conformidades") || [];
+        setCachedData("conformidades", cached.filter(c => c.id !== id));
       }
-      toast({ title: "Registro excluído" });
+      toast({ title: !isOnline() ? "Excluído offline" : "Registro excluído" });
       loadData();
     } catch {
       toast({ title: "Erro ao excluir", variant: "destructive" });
