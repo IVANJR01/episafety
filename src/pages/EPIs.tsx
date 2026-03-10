@@ -130,7 +130,7 @@ export default function EPIs() {
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar equipamentos de proteção</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
+           <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
             <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
           </Button>
           {canCreate && (
@@ -139,6 +139,16 @@ export default function EPIs() {
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nome ou CA..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       {loading ? (
