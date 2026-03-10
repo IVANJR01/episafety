@@ -422,12 +422,16 @@ export default function InspecoesSE() {
     doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 16, { align: "center" });
     doc.setTextColor(0, 0, 0);
 
-    // Table columns
+    // Table columns - use full page width
     const headers = ["N°", "Data", "Situação Detectada", "Ref. Normativa", "Foto Antes", "Foto Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const colWidths = [8, 16, 34, 24, 35, 35, 16, 30, 20, 20, 16, 14];
-    // Center table
+    const usableWidth = pageWidth - MARGIN * 2;
+    const colWidths = [9, 18, 38, 26, 36, 36, 20, 38, 22, 22, 18, 16];
     const totalCols = colWidths.reduce((a, b) => a + b, 0);
-    const tableStartX = (pageWidth - totalCols) / 2;
+    // Scale columns to fill usable width
+    const scale = usableWidth / totalCols;
+    const scaledWidths = colWidths.map(w => w * scale);
+    const totalScaled = scaledWidths.reduce((a, b) => a + b, 0);
+    const tableStartX = (pageWidth - totalScaled) / 2;
 
     let y = headerY + 22;
 
