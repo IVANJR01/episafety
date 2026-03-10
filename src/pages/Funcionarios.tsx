@@ -22,12 +22,12 @@ export default function Funcionarios() {
   const { canEdit, canCreate, canDelete } = usePermissions("cadastro_funcionarios");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Funcionario | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const { form, setForm, resetForm, hasDraft } = useFormDraft("funcionarios", emptyForm);
 
-  const openNew = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+  const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (f: Funcionario) => {
     setEditing(f);
-    setForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "" });
+    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "" });
     setOpen(true);
   };
 
