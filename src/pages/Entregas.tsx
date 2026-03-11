@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Trash2, FileText, Search, Loader2 } from "lucide-react";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
@@ -21,6 +21,7 @@ import { gerarFichaEPI } from "@/lib/gerarFichaEPI";
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; }
+interface EpiItem { epi: EPI; quantidade: number; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
@@ -44,7 +45,7 @@ export default function Entregas() {
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
 
   const entregaDefaults = {
-    funcionario_id: "", epi_id: "", quantidade: 1,
+    funcionario_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
     tipo: "entrega" as string, observacao: "",
   };
@@ -52,21 +53,34 @@ export default function Entregas() {
 
   const [epiCaSearch, setEpiCaSearch] = useState("");
   const [epiSearching, setEpiSearching] = useState(false);
-  const [epiSearchResult, setEpiSearchResult] = useState<EPI | null>(null);
-
   const [epiDropdownResults, setEpiDropdownResults] = useState<EPI[]>([]);
+  const [epiList, setEpiList] = useState<EpiItem[]>([]);
+  const [epiQtd, setEpiQtd] = useState(1);
+
+  const addEpiToList = useCallback((epi: EPI) => {
+    setEpiList(prev => {
+      const existing = prev.find(e => e.epi.id === epi.id);
+      if (existing) return prev.map(e => e.epi.id === epi.id ? { ...e, quantidade: e.quantidade + epiQtd } : e);
+      return [...prev, { epi, quantidade: epiQtd }];
+    });
+    setEpiCaSearch("");
+    setEpiDropdownResults([]);
+    setEpiQtd(1);
+  }, [epiQtd]);
+
+  const removeEpiFromList = (epiId: string) => {
+    setEpiList(prev => prev.filter(e => e.epi.id !== epiId));
+  };
 
   const handleSearchCA = async () => {
     if (!epiCaSearch.trim()) return;
     setEpiSearching(true);
-    setEpiSearchResult(null);
     setEpiDropdownResults([]);
     const term = epiCaSearch.trim().toLowerCase();
     // Search by CA exact match first
     const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
     if (foundByCA) {
-      setEpiSearchResult(foundByCA);
-      setForm(f => ({ ...f, epi_id: foundByCA.id }));
+      addEpiToList(foundByCA);
       setEpiSearching(false);
       return;
     }
@@ -104,8 +118,7 @@ export default function Entregas() {
       if (insertErr) {
         toast({ title: "Erro ao cadastrar EPI", variant: "destructive" });
       } else {
-        setEpiSearchResult(newEpi);
-        setForm(f => ({ ...f, epi_id: newEpi.id }));
+        addEpiToList(newEpi);
         toast({ title: `EPI "${data.nome}" cadastrado automaticamente via C.A.` });
       }
     } catch {
@@ -140,36 +153,47 @@ export default function Entregas() {
   }, [funcionarios, formFuncSearch]);
 
   const handleSave = async () => {
-    if (!form.funcionario_id || !form.epi_id) {
-      toast({ title: "Preencha funcionário e EPI", variant: "destructive" });
+    if (!form.funcionario_id || epiList.length === 0) {
+      toast({ title: "Preencha funcionário e adicione ao menos um EPI", variant: "destructive" });
       return;
     }
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
-    const entregaData = { ...form, status, observacao: form.observacao || null, empresa_id: empresaId };
 
-    // Insert and get the ID back
-    const { data: inserted, error } = await (supabase.from as any)("entregas")
-      .insert(entregaData)
-      .select("id")
-      .single();
-
-    if (error) {
-      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-      return;
+    const insertedIds: string[] = [];
+    for (const item of epiList) {
+      const entregaData = {
+        funcionario_id: form.funcionario_id,
+        epi_id: item.epi.id,
+        quantidade: item.quantidade,
+        data: form.data,
+        tipo: form.tipo,
+        status,
+        observacao: form.observacao || null,
+        empresa_id: empresaId,
+      };
+      const { data: inserted, error } = await (supabase.from as any)("entregas")
+        .insert(entregaData)
+        .select("id")
+        .single();
+      if (error) {
+        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+        return;
+      }
+      insertedIds.push(inserted.id);
     }
 
     setPendingEntrega({
       funcionario_id: form.funcionario_id,
-      epi_id: form.epi_id,
-      entrega_id: inserted.id,
+      entrega_ids: insertedIds,
     });
 
     setOpen(false);
     resetForm();
     setFormFuncSearch("");
     setEpiCaSearch("");
-    setEpiSearchResult(null);
+    setEpiList([]);
+    setEpiDropdownResults([]);
 
     setSignOpen(true);
   };
@@ -183,10 +207,12 @@ export default function Entregas() {
       return;
     }
 
-    // Save signature directly on the specific entrega row
-    await (supabase.from as any)("entregas")
-      .update({ assinatura_colaborador: assinaturaColaborador })
-      .eq("id", pendingEntrega.entrega_id);
+    // Save signature on all entrega rows
+    for (const id of (pendingEntrega.entrega_ids || [])) {
+      await (supabase.from as any)("entregas")
+        .update({ assinatura_colaborador: assinaturaColaborador })
+        .eq("id", id);
+    }
 
     await refetch();
     toast({ title: "Assinatura salva com sucesso!" });
@@ -359,8 +385,8 @@ export default function Entregas() {
         </>
       )}
 
-      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiSearchResult(null); setEpiDropdownResults([]); } }}>
-        <DialogContent>
+      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); } }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nova Movimentação</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div>
@@ -406,18 +432,26 @@ export default function Entregas() {
                 <Input
                   placeholder="Digite o C.A. ou nome do EPI..."
                   value={epiCaSearch}
-                  onChange={e => { setEpiCaSearch(e.target.value); setEpiSearchResult(null); setEpiDropdownResults([]); setForm(f => ({...f, epi_id: ""})); }}
+                  onChange={e => { setEpiCaSearch(e.target.value); setEpiDropdownResults([]); }}
                   onKeyDown={e => e.key === "Enter" && handleSearchCA()}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  value={epiQtd}
+                  onChange={e => setEpiQtd(Math.max(1, Number(e.target.value)))}
+                  className="w-20"
+                  placeholder="Qtd"
                 />
                 <Button type="button" variant="outline" onClick={handleSearchCA} disabled={epiSearching}>
                   {epiSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
-              {epiDropdownResults.length > 0 && !epiSearchResult && (
+              {epiDropdownResults.length > 0 && (
                 <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
                   {epiDropdownResults.map(epi => (
                     <button key={epi.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
-                      onClick={() => { setEpiSearchResult(epi); setForm(f => ({...f, epi_id: epi.id})); setEpiCaSearch(epi.nome); setEpiDropdownResults([]); }}>
+                      onClick={() => addEpiToList(epi)}>
                       <span className="font-medium">{epi.nome}</span>
                       {epi.ca && <span className="text-muted-foreground ml-2">C.A.: {epi.ca}</span>}
                       <span className="text-muted-foreground ml-2">Estoque: {epi.estoque}</span>
@@ -425,21 +459,35 @@ export default function Entregas() {
                   ))}
                 </div>
               )}
-              {epiSearchResult && (
-                <div className="mt-2 p-3 rounded-md bg-muted/50 text-sm space-y-1">
-                  <p className="font-medium">✓ {epiSearchResult.nome}</p>
-                  <p className="text-xs text-muted-foreground">C.A.: {epiSearchResult.ca} — Estoque: {epiSearchResult.estoque}</p>
+
+              {/* Lista de EPIs adicionados */}
+              {epiList.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">EPIs adicionados ({epiList.length}):</p>
+                  {epiList.map(item => (
+                    <div key={item.epi.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{item.epi.nome}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.epi.ca && <>C.A.: {item.epi.ca} — </>}Qtd: {item.quantidade}
+                        </p>
+                      </div>
+                      <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeEpiFromList(item.epi.id)}>
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Quantidade</Label><Input type="number" min={1} value={form.quantidade} onChange={e => setForm({...form, quantidade: Number(e.target.value)})} /></div>
-              <div><Label>Data</Label><Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} /></div>
+            <div>
+              <Label>Data</Label>
+              <Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} />
             </div>
             <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e => setForm({...form, observacao: e.target.value})} placeholder="Observações opcionais" /></div>
           </div>
-          <DialogFooter><Button onClick={handleSave}>Registrar</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleSave} disabled={epiList.length === 0}>Registrar ({epiList.length} EPI{epiList.length !== 1 ? "s" : ""})</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
