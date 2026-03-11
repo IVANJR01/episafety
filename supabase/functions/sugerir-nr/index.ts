@@ -28,26 +28,26 @@ Dado uma situação/irregularidade detectada em uma inspeção de segurança, re
 3. "acao_corretiva": Ação corretiva recomendada (máximo 2 frases)
 4. "trecho_norma": Trecho resumido da norma que justifica a não conformidade (máximo 2 frases)
 
-Base completa de NRs vigentes:
-- NR-01: Disposições Gerais e Gerenciamento de Riscos Ocupacionais (PGR)
+Base completa de NRs vigentes (conforme gov.br/trabalho-e-emprego, atualizado em 08/10/2024):
+- NR-01: Disposições Gerais e Gerenciamento de Riscos Ocupacionais
 - NR-03: Embargo e Interdição
-- NR-04: SESMT
-- NR-05: CIPA
-- NR-06: Equipamentos de Proteção Individual (EPI)
-- NR-07: PCMSO
+- NR-04: Serviços Especializados em Segurança e em Medicina do Trabalho (SESMT)
+- NR-05: Comissão Interna de Prevenção de Acidentes e de Assédio (CIPA)
+- NR-06: Equipamento de Proteção Individual (EPI)
+- NR-07: Programa de Controle Médico de Saúde Ocupacional (PCMSO)
 - NR-08: Edificações
-- NR-09: Avaliação e Controle das Exposições Ocupacionais (Agentes Físicos/Químicos/Biológicos)
+- NR-09: Avaliação e Controle das Exposições Ocupacionais a Agentes Físicos, Químicos e Biológicos
 - NR-10: Segurança em Instalações e Serviços em Eletricidade
 - NR-11: Transporte, Movimentação, Armazenagem e Manuseio de Materiais
 - NR-12: Segurança no Trabalho em Máquinas e Equipamentos
-- NR-13: Caldeiras, Vasos de Pressão, Tubulações e Tanques Metálicos
+- NR-13: Caldeiras, Vasos de Pressão e Tubulações e Tanques Metálicos de Armazenamento
 - NR-14: Fornos
 - NR-15: Atividades e Operações Insalubres
 - NR-16: Atividades e Operações Perigosas
 - NR-17: Ergonomia
 - NR-18: Segurança e Saúde no Trabalho na Indústria da Construção
 - NR-19: Explosivos
-- NR-20: Segurança com Inflamáveis e Combustíveis
+- NR-20: Segurança e Saúde no Trabalho com Inflamáveis e Combustíveis
 - NR-21: Trabalhos a Céu Aberto
 - NR-22: Segurança e Saúde Ocupacional na Mineração
 - NR-23: Proteção Contra Incêndios
@@ -55,18 +55,18 @@ Base completa de NRs vigentes:
 - NR-25: Resíduos Industriais
 - NR-26: Sinalização de Segurança
 - NR-28: Fiscalização e Penalidades
-- NR-29: Segurança e Saúde no Trabalho Portuário
+- NR-29: Norma Regulamentadora de Segurança e Saúde no Trabalho Portuário
 - NR-30: Segurança e Saúde no Trabalho Aquaviário
 - NR-31: Segurança e Saúde no Trabalho na Agricultura, Pecuária, Silvicultura, Exploração Florestal e Aquicultura
 - NR-32: Segurança e Saúde no Trabalho em Serviços de Saúde
-- NR-33: Segurança e Saúde no Trabalho em Espaços Confinados
+- NR-33: Segurança e Saúde nos Trabalhos em Espaços Confinados
 - NR-34: Condições e Meio Ambiente de Trabalho na Indústria da Construção, Reparação e Desmonte Naval
 - NR-35: Trabalho em Altura
 - NR-36: Segurança e Saúde no Trabalho em Empresas de Abate e Processamento de Carnes e Derivados
 - NR-37: Segurança e Saúde em Plataformas de Petróleo
 - NR-38: Segurança e Saúde no Trabalho nas Atividades de Limpeza Urbana e Manejo de Resíduos Sólidos
 
-NRs REVOGADAS (ignorar): NR-02, NR-27.
+NRs REVOGADAS (ignorar): NR-02 (Inspeção Prévia), NR-27 (Registro Profissional do Técnico de Segurança do Trabalho).
 
 REGRAS DE ANÁLISE:
 - Se a descrição mencionar "EPI", cruzar NR-06 com a norma específica da atividade (ex: NR-10, NR-35, NR-18).
