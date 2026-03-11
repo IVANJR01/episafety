@@ -503,7 +503,7 @@ export default function Entregas() {
             </div>
             <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e => setForm({...form, observacao: e.target.value})} placeholder="Observações opcionais" /></div>
           </div>
-          <DialogFooter><Button onClick={handleSave} disabled={epiList.length === 0}>Registrar ({epiList.length} EPI{epiList.length !== 1 ? "s" : ""})</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleSave} disabled={epiList.length === 0 || saving}>{saving ? "Salvando..." : `Registrar (${epiList.length} EPI${epiList.length !== 1 ? "s" : ""})`}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
