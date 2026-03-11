@@ -219,20 +219,18 @@ export default function Dashboard() {
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Nenhum EPI com valor em estoque</p>
           ) : (
-            <ResponsiveContainer width="100%" height={340}>
+            <ResponsiveContainer width="100%" height={isMobile ? 300 : 340}>
               <PieChart>
                 <Pie
                   data={estoqueChartData}
                   dataKey="valor"
                   nameKey="nome"
                   cx="50%"
-                  cy="42%"
-                  innerRadius={50}
-                  outerRadius={90}
+                  cy={isMobile ? "45%" : "42%"}
+                  innerRadius={isMobile ? 40 : 50}
+                  outerRadius={isMobile ? 70 : 90}
                   paddingAngle={3}
-                  label={({ nome, percent, x, y, midAngle }: any) => {
-                    const RADIAN = Math.PI / 180;
-                    const radius = 105;
+                  label={isMobile ? false : ({ nome, percent, x, y, midAngle }: any) => {
                     const cx2 = x + (midAngle > 90 && midAngle < 270 ? -8 : 8);
                     return (
                       <text
@@ -246,7 +244,7 @@ export default function Dashboard() {
                       </text>
                     );
                   }}
-                  labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                  labelLine={isMobile ? false : { stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
                 >
                   {estoqueChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -264,7 +262,7 @@ export default function Dashboard() {
                     const item = estoqueChartData.find(d => d.nome === value);
                     return `${value} — R$ ${item?.valor.toFixed(2) || "0.00"}`;
                   }}
-                  wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
+                  wrapperStyle={{ fontSize: isMobile ? '10px' : '11px', paddingTop: '4px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
