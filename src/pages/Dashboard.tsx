@@ -111,7 +111,7 @@ export default function Dashboard() {
   }, [entregas, epis]);
 
   const valorSaida = useMemo(() => {
-    return entregas.filter(e => TIPOS_SAIDA.includes(e.tipo)).reduce((sum, e) => {
+    return entregas.reduce((sum, e) => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       return sum + (epi?.valor || 0) * e.quantidade;
     }, 0);
