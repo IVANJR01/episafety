@@ -360,6 +360,11 @@ export default function Entregas() {
                         <span className={`text-[10px] font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
                           {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                         </span>
+                        {e.assinatura_colaborador ? (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><CheckCircle2 className="w-3 h-3" />Assinado</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-medium"><AlertCircle className="w-3 h-3" />Pendente</span>
+                        )}
                       </div>
                       <p className="font-semibold text-sm">{getName(funcionarios, e.funcionario_id)}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{getName(epis, e.epi_id)} • {e.quantidade}x</p>
@@ -367,6 +372,11 @@ export default function Entregas() {
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
+                        {!e.assinatura_colaborador && canEdit && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => { setSelectedUnsigned([e.id]); openSignExisting(); }}>
+                            <PenLine className="w-3 h-3 text-amber-500" />
+                          </Button>
+                        )}
                         {canEdit && <Button size="icon" variant="ghost" className="h-7 w-7" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3 h-3" /></Button>}
                         {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(e.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>}
                       </div>
