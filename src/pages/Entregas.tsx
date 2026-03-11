@@ -385,8 +385,8 @@ export default function Entregas() {
         </>
       )}
 
-      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiSearchResult(null); setEpiDropdownResults([]); } }}>
-        <DialogContent>
+      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); } }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nova Movimentação</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div>
@@ -432,18 +432,26 @@ export default function Entregas() {
                 <Input
                   placeholder="Digite o C.A. ou nome do EPI..."
                   value={epiCaSearch}
-                  onChange={e => { setEpiCaSearch(e.target.value); setEpiSearchResult(null); setEpiDropdownResults([]); setForm(f => ({...f, epi_id: ""})); }}
+                  onChange={e => { setEpiCaSearch(e.target.value); setEpiDropdownResults([]); }}
                   onKeyDown={e => e.key === "Enter" && handleSearchCA()}
+                />
+                <Input
+                  type="number"
+                  min={1}
+                  value={epiQtd}
+                  onChange={e => setEpiQtd(Math.max(1, Number(e.target.value)))}
+                  className="w-20"
+                  placeholder="Qtd"
                 />
                 <Button type="button" variant="outline" onClick={handleSearchCA} disabled={epiSearching}>
                   {epiSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
-              {epiDropdownResults.length > 0 && !epiSearchResult && (
+              {epiDropdownResults.length > 0 && (
                 <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
                   {epiDropdownResults.map(epi => (
                     <button key={epi.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
-                      onClick={() => { setEpiSearchResult(epi); setForm(f => ({...f, epi_id: epi.id})); setEpiCaSearch(epi.nome); setEpiDropdownResults([]); }}>
+                      onClick={() => addEpiToList(epi)}>
                       <span className="font-medium">{epi.nome}</span>
                       {epi.ca && <span className="text-muted-foreground ml-2">C.A.: {epi.ca}</span>}
                       <span className="text-muted-foreground ml-2">Estoque: {epi.estoque}</span>
@@ -451,21 +459,35 @@ export default function Entregas() {
                   ))}
                 </div>
               )}
-              {epiSearchResult && (
-                <div className="mt-2 p-3 rounded-md bg-muted/50 text-sm space-y-1">
-                  <p className="font-medium">✓ {epiSearchResult.nome}</p>
-                  <p className="text-xs text-muted-foreground">C.A.: {epiSearchResult.ca} — Estoque: {epiSearchResult.estoque}</p>
+
+              {/* Lista de EPIs adicionados */}
+              {epiList.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">EPIs adicionados ({epiList.length}):</p>
+                  {epiList.map(item => (
+                    <div key={item.epi.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{item.epi.nome}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.epi.ca && <>C.A.: {item.epi.ca} — </>}Qtd: {item.quantidade}
+                        </p>
+                      </div>
+                      <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeEpiFromList(item.epi.id)}>
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Quantidade</Label><Input type="number" min={1} value={form.quantidade} onChange={e => setForm({...form, quantidade: Number(e.target.value)})} /></div>
-              <div><Label>Data</Label><Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} /></div>
+            <div>
+              <Label>Data</Label>
+              <Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} />
             </div>
             <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e => setForm({...form, observacao: e.target.value})} placeholder="Observações opcionais" /></div>
           </div>
-          <DialogFooter><Button onClick={handleSave}>Registrar</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleSave} disabled={epiList.length === 0}>Registrar ({epiList.length} EPI{epiList.length !== 1 ? "s" : ""})</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
