@@ -383,7 +383,7 @@ export default function Entregas() {
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
                         {!e.assinatura_colaborador && canEdit && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => { setSelectedUnsigned([e.id]); openSignExisting(); }}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
                             <PenLine className="w-3 h-3 text-amber-500" />
                           </Button>
                         )}
