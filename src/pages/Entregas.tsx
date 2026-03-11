@@ -393,20 +393,21 @@ export default function Entregas() {
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Funcionário</TableHead>
                     <TableHead>EPI</TableHead>
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Assinatura</TableHead>
                     <TableHead>Obs</TableHead>
                     <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEntregas.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</TableCell></TableRow>
                   ) : filteredEntregas.map(e => (
                     <TableRow key={e.id}>
                       <TableCell className="font-mono text-xs">{e.data}</TableCell>
@@ -418,6 +419,15 @@ export default function Entregas() {
                         <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
                           {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {e.assinatura_colaborador ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="text-xs text-amber-500 hover:text-amber-600 p-0 h-auto font-medium" onClick={() => { setSelectedUnsigned([e.id]); openSignExisting(); }}>
+                            <AlertCircle className="w-3.5 h-3.5 mr-1" />Pendente
+                          </Button>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
                       <TableCell>
