@@ -158,10 +158,12 @@ export default function Entregas() {
   }, [funcionarios, formFuncSearch]);
 
   const handleSave = async () => {
+    if (saving) return;
     if (!form.funcionario_id || epiList.length === 0) {
       toast({ title: "Preencha funcionário e adicione ao menos um EPI", variant: "destructive" });
       return;
     }
+    setSaving(true);
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
 
