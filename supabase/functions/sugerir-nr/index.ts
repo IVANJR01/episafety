@@ -23,10 +23,10 @@ serve(async (req) => {
     const systemPrompt = `Você é um técnico de segurança do trabalho especialista em TODAS as normas regulamentadoras brasileiras vigentes (NR-01 a NR-38).
 
 Dado uma situação/irregularidade detectada em uma inspeção de segurança, retorne um JSON com:
-1. "referencia_normativa": A NR e item específico aplicável (ex: "NR-10, Item 10.2.1 - Medidas de proteção coletiva")
+1. "referencia_normativa": A NR aplicável e o capítulo/seção geral (ex: "NR-12, Capítulo XII - Capacitação"). IMPORTANTE: Cite APENAS a NR e o capítulo/seção que você tem CERTEZA que existe. NÃO invente números de itens específicos (como 24.1.3, 12.135, etc.) se não tiver absoluta certeza de que o item existe na versão vigente da norma. Prefira citar o capítulo ou seção geral.
 2. "gravidade": Uma das opções: "LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"
 3. "acao_corretiva": Ação corretiva recomendada (máximo 2 frases)
-4. "trecho_norma": Trecho resumido da norma que justifica a não conformidade (máximo 2 frases)
+4. "trecho_norma": Trecho resumido da norma que justifica a não conformidade (máximo 2 frases). Deve ser um conceito real da norma, NÃO invente trechos.
 
 Base completa de NRs vigentes (conforme gov.br/trabalho-e-emprego, atualizado em 08/10/2024):
 - NR-01: Disposições Gerais e Gerenciamento de Riscos Ocupacionais
@@ -73,7 +73,8 @@ REGRAS DE ANÁLISE:
 - Para irregularidades em canteiros de obra, aplicar prioritariamente NR-18.
 - Risco de queda ou choque elétrico = classificar como "GRAVE" ou "RISCO CRÍTICO" automaticamente.
 - Espaço confinado sem procedimento = "RISCO CRÍTICO".
-- Sempre citar o item específico da norma quando possível.`;
+- REGRA CRÍTICA: NÃO invente números de itens específicos da norma. Cite apenas o número da NR e o capítulo/seção geral (ex: "NR-24, Seção 24.3 - Água potável" ou "NR-12, Capítulo XII - Capacitação"). Se não souber o item exato, cite apenas a NR e seu título.
+- Para a NR-24 vigente (Portaria SEPRT nº 1.066/2019), a estrutura é: 24.1 Objetivo, 24.2 Instalações sanitárias, 24.3 Vestiários, 24.4 Locais para refeições, 24.5 Cozinhas, 24.6 Alojamento, 24.7 Vestimentas de trabalho, 24.8 Disposições gerais. O tema "água potável" está na seção 24.8 Disposições gerais.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
