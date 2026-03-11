@@ -329,7 +329,7 @@ export default function Entregas() {
         </div>
         <div className="flex gap-2 w-full sm:w-auto flex-wrap">
           {canEdit && unsignedEntregas.length > 0 && (
-            <Button variant="outline" onClick={openSignExisting} className="flex-1 sm:flex-none text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
+            <Button variant="outline" onClick={() => openSignExisting()} className="flex-1 sm:flex-none text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
               <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
               Assinar ({unsignedEntregas.length})
             </Button>
