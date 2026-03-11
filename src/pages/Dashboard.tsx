@@ -9,8 +9,6 @@ interface EPI { id: string; nome: string; estoque: number; estoque_minimo: numbe
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; }
 
-const TIPOS_SAIDA = ["entrega", "substituicao"];
-
 export default function Dashboard() {
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
