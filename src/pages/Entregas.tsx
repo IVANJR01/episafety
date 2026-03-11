@@ -551,26 +551,49 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); } }}>
-        <DialogContent className="max-w-2xl w-[95vw]">
+      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); } }}>
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
+              <PenLine className="w-5 h-5" />
               Assinatura do Colaborador
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">
-              Entrega registrada! O colaborador <strong>{pendingEntrega ? getName(funcionarios, pendingEntrega.funcionario_id) : ""}</strong> deve assinar abaixo para confirmar o recebimento do EPI.
-            </p>
+            {signMode === "new" && pendingEntrega && (
+              <p className="text-sm text-muted-foreground">
+                Entrega registrada! O colaborador <strong>{getName(funcionarios, pendingEntrega.funcionario_id)}</strong> deve assinar abaixo para confirmar o recebimento do EPI.
+              </p>
+            )}
+            {signMode === "existing" && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Selecione as entregas sem assinatura e colete a assinatura do colaborador:</p>
+                <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
+                  {unsignedEntregas.map(e => (
+                    <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">
+                      <Checkbox checked={selectedUnsigned.includes(e.id)} onCheckedChange={() => toggleUnsigned(e.id)} />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-medium">{getName(funcionarios, e.funcionario_id)}</span>
+                        <span className="text-muted-foreground ml-2">{getName(epis, e.epi_id)} • {e.quantidade}x • {e.data}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {unsignedEntregas.length > 1 && (
+                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedUnsigned(prev => prev.length === unsignedEntregas.length ? [] : unsignedEntregas.map(e => e.id))}>
+                    {selectedUnsigned.length === unsignedEntregas.length ? "Desmarcar todos" : "Selecionar todos"}
+                  </Button>
+                )}
+              </div>
+            )}
             <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={250} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); refetch(); toast({ title: "Entrega registrada sem assinatura." }); }}>
-              Pular
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
+              {signMode === "new" ? "Pular" : "Cancelar"}
             </Button>
-            <Button onClick={handleSaveSignature}>
-              ✍️ Salvar Assinatura
+            <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
+              ✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>
