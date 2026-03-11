@@ -44,6 +44,7 @@ export default function Entregas() {
   const [saving, setSaving] = useState(false);
   const [selectedUnsigned, setSelectedUnsigned] = useState<string[]>([]);
   const [signMode, setSignMode] = useState<"new" | "existing">("new");
+  const [signFuncId, setSignFuncId] = useState<string>("");
 
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
