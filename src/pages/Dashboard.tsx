@@ -7,7 +7,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; }
+
+const TIPOS_SAIDA = ["entrega", "substituicao"];
 
 export default function Dashboard() {
   const { data: epis } = useSupabaseQuery<EPI>("epis");
@@ -23,7 +25,7 @@ export default function Dashboard() {
 
   const custoMensalData = useMemo(() => {
     const mesesSaida: Record<string, number> = {};
-    entregas.forEach(e => {
+    entregas.filter(e => TIPOS_SAIDA.includes(e.tipo)).forEach(e => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       const valor = epi?.valor || 0;
       const mes = e.data?.substring(0, 7);
@@ -76,7 +78,7 @@ export default function Dashboard() {
     const mesesSet = new Set<string>();
     const consumoPorEpi: Record<string, Record<string, number>> = {};
 
-    entregas.forEach(e => {
+    entregas.filter(e => TIPOS_SAIDA.includes(e.tipo)).forEach(e => {
       const mes = e.data?.substring(0, 7);
       if (!mes) return;
       mesesSet.add(mes);
@@ -111,7 +113,7 @@ export default function Dashboard() {
   }, [entregas, epis]);
 
   const valorSaida = useMemo(() => {
-    return entregas.reduce((sum, e) => {
+    return entregas.filter(e => TIPOS_SAIDA.includes(e.tipo)).reduce((sum, e) => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       return sum + (epi?.valor || 0) * e.quantidade;
     }, 0);
