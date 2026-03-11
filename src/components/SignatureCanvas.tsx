@@ -16,7 +16,7 @@ interface Props {
 }
 
 const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(
-  ({ label, height = 200 }, ref) => {
+  ({ label, height = 350 }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const padRef = useRef<SignaturePad | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
