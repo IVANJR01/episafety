@@ -434,7 +434,7 @@ export default function Entregas() {
                         {e.assinatura_colaborador ? (
                           <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
                         ) : (
-                          <Button size="sm" variant="ghost" className="text-xs text-amber-500 hover:text-amber-600 p-0 h-auto font-medium" onClick={() => { setSelectedUnsigned([e.id]); openSignExisting(); }}>
+                          <Button size="sm" variant="ghost" className="text-xs text-amber-500 hover:text-amber-600 p-0 h-auto font-medium" onClick={() => openSignExisting(e.funcionario_id)}>
                             <AlertCircle className="w-3.5 h-3.5 mr-1" />Pendente
                           </Button>
                         )}
