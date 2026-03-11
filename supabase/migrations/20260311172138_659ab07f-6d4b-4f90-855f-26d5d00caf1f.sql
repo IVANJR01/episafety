@@ -1,0 +1,1 @@
+ALTER TABLE entregas ADD COLUMN nome_assinatura TEXT;
