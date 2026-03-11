@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2 } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -41,6 +42,8 @@ export default function Entregas() {
   const [fichaSearch, setFichaSearch] = useState("");
   const [fichaFuncId, setFichaFuncId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedUnsigned, setSelectedUnsigned] = useState<string[]>([]);
+  const [signMode, setSignMode] = useState<"new" | "existing">("new");
 
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
@@ -217,7 +220,8 @@ export default function Entregas() {
   };
 
   const handleSaveSignature = async () => {
-    if (!pendingEntrega) return;
+    const ids = signMode === "new" ? (pendingEntrega?.entrega_ids || []) : selectedUnsigned;
+    if (ids.length === 0) return;
 
     const assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
     if (!assinaturaColaborador) {
@@ -225,17 +229,29 @@ export default function Entregas() {
       return;
     }
 
-    // Save signature on all entrega rows
-    for (const id of (pendingEntrega.entrega_ids || [])) {
+    for (const id of ids) {
       await (supabase.from as any)("entregas")
         .update({ assinatura_colaborador: assinaturaColaborador })
         .eq("id", id);
     }
 
     await refetch();
-    toast({ title: "Assinatura salva com sucesso!" });
+    toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
     setSignOpen(false);
     setPendingEntrega(null);
+    setSelectedUnsigned([]);
+    setSignMode("new");
+  };
+
+  const unsignedEntregas = useMemo(() => entregas.filter(e => !e.assinatura_colaborador), [entregas]);
+
+  const toggleUnsigned = (id: string) => {
+    setSelectedUnsigned(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const openSignExisting = () => {
+    setSignMode("existing");
+    setSignOpen(true);
   };
 
   const getName = (list: { id: string; nome: string }[], id: string) => list.find(i => i.id === id)?.nome || "—";
@@ -301,7 +317,13 @@ export default function Entregas() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Entregas de EPI</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Entrega, troca e devolução de EPIs</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+          {canEdit && unsignedEntregas.length > 0 && (
+            <Button variant="outline" onClick={openSignExisting} className="flex-1 sm:flex-none text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
+              <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
+              Assinar ({unsignedEntregas.length})
+            </Button>
+          )}
           {canEdit && (
             <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
@@ -338,6 +360,11 @@ export default function Entregas() {
                         <span className={`text-[10px] font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
                           {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                         </span>
+                        {e.assinatura_colaborador ? (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><CheckCircle2 className="w-3 h-3" />Assinado</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-medium"><AlertCircle className="w-3 h-3" />Pendente</span>
+                        )}
                       </div>
                       <p className="font-semibold text-sm">{getName(funcionarios, e.funcionario_id)}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{getName(epis, e.epi_id)} • {e.quantidade}x</p>
@@ -345,6 +372,11 @@ export default function Entregas() {
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
+                        {!e.assinatura_colaborador && canEdit && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => { setSelectedUnsigned([e.id]); openSignExisting(); }}>
+                            <PenLine className="w-3 h-3 text-amber-500" />
+                          </Button>
+                        )}
                         {canEdit && <Button size="icon" variant="ghost" className="h-7 w-7" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3 h-3" /></Button>}
                         {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(e.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>}
                       </div>
@@ -361,20 +393,21 @@ export default function Entregas() {
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Funcionário</TableHead>
                     <TableHead>EPI</TableHead>
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Assinatura</TableHead>
                     <TableHead>Obs</TableHead>
                     <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEntregas.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</TableCell></TableRow>
                   ) : filteredEntregas.map(e => (
                     <TableRow key={e.id}>
                       <TableCell className="font-mono text-xs">{e.data}</TableCell>
@@ -386,6 +419,15 @@ export default function Entregas() {
                         <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
                           {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        {e.assinatura_colaborador ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="text-xs text-amber-500 hover:text-amber-600 p-0 h-auto font-medium" onClick={() => { setSelectedUnsigned([e.id]); openSignExisting(); }}>
+                            <AlertCircle className="w-3.5 h-3.5 mr-1" />Pendente
+                          </Button>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
                       <TableCell>
@@ -509,26 +551,49 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); } }}>
-        <DialogContent className="max-w-2xl w-[95vw]">
+      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); } }}>
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
+              <PenLine className="w-5 h-5" />
               Assinatura do Colaborador
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">
-              Entrega registrada! O colaborador <strong>{pendingEntrega ? getName(funcionarios, pendingEntrega.funcionario_id) : ""}</strong> deve assinar abaixo para confirmar o recebimento do EPI.
-            </p>
+            {signMode === "new" && pendingEntrega && (
+              <p className="text-sm text-muted-foreground">
+                Entrega registrada! O colaborador <strong>{getName(funcionarios, pendingEntrega.funcionario_id)}</strong> deve assinar abaixo para confirmar o recebimento do EPI.
+              </p>
+            )}
+            {signMode === "existing" && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Selecione as entregas sem assinatura e colete a assinatura do colaborador:</p>
+                <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
+                  {unsignedEntregas.map(e => (
+                    <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">
+                      <Checkbox checked={selectedUnsigned.includes(e.id)} onCheckedChange={() => toggleUnsigned(e.id)} />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-medium">{getName(funcionarios, e.funcionario_id)}</span>
+                        <span className="text-muted-foreground ml-2">{getName(epis, e.epi_id)} • {e.quantidade}x • {e.data}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {unsignedEntregas.length > 1 && (
+                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedUnsigned(prev => prev.length === unsignedEntregas.length ? [] : unsignedEntregas.map(e => e.id))}>
+                    {selectedUnsigned.length === unsignedEntregas.length ? "Desmarcar todos" : "Selecionar todos"}
+                  </Button>
+                )}
+              </div>
+            )}
             <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={250} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); refetch(); toast({ title: "Entrega registrada sem assinatura." }); }}>
-              Pular
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
+              {signMode === "new" ? "Pular" : "Cancelar"}
             </Button>
-            <Button onClick={handleSaveSignature}>
-              ✍️ Salvar Assinatura
+            <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
+              ✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>
