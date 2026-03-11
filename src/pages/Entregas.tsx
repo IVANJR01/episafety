@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Trash2, FileText, Search, Loader2 } from "lucide-react";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
@@ -72,29 +72,33 @@ export default function Entregas() {
     setEpiList(prev => prev.filter(e => e.epi.id !== epiId));
   };
 
-  const handleSearchCA = async () => {
-    if (!epiCaSearch.trim()) return;
-    setEpiSearching(true);
-    setEpiDropdownResults([]);
+  // Auto-search locally as user types
+  useEffect(() => {
     const term = epiCaSearch.trim().toLowerCase();
-    // Search by CA exact match first
-    const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
-    if (foundByCA) {
-      addEpiToList(foundByCA);
-      setEpiSearching(false);
+    if (!term || term.length < 2) {
+      setEpiDropdownResults([]);
       return;
     }
-    // Search by name/description locally
-    const matchedByName = epis.filter(e =>
+    const matched = epis.filter(e =>
       e.nome.toLowerCase().includes(term) ||
       (e.descricao && e.descricao.toLowerCase().includes(term)) ||
       (e.ca && e.ca.includes(term))
     );
-    if (matchedByName.length > 0) {
-      setEpiDropdownResults(matchedByName);
-      setEpiSearching(false);
+    setEpiDropdownResults(matched);
+  }, [epiCaSearch, epis]);
+
+  const handleSearchCA = async () => {
+    if (!epiCaSearch.trim()) return;
+    // If there's a local exact CA match, add directly
+    const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
+    if (foundByCA) {
+      addEpiToList(foundByCA);
       return;
     }
+    // If local results exist, don't call external API
+    if (epiDropdownResults.length > 0) return;
+
+    setEpiSearching(true);
     try {
       const { data, error } = await supabase.functions.invoke("consulta-ca", {
         body: { ca: epiCaSearch.trim() },
