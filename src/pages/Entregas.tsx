@@ -212,6 +212,7 @@ export default function Entregas() {
     setEpiList([]);
     setEpiDropdownResults([]);
 
+    setSaving(false);
     setSignOpen(true);
   };
 
