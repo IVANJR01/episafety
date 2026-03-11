@@ -153,36 +153,47 @@ export default function Entregas() {
   }, [funcionarios, formFuncSearch]);
 
   const handleSave = async () => {
-    if (!form.funcionario_id || !form.epi_id) {
-      toast({ title: "Preencha funcionário e EPI", variant: "destructive" });
+    if (!form.funcionario_id || epiList.length === 0) {
+      toast({ title: "Preencha funcionário e adicione ao menos um EPI", variant: "destructive" });
       return;
     }
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
-    const entregaData = { ...form, status, observacao: form.observacao || null, empresa_id: empresaId };
 
-    // Insert and get the ID back
-    const { data: inserted, error } = await (supabase.from as any)("entregas")
-      .insert(entregaData)
-      .select("id")
-      .single();
-
-    if (error) {
-      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-      return;
+    const insertedIds: string[] = [];
+    for (const item of epiList) {
+      const entregaData = {
+        funcionario_id: form.funcionario_id,
+        epi_id: item.epi.id,
+        quantidade: item.quantidade,
+        data: form.data,
+        tipo: form.tipo,
+        status,
+        observacao: form.observacao || null,
+        empresa_id: empresaId,
+      };
+      const { data: inserted, error } = await (supabase.from as any)("entregas")
+        .insert(entregaData)
+        .select("id")
+        .single();
+      if (error) {
+        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+        return;
+      }
+      insertedIds.push(inserted.id);
     }
 
     setPendingEntrega({
       funcionario_id: form.funcionario_id,
-      epi_id: form.epi_id,
-      entrega_id: inserted.id,
+      entrega_ids: insertedIds,
     });
 
     setOpen(false);
     resetForm();
     setFormFuncSearch("");
     setEpiCaSearch("");
-    setEpiSearchResult(null);
+    setEpiList([]);
+    setEpiDropdownResults([]);
 
     setSignOpen(true);
   };
@@ -196,10 +207,12 @@ export default function Entregas() {
       return;
     }
 
-    // Save signature directly on the specific entrega row
-    await (supabase.from as any)("entregas")
-      .update({ assinatura_colaborador: assinaturaColaborador })
-      .eq("id", pendingEntrega.entrega_id);
+    // Save signature on all entrega rows
+    for (const id of (pendingEntrega.entrega_ids || [])) {
+      await (supabase.from as any)("entregas")
+        .update({ assinatura_colaborador: assinaturaColaborador })
+        .eq("id", id);
+    }
 
     await refetch();
     toast({ title: "Assinatura salva com sucesso!" });
