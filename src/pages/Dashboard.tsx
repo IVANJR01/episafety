@@ -236,52 +236,21 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <ResponsiveContainer width="100%" height={340}>
-              <PieChart>
-                <Pie
-                  data={estoqueChartData}
-                  dataKey="valor"
-                  nameKey="nome"
-                  cx="50%"
-                  cy="42%"
-                  innerRadius={50}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  label={({ nome, percent, x, y, midAngle }: any) => {
-                    const cx2 = x + (midAngle > 90 && midAngle < 270 ? -8 : 8);
-                    return (
-                      <text
-                        x={cx2}
-                        y={y}
-                        textAnchor={midAngle > 90 && midAngle < 270 ? "end" : "start"}
-                        dominantBaseline="central"
-                        style={{ fontSize: '11px', fill: 'hsl(var(--foreground))' }}
-                      >
-                        {nome} ({(percent * 100).toFixed(0)}%)
-                      </text>
-                    );
-                  }}
-                  labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
-                >
-                  {estoqueChartData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
+            <ResponsiveContainer width="100%" height={Math.max(250, estoqueChartData.length * 48)}>
+              <BarChart data={estoqueChartData} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
+                <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                <YAxis type="category" dataKey="nome" width={140} tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }} />
                 <Tooltip
                   formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Valor"]}
                   contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                 />
-                <Legend
-                  layout="horizontal"
-                  verticalAlign="bottom"
-                  align="center"
-                  formatter={(value: string) => {
-                    const item = estoqueChartData.find(d => d.nome === value);
-                    return `${value} — R$ ${item?.valor.toFixed(2) || "0.00"}`;
-                  }}
-                  wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
-                />
-              </PieChart>
+                <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                  {estoqueChartData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           )}
         </CardContent>
