@@ -196,6 +196,7 @@ export default function Entregas() {
     }
     if (insertedIds.length === 0) {
       toast({ title: "Nenhum EPI foi registrado", variant: "destructive" });
+      setSaving(false);
       return;
     }
 
