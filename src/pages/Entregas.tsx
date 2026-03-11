@@ -516,7 +516,7 @@ export default function Entregas() {
             <p className="text-sm text-muted-foreground">
               Entrega registrada! O colaborador <strong>{pendingEntrega ? getName(funcionarios, pendingEntrega.funcionario_id) : ""}</strong> deve assinar abaixo para confirmar o recebimento do EPI.
             </p>
-            <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={150} />
+            <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={250} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); refetch(); toast({ title: "Entrega registrada sem assinatura." }); }}>
