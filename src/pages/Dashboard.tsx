@@ -76,7 +76,7 @@ export default function Dashboard() {
     const mesesSet = new Set<string>();
     const consumoPorEpi: Record<string, Record<string, number>> = {};
 
-    entregas.filter(e => TIPOS_SAIDA.includes(e.tipo)).forEach(e => {
+    entregas.forEach(e => {
       const mes = e.data?.substring(0, 7);
       if (!mes) return;
       mesesSet.add(mes);
