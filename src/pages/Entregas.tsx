@@ -225,14 +225,23 @@ export default function Entregas() {
     if (ids.length === 0) return;
 
     const assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+    const nomeAssinatura = sigEntregaRef.current?.getTypedName() || "";
+
     if (!assinaturaColaborador) {
       toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
+      return;
+    }
+    if (!nomeAssinatura.trim()) {
+      toast({ title: "Digite o nome completo do colaborador antes de salvar", variant: "destructive" });
       return;
     }
 
     for (const id of ids) {
       await (supabase.from as any)("entregas")
-        .update({ assinatura_colaborador: assinaturaColaborador })
+        .update({ 
+          assinatura_colaborador: assinaturaColaborador,
+          nome_assinatura: nomeAssinatura.trim()
+        })
         .eq("id", id);
     }
 

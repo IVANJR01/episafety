@@ -227,6 +227,7 @@ export type Database = {
           epi_id: string
           funcionario_id: string
           id: string
+          nome_assinatura: string | null
           observacao: string | null
           quantidade: number
           status: Database["public"]["Enums"]["status_entrega"]
@@ -241,6 +242,7 @@ export type Database = {
           epi_id: string
           funcionario_id: string
           id?: string
+          nome_assinatura?: string | null
           observacao?: string | null
           quantidade?: number
           status?: Database["public"]["Enums"]["status_entrega"]
@@ -255,6 +257,7 @@ export type Database = {
           epi_id?: string
           funcionario_id?: string
           id?: string
+          nome_assinatura?: string | null
           observacao?: string | null
           quantidade?: number
           status?: Database["public"]["Enums"]["status_entrega"]
