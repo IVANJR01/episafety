@@ -627,7 +627,7 @@ export default function Entregas() {
                 })()}
               </div>
             )}
-            <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={250} />
+            <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
