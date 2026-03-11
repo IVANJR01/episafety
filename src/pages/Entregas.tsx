@@ -44,6 +44,7 @@ export default function Entregas() {
   const [saving, setSaving] = useState(false);
   const [selectedUnsigned, setSelectedUnsigned] = useState<string[]>([]);
   const [signMode, setSignMode] = useState<"new" | "existing">("new");
+  const [signFuncId, setSignFuncId] = useState<string>("");
 
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
@@ -249,8 +250,17 @@ export default function Entregas() {
     setSelectedUnsigned(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const openSignExisting = () => {
+  const openSignExisting = (funcId?: string) => {
     setSignMode("existing");
+    if (funcId) {
+      setSignFuncId(funcId);
+      // Pre-select all unsigned for this employee
+      const ids = unsignedEntregas.filter(e => e.funcionario_id === funcId).map(e => e.id);
+      setSelectedUnsigned(ids);
+    } else {
+      setSignFuncId("");
+      setSelectedUnsigned([]);
+    }
     setSignOpen(true);
   };
 
@@ -319,7 +329,7 @@ export default function Entregas() {
         </div>
         <div className="flex gap-2 w-full sm:w-auto flex-wrap">
           {canEdit && unsignedEntregas.length > 0 && (
-            <Button variant="outline" onClick={openSignExisting} className="flex-1 sm:flex-none text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
+            <Button variant="outline" onClick={() => openSignExisting()} className="flex-1 sm:flex-none text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
               <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
               Assinar ({unsignedEntregas.length})
             </Button>
@@ -373,7 +383,7 @@ export default function Entregas() {
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
                         {!e.assinatura_colaborador && canEdit && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => { setSelectedUnsigned([e.id]); openSignExisting(); }}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
                             <PenLine className="w-3 h-3 text-amber-500" />
                           </Button>
                         )}
@@ -424,7 +434,7 @@ export default function Entregas() {
                         {e.assinatura_colaborador ? (
                           <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
                         ) : (
-                          <Button size="sm" variant="ghost" className="text-xs text-amber-500 hover:text-amber-600 p-0 h-auto font-medium" onClick={() => { setSelectedUnsigned([e.id]); openSignExisting(); }}>
+                          <Button size="sm" variant="ghost" className="text-xs text-amber-500 hover:text-amber-600 p-0 h-auto font-medium" onClick={() => openSignExisting(e.funcionario_id)}>
                             <AlertCircle className="w-3.5 h-3.5 mr-1" />Pendente
                           </Button>
                         )}
@@ -567,29 +577,59 @@ export default function Entregas() {
             )}
             {signMode === "existing" && (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Selecione as entregas sem assinatura e colete a assinatura do colaborador:</p>
-                <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
-                  {unsignedEntregas.map(e => (
-                    <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">
-                      <Checkbox checked={selectedUnsigned.includes(e.id)} onCheckedChange={() => toggleUnsigned(e.id)} />
-                      <div className="min-w-0 flex-1">
-                        <span className="font-medium">{getName(funcionarios, e.funcionario_id)}</span>
-                        <span className="text-muted-foreground ml-2">{getName(epis, e.epi_id)} • {e.quantidade}x • {e.data}</span>
-                      </div>
-                    </label>
-                  ))}
+                <p className="text-sm text-muted-foreground">Selecione o colaborador e as entregas pendentes de assinatura:</p>
+                
+                {/* Employee selector */}
+                <div>
+                  <Label className="text-xs">Colaborador</Label>
+                  <Select value={signFuncId} onValueChange={v => { setSignFuncId(v); setSelectedUnsigned([]); }}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o colaborador..." /></SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const funcIds = [...new Set(unsignedEntregas.map(e => e.funcionario_id))];
+                        return funcIds.map(fid => {
+                          const count = unsignedEntregas.filter(e => e.funcionario_id === fid).length;
+                          return (
+                            <SelectItem key={fid} value={fid}>
+                              {getName(funcionarios, fid)} ({count} pendente{count !== 1 ? "s" : ""})
+                            </SelectItem>
+                          );
+                        });
+                      })()}
+                    </SelectContent>
+                  </Select>
                 </div>
-                {unsignedEntregas.length > 1 && (
-                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedUnsigned(prev => prev.length === unsignedEntregas.length ? [] : unsignedEntregas.map(e => e.id))}>
-                    {selectedUnsigned.length === unsignedEntregas.length ? "Desmarcar todos" : "Selecionar todos"}
-                  </Button>
-                )}
+
+                {/* Entries for selected employee */}
+                {signFuncId && (() => {
+                  const funcUnsigned = unsignedEntregas.filter(e => e.funcionario_id === signFuncId);
+                  return (
+                    <>
+                      <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
+                        {funcUnsigned.map(e => (
+                          <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">
+                            <Checkbox checked={selectedUnsigned.includes(e.id)} onCheckedChange={() => toggleUnsigned(e.id)} />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-medium">{getName(epis, e.epi_id)}</span>
+                              <span className="text-muted-foreground ml-2">{e.quantidade}x • {e.data}</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                      {funcUnsigned.length > 1 && (
+                        <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedUnsigned(prev => prev.length === funcUnsigned.length ? [] : funcUnsigned.map(e => e.id))}>
+                          {selectedUnsigned.length === funcUnsigned.length ? "Desmarcar todos" : "Selecionar todos"}
+                        </Button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
             <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={250} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
               {signMode === "new" ? "Pular" : "Cancelar"}
             </Button>
             <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
