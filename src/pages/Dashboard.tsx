@@ -23,7 +23,7 @@ export default function Dashboard() {
 
   const custoMensalData = useMemo(() => {
     const mesesSaida: Record<string, number> = {};
-    entregas.filter(e => TIPOS_SAIDA.includes(e.tipo)).forEach(e => {
+    entregas.forEach(e => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       const valor = epi?.valor || 0;
       const mes = e.data?.substring(0, 7);
