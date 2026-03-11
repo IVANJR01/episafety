@@ -57,17 +57,30 @@ export default function Entregas() {
   const [epiList, setEpiList] = useState<EpiItem[]>([]);
   const [epiQtd, setEpiQtd] = useState(1);
 
+  const addEpiToList = useCallback((epi: EPI) => {
+    setEpiList(prev => {
+      const existing = prev.find(e => e.epi.id === epi.id);
+      if (existing) return prev.map(e => e.epi.id === epi.id ? { ...e, quantidade: e.quantidade + epiQtd } : e);
+      return [...prev, { epi, quantidade: epiQtd }];
+    });
+    setEpiCaSearch("");
+    setEpiDropdownResults([]);
+    setEpiQtd(1);
+  }, [epiQtd]);
+
+  const removeEpiFromList = (epiId: string) => {
+    setEpiList(prev => prev.filter(e => e.epi.id !== epiId));
+  };
+
   const handleSearchCA = async () => {
     if (!epiCaSearch.trim()) return;
     setEpiSearching(true);
-    setEpiSearchResult(null);
     setEpiDropdownResults([]);
     const term = epiCaSearch.trim().toLowerCase();
     // Search by CA exact match first
     const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
     if (foundByCA) {
-      setEpiSearchResult(foundByCA);
-      setForm(f => ({ ...f, epi_id: foundByCA.id }));
+      addEpiToList(foundByCA);
       setEpiSearching(false);
       return;
     }
@@ -105,8 +118,7 @@ export default function Entregas() {
       if (insertErr) {
         toast({ title: "Erro ao cadastrar EPI", variant: "destructive" });
       } else {
-        setEpiSearchResult(newEpi);
-        setForm(f => ({ ...f, epi_id: newEpi.id }));
+        addEpiToList(newEpi);
         toast({ title: `EPI "${data.nome}" cadastrado automaticamente via C.A.` });
       }
     } catch {
