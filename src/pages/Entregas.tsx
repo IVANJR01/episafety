@@ -45,7 +45,7 @@ export default function Entregas() {
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
 
   const entregaDefaults = {
-    funcionario_id: "", epi_id: "", quantidade: 1,
+    funcionario_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
     tipo: "entrega" as string, observacao: "",
   };
@@ -53,9 +53,9 @@ export default function Entregas() {
 
   const [epiCaSearch, setEpiCaSearch] = useState("");
   const [epiSearching, setEpiSearching] = useState(false);
-  const [epiSearchResult, setEpiSearchResult] = useState<EPI | null>(null);
-
   const [epiDropdownResults, setEpiDropdownResults] = useState<EPI[]>([]);
+  const [epiList, setEpiList] = useState<EpiItem[]>([]);
+  const [epiQtd, setEpiQtd] = useState(1);
 
   const handleSearchCA = async () => {
     if (!epiCaSearch.trim()) return;
