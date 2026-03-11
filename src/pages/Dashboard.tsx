@@ -12,6 +12,7 @@ interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; }
 
 export default function Dashboard() {
+  const isMobile = useIsMobile();
   const { data: epis } = useSupabaseQuery<EPI>("epis");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
