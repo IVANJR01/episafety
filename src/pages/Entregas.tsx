@@ -568,29 +568,59 @@ export default function Entregas() {
             )}
             {signMode === "existing" && (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Selecione as entregas sem assinatura e colete a assinatura do colaborador:</p>
-                <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
-                  {unsignedEntregas.map(e => (
-                    <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">
-                      <Checkbox checked={selectedUnsigned.includes(e.id)} onCheckedChange={() => toggleUnsigned(e.id)} />
-                      <div className="min-w-0 flex-1">
-                        <span className="font-medium">{getName(funcionarios, e.funcionario_id)}</span>
-                        <span className="text-muted-foreground ml-2">{getName(epis, e.epi_id)} • {e.quantidade}x • {e.data}</span>
-                      </div>
-                    </label>
-                  ))}
+                <p className="text-sm text-muted-foreground">Selecione o colaborador e as entregas pendentes de assinatura:</p>
+                
+                {/* Employee selector */}
+                <div>
+                  <Label className="text-xs">Colaborador</Label>
+                  <Select value={signFuncId} onValueChange={v => { setSignFuncId(v); setSelectedUnsigned([]); }}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o colaborador..." /></SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const funcIds = [...new Set(unsignedEntregas.map(e => e.funcionario_id))];
+                        return funcIds.map(fid => {
+                          const count = unsignedEntregas.filter(e => e.funcionario_id === fid).length;
+                          return (
+                            <SelectItem key={fid} value={fid}>
+                              {getName(funcionarios, fid)} ({count} pendente{count !== 1 ? "s" : ""})
+                            </SelectItem>
+                          );
+                        });
+                      })()}
+                    </SelectContent>
+                  </Select>
                 </div>
-                {unsignedEntregas.length > 1 && (
-                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedUnsigned(prev => prev.length === unsignedEntregas.length ? [] : unsignedEntregas.map(e => e.id))}>
-                    {selectedUnsigned.length === unsignedEntregas.length ? "Desmarcar todos" : "Selecionar todos"}
-                  </Button>
-                )}
+
+                {/* Entries for selected employee */}
+                {signFuncId && (() => {
+                  const funcUnsigned = unsignedEntregas.filter(e => e.funcionario_id === signFuncId);
+                  return (
+                    <>
+                      <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
+                        {funcUnsigned.map(e => (
+                          <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">
+                            <Checkbox checked={selectedUnsigned.includes(e.id)} onCheckedChange={() => toggleUnsigned(e.id)} />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-medium">{getName(epis, e.epi_id)}</span>
+                              <span className="text-muted-foreground ml-2">{e.quantidade}x • {e.data}</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                      {funcUnsigned.length > 1 && (
+                        <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedUnsigned(prev => prev.length === funcUnsigned.length ? [] : funcUnsigned.map(e => e.id))}>
+                          {selectedUnsigned.length === funcUnsigned.length ? "Desmarcar todos" : "Selecionar todos"}
+                        </Button>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
             <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={250} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
               {signMode === "new" ? "Pular" : "Cancelar"}
             </Button>
             <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
