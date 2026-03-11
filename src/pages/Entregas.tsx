@@ -40,6 +40,7 @@ export default function Entregas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [fichaSearch, setFichaSearch] = useState("");
   const [fichaFuncId, setFichaFuncId] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
@@ -157,10 +158,12 @@ export default function Entregas() {
   }, [funcionarios, formFuncSearch]);
 
   const handleSave = async () => {
+    if (saving) return;
     if (!form.funcionario_id || epiList.length === 0) {
       toast({ title: "Preencha funcionário e adicione ao menos um EPI", variant: "destructive" });
       return;
     }
+    setSaving(true);
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
 
@@ -193,6 +196,7 @@ export default function Entregas() {
     }
     if (insertedIds.length === 0) {
       toast({ title: "Nenhum EPI foi registrado", variant: "destructive" });
+      setSaving(false);
       return;
     }
 
@@ -208,6 +212,7 @@ export default function Entregas() {
     setEpiList([]);
     setEpiDropdownResults([]);
 
+    setSaving(false);
     setSignOpen(true);
   };
 
@@ -500,7 +505,7 @@ export default function Entregas() {
             </div>
             <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e => setForm({...form, observacao: e.target.value})} placeholder="Observações opcionais" /></div>
           </div>
-          <DialogFooter><Button onClick={handleSave} disabled={epiList.length === 0}>Registrar ({epiList.length} EPI{epiList.length !== 1 ? "s" : ""})</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleSave} disabled={epiList.length === 0 || saving}>{saving ? "Salvando..." : `Registrar (${epiList.length} EPI${epiList.length !== 1 ? "s" : ""})`}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
