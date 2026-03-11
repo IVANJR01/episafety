@@ -165,6 +165,7 @@ export default function Entregas() {
     const status = statusMap[form.tipo] || "ativo";
 
     const insertedIds: string[] = [];
+    const failedEpis: string[] = [];
     for (const item of epiList) {
       const entregaData = {
         funcionario_id: form.funcionario_id,
@@ -181,10 +182,18 @@ export default function Entregas() {
         .select("id")
         .single();
       if (error) {
-        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-        return;
+        console.warn("Erro ao salvar EPI:", item.epi.nome, error.message);
+        failedEpis.push(item.epi.nome);
+      } else {
+        insertedIds.push(inserted.id);
       }
-      insertedIds.push(inserted.id);
+    }
+    if (failedEpis.length > 0) {
+      toast({ title: `${failedEpis.length} EPI(s) com erro`, description: `Falha: ${failedEpis.join(", ")}. Os demais foram registrados.`, variant: "destructive" });
+    }
+    if (insertedIds.length === 0) {
+      toast({ title: "Nenhum EPI foi registrado", variant: "destructive" });
+      return;
     }
 
     setPendingEntrega({
@@ -496,7 +505,7 @@ export default function Entregas() {
       </Dialog>
 
       <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); } }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl w-[95vw]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -507,7 +516,7 @@ export default function Entregas() {
             <p className="text-sm text-muted-foreground">
               Entrega registrada! O colaborador <strong>{pendingEntrega ? getName(funcionarios, pendingEntrega.funcionario_id) : ""}</strong> deve assinar abaixo para confirmar o recebimento do EPI.
             </p>
-            <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={150} />
+            <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={250} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); refetch(); toast({ title: "Entrega registrada sem assinatura." }); }}>
