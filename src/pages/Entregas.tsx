@@ -165,6 +165,7 @@ export default function Entregas() {
     const status = statusMap[form.tipo] || "ativo";
 
     const insertedIds: string[] = [];
+    const failedEpis: string[] = [];
     for (const item of epiList) {
       const entregaData = {
         funcionario_id: form.funcionario_id,
@@ -181,10 +182,18 @@ export default function Entregas() {
         .select("id")
         .single();
       if (error) {
-        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-        return;
+        console.warn("Erro ao salvar EPI:", item.epi.nome, error.message);
+        failedEpis.push(item.epi.nome);
+      } else {
+        insertedIds.push(inserted.id);
       }
-      insertedIds.push(inserted.id);
+    }
+    if (failedEpis.length > 0) {
+      toast({ title: `${failedEpis.length} EPI(s) com erro`, description: `Falha: ${failedEpis.join(", ")}. Os demais foram registrados.`, variant: "destructive" });
+    }
+    if (insertedIds.length === 0) {
+      toast({ title: "Nenhum EPI foi registrado", variant: "destructive" });
+      return;
     }
 
     setPendingEntrega({
