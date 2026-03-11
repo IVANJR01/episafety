@@ -220,7 +220,8 @@ export default function Entregas() {
   };
 
   const handleSaveSignature = async () => {
-    if (!pendingEntrega) return;
+    const ids = signMode === "new" ? (pendingEntrega?.entrega_ids || []) : selectedUnsigned;
+    if (ids.length === 0) return;
 
     const assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
     if (!assinaturaColaborador) {
@@ -228,17 +229,29 @@ export default function Entregas() {
       return;
     }
 
-    // Save signature on all entrega rows
-    for (const id of (pendingEntrega.entrega_ids || [])) {
+    for (const id of ids) {
       await (supabase.from as any)("entregas")
         .update({ assinatura_colaborador: assinaturaColaborador })
         .eq("id", id);
     }
 
     await refetch();
-    toast({ title: "Assinatura salva com sucesso!" });
+    toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
     setSignOpen(false);
     setPendingEntrega(null);
+    setSelectedUnsigned([]);
+    setSignMode("new");
+  };
+
+  const unsignedEntregas = useMemo(() => entregas.filter(e => !e.assinatura_colaborador), [entregas]);
+
+  const toggleUnsigned = (id: string) => {
+    setSelectedUnsigned(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const openSignExisting = () => {
+    setSignMode("existing");
+    setSignOpen(true);
   };
 
   const getName = (list: { id: string; nome: string }[], id: string) => list.find(i => i.id === id)?.nome || "—";
