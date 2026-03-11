@@ -505,7 +505,7 @@ export default function Entregas() {
       </Dialog>
 
       <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); } }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl w-[95vw]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
