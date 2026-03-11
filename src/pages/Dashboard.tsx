@@ -272,106 +272,215 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Média mensal de consumo */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            Média Mensal de Consumo por EPI
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Base para planejamento de compras — quanto maior o consumo, mais atenção ao reabastecimento
-          </p>
-        </CardHeader>
-        <CardContent className="p-0">
-          {mediaMensalEPI.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="sticky left-0 bg-card z-10">EPI</TableHead>
-                    {mesesOrdenados.map(m => (
-                      <TableHead key={m} className="text-center whitespace-nowrap">
-                        {m.split("-").reverse().join("/")}
-                      </TableHead>
+      {/* Mobile: Tabs | Desktop: stacked */}
+      {isMobile ? (
+        <Tabs defaultValue="consumo" className="w-full">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="consumo" className="text-xs">
+              <TrendingUp className="w-3.5 h-3.5 mr-1" /> Consumo
+            </TabsTrigger>
+            <TabsTrigger value="alertas" className="text-xs">
+              <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Alertas
+              {alertasEstoque.length > 0 && (
+                <span className="ml-1 bg-destructive text-destructive-foreground text-[10px] rounded-full px-1.5">{alertasEstoque.length}</span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="entregas" className="text-xs">
+              <ClipboardList className="w-3.5 h-3.5 mr-1" /> Entregas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="consumo">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  Média Mensal de Consumo
+                </CardTitle>
+                <p className="text-[10px] text-muted-foreground">Planejamento de compras</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                {mediaMensalEPI.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada</p>
+                ) : (
+                  <div className="space-y-2 p-3">
+                    {mediaMensalEPI.map(e => (
+                      <div key={e.id} className="rounded-lg border border-border p-3 space-y-1">
+                        <div className="flex justify-between items-start">
+                          <span className="font-medium text-sm leading-tight">{e.nome}</span>
+                          {e.mesesEstoque !== null && (
+                            <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                              e.mesesEstoque <= 1 ? "bg-destructive/10 text-destructive" :
+                              e.mesesEstoque <= 3 ? "bg-warning/10 text-warning" :
+                              "bg-green-500/10 text-green-600"
+                            }`}>
+                              {e.mesesEstoque}m
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-4 text-xs text-muted-foreground">
+                          <span>Média: <strong className="text-foreground">{e.media}/mês</strong></span>
+                          <span>Estoque: <strong className="text-foreground">{e.estoqueAtual}</strong></span>
+                          <span>Total: <strong className="text-foreground">{e.totalEntregue}</strong></span>
+                        </div>
+                      </div>
                     ))}
-                    <TableHead className="text-right">Média/Mês</TableHead>
-                    <TableHead className="text-right">Estoque</TableHead>
-                    <TableHead className="text-right">Duração</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mediaMensalEPI.map(e => (
-                    <TableRow key={e.id}>
-                      <TableCell className="font-medium sticky left-0 bg-card z-10 max-w-[180px] truncate">{e.nome}</TableCell>
-                      {mesesOrdenados.map(m => (
-                        <TableCell key={m} className="text-center font-mono text-sm">
-                          {e.porMes[m] || <span className="text-muted-foreground">0</span>}
-                        </TableCell>
-                      ))}
-                      <TableCell className="text-right font-mono text-sm font-semibold">{e.media}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{e.estoqueAtual}</TableCell>
-                      <TableCell className="text-right">
-                        {e.mesesEstoque !== null ? (
-                          <span className={`font-mono text-sm font-semibold ${e.mesesEstoque <= 1 ? "text-destructive" : e.mesesEstoque <= 3 ? "text-warning" : "text-green-600"}`}>
-                            {e.mesesEstoque}m
-                          </span>
-                        ) : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {alertasEstoque.length > 0 && (
-          <Card className="border-warning/30">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-warning" />
-                Alertas de Estoque
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {alertasEstoque.map(a => (
-                <div key={a.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-warning/5">
-                  <span><span className="font-medium">{a.nome}</span> — estoque baixo</span>
-                  <span className="text-warning font-mono text-xs">{a.estoque} un.</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Últimas Entregas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentEntregas.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma entrega registrada</p>
-            ) : (
-              <div className="space-y-2">
-                {recentEntregas.map(e => (
-                  <div key={e.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-muted/50">
-                    <div>
-                      <span className="font-medium">{e.funcionarioNome}</span>
-                      <span className="text-muted-foreground"> — {e.epiNome} ({e.quantidade}x)</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground font-mono">{e.data}</span>
+          <TabsContent value="alertas">
+            <Card className={alertasEstoque.length > 0 ? "border-warning/30" : ""}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-warning" />
+                  Alertas de Estoque
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {alertasEstoque.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Nenhum alerta no momento ✅</p>
+                ) : alertasEstoque.map(a => (
+                  <div key={a.id} className="flex justify-between items-center text-sm p-2.5 rounded-lg bg-warning/5">
+                    <span><span className="font-medium">{a.nome}</span> — estoque baixo</span>
+                    <span className="text-warning font-mono text-xs font-bold">{a.estoque} un.</span>
                   </div>
                 ))}
-              </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="entregas">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Últimas Entregas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentEntregas.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma entrega registrada</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recentEntregas.map(e => (
+                      <div key={e.id} className="rounded-lg bg-muted/50 p-2.5 space-y-0.5">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-sm">{e.funcionarioNome}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{e.epiNome} ({e.quantidade}x)</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <>
+          {/* Desktop: original layout */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                Média Mensal de Consumo por EPI
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Base para planejamento de compras — quanto maior o consumo, mais atenção ao reabastecimento
+              </p>
+            </CardHeader>
+            <CardContent className="p-0">
+              {mediaMensalEPI.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 bg-card z-10">EPI</TableHead>
+                        {mesesOrdenados.map(m => (
+                          <TableHead key={m} className="text-center whitespace-nowrap">
+                            {m.split("-").reverse().join("/")}
+                          </TableHead>
+                        ))}
+                        <TableHead className="text-right">Média/Mês</TableHead>
+                        <TableHead className="text-right">Estoque</TableHead>
+                        <TableHead className="text-right">Duração</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mediaMensalEPI.map(e => (
+                        <TableRow key={e.id}>
+                          <TableCell className="font-medium sticky left-0 bg-card z-10 max-w-[180px] truncate">{e.nome}</TableCell>
+                          {mesesOrdenados.map(m => (
+                            <TableCell key={m} className="text-center font-mono text-sm">
+                              {e.porMes[m] || <span className="text-muted-foreground">0</span>}
+                            </TableCell>
+                          ))}
+                          <TableCell className="text-right font-mono text-sm font-semibold">{e.media}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">{e.estoqueAtual}</TableCell>
+                          <TableCell className="text-right">
+                            {e.mesesEstoque !== null ? (
+                              <span className={`font-mono text-sm font-semibold ${e.mesesEstoque <= 1 ? "text-destructive" : e.mesesEstoque <= 3 ? "text-warning" : "text-green-600"}`}>
+                                {e.mesesEstoque}m
+                              </span>
+                            ) : "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            {alertasEstoque.length > 0 && (
+              <Card className="border-warning/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-warning" />
+                    Alertas de Estoque
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {alertasEstoque.map(a => (
+                    <div key={a.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-warning/5">
+                      <span><span className="font-medium">{a.nome}</span> — estoque baixo</span>
+                      <span className="text-warning font-mono text-xs">{a.estoque} un.</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
-      </div>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Últimas Entregas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentEntregas.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma entrega registrada</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recentEntregas.map(e => (
+                      <div key={e.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-muted/50">
+                        <div>
+                          <span className="font-medium">{e.funcionarioNome}</span>
+                          <span className="text-muted-foreground"> — {e.epiNome} ({e.quantidade}x)</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-mono">{e.data}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }
