@@ -317,7 +317,13 @@ export default function Entregas() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Entregas de EPI</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Entrega, troca e devolução de EPIs</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+          {canEdit && unsignedEntregas.length > 0 && (
+            <Button variant="outline" onClick={openSignExisting} className="flex-1 sm:flex-none text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
+              <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
+              Assinar ({unsignedEntregas.length})
+            </Button>
+          )}
           {canEdit && (
             <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
