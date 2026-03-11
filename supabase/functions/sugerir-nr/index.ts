@@ -73,7 +73,8 @@ REGRAS DE ANÁLISE:
 - Para irregularidades em canteiros de obra, aplicar prioritariamente NR-18.
 - Risco de queda ou choque elétrico = classificar como "GRAVE" ou "RISCO CRÍTICO" automaticamente.
 - Espaço confinado sem procedimento = "RISCO CRÍTICO".
-- Sempre citar o item específico da norma quando possível.`;
+- REGRA CRÍTICA: NÃO invente números de itens específicos da norma. Cite apenas o número da NR e o capítulo/seção geral (ex: "NR-24, Seção 24.3 - Água potável" ou "NR-12, Capítulo XII - Capacitação"). Se não souber o item exato, cite apenas a NR e seu título.
+- Para a NR-24 vigente (Portaria SEPRT nº 1.066/2019), a estrutura é: 24.1 Objetivo, 24.2 Instalações sanitárias, 24.3 Vestiários, 24.4 Locais para refeições, 24.5 Cozinhas, 24.6 Alojamento, 24.7 Vestimentas de trabalho, 24.8 Disposições gerais. O tema "água potável" está na seção 24.8 Disposições gerais.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
