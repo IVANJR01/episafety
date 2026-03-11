@@ -250,8 +250,17 @@ export default function Entregas() {
     setSelectedUnsigned(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const openSignExisting = () => {
+  const openSignExisting = (funcId?: string) => {
     setSignMode("existing");
+    if (funcId) {
+      setSignFuncId(funcId);
+      // Pre-select all unsigned for this employee
+      const ids = unsignedEntregas.filter(e => e.funcionario_id === funcId).map(e => e.id);
+      setSelectedUnsigned(ids);
+    } else {
+      setSignFuncId("");
+      setSelectedUnsigned([]);
+    }
     setSignOpen(true);
   };
 
