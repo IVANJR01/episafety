@@ -40,6 +40,7 @@ export default function Entregas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [fichaSearch, setFichaSearch] = useState("");
   const [fichaFuncId, setFichaFuncId] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
