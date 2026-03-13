@@ -490,72 +490,166 @@ export default function Treinamentos() {
         </Select>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome Completo</TableHead>
-                  <TableHead>Função</TableHead>
-                  <TableHead>Nome do Curso</TableHead>
-                  <TableHead>Data Realização</TableHead>
-                  <TableHead>Renovação</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Doc. Pendente</TableHead>
-                  <TableHead className="w-24"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
-                ) : filtered.map(t => {
-                  const func = funcMap[t.funcionario_id];
-                  const status = getStatus(t.data_renovacao);
-                  return (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
-                      <TableCell>{func?.cargo || "—"}</TableCell>
-                      <TableCell>{t.nome_curso}</TableCell>
-                      <TableCell className="font-mono text-xs">{format(parseISO(t.data_realizacao), "dd/MM/yyyy")}</TableCell>
-                      <TableCell className="font-mono text-xs">{t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={status.variant}
-                          className={
-                            status.key === "vencido" ? "bg-red-100 text-red-800 border-red-200" :
-                            status.key === "atencao" ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
-                            "bg-green-100 text-green-800 border-green-200"
-                          }
-                        >
-                          {status.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {t.documento_pendente ? (
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
-                            <FileWarning className="w-3 h-3 mr-1" />{t.documento_pendente}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 justify-end">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="w-3.5 h-3.5" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => handleDelete(t.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                        </div>
-                      </TableCell>
+      <Tabs defaultValue="lista" className="w-full">
+        <TabsList className="mb-3">
+          <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
+          <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
+        </TabsList>
+
+        {/* === ABA LISTA === */}
+        <TabsContent value="lista">
+          <Card>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome Completo</TableHead>
+                      <TableHead>Função</TableHead>
+                      <TableHead>Nome do Curso</TableHead>
+                      <TableHead>Data Realização</TableHead>
+                      <TableHead>Renovação</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Doc. Pendente</TableHead>
+                      <TableHead className="w-24"></TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.length === 0 ? (
+                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
+                    ) : filtered.map(t => {
+                      const func = funcMap[t.funcionario_id];
+                      const status = getStatus(t.data_renovacao);
+                      return (
+                        <TableRow key={t.id}>
+                          <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
+                          <TableCell>{func?.cargo || "—"}</TableCell>
+                          <TableCell>{t.nome_curso}</TableCell>
+                          <TableCell className="font-mono text-xs">{format(parseISO(t.data_realizacao), "dd/MM/yyyy")}</TableCell>
+                          <TableCell className="font-mono text-xs">{t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={status.variant}
+                              className={
+                                status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                                status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
+                                "bg-success/10 text-success border-success/20"
+                              }
+                            >
+                              {status.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {t.documento_pendente ? (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                                <FileWarning className="w-3 h-3 mr-1" />{t.documento_pendente}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 justify-end">
+                              <Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="w-3.5 h-3.5" /></Button>
+                              <Button size="icon" variant="ghost" onClick={() => handleDelete(t.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* === ABA MATRIZ === */}
+        <TabsContent value="matriz">
+          <Card>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+              ) : matrixData.cursos.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</div>
+              ) : (
+                <div className="overflow-auto max-h-[70vh]">
+                  <table className="w-full text-xs border-collapse">
+                    <thead className="sticky top-0 z-10">
+                      {/* Header row 1: grouped course names */}
+                      <tr className="bg-primary text-primary-foreground">
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-0 bg-primary z-20 min-w-[40px]">Nº</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-20 min-w-[180px]">COLABORADOR</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[100px]">OBSERVAÇÃO</th>
+                        {matrixData.cursos.map(curso => (
+                          <th key={curso} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
+                            {curso}
+                          </th>
+                        ))}
+                      </tr>
+                      {/* Header row 2: sub-columns */}
+                      <tr className="bg-primary/80 text-primary-foreground">
+                        {matrixData.cursos.map(curso => (
+                          <>{/* Using fragment key on parent isn't possible, use array */}
+                            <th key={`${curso}-data`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[90px]">ÚLTIMA DATA</th>
+                            <th key={`${curso}-ren`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[100px]">DATA RENOVAÇÃO</th>
+                            <th key={`${curso}-st`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[80px]">STATUS</th>
+                          </>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matrixData.rows.map((row, idx) => (
+                        <tr key={row.func.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/30"}>
+                          <td className="border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 bg-inherit z-10">{idx + 1}</td>
+                          <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">{row.func.nome}</td>
+                          <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
+                          <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
+                          <td className="border border-border/30 px-2 py-1.5 text-center text-muted-foreground">—</td>
+                          {matrixData.cursos.map(curso => {
+                            const cd = row.cursoData[curso];
+                            if (!cd) {
+                              return (
+                                <>{/* empty cells */}
+                                  <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>
+                                  <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>
+                                  <td key={`${row.func.id}-${curso}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>
+                                </>
+                              );
+                            }
+                            const statusBg = cd.status.key === "vencido"
+                              ? "bg-destructive text-destructive-foreground font-bold"
+                              : cd.status.key === "atencao"
+                              ? "bg-warning text-warning-foreground font-bold"
+                              : "bg-success text-success-foreground font-bold";
+                            return (
+                              <>
+                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                                  {format(parseISO(cd.realizacao), "dd/MM/yyyy")}
+                                </td>
+                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                                  {cd.renovacao ? format(parseISO(cd.renovacao), "dd/MM/yyyy") : "—"}
+                                </td>
+                                <td key={`${row.func.id}-${curso}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${statusBg}`}>
+                                  {cd.status.key === "vencido" ? "Vencido" : cd.status.key === "atencao" ? "Atenção" : "Válido"}
+                                </td>
+                              </>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
