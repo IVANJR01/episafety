@@ -1,15 +1,18 @@
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, GraduationCap } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { differenceInDays, parseISO } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; }
+interface ControleTreinamento { id: string; data_renovacao: string | null; }
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
@@ -18,6 +21,27 @@ export default function Dashboard() {
   const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
 
   const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
+
+  const [treinamentos, setTreinamentos] = useState<ControleTreinamento[]>([]);
+  useEffect(() => {
+    (supabase.from as any)("controle_treinamentos").select("id, data_renovacao").then(({ data }: any) => {
+      if (data) setTreinamentos(data);
+    });
+  }, []);
+
+  const treinamentosVencidos = useMemo(() => {
+    const hoje = new Date();
+    return treinamentos.filter(t => t.data_renovacao && differenceInDays(parseISO(t.data_renovacao), hoje) < 0).length;
+  }, [treinamentos]);
+
+  const treinamentosAtencao = useMemo(() => {
+    const hoje = new Date();
+    return treinamentos.filter(t => {
+      if (!t.data_renovacao) return false;
+      const dias = differenceInDays(parseISO(t.data_renovacao), hoje);
+      return dias >= 0 && dias <= 60;
+    }).length;
+  }, [treinamentos]);
 
   // Calculate monthly costs
   const valorEstoqueAtual = useMemo(() => {
@@ -124,7 +148,9 @@ export default function Dashboard() {
     { label: "EPIs Cadastrados", value: epis.length, icon: Package, color: "text-primary" },
     { label: "Funcionários", value: funcionarios.length, icon: Users, color: "text-success" },
     { label: "Entregas", value: entregas.length, icon: ClipboardList, color: "text-muted-foreground" },
-    { label: "Alertas", value: alertasEstoque.length, icon: AlertTriangle, color: "text-warning" },
+    { label: "Alertas Estoque", value: alertasEstoque.length, icon: AlertTriangle, color: "text-warning" },
+    { label: "Trein. Vencidos", value: treinamentosVencidos, icon: GraduationCap, color: "text-destructive" },
+    { label: "Trein. A Vencer", value: treinamentosAtencao, icon: GraduationCap, color: "text-warning" },
   ];
 
   const recentEntregas = entregas.slice(0, 5).map(e => ({
@@ -140,7 +166,7 @@ export default function Dashboard() {
         <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Visão geral da Segurança do Trabalho</p>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {stats.map(s => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-3 p-3 sm:p-5">
