@@ -259,6 +259,7 @@ export default function Treinamentos() {
   const vencidosCount = items.filter(t => getStatus(t.data_renovacao).key === "vencido").length;
   const atencaoCount = items.filter(t => getStatus(t.data_renovacao).key === "atencao").length;
   const vigentesCount = items.filter(t => getStatus(t.data_renovacao).key === "vigente").length;
+  const pendentesCount = items.filter(t => t.documento_pendente && t.documento_pendente.trim() !== "").length;
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
   return (
