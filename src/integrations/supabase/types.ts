@@ -88,6 +88,7 @@ export type Database = {
           created_by: string | null
           data_realizacao: string
           data_renovacao: string | null
+          documento_pendente: string | null
           empresa_id: string | null
           funcionario_id: string
           id: string
@@ -99,6 +100,7 @@ export type Database = {
           created_by?: string | null
           data_realizacao?: string
           data_renovacao?: string | null
+          documento_pendente?: string | null
           empresa_id?: string | null
           funcionario_id: string
           id?: string
@@ -110,6 +112,7 @@ export type Database = {
           created_by?: string | null
           data_realizacao?: string
           data_renovacao?: string | null
+          documento_pendente?: string | null
           empresa_id?: string | null
           funcionario_id?: string
           id?: string

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,13 +21,14 @@ interface ControleTreinamento {
   nome_curso: string;
   data_realizacao: string;
   data_renovacao: string | null;
+  documento_pendente: string | null;
   empresa_id: string | null;
   created_by: string | null;
 }
 
 interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; }
 
-type StatusFilter = "todos" | "vencido" | "atencao" | "vigente";
+type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
 
 function getStatus(dataRenovacao: string | null): { label: string; variant: "destructive" | "outline" | "default"; key: string } {
   if (!dataRenovacao) return { label: "Sem renovação", variant: "outline", key: "vigente" };
@@ -61,6 +62,7 @@ export default function Treinamentos() {
     nome_curso: "",
     data_realizacao: new Date().toISOString().split("T")[0],
     data_renovacao: "",
+    documento_pendente: "",
   });
   const [funcSearch, setFuncSearch] = useState("");
   const [cursoSearch, setCursoSearch] = useState("");
@@ -124,7 +126,9 @@ export default function Treinamentos() {
         return (func?.nome || "").toLowerCase().includes(q) || t.nome_curso.toLowerCase().includes(q);
       });
     }
-    if (statusFilter !== "todos") {
+    if (statusFilter === "pendente") {
+      list = list.filter(t => t.documento_pendente && t.documento_pendente.trim() !== "");
+    } else if (statusFilter !== "todos") {
       list = list.filter(t => getStatus(t.data_renovacao).key === statusFilter);
     }
     list.sort((a, b) => statusOrder(a.data_renovacao) - statusOrder(b.data_renovacao));
@@ -133,7 +137,7 @@ export default function Treinamentos() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "" });
+    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
     setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
     setOpen(true);
   };
@@ -145,6 +149,7 @@ export default function Treinamentos() {
       nome_curso: t.nome_curso,
       data_realizacao: t.data_realizacao,
       data_renovacao: t.data_renovacao || "",
+      documento_pendente: t.documento_pendente || "",
     });
     const func = funcMap[t.funcionario_id];
     setFuncSearch(func?.nome || "");
@@ -163,6 +168,7 @@ export default function Treinamentos() {
       nome_curso: form.nome_curso,
       data_realizacao: form.data_realizacao,
       data_renovacao: form.data_renovacao || null,
+      documento_pendente: form.documento_pendente || null,
       empresa_id: empresaId,
     };
 
@@ -255,6 +261,7 @@ export default function Treinamentos() {
   const vencidosCount = items.filter(t => getStatus(t.data_renovacao).key === "vencido").length;
   const atencaoCount = items.filter(t => getStatus(t.data_renovacao).key === "atencao").length;
   const vigentesCount = items.filter(t => getStatus(t.data_renovacao).key === "vigente").length;
+  const pendentesCount = items.filter(t => t.documento_pendente && t.documento_pendente.trim() !== "").length;
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
   return (
@@ -283,7 +290,7 @@ export default function Treinamentos() {
       </div>
 
       {/* Indicadores visuais */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
         {/* Card de conformidade grande */}
         <Card className="col-span-2 lg:col-span-1 border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
           <CardContent className="p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-2">
@@ -358,6 +365,21 @@ export default function Treinamentos() {
             <Progress value={totalItems > 0 ? (vigentesCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-success" />
           </CardContent>
         </Card>
+
+        {/* Documentos Pendentes */}
+        <Card className="group hover:shadow-md transition-all duration-200 hover:border-orange-500/30 cursor-pointer"
+          onClick={() => setStatusFilter(statusFilter === "pendente" ? "todos" : "pendente" as StatusFilter)}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                <FileWarning className="w-4 h-4" />
+              </div>
+              <span className="text-3xl font-bold text-orange-500">{pendentesCount}</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Doc. Pendentes</p>
+            <Progress value={totalItems > 0 ? (pendentesCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-orange-500" />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -373,6 +395,7 @@ export default function Treinamentos() {
             <SelectItem value="vencido">🔴 Vencidos</SelectItem>
             <SelectItem value="atencao">🟡 A vencer</SelectItem>
             <SelectItem value="vigente">🟢 Vigentes</SelectItem>
+            <SelectItem value="pendente">📄 Doc. Pendentes</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -391,12 +414,13 @@ export default function Treinamentos() {
                   <TableHead>Data Realização</TableHead>
                   <TableHead>Renovação</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Doc. Pendente</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
                 ) : filtered.map(t => {
                   const func = funcMap[t.funcionario_id];
                   const status = getStatus(t.data_renovacao);
@@ -418,6 +442,15 @@ export default function Treinamentos() {
                         >
                           {status.label}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {t.documento_pendente ? (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                            <FileWarning className="w-3 h-3 mr-1" />{t.documento_pendente}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
@@ -515,6 +548,16 @@ export default function Treinamentos() {
                 <Label>Data de Renovação/Reciclagem</Label>
                 <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
               </div>
+            </div>
+
+            <div>
+              <Label>Documento Pendente</Label>
+              <Input
+                placeholder="Ex: NR-10 E SEP / CEPI / OS..."
+                value={form.documento_pendente}
+                onChange={e => setForm({ ...form, documento_pendente: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Informe documentos ou cursos pendentes para este funcionário</p>
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
