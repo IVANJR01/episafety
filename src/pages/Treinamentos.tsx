@@ -118,7 +118,21 @@ export default function Treinamentos() {
     "Licença de Porte e Uso - LPU",
     "Procedimento Operacional",
     "Procedimento Seg. Máq. e Equipamentos",
+    "Edital",
+    "CTPS Digital",
+    "CNH (Categoria)",
+    "Declaração de Saúde",
+    "Termo de Responsabilidade",
+    "Contrato de Trabalho",
+    "Comprovante de Residência",
+    "Certidão Negativa",
+    "Laudo Técnico",
+    "PGR / PCMSO",
+    "PPRA",
+    "LTCAT",
   ];
+
+  const [docPopoverOpen, setDocPopoverOpen] = useState(false);
 
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
