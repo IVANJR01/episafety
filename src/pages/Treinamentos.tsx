@@ -72,6 +72,15 @@ export default function Treinamentos() {
   const [cursoSearch, setCursoSearch] = useState("");
   const [showCursoList, setShowCursoList] = useState(false);
 
+  // Multi-course mode
+  interface CursoEntry { nome_curso: string; data_realizacao: string; data_renovacao: string; documento_pendente: string; cursoSearch: string; showCursoList: boolean; docPopoverOpen: boolean; }
+  const emptyCurso = (): CursoEntry => ({ nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "", cursoSearch: "", showCursoList: false, docPopoverOpen: false });
+  const [multiCursos, setMultiCursos] = useState<CursoEntry[]>([emptyCurso()]);
+  const [multiMode, setMultiMode] = useState(false);
+  const [multiFuncId, setMultiFuncId] = useState("");
+  const [multiFuncSearch, setMultiFuncSearch] = useState("");
+  const [savingMulti, setSavingMulti] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     const [{ data: treinos }, { data: funcs }] = await Promise.all([
@@ -203,8 +212,23 @@ export default function Treinamentos() {
 
   const openNew = () => {
     setEditing(null);
+    setMultiMode(false);
     setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
     setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
+    setMultiCursos([emptyCurso()]);
+    setMultiFuncId("");
+    setMultiFuncSearch("");
+    setOpen(true);
+  };
+
+  const openNewMulti = () => {
+    setEditing(null);
+    setMultiMode(true);
+    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
+    setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
+    setMultiCursos([emptyCurso()]);
+    setMultiFuncId("");
+    setMultiFuncSearch("");
     setOpen(true);
   };
 
@@ -248,6 +272,47 @@ export default function Treinamentos() {
     setOpen(false);
     fetchData();
   };
+
+  const handleSaveMulti = async () => {
+    if (!multiFuncId) {
+      toast({ title: "Selecione o funcionário", variant: "destructive" });
+      return;
+    }
+    const validCursos = multiCursos.filter(c => c.nome_curso.trim());
+    if (validCursos.length === 0) {
+      toast({ title: "Adicione pelo menos um curso", variant: "destructive" });
+      return;
+    }
+    setSavingMulti(true);
+    const payloads = validCursos.map(c => ({
+      funcionario_id: multiFuncId,
+      nome_curso: c.nome_curso,
+      data_realizacao: c.data_realizacao,
+      data_renovacao: c.data_renovacao || null,
+      documento_pendente: c.documento_pendente || null,
+      empresa_id: empresaId,
+    }));
+    const { error } = await (supabase.from as any)("controle_treinamentos").insert(payloads);
+    setSavingMulti(false);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Sucesso!", description: `${validCursos.length} curso(s) cadastrado(s)` });
+    setOpen(false);
+    fetchData();
+  };
+
+  const updateMultiCurso = (idx: number, updates: Partial<CursoEntry>) => {
+    setMultiCursos(prev => prev.map((c, i) => i === idx ? { ...c, ...updates } : c));
+  };
+
+  const filteredMultiFuncionarios = useMemo(() => {
+    if (!multiFuncSearch.trim()) return funcionarios;
+    const q = normalize(multiFuncSearch);
+    return funcionarios.filter(f =>
+      normalize(f.nome).includes(q) ||
+      (f.matricula && f.matricula.toLowerCase().includes(q)) ||
+      (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
+    );
+  }, [funcionarios, multiFuncSearch]);
 
   const handleDelete = async (id: string) => {
     await (supabase.from as any)("controle_treinamentos").delete().eq("id", id);
@@ -368,9 +433,12 @@ export default function Treinamentos() {
               <p className="text-muted-foreground text-sm mt-0.5">Acompanhamento de capacitações e reciclagens</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={handleExportExcel} className="border-primary/30 hover:bg-primary/10">
               <Download className="w-4 h-4 mr-2" />Exportar
+            </Button>
+            <Button variant="outline" onClick={openNewMulti} className="border-primary/30 hover:bg-primary/10">
+              <Plus className="w-4 h-4 mr-2" />Adicionar Vários Cursos
             </Button>
             <Button onClick={openNew} className="shadow-lg shadow-primary/25">
               <Plus className="w-4 h-4 mr-2" />Adicionar Novo
@@ -647,170 +715,310 @@ export default function Treinamentos() {
 
       {/* Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Editar Treinamento" : "Adicionar Novo Treinamento"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-2">
-            {/* Funcionário com pesquisa */}
-            <div>
-              <Label>Funcionário *</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Pesquisar por nome, matrícula ou CPF..."
-                  value={funcSearch}
-                  onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); }}
-                  className="pl-9"
-                />
-              </div>
-              {form.funcionario_id && (
-                <div className="mt-1 text-xs text-primary font-medium">
-                  ✓ {funcMap[form.funcionario_id]?.nome}
-                </div>
-              )}
-              {!form.funcionario_id && funcSearch.trim() && (
-                <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
-                  {filteredFuncionarios.length === 0 ? (
-                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
-                  ) : filteredFuncionarios.map(f => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
-                      onClick={() => { setForm({ ...form, funcionario_id: f.id }); setFuncSearch(f.nome); }}
-                    >
-                      <span className="font-medium">{f.nome}</span>
-                      <span className="text-xs text-muted-foreground">{f.cargo || ""} {f.matricula ? `• ${f.matricula}` : ""}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+        <DialogContent className={multiMode && !editing ? "max-w-3xl max-h-[90vh] overflow-y-auto" : "max-w-lg max-h-[85vh] overflow-y-auto"}>
+          <DialogHeader>
+            <DialogTitle>
+              {editing ? "Editar Treinamento" : multiMode ? "Adicionar Vários Cursos" : "Adicionar Novo Treinamento"}
+            </DialogTitle>
+          </DialogHeader>
 
-            {/* Nome do Curso com lista suspensa */}
-            <div>
-              <Label>Nome do Curso *</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Pesquisar ou digitar curso..."
-                  value={cursoSearch}
-                  onChange={e => {
-                    setCursoSearch(e.target.value);
-                    const newRenovacao = calcularRenovacao(e.target.value, form.data_realizacao);
-                    setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
-                    setShowCursoList(true);
-                  }}
-                  onFocus={() => setShowCursoList(true)}
-                  className="pl-9"
-                />
-              </div>
-              {showCursoList && (
-                <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
-                  {filteredCursos.length === 0 ? (
-                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhuma sugestão — use o texto digitado</p>
-                  ) : filteredCursos.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                      onClick={() => {
-                        const newRenovacao = calcularRenovacao(c, form.data_realizacao);
-                        setForm({ ...form, nome_curso: c, data_renovacao: newRenovacao || form.data_renovacao });
-                        setCursoSearch(c);
-                        setShowCursoList(false);
-                      }}
-                    >
-                      {c}
-                    </button>
-                  ))}
+          {/* ===== MULTI MODE ===== */}
+          {multiMode && !editing ? (
+            <div className="grid gap-4 py-2">
+              {/* Funcionário */}
+              <div>
+                <Label>Funcionário *</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Pesquisar por nome, matrícula ou CPF..."
+                    value={multiFuncSearch}
+                    onChange={e => { setMultiFuncSearch(e.target.value); setMultiFuncId(""); }}
+                    className="pl-9"
+                  />
                 </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Data de Realização</Label>
-                <Input type="date" value={form.data_realizacao} onChange={e => {
-                  const newRenovacao = calcularRenovacao(form.nome_curso, e.target.value);
-                  setForm({ ...form, data_realizacao: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
-                }} />
+                {multiFuncId && (
+                  <div className="mt-1 text-xs text-primary font-medium">
+                    ✓ {funcMap[multiFuncId]?.nome}
+                  </div>
+                )}
+                {!multiFuncId && multiFuncSearch.trim() && (
+                  <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                    {filteredMultiFuncionarios.length === 0 ? (
+                      <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
+                    ) : filteredMultiFuncionarios.map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                        onClick={() => { setMultiFuncId(f.id); setMultiFuncSearch(f.nome); }}
+                      >
+                        <span className="font-medium">{f.nome}</span>
+                        <span className="text-xs text-muted-foreground">{f.cargo || ""} {f.matricula ? `• ${f.matricula}` : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Lista de cursos */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Cursos</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setMultiCursos(prev => [...prev, emptyCurso()])}>
+                    <Plus className="w-3.5 h-3.5 mr-1" />Adicionar Curso
+                  </Button>
+                </div>
+
+                {multiCursos.map((curso, idx) => {
+                  const filteredC = curso.cursoSearch.trim()
+                    ? CURSOS_SUGERIDOS.filter(c => normalize(c).includes(normalize(curso.cursoSearch)))
+                    : CURSOS_SUGERIDOS;
+
+                  return (
+                    <Card key={idx} className="border-dashed">
+                      <CardContent className="p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-muted-foreground">CURSO {idx + 1}</span>
+                          {multiCursos.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setMultiCursos(prev => prev.filter((_, i) => i !== idx))}>
+                              <X className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Curso search */}
+                        <div>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Pesquisar ou digitar curso..."
+                              value={curso.cursoSearch}
+                              onChange={e => {
+                                const newRen = calcularRenovacao(e.target.value, curso.data_realizacao);
+                                updateMultiCurso(idx, { cursoSearch: e.target.value, nome_curso: e.target.value, data_renovacao: newRen || curso.data_renovacao, showCursoList: true });
+                              }}
+                              onFocus={() => updateMultiCurso(idx, { showCursoList: true })}
+                              className="pl-9"
+                            />
+                          </div>
+                          {curso.showCursoList && (
+                            <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                              {filteredC.length === 0 ? (
+                                <p className="text-xs text-muted-foreground p-2 text-center">Use o texto digitado</p>
+                              ) : filteredC.map(c => (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted"
+                                  onClick={() => {
+                                    const newRen = calcularRenovacao(c, curso.data_realizacao);
+                                    updateMultiCurso(idx, { nome_curso: c, cursoSearch: c, data_renovacao: newRen || curso.data_renovacao, showCursoList: false });
+                                  }}
+                                >
+                                  {c}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Data Realização</Label>
+                            <Input type="date" value={curso.data_realizacao} onChange={e => {
+                              const newRen = calcularRenovacao(curso.nome_curso, e.target.value);
+                              updateMultiCurso(idx, { data_realizacao: e.target.value, data_renovacao: newRen || curso.data_renovacao });
+                            }} />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Data Renovação</Label>
+                            <Input type="date" value={curso.data_renovacao} onChange={e => updateMultiCurso(idx, { data_renovacao: e.target.value })} />
+                            {curso.nome_curso && CURSOS_VALIDADE[curso.nome_curso] !== undefined && CURSOS_VALIDADE[curso.nome_curso] > 0 && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {CURSOS_VALIDADE[curso.nome_curso]} meses</p>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* ===== SINGLE MODE (original) ===== */
+            <div className="grid gap-4 py-2">
+              {/* Funcionário com pesquisa */}
               <div>
-                <Label>Data de Renovação/Reciclagem</Label>
-                <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
-                {form.nome_curso && CURSOS_VALIDADE[form.nome_curso] !== undefined && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    ⏱ Validade: {CURSOS_VALIDADE[form.nome_curso] === 0 ? "Sem renovação" : `${CURSOS_VALIDADE[form.nome_curso]} meses`}
-                    {CURSOS_VALIDADE[form.nome_curso] > 0 && " (calculado automaticamente)"}
-                  </p>
+                <Label>Funcionário *</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Pesquisar por nome, matrícula ou CPF..."
+                    value={funcSearch}
+                    onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); }}
+                    className="pl-9"
+                  />
+                </div>
+                {form.funcionario_id && (
+                  <div className="mt-1 text-xs text-primary font-medium">
+                    ✓ {funcMap[form.funcionario_id]?.nome}
+                  </div>
+                )}
+                {!form.funcionario_id && funcSearch.trim() && (
+                  <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                    {filteredFuncionarios.length === 0 ? (
+                      <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
+                    ) : filteredFuncionarios.map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                        onClick={() => { setForm({ ...form, funcionario_id: f.id }); setFuncSearch(f.nome); }}
+                      >
+                        <span className="font-medium">{f.nome}</span>
+                        <span className="text-xs text-muted-foreground">{f.cargo || ""} {f.matricula ? `• ${f.matricula}` : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Nome do Curso com lista suspensa */}
+              <div>
+                <Label>Nome do Curso *</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Pesquisar ou digitar curso..."
+                    value={cursoSearch}
+                    onChange={e => {
+                      setCursoSearch(e.target.value);
+                      const newRenovacao = calcularRenovacao(e.target.value, form.data_realizacao);
+                      setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
+                      setShowCursoList(true);
+                    }}
+                    onFocus={() => setShowCursoList(true)}
+                    className="pl-9"
+                  />
+                </div>
+                {showCursoList && (
+                  <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
+                    {filteredCursos.length === 0 ? (
+                      <p className="text-xs text-muted-foreground p-2 text-center">Nenhuma sugestão — use o texto digitado</p>
+                    ) : filteredCursos.map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                        onClick={() => {
+                          const newRenovacao = calcularRenovacao(c, form.data_realizacao);
+                          setForm({ ...form, nome_curso: c, data_renovacao: newRenovacao || form.data_renovacao });
+                          setCursoSearch(c);
+                          setShowCursoList(false);
+                        }}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Data de Realização</Label>
+                  <Input type="date" value={form.data_realizacao} onChange={e => {
+                    const newRenovacao = calcularRenovacao(form.nome_curso, e.target.value);
+                    setForm({ ...form, data_realizacao: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
+                  }} />
+                </div>
+                <div>
+                  <Label>Data de Renovação/Reciclagem</Label>
+                  <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
+                  {form.nome_curso && CURSOS_VALIDADE[form.nome_curso] !== undefined && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⏱ Validade: {CURSOS_VALIDADE[form.nome_curso] === 0 ? "Sem renovação" : `${CURSOS_VALIDADE[form.nome_curso]} meses`}
+                      {CURSOS_VALIDADE[form.nome_curso] > 0 && " (calculado automaticamente)"}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Documentos Pendentes</Label>
+                <Popover open={docPopoverOpen} onOpenChange={setDocPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={docPopoverOpen} className="w-full justify-between h-auto min-h-10 font-normal">
+                      <span className="text-sm text-muted-foreground truncate">
+                        {form.documento_pendente
+                          ? `${form.documento_pendente.split(" | ").filter(Boolean).length} documento(s) selecionado(s)`
+                          : "Selecione os documentos pendentes..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Pesquisar documento..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum documento encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {DOCUMENTOS_LISTA.map(doc => {
+                            const docs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
+                            const isSelected = docs.includes(doc);
+                            return (
+                              <CommandItem
+                                key={doc}
+                                value={doc}
+                                onSelect={() => {
+                                  const currentDocs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
+                                  const updated = isSelected
+                                    ? currentDocs.filter(d => d !== doc)
+                                    : [...currentDocs, doc];
+                                  setForm({ ...form, documento_pendente: updated.join(" | ") });
+                                }}
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                {doc}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                {form.documento_pendente && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {form.documento_pendente.split(" | ").filter(Boolean).map(doc => (
+                      <Badge key={doc} variant="secondary" className="text-xs gap-1">
+                        {doc}
+                        <X
+                          className="h-3 w-3 cursor-pointer hover:text-destructive"
+                          onClick={() => {
+                            const updated = form.documento_pendente.split(" | ").filter(Boolean).filter(d => d !== doc);
+                            setForm({ ...form, documento_pendente: updated.join(" | ") });
+                          }}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
+          )}
 
-            <div>
-              <Label className="mb-2 block">Documentos Pendentes</Label>
-              <Popover open={docPopoverOpen} onOpenChange={setDocPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" aria-expanded={docPopoverOpen} className="w-full justify-between h-auto min-h-10 font-normal">
-                    <span className="text-sm text-muted-foreground truncate">
-                      {form.documento_pendente
-                        ? `${form.documento_pendente.split(" | ").filter(Boolean).length} documento(s) selecionado(s)`
-                        : "Selecione os documentos pendentes..."}
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Pesquisar documento..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum documento encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        {DOCUMENTOS_LISTA.map(doc => {
-                          const docs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
-                          const isSelected = docs.includes(doc);
-                          return (
-                            <CommandItem
-                              key={doc}
-                              value={doc}
-                              onSelect={() => {
-                                const currentDocs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
-                                const updated = isSelected
-                                  ? currentDocs.filter(d => d !== doc)
-                                  : [...currentDocs, doc];
-                                setForm({ ...form, documento_pendente: updated.join(" | ") });
-                              }}
-                            >
-                              <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
-                              {doc}
-                            </CommandItem>
-                          );
-                        })}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-
-              {form.documento_pendente && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {form.documento_pendente.split(" | ").filter(Boolean).map(doc => (
-                    <Badge key={doc} variant="secondary" className="text-xs gap-1">
-                      {doc}
-                      <X
-                        className="h-3 w-3 cursor-pointer hover:text-destructive"
-                        onClick={() => {
-                          const updated = form.documento_pendente.split(" | ").filter(Boolean).filter(d => d !== doc);
-                          setForm({ ...form, documento_pendente: updated.join(" | ") });
-                        }}
-                      />
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
+          <DialogFooter>
+            {multiMode && !editing ? (
+              <Button onClick={handleSaveMulti} disabled={savingMulti}>
+                {savingMulti ? "Salvando..." : `Cadastrar ${multiCursos.filter(c => c.nome_curso.trim()).length} curso(s)`}
+              </Button>
+            ) : (
+              <Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
