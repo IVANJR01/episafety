@@ -581,7 +581,12 @@ export default function Treinamentos() {
                 <Input
                   placeholder="Pesquisar ou digitar curso..."
                   value={cursoSearch}
-                  onChange={e => { setCursoSearch(e.target.value); setForm({ ...form, nome_curso: e.target.value }); setShowCursoList(true); }}
+                  onChange={e => {
+                    setCursoSearch(e.target.value);
+                    const newRenovacao = calcularRenovacao(e.target.value, form.data_realizacao);
+                    setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
+                    setShowCursoList(true);
+                  }}
                   onFocus={() => setShowCursoList(true)}
                   className="pl-9"
                 />
