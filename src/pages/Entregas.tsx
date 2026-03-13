@@ -388,7 +388,11 @@ export default function Entregas() {
                           {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                         </span>
                         {e.assinatura_colaborador ? (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><CheckCircle2 className="w-3 h-3" />Assinado</span>
+                          e.assinatura_colaborador === "BIOMETRIA_DIGITAL" ? (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><Fingerprint className="w-3 h-3" />Biometria</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><CheckCircle2 className="w-3 h-3" />Assinado</span>
+                          )
                         ) : (
                           <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-medium"><AlertCircle className="w-3 h-3" />Pendente</span>
                         )}
