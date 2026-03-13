@@ -552,13 +552,30 @@ export default function Treinamentos() {
             </div>
 
             <div>
-              <Label>Documento Pendente</Label>
-              <Input
-                placeholder="Ex: NR-10 E SEP / CEPI / OS..."
-                value={form.documento_pendente}
-                onChange={e => setForm({ ...form, documento_pendente: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground mt-1">Informe documentos ou cursos pendentes para este funcionário</p>
+              <Label className="mb-2 block">Documentos Pendentes</Label>
+              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto grid grid-cols-1 gap-2 bg-muted/30">
+                {DOCUMENTOS_LISTA.map(doc => {
+                  const docs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
+                  const checked = docs.includes(doc);
+                  return (
+                    <label key={doc} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const updated = v ? [...docs, doc] : docs.filter(d => d !== doc);
+                          setForm({ ...form, documento_pendente: updated.join(" | ") });
+                        }}
+                      />
+                      <span>{doc}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {form.documento_pendente && (
+                <p className="text-xs text-orange-600 mt-1 font-medium">
+                  Selecionados: {form.documento_pendente.split(" | ").filter(Boolean).length} documento(s)
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
