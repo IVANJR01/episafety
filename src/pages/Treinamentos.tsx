@@ -617,11 +617,20 @@ export default function Treinamentos() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Data de Realização</Label>
-                <Input type="date" value={form.data_realizacao} onChange={e => setForm({ ...form, data_realizacao: e.target.value })} />
+                <Input type="date" value={form.data_realizacao} onChange={e => {
+                  const newRenovacao = calcularRenovacao(form.nome_curso, e.target.value);
+                  setForm({ ...form, data_realizacao: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
+                }} />
               </div>
               <div>
                 <Label>Data de Renovação/Reciclagem</Label>
                 <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
+                {form.nome_curso && CURSOS_VALIDADE[form.nome_curso] !== undefined && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ⏱ Validade: {CURSOS_VALIDADE[form.nome_curso] === 0 ? "Sem renovação" : `${CURSOS_VALIDADE[form.nome_curso]} meses`}
+                    {CURSOS_VALIDADE[form.nome_curso] > 0 && " (calculado automaticamente)"}
+                  </p>
+                )}
               </div>
             </div>
 
