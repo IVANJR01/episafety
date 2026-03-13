@@ -600,7 +600,12 @@ export default function Treinamentos() {
                       key={c}
                       type="button"
                       className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                      onClick={() => { setForm({ ...form, nome_curso: c }); setCursoSearch(c); setShowCursoList(false); }}
+                      onClick={() => {
+                        const newRenovacao = calcularRenovacao(c, form.data_realizacao);
+                        setForm({ ...form, nome_curso: c, data_renovacao: newRenovacao || form.data_renovacao });
+                        setCursoSearch(c);
+                        setShowCursoList(false);
+                      }}
                     >
                       {c}
                     </button>
