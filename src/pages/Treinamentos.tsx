@@ -126,7 +126,9 @@ export default function Treinamentos() {
         return (func?.nome || "").toLowerCase().includes(q) || t.nome_curso.toLowerCase().includes(q);
       });
     }
-    if (statusFilter !== "todos") {
+    if (statusFilter === "pendente") {
+      list = list.filter(t => t.documento_pendente && t.documento_pendente.trim() !== "");
+    } else if (statusFilter !== "todos") {
       list = list.filter(t => getStatus(t.data_renovacao).key === statusFilter);
     }
     list.sort((a, b) => statusOrder(a.data_renovacao) - statusOrder(b.data_renovacao));
