@@ -142,7 +142,7 @@ export default function Dashboard() {
         <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Visão geral da Segurança do Trabalho</p>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         {stats.map(s => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-3 p-3 sm:p-5">
