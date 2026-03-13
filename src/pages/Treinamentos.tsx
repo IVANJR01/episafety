@@ -330,6 +330,30 @@ export default function Treinamentos() {
   const pendentesCount = items.filter(t => t.documento_pendente && t.documento_pendente.trim() !== "").length;
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
+  // Matrix data: group by employee, list all unique courses as columns
+  const matrixData = useMemo(() => {
+    const cursoSet = new Set<string>();
+    items.forEach(t => cursoSet.add(t.nome_curso));
+    const cursos = Array.from(cursoSet).sort();
+
+    const funcIds = Array.from(new Set(items.map(t => t.funcionario_id)));
+    const rows = funcIds.map(fid => {
+      const func = funcMap[fid];
+      if (!func) return null;
+      const treinos = items.filter(t => t.funcionario_id === fid);
+      const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
+      cursos.forEach(curso => {
+        const t = treinos.find(tr => tr.nome_curso === curso);
+        if (t) {
+          cursoData[curso] = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
+        }
+      });
+      return { func, cursoData };
+    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> }[];
+
+    return { cursos, rows };
+  }, [items, funcMap]);
+
   return (
     <div className="space-y-6">
       {/* Header com gradiente */}
