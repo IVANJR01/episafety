@@ -578,18 +578,18 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); } }}>
+      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignInputType("assinatura"); } }}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <PenLine className="w-5 h-5" />
-              Assinatura do Colaborador
+              {signInputType === "biometria" ? <Fingerprint className="w-5 h-5" /> : <PenLine className="w-5 h-5" />}
+              {signInputType === "biometria" ? "Biometria Digital" : "Assinatura do Colaborador"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {signMode === "new" && pendingEntrega && (
               <p className="text-sm text-muted-foreground">
-                Entrega registrada! O colaborador <strong>{getName(funcionarios, pendingEntrega.funcionario_id)}</strong> deve assinar abaixo para confirmar o recebimento do EPI.
+                Entrega registrada! O colaborador <strong>{getName(funcionarios, pendingEntrega.funcionario_id)}</strong> deve confirmar o recebimento do EPI.
               </p>
             )}
             {signMode === "existing" && (
@@ -643,14 +643,55 @@ export default function Entregas() {
                 })()}
               </div>
             )}
-            <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
+
+            {/* Toggle: Assinatura vs Biometria */}
+            <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30">
+              <Button
+                type="button"
+                size="sm"
+                variant={signInputType === "assinatura" ? "default" : "outline"}
+                onClick={() => setSignInputType("assinatura")}
+                className="flex-1"
+              >
+                <PenLine className="w-4 h-4 mr-1.5" />
+                Assinatura
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={signInputType === "biometria" ? "default" : "outline"}
+                onClick={() => setSignInputType("biometria")}
+                className="flex-1"
+              >
+                <Fingerprint className="w-4 h-4 mr-1.5" />
+                Biometria Digital
+              </Button>
+            </div>
+
+            {signInputType === "assinatura" ? (
+              <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed rounded-lg bg-muted/20 space-y-4">
+                <Fingerprint className="w-16 h-16 text-primary/60" />
+                <div className="text-center space-y-1">
+                  <p className="font-medium text-sm">Coleta de Biometria Digital</p>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    Para pessoas que não sabem escrever. Colete a impressão digital do colaborador no dispositivo biométrico e clique em "Confirmar Biometria" abaixo.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
               {signMode === "new" ? "Pular" : "Cancelar"}
             </Button>
             <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
-              ✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}
+              {signInputType === "biometria" ? (
+                <><Fingerprint className="w-4 h-4 mr-1.5" />Confirmar Biometria {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
+              ) : (
+                <>✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
