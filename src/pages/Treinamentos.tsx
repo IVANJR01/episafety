@@ -145,6 +145,10 @@ export default function Treinamentos() {
       data_realizacao: t.data_realizacao,
       data_renovacao: t.data_renovacao || "",
     });
+    const func = funcMap[t.funcionario_id];
+    setFuncSearch(func?.nome || "");
+    setCursoSearch(t.nome_curso);
+    setShowCursoList(false);
     setOpen(true);
   };
 
