@@ -11,7 +11,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; }
-interface ControleTreinamento { id: string; data_renovacao: string | null; }
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
