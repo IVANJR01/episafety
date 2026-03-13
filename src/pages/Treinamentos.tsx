@@ -70,7 +70,7 @@ export default function Treinamentos() {
     setLoading(true);
     const [{ data: treinos }, { data: funcs }] = await Promise.all([
       (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
-      supabase.from("funcionarios").select("id, nome, cargo"),
+      supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula"),
     ]);
     if (treinos) setItems(treinos);
     if (funcs) setFuncionarios(funcs);
