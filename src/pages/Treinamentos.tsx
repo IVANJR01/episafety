@@ -363,6 +363,21 @@ export default function Treinamentos() {
             <Progress value={totalItems > 0 ? (vigentesCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-success" />
           </CardContent>
         </Card>
+
+        {/* Documentos Pendentes */}
+        <Card className="group hover:shadow-md transition-all duration-200 hover:border-orange-500/30 cursor-pointer"
+          onClick={() => setStatusFilter(statusFilter === "pendente" ? "todos" : "pendente" as StatusFilter)}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                <FileWarning className="w-4 h-4" />
+              </div>
+              <span className="text-3xl font-bold text-orange-500">{pendentesCount}</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Doc. Pendentes</p>
+            <Progress value={totalItems > 0 ? (pendentesCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-orange-500" />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
