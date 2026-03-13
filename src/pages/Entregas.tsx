@@ -696,12 +696,16 @@ export default function Entregas() {
               <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
             ) : (
               <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed rounded-lg bg-muted/20 space-y-4">
-                <Fingerprint className="w-16 h-16 text-primary/60" />
-                <div className="text-center space-y-1">
-                  <p className="font-medium text-sm">Coleta de Biometria Digital</p>
+                <Fingerprint className="w-16 h-16 text-primary/60 animate-pulse" />
+                <div className="text-center space-y-2">
+                  <p className="font-medium text-sm">Touch ID / Biometria Digital</p>
                   <p className="text-xs text-muted-foreground max-w-sm">
-                    Para pessoas que não sabem escrever. Colete a impressão digital do colaborador no dispositivo biométrico e clique em "Confirmar Biometria" abaixo.
+                    Ao clicar em "Confirmar Biometria", o sensor do aparelho será ativado para o colaborador colocar o dedo e autenticar.
                   </p>
+                  <div className="flex items-center gap-1 justify-center text-xs text-primary">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Autenticação via sensor do dispositivo</span>
+                  </div>
                 </div>
               </div>
             )}
