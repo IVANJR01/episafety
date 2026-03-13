@@ -114,7 +114,7 @@ export default function Treinamentos() {
     return CURSOS_SUGERIDOS.filter(c => normalize(c).includes(q));
   }, [cursoSearch]);
 
-
+  const filtered = useMemo(() => {
     let list = [...items];
     if (search.trim()) {
       const q = search.toLowerCase();
