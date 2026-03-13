@@ -1037,10 +1037,10 @@ export default function Treinamentos() {
                 <div>
                   <Label>Data de Renovação/Reciclagem</Label>
                   <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
-                  {form.nome_curso && CURSOS_VALIDADE[form.nome_curso] !== undefined && (
+                  {form.nome_curso && mergedCursosValidade[form.nome_curso] !== undefined && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      ⏱ Validade: {CURSOS_VALIDADE[form.nome_curso] === 0 ? "Sem renovação" : `${CURSOS_VALIDADE[form.nome_curso]} meses`}
-                      {CURSOS_VALIDADE[form.nome_curso] > 0 && " (calculado automaticamente)"}
+                      ⏱ Validade: {mergedCursosValidade[form.nome_curso] === 0 ? "Sem renovação" : `${mergedCursosValidade[form.nome_curso]} meses`}
+                      {mergedCursosValidade[form.nome_curso] > 0 && " (calculado automaticamente)"}
                     </p>
                   )}
                 </div>
