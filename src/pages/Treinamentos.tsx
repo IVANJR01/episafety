@@ -942,11 +942,11 @@ export default function Treinamentos() {
                     ✓ {funcMap[form.funcionario_id]?.nome}
                   </div>
                 )}
-                {!form.funcionario_id && funcSearch.trim() && (
-                  <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                {!form.funcionario_id && (funcSearch !== undefined) && (
+                  <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
                     {filteredFuncionarios.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
-                    ) : filteredFuncionarios.map(f => (
+                    ) : filteredFuncionarios.slice(0, 20).map(f => (
                       <button
                         key={f.id}
                         type="button"
