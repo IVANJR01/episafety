@@ -61,6 +61,9 @@ export default function Treinamentos() {
     data_realizacao: new Date().toISOString().split("T")[0],
     data_renovacao: "",
   });
+  const [funcSearch, setFuncSearch] = useState("");
+  const [cursoSearch, setCursoSearch] = useState("");
+  const [showCursoList, setShowCursoList] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
