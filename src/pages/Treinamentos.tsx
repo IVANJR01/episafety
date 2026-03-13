@@ -24,11 +24,7 @@ interface ControleTreinamento {
   created_by: string | null;
 }
 
-interface Funcionario {
-  id: string;
-  nome: string;
-  cargo: string | null;
-}
+interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; }
 
 type StatusFilter = "todos" | "vencido" | "atencao" | "vigente";
 
@@ -65,12 +61,15 @@ export default function Treinamentos() {
     data_realizacao: new Date().toISOString().split("T")[0],
     data_renovacao: "",
   });
+  const [funcSearch, setFuncSearch] = useState("");
+  const [cursoSearch, setCursoSearch] = useState("");
+  const [showCursoList, setShowCursoList] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
     const [{ data: treinos }, { data: funcs }] = await Promise.all([
       (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
-      supabase.from("funcionarios").select("id, nome, cargo"),
+      supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula"),
     ]);
     if (treinos) setItems(treinos);
     if (funcs) setFuncionarios(funcs);
@@ -84,6 +83,36 @@ export default function Treinamentos() {
     funcionarios.forEach(f => { m[f.id] = f; });
     return m;
   }, [funcionarios]);
+
+  const CURSOS_SUGERIDOS = [
+    "NR-10 Básico", "NR-10 Complementar (SEP)", "NR-12", "NR-17 - Transporte Manual de Carga",
+    "NR-18 - Integração", "NR-20", "NR-33", "NR-35",
+    "POP 00", "POP 05", "Treinamento Inicial", "Guardião da Vida",
+    "Direção Defensiva", "Liderança", "Sinaleiro / Amarrador de Carga",
+    "Cargas Indivisíveis", "Operador Guindaste", "Operador Guindauto",
+    "Operação de Cesto Aéreo/Acoplado", "Operação de Motosserra",
+    "Montagem Eletromecânica SE", "Curso de Transporte de Passageiros",
+    "Curso de Motorista de Ambulância", "Capacitação sobre Procedimento Operacional",
+    "Poda e Manejo Vegetal", "Operação de Martelete", "Operação de Máquinas",
+  ];
+
+  const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const filteredFuncionarios = useMemo(() => {
+    if (!funcSearch.trim()) return funcionarios;
+    const q = normalize(funcSearch);
+    return funcionarios.filter(f =>
+      normalize(f.nome).includes(q) ||
+      (f.matricula && f.matricula.toLowerCase().includes(q)) ||
+      (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
+    );
+  }, [funcionarios, funcSearch]);
+
+  const filteredCursos = useMemo(() => {
+    if (!cursoSearch.trim()) return CURSOS_SUGERIDOS;
+    const q = normalize(cursoSearch);
+    return CURSOS_SUGERIDOS.filter(c => normalize(c).includes(q));
+  }, [cursoSearch]);
 
   const filtered = useMemo(() => {
     let list = [...items];
@@ -104,6 +133,7 @@ export default function Treinamentos() {
   const openNew = () => {
     setEditing(null);
     setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "" });
+    setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
     setOpen(true);
   };
 
@@ -115,6 +145,10 @@ export default function Treinamentos() {
       data_realizacao: t.data_realizacao,
       data_renovacao: t.data_renovacao || "",
     });
+    const func = funcMap[t.funcionario_id];
+    setFuncSearch(func?.nome || "");
+    setCursoSearch(t.nome_curso);
+    setShowCursoList(false);
     setOpen(true);
   };
 
@@ -289,24 +323,76 @@ export default function Treinamentos() {
 
       {/* Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar Treinamento" : "Adicionar Novo Treinamento"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
+            {/* Funcionário com pesquisa */}
             <div>
               <Label>Funcionário *</Label>
-              <Select value={form.funcionario_id} onValueChange={v => setForm({ ...form, funcionario_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Selecione o funcionário" /></SelectTrigger>
-                <SelectContent>
-                  {funcionarios.map(f => (
-                    <SelectItem key={f.id} value={f.id}>{f.nome} {f.cargo ? `— ${f.cargo}` : ""}</SelectItem>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar por nome, matrícula ou CPF..."
+                  value={funcSearch}
+                  onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); }}
+                  className="pl-9"
+                />
+              </div>
+              {form.funcionario_id && (
+                <div className="mt-1 text-xs text-primary font-medium">
+                  ✓ {funcMap[form.funcionario_id]?.nome}
+                </div>
+              )}
+              {!form.funcionario_id && funcSearch.trim() && (
+                <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                  {filteredFuncionarios.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
+                  ) : filteredFuncionarios.map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                      onClick={() => { setForm({ ...form, funcionario_id: f.id }); setFuncSearch(f.nome); }}
+                    >
+                      <span className="font-medium">{f.nome}</span>
+                      <span className="text-xs text-muted-foreground">{f.cargo || ""} {f.matricula ? `• ${f.matricula}` : ""}</span>
+                    </button>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
             </div>
+
+            {/* Nome do Curso com lista suspensa */}
             <div>
               <Label>Nome do Curso *</Label>
-              <Input value={form.nome_curso} onChange={e => setForm({ ...form, nome_curso: e.target.value })} placeholder="Ex: NR-10 SEP, NR-35, POP 001" />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar ou digitar curso..."
+                  value={cursoSearch}
+                  onChange={e => { setCursoSearch(e.target.value); setForm({ ...form, nome_curso: e.target.value }); setShowCursoList(true); }}
+                  onFocus={() => setShowCursoList(true)}
+                  className="pl-9"
+                />
+              </div>
+              {showCursoList && (
+                <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
+                  {filteredCursos.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhuma sugestão — use o texto digitado</p>
+                  ) : filteredCursos.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                      onClick={() => { setForm({ ...form, nome_curso: c }); setCursoSearch(c); setShowCursoList(false); }}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Data de Realização</Label>
