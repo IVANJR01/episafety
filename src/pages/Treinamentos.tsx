@@ -183,6 +183,7 @@ export default function Treinamentos() {
   };
 
   const handleExportExcel = () => {
+    // Simple list export
     const rows = filtered.map((t, i) => {
       const func = funcMap[t.funcionario_id];
       const status = getStatus(t.data_renovacao);
@@ -200,8 +201,54 @@ export default function Treinamentos() {
     ws["!cols"] = [{ wch: 5 }, { wch: 35 }, { wch: 20 }, { wch: 25 }, { wch: 16 }, { wch: 16 }, { wch: 12 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Treinamentos");
+
+    // Audit matrix sheet
+    const cursoSet = new Set<string>();
+    items.forEach(t => cursoSet.add(t.nome_curso));
+    const cursos = Array.from(cursoSet).sort();
+
+    const funcIds = Array.from(new Set(items.map(t => t.funcionario_id)));
+    const auditRows: Record<string, any>[] = [];
+
+    funcIds.forEach((fid, idx) => {
+      const func = funcMap[fid];
+      if (!func) return;
+      const treinos = items.filter(t => t.funcionario_id === fid);
+      const row: Record<string, any> = {
+        "N°": idx + 1,
+        "NOME": func.nome,
+        "FUNÇÃO": func.cargo || "—",
+        "PENDENTE": "",
+      };
+      const pendentes: string[] = [];
+      cursos.forEach(curso => {
+        const t = treinos.find(tr => tr.nome_curso === curso);
+        if (!t) {
+          row[curso] = "-";
+        } else {
+          const s = getStatus(t.data_renovacao);
+          if (s.key === "vencido") {
+            row[curso] = t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "VENCIDO";
+            pendentes.push(curso);
+          } else if (s.key === "atencao") {
+            row[curso] = t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "ATENÇÃO";
+          } else {
+            row[curso] = t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "OK";
+          }
+        }
+      });
+      row["PENDENTE"] = pendentes.length > 0 ? pendentes.join(" / ") : "-";
+      auditRows.push(row);
+    });
+
+    const ws2 = XLSX.utils.json_to_sheet(auditRows);
+    const colWidths = [{ wch: 5 }, { wch: 35 }, { wch: 22 }, { wch: 30 }];
+    cursos.forEach(() => colWidths.push({ wch: 14 }));
+    ws2["!cols"] = colWidths;
+    XLSX.utils.book_append_sheet(wb, ws2, "Auditoria");
+
     XLSX.writeFile(wb, `Controle_Treinamentos_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
-    toast({ title: "Exportado com sucesso!" });
+    toast({ title: "Exportado com sucesso!", description: "Planilha com aba de lista e aba de auditoria." });
   };
 
   const totalItems = items.length;
