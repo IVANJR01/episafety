@@ -280,9 +280,23 @@ export function gerarFichaEPI(data: FichaData) {
     // Assinatura - per-row signature
     const sigX = x;
     if (entrega.assinatura_colaborador) {
-      try {
-        doc.addImage(entrega.assinatura_colaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
-      } catch (e) { /* ignore */ }
+      if (entrega.assinatura_colaborador === "BIOMETRIA_DIGITAL") {
+        // Draw fingerprint indicator
+        const cx = sigX + colWidths[6] / 2;
+        const cy = y + ROW_H / 2 - 2;
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 100, 0);
+        doc.text("BIOMETRIA DIGITAL", cx, cy, { align: "center" });
+        doc.setFontSize(5.5);
+        doc.setFont("helvetica", "normal");
+        doc.text("Impressão digital coletada", cx, cy + 4, { align: "center" });
+        doc.setTextColor(0);
+      } else {
+        try {
+          doc.addImage(entrega.assinatura_colaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
+        } catch (e) { /* ignore */ }
+      }
     }
     // Use individual delivery date+time
     doc.setFontSize(4.5);
