@@ -148,7 +148,9 @@ export default function Dashboard() {
     { label: "EPIs Cadastrados", value: epis.length, icon: Package, color: "text-primary" },
     { label: "Funcionários", value: funcionarios.length, icon: Users, color: "text-success" },
     { label: "Entregas", value: entregas.length, icon: ClipboardList, color: "text-muted-foreground" },
-    { label: "Alertas", value: alertasEstoque.length, icon: AlertTriangle, color: "text-warning" },
+    { label: "Alertas Estoque", value: alertasEstoque.length, icon: AlertTriangle, color: "text-warning" },
+    { label: "Trein. Vencidos", value: treinamentosVencidos, icon: GraduationCap, color: "text-destructive" },
+    { label: "Trein. A Vencer", value: treinamentosAtencao, icon: GraduationCap, color: "text-warning" },
   ];
 
   const recentEntregas = entregas.slice(0, 5).map(e => ({
