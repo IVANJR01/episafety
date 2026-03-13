@@ -172,30 +172,35 @@ export default function Entregas() {
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
 
+    // Parallel inserts for speed
+    const results = await Promise.allSettled(
+      epiList.map(item =>
+        (supabase.from as any)("entregas")
+          .insert({
+            funcionario_id: form.funcionario_id,
+            epi_id: item.epi.id,
+            quantidade: item.quantidade,
+            data: form.data,
+            tipo: form.tipo,
+            status,
+            observacao: form.observacao || null,
+            empresa_id: empresaId,
+          })
+          .select("id")
+          .single()
+      )
+    );
+
     const insertedIds: string[] = [];
     const failedEpis: string[] = [];
-    for (const item of epiList) {
-      const entregaData = {
-        funcionario_id: form.funcionario_id,
-        epi_id: item.epi.id,
-        quantidade: item.quantidade,
-        data: form.data,
-        tipo: form.tipo,
-        status,
-        observacao: form.observacao || null,
-        empresa_id: empresaId,
-      };
-      const { data: inserted, error } = await (supabase.from as any)("entregas")
-        .insert(entregaData)
-        .select("id")
-        .single();
-      if (error) {
-        console.warn("Erro ao salvar EPI:", item.epi.nome, error.message);
-        failedEpis.push(item.epi.nome);
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled" && !r.value.error) {
+        insertedIds.push(r.value.data.id);
       } else {
-        insertedIds.push(inserted.id);
+        failedEpis.push(epiList[i].epi.nome);
       }
-    }
+    });
+
     if (failedEpis.length > 0) {
       toast({ title: `${failedEpis.length} EPI(s) com erro`, description: `Falha: ${failedEpis.join(", ")}. Os demais foram registrados.`, variant: "destructive" });
     }
@@ -218,6 +223,7 @@ export default function Entregas() {
     setEpiDropdownResults([]);
 
     setSaving(false);
+    setSignInputType("assinatura");
     setSignOpen(true);
   };
 
@@ -225,21 +231,30 @@ export default function Entregas() {
     const ids = signMode === "new" ? (pendingEntrega?.entrega_ids || []) : selectedUnsigned;
     if (ids.length === 0) return;
 
-    const assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+    let assinaturaColaborador: string | null = null;
 
-    if (!assinaturaColaborador) {
-      toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
-      return;
+    if (signInputType === "biometria") {
+      // Mark as biometry collected
+      assinaturaColaborador = "BIOMETRIA_DIGITAL";
+    } else {
+      assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+      if (!assinaturaColaborador) {
+        toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
+        return;
+      }
     }
 
-    for (const id of ids) {
-      await (supabase.from as any)("entregas")
-        .update({ assinatura_colaborador: assinaturaColaborador })
-        .eq("id", id);
-    }
+    // Parallel updates for speed
+    await Promise.all(
+      ids.map(id =>
+        (supabase.from as any)("entregas")
+          .update({ assinatura_colaborador: assinaturaColaborador })
+          .eq("id", id)
+      )
+    );
 
-    await refetch();
-    toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+    refetch();
+    toast({ title: signInputType === "biometria" ? `Biometria registrada em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
     setSignOpen(false);
     setPendingEntrega(null);
     setSelectedUnsigned([]);
