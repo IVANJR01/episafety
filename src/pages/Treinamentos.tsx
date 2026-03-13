@@ -141,7 +141,17 @@ export default function Treinamentos() {
     "Operação de Máquinas": 12,
   };
 
-  const CURSOS_SUGERIDOS = Object.keys(CURSOS_VALIDADE);
+  // Merge hardcoded + DB courses (DB overrides hardcoded)
+  const mergedCursosValidade = useMemo(() => {
+    const merged = { ...CURSOS_VALIDADE };
+    dbCursos.forEach(c => { merged[c.nome] = c.validade_meses; });
+    return merged;
+  }, [dbCursos]);
+
+  const CURSOS_SUGERIDOS = useMemo(() => {
+    const allNames = new Set([...Object.keys(CURSOS_VALIDADE), ...dbCursos.map(c => c.nome)]);
+    return Array.from(allNames).sort();
+  }, [dbCursos]);
 
   const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
     const meses = CURSOS_VALIDADE[curso];
