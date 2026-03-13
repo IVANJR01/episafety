@@ -329,8 +329,8 @@ export default function Treinamentos() {
     const wb = XLSX.utils.book_new();
     const wsData: any[][] = [];
 
-    // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, OBSERVAÇÃO, then each course spans 3 cols
-    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "OBSERVAÇÃO"];
+    // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES, then each course spans 3 cols
+    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "PENDENTES"];
     cursos.forEach(curso => { header1.push(curso, "", ""); });
     wsData.push(header1);
 
@@ -344,7 +344,11 @@ export default function Treinamentos() {
       const func = funcMap[fid];
       if (!func) return;
       const treinos = items.filter(t => t.funcionario_id === fid);
-      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", "—"];
+      const docsSet = new Set<string>();
+      treinos.forEach(t => {
+        if (t.documento_pendente) t.documento_pendente.split(" | ").filter(Boolean).forEach(d => docsSet.add(d));
+      });
+      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", docsSet.size > 0 ? Array.from(docsSet).join(", ") : "—"];
       cursos.forEach(curso => {
         const t = treinos.find(tr => tr.nome_curso === curso);
         if (!t) {
@@ -467,14 +471,18 @@ export default function Treinamentos() {
       if (!func) return null;
       const treinos = items.filter(t => t.funcionario_id === fid);
       const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
+      const pendentesSet = new Set<string>();
       cursos.forEach(curso => {
         const t = treinos.find(tr => tr.nome_curso === curso);
         if (t) {
           cursoData[curso] = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
+          if (t.documento_pendente) {
+            t.documento_pendente.split(" | ").filter(Boolean).forEach(d => pendentesSet.add(d));
+          }
         }
       });
-      return { func, cursoData };
-    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> }[];
+      return { func, cursoData, pendentes: Array.from(pendentesSet) };
+    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>; pendentes: string[] }[];
 
     return { cursos, rows };
   }, [items, funcMap]);
@@ -712,7 +720,7 @@ export default function Treinamentos() {
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-20 min-w-[180px]">COLABORADOR</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[100px]">OBSERVAÇÃO</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[180px]">PENDENTES</th>
                         {matrixData.cursos.map(curso => (
                           <th key={curso} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
                             {curso}
@@ -735,7 +743,15 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">{row.func.nome}</td>
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-center text-muted-foreground">—</td>
+                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs">
+                            {row.pendentes.length > 0 ? (
+                              <div className="flex flex-wrap gap-0.5 justify-center">
+                                {row.pendentes.map(d => (
+                                  <Badge key={d} variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">{d}</Badge>
+                                ))}
+                              </div>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </td>
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
                             if (!cd) {
