@@ -166,6 +166,7 @@ export default function Treinamentos() {
       nome_curso: form.nome_curso,
       data_realizacao: form.data_realizacao,
       data_renovacao: form.data_renovacao || null,
+      documento_pendente: form.documento_pendente || null,
       empresa_id: empresaId,
     };
 
