@@ -307,15 +307,64 @@ export default function Treinamentos() {
     fetchData();
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    // Fetch empresa data
+    let empresaNome = "";
+    let empresaCnpj = "";
+    let empresaEndereco = "";
+    let empresaTelefone = "";
+    let empresaEmail = "";
+    let logoBase64: string | null = null;
+
+    if (empresaId) {
+      const { data: empData } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
+      if (empData && empData.length > 0) {
+        const emp = empData[0];
+        empresaNome = emp.nome || "";
+        empresaCnpj = emp.cnpj || "";
+        empresaEndereco = emp.endereco || "";
+        empresaTelefone = emp.telefone || "";
+        empresaEmail = emp.email || "";
+
+        // Fetch logo as base64
+        if (emp.logo_url) {
+          try {
+            const res = await fetch(emp.logo_url);
+            const blob = await res.blob();
+            logoBase64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+          } catch { /* ignore logo fetch error */ }
+        }
+      }
+    }
+
     const cursoSet = new Set<string>();
     items.forEach(t => cursoSet.add(t.nome_curso));
     const cursos = Array.from(cursoSet).sort();
     const funcIds = Array.from(new Set(items.map(t => t.funcionario_id)));
+    const totalCols = 5 + cursos.length * 3;
 
     // Build worksheet manually for full style control
     const wb = XLSX.utils.book_new();
     const wsData: any[][] = [];
+
+    // Company header rows (offset for data)
+    const HEADER_OFFSET = 5; // 5 rows for company info before table
+
+    // Row 0: Company name
+    const companyRow: any[] = [empresaNome || ""];
+    wsData.push(companyRow);
+    // Row 1: CNPJ
+    wsData.push([empresaCnpj ? `CNPJ: ${empresaCnpj}` : ""]);
+    // Row 2: Address
+    wsData.push([empresaEndereco || ""]);
+    // Row 3: Phone / Email
+    wsData.push([[empresaTelefone, empresaEmail].filter(Boolean).join(" | ") || ""]);
+    // Row 4: Empty separator
+    wsData.push([""]);
 
     // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES, then each course spans 3 cols
     const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "PENDENTES"];
@@ -355,15 +404,20 @@ export default function Treinamentos() {
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    // Merge header cells for course names (row 1)
+    // Merge company header rows across all columns
     const merges: XLSX.Range[] = [];
+    for (let r = 0; r < HEADER_OFFSET; r++) {
+      merges.push({ s: { r, c: 0 }, e: { r, c: Math.max(totalCols - 1, 4) } });
+    }
+
+    // Merge header cells for course names (row HEADER_OFFSET)
     cursos.forEach((_, i) => {
       const startCol = 5 + i * 3;
-      merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: startCol + 2 } });
+      merges.push({ s: { r: HEADER_OFFSET, c: startCol }, e: { r: HEADER_OFFSET, c: startCol + 2 } });
     });
-    // Merge Nº, COLABORADOR, CPF, FUNÇÃO, OBS across 2 header rows
+    // Merge Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES across 2 header rows
     for (let c = 0; c < 5; c++) {
-      merges.push({ s: { r: 0, c }, e: { r: 1, c } });
+      merges.push({ s: { r: HEADER_OFFSET, c }, e: { r: HEADER_OFFSET + 1, c } });
     }
     ws["!merges"] = merges;
 
@@ -371,6 +425,15 @@ export default function Treinamentos() {
     const colWidths: { wch: number }[] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 14 }];
     cursos.forEach(() => { colWidths.push({ wch: 14 }, { wch: 16 }, { wch: 12 }); });
     ws["!cols"] = colWidths;
+
+    // Row heights for company header
+    ws["!rows"] = [
+      { hpt: 28 }, // Company name
+      { hpt: 18 }, // CNPJ
+      { hpt: 18 }, // Address
+      { hpt: 18 }, // Phone/Email
+      { hpt: 10 }, // Separator
+    ];
 
     // Apply styles
     const headerFill = { fgColor: { rgb: "1a365d" } };
@@ -385,7 +448,6 @@ export default function Treinamentos() {
     const centerAlign = { horizontal: "center", vertical: "center", wrapText: true };
     const leftAlign = { vertical: "center", wrapText: true };
 
-    const totalCols = 5 + cursos.length * 3;
     const totalRows = wsData.length;
 
     for (let R = 0; R < totalRows; R++) {
@@ -395,15 +457,27 @@ export default function Treinamentos() {
         const cell = ws[addr];
         if (!cell.s) cell.s = {};
 
+        // Company header rows
+        if (R < HEADER_OFFSET) {
+          if (R === 0) {
+            cell.s.font = { name: "Arial", sz: 14, bold: true, color: { rgb: "1a365d" } };
+            cell.s.alignment = { horizontal: "center", vertical: "center" };
+          } else if (R < 4) {
+            cell.s.font = { name: "Arial", sz: 10, color: { rgb: "444444" } };
+            cell.s.alignment = { horizontal: "center", vertical: "center" };
+          }
+          continue;
+        }
+
         cell.s.border = border;
         cell.s.font = { name: "Arial", sz: 9 };
 
-        if (R === 0) {
+        if (R === HEADER_OFFSET) {
           // Main header row
           cell.s.fill = headerFill;
           cell.s.font = headerFont;
           cell.s.alignment = centerAlign;
-        } else if (R === 1) {
+        } else if (R === HEADER_OFFSET + 1) {
           // Sub-header row
           cell.s.fill = subHeaderFill;
           cell.s.font = { ...headerFont, sz: 9 };
