@@ -249,8 +249,8 @@ export default function Treinamentos() {
   };
 
   const handleSave = async () => {
-    if (!form.funcionario_id || !form.nome_curso.trim()) {
-      toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+    if (!form.funcionario_id) {
+      toast({ title: "Selecione o funcionário", variant: "destructive" });
       return;
     }
     const payload = {
@@ -320,26 +320,6 @@ export default function Treinamentos() {
   };
 
   const handleExportExcel = () => {
-    // Simple list export
-    const rows = filtered.map((t, i) => {
-      const func = funcMap[t.funcionario_id];
-      const status = getStatus(t.data_renovacao);
-      return {
-        "N°": i + 1,
-        "Nome Completo": func?.nome || "—",
-        "Função": func?.cargo || "—",
-        "Nome do Curso": t.nome_curso,
-        "Data Realização": t.data_realizacao ? format(parseISO(t.data_realizacao), "dd/MM/yyyy") : "",
-        "Data Renovação": t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "",
-        "Status": status.key === "vencido" ? "Vencido" : status.key === "atencao" ? "Atenção" : "Vigente",
-      };
-    });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [{ wch: 5 }, { wch: 35 }, { wch: 20 }, { wch: 25 }, { wch: 16 }, { wch: 16 }, { wch: 12 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Treinamentos");
-
-    // Audit matrix sheet
     const cursoSet = new Set<string>();
     items.forEach(t => cursoSet.add(t.nome_curso));
     const cursos = Array.from(cursoSet).sort();
@@ -378,14 +358,15 @@ export default function Treinamentos() {
       auditRows.push(row);
     });
 
-    const ws2 = XLSX.utils.json_to_sheet(auditRows);
+    const ws = XLSX.utils.json_to_sheet(auditRows);
     const colWidths = [{ wch: 5 }, { wch: 35 }, { wch: 22 }, { wch: 30 }];
     cursos.forEach(() => colWidths.push({ wch: 14 }));
-    ws2["!cols"] = colWidths;
-    XLSX.utils.book_append_sheet(wb, ws2, "Auditoria");
+    ws["!cols"] = colWidths;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Matriz Treinamentos");
 
-    XLSX.writeFile(wb, `Controle_Treinamentos_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
-    toast({ title: "Exportado com sucesso!", description: "Planilha com aba de lista e aba de auditoria." });
+    XLSX.writeFile(wb, `Matriz_Treinamentos_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    toast({ title: "Exportado com sucesso!", description: "Planilha com matriz de treinamentos." });
   };
 
   const totalItems = items.length;
