@@ -329,8 +329,8 @@ export default function Treinamentos() {
     const wb = XLSX.utils.book_new();
     const wsData: any[][] = [];
 
-    // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, OBSERVAÇÃO, then each course spans 3 cols
-    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "OBSERVAÇÃO"];
+    // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES, then each course spans 3 cols
+    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "PENDENTES"];
     cursos.forEach(curso => { header1.push(curso, "", ""); });
     wsData.push(header1);
 
