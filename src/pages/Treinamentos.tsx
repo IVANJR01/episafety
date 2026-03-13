@@ -548,6 +548,16 @@ export default function Treinamentos() {
                 <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
               </div>
             </div>
+
+            <div>
+              <Label>Documento Pendente</Label>
+              <Input
+                placeholder="Ex: NR-10 E SEP / CEPI / OS..."
+                value={form.documento_pendente}
+                onChange={e => setForm({ ...form, documento_pendente: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Informe documentos ou cursos pendentes para este funcionário</p>
+            </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
         </DialogContent>
