@@ -133,6 +133,7 @@ export default function Treinamentos() {
   const openNew = () => {
     setEditing(null);
     setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "" });
+    setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
     setOpen(true);
   };
 
