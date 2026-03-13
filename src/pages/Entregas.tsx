@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, Fingerprint } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +48,7 @@ export default function Entregas() {
 
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
+  const [signInputType, setSignInputType] = useState<"assinatura" | "biometria">("assinatura");
 
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
@@ -171,30 +172,35 @@ export default function Entregas() {
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
 
+    // Parallel inserts for speed
+    const results = await Promise.allSettled(
+      epiList.map(item =>
+        (supabase.from as any)("entregas")
+          .insert({
+            funcionario_id: form.funcionario_id,
+            epi_id: item.epi.id,
+            quantidade: item.quantidade,
+            data: form.data,
+            tipo: form.tipo,
+            status,
+            observacao: form.observacao || null,
+            empresa_id: empresaId,
+          })
+          .select("id")
+          .single()
+      )
+    );
+
     const insertedIds: string[] = [];
     const failedEpis: string[] = [];
-    for (const item of epiList) {
-      const entregaData = {
-        funcionario_id: form.funcionario_id,
-        epi_id: item.epi.id,
-        quantidade: item.quantidade,
-        data: form.data,
-        tipo: form.tipo,
-        status,
-        observacao: form.observacao || null,
-        empresa_id: empresaId,
-      };
-      const { data: inserted, error } = await (supabase.from as any)("entregas")
-        .insert(entregaData)
-        .select("id")
-        .single();
-      if (error) {
-        console.warn("Erro ao salvar EPI:", item.epi.nome, error.message);
-        failedEpis.push(item.epi.nome);
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled" && !r.value.error) {
+        insertedIds.push(r.value.data.id);
       } else {
-        insertedIds.push(inserted.id);
+        failedEpis.push(epiList[i].epi.nome);
       }
-    }
+    });
+
     if (failedEpis.length > 0) {
       toast({ title: `${failedEpis.length} EPI(s) com erro`, description: `Falha: ${failedEpis.join(", ")}. Os demais foram registrados.`, variant: "destructive" });
     }
@@ -217,6 +223,7 @@ export default function Entregas() {
     setEpiDropdownResults([]);
 
     setSaving(false);
+    setSignInputType("assinatura");
     setSignOpen(true);
   };
 
@@ -224,21 +231,30 @@ export default function Entregas() {
     const ids = signMode === "new" ? (pendingEntrega?.entrega_ids || []) : selectedUnsigned;
     if (ids.length === 0) return;
 
-    const assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+    let assinaturaColaborador: string | null = null;
 
-    if (!assinaturaColaborador) {
-      toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
-      return;
+    if (signInputType === "biometria") {
+      // Mark as biometry collected
+      assinaturaColaborador = "BIOMETRIA_DIGITAL";
+    } else {
+      assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+      if (!assinaturaColaborador) {
+        toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
+        return;
+      }
     }
 
-    for (const id of ids) {
-      await (supabase.from as any)("entregas")
-        .update({ assinatura_colaborador: assinaturaColaborador })
-        .eq("id", id);
-    }
+    // Parallel updates for speed
+    await Promise.all(
+      ids.map(id =>
+        (supabase.from as any)("entregas")
+          .update({ assinatura_colaborador: assinaturaColaborador })
+          .eq("id", id)
+      )
+    );
 
-    await refetch();
-    toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+    refetch();
+    toast({ title: signInputType === "biometria" ? `Biometria registrada em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
     setSignOpen(false);
     setPendingEntrega(null);
     setSelectedUnsigned([]);
@@ -372,7 +388,11 @@ export default function Entregas() {
                           {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                         </span>
                         {e.assinatura_colaborador ? (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><CheckCircle2 className="w-3 h-3" />Assinado</span>
+                          e.assinatura_colaborador === "BIOMETRIA_DIGITAL" ? (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><Fingerprint className="w-3 h-3" />Biometria</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><CheckCircle2 className="w-3 h-3" />Assinado</span>
+                          )
                         ) : (
                           <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-medium"><AlertCircle className="w-3 h-3" />Pendente</span>
                         )}
@@ -433,7 +453,11 @@ export default function Entregas() {
                       </TableCell>
                       <TableCell>
                         {e.assinatura_colaborador ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
+                          e.assinatura_colaborador === "BIOMETRIA_DIGITAL" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><Fingerprint className="w-3.5 h-3.5" />Biometria</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
+                          )
                         ) : (
                           <Button size="sm" variant="ghost" className="text-xs text-amber-500 hover:text-amber-600 p-0 h-auto font-medium" onClick={() => openSignExisting(e.funcionario_id)}>
                             <AlertCircle className="w-3.5 h-3.5 mr-1" />Pendente
@@ -562,18 +586,18 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); } }}>
+      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignInputType("assinatura"); } }}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <PenLine className="w-5 h-5" />
-              Assinatura do Colaborador
+              {signInputType === "biometria" ? <Fingerprint className="w-5 h-5" /> : <PenLine className="w-5 h-5" />}
+              {signInputType === "biometria" ? "Biometria Digital" : "Assinatura do Colaborador"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {signMode === "new" && pendingEntrega && (
               <p className="text-sm text-muted-foreground">
-                Entrega registrada! O colaborador <strong>{getName(funcionarios, pendingEntrega.funcionario_id)}</strong> deve assinar abaixo para confirmar o recebimento do EPI.
+                Entrega registrada! O colaborador <strong>{getName(funcionarios, pendingEntrega.funcionario_id)}</strong> deve confirmar o recebimento do EPI.
               </p>
             )}
             {signMode === "existing" && (
@@ -627,14 +651,55 @@ export default function Entregas() {
                 })()}
               </div>
             )}
-            <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
+
+            {/* Toggle: Assinatura vs Biometria */}
+            <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30">
+              <Button
+                type="button"
+                size="sm"
+                variant={signInputType === "assinatura" ? "default" : "outline"}
+                onClick={() => setSignInputType("assinatura")}
+                className="flex-1"
+              >
+                <PenLine className="w-4 h-4 mr-1.5" />
+                Assinatura
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={signInputType === "biometria" ? "default" : "outline"}
+                onClick={() => setSignInputType("biometria")}
+                className="flex-1"
+              >
+                <Fingerprint className="w-4 h-4 mr-1.5" />
+                Biometria Digital
+              </Button>
+            </div>
+
+            {signInputType === "assinatura" ? (
+              <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed rounded-lg bg-muted/20 space-y-4">
+                <Fingerprint className="w-16 h-16 text-primary/60" />
+                <div className="text-center space-y-1">
+                  <p className="font-medium text-sm">Coleta de Biometria Digital</p>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    Para pessoas que não sabem escrever. Colete a impressão digital do colaborador no dispositivo biométrico e clique em "Confirmar Biometria" abaixo.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
               {signMode === "new" ? "Pular" : "Cancelar"}
             </Button>
             <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
-              ✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}
+              {signInputType === "biometria" ? (
+                <><Fingerprint className="w-4 h-4 mr-1.5" />Confirmar Biometria {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
+              ) : (
+                <>✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
