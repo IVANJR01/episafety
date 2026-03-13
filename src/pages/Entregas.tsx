@@ -1,6 +1,8 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, Fingerprint } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
