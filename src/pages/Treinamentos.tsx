@@ -608,35 +608,31 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-center text-muted-foreground">—</td>
-                          {matrixData.cursos.map(curso => {
+                          {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
                             if (!cd) {
-                              return (
-                                <>{/* empty cells */}
-                                  <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>
-                                  <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>
-                                  <td key={`${row.func.id}-${curso}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>
-                                </>
-                              );
+                              return [
+                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                <td key={`${row.func.id}-${curso}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                              ];
                             }
                             const statusBg = cd.status.key === "vencido"
                               ? "bg-destructive text-destructive-foreground font-bold"
                               : cd.status.key === "atencao"
                               ? "bg-warning text-warning-foreground font-bold"
                               : "bg-success text-success-foreground font-bold";
-                            return (
-                              <>
-                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                  {format(parseISO(cd.realizacao), "dd/MM/yyyy")}
-                                </td>
-                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                  {cd.renovacao ? format(parseISO(cd.renovacao), "dd/MM/yyyy") : "—"}
-                                </td>
-                                <td key={`${row.func.id}-${curso}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${statusBg}`}>
-                                  {cd.status.key === "vencido" ? "Vencido" : cd.status.key === "atencao" ? "Atenção" : "Válido"}
-                                </td>
-                              </>
-                            );
+                            return [
+                              <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                                {format(parseISO(cd.realizacao), "dd/MM/yyyy")}
+                              </td>,
+                              <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                                {cd.renovacao ? format(parseISO(cd.renovacao), "dd/MM/yyyy") : "—"}
+                              </td>,
+                              <td key={`${row.func.id}-${curso}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${statusBg}`}>
+                                {cd.status.key === "vencido" ? "Vencido" : cd.status.key === "atencao" ? "Atenção" : "Válido"}
+                              </td>,
+                            ];
                           })}
                         </tr>
                       ))}
