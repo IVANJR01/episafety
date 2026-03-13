@@ -22,6 +22,7 @@ import Install from "@/pages/Install";
 import Privacidade from "@/pages/Privacidade";
 import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
+import Treinamentos from "@/pages/Treinamentos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
