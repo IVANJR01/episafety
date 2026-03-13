@@ -147,6 +147,28 @@ export default function Treinamentos() {
     fetchData();
   };
 
+  const handleExportExcel = () => {
+    const rows = filtered.map((t, i) => {
+      const func = funcMap[t.funcionario_id];
+      const status = getStatus(t.data_renovacao);
+      return {
+        "N°": i + 1,
+        "Nome Completo": func?.nome || "—",
+        "Função": func?.cargo || "—",
+        "Nome do Curso": t.nome_curso,
+        "Data Realização": t.data_realizacao ? format(parseISO(t.data_realizacao), "dd/MM/yyyy") : "",
+        "Data Renovação": t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "",
+        "Status": status.key === "vencido" ? "Vencido" : status.key === "atencao" ? "Atenção" : "Vigente",
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 5 }, { wch: 35 }, { wch: 20 }, { wch: 25 }, { wch: 16 }, { wch: 16 }, { wch: 12 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Treinamentos");
+    XLSX.writeFile(wb, `Controle_Treinamentos_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    toast({ title: "Exportado com sucesso!" });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -157,7 +179,10 @@ export default function Treinamentos() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Acompanhamento de capacitações e reciclagens</p>
         </div>
-        <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Adicionar Novo</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportExcel}><Download className="w-4 h-4 mr-2" />Exportar Excel</Button>
+          <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Adicionar Novo</Button>
+        </div>
       </div>
 
       {/* Indicadores */}
