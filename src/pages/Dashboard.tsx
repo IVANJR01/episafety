@@ -1,4 +1,4 @@
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, GraduationCap } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
