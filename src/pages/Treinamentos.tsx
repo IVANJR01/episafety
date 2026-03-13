@@ -69,6 +69,7 @@ export default function Treinamentos() {
     documento_pendente: "",
   });
   const [funcSearch, setFuncSearch] = useState("");
+  const [showFuncList, setShowFuncList] = useState(false);
   const [cursoSearch, setCursoSearch] = useState("");
   const [showCursoList, setShowCursoList] = useState(false);
 
@@ -932,7 +933,9 @@ export default function Treinamentos() {
                   <Input
                     placeholder="Pesquisar por nome, matrícula ou CPF..."
                     value={funcSearch}
-                    onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); }}
+                    onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); setShowFuncList(true); }}
+                    onFocus={() => { if (!form.funcionario_id) setShowFuncList(true); }}
+                    onBlur={() => setTimeout(() => setShowFuncList(false), 200)}
                     className="pl-9"
                   />
                 </div>
@@ -941,16 +944,16 @@ export default function Treinamentos() {
                     ✓ {funcMap[form.funcionario_id]?.nome}
                   </div>
                 )}
-                {!form.funcionario_id && funcSearch.trim() && (
-                  <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                {!form.funcionario_id && showFuncList && (
+                  <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
                     {filteredFuncionarios.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
-                    ) : filteredFuncionarios.map(f => (
+                    ) : filteredFuncionarios.slice(0, 20).map(f => (
                       <button
                         key={f.id}
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
-                        onClick={() => { setForm({ ...form, funcionario_id: f.id }); setFuncSearch(f.nome); }}
+                        onClick={() => { setForm({ ...form, funcionario_id: f.id }); setFuncSearch(f.nome); setShowFuncList(false); }}
                       >
                         <span className="font-medium">{f.nome}</span>
                         <span className="text-xs text-muted-foreground">{f.cargo || ""} {f.matricula ? `• ${f.matricula}` : ""}</span>
@@ -972,13 +975,13 @@ export default function Treinamentos() {
                       setCursoSearch(e.target.value);
                       const newRenovacao = calcularRenovacao(e.target.value, form.data_realizacao);
                       setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
-                      setShowCursoList(true);
+                      setShowCursoList(e.target.value.trim().length > 0);
                     }}
-                    onFocus={() => setShowCursoList(true)}
+                    onBlur={() => setTimeout(() => setShowCursoList(false), 200)}
                     className="pl-9"
                   />
                 </div>
-                {showCursoList && (
+                {showCursoList && cursoSearch.trim() && (
                   <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
                     {filteredCursos.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-2 text-center">Nenhuma sugestão — use o texto digitado</p>
