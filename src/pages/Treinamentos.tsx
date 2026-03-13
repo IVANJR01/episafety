@@ -323,24 +323,76 @@ export default function Treinamentos() {
 
       {/* Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar Treinamento" : "Adicionar Novo Treinamento"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
+            {/* Funcionário com pesquisa */}
             <div>
               <Label>Funcionário *</Label>
-              <Select value={form.funcionario_id} onValueChange={v => setForm({ ...form, funcionario_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Selecione o funcionário" /></SelectTrigger>
-                <SelectContent>
-                  {funcionarios.map(f => (
-                    <SelectItem key={f.id} value={f.id}>{f.nome} {f.cargo ? `— ${f.cargo}` : ""}</SelectItem>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar por nome, matrícula ou CPF..."
+                  value={funcSearch}
+                  onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); }}
+                  className="pl-9"
+                />
+              </div>
+              {form.funcionario_id && (
+                <div className="mt-1 text-xs text-primary font-medium">
+                  ✓ {funcMap[form.funcionario_id]?.nome}
+                </div>
+              )}
+              {!form.funcionario_id && funcSearch.trim() && (
+                <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                  {filteredFuncionarios.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
+                  ) : filteredFuncionarios.map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                      onClick={() => { setForm({ ...form, funcionario_id: f.id }); setFuncSearch(f.nome); }}
+                    >
+                      <span className="font-medium">{f.nome}</span>
+                      <span className="text-xs text-muted-foreground">{f.cargo || ""} {f.matricula ? `• ${f.matricula}` : ""}</span>
+                    </button>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
             </div>
+
+            {/* Nome do Curso com lista suspensa */}
             <div>
               <Label>Nome do Curso *</Label>
-              <Input value={form.nome_curso} onChange={e => setForm({ ...form, nome_curso: e.target.value })} placeholder="Ex: NR-10 SEP, NR-35, POP 001" />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar ou digitar curso..."
+                  value={cursoSearch}
+                  onChange={e => { setCursoSearch(e.target.value); setForm({ ...form, nome_curso: e.target.value }); setShowCursoList(true); }}
+                  onFocus={() => setShowCursoList(true)}
+                  className="pl-9"
+                />
+              </div>
+              {showCursoList && (
+                <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
+                  {filteredCursos.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhuma sugestão — use o texto digitado</p>
+                  ) : filteredCursos.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                      onClick={() => { setForm({ ...form, nome_curso: c }); setCursoSearch(c); setShowCursoList(false); }}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Data de Realização</Label>
