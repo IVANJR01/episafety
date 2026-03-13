@@ -501,8 +501,8 @@ export default function Treinamentos() {
               <GraduationCap className="w-7 h-7" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Treinamentos</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Acompanhamento de capacitações e reciclagens</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Documentos</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">Acompanhamento de Documentação</p>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -510,7 +510,7 @@ export default function Treinamentos() {
               <Download className="w-4 h-4 mr-2" />Exportar
             </Button>
             <Button variant="outline" onClick={openNewMulti} className="border-primary/30 hover:bg-primary/10">
-              <Plus className="w-4 h-4 mr-2" />Adicionar Vários Cursos
+              <Plus className="w-4 h-4 mr-2" />Adicionar Vários Documentos
             </Button>
             <Button onClick={openNew} className="shadow-lg shadow-primary/25">
               <Plus className="w-4 h-4 mr-2" />Adicionar Novo
@@ -798,7 +798,7 @@ export default function Treinamentos() {
         <DialogContent className={multiMode && !editing ? "max-w-3xl max-h-[90vh] overflow-y-auto" : "max-w-lg max-h-[85vh] overflow-y-auto"}>
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Editar Treinamento" : multiMode ? "Adicionar Vários Cursos" : "Adicionar Novo Treinamento"}
+              {editing ? "Editar Treinamento" : multiMode ? "Adicionar Vários Documentos" : "Adicionar Novo Treinamento"}
             </DialogTitle>
           </DialogHeader>
 
