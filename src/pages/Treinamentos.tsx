@@ -975,7 +975,6 @@ export default function Treinamentos() {
                       setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
                       setShowCursoList(true);
                     }}
-                    onFocus={() => setShowCursoList(true)}
                     className="pl-9"
                   />
                 </div>
