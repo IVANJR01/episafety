@@ -593,13 +593,11 @@ export default function Treinamentos() {
                       </tr>
                       {/* Header row 2: sub-columns */}
                       <tr className="bg-primary/80 text-primary-foreground">
-                        {matrixData.cursos.map(curso => (
-                          <>{/* Using fragment key on parent isn't possible, use array */}
-                            <th key={`${curso}-data`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[90px]">ÚLTIMA DATA</th>
-                            <th key={`${curso}-ren`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[100px]">DATA RENOVAÇÃO</th>
-                            <th key={`${curso}-st`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[80px]">STATUS</th>
-                          </>
-                        ))}
+                        {matrixData.cursos.flatMap(curso => [
+                            <th key={`${curso}-data`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[90px]">ÚLTIMA DATA</th>,
+                            <th key={`${curso}-ren`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[100px]">DATA RENOVAÇÃO</th>,
+                            <th key={`${curso}-st`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[80px]">STATUS</th>,
+                        ])}
                       </tr>
                     </thead>
                     <tbody>
