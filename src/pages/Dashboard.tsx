@@ -1,6 +1,6 @@
 import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
