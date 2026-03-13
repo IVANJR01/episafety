@@ -90,17 +90,47 @@ export default function Treinamentos() {
     return m;
   }, [funcionarios]);
 
-  const CURSOS_SUGERIDOS = [
-    "NR-10 Básico", "NR-10 Complementar (SEP)", "NR-12", "NR-17 - Transporte Manual de Carga",
-    "NR-18 - Integração", "NR-20", "NR-33", "NR-35",
-    "POP 00", "POP 05", "Treinamento Inicial", "Guardião da Vida",
-    "Direção Defensiva", "Liderança", "Sinaleiro / Amarrador de Carga",
-    "Cargas Indivisíveis", "Operador Guindaste", "Operador Guindauto",
-    "Operação de Cesto Aéreo/Acoplado", "Operação de Motosserra",
-    "Montagem Eletromecânica SE", "Curso de Transporte de Passageiros",
-    "Curso de Motorista de Ambulância", "Capacitação sobre Procedimento Operacional",
-    "Poda e Manejo Vegetal", "Operação de Martelete", "Operação de Máquinas",
-  ];
+  // Mapeamento curso → validade em meses
+  const CURSOS_VALIDADE: Record<string, number> = {
+    "NR-10 Básico": 24,
+    "NR-10 Complementar (SEP)": 24,
+    "NR-12": 24,
+    "NR-17 - Transporte Manual de Carga": 24,
+    "NR-18 - Integração": 6,
+    "NR-20": 12,
+    "NR-33": 12,
+    "NR-35": 24,
+    "POP 00": 12,
+    "POP 05": 12,
+    "Treinamento Inicial": 0,
+    "Guardião da Vida": 12,
+    "Direção Defensiva": 12,
+    "Liderança": 24,
+    "Sinaleiro / Amarrador de Carga": 12,
+    "Cargas Indivisíveis": 12,
+    "Operador Guindaste": 12,
+    "Operador Guindauto": 12,
+    "Operação de Cesto Aéreo/Acoplado": 12,
+    "Operação de Motosserra": 12,
+    "Montagem Eletromecânica SE": 24,
+    "Curso de Transporte de Passageiros": 12,
+    "Curso de Motorista de Ambulância": 12,
+    "Capacitação sobre Procedimento Operacional": 12,
+    "Poda e Manejo Vegetal": 12,
+    "Operação de Martelete": 12,
+    "Operação de Máquinas": 12,
+  };
+
+  const CURSOS_SUGERIDOS = Object.keys(CURSOS_VALIDADE);
+
+  const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
+    const meses = CURSOS_VALIDADE[curso];
+    if (meses === undefined || meses === 0 || !dataRealizacao) return "";
+    const data = parseISO(dataRealizacao);
+    const renovacao = new Date(data);
+    renovacao.setMonth(renovacao.getMonth() + meses);
+    return format(renovacao, "yyyy-MM-dd");
+  };
 
   const DOCUMENTOS_LISTA = [
     "Ordem de Serviço",
