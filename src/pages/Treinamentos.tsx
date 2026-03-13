@@ -933,8 +933,8 @@ export default function Treinamentos() {
                           <div>
                             <Label className="text-xs">Data Renovação</Label>
                             <Input type="date" value={curso.data_renovacao} onChange={e => updateMultiCurso(idx, { data_renovacao: e.target.value })} />
-                            {curso.nome_curso && CURSOS_VALIDADE[curso.nome_curso] !== undefined && CURSOS_VALIDADE[curso.nome_curso] > 0 && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {CURSOS_VALIDADE[curso.nome_curso]} meses</p>
+                            {curso.nome_curso && mergedCursosValidade[curso.nome_curso] !== undefined && mergedCursosValidade[curso.nome_curso] > 0 && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {mergedCursosValidade[curso.nome_curso]} meses</p>
                             )}
                           </div>
                         </div>
