@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useToast } from "@/hooks/use-toast";
 import { differenceInDays, format, parseISO } from "date-fns";
 import * as XLSX from "xlsx-js-style";
+import CadastroCursos from "@/components/CadastroCursos";
 
 interface ControleTreinamento {
   id: string;
@@ -73,6 +74,14 @@ export default function Treinamentos() {
   const [cursoSearch, setCursoSearch] = useState("");
   const [showCursoList, setShowCursoList] = useState(false);
 
+  // DB-based courses
+  const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
+
+  const fetchCursosDB = useCallback(async () => {
+    const { data } = await (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome");
+    if (data) setDbCursos(data);
+  }, []);
+
   // Multi-course mode
   interface CursoEntry { nome_curso: string; data_realizacao: string; data_renovacao: string; documento_pendente: string; cursoSearch: string; showCursoList: boolean; docPopoverOpen: boolean; }
   const emptyCurso = (): CursoEntry => ({ nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "", cursoSearch: "", showCursoList: false, docPopoverOpen: false });
@@ -93,7 +102,7 @@ export default function Treinamentos() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); fetchCursosDB(); }, [fetchCursosDB]);
 
   const funcMap = useMemo(() => {
     const m: Record<string, Funcionario> = {};
@@ -132,10 +141,20 @@ export default function Treinamentos() {
     "Operação de Máquinas": 12,
   };
 
-  const CURSOS_SUGERIDOS = Object.keys(CURSOS_VALIDADE);
+  // Merge hardcoded + DB courses (DB overrides hardcoded)
+  const mergedCursosValidade = useMemo(() => {
+    const merged = { ...CURSOS_VALIDADE };
+    dbCursos.forEach(c => { merged[c.nome] = c.validade_meses; });
+    return merged;
+  }, [dbCursos]);
+
+  const CURSOS_SUGERIDOS = useMemo(() => {
+    const allNames = new Set([...Object.keys(CURSOS_VALIDADE), ...dbCursos.map(c => c.nome)]);
+    return Array.from(allNames).sort();
+  }, [dbCursos]);
 
   const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
-    const meses = CURSOS_VALIDADE[curso];
+    const meses = mergedCursosValidade[curso];
     if (meses === undefined || meses === 0 || !dataRealizacao) return "";
     const data = parseISO(dataRealizacao);
     const renovacao = new Date(data);
@@ -634,6 +653,7 @@ export default function Treinamentos() {
         <TabsList className="mb-3">
           <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
+          <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
         </TabsList>
 
         {/* === ABA LISTA === */}
@@ -791,6 +811,11 @@ export default function Treinamentos() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* === ABA CADASTRO DE CURSOS === */}
+        <TabsContent value="cadastro">
+          <CadastroCursos onUpdate={fetchCursosDB} />
+        </TabsContent>
       </Tabs>
 
       {/* Modal */}
@@ -914,8 +939,8 @@ export default function Treinamentos() {
                           <div>
                             <Label className="text-xs">Data Renovação</Label>
                             <Input type="date" value={curso.data_renovacao} onChange={e => updateMultiCurso(idx, { data_renovacao: e.target.value })} />
-                            {curso.nome_curso && CURSOS_VALIDADE[curso.nome_curso] !== undefined && CURSOS_VALIDADE[curso.nome_curso] > 0 && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {CURSOS_VALIDADE[curso.nome_curso]} meses</p>
+                            {curso.nome_curso && mergedCursosValidade[curso.nome_curso] !== undefined && mergedCursosValidade[curso.nome_curso] > 0 && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {mergedCursosValidade[curso.nome_curso]} meses</p>
                             )}
                           </div>
                         </div>
@@ -1018,10 +1043,10 @@ export default function Treinamentos() {
                 <div>
                   <Label>Data de Renovação/Reciclagem</Label>
                   <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
-                  {form.nome_curso && CURSOS_VALIDADE[form.nome_curso] !== undefined && (
+                  {form.nome_curso && mergedCursosValidade[form.nome_curso] !== undefined && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      ⏱ Validade: {CURSOS_VALIDADE[form.nome_curso] === 0 ? "Sem renovação" : `${CURSOS_VALIDADE[form.nome_curso]} meses`}
-                      {CURSOS_VALIDADE[form.nome_curso] > 0 && " (calculado automaticamente)"}
+                      ⏱ Validade: {mergedCursosValidade[form.nome_curso] === 0 ? "Sem renovação" : `${mergedCursosValidade[form.nome_curso]} meses`}
+                      {mergedCursosValidade[form.nome_curso] > 0 && " (calculado automaticamente)"}
                     </p>
                   )}
                 </div>
