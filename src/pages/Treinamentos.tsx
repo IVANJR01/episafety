@@ -72,6 +72,15 @@ export default function Treinamentos() {
   const [cursoSearch, setCursoSearch] = useState("");
   const [showCursoList, setShowCursoList] = useState(false);
 
+  // Multi-course mode
+  interface CursoEntry { nome_curso: string; data_realizacao: string; data_renovacao: string; documento_pendente: string; cursoSearch: string; showCursoList: boolean; docPopoverOpen: boolean; }
+  const emptyCurso = (): CursoEntry => ({ nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "", cursoSearch: "", showCursoList: false, docPopoverOpen: false });
+  const [multiCursos, setMultiCursos] = useState<CursoEntry[]>([emptyCurso()]);
+  const [multiMode, setMultiMode] = useState(false);
+  const [multiFuncId, setMultiFuncId] = useState("");
+  const [multiFuncSearch, setMultiFuncSearch] = useState("");
+  const [savingMulti, setSavingMulti] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     const [{ data: treinos }, { data: funcs }] = await Promise.all([
