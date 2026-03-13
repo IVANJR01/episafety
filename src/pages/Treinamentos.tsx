@@ -18,6 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useToast } from "@/hooks/use-toast";
 import { differenceInDays, format, parseISO } from "date-fns";
 import * as XLSX from "xlsx-js-style";
+import CadastroCursos from "@/components/CadastroCursos";
 
 interface ControleTreinamento {
   id: string;
