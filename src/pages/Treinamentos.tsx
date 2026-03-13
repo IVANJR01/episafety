@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -97,6 +98,24 @@ export default function Treinamentos() {
     "Montagem Eletromecânica SE", "Curso de Transporte de Passageiros",
     "Curso de Motorista de Ambulância", "Capacitação sobre Procedimento Operacional",
     "Poda e Manejo Vegetal", "Operação de Martelete", "Operação de Máquinas",
+  ];
+
+  const DOCUMENTOS_LISTA = [
+    "Ordem de Serviço",
+    "Ficha de EPI",
+    "ASO",
+    "Ficha de Registro do Empregado",
+    "Termo de Anuência - NR10",
+    "Termo de Anuência - NR12",
+    "Termo de Anuência - NR33",
+    "Termo de Anuência - NR35",
+    "Anuência da Empresa (Condução de Veículo)",
+    "Registro no Conselho de Classe",
+    "Certificado de Treinamento",
+    "Comprovante de Escolaridade",
+    "Licença de Porte e Uso - LPU",
+    "Procedimento Operacional",
+    "Procedimento Seg. Máq. e Equipamentos",
   ];
 
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -551,13 +570,30 @@ export default function Treinamentos() {
             </div>
 
             <div>
-              <Label>Documento Pendente</Label>
-              <Input
-                placeholder="Ex: NR-10 E SEP / CEPI / OS..."
-                value={form.documento_pendente}
-                onChange={e => setForm({ ...form, documento_pendente: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground mt-1">Informe documentos ou cursos pendentes para este funcionário</p>
+              <Label className="mb-2 block">Documentos Pendentes</Label>
+              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto grid grid-cols-1 gap-2 bg-muted/30">
+                {DOCUMENTOS_LISTA.map(doc => {
+                  const docs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
+                  const checked = docs.includes(doc);
+                  return (
+                    <label key={doc} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const updated = v ? [...docs, doc] : docs.filter(d => d !== doc);
+                          setForm({ ...form, documento_pendente: updated.join(" | ") });
+                        }}
+                      />
+                      <span>{doc}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {form.documento_pendente && (
+                <p className="text-xs text-orange-600 mt-1 font-medium">
+                  Selecionados: {form.documento_pendente.split(" | ").filter(Boolean).length} documento(s)
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
