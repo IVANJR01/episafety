@@ -21,6 +21,7 @@ interface ControleTreinamento {
   nome_curso: string;
   data_realizacao: string;
   data_renovacao: string | null;
+  documento_pendente: string | null;
   empresa_id: string | null;
   created_by: string | null;
 }
