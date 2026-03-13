@@ -22,6 +22,7 @@ export const MODULOS = [
   { key: "cadastro_usuarios", label: "Cadastro → Usuários Liberados", path: "/cadastro/usuarios" },
   { key: "dds", label: "Lista de Presença", path: "/dds" },
   { key: "inspecoes_se", label: "Inspeções SE", path: "/inspecoes-se" },
+  { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
 ] as const;
 
 /**
