@@ -975,12 +975,13 @@ export default function Treinamentos() {
                       setCursoSearch(e.target.value);
                       const newRenovacao = calcularRenovacao(e.target.value, form.data_realizacao);
                       setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
-                      setShowCursoList(true);
+                      setShowCursoList(e.target.value.trim().length > 0);
                     }}
+                    onBlur={() => setTimeout(() => setShowCursoList(false), 200)}
                     className="pl-9"
                   />
                 </div>
-                {showCursoList && (
+                {showCursoList && cursoSearch.trim() && (
                   <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
                     {filteredCursos.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-2 text-center">Nenhuma sugestão — use o texto digitado</p>
