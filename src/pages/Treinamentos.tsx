@@ -100,6 +100,24 @@ export default function Treinamentos() {
     "Poda e Manejo Vegetal", "Operação de Martelete", "Operação de Máquinas",
   ];
 
+  const DOCUMENTOS_LISTA = [
+    "Ordem de Serviço",
+    "Ficha de EPI",
+    "ASO",
+    "Ficha de Registro do Empregado",
+    "Termo de Anuência - NR10",
+    "Termo de Anuência - NR12",
+    "Termo de Anuência - NR33",
+    "Termo de Anuência - NR35",
+    "Anuência da Empresa (Condução de Veículo)",
+    "Registro no Conselho de Classe",
+    "Certificado de Treinamento",
+    "Comprovante de Escolaridade",
+    "Licença de Porte e Uso - LPU",
+    "Procedimento Operacional",
+    "Procedimento Seg. Máq. e Equipamentos",
+  ];
+
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const filteredFuncionarios = useMemo(() => {
