@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -157,6 +157,34 @@ export default function Treinamentos() {
           <p className="text-muted-foreground text-sm mt-1">Acompanhamento de capacitações e reciclagens</p>
         </div>
         <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Adicionar Novo</Button>
+      </div>
+
+      {/* Indicadores */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+        <Card>
+          <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="p-2 rounded-xl bg-muted text-primary"><GraduationCap className="w-5 h-5" /></div>
+            <div><p className="text-xl font-bold">{items.length}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Total</p></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="p-2 rounded-xl bg-red-100 text-red-700"><AlertTriangle className="w-5 h-5" /></div>
+            <div><p className="text-xl font-bold">{items.filter(t => getStatus(t.data_renovacao).key === "vencido").length}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Vencidos</p></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="p-2 rounded-xl bg-yellow-100 text-yellow-700"><Clock className="w-5 h-5" /></div>
+            <div><p className="text-xl font-bold">{items.filter(t => getStatus(t.data_renovacao).key === "atencao").length}</p><p className="text-[10px] sm:text-xs text-muted-foreground">A Vencer</p></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+            <div className="p-2 rounded-xl bg-green-100 text-green-700"><CheckCircle className="w-5 h-5" /></div>
+            <div><p className="text-xl font-bold">{items.filter(t => getStatus(t.data_renovacao).key === "vigente").length}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Vigentes</p></div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
