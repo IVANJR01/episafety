@@ -798,7 +798,7 @@ export default function Treinamentos() {
         <DialogContent className={multiMode && !editing ? "max-w-3xl max-h-[90vh] overflow-y-auto" : "max-w-lg max-h-[85vh] overflow-y-auto"}>
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Editar Treinamento" : multiMode ? "Adicionar Vários Cursos" : "Adicionar Novo Treinamento"}
+              {editing ? "Editar Treinamento" : multiMode ? "Adicionar Vários Documentos" : "Adicionar Novo Treinamento"}
             </DialogTitle>
           </DialogHeader>
 
