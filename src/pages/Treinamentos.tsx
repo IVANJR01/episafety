@@ -273,6 +273,47 @@ export default function Treinamentos() {
     fetchData();
   };
 
+  const handleSaveMulti = async () => {
+    if (!multiFuncId) {
+      toast({ title: "Selecione o funcionário", variant: "destructive" });
+      return;
+    }
+    const validCursos = multiCursos.filter(c => c.nome_curso.trim());
+    if (validCursos.length === 0) {
+      toast({ title: "Adicione pelo menos um curso", variant: "destructive" });
+      return;
+    }
+    setSavingMulti(true);
+    const payloads = validCursos.map(c => ({
+      funcionario_id: multiFuncId,
+      nome_curso: c.nome_curso,
+      data_realizacao: c.data_realizacao,
+      data_renovacao: c.data_renovacao || null,
+      documento_pendente: c.documento_pendente || null,
+      empresa_id: empresaId,
+    }));
+    const { error } = await (supabase.from as any)("controle_treinamentos").insert(payloads);
+    setSavingMulti(false);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Sucesso!", description: `${validCursos.length} curso(s) cadastrado(s)` });
+    setOpen(false);
+    fetchData();
+  };
+
+  const updateMultiCurso = (idx: number, updates: Partial<CursoEntry>) => {
+    setMultiCursos(prev => prev.map((c, i) => i === idx ? { ...c, ...updates } : c));
+  };
+
+  const filteredMultiFuncionarios = useMemo(() => {
+    if (!multiFuncSearch.trim()) return funcionarios;
+    const q = normalize(multiFuncSearch);
+    return funcionarios.filter(f =>
+      normalize(f.nome).includes(q) ||
+      (f.matricula && f.matricula.toLowerCase().includes(q)) ||
+      (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
+    );
+  }, [funcionarios, multiFuncSearch]);
+
   const handleDelete = async (id: string) => {
     await (supabase.from as any)("controle_treinamentos").delete().eq("id", id);
     fetchData();
