@@ -419,7 +419,7 @@ export default function Treinamentos() {
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
                 ) : filtered.map(t => {
                   const func = funcMap[t.funcionario_id];
                   const status = getStatus(t.data_renovacao);
@@ -441,6 +441,15 @@ export default function Treinamentos() {
                         >
                           {status.label}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {t.documento_pendente ? (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                            <FileWarning className="w-3 h-3 mr-1" />{t.documento_pendente}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
