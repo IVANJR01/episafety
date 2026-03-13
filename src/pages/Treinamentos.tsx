@@ -510,7 +510,7 @@ export default function Treinamentos() {
               <Download className="w-4 h-4 mr-2" />Exportar
             </Button>
             <Button variant="outline" onClick={openNewMulti} className="border-primary/30 hover:bg-primary/10">
-              <Plus className="w-4 h-4 mr-2" />Adicionar Vários Cursos
+              <Plus className="w-4 h-4 mr-2" />Adicionar Vários Documentos
             </Button>
             <Button onClick={openNew} className="shadow-lg shadow-primary/25">
               <Plus className="w-4 h-4 mr-2" />Adicionar Novo
