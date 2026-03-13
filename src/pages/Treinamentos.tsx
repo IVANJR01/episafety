@@ -933,6 +933,7 @@ export default function Treinamentos() {
                     placeholder="Pesquisar por nome, matrícula ou CPF..."
                     value={funcSearch}
                     onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); }}
+                    onFocus={() => { if (!form.funcionario_id) setFuncSearch(funcSearch || " "); if (funcSearch === " ") setFuncSearch(""); }}
                     className="pl-9"
                   />
                 </div>
