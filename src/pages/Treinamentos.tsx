@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { differenceInDays, format, parseISO } from "date-fns";
 import * as XLSX from "xlsx";
@@ -116,7 +118,21 @@ export default function Treinamentos() {
     "Licença de Porte e Uso - LPU",
     "Procedimento Operacional",
     "Procedimento Seg. Máq. e Equipamentos",
+    "Edital",
+    "CTPS Digital",
+    "CNH (Categoria)",
+    "Declaração de Saúde",
+    "Termo de Responsabilidade",
+    "Contrato de Trabalho",
+    "Comprovante de Residência",
+    "Certidão Negativa",
+    "Laudo Técnico",
+    "PGR / PCMSO",
+    "PPRA",
+    "LTCAT",
   ];
+
+  const [docPopoverOpen, setDocPopoverOpen] = useState(false);
 
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -571,28 +587,64 @@ export default function Treinamentos() {
 
             <div>
               <Label className="mb-2 block">Documentos Pendentes</Label>
-              <div className="border rounded-lg p-3 max-h-48 overflow-y-auto grid grid-cols-1 gap-2 bg-muted/30">
-                {DOCUMENTOS_LISTA.map(doc => {
-                  const docs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
-                  const checked = docs.includes(doc);
-                  return (
-                    <label key={doc} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={(v) => {
-                          const updated = v ? [...docs, doc] : docs.filter(d => d !== doc);
+              <Popover open={docPopoverOpen} onOpenChange={setDocPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={docPopoverOpen} className="w-full justify-between h-auto min-h-10 font-normal">
+                    <span className="text-sm text-muted-foreground truncate">
+                      {form.documento_pendente
+                        ? `${form.documento_pendente.split(" | ").filter(Boolean).length} documento(s) selecionado(s)`
+                        : "Selecione os documentos pendentes..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Pesquisar documento..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum documento encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {DOCUMENTOS_LISTA.map(doc => {
+                          const docs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
+                          const isSelected = docs.includes(doc);
+                          return (
+                            <CommandItem
+                              key={doc}
+                              value={doc}
+                              onSelect={() => {
+                                const currentDocs = form.documento_pendente ? form.documento_pendente.split(" | ").filter(Boolean) : [];
+                                const updated = isSelected
+                                  ? currentDocs.filter(d => d !== doc)
+                                  : [...currentDocs, doc];
+                                setForm({ ...form, documento_pendente: updated.join(" | ") });
+                              }}
+                            >
+                              <Check className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                              {doc}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              {form.documento_pendente && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {form.documento_pendente.split(" | ").filter(Boolean).map(doc => (
+                    <Badge key={doc} variant="secondary" className="text-xs gap-1">
+                      {doc}
+                      <X
+                        className="h-3 w-3 cursor-pointer hover:text-destructive"
+                        onClick={() => {
+                          const updated = form.documento_pendente.split(" | ").filter(Boolean).filter(d => d !== doc);
                           setForm({ ...form, documento_pendente: updated.join(" | ") });
                         }}
                       />
-                      <span>{doc}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              {form.documento_pendente && (
-                <p className="text-xs text-orange-600 mt-1 font-medium">
-                  Selecionados: {form.documento_pendente.split(" | ").filter(Boolean).length} documento(s)
-                </p>
+                    </Badge>
+                  ))}
+                </div>
               )}
             </div>
           </div>
