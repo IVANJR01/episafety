@@ -413,6 +413,7 @@ export default function Treinamentos() {
                   <TableHead>Data Realização</TableHead>
                   <TableHead>Renovação</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Doc. Pendente</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
