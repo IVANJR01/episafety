@@ -136,6 +136,44 @@ export type Database = {
           },
         ]
       }
+      cursos_documentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+          updated_at: string
+          validade_meses: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+          validade_meses?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+          validade_meses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cursos_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dds: {
         Row: {
           created_at: string
