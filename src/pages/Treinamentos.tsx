@@ -122,7 +122,7 @@ export default function Treinamentos() {
   }, [dbCursos]);
 
   const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
-    const meses = mergedCursosValidade[curso];
+    const meses = cursosValidade[curso];
     if (meses === undefined || meses === 0 || !dataRealizacao) return "";
     const data = parseISO(dataRealizacao);
     const renovacao = new Date(data);
@@ -907,8 +907,8 @@ export default function Treinamentos() {
                           <div>
                             <Label className="text-xs">Data Renovação</Label>
                             <Input type="date" value={curso.data_renovacao} onChange={e => updateMultiCurso(idx, { data_renovacao: e.target.value })} />
-                            {curso.nome_curso && mergedCursosValidade[curso.nome_curso] !== undefined && mergedCursosValidade[curso.nome_curso] > 0 && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {mergedCursosValidade[curso.nome_curso]} meses</p>
+                            {curso.nome_curso && cursosValidade[curso.nome_curso] !== undefined && cursosValidade[curso.nome_curso] > 0 && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {cursosValidade[curso.nome_curso]} meses</p>
                             )}
                           </div>
                         </div>
@@ -1011,10 +1011,10 @@ export default function Treinamentos() {
                 <div>
                   <Label>Data de Renovação/Reciclagem</Label>
                   <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
-                  {form.nome_curso && mergedCursosValidade[form.nome_curso] !== undefined && (
+                  {form.nome_curso && cursosValidade[form.nome_curso] !== undefined && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      ⏱ Validade: {mergedCursosValidade[form.nome_curso] === 0 ? "Sem renovação" : `${mergedCursosValidade[form.nome_curso]} meses`}
-                      {mergedCursosValidade[form.nome_curso] > 0 && " (calculado automaticamente)"}
+                      ⏱ Validade: {cursosValidade[form.nome_curso] === 0 ? "Sem renovação" : `${cursosValidade[form.nome_curso]} meses`}
+                      {cursosValidade[form.nome_curso] > 0 && " (calculado automaticamente)"}
                     </p>
                   )}
                 </div>
