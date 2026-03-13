@@ -933,8 +933,9 @@ export default function Treinamentos() {
                   <Input
                     placeholder="Pesquisar por nome, matrícula ou CPF..."
                     value={funcSearch}
-                    onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); }}
-                    onFocus={() => { if (!form.funcionario_id) setFuncSearch(funcSearch || " "); if (funcSearch === " ") setFuncSearch(""); }}
+                    onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); setShowFuncList(true); }}
+                    onFocus={() => { if (!form.funcionario_id) setShowFuncList(true); }}
+                    onBlur={() => setTimeout(() => setShowFuncList(false), 200)}
                     className="pl-9"
                   />
                 </div>
@@ -943,7 +944,7 @@ export default function Treinamentos() {
                     ✓ {funcMap[form.funcionario_id]?.nome}
                   </div>
                 )}
-                {!form.funcionario_id && (funcSearch !== undefined) && (
+                {!form.funcionario_id && showFuncList && (
                   <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
                     {filteredFuncionarios.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
@@ -952,7 +953,7 @@ export default function Treinamentos() {
                         key={f.id}
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
-                        onClick={() => { setForm({ ...form, funcionario_id: f.id }); setFuncSearch(f.nome); }}
+                        onClick={() => { setForm({ ...form, funcionario_id: f.id }); setFuncSearch(f.nome); setShowFuncList(false); }}
                       >
                         <span className="font-medium">{f.nome}</span>
                         <span className="text-xs text-muted-foreground">{f.cargo || ""} {f.matricula ? `• ${f.matricula}` : ""}</span>
