@@ -110,47 +110,15 @@ export default function Treinamentos() {
     return m;
   }, [funcionarios]);
 
-  // Mapeamento curso → validade em meses
-  const CURSOS_VALIDADE: Record<string, number> = {
-    "NR-10 Básico": 24,
-    "NR-10 Complementar (SEP)": 24,
-    "NR-12": 24,
-    "NR-17 - Transporte Manual de Carga": 24,
-    "NR-18 - Integração": 6,
-    "NR-20": 12,
-    "NR-33": 12,
-    "NR-35": 24,
-    "POP 00": 12,
-    "POP 05": 12,
-    "Treinamento Inicial": 0,
-    "Guardião da Vida": 12,
-    "Direção Defensiva": 12,
-    "Liderança": 24,
-    "Sinaleiro / Amarrador de Carga": 12,
-    "Cargas Indivisíveis": 12,
-    "Operador Guindaste": 12,
-    "Operador Guindauto": 12,
-    "Operação de Cesto Aéreo/Acoplado": 12,
-    "Operação de Motosserra": 12,
-    "Montagem Eletromecânica SE": 24,
-    "Curso de Transporte de Passageiros": 12,
-    "Curso de Motorista de Ambulância": 12,
-    "Capacitação sobre Procedimento Operacional": 12,
-    "Poda e Manejo Vegetal": 12,
-    "Operação de Martelete": 12,
-    "Operação de Máquinas": 12,
-  };
-
-  // Merge hardcoded + DB courses (DB overrides hardcoded)
-  const mergedCursosValidade = useMemo(() => {
-    const merged = { ...CURSOS_VALIDADE };
-    dbCursos.forEach(c => { merged[c.nome] = c.validade_meses; });
-    return merged;
+  // Cursos do banco de dados (editáveis no sub-módulo)
+  const cursosValidade = useMemo(() => {
+    const m: Record<string, number> = {};
+    dbCursos.forEach(c => { m[c.nome] = c.validade_meses; });
+    return m;
   }, [dbCursos]);
 
   const CURSOS_SUGERIDOS = useMemo(() => {
-    const allNames = new Set([...Object.keys(CURSOS_VALIDADE), ...dbCursos.map(c => c.nome)]);
-    return Array.from(allNames).sort();
+    return dbCursos.map(c => c.nome).sort();
   }, [dbCursos]);
 
   const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
