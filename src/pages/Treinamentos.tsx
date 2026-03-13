@@ -811,6 +811,11 @@ export default function Treinamentos() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* === ABA CADASTRO DE CURSOS === */}
+        <TabsContent value="cadastro">
+          <CadastroCursos onUpdate={fetchCursosDB} />
+        </TabsContent>
       </Tabs>
 
       {/* Modal */}
