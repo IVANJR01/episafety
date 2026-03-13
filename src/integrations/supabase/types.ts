@@ -82,6 +82,57 @@ export type Database = {
           },
         ]
       }
+      controle_treinamentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_realizacao: string
+          data_renovacao: string | null
+          empresa_id: string | null
+          funcionario_id: string
+          id: string
+          nome_curso: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_realizacao?: string
+          data_renovacao?: string | null
+          empresa_id?: string | null
+          funcionario_id: string
+          id?: string
+          nome_curso: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_realizacao?: string
+          data_renovacao?: string | null
+          empresa_id?: string | null
+          funcionario_id?: string
+          id?: string
+          nome_curso?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "controle_treinamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "controle_treinamentos_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dds: {
         Row: {
           created_at: string

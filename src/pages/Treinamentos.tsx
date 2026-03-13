@@ -1,101 +1,179 @@
-import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Pencil, Trash2, Search, GraduationCap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { differenceInDays, format, parseISO } from "date-fns";
 
-interface Treinamento {
-  id: string; nome: string; descricao: string | null; instrutor: string | null;
-  data: string; carga_horaria: number; validade: string | null; status: string;
+interface ControleTreinamento {
+  id: string;
+  funcionario_id: string;
+  nome_curso: string;
+  data_realizacao: string;
+  data_renovacao: string | null;
+  empresa_id: string | null;
+  created_by: string | null;
 }
-interface Funcionario { id: string; nome: string; setor: string | null; }
-interface Participante { id: string; treinamento_id: string; funcionario_id: string; }
 
-const statusConfig: Record<string, { label: string; variant: "outline" | "default" | "destructive" }> = {
-  agendado: { label: "Agendado", variant: "outline" },
-  realizado: { label: "Realizado", variant: "default" },
-  cancelado: { label: "Cancelado", variant: "destructive" },
-};
+interface Funcionario {
+  id: string;
+  nome: string;
+  cargo: string | null;
+}
+
+type StatusFilter = "todos" | "vencido" | "atencao" | "vigente";
+
+function getStatus(dataRenovacao: string | null): { label: string; variant: "destructive" | "outline" | "default"; key: string } {
+  if (!dataRenovacao) return { label: "Sem renovação", variant: "outline", key: "vigente" };
+  const hoje = new Date();
+  const renovacao = parseISO(dataRenovacao);
+  const dias = differenceInDays(renovacao, hoje);
+  if (dias < 0) return { label: "🔴 Vencido", variant: "destructive", key: "vencido" };
+  if (dias <= 60) return { label: "🟡 Atenção", variant: "outline", key: "atencao" };
+  return { label: "🟢 Vigente", variant: "default", key: "vigente" };
+}
+
+function statusOrder(dataRenovacao: string | null): number {
+  const s = getStatus(dataRenovacao);
+  if (s.key === "vencido") return 0;
+  if (s.key === "atencao") return 1;
+  return 2;
+}
 
 export default function Treinamentos() {
-  const { data: items, loading, update, remove, refetch } = useSupabaseCrud<Treinamento>("treinamentos", "created_at");
-  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
-  const [participantes, setParticipantes] = useState<Participante[]>([]);
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Treinamento | null>(null);
-  const [form, setForm] = useState({ nome: "", descricao: "", instrutor: "", data: new Date().toISOString().split("T")[0], carga_horaria: 1, validade: "", status: "agendado" });
-  const [selectedParticipantes, setSelectedParticipantes] = useState<string[]>([]);
+  const { empresaId } = useAuth();
   const { toast } = useToast();
-
-  useState(() => {
-    (supabase.from as any)("treinamento_participantes").select("*").then(({ data }: any) => {
-      if (data) setParticipantes(data);
-    });
+  const [items, setItems] = useState<ControleTreinamento[]>([]);
+  const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ControleTreinamento | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [form, setForm] = useState({
+    funcionario_id: "",
+    nome_curso: "",
+    data_realizacao: new Date().toISOString().split("T")[0],
+    data_renovacao: "",
   });
 
-  const openNew = () => { setEditing(null); setForm({ nome: "", descricao: "", instrutor: "", data: new Date().toISOString().split("T")[0], carga_horaria: 1, validade: "", status: "agendado" }); setSelectedParticipantes([]); setOpen(true); };
-  const openEdit = (t: Treinamento) => {
-    setEditing(t);
-    setForm({ nome: t.nome, descricao: t.descricao || "", instrutor: t.instrutor || "", data: t.data, carga_horaria: t.carga_horaria, validade: t.validade || "", status: t.status });
-    setSelectedParticipantes(participantes.filter(p => p.treinamento_id === t.id).map(p => p.funcionario_id));
+  const fetchData = async () => {
+    setLoading(true);
+    const [{ data: treinos }, { data: funcs }] = await Promise.all([
+      (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
+      supabase.from("funcionarios").select("id, nome, cargo"),
+    ]);
+    if (treinos) setItems(treinos);
+    if (funcs) setFuncionarios(funcs);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const funcMap = useMemo(() => {
+    const m: Record<string, Funcionario> = {};
+    funcionarios.forEach(f => { m[f.id] = f; });
+    return m;
+  }, [funcionarios]);
+
+  const filtered = useMemo(() => {
+    let list = [...items];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(t => {
+        const func = funcMap[t.funcionario_id];
+        return (func?.nome || "").toLowerCase().includes(q) || t.nome_curso.toLowerCase().includes(q);
+      });
+    }
+    if (statusFilter !== "todos") {
+      list = list.filter(t => getStatus(t.data_renovacao).key === statusFilter);
+    }
+    list.sort((a, b) => statusOrder(a.data_renovacao) - statusOrder(b.data_renovacao));
+    return list;
+  }, [items, search, statusFilter, funcMap]);
+
+  const openNew = () => {
+    setEditing(null);
+    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "" });
     setOpen(true);
   };
 
-  const toggleParticipante = (funcId: string) => {
-    setSelectedParticipantes(prev => prev.includes(funcId) ? prev.filter(p => p !== funcId) : [...prev, funcId]);
+  const openEdit = (t: ControleTreinamento) => {
+    setEditing(t);
+    setForm({
+      funcionario_id: t.funcionario_id,
+      nome_curso: t.nome_curso,
+      data_realizacao: t.data_realizacao,
+      data_renovacao: t.data_renovacao || "",
+    });
+    setOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.nome.trim()) return;
-    const data = { nome: form.nome, descricao: form.descricao || null, instrutor: form.instrutor || null, data: form.data, carga_horaria: form.carga_horaria, validade: form.validade || null, status: form.status };
+    if (!form.funcionario_id || !form.nome_curso.trim()) {
+      toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+      return;
+    }
+    const payload = {
+      funcionario_id: form.funcionario_id,
+      nome_curso: form.nome_curso,
+      data_realizacao: form.data_realizacao,
+      data_renovacao: form.data_renovacao || null,
+      empresa_id: empresaId,
+    };
 
-    let treinamentoId: string;
     if (editing) {
-      await update(editing.id, data);
-      treinamentoId = editing.id;
-      await (supabase.from as any)("treinamento_participantes").delete().eq("treinamento_id", treinamentoId);
-    } else {
-      const { data: inserted, error } = await (supabase.from as any)("treinamentos").insert(data).select().single();
+      const { error } = await (supabase.from as any)("controle_treinamentos").update(payload).eq("id", editing.id);
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
-      treinamentoId = inserted.id;
+    } else {
+      const { error } = await (supabase.from as any)("controle_treinamentos").insert(payload);
+      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     }
-
-    if (selectedParticipantes.length > 0) {
-      await (supabase.from as any)("treinamento_participantes").insert(
-        selectedParticipantes.map(fid => ({ treinamento_id: treinamentoId, funcionario_id: fid }))
-      );
-    }
-
-    await refetch();
-    const { data: p } = await (supabase.from as any)("treinamento_participantes").select("*");
-    if (p) setParticipantes(p);
     setOpen(false);
+    fetchData();
   };
 
   const handleDelete = async (id: string) => {
-    await remove(id);
-    const { data: p } = await (supabase.from as any)("treinamento_participantes").select("*");
-    if (p) setParticipantes(p);
+    await (supabase.from as any)("controle_treinamentos").delete().eq("id", id);
+    fetchData();
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Treinamentos</h1>
-          <p className="text-muted-foreground text-sm mt-1">Capacitações e exercícios simulados</p>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <GraduationCap className="w-6 h-6 text-primary" />
+            Controle de Treinamentos
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">Acompanhamento de capacitações e reciclagens</p>
         </div>
-        <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Treinamento</Button>
+        <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Adicionar Novo</Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Pesquisar por nome ou curso..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Ver todos</SelectItem>
+            <SelectItem value="vencido">🔴 Vencidos</SelectItem>
+            <SelectItem value="atencao">🟡 A vencer</SelectItem>
+            <SelectItem value="vigente">🟢 Vigentes</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -106,77 +184,83 @@ export default function Treinamentos() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Instrutor</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Carga Horária</TableHead>
-                  <TableHead>Participantes</TableHead>
+                  <TableHead>Nome Completo</TableHead>
+                  <TableHead>Função</TableHead>
+                  <TableHead>Nome do Curso</TableHead>
+                  <TableHead>Data Realização</TableHead>
+                  <TableHead>Renovação</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.length === 0 ? (
+                {filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
-                ) : items.map(t => (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-medium">{t.nome}</TableCell>
-                    <TableCell>{t.instrutor || "—"}</TableCell>
-                    <TableCell className="font-mono text-xs">{t.data}</TableCell>
-                    <TableCell>{t.carga_horaria}h</TableCell>
-                    <TableCell className="font-mono text-xs">{participantes.filter(p => p.treinamento_id === t.id).length}</TableCell>
-                    <TableCell><Badge variant={statusConfig[t.status]?.variant || "outline"}>{statusConfig[t.status]?.label || t.status}</Badge></TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 justify-end">
-                        <Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="w-3.5 h-3.5" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(t.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                ) : filtered.map(t => {
+                  const func = funcMap[t.funcionario_id];
+                  const status = getStatus(t.data_renovacao);
+                  return (
+                    <TableRow key={t.id}>
+                      <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
+                      <TableCell>{func?.cargo || "—"}</TableCell>
+                      <TableCell>{t.nome_curso}</TableCell>
+                      <TableCell className="font-mono text-xs">{format(parseISO(t.data_realizacao), "dd/MM/yyyy")}</TableCell>
+                      <TableCell className="font-mono text-xs">{t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={status.variant}
+                          className={
+                            status.key === "vencido" ? "bg-red-100 text-red-800 border-red-200" :
+                            status.key === "atencao" ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                            "bg-green-100 text-green-800 border-green-200"
+                          }
+                        >
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 justify-end">
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(t)}><Pencil className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => handleDelete(t.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
 
+      {/* Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Editar Treinamento" : "Novo Treinamento"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{editing ? "Editar Treinamento" : "Adicionar Novo Treinamento"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
-            <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="Ex: NR-35 Trabalho em Altura" /></div>
-            <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Descrição do treinamento" /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Instrutor</Label><Input value={form.instrutor} onChange={e => setForm({...form, instrutor: e.target.value})} placeholder="Nome do instrutor" /></div>
-              <div><Label>Carga Horária (h)</Label><Input type="number" min={1} value={form.carga_horaria} onChange={e => setForm({...form, carga_horaria: Number(e.target.value)})} /></div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Data</Label><Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} /></div>
-              <div><Label>Validade</Label><Input type="date" value={form.validade} onChange={e => setForm({...form, validade: e.target.value})} /></div>
-              <div>
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={v => setForm({...form, status: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="agendado">Agendado</SelectItem>
-                    <SelectItem value="realizado">Realizado</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label>Funcionário *</Label>
+              <Select value={form.funcionario_id} onValueChange={v => setForm({ ...form, funcionario_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione o funcionário" /></SelectTrigger>
+                <SelectContent>
+                  {funcionarios.map(f => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome} {f.cargo ? `— ${f.cargo}` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <Label className="mb-2 block">Participantes</Label>
-              <div className="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-3">
-                {funcionarios.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center">Cadastre funcionários primeiro</p>
-                ) : funcionarios.map(f => (
-                  <label key={f.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={selectedParticipantes.includes(f.id)} onCheckedChange={() => toggleParticipante(f.id)} />
-                    <span>{f.nome}</span>
-                    <span className="text-xs text-muted-foreground ml-auto">{f.setor || ""}</span>
-                  </label>
-                ))}
+              <Label>Nome do Curso *</Label>
+              <Input value={form.nome_curso} onChange={e => setForm({ ...form, nome_curso: e.target.value })} placeholder="Ex: NR-10 SEP, NR-35, POP 001" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Data de Realização</Label>
+                <Input type="date" value={form.data_realizacao} onChange={e => setForm({ ...form, data_realizacao: e.target.value })} />
+              </div>
+              <div>
+                <Label>Data de Renovação/Reciclagem</Label>
+                <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
               </div>
             </div>
           </div>
