@@ -234,8 +234,24 @@ export default function Entregas() {
     let assinaturaColaborador: string | null = null;
 
     if (signInputType === "biometria") {
-      // Mark as biometry collected
-      assinaturaColaborador = "BIOMETRIA_DIGITAL";
+      // Try native biometric auth via Capacitor
+      try {
+        const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
+        await BiometricAuth.authenticate({
+          reason: "Confirme a identidade do colaborador",
+          allowDeviceCredential: true,
+        });
+        assinaturaColaborador = "BIOMETRIA_DIGITAL";
+      } catch (e: any) {
+        // If plugin not available (web), or user cancelled
+        if (e?.message?.includes("not implemented") || e?.code === "PLUGIN_NOT_INSTALLED") {
+          // Web fallback — just confirm manually
+          assinaturaColaborador = "BIOMETRIA_DIGITAL";
+        } else {
+          toast({ title: "Biometria não confirmada", description: e?.message || "Tente novamente", variant: "destructive" });
+          return;
+        }
+      }
     } else {
       assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
       if (!assinaturaColaborador) {
