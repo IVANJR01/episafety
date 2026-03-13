@@ -147,6 +147,7 @@ export default function Treinamentos() {
       nome_curso: t.nome_curso,
       data_realizacao: t.data_realizacao,
       data_renovacao: t.data_renovacao || "",
+      documento_pendente: t.documento_pendente || "",
     });
     const func = funcMap[t.funcionario_id];
     setFuncSearch(func?.nome || "");
