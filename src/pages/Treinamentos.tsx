@@ -212,8 +212,23 @@ export default function Treinamentos() {
 
   const openNew = () => {
     setEditing(null);
+    setMultiMode(false);
     setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
     setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
+    setMultiCursos([emptyCurso()]);
+    setMultiFuncId("");
+    setMultiFuncSearch("");
+    setOpen(true);
+  };
+
+  const openNewMulti = () => {
+    setEditing(null);
+    setMultiMode(true);
+    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
+    setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
+    setMultiCursos([emptyCurso()]);
+    setMultiFuncId("");
+    setMultiFuncSearch("");
     setOpen(true);
   };
 
