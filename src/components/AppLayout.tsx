@@ -21,6 +21,7 @@ const mainNavItems: NavItem[] = [
 const afterCadastroItems: NavItem[] = [
   { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/inspecoes-se", label: "Inspeções", icon: HardHat, moduleKey: "inspecoes_se" },
+  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap, moduleKey: "treinamentos" },
 ];
 
 const cadastroItems: NavItem[] = [
