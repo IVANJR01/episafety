@@ -154,7 +154,7 @@ export default function Treinamentos() {
   }, [dbCursos]);
 
   const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
-    const meses = CURSOS_VALIDADE[curso];
+    const meses = mergedCursosValidade[curso];
     if (meses === undefined || meses === 0 || !dataRealizacao) return "";
     const data = parseISO(dataRealizacao);
     const renovacao = new Date(data);
