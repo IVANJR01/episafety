@@ -110,51 +110,19 @@ export default function Treinamentos() {
     return m;
   }, [funcionarios]);
 
-  // Mapeamento curso → validade em meses
-  const CURSOS_VALIDADE: Record<string, number> = {
-    "NR-10 Básico": 24,
-    "NR-10 Complementar (SEP)": 24,
-    "NR-12": 24,
-    "NR-17 - Transporte Manual de Carga": 24,
-    "NR-18 - Integração": 6,
-    "NR-20": 12,
-    "NR-33": 12,
-    "NR-35": 24,
-    "POP 00": 12,
-    "POP 05": 12,
-    "Treinamento Inicial": 0,
-    "Guardião da Vida": 12,
-    "Direção Defensiva": 12,
-    "Liderança": 24,
-    "Sinaleiro / Amarrador de Carga": 12,
-    "Cargas Indivisíveis": 12,
-    "Operador Guindaste": 12,
-    "Operador Guindauto": 12,
-    "Operação de Cesto Aéreo/Acoplado": 12,
-    "Operação de Motosserra": 12,
-    "Montagem Eletromecânica SE": 24,
-    "Curso de Transporte de Passageiros": 12,
-    "Curso de Motorista de Ambulância": 12,
-    "Capacitação sobre Procedimento Operacional": 12,
-    "Poda e Manejo Vegetal": 12,
-    "Operação de Martelete": 12,
-    "Operação de Máquinas": 12,
-  };
-
-  // Merge hardcoded + DB courses (DB overrides hardcoded)
-  const mergedCursosValidade = useMemo(() => {
-    const merged = { ...CURSOS_VALIDADE };
-    dbCursos.forEach(c => { merged[c.nome] = c.validade_meses; });
-    return merged;
+  // Cursos do banco de dados (editáveis no sub-módulo)
+  const cursosValidade = useMemo(() => {
+    const m: Record<string, number> = {};
+    dbCursos.forEach(c => { m[c.nome] = c.validade_meses; });
+    return m;
   }, [dbCursos]);
 
   const CURSOS_SUGERIDOS = useMemo(() => {
-    const allNames = new Set([...Object.keys(CURSOS_VALIDADE), ...dbCursos.map(c => c.nome)]);
-    return Array.from(allNames).sort();
+    return dbCursos.map(c => c.nome).sort();
   }, [dbCursos]);
 
   const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
-    const meses = mergedCursosValidade[curso];
+    const meses = cursosValidade[curso];
     if (meses === undefined || meses === 0 || !dataRealizacao) return "";
     const data = parseISO(dataRealizacao);
     const renovacao = new Date(data);
@@ -939,8 +907,8 @@ export default function Treinamentos() {
                           <div>
                             <Label className="text-xs">Data Renovação</Label>
                             <Input type="date" value={curso.data_renovacao} onChange={e => updateMultiCurso(idx, { data_renovacao: e.target.value })} />
-                            {curso.nome_curso && mergedCursosValidade[curso.nome_curso] !== undefined && mergedCursosValidade[curso.nome_curso] > 0 && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {mergedCursosValidade[curso.nome_curso]} meses</p>
+                            {curso.nome_curso && cursosValidade[curso.nome_curso] !== undefined && cursosValidade[curso.nome_curso] > 0 && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {cursosValidade[curso.nome_curso]} meses</p>
                             )}
                           </div>
                         </div>
@@ -1043,10 +1011,10 @@ export default function Treinamentos() {
                 <div>
                   <Label>Data de Renovação/Reciclagem</Label>
                   <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
-                  {form.nome_curso && mergedCursosValidade[form.nome_curso] !== undefined && (
+                  {form.nome_curso && cursosValidade[form.nome_curso] !== undefined && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      ⏱ Validade: {mergedCursosValidade[form.nome_curso] === 0 ? "Sem renovação" : `${mergedCursosValidade[form.nome_curso]} meses`}
-                      {mergedCursosValidade[form.nome_curso] > 0 && " (calculado automaticamente)"}
+                      ⏱ Validade: {cursosValidade[form.nome_curso] === 0 ? "Sem renovação" : `${cursosValidade[form.nome_curso]} meses`}
+                      {cursosValidade[form.nome_curso] > 0 && " (calculado automaticamente)"}
                     </p>
                   )}
                 </div>
