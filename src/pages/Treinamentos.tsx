@@ -249,8 +249,8 @@ export default function Treinamentos() {
   };
 
   const handleSave = async () => {
-    if (!form.funcionario_id || !form.nome_curso.trim()) {
-      toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+    if (!form.funcionario_id) {
+      toast({ title: "Selecione o funcionário", variant: "destructive" });
       return;
     }
     const payload = {
