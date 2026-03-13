@@ -323,50 +323,129 @@ export default function Treinamentos() {
     const cursoSet = new Set<string>();
     items.forEach(t => cursoSet.add(t.nome_curso));
     const cursos = Array.from(cursoSet).sort();
-
     const funcIds = Array.from(new Set(items.map(t => t.funcionario_id)));
-    const auditRows: Record<string, any>[] = [];
 
+    // Build worksheet manually for full style control
+    const wb = XLSX.utils.book_new();
+    const wsData: any[][] = [];
+
+    // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, OBSERVAÇÃO, then each course spans 3 cols
+    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "OBSERVAÇÃO"];
+    cursos.forEach(curso => { header1.push(curso, "", ""); });
+    wsData.push(header1);
+
+    // Header row 2: sub-headers under each course
+    const header2: any[] = ["", "", "", "", ""];
+    cursos.forEach(() => { header2.push("ÚLTIMA DATA", "DATA RENOVAÇÃO", "STATUS"); });
+    wsData.push(header2);
+
+    // Data rows
     funcIds.forEach((fid, idx) => {
       const func = funcMap[fid];
       if (!func) return;
       const treinos = items.filter(t => t.funcionario_id === fid);
-      const row: Record<string, any> = {
-        "N°": idx + 1,
-        "NOME": func.nome,
-        "FUNÇÃO": func.cargo || "—",
-        "PENDENTE": "",
-      };
-      const pendentes: string[] = [];
+      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", "—"];
       cursos.forEach(curso => {
         const t = treinos.find(tr => tr.nome_curso === curso);
         if (!t) {
-          row[curso] = "-";
+          row.push("—", "—", "—");
         } else {
           const s = getStatus(t.data_renovacao);
-          if (s.key === "vencido") {
-            row[curso] = t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "VENCIDO";
-            pendentes.push(curso);
-          } else if (s.key === "atencao") {
-            row[curso] = t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "ATENÇÃO";
-          } else {
-            row[curso] = t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "OK";
-          }
+          row.push(
+            t.data_realizacao ? format(parseISO(t.data_realizacao), "dd/MM/yyyy") : "—",
+            t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—",
+            s.key === "vencido" ? "Vencido" : s.key === "atencao" ? "Atenção" : "Válido"
+          );
         }
       });
-      row["PENDENTE"] = pendentes.length > 0 ? pendentes.join(" / ") : "-";
-      auditRows.push(row);
+      wsData.push(row);
     });
 
-    const ws = XLSX.utils.json_to_sheet(auditRows);
-    const colWidths = [{ wch: 5 }, { wch: 35 }, { wch: 22 }, { wch: 30 }];
-    cursos.forEach(() => colWidths.push({ wch: 14 }));
-    ws["!cols"] = colWidths;
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Matriz Treinamentos");
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
 
+    // Merge header cells for course names (row 1)
+    const merges: XLSX.Range[] = [];
+    cursos.forEach((_, i) => {
+      const startCol = 5 + i * 3;
+      merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: startCol + 2 } });
+    });
+    // Merge Nº, COLABORADOR, CPF, FUNÇÃO, OBS across 2 header rows
+    for (let c = 0; c < 5; c++) {
+      merges.push({ s: { r: 0, c }, e: { r: 1, c } });
+    }
+    ws["!merges"] = merges;
+
+    // Column widths
+    const colWidths: { wch: number }[] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 14 }];
+    cursos.forEach(() => { colWidths.push({ wch: 14 }, { wch: 16 }, { wch: 12 }); });
+    ws["!cols"] = colWidths;
+
+    // Apply styles
+    const headerFill = { fgColor: { rgb: "1a365d" } };
+    const headerFont = { bold: true, color: { rgb: "FFFFFF" }, name: "Arial", sz: 10 };
+    const subHeaderFill = { fgColor: { rgb: "2d4a7a" } };
+    const border = {
+      top: { style: "thin", color: { rgb: "CCCCCC" } },
+      bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+      left: { style: "thin", color: { rgb: "CCCCCC" } },
+      right: { style: "thin", color: { rgb: "CCCCCC" } },
+    };
+    const centerAlign = { horizontal: "center", vertical: "center", wrapText: true };
+    const leftAlign = { vertical: "center", wrapText: true };
+
+    const totalCols = 5 + cursos.length * 3;
+    const totalRows = wsData.length;
+
+    for (let R = 0; R < totalRows; R++) {
+      for (let C = 0; C < totalCols; C++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[addr]) ws[addr] = { v: "", t: "s" };
+        const cell = ws[addr];
+        if (!cell.s) cell.s = {};
+
+        cell.s.border = border;
+        cell.s.font = { name: "Arial", sz: 9 };
+
+        if (R === 0) {
+          // Main header row
+          cell.s.fill = headerFill;
+          cell.s.font = headerFont;
+          cell.s.alignment = centerAlign;
+        } else if (R === 1) {
+          // Sub-header row
+          cell.s.fill = subHeaderFill;
+          cell.s.font = { ...headerFont, sz: 9 };
+          cell.s.alignment = centerAlign;
+        } else {
+          // Data rows
+          cell.s.alignment = C <= 1 ? leftAlign : centerAlign;
+
+          // Alternate row bg
+          if (R % 2 === 0) {
+            cell.s.fill = { fgColor: { rgb: "F8F9FA" } };
+          }
+
+          // Color status cells
+          if (C >= 5 && (C - 5) % 3 === 2) {
+            const val = String(cell.v || "");
+            if (val === "Vencido") {
+              cell.s.fill = { fgColor: { rgb: "DC2626" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            } else if (val === "Atenção") {
+              cell.s.fill = { fgColor: { rgb: "F59E0B" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            } else if (val === "Válido") {
+              cell.s.fill = { fgColor: { rgb: "16A34A" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            }
+          }
+        }
+      }
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, "Matriz Treinamentos");
     XLSX.writeFile(wb, `Matriz_Treinamentos_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
-    toast({ title: "Exportado com sucesso!", description: "Planilha com matriz de treinamentos." });
+    toast({ title: "Exportado com sucesso!", description: "Matriz exportada com cores e formatação." });
   };
 
   const totalItems = items.length;
