@@ -28,7 +28,7 @@ interface ControleTreinamento {
 
 interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; }
 
-type StatusFilter = "todos" | "vencido" | "atencao" | "vigente";
+type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
 
 function getStatus(dataRenovacao: string | null): { label: string; variant: "destructive" | "outline" | "default"; key: string } {
   if (!dataRenovacao) return { label: "Sem renovação", variant: "outline", key: "vigente" };
