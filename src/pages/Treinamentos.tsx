@@ -467,14 +467,18 @@ export default function Treinamentos() {
       if (!func) return null;
       const treinos = items.filter(t => t.funcionario_id === fid);
       const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
+      const pendentesSet = new Set<string>();
       cursos.forEach(curso => {
         const t = treinos.find(tr => tr.nome_curso === curso);
         if (t) {
           cursoData[curso] = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
+          if (t.documento_pendente) {
+            t.documento_pendente.split(" | ").filter(Boolean).forEach(d => pendentesSet.add(d));
+          }
         }
       });
-      return { func, cursoData };
-    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> }[];
+      return { func, cursoData, pendentes: Array.from(pendentesSet) };
+    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>; pendentes: string[] }[];
 
     return { cursos, rows };
   }, [items, funcMap]);
