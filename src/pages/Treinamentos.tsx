@@ -62,6 +62,7 @@ export default function Treinamentos() {
     nome_curso: "",
     data_realizacao: new Date().toISOString().split("T")[0],
     data_renovacao: "",
+    documento_pendente: "",
   });
   const [funcSearch, setFuncSearch] = useState("");
   const [cursoSearch, setCursoSearch] = useState("");
