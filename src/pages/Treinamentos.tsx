@@ -84,7 +84,37 @@ export default function Treinamentos() {
     return m;
   }, [funcionarios]);
 
-  const filtered = useMemo(() => {
+  const CURSOS_SUGERIDOS = [
+    "NR-10 Básico", "NR-10 Complementar (SEP)", "NR-12", "NR-17 - Transporte Manual de Carga",
+    "NR-18 - Integração", "NR-20", "NR-33", "NR-35",
+    "POP 00", "POP 05", "Treinamento Inicial", "Guardião da Vida",
+    "Direção Defensiva", "Liderança", "Sinaleiro / Amarrador de Carga",
+    "Cargas Indivisíveis", "Operador Guindaste", "Operador Guindauto",
+    "Operação de Cesto Aéreo/Acoplado", "Operação de Motosserra",
+    "Montagem Eletromecânica SE", "Curso de Transporte de Passageiros",
+    "Curso de Motorista de Ambulância", "Capacitação sobre Procedimento Operacional",
+    "Poda e Manejo Vegetal", "Operação de Martelete", "Operação de Máquinas",
+  ];
+
+  const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const filteredFuncionarios = useMemo(() => {
+    if (!funcSearch.trim()) return funcionarios;
+    const q = normalize(funcSearch);
+    return funcionarios.filter(f =>
+      normalize(f.nome).includes(q) ||
+      (f.matricula && f.matricula.toLowerCase().includes(q)) ||
+      (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
+    );
+  }, [funcionarios, funcSearch]);
+
+  const filteredCursos = useMemo(() => {
+    if (!cursoSearch.trim()) return CURSOS_SUGERIDOS;
+    const q = normalize(cursoSearch);
+    return CURSOS_SUGERIDOS.filter(c => normalize(c).includes(q));
+  }, [cursoSearch]);
+
+
     let list = [...items];
     if (search.trim()) {
       const q = search.toLowerCase();
