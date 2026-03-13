@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,12 @@ interface UsuarioLiberado {
   nome: string;
   modulos_permitidos: string[] | null;
   created_at: string;
+  empresa_id: string | null;
+}
+
+interface Empresa {
+  id: string;
+  nome: string;
 }
 
 const ACAO_ICONS: Record<string, string> = {
@@ -27,8 +33,9 @@ const ACAO_ICONS: Record<string, string> = {
 
 export default function UsuariosLiberados() {
   const { toast } = useToast();
-  const { empresaId } = useAuth();
+  const { empresaId, isSuperAdmin } = useAuth();
   const [usuarios, setUsuarios] = useState<UsuarioLiberado[]>([]);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [novoEmail, setNovoEmail] = useState("");
   const [novoNome, setNovoNome] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
@@ -39,7 +46,13 @@ export default function UsuariosLiberados() {
 
   useEffect(() => {
     loadUsuarios();
+    loadEmpresas();
   }, []);
+
+  const loadEmpresas = async () => {
+    const { data } = await supabase.from("empresa_config").select("id, nome").order("nome");
+    if (data) setEmpresas(data);
+  };
 
   const loadUsuarios = async () => {
     const { data } = await (supabase.from as any)("usuarios_liberados")
@@ -47,6 +60,40 @@ export default function UsuariosLiberados() {
       .order("created_at", { ascending: false });
     if (data) setUsuarios(data);
   };
+
+  const empresaMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    empresas.forEach(e => { map[e.id] = e.nome; });
+    return map;
+  }, [empresas]);
+
+  const groupedByEmpresa = useMemo(() => {
+    const groups: { empresaId: string | null; empresaNome: string; users: UsuarioLiberado[] }[] = [];
+    const map = new Map<string, UsuarioLiberado[]>();
+
+    usuarios.forEach(u => {
+      const key = u.empresa_id || "__sem_empresa__";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(u);
+    });
+
+    // Sort: companies with names first, then "sem empresa"
+    const keys = Array.from(map.keys()).sort((a, b) => {
+      if (a === "__sem_empresa__") return 1;
+      if (b === "__sem_empresa__") return -1;
+      return (empresaMap[a] || "").localeCompare(empresaMap[b] || "");
+    });
+
+    keys.forEach(key => {
+      groups.push({
+        empresaId: key === "__sem_empresa__" ? null : key,
+        empresaNome: key === "__sem_empresa__" ? "Sem empresa vinculada" : (empresaMap[key] || "Empresa desconhecida"),
+        users: map.get(key)!,
+      });
+    });
+
+    return groups;
+  }, [usuarios, empresaMap]);
 
   const handleAddUser = async () => {
     if (!novoEmail.trim() || !novaSenha.trim()) {
@@ -78,7 +125,6 @@ export default function UsuariosLiberados() {
         return;
       }
 
-      // Give all permissions by default
       const allPerms = allPermissions();
       const { error } = await (supabase.from as any)("usuarios_liberados").insert({
         email: novoEmail.trim().toLowerCase(),
@@ -141,7 +187,6 @@ export default function UsuariosLiberados() {
         const current = u.modulos_permitidos || [];
         const modulePerms = allActionsForModule(moduleKey);
         const hasAll = modulePerms.every(p => current.includes(p));
-        // Also remove legacy bare key
         const cleaned = current.filter(p => p !== moduleKey && !modulePerms.includes(p));
         if (hasAll) {
           return { ...u, modulos_permitidos: cleaned };
@@ -180,14 +225,118 @@ export default function UsuariosLiberados() {
   };
 
   const getModulePermCount = (perms: string[], moduleKey: string): number => {
-    // Legacy bare key counts as all
     if (perms.includes(moduleKey)) return ACOES.length;
     return ACOES.filter(a => perms.includes(`${moduleKey}:${a.key}`)).length;
   };
 
   const hasModulePerm = (perms: string[], moduleKey: string, action: string): boolean => {
-    if (perms.includes(moduleKey)) return true; // legacy
+    if (perms.includes(moduleKey)) return true;
     return perms.includes(`${moduleKey}:${action}`);
+  };
+
+  const renderUserRow = (u: UsuarioLiberado) => {
+    const isExpanded = expandedId === u.id;
+    const perms = u.modulos_permitidos || [];
+    const totalPerms = MODULOS.reduce((s, m) => s + getModulePermCount(perms, m.key), 0);
+    const maxPerms = MODULOS.length * ACOES.length;
+
+    return (
+      <div key={u.id} className="rounded-lg border bg-card">
+        <div className="flex items-center justify-between p-3">
+          <button
+            className="flex items-center gap-2 flex-1 text-left"
+            onClick={() => setExpandedId(isExpanded ? null : u.id)}
+          >
+            {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            <div>
+              <span className="font-medium text-sm">{u.nome || "—"}</span>
+              <span className="text-muted-foreground text-sm ml-2">{u.email}</span>
+            </div>
+          </button>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground mr-2">
+              {totalPerms}/{maxPerms} permissões
+            </span>
+            <Button variant="ghost" size="icon" onClick={() => handleRemoveUser(u.id)}>
+              <Trash2 className="w-4 h-4 text-destructive" />
+            </Button>
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div className="px-4 pb-4 border-t pt-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Permissões por Módulo</Label>
+              <div className="flex gap-2">
+                <button onClick={() => selectAll(u.id)} className="text-xs text-primary hover:underline">
+                  Selecionar todos
+                </button>
+                <span className="text-muted-foreground text-xs">|</span>
+                <button onClick={() => deselectAll(u.id)} className="text-xs text-muted-foreground hover:underline">
+                  Limpar
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-1">
+                <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
+                {ACOES.map(a => (
+                  <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
+                    {ACAO_ICONS[a.key]} {a.label}
+                  </span>
+                ))}
+              </div>
+
+              {MODULOS.map(mod => {
+                const modulePermCount = getModulePermCount(perms, mod.key);
+                const hasAllModule = modulePermCount === ACOES.length;
+
+                return (
+                  <div
+                    key={mod.key}
+                    className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
+                      modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <label
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() => toggleModuleAll(u.id, mod.key)}
+                    >
+                      <Checkbox
+                        checked={hasAllModule}
+                        className="pointer-events-none"
+                      />
+                      <span className="text-sm font-medium">{mod.label}</span>
+                    </label>
+
+                    {ACOES.map(acao => (
+                      <div key={acao.key} className="flex justify-center">
+                        <Checkbox
+                          checked={hasModulePerm(perms, mod.key, acao.key)}
+                          onCheckedChange={() => togglePerm(u.id, `${mod.key}:${acao.key}`)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <Button
+                size="sm"
+                onClick={() => handleSavePermissions(u.id)}
+                disabled={savingPerms === u.id}
+              >
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+                {savingPerms === u.id ? "Salvando..." : "Salvar Permissões"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -253,113 +402,19 @@ export default function UsuariosLiberados() {
               Nenhum usuário liberado. Qualquer usuário autenticado poderá acessar.
             </p>
           ) : (
-            <div className="space-y-2">
-              {usuarios.map(u => {
-                const isExpanded = expandedId === u.id;
-                const perms = u.modulos_permitidos || [];
-                const totalPerms = MODULOS.reduce((s, m) => s + getModulePermCount(perms, m.key), 0);
-                const maxPerms = MODULOS.length * ACOES.length;
-
-                return (
-                  <div key={u.id} className="rounded-lg border bg-card">
-                    <div className="flex items-center justify-between p-3">
-                      <button
-                        className="flex items-center gap-2 flex-1 text-left"
-                        onClick={() => setExpandedId(isExpanded ? null : u.id)}
-                      >
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                        <div>
-                          <span className="font-medium text-sm">{u.nome || "—"}</span>
-                          <span className="text-muted-foreground text-sm ml-2">{u.email}</span>
-                        </div>
-                      </button>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground mr-2">
-                          {totalPerms}/{maxPerms} permissões
-                        </span>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveUser(u.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="px-4 pb-4 border-t pt-3 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm font-medium">Permissões por Módulo</Label>
-                          <div className="flex gap-2">
-                            <button onClick={() => selectAll(u.id)} className="text-xs text-primary hover:underline">
-                              Selecionar todos
-                            </button>
-                            <span className="text-muted-foreground text-xs">|</span>
-                            <button onClick={() => deselectAll(u.id)} className="text-xs text-muted-foreground hover:underline">
-                              Limpar
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          {/* Header row */}
-                          <div className="grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-1">
-                            <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
-                            {ACOES.map(a => (
-                              <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
-                                {ACAO_ICONS[a.key]} {a.label}
-                              </span>
-                            ))}
-                          </div>
-
-                          {/* Module rows */}
-                          {MODULOS.map(mod => {
-                            const modulePermCount = getModulePermCount(perms, mod.key);
-                            const hasAllModule = modulePermCount === ACOES.length;
-
-                            return (
-                              <div
-                                key={mod.key}
-                                className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
-                                  modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
-                                }`}
-                              >
-                                <label
-                                  className="flex items-center gap-2 cursor-pointer"
-                                  onClick={() => toggleModuleAll(u.id, mod.key)}
-                                >
-                                  <Checkbox
-                                    checked={hasAllModule}
-                                    className="pointer-events-none"
-                                  />
-                                  <span className="text-sm font-medium">{mod.label}</span>
-                                </label>
-
-                                {ACOES.map(acao => (
-                                  <div key={acao.key} className="flex justify-center">
-                                    <Checkbox
-                                      checked={hasModulePerm(perms, mod.key, acao.key)}
-                                      onCheckedChange={() => togglePerm(u.id, `${mod.key}:${acao.key}`)}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        <div className="flex justify-end pt-1">
-                          <Button
-                            size="sm"
-                            onClick={() => handleSavePermissions(u.id)}
-                            disabled={savingPerms === u.id}
-                          >
-                            <Save className="w-3.5 h-3.5 mr-1.5" />
-                            {savingPerms === u.id ? "Salvando..." : "Salvar Permissões"}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+            <div className="space-y-6">
+              {groupedByEmpresa.map(group => (
+                <div key={group.empresaId || "none"} className="space-y-2">
+                  <div className="flex items-center gap-2 pb-1 border-b border-border">
+                    <Building2 className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">{group.empresaNome}</h3>
+                    <span className="text-xs text-muted-foreground">({group.users.length} usuário{group.users.length !== 1 ? "s" : ""})</span>
                   </div>
-                );
-              })}
+                  <div className="space-y-2">
+                    {group.users.map(u => renderUserRow(u))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
