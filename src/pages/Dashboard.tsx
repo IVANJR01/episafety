@@ -20,26 +20,6 @@ export default function Dashboard() {
 
   const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
 
-  const [treinamentos, setTreinamentos] = useState<ControleTreinamento[]>([]);
-  useEffect(() => {
-    (supabase.from as any)("controle_treinamentos").select("id, data_renovacao").then(({ data }: any) => {
-      if (data) setTreinamentos(data);
-    });
-  }, []);
-
-  const treinamentosVencidos = useMemo(() => {
-    const hoje = new Date();
-    return treinamentos.filter(t => t.data_renovacao && differenceInDays(parseISO(t.data_renovacao), hoje) < 0).length;
-  }, [treinamentos]);
-
-  const treinamentosAtencao = useMemo(() => {
-    const hoje = new Date();
-    return treinamentos.filter(t => {
-      if (!t.data_renovacao) return false;
-      const dias = differenceInDays(parseISO(t.data_renovacao), hoje);
-      return dias >= 0 && dias <= 60;
-    }).length;
-  }, [treinamentos]);
 
   // Calculate monthly costs
   const valorEstoqueAtual = useMemo(() => {
