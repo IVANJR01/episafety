@@ -739,7 +739,15 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">{row.func.nome}</td>
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-center text-muted-foreground">—</td>
+                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs">
+                            {row.pendentes.length > 0 ? (
+                              <div className="flex flex-wrap gap-0.5 justify-center">
+                                {row.pendentes.map(d => (
+                                  <Badge key={d} variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">{d}</Badge>
+                                ))}
+                              </div>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </td>
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
                             if (!cd) {
