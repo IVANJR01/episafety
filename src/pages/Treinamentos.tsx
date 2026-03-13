@@ -69,6 +69,7 @@ export default function Treinamentos() {
     documento_pendente: "",
   });
   const [funcSearch, setFuncSearch] = useState("");
+  const [showFuncList, setShowFuncList] = useState(false);
   const [cursoSearch, setCursoSearch] = useState("");
   const [showCursoList, setShowCursoList] = useState(false);
 
