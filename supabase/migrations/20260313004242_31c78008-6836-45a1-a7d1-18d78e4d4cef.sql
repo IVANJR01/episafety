@@ -1,0 +1,1 @@
+ALTER TABLE public.controle_treinamentos ADD COLUMN documento_pendente text DEFAULT null;
