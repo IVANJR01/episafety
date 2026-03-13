@@ -395,6 +395,7 @@ export default function Treinamentos() {
             <SelectItem value="vencido">🔴 Vencidos</SelectItem>
             <SelectItem value="atencao">🟡 A vencer</SelectItem>
             <SelectItem value="vigente">🟢 Vigentes</SelectItem>
+            <SelectItem value="pendente">📄 Doc. Pendentes</SelectItem>
           </SelectContent>
         </Select>
       </div>
