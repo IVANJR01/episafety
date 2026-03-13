@@ -90,17 +90,47 @@ export default function Treinamentos() {
     return m;
   }, [funcionarios]);
 
-  const CURSOS_SUGERIDOS = [
-    "NR-10 Básico", "NR-10 Complementar (SEP)", "NR-12", "NR-17 - Transporte Manual de Carga",
-    "NR-18 - Integração", "NR-20", "NR-33", "NR-35",
-    "POP 00", "POP 05", "Treinamento Inicial", "Guardião da Vida",
-    "Direção Defensiva", "Liderança", "Sinaleiro / Amarrador de Carga",
-    "Cargas Indivisíveis", "Operador Guindaste", "Operador Guindauto",
-    "Operação de Cesto Aéreo/Acoplado", "Operação de Motosserra",
-    "Montagem Eletromecânica SE", "Curso de Transporte de Passageiros",
-    "Curso de Motorista de Ambulância", "Capacitação sobre Procedimento Operacional",
-    "Poda e Manejo Vegetal", "Operação de Martelete", "Operação de Máquinas",
-  ];
+  // Mapeamento curso → validade em meses
+  const CURSOS_VALIDADE: Record<string, number> = {
+    "NR-10 Básico": 24,
+    "NR-10 Complementar (SEP)": 24,
+    "NR-12": 24,
+    "NR-17 - Transporte Manual de Carga": 24,
+    "NR-18 - Integração": 6,
+    "NR-20": 12,
+    "NR-33": 12,
+    "NR-35": 24,
+    "POP 00": 12,
+    "POP 05": 12,
+    "Treinamento Inicial": 0,
+    "Guardião da Vida": 12,
+    "Direção Defensiva": 12,
+    "Liderança": 24,
+    "Sinaleiro / Amarrador de Carga": 12,
+    "Cargas Indivisíveis": 12,
+    "Operador Guindaste": 12,
+    "Operador Guindauto": 12,
+    "Operação de Cesto Aéreo/Acoplado": 12,
+    "Operação de Motosserra": 12,
+    "Montagem Eletromecânica SE": 24,
+    "Curso de Transporte de Passageiros": 12,
+    "Curso de Motorista de Ambulância": 12,
+    "Capacitação sobre Procedimento Operacional": 12,
+    "Poda e Manejo Vegetal": 12,
+    "Operação de Martelete": 12,
+    "Operação de Máquinas": 12,
+  };
+
+  const CURSOS_SUGERIDOS = Object.keys(CURSOS_VALIDADE);
+
+  const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
+    const meses = CURSOS_VALIDADE[curso];
+    if (meses === undefined || meses === 0 || !dataRealizacao) return "";
+    const data = parseISO(dataRealizacao);
+    const renovacao = new Date(data);
+    renovacao.setMonth(renovacao.getMonth() + meses);
+    return format(renovacao, "yyyy-MM-dd");
+  };
 
   const DOCUMENTOS_LISTA = [
     "Ordem de Serviço",
@@ -551,7 +581,12 @@ export default function Treinamentos() {
                 <Input
                   placeholder="Pesquisar ou digitar curso..."
                   value={cursoSearch}
-                  onChange={e => { setCursoSearch(e.target.value); setForm({ ...form, nome_curso: e.target.value }); setShowCursoList(true); }}
+                  onChange={e => {
+                    setCursoSearch(e.target.value);
+                    const newRenovacao = calcularRenovacao(e.target.value, form.data_realizacao);
+                    setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
+                    setShowCursoList(true);
+                  }}
                   onFocus={() => setShowCursoList(true)}
                   className="pl-9"
                 />
@@ -565,7 +600,12 @@ export default function Treinamentos() {
                       key={c}
                       type="button"
                       className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                      onClick={() => { setForm({ ...form, nome_curso: c }); setCursoSearch(c); setShowCursoList(false); }}
+                      onClick={() => {
+                        const newRenovacao = calcularRenovacao(c, form.data_realizacao);
+                        setForm({ ...form, nome_curso: c, data_renovacao: newRenovacao || form.data_renovacao });
+                        setCursoSearch(c);
+                        setShowCursoList(false);
+                      }}
                     >
                       {c}
                     </button>
@@ -577,11 +617,20 @@ export default function Treinamentos() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Data de Realização</Label>
-                <Input type="date" value={form.data_realizacao} onChange={e => setForm({ ...form, data_realizacao: e.target.value })} />
+                <Input type="date" value={form.data_realizacao} onChange={e => {
+                  const newRenovacao = calcularRenovacao(form.nome_curso, e.target.value);
+                  setForm({ ...form, data_realizacao: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
+                }} />
               </div>
               <div>
                 <Label>Data de Renovação/Reciclagem</Label>
                 <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
+                {form.nome_curso && CURSOS_VALIDADE[form.nome_curso] !== undefined && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ⏱ Validade: {CURSOS_VALIDADE[form.nome_curso] === 0 ? "Sem renovação" : `${CURSOS_VALIDADE[form.nome_curso]} meses`}
+                    {CURSOS_VALIDADE[form.nome_curso] > 0 && " (calculado automaticamente)"}
+                  </p>
+                )}
               </div>
             </div>
 
