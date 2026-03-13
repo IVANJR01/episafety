@@ -74,6 +74,14 @@ export default function Treinamentos() {
   const [cursoSearch, setCursoSearch] = useState("");
   const [showCursoList, setShowCursoList] = useState(false);
 
+  // DB-based courses
+  const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
+
+  const fetchCursosDB = useCallback(async () => {
+    const { data } = await (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome");
+    if (data) setDbCursos(data);
+  }, []);
+
   // Multi-course mode
   interface CursoEntry { nome_curso: string; data_realizacao: string; data_renovacao: string; documento_pendente: string; cursoSearch: string; showCursoList: boolean; docPopoverOpen: boolean; }
   const emptyCurso = (): CursoEntry => ({ nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "", cursoSearch: "", showCursoList: false, docPopoverOpen: false });
@@ -94,7 +102,7 @@ export default function Treinamentos() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); fetchCursosDB(); }, [fetchCursosDB]);
 
   const funcMap = useMemo(() => {
     const m: Record<string, Funcionario> = {};
