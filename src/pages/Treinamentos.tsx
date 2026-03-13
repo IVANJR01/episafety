@@ -653,6 +653,7 @@ export default function Treinamentos() {
         <TabsList className="mb-3">
           <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
+          <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
         </TabsList>
 
         {/* === ABA LISTA === */}
