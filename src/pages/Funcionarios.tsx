@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -270,22 +271,41 @@ export default function Funcionarios() {
 
   // Search/filter state
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterSetor, setFilterSetor] = useState("");
 
   const normalize = (str: string) =>
     str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-  const filteredItems = searchTerm.trim()
-    ? items.filter((f: Funcionario) => {
-        const term = normalize(searchTerm);
-        const termDigits = term.replace(/\D/g, "");
+  // Extract unique setores
+  const setores = useMemo(() => {
+    const unique = [...new Set(items.map(f => f.setor).filter(Boolean))] as string[];
+    return unique.sort((a, b) => a.localeCompare(b));
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    let result = items;
+    
+    // Apply setor filter
+    if (filterSetor) {
+      result = result.filter(f => f.setor === filterSetor);
+    }
+    
+    // Apply search
+    if (searchTerm.trim()) {
+      const term = normalize(searchTerm);
+      const termDigits = term.replace(/\D/g, "");
+      result = result.filter((f: Funcionario) => {
         if (normalize(f.nome).includes(term)) return true;
         if (f.cpf && termDigits && f.cpf.replace(/\D/g, "").includes(termDigits)) return true;
         if (f.matricula && normalize(f.matricula).includes(term)) return true;
         if (f.setor && normalize(f.setor).includes(term)) return true;
         if (f.cargo && normalize(f.cargo).includes(term)) return true;
         return false;
-      })
-    : items;
+      });
+    }
+    
+    return result;
+  }, [items, searchTerm, filterSetor]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -311,12 +331,12 @@ export default function Funcionarios() {
         )}
       </div>
 
-      {/* Search bar */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-md">
+      {/* Search bar + Sector filter */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, CPF, matrícula, setor ou cargo..."
+            placeholder="Buscar por nome, CPF, matrícula ou cargo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
@@ -330,8 +350,21 @@ export default function Funcionarios() {
             </button>
           )}
         </div>
+        {setores.length > 0 && (
+          <Select value={filterSetor} onValueChange={v => setFilterSetor(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filtrar por setor..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os setores</SelectItem>
+              {setores.map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {filteredItems.length} de {items.length} funcionário(s)
+          {filteredItems.length} de {items.length}
         </span>
       </div>
 

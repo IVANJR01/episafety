@@ -234,21 +234,52 @@ export default function Entregas() {
     let assinaturaColaborador: string | null = null;
 
     if (signInputType === "biometria") {
-      // Try native biometric auth via Capacitor
       try {
+        // Try Capacitor native biometric first
         const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
         await BiometricAuth.authenticate({
           reason: "Confirme a identidade do colaborador",
           allowDeviceCredential: true,
         });
         assinaturaColaborador = "BIOMETRIA_DIGITAL";
-      } catch (e: any) {
-        // If plugin not available (web), or user cancelled
-        if (e?.message?.includes("not implemented") || e?.code === "PLUGIN_NOT_INSTALLED") {
-          // Web fallback — just confirm manually
-          assinaturaColaborador = "BIOMETRIA_DIGITAL";
+      } catch (capError: any) {
+        // Capacitor not available — try WebAuthn (Touch ID in browser)
+        if (capError?.message?.includes("not implemented") || capError?.code === "PLUGIN_NOT_INSTALLED" || capError?.message?.includes("not available")) {
+          try {
+            if (window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()) {
+              const challenge = new Uint8Array(32);
+              crypto.getRandomValues(challenge);
+              const userId = new Uint8Array(16);
+              crypto.getRandomValues(userId);
+              
+              await navigator.credentials.create({
+                publicKey: {
+                  challenge,
+                  rp: { name: "EPISafety" },
+                  user: { id: userId, name: "colaborador", displayName: "Colaborador" },
+                  pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+                  authenticatorSelection: {
+                    authenticatorAttachment: "platform",
+                    userVerification: "required",
+                  },
+                  timeout: 60000,
+                },
+              });
+              assinaturaColaborador = "BIOMETRIA_DIGITAL";
+            } else {
+              toast({ title: "Biometria não disponível", description: "Este dispositivo não possui sensor biométrico compatível. Use a assinatura manual.", variant: "destructive" });
+              return;
+            }
+          } catch (webAuthErr: any) {
+            if (webAuthErr?.name === "NotAllowedError") {
+              toast({ title: "Biometria cancelada", description: "O colaborador cancelou a autenticação.", variant: "destructive" });
+            } else {
+              toast({ title: "Erro na biometria", description: "Use a assinatura manual como alternativa.", variant: "destructive" });
+            }
+            return;
+          }
         } else {
-          toast({ title: "Biometria não confirmada", description: e?.message || "Tente novamente", variant: "destructive" });
+          toast({ title: "Biometria não confirmada", description: capError?.message || "Tente novamente", variant: "destructive" });
           return;
         }
       }
