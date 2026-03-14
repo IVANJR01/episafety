@@ -270,22 +270,41 @@ export default function Funcionarios() {
 
   // Search/filter state
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterSetor, setFilterSetor] = useState("");
 
   const normalize = (str: string) =>
     str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-  const filteredItems = searchTerm.trim()
-    ? items.filter((f: Funcionario) => {
-        const term = normalize(searchTerm);
-        const termDigits = term.replace(/\D/g, "");
+  // Extract unique setores
+  const setores = useMemo(() => {
+    const unique = [...new Set(items.map(f => f.setor).filter(Boolean))] as string[];
+    return unique.sort((a, b) => a.localeCompare(b));
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    let result = items;
+    
+    // Apply setor filter
+    if (filterSetor) {
+      result = result.filter(f => f.setor === filterSetor);
+    }
+    
+    // Apply search
+    if (searchTerm.trim()) {
+      const term = normalize(searchTerm);
+      const termDigits = term.replace(/\D/g, "");
+      result = result.filter((f: Funcionario) => {
         if (normalize(f.nome).includes(term)) return true;
         if (f.cpf && termDigits && f.cpf.replace(/\D/g, "").includes(termDigits)) return true;
         if (f.matricula && normalize(f.matricula).includes(term)) return true;
         if (f.setor && normalize(f.setor).includes(term)) return true;
         if (f.cargo && normalize(f.cargo).includes(term)) return true;
         return false;
-      })
-    : items;
+      });
+    }
+    
+    return result;
+  }, [items, searchTerm, filterSetor]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
