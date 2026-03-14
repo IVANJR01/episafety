@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search } from "lucide-react";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
