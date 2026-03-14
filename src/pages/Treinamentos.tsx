@@ -31,7 +31,7 @@ interface ControleTreinamento {
   created_by: string | null;
 }
 
-interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; }
+interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; setor: string | null; }
 
 type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
 
