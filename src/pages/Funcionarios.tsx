@@ -330,12 +330,12 @@ export default function Funcionarios() {
         )}
       </div>
 
-      {/* Search bar */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-md">
+      {/* Search bar + Sector filter */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, CPF, matrícula, setor ou cargo..."
+            placeholder="Buscar por nome, CPF, matrícula ou cargo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
@@ -349,8 +349,21 @@ export default function Funcionarios() {
             </button>
           )}
         </div>
+        {setores.length > 0 && (
+          <Select value={filterSetor} onValueChange={v => setFilterSetor(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filtrar por setor..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os setores</SelectItem>
+              {setores.map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {filteredItems.length} de {items.length} funcionário(s)
+          {filteredItems.length} de {items.length}
         </span>
       </div>
 
