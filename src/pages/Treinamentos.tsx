@@ -732,6 +732,7 @@ export default function Treinamentos() {
                     <TableRow>
                       <TableHead>Nome Completo</TableHead>
                       <TableHead>Função</TableHead>
+                      <TableHead>Setor</TableHead>
                       <TableHead>Nome do Curso</TableHead>
                       <TableHead>Data Realização</TableHead>
                       <TableHead>Renovação</TableHead>
@@ -742,7 +743,7 @@ export default function Treinamentos() {
                   </TableHeader>
                   <TableBody>
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
                     ) : filtered.map(t => {
                       const func = funcMap[t.funcionario_id];
                       const status = getStatus(t.data_renovacao);
