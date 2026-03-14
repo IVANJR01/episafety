@@ -751,6 +751,7 @@ export default function Treinamentos() {
                         <TableRow key={t.id}>
                           <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
                           <TableCell>{func?.cargo || "—"}</TableCell>
+                          <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
                           <TableCell>{t.nome_curso}</TableCell>
                           <TableCell className="font-mono text-xs">{format(parseISO(t.data_realizacao), "dd/MM/yyyy")}</TableCell>
                           <TableCell className="font-mono text-xs">{t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
