@@ -810,6 +810,7 @@ export default function Treinamentos() {
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-20 min-w-[180px]">COLABORADOR</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[180px]">PENDENTES</th>
                         {matrixData.cursos.map(curso => (
                           <th key={curso} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
@@ -833,6 +834,7 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">{row.func.nome}</td>
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
+                          <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-center text-xs">
                             {row.pendentes.length > 0 ? (
                               <div className="flex flex-wrap gap-0.5 justify-center">
