@@ -31,7 +31,7 @@ interface ControleTreinamento {
   created_by: string | null;
 }
 
-interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; }
+interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; setor: string | null; }
 
 type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
 
@@ -62,6 +62,7 @@ export default function Treinamentos() {
   const [editing, setEditing] = useState<ControleTreinamento | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [setorFilter, setSetorFilter] = useState("");
   const [form, setForm] = useState({
     funcionario_id: "",
     nome_curso: "",
@@ -95,7 +96,7 @@ export default function Treinamentos() {
     setLoading(true);
     const [{ data: treinos }, { data: funcs }] = await Promise.all([
       (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
-      supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula"),
+      supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
     ]);
     if (treinos) setItems(treinos);
     if (funcs) setFuncionarios(funcs);
@@ -180,8 +181,20 @@ export default function Treinamentos() {
     return CURSOS_SUGERIDOS.filter(c => normalize(c).includes(q));
   }, [cursoSearch]);
 
+  // Unique setores for filter
+  const setoresUnicos = useMemo(() => {
+    const s = new Set<string>();
+    funcionarios.forEach(f => { if (f.setor) s.add(f.setor); });
+    return [...s].sort();
+  }, [funcionarios]);
+
   const filtered = useMemo(() => {
     let list = [...items];
+    // Setor filter
+    if (setorFilter) {
+      const funcIdsInSetor = new Set(funcionarios.filter(f => f.setor === setorFilter).map(f => f.id));
+      list = list.filter(t => funcIdsInSetor.has(t.funcionario_id));
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(t => {
@@ -196,7 +209,7 @@ export default function Treinamentos() {
     }
     list.sort((a, b) => statusOrder(a.data_renovacao) - statusOrder(b.data_renovacao));
     return list;
-  }, [items, search, statusFilter, funcMap]);
+  }, [items, search, statusFilter, funcMap, setorFilter, funcionarios]);
 
   const openNew = () => {
     setEditing(null);
@@ -679,6 +692,15 @@ export default function Treinamentos() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Pesquisar por nome ou curso..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
+        {setoresUnicos.length > 0 && (
+          <Select value={setorFilter || "all"} onValueChange={v => setSetorFilter(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por setor..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os setores</SelectItem>
+              {setoresUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -710,6 +732,7 @@ export default function Treinamentos() {
                     <TableRow>
                       <TableHead>Nome Completo</TableHead>
                       <TableHead>Função</TableHead>
+                      <TableHead>Setor</TableHead>
                       <TableHead>Nome do Curso</TableHead>
                       <TableHead>Data Realização</TableHead>
                       <TableHead>Renovação</TableHead>
@@ -720,7 +743,7 @@ export default function Treinamentos() {
                   </TableHeader>
                   <TableBody>
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
                     ) : filtered.map(t => {
                       const func = funcMap[t.funcionario_id];
                       const status = getStatus(t.data_renovacao);
@@ -728,6 +751,7 @@ export default function Treinamentos() {
                         <TableRow key={t.id}>
                           <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
                           <TableCell>{func?.cargo || "—"}</TableCell>
+                          <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
                           <TableCell>{t.nome_curso}</TableCell>
                           <TableCell className="font-mono text-xs">{format(parseISO(t.data_realizacao), "dd/MM/yyyy")}</TableCell>
                           <TableCell className="font-mono text-xs">{t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
