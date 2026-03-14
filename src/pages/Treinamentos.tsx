@@ -181,8 +181,20 @@ export default function Treinamentos() {
     return CURSOS_SUGERIDOS.filter(c => normalize(c).includes(q));
   }, [cursoSearch]);
 
+  // Unique setores for filter
+  const setoresUnicos = useMemo(() => {
+    const s = new Set<string>();
+    funcionarios.forEach(f => { if (f.setor) s.add(f.setor); });
+    return [...s].sort();
+  }, [funcionarios]);
+
   const filtered = useMemo(() => {
     let list = [...items];
+    // Setor filter
+    if (setorFilter) {
+      const funcIdsInSetor = new Set(funcionarios.filter(f => f.setor === setorFilter).map(f => f.id));
+      list = list.filter(t => funcIdsInSetor.has(t.funcionario_id));
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(t => {
@@ -197,7 +209,7 @@ export default function Treinamentos() {
     }
     list.sort((a, b) => statusOrder(a.data_renovacao) - statusOrder(b.data_renovacao));
     return list;
-  }, [items, search, statusFilter, funcMap]);
+  }, [items, search, statusFilter, funcMap, setorFilter, funcionarios]);
 
   const openNew = () => {
     setEditing(null);
