@@ -62,6 +62,7 @@ export default function Treinamentos() {
   const [editing, setEditing] = useState<ControleTreinamento | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [setorFilter, setSetorFilter] = useState("");
   const [form, setForm] = useState({
     funcionario_id: "",
     nome_curso: "",
