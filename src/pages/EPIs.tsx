@@ -44,6 +44,27 @@ export default function EPIs() {
   const [busca, setBusca] = useState("");
   const { toast } = useToast();
 
+  const [activeTab, setActiveTab] = useState("estoque");
+  const [filtroFunc, setFiltroFunc] = useState("");
+  const [filtroSetor, setFiltroSetor] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+
+  const setores = [...new Set(funcionarios.map(f => f.setor).filter(Boolean))];
+
+  const filteredEntregas = entregas.filter(e => {
+    const func = funcionarios.find(f => f.id === e.funcionario_id);
+    if (filtroFunc && filtroFunc !== "all" && e.funcionario_id !== filtroFunc) return false;
+    if (filtroSetor && filtroSetor !== "all" && func?.setor !== filtroSetor) return false;
+    if (dataInicio && e.data < dataInicio) return false;
+    if (dataFim && e.data > dataFim) return false;
+    return true;
+  });
+
+  const totalItens = filteredEntregas.reduce((a, e) => a + e.quantidade, 0);
+  const byEpi: Record<string, number> = {};
+  filteredEntregas.forEach(e => { byEpi[e.epi_id] = (byEpi[e.epi_id] || 0) + e.quantidade; });
+
   const episFiltrados = epis.filter(e => {
     if (!busca.trim()) return true;
     const termo = busca.toLowerCase();
