@@ -580,7 +580,10 @@ export default function Entregas() {
                       <TableCell>
                         {e.assinatura_colaborador ? (
                           e.assinatura_colaborador === "BIOMETRIA_DIGITAL" || e.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><ScanFace className="w-3.5 h-3.5" />Rec. Facial</span>
+                            <span className="inline-flex items-center gap-1 text-xs text-success font-medium">
+                              <ScanFace className="w-3.5 h-3.5" />Rec. Facial
+                              {(e as any).foto_reconhecimento && <Camera className="w-3 h-3 ml-0.5" title="Foto capturada" />}
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
                           )
