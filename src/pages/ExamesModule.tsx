@@ -194,10 +194,10 @@ export default function ExamesModule() {
     }
     const payload = {
       funcionario_id: form.funcionario_id,
-      tipo: form.tipo,
+      tipo: form.tipo as "admissional" | "periodico" | "demissional" | "retorno" | "mudanca_funcao",
       data: form.data,
       data_vencimento: form.data_vencimento || null,
-      resultado: form.resultado,
+      resultado: form.resultado as "apto" | "inapto" | "apto_com_restricao" | "pendente",
       medico: form.medico || null,
       observacao: form.observacao || null,
       empresa_id: empresaId,
@@ -207,7 +207,7 @@ export default function ExamesModule() {
       if (error) { toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Exame atualizado com sucesso!" });
     } else {
-      const { error } = await supabase.from("exames").insert(payload);
+      const { error } = await supabase.from("exames").insert([payload]);
       if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Exame cadastrado com sucesso!" });
     }
