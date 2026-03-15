@@ -72,8 +72,8 @@ export default function AdminEmpresas() {
     return <Navigate to="/" replace />;
   }
 
-  const parentEmpresas = empresas.filter(e => !e.empresa_pai_id);
-  const getFiliais = (parentId: string) => empresas.filter(e => e.empresa_pai_id === parentId);
+    const parentEmpresas = empresas.filter(e => !e.empresa_pai_id);
+    const getFiliais = (parentId: string) => empresas.filter(e => e.empresa_pai_id === parentId);
   const getUsersForEmpresa = (empresaId: string) => profiles.filter(p => p.empresa_id === empresaId);
 
   const handleCreateEmpresa = async () => {
