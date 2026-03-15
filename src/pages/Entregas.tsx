@@ -44,6 +44,7 @@ export default function Entregas() {
   const [fichaSearch, setFichaSearch] = useState("");
   const [fichaFuncId, setFichaFuncId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingConfirmation, setSavingConfirmation] = useState(false);
   const [selectedUnsigned, setSelectedUnsigned] = useState<string[]>([]);
   const [signMode, setSignMode] = useState<"new" | "existing">("new");
   const [signFuncId, setSignFuncId] = useState<string>("");
