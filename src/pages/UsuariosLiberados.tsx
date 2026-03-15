@@ -324,7 +324,18 @@ export default function UsuariosLiberados() {
         {isExpanded && (
           <div className="px-4 pb-4 border-t pt-3 space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Permissões por Módulo</Label>
+              <div className="flex items-center gap-3">
+                <Label className="text-sm font-medium">Permissões por Módulo</Label>
+                <Button
+                  variant={u.is_principal ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => handleTogglePrincipal(u.id)}
+                >
+                  <Crown className="w-3.5 h-3.5" />
+                  {u.is_principal ? "Principal ✓" : "Definir como Principal"}
+                </Button>
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => selectAll(u.id)} className="text-xs text-primary hover:underline">
                   Selecionar todos
