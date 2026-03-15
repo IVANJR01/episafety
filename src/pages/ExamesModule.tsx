@@ -841,10 +841,10 @@ export default function ExamesModule() {
                               : "bg-success text-success-foreground font-bold";
                             return [
                               <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {format(parseISO(td.data), "dd/MM/yyyy")}
+                                {formatDateSafe(td.data)}
                               </td>,
                               <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {td.vencimento ? format(parseISO(td.vencimento), "dd/MM/yyyy") : "—"}
+                                {formatDateSafe(td.vencimento)}
                               </td>,
                               <td key={`${row.func.id}-${tipo}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${td.resultado === "pendente" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : statusBg}`}>
                                 {td.resultado === "pendente" ? "Pendente" : td.status.key === "vencido" ? "Vencido" : td.status.key === "atencao" ? "Atenção" : "Válido"}
