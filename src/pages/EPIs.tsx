@@ -24,6 +24,9 @@ interface EPI {
   valor: number | null;
 }
 
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; }
+interface Funcionario { id: string; nome: string; setor: string | null; }
+
 const emptyForm = {
   nome: "", ca: "", validade: "", estoque: 0, estoque_minimo: 5,
   categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: 0
