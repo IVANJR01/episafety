@@ -434,7 +434,7 @@ export default function ExamesModule() {
     ws["!merges"] = merges;
 
     const colWidths: { wch: number }[] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 16 }];
-    tiposUsados.forEach(() => { colWidths.push({ wch: 14 }, { wch: 14 }, { wch: 12 }); });
+    nomesUsados.forEach(() => { colWidths.push({ wch: 14 }, { wch: 14 }, { wch: 12 }); });
     ws["!cols"] = colWidths;
 
     ws["!rows"] = [{ hpt: 28 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 10 }];
