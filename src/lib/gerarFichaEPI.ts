@@ -280,17 +280,20 @@ export function gerarFichaEPI(data: FichaData) {
     // Assinatura - per-row signature
     const sigX = x;
     if (entrega.assinatura_colaborador) {
-      if (entrega.assinatura_colaborador === "BIOMETRIA_DIGITAL") {
-        // Draw fingerprint indicator
+      if (entrega.assinatura_colaborador === "BIOMETRIA_DIGITAL" || entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL") {
         const cx = sigX + colWidths[6] / 2;
         const cy = y + ROW_H / 2 - 2;
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(0, 100, 0);
-        doc.text("BIOMETRIA DIGITAL", cx, cy, { align: "center" });
+        const label = entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? "REC. FACIAL" : "BIOMETRIA DIGITAL";
+        doc.text(label, cx, cy, { align: "center" });
         doc.setFontSize(5.5);
         doc.setFont("helvetica", "normal");
-        doc.text("Impressão digital coletada", cx, cy + 4, { align: "center" });
+        const desc = entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL" 
+          ? "Portaria Nº 2.175/2022 - NR-6" 
+          : "Impressão digital coletada";
+        doc.text(desc, cx, cy + 4, { align: "center" });
         doc.setTextColor(0);
       } else {
         try {
