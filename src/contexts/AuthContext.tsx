@@ -103,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [modulosPermitidos, setModulosPermitidos] = useState<string[]>([]);
   const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isPrincipal, setIsPrincipal] = useState(false);
 
   const handleAuthCheck = useCallback(async (currentUser: User | null) => {
     if (currentUser) {
