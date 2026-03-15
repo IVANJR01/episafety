@@ -451,6 +451,7 @@ export type Database = {
           funcionario_id: string
           id: string
           medico: string | null
+          nome_exame: string | null
           observacao: string | null
           resultado: Database["public"]["Enums"]["resultado_exame"]
           tipo: Database["public"]["Enums"]["tipo_exame"]
@@ -464,6 +465,7 @@ export type Database = {
           funcionario_id: string
           id?: string
           medico?: string | null
+          nome_exame?: string | null
           observacao?: string | null
           resultado?: Database["public"]["Enums"]["resultado_exame"]
           tipo: Database["public"]["Enums"]["tipo_exame"]
@@ -477,6 +479,7 @@ export type Database = {
           funcionario_id?: string
           id?: string
           medico?: string | null
+          nome_exame?: string | null
           observacao?: string | null
           resultado?: Database["public"]["Enums"]["resultado_exame"]
           tipo?: Database["public"]["Enums"]["tipo_exame"]

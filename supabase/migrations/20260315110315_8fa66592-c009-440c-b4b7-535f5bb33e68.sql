@@ -1,0 +1,1 @@
+ALTER TABLE public.exames ADD COLUMN nome_exame text DEFAULT NULL;

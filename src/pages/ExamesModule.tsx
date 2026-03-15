@@ -21,6 +21,7 @@ interface Exame {
   id: string;
   funcionario_id: string;
   tipo: string;
+  nome_exame: string | null;
   data: string;
   data_vencimento: string | null;
   resultado: string;
@@ -47,6 +48,28 @@ const TIPOS_EXAME = [
   { key: "demissional", label: "Demissional", validade_meses: 0 },
   { key: "retorno", label: "Retorno ao Trabalho", validade_meses: 0 },
   { key: "mudanca_funcao", label: "Mudança de Função", validade_meses: 0 },
+];
+
+const NOMES_EXAME = [
+  { code: "0295", label: "ASO - Avaliação Clínica Ocupacional" },
+  { code: "0296", label: "Acuidade Visual" },
+  { code: "0281", label: "Audiometria Tonal Ocupacional" },
+  { code: "0300", label: "Avaliação Psicossocial" },
+  { code: "0530", label: "ECG - Eletrocardiograma" },
+  { code: "0536", label: "EEG - Eletroencefalograma" },
+  { code: "0658", label: "Glicemia" },
+  { code: "0693", label: "Hemograma Completo" },
+  { code: "1057", label: "Espirometria (Prova de Função Pulmonar)" },
+  { code: "0078", label: "Raio-X de Tórax (PA)" },
+  { code: "0545", label: "EAS - Exame de Urina (Elementos Anormais)" },
+  { code: "0680", label: "Gama GT" },
+  { code: "0860", label: "Lipidograma" },
+  { code: "0855", label: "TGO (AST)" },
+  { code: "0856", label: "TGP (ALT)" },
+  { code: "0870", label: "Creatinina" },
+  { code: "0875", label: "Ureia" },
+  { code: "0640", label: "Toxicológico" },
+  { code: "0000", label: "Outro" },
 ];
 
 const tipoLabels: Record<string, string> = {};
@@ -100,6 +123,7 @@ export default function ExamesModule() {
   const [form, setForm] = useState({
     funcionario_id: "",
     tipo: "periodico",
+    nome_exame: "",
     data: new Date().toISOString().split("T")[0],
     data_vencimento: "",
     resultado: "pendente",
@@ -167,7 +191,7 @@ export default function ExamesModule() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ funcionario_id: "", tipo: "periodico", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
+    setForm({ funcionario_id: "", tipo: "periodico", nome_exame: "", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
     setFuncSearch("");
     setOpen(true);
   };
@@ -177,6 +201,7 @@ export default function ExamesModule() {
     setForm({
       funcionario_id: e.funcionario_id,
       tipo: e.tipo,
+      nome_exame: e.nome_exame || "",
       data: e.data,
       data_vencimento: e.data_vencimento || "",
       resultado: e.resultado,
@@ -195,6 +220,7 @@ export default function ExamesModule() {
     const payload = {
       funcionario_id: form.funcionario_id,
       tipo: form.tipo as "admissional" | "periodico" | "demissional" | "retorno" | "mudanca_funcao",
+      nome_exame: form.nome_exame || null,
       data: form.data,
       data_vencimento: form.data_vencimento || null,
       resultado: form.resultado as "apto" | "inapto" | "apto_com_restricao" | "pendente",
@@ -550,7 +576,8 @@ export default function ExamesModule() {
                       <TableHead>Nome Completo</TableHead>
                       <TableHead>Função</TableHead>
                       <TableHead>Setor</TableHead>
-                      <TableHead>Tipo de Exame</TableHead>
+                      <TableHead>Exame</TableHead>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Data Exame</TableHead>
                       <TableHead>Vencimento</TableHead>
                       <TableHead>Resultado</TableHead>
@@ -561,7 +588,7 @@ export default function ExamesModule() {
                   </TableHeader>
                   <TableBody>
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
                     ) : filtered.map((e, index) => {
                       const func = funcMap[e.funcionario_id];
                       const status = getStatus(e.data_vencimento);
@@ -571,6 +598,7 @@ export default function ExamesModule() {
                           <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
                           <TableCell>{func?.cargo || "—"}</TableCell>
                           <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
+                          <TableCell className="text-xs font-medium">{e.nome_exame || "—"}</TableCell>
                           <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
                           <TableCell className="font-mono text-xs">{format(parseISO(e.data), "dd/MM/yyyy")}</TableCell>
                           <TableCell className="font-mono text-xs">{e.data_vencimento ? format(parseISO(e.data_vencimento), "dd/MM/yyyy") : "—"}</TableCell>
@@ -730,6 +758,24 @@ export default function ExamesModule() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Nome do Exame */}
+            <div>
+              <Label>Nome do Exame *</Label>
+              <Select value={form.nome_exame} onValueChange={v => setForm(f => ({ ...f, nome_exame: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o exame..." /></SelectTrigger>
+                <SelectContent>
+                  {NOMES_EXAME.map(e => (
+                    <SelectItem key={e.code} value={e.label}>
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-mono">{e.code}</span>
+                        <span>{e.label}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
