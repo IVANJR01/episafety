@@ -425,6 +425,16 @@ export default function Funcionarios() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      {activeTab === "ativos" && canEdit && (
+                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => openDemissao(f)}>
+                          <UserX className="w-3 h-3" />Demitir
+                        </Button>
+                      )}
+                      {activeTab === "demitidos" && canEdit && (
+                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleReativar(f)}>
+                          <RotateCcw className="w-3 h-3" />Reativar
+                        </Button>
+                      )}
                       {canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
                       {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
@@ -433,6 +443,7 @@ export default function Funcionarios() {
                     <div><span className="text-muted-foreground">CPF:</span> <span className="font-mono">{f.cpf || "—"}</span></div>
                     <div><span className="text-muted-foreground">Matrícula:</span> <span className="font-mono">{f.matricula || "—"}</span></div>
                     {f.data_admissao && <div><span className="text-muted-foreground">Admissão:</span> <span className="font-mono">{f.data_admissao.split("-").reverse().join("/")}</span></div>}
+                    {f.data_demissao && <div><span className="text-muted-foreground">Demissão:</span> <span className="font-mono text-destructive">{f.data_demissao.split("-").reverse().join("/")}</span></div>}
                   </div>
                 </CardContent>
               </Card>
