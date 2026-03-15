@@ -23,7 +23,7 @@ interface Exame {
   funcionario_id: string;
   tipo: string;
   nome_exame: string | null;
-  data: string;
+  data: string | null;
   data_vencimento: string | null;
   resultado: string;
   medico: string | null;
