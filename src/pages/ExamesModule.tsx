@@ -306,7 +306,7 @@ export default function ExamesModule() {
       funcionario_id: form.funcionario_id,
       tipo: form.tipo as "admissional" | "periodico" | "demissional" | "retorno" | "mudanca_funcao",
       nome_exame: form.nome_exame || null,
-      data: form.data,
+      data: form.data || new Date().toISOString().split("T")[0],
       data_vencimento: form.data_vencimento || null,
       resultado: form.resultado as "apto" | "inapto" | "apto_com_restricao" | "pendente",
       medico: form.medico || null,
