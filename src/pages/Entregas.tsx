@@ -282,17 +282,17 @@ export default function Entregas() {
 
     let assinaturaColaborador: string | null = null;
 
-    if (signInputType === "biometria") {
+    if (signInputType === "facial") {
       try {
-        // Try Capacitor native biometric first
+        // Try Capacitor native biometric first (Face ID)
         const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
         await BiometricAuth.authenticate({
-          reason: "Confirme a identidade do colaborador",
+          reason: "Reconhecimento facial para confirmação de entrega de EPI",
           allowDeviceCredential: true,
         });
-        assinaturaColaborador = "BIOMETRIA_DIGITAL";
+        assinaturaColaborador = "RECONHECIMENTO_FACIAL";
       } catch (capError: any) {
-        // Capacitor not available — try WebAuthn (Touch ID in browser)
+        // Capacitor not available — try WebAuthn (Face ID in browser)
         if (capError?.message?.includes("not implemented") || capError?.code === "PLUGIN_NOT_INSTALLED" || capError?.message?.includes("not available")) {
           try {
             if (window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()) {
@@ -314,21 +314,21 @@ export default function Entregas() {
                   timeout: 60000,
                 },
               });
-              assinaturaColaborador = "BIOMETRIA_DIGITAL";
+              assinaturaColaborador = "RECONHECIMENTO_FACIAL";
             } else {
-              toast({ title: "Biometria não disponível", description: "Este dispositivo não possui sensor biométrico compatível. Use a assinatura manual.", variant: "destructive" });
+              toast({ title: "Reconhecimento facial não disponível", description: "Este dispositivo não possui sensor de reconhecimento facial compatível. Use a assinatura manual.", variant: "destructive" });
               return;
             }
           } catch (webAuthErr: any) {
             if (webAuthErr?.name === "NotAllowedError") {
-              toast({ title: "Biometria cancelada", description: "O colaborador cancelou a autenticação.", variant: "destructive" });
+              toast({ title: "Reconhecimento facial cancelado", description: "O colaborador cancelou a autenticação.", variant: "destructive" });
             } else {
-              toast({ title: "Erro na biometria", description: "Use a assinatura manual como alternativa.", variant: "destructive" });
+              toast({ title: "Erro no reconhecimento facial", description: "Use a assinatura manual como alternativa.", variant: "destructive" });
             }
             return;
           }
         } else {
-          toast({ title: "Biometria não confirmada", description: capError?.message || "Tente novamente", variant: "destructive" });
+          toast({ title: "Reconhecimento facial não confirmado", description: capError?.message || "Tente novamente", variant: "destructive" });
           return;
         }
       }
