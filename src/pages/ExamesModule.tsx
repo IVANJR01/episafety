@@ -673,7 +673,22 @@ export default function ExamesModule() {
             <div className="flex items-center justify-between mb-2">
               <div className="p-2 rounded-xl bg-success/10 text-success group-hover:bg-success group-hover:text-success-foreground transition-colors">
                 <CheckCircle className="w-4 h-4" />
+
+        {/* Sem Exame */}
+        <Card className="group hover:shadow-md transition-all duration-200 hover:border-orange-500/30 cursor-pointer"
+          onClick={() => setStatusFilter(statusFilter === "sem_exame" as any ? "todos" : "sem_exame" as any)}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                <UserX className="w-4 h-4" />
               </div>
+              <span className="text-3xl font-bold text-orange-500">{semExameCount}</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Sem Exame</p>
+            <Progress value={funcionarios.length > 0 ? (semExameCount / funcionarios.length) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-orange-500" />
+          </CardContent>
+        </Card>
+      </div>
               <span className="text-3xl font-bold text-success">{vigentesCount}</span>
             </div>
             <p className="text-xs font-medium text-muted-foreground">Vigentes</p>
