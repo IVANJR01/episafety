@@ -166,6 +166,34 @@ export default function Entregas() {
     return funcionarios.filter(f => matchFunc(f, formFuncSearch));
   }, [funcionarios, formFuncSearch]);
 
+  const optimizePhotoDataUrl = useCallback(async (dataUrl: string) => {
+    try {
+      return await new Promise<string>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxSide = 960;
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.72));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+      });
+    } catch {
+      return dataUrl;
+    }
+  }, []);
+
   const handleSave = async () => {
     if (saving) return;
     if (!form.funcionario_id || epiList.length === 0) {
