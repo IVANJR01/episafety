@@ -219,7 +219,8 @@ export default function Entregas() {
       setEpiList([]);
       setEpiDropdownResults([]);
       setSaving(false);
-      refetch();
+      setSignInputType("assinatura");
+      setSignOpen(true);
       return;
     }
 
@@ -286,71 +287,24 @@ export default function Entregas() {
     let fotoUrl: string | null = null;
 
     if (signInputType === "facial") {
-      // Photo is required for facial recognition
       if (!capturedPhoto) {
         toast({ title: "Tire a foto do colaborador antes de confirmar", variant: "destructive" });
         return;
       }
-
-      try {
-        // Try Capacitor native biometric first (Face ID)
-        const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
-        await BiometricAuth.authenticate({
-          reason: "Reconhecimento facial para confirmação de entrega de EPI",
-          allowDeviceCredential: true,
-        });
-        assinaturaColaborador = "RECONHECIMENTO_FACIAL";
-      } catch (capError: any) {
-        // Capacitor not available — try WebAuthn (Face ID in browser)
-        if (capError?.message?.includes("not implemented") || capError?.code === "PLUGIN_NOT_INSTALLED" || capError?.message?.includes("not available")) {
-          try {
-            if (window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()) {
-              const challenge = new Uint8Array(32);
-              crypto.getRandomValues(challenge);
-              const userId = new Uint8Array(16);
-              crypto.getRandomValues(userId);
-              
-              await navigator.credentials.create({
-                publicKey: {
-                  challenge,
-                  rp: { name: "EPISafety" },
-                  user: { id: userId, name: "colaborador", displayName: "Colaborador" },
-                  pubKeyCredParams: [{ alg: -7, type: "public-key" }],
-                  authenticatorSelection: {
-                    authenticatorAttachment: "platform",
-                    userVerification: "required",
-                  },
-                  timeout: 60000,
-                },
-              });
-              assinaturaColaborador = "RECONHECIMENTO_FACIAL";
-            } else {
-              // No biometric available — just use photo as proof
-              assinaturaColaborador = "RECONHECIMENTO_FACIAL";
-            }
-          } catch (webAuthErr: any) {
-            // Even if WebAuthn fails, allow with photo as evidence
-            assinaturaColaborador = "RECONHECIMENTO_FACIAL";
-          }
-        } else {
-          // Even if Capacitor fails, allow with photo as evidence
-          assinaturaColaborador = "RECONHECIMENTO_FACIAL";
-        }
-      }
+      assinaturaColaborador = "RECONHECIMENTO_FACIAL";
 
       // Upload photo to storage
       try {
-        const blob = await (await fetch(capturedPhoto)).blob();
-        const fileName = `${empresaId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from("fotos-reconhecimento")
-          .upload(fileName, blob, { contentType: "image/jpeg" });
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from("fotos-reconhecimento").getPublicUrl(fileName);
-          fotoUrl = urlData.publicUrl;
-        } else {
-          console.error("Upload error:", uploadError);
-          toast({ title: "Aviso: foto não pôde ser salva no servidor", description: "A entrega será registrada sem a foto.", variant: "destructive" });
+        if (isOnline()) {
+          const blob = await (await fetch(capturedPhoto)).blob();
+          const fileName = `${empresaId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
+          const { error: uploadError } = await supabase.storage
+            .from("fotos-reconhecimento")
+            .upload(fileName, blob, { contentType: "image/jpeg" });
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage.from("fotos-reconhecimento").getPublicUrl(fileName);
+            fotoUrl = urlData.publicUrl;
+          }
         }
       } catch (uploadErr) {
         console.error("Photo upload failed:", uploadErr);
