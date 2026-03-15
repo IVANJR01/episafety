@@ -366,17 +366,28 @@ export default function Entregas() {
     // Parallel updates for speed
     const updatePayload: any = { assinatura_colaborador: assinaturaColaborador };
     if (fotoUrl) updatePayload.foto_reconhecimento = fotoUrl;
+    // Store photo as base64 in cache when offline (photo couldn't be uploaded)
+    if (!fotoUrl && capturedPhoto) updatePayload.foto_reconhecimento = capturedPhoto;
 
-    await Promise.all(
-      ids.map(id =>
-        (supabase.from as any)("entregas")
-          .update(updatePayload)
-          .eq("id", id)
-      )
-    );
+    if (!isOnline()) {
+      ids.forEach(id => {
+        addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+      });
+      const cached = getCachedData<Entrega>("entregas") || [];
+      setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
+      toast({ title: "Assinatura salva offline", description: "Será sincronizada quando houver conexão." });
+    } else {
+      await Promise.all(
+        ids.map(id =>
+          (supabase.from as any)("entregas")
+            .update(updatePayload)
+            .eq("id", id)
+        )
+      );
+      toast({ title: signInputType === "facial" ? `Reconhecimento facial registrado em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
+    }
 
     refetch();
-    toast({ title: signInputType === "facial" ? `Reconhecimento facial registrado em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
     setSignOpen(false);
     setPendingEntrega(null);
     setSelectedUnsigned([]);
