@@ -41,7 +41,7 @@ interface Funcionario {
   setor: string | null;
 }
 
-type StatusFilter = "todos" | "vencido" | "atencao" | "vigente";
+type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
 
 const TIPOS_EXAME = [
   { key: "admissional", label: "Admissional", validade_meses: 0 },
@@ -222,7 +222,9 @@ export default function ExamesModule() {
         return (func?.nome || "").toLowerCase().includes(q) || (tipoLabels[e.tipo] || e.tipo).toLowerCase().includes(q);
       });
     }
-    if (statusFilter !== "todos") {
+    if (statusFilter === "pendente") {
+      list = list.filter(e => e.resultado === "pendente");
+    } else if (statusFilter !== "todos") {
       list = list.filter(e => getStatus(e.data_vencimento).key === statusFilter);
     }
     list.sort((a, b) => statusOrder(a.data_vencimento) - statusOrder(b.data_vencimento));
@@ -513,6 +515,7 @@ export default function ExamesModule() {
   };
 
   const totalItems = items.length;
+  const pendentesCount = items.filter(e => e.resultado === "pendente").length;
   const vencidosCount = items.filter(e => getStatus(e.data_vencimento).key === "vencido").length;
   const atencaoCount = items.filter(e => getStatus(e.data_vencimento).key === "atencao").length;
   const vigentesCount = items.filter(e => getStatus(e.data_vencimento).key === "vigente").length;
@@ -567,7 +570,7 @@ export default function ExamesModule() {
       </div>
 
       {/* Indicadores */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
         {/* Conformidade */}
         <Card className="col-span-2 lg:col-span-1 border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
           <CardContent className="p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-2">
@@ -625,6 +628,21 @@ export default function ExamesModule() {
             </div>
             <p className="text-xs font-medium text-muted-foreground">A Vencer</p>
             <Progress value={totalItems > 0 ? (atencaoCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-warning" />
+          </CardContent>
+        </Card>
+
+        {/* Pendentes */}
+        <Card className="group hover:shadow-md transition-all duration-200 hover:border-blue-500/30 cursor-pointer"
+          onClick={() => setStatusFilter(statusFilter === "pendente" ? "todos" : "pendente")}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                <Clock className="w-4 h-4" />
+              </div>
+              <span className="text-3xl font-bold text-blue-500">{pendentesCount}</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Pendentes</p>
+            <Progress value={totalItems > 0 ? (pendentesCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-blue-500" />
           </CardContent>
         </Card>
 
