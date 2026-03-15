@@ -424,7 +424,7 @@ export default function ExamesModule() {
     for (let r = 0; r < HEADER_OFFSET; r++) {
       merges.push({ s: { r, c: 0 }, e: { r, c: Math.max(totalCols - 1, fixedCols - 1) } });
     }
-    tiposUsados.forEach((_, i) => {
+    nomesUsados.forEach((_, i) => {
       const startCol = fixedCols + i * 3;
       merges.push({ s: { r: HEADER_OFFSET, c: startCol }, e: { r: HEADER_OFFSET, c: startCol + 2 } });
     });
