@@ -222,7 +222,9 @@ export default function ExamesModule() {
         return (func?.nome || "").toLowerCase().includes(q) || (tipoLabels[e.tipo] || e.tipo).toLowerCase().includes(q);
       });
     }
-    if (statusFilter !== "todos") {
+    if (statusFilter === "pendente") {
+      list = list.filter(e => e.resultado === "pendente");
+    } else if (statusFilter !== "todos") {
       list = list.filter(e => getStatus(e.data_vencimento).key === statusFilter);
     }
     list.sort((a, b) => statusOrder(a.data_vencimento) - statusOrder(b.data_vencimento));
