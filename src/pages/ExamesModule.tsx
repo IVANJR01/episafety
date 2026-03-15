@@ -191,7 +191,7 @@ export default function ExamesModule() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ funcionario_id: "", tipo: "periodico", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
+    setForm({ funcionario_id: "", tipo: "periodico", nome_exame: "", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
     setFuncSearch("");
     setOpen(true);
   };
