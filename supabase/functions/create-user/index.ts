@@ -43,13 +43,15 @@ Deno.serve(async (req) => {
 
     if (createError) {
       console.error("Create user error:", createError.message);
-      // If user already exists, find and return their user_id
+      // If user already exists, find their id and update their password
       if (createError.message.includes("already been registered")) {
         const { data: listData } = await adminClient.auth.admin.listUsers();
         const existingUser = listData?.users?.find(
           (u) => u.email?.toLowerCase() === email.toLowerCase().trim()
         );
         if (existingUser) {
+          // Update password for existing user
+          await adminClient.auth.admin.updateUserById(existingUser.id, { password });
           return new Response(JSON.stringify({ user_id: existingUser.id, already_exists: true }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
