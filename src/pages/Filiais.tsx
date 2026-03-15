@@ -39,7 +39,8 @@ const TIPO_LABELS: Record<string, { label: string; icon: any; color: string }> =
 };
 
 export default function Filiais() {
-  const { empresaId, isSuperAdmin } = useAuth();
+  const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
+  const isAdmin = isSuperAdmin || isPrincipal;
   const { canCreate, canEdit, canDelete } = usePermissions("cadastro_empresas");
   const { toast } = useToast();
   const [filiais, setFiliais] = useState<Filial[]>([]);
