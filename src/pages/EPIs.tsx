@@ -14,6 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
+import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
 
 interface EPI {
   id: string; nome: string; ca: string | null; validade: string | null;
