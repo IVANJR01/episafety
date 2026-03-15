@@ -51,15 +51,23 @@ export default function UsuariosLiberados() {
   }, []);
 
   const loadEmpresas = async () => {
+    if (!isOnline()) {
+      setEmpresas(getCachedData<Empresa>("empresa_config_list") || []);
+      return;
+    }
     const { data } = await supabase.from("empresa_config").select("id, nome").order("nome");
-    if (data) setEmpresas(data);
+    if (data) { setEmpresas(data); setCachedData("empresa_config_list", data); }
   };
 
   const loadUsuarios = async () => {
+    if (!isOnline()) {
+      setUsuarios(getCachedData<UsuarioLiberado>("usuarios_liberados") || []);
+      return;
+    }
     const { data } = await (supabase.from as any)("usuarios_liberados")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setUsuarios(data);
+    if (data) { setUsuarios(data); setCachedData("usuarios_liberados", data); }
   };
 
   const empresaMap = useMemo(() => {
