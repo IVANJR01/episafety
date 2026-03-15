@@ -278,6 +278,7 @@ export type Database = {
           cnpj: string | null
           created_at: string
           email: string | null
+          empresa_pai_id: string | null
           endereco: string | null
           id: string
           logo_url: string | null
@@ -289,6 +290,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           email?: string | null
+          empresa_pai_id?: string | null
           endereco?: string | null
           id?: string
           logo_url?: string | null
@@ -300,6 +302,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string
           email?: string | null
+          empresa_pai_id?: string | null
           endereco?: string | null
           id?: string
           logo_url?: string | null
@@ -307,7 +310,15 @@ export type Database = {
           telefone?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "empresa_config_empresa_pai_id_fkey"
+            columns: ["empresa_pai_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entregas: {
         Row: {
