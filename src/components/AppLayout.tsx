@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Bottom nav items: first 4 main items + "Mais" button
   const bottomNavItems = visibleMainItems.slice(0, 4);
-  const hasMore = visibleCadastroItems.length > 0 || isSuperAdmin;
+  const hasMore = visibleCadastroItems.length > 0 || isSuperAdmin || isPrincipal;
 
   useEffect(() => {
     // Captura o evento beforeinstallprompt para usar no botão de instalação
