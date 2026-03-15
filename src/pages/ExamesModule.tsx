@@ -532,6 +532,13 @@ export default function ExamesModule() {
   const vigentesCount = items.filter(e => getStatus(e.data_vencimento).key === "vigente").length;
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
+  // Funcionários sem nenhum exame cadastrado
+  const funcionariosSemExame = useMemo(() => {
+    const idsComExame = new Set(items.map(e => e.funcionario_id));
+    return funcionarios.filter(f => !idsComExame.has(f.id));
+  }, [items, funcionarios]);
+  const semExameCount = funcionariosSemExame.length;
+
   // Matrix data: group by employee, nome_exame as columns
   const matrixData = useMemo(() => {
     const nomesUsados = Array.from(new Set(items.map(e => e.nome_exame || tipoLabels[e.tipo] || e.tipo))).sort();
