@@ -22,6 +22,7 @@ const afterCadastroItems: NavItem[] = [
   { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/inspecoes-se", label: "Inspeções", icon: HardHat, moduleKey: "inspecoes_se" },
   { path: "/treinamentos", label: "Gestão e Controle", icon: GraduationCap, moduleKey: "treinamentos" },
+  { path: "/exames", label: "Exames", icon: Stethoscope, moduleKey: "exames" },
 ];
 
 const cadastroItems: NavItem[] = [

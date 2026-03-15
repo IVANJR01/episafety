@@ -23,6 +23,7 @@ export const MODULOS = [
   { key: "dds", label: "Lista de Presença", path: "/dds" },
   { key: "inspecoes_se", label: "Inspeções SE", path: "/inspecoes-se" },
   { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
+  { key: "exames", label: "Exames", path: "/exames" },
 ] as const;
 
 /**
