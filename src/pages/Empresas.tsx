@@ -31,18 +31,23 @@ export default function Empresas() {
 
   const loadEmpresa = async () => {
     if (!empresaId) return;
+    if (!isOnline()) {
+      const cached = getCachedData<any>("empresa_config");
+      if (cached && cached.length > 0) {
+        const e = cached.find((c: any) => c.id === empresaId) || cached[0];
+        setExistingId(e.id);
+        setLogoUrl(e.logo_url || null);
+        setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "" });
+      }
+      return;
+    }
     const { data } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
     if (data && data.length > 0) {
       const e = data[0];
       setExistingId(e.id);
       setLogoUrl(e.logo_url || null);
-      setForm({
-        nome: e.nome || "",
-        cnpj: e.cnpj || "",
-        endereco: e.endereco || "",
-        telefone: e.telefone || "",
-        email: e.email || "",
-      });
+      setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "" });
+      setCachedData("empresa_config", data);
     }
   };
 
