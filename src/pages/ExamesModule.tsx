@@ -500,6 +500,9 @@ export default function ExamesModule() {
             } else if (val === "Atenção") {
               cell.s.fill = { fgColor: { rgb: "F59E0B" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            } else if (val === "Pendente") {
+              cell.s.fill = { fgColor: { rgb: "FACC15" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "000000" } };
             } else if (val === "Válido") {
               cell.s.fill = { fgColor: { rgb: "16A34A" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
