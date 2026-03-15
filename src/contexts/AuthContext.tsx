@@ -114,15 +114,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             checkSuperAdmin(currentUser.id),
           ]);
           setAuthorized(authResult.authorized);
-          setModulosPermitidos(authResult.modulos);
+          // Principal users get full access (empty array = no restrictions)
+          setModulosPermitidos(authResult.isPrincipal ? [] : authResult.modulos);
           setEmpresaId(profileResult.empresaId);
           setIsSuperAdmin(superAdmin);
           // Save to cache for offline use
           saveAuthCache({
             authorized: authResult.authorized,
-            modulos: authResult.modulos,
+            modulos: authResult.isPrincipal ? [] : authResult.modulos,
             empresaId: profileResult.empresaId,
             isSuperAdmin: superAdmin,
+            isPrincipal: authResult.isPrincipal,
           });
         }
       } catch {
