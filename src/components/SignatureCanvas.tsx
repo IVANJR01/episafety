@@ -1,4 +1,4 @@
-import { useRef, useEffect, forwardRef, useImperativeHandle, useState } from "react";
+import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback } from "react";
 import SignaturePad from "signature_pad";
 import { Button } from "@/components/ui/button";
 import { Eraser, RotateCcw } from "lucide-react";
@@ -16,16 +16,17 @@ interface Props {
 }
 
 const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(
-  ({ label, height = 350 }, ref) => {
+  ({ label, height = 300 }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const padRef = useRef<SignaturePad | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [isLandscape, setIsLandscape] = useState(false);
 
-    const initPad = () => {
+    const initPad = useCallback(() => {
       if (!canvasRef.current) return;
       const canvas = canvasRef.current;
-      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      // Cap DPI ratio at 2 for performance on mobile
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = canvas.offsetWidth * ratio;
       canvas.height = canvas.offsetHeight * ratio;
       const ctx = canvas.getContext("2d");
@@ -40,20 +41,25 @@ const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(
         penColor: "rgb(0, 0, 0)",
         minWidth: 0.5,
         maxWidth: 2.5,
+        throttle: 16, // ~60fps for smoother drawing
         velocityFilterWeight: 0.7,
       });
-    };
+    }, []);
 
     useEffect(() => {
-      initPad();
-      return () => { padRef.current?.off(); };
-    }, []);
+      // Small delay to ensure DOM is ready (especially inside dialogs)
+      const timer = setTimeout(() => initPad(), 50);
+      return () => {
+        clearTimeout(timer);
+        padRef.current?.off();
+      };
+    }, [initPad]);
 
     // Re-init on orientation/landscape toggle
     useEffect(() => {
-      const timer = setTimeout(() => initPad(), 100);
+      const timer = setTimeout(() => initPad(), 150);
       return () => clearTimeout(timer);
-    }, [isLandscape]);
+    }, [isLandscape, initPad]);
 
     // Detect orientation change
     useEffect(() => {
@@ -69,13 +75,14 @@ const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(
     useImperativeHandle(ref, () => ({
       getDataURL: () => {
         if (padRef.current?.isEmpty()) return null;
-        return padRef.current?.toDataURL("image/png") || null;
+        // Use JPEG for smaller size and faster encoding
+        return padRef.current?.toDataURL("image/jpeg", 0.8) || null;
       },
       isEmpty: () => padRef.current?.isEmpty() ?? true,
       clear: () => padRef.current?.clear(),
     }));
 
-    const canvasHeight = isLandscape ? "70vh" : `${height}px`;
+    const canvasHeight = isLandscape ? "60vh" : `${height}px`;
 
     return (
       <div ref={containerRef} className="space-y-2">

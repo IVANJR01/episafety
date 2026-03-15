@@ -219,7 +219,8 @@ export default function Entregas() {
       setEpiList([]);
       setEpiDropdownResults([]);
       setSaving(false);
-      refetch();
+      setSignInputType("assinatura");
+      setSignOpen(true);
       return;
     }
 
