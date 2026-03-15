@@ -267,7 +267,8 @@ export default function Entregas() {
       setEpiDropdownResults([]);
       setSaving(false);
       setSignInputType("assinatura");
-      setSignOpen(true);
+      // Delay to let the first dialog close animation finish before opening signature
+      setTimeout(() => setSignOpen(true), 350);
       return;
     }
 
