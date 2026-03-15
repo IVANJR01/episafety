@@ -10,11 +10,12 @@ interface AuthContextType {
   modulosPermitidos: string[];
   empresaId: string | null;
   isSuperAdmin: boolean;
+  isPrincipal: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, isSuperAdmin: false, signOut: async () => {},
+  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, isSuperAdmin: false, isPrincipal: false, signOut: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -102,24 +103,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [modulosPermitidos, setModulosPermitidos] = useState<string[]>([]);
   const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isPrincipal, setIsPrincipal] = useState(false);
 
   const handleAuthCheck = useCallback(async (currentUser: User | null) => {
     if (currentUser) {
       try {
         if (!navigator.onLine) {
-          // Offline: use cached auth data
           const cached = loadAuthCache();
           if (cached) {
             setAuthorized(cached.authorized);
             setModulosPermitidos(cached.modulos);
             setEmpresaId(cached.empresaId);
             setIsSuperAdmin(cached.isSuperAdmin);
+            setIsPrincipal(cached.isPrincipal || false);
           } else {
-            // No cache, assume authorized to not block user
             setAuthorized(true);
             setModulosPermitidos([]);
             setEmpresaId(null);
             setIsSuperAdmin(false);
+            setIsPrincipal(false);
           }
         } else {
           const [authResult, profileResult, superAdmin] = await Promise.all([
@@ -128,11 +130,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             checkSuperAdmin(currentUser.id),
           ]);
           setAuthorized(authResult.authorized);
-          // Principal users get full access (empty array = no restrictions)
           setModulosPermitidos(authResult.isPrincipal ? [] : authResult.modulos);
           setEmpresaId(profileResult.empresaId);
           setIsSuperAdmin(superAdmin);
-          // Save to cache for offline use
+          setIsPrincipal(authResult.isPrincipal);
           saveAuthCache({
             authorized: authResult.authorized,
             modulos: authResult.isPrincipal ? [] : authResult.modulos,
@@ -142,18 +143,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch {
-        // Network error - try cache
         const cached = loadAuthCache();
         if (cached) {
           setAuthorized(cached.authorized);
           setModulosPermitidos(cached.modulos);
           setEmpresaId(cached.empresaId);
           setIsSuperAdmin(cached.isSuperAdmin);
+          setIsPrincipal(cached.isPrincipal || false);
         } else {
           setAuthorized(true);
           setModulosPermitidos([]);
           setEmpresaId(null);
           setIsSuperAdmin(false);
+          setIsPrincipal(false);
         }
       }
     } else {
@@ -161,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setModulosPermitidos([]);
       setEmpresaId(null);
       setIsSuperAdmin(false);
+      setIsPrincipal(false);
     }
     setLoading(false);
   }, []);
@@ -189,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, isSuperAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, isSuperAdmin, isPrincipal, signOut }}>
       {children}
     </AuthContext.Provider>
   );

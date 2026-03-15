@@ -39,7 +39,8 @@ const TIPO_LABELS: Record<string, { label: string; icon: any; color: string }> =
 };
 
 export default function Filiais() {
-  const { empresaId, isSuperAdmin } = useAuth();
+  const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
+  const isAdmin = isSuperAdmin || isPrincipal;
   const { canCreate, canEdit, canDelete } = usePermissions("cadastro_empresas");
   const { toast } = useToast();
   const [filiais, setFiliais] = useState<Filial[]>([]);
@@ -67,7 +68,7 @@ export default function Filiais() {
     setLoading(true);
     const [{ data: filData }, { data: profData }, { data: empData }] = await Promise.all([
       (supabase.from as any)("empresa_config").select("*").eq("empresa_pai_id", empresaId).order("nome"),
-      isSuperAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
+      isAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
       (supabase.from as any)("empresa_config").select("nome").eq("id", empresaId).single(),
     ]);
     setFiliais(filData || []);
@@ -171,7 +172,7 @@ export default function Filiais() {
             Unidades vinculadas a <strong>{empresaNome}</strong>
           </p>
         </div>
-        {(canCreate || isSuperAdmin) && (
+        {(canCreate || isAdmin) && (
           <Button onClick={openNew} className="text-xs sm:text-sm">
             <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova Unidade
           </Button>
@@ -211,13 +212,13 @@ export default function Filiais() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      {isSuperAdmin && (
+                      {isAdmin && (
                         <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setAssignFilialId(f.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
                           <UserPlus className="w-3.5 h-3.5" />
                         </Button>
                       )}
-                      {(canEdit || isSuperAdmin) && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
-                      {(canDelete || isSuperAdmin) && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
+                      {(canEdit || isAdmin) && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                      {(canDelete || isAdmin) && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
                   </div>
 
@@ -229,7 +230,7 @@ export default function Filiais() {
                   </div>
 
                   {/* Users (super admin only) */}
-                  {isSuperAdmin && users.length > 0 && (
+                  {isAdmin && users.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {users.map(u => (
                         <Badge key={u.id} variant="secondary" className="text-[10px] py-0.5 px-2">
