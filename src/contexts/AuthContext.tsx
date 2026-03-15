@@ -32,27 +32,25 @@ function loadAuthCache(): { authorized: boolean; modulos: string[]; empresaId: s
   } catch { return null; }
 }
 
-async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[] }> {
-  if (!email) return { authorized: false, modulos: [] };
+async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean }> {
+  if (!email) return { authorized: false, modulos: [], isPrincipal: false };
   try {
     const { count } = await supabase
       .from("usuarios_liberados")
       .select("id", { count: "exact", head: true });
-    if (!count || count === 0) return { authorized: true, modulos: [] };
-    const { data } = await supabase
-      .from("usuarios_liberados")
-      .select("id, modulos_permitidos")
+    if (!count || count === 0) return { authorized: true, modulos: [], isPrincipal: false };
+    const { data } = await (supabase.from as any)("usuarios_liberados")
+      .select("id, modulos_permitidos, is_principal")
       .eq("email", email.toLowerCase())
       .limit(1);
     if (data && data.length > 0) {
-      return { authorized: true, modulos: data[0].modulos_permitidos || [] };
+      return { authorized: true, modulos: data[0].modulos_permitidos || [], isPrincipal: !!data[0].is_principal };
     }
-    return { authorized: false, modulos: [] };
+    return { authorized: false, modulos: [], isPrincipal: false };
   } catch {
-    // On error, try cache instead of granting full access
     const cached = loadAuthCache();
-    if (cached) return { authorized: cached.authorized, modulos: cached.modulos };
-    return { authorized: true, modulos: [] };
+    if (cached) return { authorized: cached.authorized, modulos: cached.modulos, isPrincipal: cached.isPrincipal || false };
+    return { authorized: true, modulos: [], isPrincipal: false };
   }
 }
 
