@@ -663,7 +663,14 @@ export default function Entregas() {
                   ) : filteredEntregas.map(e => (
                     <TableRow key={e.id}>
                       <TableCell className="font-mono text-xs">{e.data}</TableCell>
-                      <TableCell><Badge variant={tipoBadge[e.tipo] || "default"}>{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={tipoBadge[e.tipo] || "default"}>{tipoLabels[e.tipo] || e.tipo}</Badge>
+                          {offlinePendingIds.has(e.id) && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded px-1.5 py-0.5 font-medium"><WifiOff className="w-3 h-3" />Offline</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium">{getName(funcionarios, e.funcionario_id)}</TableCell>
                       <TableCell>{getName(epis, e.epi_id)}</TableCell>
                       <TableCell className="text-right">{e.quantidade}</TableCell>
