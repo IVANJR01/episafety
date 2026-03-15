@@ -18,6 +18,7 @@ interface UsuarioLiberado {
   modulos_permitidos: string[] | null;
   created_at: string;
   empresa_id: string | null;
+  is_principal: boolean;
 }
 
 interface Empresa {
