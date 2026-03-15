@@ -1073,6 +1073,7 @@ export type Database = {
     }
     Functions: {
       get_consolidated_epi_stock: { Args: never; Returns: Json }
+      get_filial_epis: { Args: { _filial_id: string }; Returns: Json }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1082,6 +1083,15 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      transfer_epi_stock: {
+        Args: {
+          _dest_empresa_id: string
+          _quantidade: number
+          _source_empresa_id: string
+          _source_epi_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "tecnico" | "usuario" | "super_admin"
