@@ -214,6 +214,16 @@ export default function UsuariosLiberados() {
     setSavingPerms(userId);
     const user = usuarios.find(u => u.id === userId);
     if (!user) return;
+
+    if (!isOnline()) {
+      addToSyncQueue({ table: "usuarios_liberados", type: "update", payload: { id: userId, modulos_permitidos: user.modulos_permitidos || [] } });
+      const cached = getCachedData<UsuarioLiberado>("usuarios_liberados") || [];
+      setCachedData("usuarios_liberados", cached.map(u => u.id === userId ? { ...u, modulos_permitidos: user.modulos_permitidos } : u));
+      toast({ title: "Permissões salvas offline", description: "Será sincronizado quando houver conexão." });
+      setSavingPerms(null);
+      return;
+    }
+
     const { error } = await (supabase.from as any)("usuarios_liberados")
       .update({ modulos_permitidos: user.modulos_permitidos || [] })
       .eq("id", userId);
