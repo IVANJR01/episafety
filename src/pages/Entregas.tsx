@@ -44,6 +44,7 @@ export default function Entregas() {
   const [fichaSearch, setFichaSearch] = useState("");
   const [fichaFuncId, setFichaFuncId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingConfirmation, setSavingConfirmation] = useState(false);
   const [selectedUnsigned, setSelectedUnsigned] = useState<string[]>([]);
   const [signMode, setSignMode] = useState<"new" | "existing">("new");
   const [signFuncId, setSignFuncId] = useState<string>("");
@@ -165,6 +166,34 @@ export default function Entregas() {
     return funcionarios.filter(f => matchFunc(f, formFuncSearch));
   }, [funcionarios, formFuncSearch]);
 
+  const optimizePhotoDataUrl = useCallback(async (dataUrl: string) => {
+    try {
+      return await new Promise<string>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxSide = 960;
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.72));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+      });
+    } catch {
+      return dataUrl;
+    }
+  }, []);
+
   const handleSave = async () => {
     if (saving) return;
     if (!form.funcionario_id || epiList.length === 0) {
@@ -177,7 +206,9 @@ export default function Entregas() {
 
     if (!isOnline()) {
       const insertedIds: string[] = [];
-      epiList.forEach(item => {
+      const cached = getCachedData<Entrega>("entregas") || [];
+
+      for (const item of epiList) {
         const tempId = crypto.randomUUID();
         const payload = {
           id: tempId,
@@ -190,27 +221,43 @@ export default function Entregas() {
           observacao: form.observacao || null,
           empresa_id: empresaId,
         };
-        addToSyncQueue({ table: "entregas", type: "insert", payload });
+
+        const queued = addToSyncQueue({ table: "entregas", type: "insert", payload });
+        if (!queued) {
+          toast({
+            title: "Memória offline cheia",
+            description: "Não foi possível salvar todas as movimentações offline. Sincronize pendências e tente novamente.",
+            variant: "destructive",
+          });
+          break;
+        }
+
         insertedIds.push(tempId);
-      });
-      // Update cache
-      const cached = getCachedData<Entrega>("entregas") || [];
-      insertedIds.forEach((id, i) => {
         cached.unshift({
-          id,
+          id: tempId,
           funcionario_id: form.funcionario_id,
-          epi_id: epiList[i].epi.id,
-          quantidade: epiList[i].quantidade,
+          epi_id: item.epi.id,
+          quantidade: item.quantidade,
           data: form.data,
           tipo: form.tipo,
           status,
           observacao: form.observacao || null,
           created_at: new Date().toISOString(),
           assinatura_colaborador: null,
+          foto_reconhecimento: null,
         } as Entrega);
-      });
+      }
+
+      if (insertedIds.length === 0) {
+        setSaving(false);
+        return;
+      }
+
       setCachedData("entregas", cached);
-      toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+      toast({
+        title: insertedIds.length === epiList.length ? "Salvo offline" : "Salvo parcialmente offline",
+        description: `${insertedIds.length} de ${epiList.length} item(ns) salvo(s).`,
+      });
       setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
       setOpen(false);
       resetForm();
@@ -280,73 +327,116 @@ export default function Entregas() {
   };
 
   const handleSaveSignature = async () => {
+    if (savingConfirmation) return;
+
     const ids = signMode === "new" ? (pendingEntrega?.entrega_ids || []) : selectedUnsigned;
     if (ids.length === 0) return;
 
-    let assinaturaColaborador: string | null = null;
-    let fotoUrl: string | null = null;
+    setSavingConfirmation(true);
 
-    if (signInputType === "facial") {
-      if (!capturedPhoto) {
-        toast({ title: "Tire a foto do colaborador antes de confirmar", variant: "destructive" });
-        return;
-      }
-      assinaturaColaborador = "RECONHECIMENTO_FACIAL";
+    try {
+      let assinaturaColaborador: string | null = null;
+      let fotoUrl: string | null = null;
+      let fotoFallbackDataUrl: string | null = null;
 
-      // Upload photo to storage
-      try {
+      if (signInputType === "facial") {
+        if (!capturedPhoto) {
+          toast({ title: "Tire a foto do colaborador antes de confirmar", variant: "destructive" });
+          return;
+        }
+
+        assinaturaColaborador = "RECONHECIMENTO_FACIAL";
+        fotoFallbackDataUrl = await optimizePhotoDataUrl(capturedPhoto);
+
         if (isOnline()) {
-          const blob = await (await fetch(capturedPhoto)).blob();
-          const fileName = `${empresaId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
-          const { error: uploadError } = await supabase.storage
-            .from("fotos-reconhecimento")
-            .upload(fileName, blob, { contentType: "image/jpeg" });
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage.from("fotos-reconhecimento").getPublicUrl(fileName);
-            fotoUrl = urlData.publicUrl;
+          try {
+            const blob = await (await fetch(fotoFallbackDataUrl)).blob();
+            const fileName = `${empresaId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
+            const { error: uploadError } = await supabase.storage
+              .from("fotos-reconhecimento")
+              .upload(fileName, blob, { contentType: "image/jpeg" });
+
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage.from("fotos-reconhecimento").getPublicUrl(fileName);
+              fotoUrl = urlData.publicUrl;
+            }
+          } catch (uploadErr) {
+            console.error("Photo upload failed:", uploadErr);
           }
         }
-      } catch (uploadErr) {
-        console.error("Photo upload failed:", uploadErr);
+      } else {
+        assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+        if (!assinaturaColaborador) {
+          toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
+          return;
+        }
       }
-    } else {
-      assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
-      if (!assinaturaColaborador) {
-        toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
-        return;
+
+      const updatePayload: any = { assinatura_colaborador: assinaturaColaborador };
+      if (fotoUrl) updatePayload.foto_reconhecimento = fotoUrl;
+      if (!fotoUrl && fotoFallbackDataUrl) updatePayload.foto_reconhecimento = fotoFallbackDataUrl;
+
+      if (!isOnline()) {
+        const queuedIds: string[] = [];
+
+        for (const id of ids) {
+          const queued = addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+          if (!queued) break;
+          queuedIds.push(id);
+        }
+
+        if (queuedIds.length === 0) {
+          toast({
+            title: "Não foi possível salvar offline",
+            description: "A memória offline está cheia. Sincronize as pendências e tente novamente.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const cached = getCachedData<Entrega>("entregas") || [];
+        setCachedData("entregas", cached.map(e => queuedIds.includes(e.id) ? { ...e, ...updatePayload } : e));
+
+        toast({
+          title: signInputType === "facial" ? "Confirmação por foto salva offline" : "Assinatura salva offline",
+          description: `${queuedIds.length} entrega(s) atualizada(s) e pronta(s) para sincronização.`,
+        });
+      } else {
+        const results = await Promise.all(
+          ids.map(id =>
+            (supabase.from as any)("entregas")
+              .update(updatePayload)
+              .eq("id", id)
+          )
+        );
+
+        const failed = results.filter(r => r.error);
+        if (failed.length === ids.length) {
+          toast({ title: "Falha ao salvar confirmação", description: "Tente novamente.", variant: "destructive" });
+          return;
+        }
+
+        if (failed.length > 0) {
+          toast({
+            title: "Salvo parcialmente",
+            description: `${ids.length - failed.length} de ${ids.length} entrega(s) confirmada(s).`,
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: signInputType === "facial" ? `Reconhecimento facial registrado em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
+        }
       }
+
+      refetch();
+      setSignOpen(false);
+      setPendingEntrega(null);
+      setSelectedUnsigned([]);
+      setSignMode("new");
+      setSignFuncId("");
+      setCapturedPhoto(null);
+    } finally {
+      setSavingConfirmation(false);
     }
-
-    // Parallel updates for speed
-    const updatePayload: any = { assinatura_colaborador: assinaturaColaborador };
-    if (fotoUrl) updatePayload.foto_reconhecimento = fotoUrl;
-    // Store photo as base64 in cache when offline (photo couldn't be uploaded)
-    if (!fotoUrl && capturedPhoto) updatePayload.foto_reconhecimento = capturedPhoto;
-
-    if (!isOnline()) {
-      ids.forEach(id => {
-        addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
-      });
-      const cached = getCachedData<Entrega>("entregas") || [];
-      setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
-      toast({ title: "Assinatura salva offline", description: "Será sincronizada quando houver conexão." });
-    } else {
-      await Promise.all(
-        ids.map(id =>
-          (supabase.from as any)("entregas")
-            .update(updatePayload)
-            .eq("id", id)
-        )
-      );
-      toast({ title: signInputType === "facial" ? `Reconhecimento facial registrado em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
-    }
-
-    refetch();
-    setSignOpen(false);
-    setPendingEntrega(null);
-    setSelectedUnsigned([]);
-    setSignMode("new");
-    setCapturedPhoto(null);
   };
 
   const unsignedEntregas = useMemo(() => entregas.filter(e => !e.assinatura_colaborador), [entregas]);
@@ -809,8 +899,13 @@ export default function Entregas() {
             <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); refetch(); }}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
-              {signInputType === "facial" ? (
+            <Button
+              onClick={handleSaveSignature}
+              disabled={savingConfirmation || (signMode === "existing" && selectedUnsigned.length === 0)}
+            >
+              {savingConfirmation ? (
+                <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Salvando...</>
+              ) : signInputType === "facial" ? (
                 <><ScanFace className="w-4 h-4 mr-1.5" />Confirmar com Foto {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
               ) : (
                 <>✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
