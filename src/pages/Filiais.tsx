@@ -212,13 +212,13 @@ export default function Filiais() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      {isSuperAdmin && (
+                      {isAdmin && (
                         <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setAssignFilialId(f.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
                           <UserPlus className="w-3.5 h-3.5" />
                         </Button>
                       )}
-                      {(canEdit || isSuperAdmin) && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
-                      {(canDelete || isSuperAdmin) && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
+                      {(canEdit || isAdmin) && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                      {(canDelete || isAdmin) && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
                   </div>
 
