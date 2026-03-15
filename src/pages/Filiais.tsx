@@ -230,7 +230,7 @@ export default function Filiais() {
                   </div>
 
                   {/* Users (super admin only) */}
-                  {isSuperAdmin && users.length > 0 && (
+                  {isAdmin && users.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {users.map(u => (
                         <Badge key={u.id} variant="secondary" className="text-[10px] py-0.5 px-2">
