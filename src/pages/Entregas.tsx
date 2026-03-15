@@ -822,7 +822,7 @@ export default function Entregas() {
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); refetch(); }}>
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); refetch(); }}>
               Cancelar
             </Button>
             <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
