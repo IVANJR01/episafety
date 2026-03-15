@@ -206,7 +206,9 @@ export default function Entregas() {
 
     if (!isOnline()) {
       const insertedIds: string[] = [];
-      epiList.forEach(item => {
+      const cached = getCachedData<Entrega>("entregas") || [];
+
+      for (const item of epiList) {
         const tempId = crypto.randomUUID();
         const payload = {
           id: tempId,
@@ -219,27 +221,43 @@ export default function Entregas() {
           observacao: form.observacao || null,
           empresa_id: empresaId,
         };
-        addToSyncQueue({ table: "entregas", type: "insert", payload });
+
+        const queued = addToSyncQueue({ table: "entregas", type: "insert", payload });
+        if (!queued) {
+          toast({
+            title: "Memória offline cheia",
+            description: "Não foi possível salvar todas as movimentações offline. Sincronize pendências e tente novamente.",
+            variant: "destructive",
+          });
+          break;
+        }
+
         insertedIds.push(tempId);
-      });
-      // Update cache
-      const cached = getCachedData<Entrega>("entregas") || [];
-      insertedIds.forEach((id, i) => {
         cached.unshift({
-          id,
+          id: tempId,
           funcionario_id: form.funcionario_id,
-          epi_id: epiList[i].epi.id,
-          quantidade: epiList[i].quantidade,
+          epi_id: item.epi.id,
+          quantidade: item.quantidade,
           data: form.data,
           tipo: form.tipo,
           status,
           observacao: form.observacao || null,
           created_at: new Date().toISOString(),
           assinatura_colaborador: null,
+          foto_reconhecimento: null,
         } as Entrega);
-      });
+      }
+
+      if (insertedIds.length === 0) {
+        setSaving(false);
+        return;
+      }
+
       setCachedData("entregas", cached);
-      toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+      toast({
+        title: insertedIds.length === epiList.length ? "Salvo offline" : "Salvo parcialmente offline",
+        description: `${insertedIds.length} de ${epiList.length} item(ns) salvo(s).`,
+      });
       setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
       setOpen(false);
       resetForm();
