@@ -233,7 +233,32 @@ export default function ExamesModule() {
       observacao: e.observacao || "",
     });
     setFuncSearch(funcMap[e.funcionario_id]?.nome || "");
+    setMedicoSearch(e.medico || "");
+    setShowAddMedico(false);
     setOpen(true);
+  };
+
+  const handleAddMedico = async () => {
+    if (!novoMedico.nome.trim()) {
+      toast({ title: "Informe o nome do médico", variant: "destructive" });
+      return;
+    }
+    const { data, error } = await (supabase.from("medicos") as any).insert([{
+      nome: novoMedico.nome.trim(),
+      crm: novoMedico.crm.trim() || null,
+      especialidade: novoMedico.especialidade.trim() || null,
+      empresa_id: empresaId,
+    }]).select().single();
+    if (error) {
+      toast({ title: "Erro ao adicionar médico", description: error.message, variant: "destructive" });
+      return;
+    }
+    setMedicos(prev => [...prev, data]);
+    setForm(f => ({ ...f, medico: data.nome + (data.crm ? ` - CRM: ${data.crm}` : "") }));
+    setMedicoSearch(data.nome + (data.crm ? ` - CRM: ${data.crm}` : ""));
+    setNovoMedico({ nome: "", crm: "", especialidade: "" });
+    setShowAddMedico(false);
+    toast({ title: "Médico adicionado!" });
   };
 
   const handleSave = async () => {
