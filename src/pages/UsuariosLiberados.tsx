@@ -171,6 +171,14 @@ export default function UsuariosLiberados() {
   };
 
   const handleRemoveUser = async (id: string) => {
+    if (!isOnline()) {
+      addToSyncQueue({ table: "usuarios_liberados", type: "delete", payload: { id } });
+      const cached = getCachedData<UsuarioLiberado>("usuarios_liberados") || [];
+      setCachedData("usuarios_liberados", cached.filter(u => u.id !== id));
+      setUsuarios(prev => prev.filter(u => u.id !== id));
+      toast({ title: "Removido offline", description: "Será sincronizado quando houver conexão." });
+      return;
+    }
     const { error } = await (supabase.from as any)("usuarios_liberados").delete().eq("id", id);
     if (error) {
       toast({ title: "Erro ao remover", variant: "destructive" });

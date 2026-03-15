@@ -391,7 +391,14 @@ export default function Treinamentos() {
     let logoBase64: string | null = null;
 
     if (empresaId) {
-      const { data: empData } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
+      let empData: any[] | null = null;
+      if (isOnline()) {
+        const res = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
+        empData = res.data;
+      } else {
+        const cached = getCachedData<any>("empresa_config");
+        empData = cached ? cached.filter((c: any) => c.id === empresaId) : null;
+      }
       if (empData && empData.length > 0) {
         const emp = empData[0];
         empresaNome = emp.nome || "";

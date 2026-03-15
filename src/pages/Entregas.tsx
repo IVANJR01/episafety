@@ -366,17 +366,28 @@ export default function Entregas() {
     // Parallel updates for speed
     const updatePayload: any = { assinatura_colaborador: assinaturaColaborador };
     if (fotoUrl) updatePayload.foto_reconhecimento = fotoUrl;
+    // Store photo as base64 in cache when offline (photo couldn't be uploaded)
+    if (!fotoUrl && capturedPhoto) updatePayload.foto_reconhecimento = capturedPhoto;
 
-    await Promise.all(
-      ids.map(id =>
-        (supabase.from as any)("entregas")
-          .update(updatePayload)
-          .eq("id", id)
-      )
-    );
+    if (!isOnline()) {
+      ids.forEach(id => {
+        addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+      });
+      const cached = getCachedData<Entrega>("entregas") || [];
+      setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
+      toast({ title: "Assinatura salva offline", description: "Será sincronizada quando houver conexão." });
+    } else {
+      await Promise.all(
+        ids.map(id =>
+          (supabase.from as any)("entregas")
+            .update(updatePayload)
+            .eq("id", id)
+        )
+      );
+      toast({ title: signInputType === "facial" ? `Reconhecimento facial registrado em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
+    }
 
     refetch();
-    toast({ title: signInputType === "facial" ? `Reconhecimento facial registrado em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
     setSignOpen(false);
     setPendingEntrega(null);
     setSelectedUnsigned([]);
@@ -419,8 +430,14 @@ export default function Entregas() {
     const funcEntregas = entregas.filter(e => e.funcionario_id === fichaFuncId);
     if (funcEntregas.length === 0) { toast({ title: "Nenhuma entrega encontrada para este funcionário", variant: "destructive" }); return; }
 
-    const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
-    const emp = empresaData?.[0] || {};
+    let emp: any = {};
+    if (isOnline()) {
+      const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
+      emp = empresaData?.[0] || {};
+    } else {
+      const cached = getCachedData<any>("empresa_config");
+      emp = cached?.find((c: any) => c.id === empresaId) || cached?.[0] || {};
+    }
 
     const now = new Date();
 
