@@ -25,6 +25,7 @@ import InspecoesSE from "@/pages/InspecoesSE";
 import Treinamentos from "@/pages/Treinamentos";
 import ExamesModule from "@/pages/ExamesModule";
 import CadastroDashboard from "@/pages/CadastroDashboard";
+import Backups from "@/pages/Backups";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
