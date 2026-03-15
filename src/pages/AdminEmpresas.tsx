@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Trash2, Users, UserPlus, X, Eye, EyeOff } from "lucide-react";
+import { Building2, Plus, Trash2, Users, UserPlus, X, Eye, EyeOff, GitBranch } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Navigate } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Empresa {
   id: string;
@@ -18,6 +18,7 @@ interface Empresa {
   cnpj: string | null;
   email: string | null;
   telefone: string | null;
+  empresa_pai_id: string | null;
   created_at: string;
 }
 
@@ -36,12 +37,10 @@ export default function AdminEmpresas() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // New company dialog
   const [newOpen, setNewOpen] = useState(false);
-  const [newForm, setNewForm] = useState({ nome: "", cnpj: "", email: "", telefone: "" });
+  const [newForm, setNewForm] = useState({ nome: "", cnpj: "", email: "", telefone: "", empresa_pai_id: "" });
   const [saving, setSaving] = useState(false);
 
-  // Assign user dialog
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmpresaId, setAssignEmpresaId] = useState<string | null>(null);
   const [assignEmail, setAssignEmail] = useState("");
@@ -73,6 +72,10 @@ export default function AdminEmpresas() {
     return <Navigate to="/" replace />;
   }
 
+  const parentEmpresas = empresas.filter(e => !e.empresa_pai_id);
+  const getFiliais = (parentId: string) => empresas.filter(e => e.empresa_pai_id === parentId);
+  const getUsersForEmpresa = (empresaId: string) => profiles.filter(p => p.empresa_id === empresaId);
+
   const handleCreateEmpresa = async () => {
     if (!newForm.nome.trim()) return;
     setSaving(true);
@@ -81,99 +84,68 @@ export default function AdminEmpresas() {
       cnpj: newForm.cnpj || null,
       email: newForm.email || null,
       telefone: newForm.telefone || null,
+      empresa_pai_id: newForm.empresa_pai_id || null,
     });
     if (error) {
-      toast({ title: "Erro ao criar empresa", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao criar", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Empresa criada com sucesso!" });
+      toast({ title: newForm.empresa_pai_id ? "Filial criada com sucesso!" : "Empresa criada com sucesso!" });
       setNewOpen(false);
-      setNewForm({ nome: "", cnpj: "", email: "", telefone: "" });
+      setNewForm({ nome: "", cnpj: "", email: "", telefone: "", empresa_pai_id: "" });
       await loadData();
     }
     setSaving(false);
   };
 
   const handleDeleteEmpresa = async (id: string) => {
+    const filiais = getFiliais(id);
+    if (filiais.length > 0) {
+      toast({ title: "Não é possível excluir", description: "Remova as filiais antes de excluir a empresa mãe.", variant: "destructive" });
+      return;
+    }
     const { error } = await (supabase.from as any)("empresa_config").delete().eq("id", id);
     if (error) {
       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Empresa excluída" });
+      toast({ title: "Excluído com sucesso" });
       await loadData();
     }
   };
 
   const handleAssignUser = async () => {
     if (!assignEmail.trim() || !assignEmpresaId) return;
-
-    // Check if user already exists
     const existingProfile = profiles.find(p => p.email?.toLowerCase() === assignEmail.trim().toLowerCase());
-
     if (existingProfile) {
-      // Just link to empresa
-      const { error } = await (supabase.from as any)("profiles")
-        .update({ empresa_id: assignEmpresaId })
-        .eq("user_id", existingProfile.user_id);
+      const { error } = await (supabase.from as any)("profiles").update({ empresa_id: assignEmpresaId }).eq("user_id", existingProfile.user_id);
       if (error) {
         toast({ title: "Erro ao vincular", description: error.message, variant: "destructive" });
       } else {
-        toast({ title: `Usuário ${existingProfile.nome || existingProfile.email} vinculado com sucesso!` });
-        setAssignOpen(false);
-        setAssignEmail("");
-        setAssignNome("");
-        setAssignSenha("");
+        toast({ title: `Usuário ${existingProfile.nome || existingProfile.email} vinculado!` });
+        setAssignOpen(false); setAssignEmail(""); setAssignNome(""); setAssignSenha("");
         await loadData();
       }
       return;
     }
-
-    // Create new user
-    if (!assignSenha.trim()) {
-      toast({ title: "Informe uma senha para criar o novo usuário", variant: "destructive" });
-      return;
-    }
-    if (assignSenha.length < 6) {
-      toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
-      return;
-    }
-
+    if (!assignSenha.trim()) { toast({ title: "Informe uma senha para criar o novo usuário", variant: "destructive" }); return; }
+    if (assignSenha.length < 6) { toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" }); return; }
     setAssigning(true);
     try {
       const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
-        body: {
-          email: assignEmail.trim().toLowerCase(),
-          password: assignSenha,
-          nome: assignNome.trim(),
-        },
+        body: { email: assignEmail.trim().toLowerCase(), password: assignSenha, nome: assignNome.trim() },
       });
-
       if (fnError || fnData?.error) {
         toast({ title: "Erro ao criar conta", description: fnData?.error || fnError?.message, variant: "destructive" });
-        setAssigning(false);
-        return;
+        setAssigning(false); return;
       }
-
-      // Update profile with empresa_id
       if (fnData?.user_id) {
-        await (supabase.from as any)("profiles")
-          .update({ empresa_id: assignEmpresaId })
-          .eq("user_id", fnData.user_id);
-
-        // Also add to usuarios_liberados with all modules
+        await (supabase.from as any)("profiles").update({ empresa_id: assignEmpresaId }).eq("user_id", fnData.user_id);
         const allModules = ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
         await (supabase.from as any)("usuarios_liberados").insert({
-          email: assignEmail.trim().toLowerCase(),
-          nome: assignNome.trim(),
-          modulos_permitidos: allModules,
-          empresa_id: assignEmpresaId,
+          email: assignEmail.trim().toLowerCase(), nome: assignNome.trim(), modulos_permitidos: allModules, empresa_id: assignEmpresaId,
         });
       }
-
       toast({ title: "Usuário criado e vinculado com sucesso!" });
-      setAssignOpen(false);
-      setAssignEmail("");
-      setAssignNome("");
-      setAssignSenha("");
+      setAssignOpen(false); setAssignEmail(""); setAssignNome(""); setAssignSenha("");
       await loadData();
     } catch (err: any) {
       toast({ title: "Erro inesperado", description: err.message, variant: "destructive" });
@@ -182,44 +154,58 @@ export default function AdminEmpresas() {
   };
 
   const handleUnassignUser = async (userId: string) => {
-    const { error } = await (supabase.from as any)("profiles")
-      .update({ empresa_id: null })
-      .eq("user_id", userId);
+    const { error } = await (supabase.from as any)("profiles").update({ empresa_id: null }).eq("user_id", userId);
     if (error) {
       toast({ title: "Erro ao desvincular", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Usuário desvinculado" });
-      await loadData();
+      toast({ title: "Usuário desvinculado" }); await loadData();
     }
   };
 
-  const getUsersForEmpresa = (empresaId: string) => 
-    profiles.filter(p => p.empresa_id === empresaId);
+  const openNewEmpresa = (parentId?: string) => {
+    setNewForm({ nome: "", cnpj: "", email: "", telefone: "", empresa_pai_id: parentId || "" });
+    setNewOpen(true);
+  };
+
+  const renderUsers = (empresaId: string) => {
+    const users = getUsersForEmpresa(empresaId);
+    if (users.length === 0) return <p className="text-sm text-muted-foreground">Nenhum usuário vinculado</p>;
+    return (
+      <div className="space-y-1.5">
+        <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Usuários:</p>
+        <div className="flex flex-wrap gap-2">
+          {users.map(u => (
+            <Badge key={u.id} variant="secondary" className="flex items-center gap-1.5 py-1 px-3">
+              <span>{u.nome || u.email || "—"}</span>
+              {u.email && <span className="text-muted-foreground text-xs">({u.email})</span>}
+              <button onClick={() => handleUnassignUser(u.user_id)} className="ml-1 hover:text-destructive"><X className="w-3 h-3" /></button>
+            </Badge>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Administração de Empresas</h1>
-          <p className="text-muted-foreground text-sm mt-1">Criar empresas e vincular usuários (Super Admin)</p>
+          <p className="text-muted-foreground text-sm mt-1">Gerenciar empresas, filiais e vincular usuários</p>
         </div>
-        <Button onClick={() => setNewOpen(true)}>
+        <Button onClick={() => openNewEmpresa()}>
           <Plus className="w-4 h-4 mr-2" />Nova Empresa
         </Button>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
-      ) : empresas.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Nenhuma empresa cadastrada. Clique em "Nova Empresa" para começar.
-          </CardContent>
-        </Card>
+      ) : parentEmpresas.length === 0 ? (
+        <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhuma empresa cadastrada.</CardContent></Card>
       ) : (
         <div className="space-y-4">
-          {empresas.map(emp => {
-            const users = getUsersForEmpresa(emp.id);
+          {parentEmpresas.map(emp => {
+            const filiais = getFiliais(emp.id);
             return (
               <Card key={emp.id}>
                 <CardHeader className="pb-3">
@@ -230,6 +216,9 @@ export default function AdminEmpresas() {
                       {emp.cnpj && <span className="text-xs text-muted-foreground font-normal ml-2">CNPJ: {emp.cnpj}</span>}
                     </CardTitle>
                     <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => openNewEmpresa(emp.id)}>
+                        <GitBranch className="w-3.5 h-3.5 mr-1" />Nova Filial
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => { setAssignEmpresaId(emp.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
                         <UserPlus className="w-3.5 h-3.5 mr-1" />Vincular Usuário
                       </Button>
@@ -239,23 +228,35 @@ export default function AdminEmpresas() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  {users.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhum usuário vinculado</p>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Usuários vinculados:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {users.map(u => (
-                          <Badge key={u.id} variant="secondary" className="flex items-center gap-1.5 py-1 px-3">
-                            <span>{u.nome || u.email || "—"}</span>
-                            {u.email && <span className="text-muted-foreground text-xs">({u.email})</span>}
-                            <button onClick={() => handleUnassignUser(u.user_id)} className="ml-1 hover:text-destructive">
-                              <X className="w-3 h-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
+                <CardContent className="space-y-4">
+                  {renderUsers(emp.id)}
+
+                  {/* Filiais */}
+                  {filiais.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <GitBranch className="w-3.5 h-3.5" /> Filiais ({filiais.length})
+                      </p>
+                      {filiais.map(filial => (
+                        <div key={filial.id} className="ml-4 border rounded-lg p-3 bg-muted/30 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="font-medium text-sm">{filial.nome}</span>
+                              {filial.cnpj && <span className="text-xs text-muted-foreground">CNPJ: {filial.cnpj}</span>}
+                            </div>
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAssignEmpresaId(filial.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
+                                <UserPlus className="w-3 h-3 mr-1" />Vincular
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDeleteEmpresa(filial.id)}>
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                          {renderUsers(filial.id)}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
@@ -265,50 +266,59 @@ export default function AdminEmpresas() {
         </div>
       )}
 
-      {/* New Company Dialog */}
+      {/* New Company/Branch Dialog */}
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Empresa</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{newForm.empresa_pai_id ? "Nova Filial" : "Nova Empresa"}</DialogTitle>
+          </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div><Label>Nome da Empresa</Label><Input value={newForm.nome} onChange={e => setNewForm({...newForm, nome: e.target.value})} placeholder="Nome completo" /></div>
-            <div><Label>CNPJ</Label><Input value={newForm.cnpj} onChange={e => setNewForm({...newForm, cnpj: e.target.value})} placeholder="00.000.000/0000-00" /></div>
-            <div><Label>E-mail</Label><Input type="email" value={newForm.email} onChange={e => setNewForm({...newForm, email: e.target.value})} placeholder="contato@empresa.com" /></div>
-            <div><Label>Telefone</Label><Input value={newForm.telefone} onChange={e => setNewForm({...newForm, telefone: e.target.value})} placeholder="(00) 00000-0000" /></div>
+            {!newForm.empresa_pai_id && (
+              <div>
+                <Label>Vincular como filial de (opcional)</Label>
+                <Select value={newForm.empresa_pai_id} onValueChange={v => setNewForm({ ...newForm, empresa_pai_id: v === "none" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Nenhuma (empresa independente)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma (empresa independente)</SelectItem>
+                    {parentEmpresas.map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {newForm.empresa_pai_id && (
+              <div className="bg-muted/50 rounded-md px-3 py-2 text-sm flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-muted-foreground" />
+                <span>Filial de: <strong>{empresas.find(e => e.id === newForm.empresa_pai_id)?.nome}</strong></span>
+              </div>
+            )}
+            <div><Label>Nome</Label><Input value={newForm.nome} onChange={e => setNewForm({ ...newForm, nome: e.target.value })} placeholder={newForm.empresa_pai_id ? "Ex: Empresa X - Filial Mossoró" : "Nome completo"} /></div>
+            <div><Label>CNPJ</Label><Input value={newForm.cnpj} onChange={e => setNewForm({ ...newForm, cnpj: e.target.value })} placeholder="00.000.000/0000-00" /></div>
+            <div><Label>E-mail</Label><Input type="email" value={newForm.email} onChange={e => setNewForm({ ...newForm, email: e.target.value })} placeholder="contato@empresa.com" /></div>
+            <div><Label>Telefone</Label><Input value={newForm.telefone} onChange={e => setNewForm({ ...newForm, telefone: e.target.value })} placeholder="(00) 00000-0000" /></div>
           </div>
-          <DialogFooter><Button onClick={handleCreateEmpresa} disabled={saving}>{saving ? "Criando..." : "Criar Empresa"}</Button></DialogFooter>
+          <DialogFooter>
+            <Button onClick={handleCreateEmpresa} disabled={saving}>{saving ? "Criando..." : newForm.empresa_pai_id ? "Criar Filial" : "Criar Empresa"}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Assign User Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Criar / Vincular Usuário à Empresa</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Criar / Vincular Usuário</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Se o e-mail já existir, o usuário será vinculado. Caso contrário, uma nova conta será criada com a senha informada.
+              Se o e-mail já existir, o usuário será vinculado. Caso contrário, uma nova conta será criada.
             </p>
-            <div>
-              <Label>Nome</Label>
-              <Input value={assignNome} onChange={e => setAssignNome(e.target.value)} placeholder="Nome do usuário" />
-            </div>
-            <div>
-              <Label>E-mail</Label>
-              <Input type="email" value={assignEmail} onChange={e => setAssignEmail(e.target.value)} placeholder="usuario@email.com" />
-            </div>
+            <div><Label>Nome</Label><Input value={assignNome} onChange={e => setAssignNome(e.target.value)} placeholder="Nome do usuário" /></div>
+            <div><Label>E-mail</Label><Input type="email" value={assignEmail} onChange={e => setAssignEmail(e.target.value)} placeholder="usuario@email.com" /></div>
             <div>
               <Label>Senha (para novo usuário)</Label>
               <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  value={assignSenha}
-                  onChange={e => setAssignSenha(e.target.value)}
-                  placeholder="Mín. 6 caracteres"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
+                <Input type={showPassword ? "text" : "password"} value={assignSenha} onChange={e => setAssignSenha(e.target.value)} placeholder="Mín. 6 caracteres" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
