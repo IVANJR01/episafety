@@ -42,11 +42,11 @@ const BOTTOM_NAV_MAX = 5;
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { signOut, user, modulosPermitidos, isSuperAdmin } = useAuth();
+  const { signOut, user, modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
 
-  const canAccess = (moduleKey: string) => isSuperAdmin || canAccessModule(modulosPermitidos, moduleKey);
+  const canAccess = (moduleKey: string) => isSuperAdmin || isPrincipal || canAccessModule(modulosPermitidos, moduleKey);
 
   const visibleMainItems = mainNavItems.filter((i) => canAccess(i.moduleKey));
   const visibleEpiItems = epiItems.filter((i) => canAccess(i.moduleKey));
@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Bottom nav items: first 4 main items + "Mais" button
   const bottomNavItems = visibleMainItems.slice(0, 4);
-  const hasMore = visibleCadastroItems.length > 0 || isSuperAdmin;
+  const hasMore = visibleCadastroItems.length > 0 || isSuperAdmin || isPrincipal;
 
   useEffect(() => {
     // Captura o evento beforeinstallprompt para usar no botão de instalação
