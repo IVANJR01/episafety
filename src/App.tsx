@@ -24,6 +24,7 @@ import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
 import Treinamentos from "@/pages/Treinamentos";
 import ExamesModule from "@/pages/ExamesModule";
+import CadastroDashboard from "@/pages/CadastroDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
