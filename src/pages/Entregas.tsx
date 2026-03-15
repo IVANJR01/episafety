@@ -49,7 +49,7 @@ export default function Entregas() {
 
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
-  const [signInputType, setSignInputType] = useState<"assinatura" | "biometria">("assinatura");
+  const [signInputType, setSignInputType] = useState<"assinatura" | "facial">("assinatura");
 
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
