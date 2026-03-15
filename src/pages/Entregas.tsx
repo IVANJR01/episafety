@@ -324,7 +324,8 @@ export default function Entregas() {
 
     setSaving(false);
     setSignInputType("assinatura");
-    setSignOpen(true);
+    // Delay to let the first dialog close animation finish before opening signature
+    setTimeout(() => setSignOpen(true), 350);
   };
 
   const handleSaveSignature = async () => {
