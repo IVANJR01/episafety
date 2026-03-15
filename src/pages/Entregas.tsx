@@ -802,17 +802,21 @@ export default function Entregas() {
             {signInputType === "assinatura" ? (
               <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed rounded-lg bg-muted/20 space-y-4">
-                <ScanFace className="w-16 h-16 text-primary/60 animate-pulse" />
-                <div className="text-center space-y-2">
-                  <p className="font-medium text-sm">Reconhecimento Facial</p>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    Conforme a Portaria Nº 2.175/2022, a NR-6 permite o uso de biometria facial para registro da entrega de EPIs. Ao clicar em "Confirmar Reconhecimento Facial", o sensor do dispositivo será ativado.
-                  </p>
-                  <div className="flex items-center gap-1 justify-center text-xs text-primary">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Conforme NR-6 — Portaria Nº 2.175/2022</span>
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg border bg-muted/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Camera className="w-4 h-4 text-primary" />
+                    <p className="font-medium text-sm">Foto do Colaborador</p>
                   </div>
+                  <CameraCapture
+                    capturedPhoto={capturedPhoto}
+                    onCapture={setCapturedPhoto}
+                    onClear={() => setCapturedPhoto(null)}
+                  />
+                </div>
+                <div className="flex items-center gap-1 justify-center text-xs text-primary">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Conforme NR-6 — Portaria Nº 2.175/2022</span>
                 </div>
               </div>
             )}
