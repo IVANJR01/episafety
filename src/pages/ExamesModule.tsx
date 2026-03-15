@@ -417,7 +417,7 @@ export default function ExamesModule() {
           row.push(
             e.data ? format(parseISO(e.data), "dd/MM/yyyy") : "—",
             e.data_vencimento ? format(parseISO(e.data_vencimento), "dd/MM/yyyy") : "—",
-            s.key === "vencido" ? "Vencido" : s.key === "atencao" ? "Atenção" : "Válido"
+            e.resultado === "pendente" ? "Pendente" : s.key === "vencido" ? "Vencido" : s.key === "atencao" ? "Atenção" : "Válido"
           );
         }
       });
