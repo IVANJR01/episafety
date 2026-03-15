@@ -888,6 +888,30 @@ export default function ExamesModule() {
         <TabsContent value="sem_exame">
           <Card>
             <CardContent className="p-0">
+              {funcionariosSemExame.length > 0 && (
+                <div className="flex justify-end p-4 pb-0">
+                  <Button variant="outline" className="border-primary/30 hover:bg-primary/10" onClick={() => {
+                    const wb = XLSX.utils.book_new();
+                    const wsData: any[][] = [
+                      [{ v: "Funcionários Sem Exame Cadastrado", t: "s", s: { font: { bold: true, sz: 14 }, alignment: { horizontal: "center" } } }],
+                      [{ v: `Data: ${format(new Date(), "dd/MM/yyyy")}`, t: "s", s: { font: { sz: 10 }, alignment: { horizontal: "center" } } }],
+                      [],
+                      ["Nº", "Nome Completo", "CPF", "Matrícula", "Função", "Setor"].map(h => ({ v: h, t: "s", s: { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 }, fill: { fgColor: { rgb: "E74C3C" } }, alignment: { horizontal: "center" }, border: { bottom: { style: "thin", color: { rgb: "000000" } } } } })),
+                    ];
+                    funcionariosSemExame.forEach((f, i) => {
+                      wsData.push([i + 1, f.nome, f.cpf || "—", f.matricula || "—", f.cargo || "—", f.setor || "—"]);
+                    });
+                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                    ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }];
+                    ws["!cols"] = [{ wch: 6 }, { wch: 35 }, { wch: 16 }, { wch: 14 }, { wch: 22 }, { wch: 18 }];
+                    XLSX.utils.book_append_sheet(wb, ws, "Sem Exame");
+                    XLSX.writeFile(wb, `Funcionarios_Sem_Exame_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+                    toast({ title: "Exportado!", description: `${funcionariosSemExame.length} funcionários sem exame exportados.` });
+                  }}>
+                    <Download className="w-4 h-4 mr-2" />Exportar Sem Exame
+                  </Button>
+                </div>
+              )}
               {loading ? (
                 <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
               ) : funcionariosSemExame.length === 0 ? (
