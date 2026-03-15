@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, RotateCcw, Check, VideoOff } from "lucide-react";
+import { Camera, RotateCcw, Check, VideoOff, Upload } from "lucide-react";
 
 interface Props {
   onCapture: (dataUrl: string) => void;
@@ -11,12 +11,15 @@ interface Props {
 export default function CameraCapture({ onCapture, capturedPhoto, onClear }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cameraAttempted, setCameraAttempted] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
 
   const startCamera = useCallback(async () => {
     setError(null);
+    setCameraAttempted(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
@@ -31,11 +34,11 @@ export default function CameraCapture({ onCapture, capturedPhoto, onClear }: Pro
     } catch (err: any) {
       console.error("Camera error:", err);
       if (err.name === "NotAllowedError") {
-        setError("Permissão da câmera negada. Habilite nas configurações do navegador.");
+        setError("Permissão da câmera negada. Use o botão abaixo para enviar uma foto da galeria.");
       } else if (err.name === "NotFoundError") {
-        setError("Nenhuma câmera encontrada neste dispositivo.");
+        setError("Nenhuma câmera encontrada. Use o botão abaixo para enviar uma foto da galeria.");
       } else {
-        setError("Erro ao acessar a câmera. Tente novamente.");
+        setError("Não foi possível acessar a câmera. Use o botão abaixo para enviar uma foto da galeria.");
       }
     }
   }, []);
@@ -75,6 +78,23 @@ export default function CameraCapture({ onCapture, capturedPhoto, onClear }: Pro
     onCapture(dataUrl);
   }, [onCapture, stopCamera]);
 
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (dataUrl) {
+        stopCamera();
+        onCapture(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be selected again
+    e.target.value = "";
+  }, [onCapture, stopCamera]);
+
   if (capturedPhoto) {
     return (
       <div className="space-y-2">
@@ -93,16 +113,21 @@ export default function CameraCapture({ onCapture, capturedPhoto, onClear }: Pro
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <canvas ref={canvasRef} className="hidden" />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={handleFileUpload}
+      />
+
       {error ? (
-        <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed rounded-lg bg-muted/20 space-y-3">
-          <VideoOff className="w-10 h-10 text-destructive/60" />
-          <p className="text-sm text-destructive text-center">{error}</p>
-          <Button type="button" size="sm" variant="outline" onClick={startCamera}>
-            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-            Tentar novamente
-          </Button>
+        <div className="flex flex-col items-center justify-center py-6 px-4 border-2 border-dashed rounded-lg bg-muted/20 space-y-3">
+          <VideoOff className="w-8 h-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground text-center">{error}</p>
         </div>
       ) : (
         <div className="relative rounded-lg overflow-hidden border bg-black">
@@ -128,8 +153,29 @@ export default function CameraCapture({ onCapture, capturedPhoto, onClear }: Pro
           )}
         </div>
       )}
+
+      {/* Always show gallery upload as alternative */}
+      <div className="flex gap-2">
+        {error && (
+          <Button type="button" variant="outline" size="sm" className="flex-1" onClick={startCamera}>
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+            Tentar câmera
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant={error ? "default" : "outline"}
+          size="sm"
+          className="flex-1"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Upload className="w-3.5 h-3.5 mr-1.5" />
+          {error ? "Enviar foto da galeria" : "Ou enviar da galeria"}
+        </Button>
+      </div>
+
       <p className="text-xs text-muted-foreground text-center">
-        Posicione o rosto do colaborador na câmera e capture a foto
+        {streaming ? "Posicione o rosto do colaborador e capture a foto" : "Tire ou envie uma foto do colaborador"}
       </p>
     </div>
   );
