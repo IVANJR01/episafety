@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, Stethoscope, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, LayoutGrid, List, UserPlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Stethoscope, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, LayoutGrid, List, UserPlus, UserX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
