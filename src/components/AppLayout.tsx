@@ -47,10 +47,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const canAccess = (moduleKey: string) => isSuperAdmin || canAccessModule(modulosPermitidos, moduleKey);
 
   const visibleMainItems = mainNavItems.filter((i) => canAccess(i.moduleKey));
+  const visibleEpiItems = epiItems.filter((i) => canAccess(i.moduleKey));
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
   const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
 
+  const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
+  const [epiOpen, setEpiOpen] = useState(isEpiActive);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
 
   // Bottom nav items: first 4 main items + "Mais" button
