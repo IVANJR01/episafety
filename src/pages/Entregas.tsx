@@ -196,16 +196,23 @@ export default function Entregas() {
   }, []);
 
   useEffect(() => {
-    if (!shouldOpenSignatureAfterSave || open || !pendingEntrega) return;
+    if (!shouldOpenSignatureAfterSave || open || !pendingEntrega || signOpen) return;
 
-    const timer = setTimeout(() => {
+    const openSignature = () => {
       setSignInputType("assinatura");
       setSignOpen(true);
-      setShouldOpenSignatureAfterSave(false);
-    }, 120);
+    };
 
-    return () => clearTimeout(timer);
-  }, [shouldOpenSignatureAfterSave, open, pendingEntrega]);
+    const firstAttempt = setTimeout(openSignature, 150);
+    const secondAttempt = setTimeout(openSignature, 450);
+    const finalize = setTimeout(() => setShouldOpenSignatureAfterSave(false), 700);
+
+    return () => {
+      clearTimeout(firstAttempt);
+      clearTimeout(secondAttempt);
+      clearTimeout(finalize);
+    };
+  }, [shouldOpenSignatureAfterSave, open, pendingEntrega, signOpen]);
 
   const handleSave = async () => {
     if (saving) return;
