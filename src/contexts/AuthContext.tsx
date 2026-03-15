@@ -21,11 +21,11 @@ export const useAuth = () => useContext(AuthContext);
 
 const AUTH_CACHE_KEY = "offline_auth_cache";
 
-function saveAuthCache(data: { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean }) {
+function saveAuthCache(data: { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean; isPrincipal: boolean }) {
   try { localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(data)); } catch {}
 }
 
-function loadAuthCache(): { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean } | null {
+function loadAuthCache(): { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean; isPrincipal: boolean } | null {
   try {
     const raw = localStorage.getItem(AUTH_CACHE_KEY);
     return raw ? JSON.parse(raw) : null;
