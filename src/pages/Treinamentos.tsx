@@ -324,6 +324,23 @@ export default function Treinamentos() {
       documento_pendente: c.documento_pendente || null,
       empresa_id: empresaId,
     }));
+
+    if (!isOnline()) {
+      const cached = getCachedData<ControleTreinamento>("controle_treinamentos") || [];
+      payloads.forEach(p => {
+        const tempId = crypto.randomUUID();
+        const newItem = { ...p, id: tempId, created_by: null };
+        addToSyncQueue({ table: "controle_treinamentos", type: "insert", payload: newItem });
+        cached.unshift(newItem as ControleTreinamento);
+      });
+      setCachedData("controle_treinamentos", cached);
+      setSavingMulti(false);
+      toast({ title: "Salvo offline", description: `${validCursos.length} curso(s) serão sincronizados.` });
+      setOpen(false);
+      fetchData();
+      return;
+    }
+
     const { error } = await (supabase.from as any)("controle_treinamentos").insert(payloads);
     setSavingMulti(false);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
