@@ -825,9 +825,9 @@ export default function Entregas() {
             <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); refetch(); }}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
+            <Button onClick={handleSaveSignature} disabled={(signMode === "existing" && selectedUnsigned.length === 0) || (signInputType === "facial" && !capturedPhoto)}>
               {signInputType === "facial" ? (
-                <><ScanFace className="w-4 h-4 mr-1.5" />Confirmar Rec. Facial {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
+                <><ScanFace className="w-4 h-4 mr-1.5" />Confirmar com Foto {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
               ) : (
                 <>✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
               )}
