@@ -114,13 +114,36 @@ export default function AdminEmpresas() {
 
   const handleAssignUser = async () => {
     if (!assignEmail.trim() || !assignEmpresaId) return;
-    const existingProfile = profiles.find(p => p.email?.toLowerCase() === assignEmail.trim().toLowerCase());
+    const emailLower = assignEmail.trim().toLowerCase();
+    const nome = assignNome.trim();
+    const allModules = ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
+
+    // Helper: ensure user is in usuarios_liberados
+    const ensureUsuarioLiberado = async (empresaId: string) => {
+      const { data: existing } = await (supabase.from as any)("usuarios_liberados")
+        .select("id")
+        .eq("email", emailLower)
+        .limit(1);
+      if (!existing || existing.length === 0) {
+        await (supabase.from as any)("usuarios_liberados").insert({
+          email: emailLower, nome, modulos_permitidos: allModules, empresa_id: empresaId,
+        });
+      } else {
+        // Update empresa_id if needed
+        await (supabase.from as any)("usuarios_liberados")
+          .update({ empresa_id: empresaId })
+          .eq("email", emailLower);
+      }
+    };
+
+    const existingProfile = profiles.find(p => p.email?.toLowerCase() === emailLower);
     if (existingProfile) {
       const { error } = await (supabase.from as any)("profiles").update({ empresa_id: assignEmpresaId }).eq("user_id", existingProfile.user_id);
       if (error) {
         toast({ title: "Erro ao vincular", description: error.message, variant: "destructive" });
       } else {
-        toast({ title: `Usuário ${existingProfile.nome || existingProfile.email} vinculado!` });
+        await ensureUsuarioLiberado(assignEmpresaId);
+        toast({ title: `Usuário ${existingProfile.nome || existingProfile.email} vinculado e autorizado!` });
         setAssignOpen(false); setAssignEmail(""); setAssignNome(""); setAssignSenha("");
         await loadData();
       }
@@ -131,20 +154,17 @@ export default function AdminEmpresas() {
     setAssigning(true);
     try {
       const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
-        body: { email: assignEmail.trim().toLowerCase(), password: assignSenha, nome: assignNome.trim() },
+        body: { email: emailLower, password: assignSenha, nome },
       });
-      if (fnError || fnData?.error) {
+      if (fnError || (fnData?.error && !fnData?.already_exists)) {
         toast({ title: "Erro ao criar conta", description: fnData?.error || fnError?.message, variant: "destructive" });
         setAssigning(false); return;
       }
       if (fnData?.user_id) {
         await (supabase.from as any)("profiles").update({ empresa_id: assignEmpresaId }).eq("user_id", fnData.user_id);
-        const allModules = ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
-        await (supabase.from as any)("usuarios_liberados").insert({
-          email: assignEmail.trim().toLowerCase(), nome: assignNome.trim(), modulos_permitidos: allModules, empresa_id: assignEmpresaId,
-        });
+        await ensureUsuarioLiberado(assignEmpresaId);
       }
-      toast({ title: "Usuário criado e vinculado com sucesso!" });
+      toast({ title: fnData?.already_exists ? "Usuário existente vinculado e autorizado!" : "Usuário criado e vinculado com sucesso!" });
       setAssignOpen(false); setAssignEmail(""); setAssignNome(""); setAssignSenha("");
       await loadData();
     } catch (err: any) {
