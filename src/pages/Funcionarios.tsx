@@ -307,8 +307,16 @@ export default function Funcionarios() {
     return unique.sort((a, b) => a.localeCompare(b));
   }, [items]);
 
+  // Separate active vs dismissed
+  const ativos = useMemo(() => items.filter(f => !f.data_demissao), [items]);
+  const demitidos = useMemo(() => items.filter(f => !!f.data_demissao), [items]);
+
+  const [activeTab, setActiveTab] = useState("ativos");
+
+  const currentList = activeTab === "ativos" ? ativos : demitidos;
+
   const filteredItems = useMemo(() => {
-    let result = items;
+    let result = currentList;
     
     // Apply setor filter
     if (filterSetor) {
@@ -330,7 +338,7 @@ export default function Funcionarios() {
     }
     
     return result;
-  }, [items, searchTerm, filterSetor]);
+  }, [currentList, searchTerm, filterSetor]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
