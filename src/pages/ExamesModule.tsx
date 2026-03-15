@@ -123,6 +123,7 @@ export default function ExamesModule() {
   const [form, setForm] = useState({
     funcionario_id: "",
     tipo: "periodico",
+    nome_exame: "",
     data: new Date().toISOString().split("T")[0],
     data_vencimento: "",
     resultado: "pendente",
