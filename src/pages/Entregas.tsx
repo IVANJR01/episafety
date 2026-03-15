@@ -441,36 +441,42 @@ export default function Entregas() {
 
     const now = new Date();
 
+    const entregasData = funcEntregas.map(e => {
+      const epiCa = epis.find(ep => ep.id === e.epi_id)?.ca || null;
+      let dataDevolucao: string | null = null;
+      if ((e.status === "substituido" || e.status === "devolvido") && epiCa) {
+        const newer = funcEntregas.find(other =>
+          other.id !== e.id &&
+          new Date(other.created_at) > new Date(e.created_at) &&
+          (other.tipo === "substituicao" || other.tipo === "devolucao") &&
+          epis.find(ep => ep.id === other.epi_id)?.ca === epiCa
+        );
+        dataDevolucao = newer?.data || e.data;
+      }
+      const epiObj = epis.find(ep => ep.id === e.epi_id);
+      return {
+        data: e.data, created_at: e.created_at, quantidade: e.quantidade,
+        epi_nome: epiObj?.nome || "—",
+        epi_ca: epiCa,
+        epi_descricao: epiObj?.descricao || null,
+        epi_validade: epiObj?.validade || null,
+        observacao: e.observacao,
+        tipo: e.tipo,
+        status: e.status,
+        data_devolucao: dataDevolucao,
+        assinatura_colaborador: e.assinatura_colaborador || null,
+        foto_reconhecimento: (e as any).foto_reconhecimento || null,
+      };
+    });
+
+    // Pre-load photos as base64 for PDF embedding
+    const fotosBase64 = await preloadFotosReconhecimento(entregasData);
+
     const doc = gerarFichaEPI({
       empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: null },
       funcionario: { nome: func.nome, cargo: func.cargo, setor: func.setor, cpf: func.cpf, matricula: func.matricula, data_admissao: func.data_admissao },
-      entregas: funcEntregas.map(e => {
-        const epiCa = epis.find(ep => ep.id === e.epi_id)?.ca || null;
-        let dataDevolucao: string | null = null;
-        if ((e.status === "substituido" || e.status === "devolvido") && epiCa) {
-          const newer = funcEntregas.find(other =>
-            other.id !== e.id &&
-            new Date(other.created_at) > new Date(e.created_at) &&
-            (other.tipo === "substituicao" || other.tipo === "devolucao") &&
-            epis.find(ep => ep.id === other.epi_id)?.ca === epiCa
-          );
-          dataDevolucao = newer?.data || e.data;
-        }
-        const epiObj = epis.find(ep => ep.id === e.epi_id);
-        return {
-          data: e.data, created_at: e.created_at, quantidade: e.quantidade,
-          epi_nome: epiObj?.nome || "—",
-          epi_ca: epiCa,
-          epi_descricao: epiObj?.descricao || null,
-          epi_validade: epiObj?.validade || null,
-          observacao: e.observacao,
-          tipo: e.tipo,
-          status: e.status,
-          data_devolucao: dataDevolucao,
-          assinatura_colaborador: e.assinatura_colaborador || null,
-          foto_reconhecimento: (e as any).foto_reconhecimento || null,
-        };
-      }),
+      entregas: entregasData,
+      fotosBase64,
     });
 
     doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);
