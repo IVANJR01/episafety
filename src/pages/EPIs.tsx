@@ -32,7 +32,7 @@ const emptyForm = {
 export default function EPIs() {
   const { data: epis, loading, add, update, remove } = useSupabaseCrud<EPI>("epis", "created_at");
   const { canEdit, canCreate, canDelete } = usePermissions("epis");
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isPrincipal } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EPI | null>(null);
   const { form, setForm, resetForm, hasDraft } = useFormDraft("epis", emptyForm);
