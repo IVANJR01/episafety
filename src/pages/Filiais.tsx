@@ -172,7 +172,7 @@ export default function Filiais() {
             Unidades vinculadas a <strong>{empresaNome}</strong>
           </p>
         </div>
-        {(canCreate || isSuperAdmin) && (
+        {(canCreate || isAdmin) && (
           <Button onClick={openNew} className="text-xs sm:text-sm">
             <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova Unidade
           </Button>
