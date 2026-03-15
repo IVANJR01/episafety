@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
 
@@ -31,6 +31,7 @@ const afterCadastroItems: NavItem[] = [
 const cadastroItems: NavItem[] = [
   { path: "/cadastro", label: "Dashboard", icon: LayoutDashboard, moduleKey: "cadastro_funcionarios" },
   { path: "/cadastro/empresas", label: "Empresas", icon: Building2, moduleKey: "cadastro_empresas" },
+  { path: "/cadastro/filiais", label: "Filiais / Obras", icon: GitBranch, moduleKey: "cadastro_empresas" },
   { path: "/cadastro/funcionarios", label: "Funcionários", icon: Users, moduleKey: "cadastro_funcionarios" },
   { path: "/cadastro/usuarios", label: "Usuários Liberados", icon: Shield, moduleKey: "cadastro_usuarios" },
 ];
