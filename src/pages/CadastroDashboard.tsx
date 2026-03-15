@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Users, Building, Briefcase } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
+import { Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Funcionario {
   id: string;
@@ -10,18 +11,39 @@ interface Funcionario {
   cargo: string | null;
 }
 
+const COLORS = [
+  "hsl(210, 70%, 55%)", "hsl(160, 60%, 45%)", "hsl(40, 80%, 50%)",
+  "hsl(280, 60%, 55%)", "hsl(350, 65%, 55%)", "hsl(190, 70%, 45%)",
+  "hsl(100, 50%, 45%)", "hsl(25, 75%, 50%)", "hsl(240, 55%, 60%)",
+  "hsl(330, 60%, 50%)",
+];
+
 export default function CadastroDashboard() {
   const { data: funcionarios, loading } = useSupabaseQuery<Funcionario>("funcionarios", "nome", true);
 
   const stats = useMemo(() => {
-    const setores = new Set(funcionarios.map(f => f.setor).filter(Boolean));
-    const cargos = new Set(funcionarios.map(f => f.cargo).filter(Boolean));
+    const setoresMap: Record<string, number> = {};
+    const cargosMap: Record<string, number> = {};
+
+    funcionarios.forEach(f => {
+      if (f.setor) setoresMap[f.setor] = (setoresMap[f.setor] || 0) + 1;
+      if (f.cargo) cargosMap[f.cargo] = (cargosMap[f.cargo] || 0) + 1;
+    });
+
+    const setoresData = Object.entries(setoresMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const cargosData = Object.entries(cargosMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
     return {
       totalFuncionarios: funcionarios.length,
-      totalSetores: setores.size,
-      totalCargos: cargos.size,
-      setoresList: Array.from(setores).sort() as string[],
-      cargosList: Array.from(cargos).sort() as string[],
+      totalSetores: Object.keys(setoresMap).length,
+      totalCargos: Object.keys(cargosMap).length,
+      setoresData,
+      cargosData,
     };
   }, [funcionarios]);
 
@@ -33,7 +55,7 @@ export default function CadastroDashboard() {
     );
   }
 
-  const cards = [
+  const summaryCards = [
     { label: "Funcionários", value: stats.totalFuncionarios, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Setores", value: stats.totalSetores, icon: Building, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Funções / Cargos", value: stats.totalCargos, icon: Briefcase, color: "text-amber-600", bg: "bg-amber-50" },
@@ -44,7 +66,7 @@ export default function CadastroDashboard() {
       <h1 className="text-2xl font-bold">Dashboard Cadastro</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {cards.map(c => (
+        {summaryCards.map(c => (
           <Card key={c.label}>
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`p-3 rounded-xl ${c.bg}`}>
@@ -60,42 +82,52 @@ export default function CadastroDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Setores */}
+        {/* Gráfico por Setor */}
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
-              <Building className="w-4 h-4 text-emerald-600" /> Setores ({stats.totalSetores})
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Building className="w-4 h-4 text-emerald-600" /> Funcionários por Setor
             </h2>
-            {stats.setoresList.length === 0 ? (
+            {stats.setoresData.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum setor cadastrado.</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {stats.setoresList.map(s => (
-                  <span key={s} className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
-                    {s}
-                  </span>
-                ))}
-              </div>
+              <ResponsiveContainer width="100%" height={Math.max(200, stats.setoresData.length * 40)}>
+                <BarChart data={stats.setoresData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
+                  <XAxis type="number" allowDecimals={false} fontSize={12} />
+                  <YAxis type="category" dataKey="name" width={120} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
+                  <Tooltip formatter={(v: number) => [v, "Funcionários"]} />
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={24}>
+                    {stats.setoresData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        {/* Cargos */}
+        {/* Gráfico por Cargo */}
         <Card>
           <CardContent className="p-6">
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-amber-600" /> Funções / Cargos ({stats.totalCargos})
+            <h2 className="font-semibold mb-4 flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-amber-600" /> Funcionários por Função / Cargo
             </h2>
-            {stats.cargosList.length === 0 ? (
+            {stats.cargosData.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum cargo cadastrado.</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {stats.cargosList.map(c => (
-                  <span key={c} className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
-                    {c}
-                  </span>
-                ))}
-              </div>
+              <ResponsiveContainer width="100%" height={Math.max(200, stats.cargosData.length * 40)}>
+                <BarChart data={stats.cargosData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
+                  <XAxis type="number" allowDecimals={false} fontSize={12} />
+                  <YAxis type="category" dataKey="name" width={120} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} />
+                  <Tooltip formatter={(v: number) => [v, "Funcionários"]} />
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={24}>
+                    {stats.cargosData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
