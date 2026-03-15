@@ -350,7 +350,7 @@ export default function Entregas() {
     );
 
     refetch();
-    toast({ title: signInputType === "biometria" ? `Biometria registrada em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
+    toast({ title: signInputType === "facial" ? `Reconhecimento facial registrado em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
     setSignOpen(false);
     setPendingEntrega(null);
     setSelectedUnsigned([]);
