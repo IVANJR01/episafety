@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, Search, Loader2, Download, Package, BarChart3 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, Download, Package, BarChart3, ClipboardList } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
+import Entregas from "@/pages/Entregas";
 
 interface EPI {
   id: string; nome: string; ca: string | null; validade: string | null;
@@ -162,6 +163,7 @@ export default function EPIs() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="estoque"><Package className="w-4 h-4 mr-1.5" />Estoque</TabsTrigger>
+          <TabsTrigger value="entregas"><ClipboardList className="w-4 h-4 mr-1.5" />Entregas</TabsTrigger>
           <TabsTrigger value="relatorios"><BarChart3 className="w-4 h-4 mr-1.5" />Relatórios</TabsTrigger>
         </TabsList>
 
@@ -271,6 +273,10 @@ export default function EPIs() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="entregas" className="mt-4">
+          <Entregas />
         </TabsContent>
 
         <TabsContent value="relatorios" className="space-y-4 mt-4">

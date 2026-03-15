@@ -11,7 +11,7 @@ import InstallBanner from "@/components/InstallBanner";
 import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import Funcionarios from "@/pages/Funcionarios";
-import Entregas from "@/pages/Entregas";
+// Entregas integrado ao módulo EPIs
 // Relatorios integrado ao módulo EPIs
 import Empresas from "@/pages/Empresas";
 import UsuariosLiberados from "@/pages/UsuariosLiberados";
@@ -44,8 +44,8 @@ function DashboardGuard() {
     return <Dashboard />;
   }
   // Redirect to first accessible route
-  const fallbacks = ["/entregas", "/epis", "/cadastro/empresas", "/cadastro/funcionarios", "/cadastro/usuarios"];
-  const moduleKeys = ["entregas", "epis", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
+  const fallbacks = ["/epis", "/cadastro/empresas", "/cadastro/funcionarios", "/cadastro/usuarios"];
+  const moduleKeys = ["epis", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
   for (let i = 0; i < fallbacks.length; i++) {
     if (canAccessModule(modulosPermitidos, moduleKeys[i])) {
       return <Navigate to={fallbacks[i]} replace />;
@@ -93,7 +93,7 @@ function ProtectedRoute() {
       <Routes>
         <Route path="/" element={<DashboardGuard />} />
         <Route path="/epis" element={<EPIs />} />
-        <Route path="/entregas" element={<Entregas />} />
+        <Route path="/entregas" element={<Navigate to="/epis" replace />} />
         <Route path="/relatorios" element={<Navigate to="/epis" replace />} />
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
