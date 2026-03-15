@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, Search, Loader2, Download, Package, BarChart3 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, Download, Package, BarChart3, ClipboardList } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
