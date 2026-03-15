@@ -43,37 +43,58 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // User client to get empresa_id
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Service client for data export
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user's empresa_id
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("empresa_id")
-      .eq("user_id", user.id)
-      .single();
+    // Check if this is a scheduled call
+    const body = await req.json().catch(() => ({}));
+    const isScheduled = body?.scheduled === true;
 
-    const empresaId = profile?.empresa_id;
-    if (!empresaId) {
-      return new Response(JSON.stringify({ error: "Empresa não encontrada" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    let empresaIds: string[] = [];
+
+    if (isScheduled) {
+      // Scheduled: backup all empresas
+      const { data: empresas } = await serviceClient.from("empresa_config").select("id");
+      empresaIds = (empresas || []).map((e: any) => e.id);
+    } else {
+      // Manual: backup only user's empresa
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
       });
+
+      const { data: { user }, error: userError } = await userClient.auth.getUser();
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: profile } = await serviceClient
+        .from("profiles")
+        .select("empresa_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!profile?.empresa_id) {
+        return new Response(JSON.stringify({ error: "Empresa não encontrada" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      empresaIds = [profile.empresa_id];
     }
+
+    let totalTables = 0;
+
+    for (const empresaId of empresaIds) {
+      const result = await generateBackupForEmpresa(serviceClient, empresaId);
+      if (result.success) totalTables += result.tables;
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, empresas: empresaIds.length, tables: totalTables }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
 
     // Export all tables filtered by empresa_id
     const backup: Record<string, unknown[]> = {};
