@@ -23,7 +23,7 @@ interface Exame {
   funcionario_id: string;
   tipo: string;
   nome_exame: string | null;
-  data: string;
+  data: string | null;
   data_vencimento: string | null;
   resultado: string;
   medico: string | null;
@@ -108,6 +108,13 @@ function calcularVencimento(tipo: string, dataExame: string): string {
   if (!meses || meses === 0 || !dataExame) return "";
   const data = parseISO(dataExame);
   return format(addMonths(data, meses), "yyyy-MM-dd");
+}
+
+function formatDateSafe(value: string | null | undefined): string {
+  if (!value) return "—";
+  const parsed = parseISO(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return format(parsed, "dd/MM/yyyy");
 }
 
 interface Medico {
@@ -246,7 +253,7 @@ export default function ExamesModule() {
       funcionario_id: e.funcionario_id,
       tipo: e.tipo,
       nome_exame: e.nome_exame || "",
-      data: e.data,
+      data: e.data || "",
       data_vencimento: e.data_vencimento || "",
       resultado: e.resultado,
       medico: e.medico || "",
@@ -533,17 +540,19 @@ export default function ExamesModule() {
       const func = funcMap[fid];
       if (!func) return null;
       const exames = items.filter(e => e.funcionario_id === fid);
-      const tipoData: Record<string, { data: string; vencimento: string | null; resultado: string; status: ReturnType<typeof getStatus> }> = {};
+      const tipoData: Record<string, { data: string | null; vencimento: string | null; resultado: string; status: ReturnType<typeof getStatus> }> = {};
       nomesUsados.forEach(nome => {
         // Get most recent exam with this nome_exame
-        const sorted = exames.filter(e => (e.nome_exame || tipoLabels[e.tipo] || e.tipo) === nome).sort((a, b) => b.data.localeCompare(a.data));
+        const sorted = exames
+          .filter(e => (e.nome_exame || tipoLabels[e.tipo] || e.tipo) === nome)
+          .sort((a, b) => (b.data || "").localeCompare(a.data || ""));
         if (sorted.length > 0) {
           const e = sorted[0];
           tipoData[nome] = { data: e.data, vencimento: e.data_vencimento, resultado: e.resultado, status: getStatus(e.data_vencimento) };
         }
       });
       return { func, tipoData };
-    }).filter(Boolean) as { func: Funcionario; tipoData: Record<string, { data: string; vencimento: string | null; resultado: string; status: ReturnType<typeof getStatus> }> }[];
+    }).filter(Boolean) as { func: Funcionario; tipoData: Record<string, { data: string | null; vencimento: string | null; resultado: string; status: ReturnType<typeof getStatus> }> }[];
 
     return { tipos: nomesUsados, rows };
   }, [items, funcMap]);
@@ -736,8 +745,8 @@ export default function ExamesModule() {
                           <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
                           <TableCell className="text-xs font-medium">{e.nome_exame || "—"}</TableCell>
                           <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
-                          <TableCell className="font-mono text-xs">{format(parseISO(e.data), "dd/MM/yyyy")}</TableCell>
-                          <TableCell className="font-mono text-xs">{e.data_vencimento ? format(parseISO(e.data_vencimento), "dd/MM/yyyy") : "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{formatDateSafe(e.data)}</TableCell>
+                          <TableCell className="font-mono text-xs">{formatDateSafe(e.data_vencimento)}</TableCell>
                           <TableCell>
                             <Badge variant={
                               e.resultado === "apto" ? "default" :
@@ -832,10 +841,10 @@ export default function ExamesModule() {
                               : "bg-success text-success-foreground font-bold";
                             return [
                               <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {format(parseISO(td.data), "dd/MM/yyyy")}
+                                {formatDateSafe(td.data)}
                               </td>,
                               <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {td.vencimento ? format(parseISO(td.vencimento), "dd/MM/yyyy") : "—"}
+                                {formatDateSafe(td.vencimento)}
                               </td>,
                               <td key={`${row.func.id}-${tipo}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${td.resultado === "pendente" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : statusBg}`}>
                                 {td.resultado === "pendente" ? "Pendente" : td.status.key === "vencido" ? "Vencido" : td.status.key === "atencao" ? "Atenção" : "Válido"}
