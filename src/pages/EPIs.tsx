@@ -34,6 +34,8 @@ const emptyForm = {
 
 export default function EPIs() {
   const { data: epis, loading, add, update, remove } = useSupabaseCrud<EPI>("epis", "created_at");
+  const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
+  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { canEdit, canCreate, canDelete } = usePermissions("epis");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EPI | null>(null);
