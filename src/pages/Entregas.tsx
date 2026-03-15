@@ -1,12 +1,12 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
-import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
+import { isOnline, addToSyncQueue, getCachedData, setCachedData, getSyncQueue } from "@/lib/offlineStorage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,12 @@ export default function Entregas() {
   const { toast } = useToast();
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { empresaId } = useAuth();
+
+  // IDs de entregas pendentes de sincronização (salvas offline)
+  const offlinePendingIds = useMemo(() => {
+    const queue = getSyncQueue();
+    return new Set(queue.filter(op => op.table === "entregas").map(op => op.payload?.id).filter(Boolean));
+  }, [entregas]);
 
   const [open, setOpen] = useState(false);
   const [fichaOpen, setFichaOpen] = useState(false);
@@ -592,6 +598,9 @@ export default function Entregas() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
+                        {offlinePendingIds.has(e.id) && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded px-1 py-0.5 font-medium"><WifiOff className="w-3 h-3" />Offline</span>
+                        )}
                         <Badge variant={tipoBadge[e.tipo] || "default"} className="text-[10px]">{tipoLabels[e.tipo] || e.tipo}</Badge>
                         <span className={`text-[10px] font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
                           {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
@@ -654,7 +663,14 @@ export default function Entregas() {
                   ) : filteredEntregas.map(e => (
                     <TableRow key={e.id}>
                       <TableCell className="font-mono text-xs">{e.data}</TableCell>
-                      <TableCell><Badge variant={tipoBadge[e.tipo] || "default"}>{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={tipoBadge[e.tipo] || "default"}>{tipoLabels[e.tipo] || e.tipo}</Badge>
+                          {offlinePendingIds.has(e.id) && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded px-1.5 py-0.5 font-medium"><WifiOff className="w-3 h-3" />Offline</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium">{getName(funcionarios, e.funcionario_id)}</TableCell>
                       <TableCell>{getName(epis, e.epi_id)}</TableCell>
                       <TableCell className="text-right">{e.quantidade}</TableCell>
