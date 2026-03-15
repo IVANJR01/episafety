@@ -462,13 +462,14 @@ export default function Funcionarios() {
                     <TableHead>Setor</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Admissão</TableHead>
-                    <TableHead className="w-24"></TableHead>
+                    {activeTab === "demitidos" && <TableHead>Demissão</TableHead>}
+                    <TableHead className="w-36"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      {searchTerm ? "Nenhum funcionário encontrado para esta busca" : "Nenhum funcionário cadastrado"}
+                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 8 : 7} className="text-center text-muted-foreground py-8">
+                      {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
                     </TableCell></TableRow>
                   ) : filteredItems.map(f => (
                     <TableRow key={f.id}>
@@ -478,8 +479,19 @@ export default function Funcionarios() {
                       <TableCell>{f.setor || "—"}</TableCell>
                       <TableCell>{f.cargo || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{f.data_admissao ? f.data_admissao.split("-").reverse().join("/") : "—"}</TableCell>
+                      {activeTab === "demitidos" && <TableCell className="font-mono text-xs text-destructive">{f.data_demissao ? f.data_demissao.split("-").reverse().join("/") : "—"}</TableCell>}
                       <TableCell>
                         <div className="flex gap-1 justify-end">
+                          {activeTab === "ativos" && canEdit && (
+                            <Button size="sm" variant="outline" className="h-8 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => openDemissao(f)}>
+                              <UserX className="w-3 h-3" />Demitir
+                            </Button>
+                          )}
+                          {activeTab === "demitidos" && canEdit && (
+                            <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleReativar(f)}>
+                              <RotateCcw className="w-3 h-3" />Reativar
+                            </Button>
+                          )}
                           {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
@@ -492,6 +504,8 @@ export default function Funcionarios() {
           </Card>
         </>
       )}
+      </TabsContent>
+      </Tabs>
 
       {/* Dialog novo/editar */}
       <Dialog open={open} onOpenChange={setOpen}>
