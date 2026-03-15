@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           const [authResult, profileResult, superAdmin] = await Promise.all([
             checkAuthorized(currentUser.email),
-            loadProfile(currentUser.id),
+            loadProfile(currentUser.id, currentUser.email),
             checkSuperAdmin(currentUser.id),
           ]);
           setAuthorized(authResult.authorized);
