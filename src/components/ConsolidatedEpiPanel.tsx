@@ -24,7 +24,7 @@ export default function ConsolidatedEpiPanel() {
   useEffect(() => {
     (async () => {
       const { data: result } = await supabase.rpc("get_consolidated_epi_stock");
-      if (result && Array.isArray(result)) setData(result as FilialStock[]);
+      if (result && Array.isArray(result)) setData(result as unknown as FilialStock[]);
       setLoading(false);
     })();
   }, []);
