@@ -354,11 +354,14 @@ export default function Treinamentos() {
       }
     }
 
+    // Use filtered data (respects sector filter) instead of all items
+    const exportItems = filtered;
     const cursoSet = new Set<string>();
-    items.forEach(t => cursoSet.add(t.nome_curso));
+    exportItems.forEach(t => cursoSet.add(t.nome_curso));
     const cursos = Array.from(cursoSet).sort();
-    const funcIds = Array.from(new Set(items.map(t => t.funcionario_id)));
-    const totalCols = 5 + cursos.length * 3;
+    const funcIds = Array.from(new Set(exportItems.map(t => t.funcionario_id)));
+    const fixedCols = 6; // Nº, COLABORADOR, CPF, FUNÇÃO, SETOR, PENDENTES
+    const totalCols = fixedCols + cursos.length * 3;
 
     // Build worksheet manually for full style control
     const wb = XLSX.utils.book_new();
