@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Building2, Save, Upload, X, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
