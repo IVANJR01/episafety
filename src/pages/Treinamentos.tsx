@@ -508,7 +508,7 @@ export default function Treinamentos() {
           }
 
           // Color status cells
-          if (C >= 5 && (C - 5) % 3 === 2) {
+          if (C >= fixedCols && (C - fixedCols) % 3 === 2) {
             const val = String(cell.v || "");
             if (val === "Vencido") {
               cell.s.fill = { fgColor: { rgb: "DC2626" } };
