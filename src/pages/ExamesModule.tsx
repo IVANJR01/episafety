@@ -513,6 +513,7 @@ export default function ExamesModule() {
   };
 
   const totalItems = items.length;
+  const pendentesCount = items.filter(e => e.resultado === "pendente").length;
   const vencidosCount = items.filter(e => getStatus(e.data_vencimento).key === "vencido").length;
   const atencaoCount = items.filter(e => getStatus(e.data_vencimento).key === "atencao").length;
   const vigentesCount = items.filter(e => getStatus(e.data_vencimento).key === "vigente").length;
