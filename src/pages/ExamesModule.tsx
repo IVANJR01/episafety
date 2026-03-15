@@ -176,6 +176,15 @@ export default function ExamesModule() {
     );
   }, [funcionarios, funcSearch]);
 
+  const filteredMedicos = useMemo(() => {
+    if (!medicoSearch.trim()) return medicos;
+    const q = normalize(medicoSearch);
+    return medicos.filter(m =>
+      normalize(m.nome).includes(q) ||
+      (m.crm && m.crm.toLowerCase().includes(q))
+    );
+  }, [medicos, medicoSearch]);
+
   const setoresUnicos = useMemo(() => {
     const s = new Set<string>();
     funcionarios.forEach(f => { if (f.setor) s.add(f.setor); });
