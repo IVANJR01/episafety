@@ -733,6 +733,7 @@ export default function Treinamentos() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">Nº</TableHead>
                       <TableHead>Nome Completo</TableHead>
                       <TableHead>Função</TableHead>
                       <TableHead>Setor</TableHead>
