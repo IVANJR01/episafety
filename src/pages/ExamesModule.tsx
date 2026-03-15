@@ -590,7 +590,7 @@ export default function ExamesModule() {
       </div>
 
       {/* Indicadores */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-7">
         {/* Conformidade */}
         <Card className="col-span-2 lg:col-span-1 border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
           <CardContent className="p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-2">
