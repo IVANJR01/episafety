@@ -220,6 +220,7 @@ export default function ExamesModule() {
     const payload = {
       funcionario_id: form.funcionario_id,
       tipo: form.tipo as "admissional" | "periodico" | "demissional" | "retorno" | "mudanca_funcao",
+      nome_exame: form.nome_exame || null,
       data: form.data,
       data_vencimento: form.data_vencimento || null,
       resultado: form.resultado as "apto" | "inapto" | "apto_com_restricao" | "pendente",
