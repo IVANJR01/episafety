@@ -179,17 +179,20 @@ export default function ExamesModule() {
     return m;
   }, [funcionarios]);
 
-  const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normalize = useCallback((s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(), []);
 
   const filteredFuncionarios = useMemo(() => {
-    if (!funcSearch.trim()) return funcionarios.slice(0, 50);
-    const q = normalize(funcSearch);
-    return funcionarios.filter(f =>
-      normalize(f.nome).includes(q) ||
-      (f.matricula && f.matricula.toLowerCase().includes(q)) ||
-      (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
-    );
-  }, [funcionarios, funcSearch]);
+    const searchTerm = funcSearch?.trim() || "";
+    if (!searchTerm) return funcionarios.slice(0, 50);
+    const q = normalize(searchTerm);
+    return funcionarios.filter(f => {
+      const nome = normalize(f.nome || "");
+      const matricula = (f.matricula || "").toLowerCase();
+      const cpf = (f.cpf || "").replace(/\D/g, "");
+      const qClean = q.replace(/\D/g, "");
+      return nome.includes(q) || matricula.includes(q) || (qClean && cpf.includes(qClean));
+    });
+  }, [funcionarios, funcSearch, normalize]);
 
   const filteredMedicos = useMemo(() => {
     if (!medicoSearch.trim()) return medicos;
