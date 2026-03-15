@@ -146,14 +146,27 @@ export default function ExamesModule() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [{ data: exames }, { data: funcs }, { data: meds }] = await Promise.all([
-      supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
-      supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
-      supabase.from("medicos").select("id, nome, crm, especialidade"),
-    ]);
-    if (exames) setItems(exames);
-    if (funcs) setFuncionarios(funcs);
-    if (meds) setMedicos(meds);
+    if (!isOnline()) {
+      setItems(getCachedData<Exame>("exames") || []);
+      setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
+      setMedicos(getCachedData<Medico>("medicos") || []);
+      setLoading(false);
+      return;
+    }
+    try {
+      const [{ data: exames }, { data: funcs }, { data: meds }] = await Promise.all([
+        supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
+        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
+        supabase.from("medicos").select("id, nome, crm, especialidade"),
+      ]);
+      if (exames) { setItems(exames); setCachedData("exames", exames); }
+      if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
+      if (meds) { setMedicos(meds); setCachedData("medicos", meds); }
+    } catch {
+      setItems(getCachedData<Exame>("exames") || []);
+      setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
+      setMedicos(getCachedData<Medico>("medicos") || []);
+    }
     setLoading(false);
   };
 
