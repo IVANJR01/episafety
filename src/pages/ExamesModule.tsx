@@ -182,7 +182,7 @@ export default function ExamesModule() {
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const filteredFuncionarios = useMemo(() => {
-    if (!funcSearch.trim()) return funcionarios;
+    if (!funcSearch.trim()) return funcionarios.slice(0, 50);
     const q = normalize(funcSearch);
     return funcionarios.filter(f =>
       normalize(f.nome).includes(q) ||
