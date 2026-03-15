@@ -41,7 +41,7 @@ interface Funcionario {
   setor: string | null;
 }
 
-type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
+type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente" | "sem_exame";
 
 const TIPOS_EXAME = [
   { key: "admissional", label: "Admissional", validade_meses: 0 },
