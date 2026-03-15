@@ -374,10 +374,10 @@ export default function ExamesModule() {
     }
 
     const exportItems = filtered;
-    const tiposUsados = Array.from(new Set(exportItems.map(e => e.tipo))).sort();
+    const nomesUsados = Array.from(new Set(exportItems.map(e => e.nome_exame || tipoLabels[e.tipo] || e.tipo))).sort();
     const funcIds = Array.from(new Set(exportItems.map(e => e.funcionario_id)));
     const fixedCols = 5; // Nº, COLABORADOR, CPF, FUNÇÃO, SETOR
-    const totalCols = fixedCols + tiposUsados.length * 3;
+    const totalCols = fixedCols + nomesUsados.length * 3;
 
     const wb = XLSX.utils.book_new();
     const wsData: any[][] = [];
@@ -390,11 +390,11 @@ export default function ExamesModule() {
     wsData.push([""]);
 
     const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "SETOR"];
-    tiposUsados.forEach(t => { header1.push(tipoLabels[t] || t, "", ""); });
+    nomesUsados.forEach(n => { header1.push(n, "", ""); });
     wsData.push(header1);
 
     const header2: any[] = ["", "", "", "", ""];
-    tiposUsados.forEach(() => { header2.push("DATA EXAME", "VENCIMENTO", "STATUS"); });
+    nomesUsados.forEach(() => { header2.push("DATA EXAME", "VENCIMENTO", "STATUS"); });
     wsData.push(header2);
 
     funcIds.forEach((fid, idx) => {
@@ -402,8 +402,8 @@ export default function ExamesModule() {
       if (!func) return;
       const exames = exportItems.filter(e => e.funcionario_id === fid);
       const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—"];
-      tiposUsados.forEach(tipo => {
-        const e = exames.find(ex => ex.tipo === tipo);
+      nomesUsados.forEach(nome => {
+        const e = exames.find(ex => (ex.nome_exame || tipoLabels[ex.tipo] || ex.tipo) === nome);
         if (!e) {
           row.push("—", "—", "—");
         } else {
@@ -424,7 +424,7 @@ export default function ExamesModule() {
     for (let r = 0; r < HEADER_OFFSET; r++) {
       merges.push({ s: { r, c: 0 }, e: { r, c: Math.max(totalCols - 1, fixedCols - 1) } });
     }
-    tiposUsados.forEach((_, i) => {
+    nomesUsados.forEach((_, i) => {
       const startCol = fixedCols + i * 3;
       merges.push({ s: { r: HEADER_OFFSET, c: startCol }, e: { r: HEADER_OFFSET, c: startCol + 2 } });
     });
@@ -434,7 +434,7 @@ export default function ExamesModule() {
     ws["!merges"] = merges;
 
     const colWidths: { wch: number }[] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 16 }];
-    tiposUsados.forEach(() => { colWidths.push({ wch: 14 }, { wch: 14 }, { wch: 12 }); });
+    nomesUsados.forEach(() => { colWidths.push({ wch: 14 }, { wch: 14 }, { wch: 12 }); });
     ws["!cols"] = colWidths;
 
     ws["!rows"] = [{ hpt: 28 }, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, { hpt: 10 }];
@@ -514,27 +514,27 @@ export default function ExamesModule() {
   const vigentesCount = items.filter(e => getStatus(e.data_vencimento).key === "vigente").length;
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
-  // Matrix data: group by employee, tipos as columns
+  // Matrix data: group by employee, nome_exame as columns
   const matrixData = useMemo(() => {
-    const tiposUsados = Array.from(new Set(items.map(e => e.tipo))).sort();
+    const nomesUsados = Array.from(new Set(items.map(e => e.nome_exame || tipoLabels[e.tipo] || e.tipo))).sort();
     const funcIds = Array.from(new Set(items.map(e => e.funcionario_id)));
     const rows = funcIds.map(fid => {
       const func = funcMap[fid];
       if (!func) return null;
       const exames = items.filter(e => e.funcionario_id === fid);
       const tipoData: Record<string, { data: string; vencimento: string | null; resultado: string; status: ReturnType<typeof getStatus> }> = {};
-      tiposUsados.forEach(tipo => {
-        // Get most recent exam of this type
-        const sorted = exames.filter(e => e.tipo === tipo).sort((a, b) => b.data.localeCompare(a.data));
+      nomesUsados.forEach(nome => {
+        // Get most recent exam with this nome_exame
+        const sorted = exames.filter(e => (e.nome_exame || tipoLabels[e.tipo] || e.tipo) === nome).sort((a, b) => b.data.localeCompare(a.data));
         if (sorted.length > 0) {
           const e = sorted[0];
-          tipoData[tipo] = { data: e.data, vencimento: e.data_vencimento, resultado: e.resultado, status: getStatus(e.data_vencimento) };
+          tipoData[nome] = { data: e.data, vencimento: e.data_vencimento, resultado: e.resultado, status: getStatus(e.data_vencimento) };
         }
       });
       return { func, tipoData };
     }).filter(Boolean) as { func: Funcionario; tipoData: Record<string, { data: string; vencimento: string | null; resultado: string; status: ReturnType<typeof getStatus> }> }[];
 
-    return { tipos: tiposUsados, rows };
+    return { tipos: nomesUsados, rows };
   }, [items, funcMap]);
 
   return (
@@ -768,9 +768,9 @@ export default function ExamesModule() {
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
-                        {matrixData.tipos.map(tipo => (
-                          <th key={tipo} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
-                            {tipoLabels[tipo] || tipo}
+                        {matrixData.tipos.map(nome => (
+                          <th key={nome} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
+                            {nome}
                           </th>
                         ))}
                       </tr>
