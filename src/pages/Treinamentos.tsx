@@ -95,12 +95,23 @@ export default function Treinamentos() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [{ data: treinos }, { data: funcs }] = await Promise.all([
-      (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
-      supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
-    ]);
-    if (treinos) setItems(treinos);
-    if (funcs) setFuncionarios(funcs);
+    if (!isOnline()) {
+      setItems(getCachedData<ControleTreinamento>("controle_treinamentos") || []);
+      setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
+      setLoading(false);
+      return;
+    }
+    try {
+      const [{ data: treinos }, { data: funcs }] = await Promise.all([
+        (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
+        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
+      ]);
+      if (treinos) { setItems(treinos); setCachedData("controle_treinamentos", treinos); }
+      if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
+    } catch {
+      setItems(getCachedData<ControleTreinamento>("controle_treinamentos") || []);
+      setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
+    }
     setLoading(false);
   };
 
