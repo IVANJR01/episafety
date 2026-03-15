@@ -833,8 +833,8 @@ export default function ExamesModule() {
                               <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
                                 {td.vencimento ? format(parseISO(td.vencimento), "dd/MM/yyyy") : "—"}
                               </td>,
-                              <td key={`${row.func.id}-${tipo}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${statusBg}`}>
-                                {td.status.key === "vencido" ? "Vencido" : td.status.key === "atencao" ? "Atenção" : "Válido"}
+                              <td key={`${row.func.id}-${tipo}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${td.resultado === "pendente" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : statusBg}`}>
+                                {td.resultado === "pendente" ? "Pendente" : td.status.key === "vencido" ? "Vencido" : td.status.key === "atencao" ? "Atenção" : "Válido"}
                               </td>,
                             ];
                           })}
