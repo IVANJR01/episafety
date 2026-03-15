@@ -1,0 +1,1 @@
+ALTER TABLE public.funcionarios ADD COLUMN data_demissao date DEFAULT NULL;
