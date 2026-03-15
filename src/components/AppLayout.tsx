@@ -14,7 +14,6 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
   { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
-  { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
 ];
 
 const afterCadastroItems: NavItem[] = [
