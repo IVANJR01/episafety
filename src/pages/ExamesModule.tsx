@@ -140,6 +140,7 @@ export default function ExamesModule() {
     observacao: "",
   });
   const [funcSearch, setFuncSearch] = useState("");
+  const [funcFocused, setFuncFocused] = useState(false);
   const [medicoSearch, setMedicoSearch] = useState("");
   const [showAddMedico, setShowAddMedico] = useState(false);
   const [novoMedico, setNovoMedico] = useState({ nome: "", crm: "", especialidade: "" });
