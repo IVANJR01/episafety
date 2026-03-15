@@ -253,7 +253,7 @@ export default function ExamesModule() {
       funcionario_id: e.funcionario_id,
       tipo: e.tipo,
       nome_exame: e.nome_exame || "",
-      data: e.data,
+      data: e.data || "",
       data_vencimento: e.data_vencimento || "",
       resultado: e.resultado,
       medico: e.medico || "",
