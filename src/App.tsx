@@ -93,7 +93,7 @@ function ProtectedRoute() {
       <Routes>
         <Route path="/" element={<DashboardGuard />} />
         <Route path="/epis" element={<EPIs />} />
-        <Route path="/entregas" element={<Entregas />} />
+        <Route path="/entregas" element={<Navigate to="/epis" replace />} />
         <Route path="/relatorios" element={<Navigate to="/epis" replace />} />
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
