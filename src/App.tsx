@@ -23,6 +23,7 @@ import Privacidade from "@/pages/Privacidade";
 import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
 import Treinamentos from "@/pages/Treinamentos";
+import ExamesModule from "@/pages/ExamesModule";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
