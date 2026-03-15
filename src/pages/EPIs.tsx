@@ -163,6 +163,7 @@ export default function EPIs() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="estoque"><Package className="w-4 h-4 mr-1.5" />Estoque</TabsTrigger>
+          <TabsTrigger value="entregas"><ClipboardList className="w-4 h-4 mr-1.5" />Entregas</TabsTrigger>
           <TabsTrigger value="relatorios"><BarChart3 className="w-4 h-4 mr-1.5" />Relatórios</TabsTrigger>
         </TabsList>
 
