@@ -12,7 +12,7 @@ import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
-import Relatorios from "@/pages/Relatorios";
+// Relatorios integrado ao módulo EPIs
 import Empresas from "@/pages/Empresas";
 import UsuariosLiberados from "@/pages/UsuariosLiberados";
 import Auth from "@/pages/Auth";
