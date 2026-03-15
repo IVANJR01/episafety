@@ -96,6 +96,7 @@ function ProtectedRoute() {
         <Route path="/epis" element={<EPIs />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/cadastro" element={<CadastroDashboard />} />
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
