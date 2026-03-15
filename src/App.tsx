@@ -24,6 +24,7 @@ import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
 import Treinamentos from "@/pages/Treinamentos";
 import ExamesModule from "@/pages/ExamesModule";
+import CadastroDashboard from "@/pages/CadastroDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -95,6 +96,7 @@ function ProtectedRoute() {
         <Route path="/epis" element={<EPIs />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/cadastro" element={<CadastroDashboard />} />
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
