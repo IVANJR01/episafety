@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, Stethoscope, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, LayoutGrid, List, UserPlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Stethoscope, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, LayoutGrid, List, UserPlus, UserX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -41,7 +41,7 @@ interface Funcionario {
   setor: string | null;
 }
 
-type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
+type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente" | "sem_exame";
 
 const TIPOS_EXAME = [
   { key: "admissional", label: "Admissional", validade_meses: 0 },
@@ -532,6 +532,13 @@ export default function ExamesModule() {
   const vigentesCount = items.filter(e => getStatus(e.data_vencimento).key === "vigente").length;
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
+  // Funcionários sem nenhum exame cadastrado
+  const funcionariosSemExame = useMemo(() => {
+    const idsComExame = new Set(items.map(e => e.funcionario_id));
+    return funcionarios.filter(f => !idsComExame.has(f.id));
+  }, [items, funcionarios]);
+  const semExameCount = funcionariosSemExame.length;
+
   // Matrix data: group by employee, nome_exame as columns
   const matrixData = useMemo(() => {
     const nomesUsados = Array.from(new Set(items.map(e => e.nome_exame || tipoLabels[e.tipo] || e.tipo))).sort();
@@ -583,7 +590,7 @@ export default function ExamesModule() {
       </div>
 
       {/* Indicadores */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-7">
         {/* Conformidade */}
         <Card className="col-span-2 lg:col-span-1 border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
           <CardContent className="p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-2">
@@ -666,7 +673,22 @@ export default function ExamesModule() {
             <div className="flex items-center justify-between mb-2">
               <div className="p-2 rounded-xl bg-success/10 text-success group-hover:bg-success group-hover:text-success-foreground transition-colors">
                 <CheckCircle className="w-4 h-4" />
+
+        {/* Sem Exame */}
+        <Card className="group hover:shadow-md transition-all duration-200 hover:border-orange-500/30 cursor-pointer"
+          onClick={() => setStatusFilter(statusFilter === "sem_exame" as any ? "todos" : "sem_exame" as any)}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                <UserX className="w-4 h-4" />
               </div>
+              <span className="text-3xl font-bold text-orange-500">{semExameCount}</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Sem Exame</p>
+            <Progress value={funcionarios.length > 0 ? (semExameCount / funcionarios.length) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-orange-500" />
+          </CardContent>
+        </Card>
+      </div>
               <span className="text-3xl font-bold text-success">{vigentesCount}</span>
             </div>
             <p className="text-xs font-medium text-muted-foreground">Vigentes</p>
@@ -705,6 +727,7 @@ export default function ExamesModule() {
         <TabsList className="mb-3">
           <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
+          <TabsTrigger value="sem_exame" className="gap-1.5"><UserX className="w-4 h-4" />Sem Exame {semExameCount > 0 && <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-[10px]">{semExameCount}</Badge>}</TabsTrigger>
         </TabsList>
 
         {/* === ABA LISTA === */}
@@ -856,6 +879,57 @@ export default function ExamesModule() {
                     </tbody>
                   </table>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* === ABA SEM EXAME === */}
+        <TabsContent value="sem_exame">
+          <Card>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+              ) : funcionariosSemExame.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">✅ Todos os funcionários possuem exames cadastrados!</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12 text-center">Nº</TableHead>
+                      <TableHead>Nome Completo</TableHead>
+                      <TableHead>CPF</TableHead>
+                      <TableHead>Matrícula</TableHead>
+                      <TableHead>Função</TableHead>
+                      <TableHead>Setor</TableHead>
+                      <TableHead className="w-32 text-center">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {funcionariosSemExame.map((f, idx) => (
+                      <TableRow key={f.id}>
+                        <TableCell className="text-center font-medium text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="font-medium">{f.nome}</TableCell>
+                        <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
+                        <TableCell className="text-xs">{f.matricula || "—"}</TableCell>
+                        <TableCell>{f.cargo || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
+                        <TableCell className="text-center">
+                          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => {
+                            setEditing(null);
+                            setForm({ funcionario_id: f.id, tipo: "periodico", nome_exame: "", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
+                            setFuncSearch(f.nome);
+                            setMedicoSearch("");
+                            setShowAddMedico(false);
+                            setOpen(true);
+                          }}>
+                            <Plus className="w-3 h-3" />Adicionar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
