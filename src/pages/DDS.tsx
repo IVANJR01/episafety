@@ -257,10 +257,18 @@ export default function DDS() {
 
   const loadParticipantes = async (ddsId: string) => {
     setLoadingParticipantes(true);
-    const { data: parts } = await (supabase.from as any)("dds_participantes")
-      .select("*")
-      .eq("dds_id", ddsId);
-    const enriched = (parts || []).map((p: DDSParticipante) => ({
+    let parts: DDSParticipante[] = [];
+    if (isOnline()) {
+      const { data } = await (supabase.from as any)("dds_participantes")
+        .select("*")
+        .eq("dds_id", ddsId);
+      parts = data || [];
+      // Cache participantes per DDS
+      setCachedData(`dds_participantes_${ddsId}`, parts);
+    } else {
+      parts = getCachedData<DDSParticipante>(`dds_participantes_${ddsId}`) || [];
+    }
+    const enriched = parts.map((p: DDSParticipante) => ({
       ...p,
       funcionario: funcionarios.find((f) => f.id === p.funcionario_id),
     }));

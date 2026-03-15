@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Building2, Save, Upload, X, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,18 +31,23 @@ export default function Empresas() {
 
   const loadEmpresa = async () => {
     if (!empresaId) return;
+    if (!isOnline()) {
+      const cached = getCachedData<any>("empresa_config");
+      if (cached && cached.length > 0) {
+        const e = cached.find((c: any) => c.id === empresaId) || cached[0];
+        setExistingId(e.id);
+        setLogoUrl(e.logo_url || null);
+        setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "" });
+      }
+      return;
+    }
     const { data } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
     if (data && data.length > 0) {
       const e = data[0];
       setExistingId(e.id);
       setLogoUrl(e.logo_url || null);
-      setForm({
-        nome: e.nome || "",
-        cnpj: e.cnpj || "",
-        endereco: e.endereco || "",
-        telefone: e.telefone || "",
-        email: e.email || "",
-      });
+      setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "" });
+      setCachedData("empresa_config", data);
     }
   };
 
@@ -99,14 +105,20 @@ export default function Empresas() {
     setSaving(true);
     try {
       const payload = { ...form, logo_url: logoUrl };
-      if (existingId) {
-        await (supabase.from as any)("empresa_config").update(payload).eq("id", existingId);
-      } else {
-        // This shouldn't happen for regular users - companies are created by super admin
+      if (!existingId) {
         toast({ title: "Empresa não encontrada. Contacte o administrador.", variant: "destructive" });
         setSaving(false);
         return;
       }
+      if (!isOnline()) {
+        addToSyncQueue({ table: "empresa_config", type: "update", payload: { id: existingId, ...payload } });
+        const cached = getCachedData<any>("empresa_config") || [];
+        setCachedData("empresa_config", cached.map((c: any) => c.id === existingId ? { ...c, ...payload } : c));
+        toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+        setSaving(false);
+        return;
+      }
+      await (supabase.from as any)("empresa_config").update(payload).eq("id", existingId);
       toast({ title: "Dados da empresa salvos com sucesso!" });
     } catch {
       toast({ title: "Erro ao salvar", variant: "destructive" });

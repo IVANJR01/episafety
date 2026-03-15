@@ -6,6 +6,7 @@ import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
+import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -171,6 +172,54 @@ export default function Entregas() {
     setSaving(true);
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
+
+    if (!isOnline()) {
+      const insertedIds: string[] = [];
+      epiList.forEach(item => {
+        const tempId = crypto.randomUUID();
+        const payload = {
+          id: tempId,
+          funcionario_id: form.funcionario_id,
+          epi_id: item.epi.id,
+          quantidade: item.quantidade,
+          data: form.data,
+          tipo: form.tipo,
+          status,
+          observacao: form.observacao || null,
+          empresa_id: empresaId,
+        };
+        addToSyncQueue({ table: "entregas", type: "insert", payload });
+        insertedIds.push(tempId);
+      });
+      // Update cache
+      const cached = getCachedData<Entrega>("entregas") || [];
+      insertedIds.forEach((id, i) => {
+        cached.unshift({
+          id,
+          funcionario_id: form.funcionario_id,
+          epi_id: epiList[i].epi.id,
+          quantidade: epiList[i].quantidade,
+          data: form.data,
+          tipo: form.tipo,
+          status,
+          observacao: form.observacao || null,
+          created_at: new Date().toISOString(),
+          assinatura_colaborador: null,
+        } as Entrega);
+      });
+      setCachedData("entregas", cached);
+      toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+      setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
+      setOpen(false);
+      resetForm();
+      setFormFuncSearch("");
+      setEpiCaSearch("");
+      setEpiList([]);
+      setEpiDropdownResults([]);
+      setSaving(false);
+      refetch();
+      return;
+    }
 
     // Parallel inserts for speed
     const results = await Promise.allSettled(

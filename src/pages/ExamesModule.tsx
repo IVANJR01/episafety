@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, Pencil, Trash2, Search, Stethoscope, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, LayoutGrid, List, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,14 +146,27 @@ export default function ExamesModule() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [{ data: exames }, { data: funcs }, { data: meds }] = await Promise.all([
-      supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
-      supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
-      supabase.from("medicos").select("id, nome, crm, especialidade"),
-    ]);
-    if (exames) setItems(exames);
-    if (funcs) setFuncionarios(funcs);
-    if (meds) setMedicos(meds);
+    if (!isOnline()) {
+      setItems(getCachedData<Exame>("exames") || []);
+      setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
+      setMedicos(getCachedData<Medico>("medicos") || []);
+      setLoading(false);
+      return;
+    }
+    try {
+      const [{ data: exames }, { data: funcs }, { data: meds }] = await Promise.all([
+        supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
+        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
+        supabase.from("medicos").select("id, nome, crm, especialidade"),
+      ]);
+      if (exames) { setItems(exames); setCachedData("exames", exames); }
+      if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
+      if (meds) { setMedicos(meds); setCachedData("medicos", meds); }
+    } catch {
+      setItems(getCachedData<Exame>("exames") || []);
+      setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
+      setMedicos(getCachedData<Medico>("medicos") || []);
+    }
     setLoading(false);
   };
 
@@ -243,12 +257,30 @@ export default function ExamesModule() {
       toast({ title: "Informe o nome do médico", variant: "destructive" });
       return;
     }
-    const { data, error } = await (supabase.from("medicos") as any).insert([{
+    const medicoPayload = {
       nome: novoMedico.nome.trim(),
       crm: novoMedico.crm.trim() || null,
       especialidade: novoMedico.especialidade.trim() || null,
       empresa_id: empresaId,
-    }]).select().single();
+    };
+
+    if (!isOnline()) {
+      const tempId = crypto.randomUUID();
+      const newMedico = { ...medicoPayload, id: tempId } as Medico;
+      addToSyncQueue({ table: "medicos", type: "insert", payload: newMedico });
+      const cached = getCachedData<Medico>("medicos") || [];
+      cached.push(newMedico);
+      setCachedData("medicos", cached);
+      setMedicos(prev => [...prev, newMedico]);
+      setForm(f => ({ ...f, medico: newMedico.nome + (newMedico.crm ? ` - CRM: ${newMedico.crm}` : "") }));
+      setMedicoSearch(newMedico.nome + (newMedico.crm ? ` - CRM: ${newMedico.crm}` : ""));
+      setNovoMedico({ nome: "", crm: "", especialidade: "" });
+      setShowAddMedico(false);
+      toast({ title: "Médico salvo offline" });
+      return;
+    }
+
+    const { data, error } = await (supabase.from("medicos") as any).insert([medicoPayload]).select().single();
     if (error) {
       toast({ title: "Erro ao adicionar médico", description: error.message, variant: "destructive" });
       return;
@@ -277,6 +309,27 @@ export default function ExamesModule() {
       observacao: form.observacao || null,
       empresa_id: empresaId,
     };
+
+    if (!isOnline()) {
+      if (editing) {
+        addToSyncQueue({ table: "exames", type: "update", payload: { id: editing.id, ...payload } });
+        const cached = getCachedData<Exame>("exames") || [];
+        setCachedData("exames", cached.map(c => c.id === editing.id ? { ...c, ...payload } : c));
+        toast({ title: "Atualizado offline", description: "Será sincronizado quando houver conexão." });
+      } else {
+        const tempId = crypto.randomUUID();
+        const newItem = { ...payload, id: tempId, created_by: null };
+        addToSyncQueue({ table: "exames", type: "insert", payload: newItem });
+        const cached = getCachedData<Exame>("exames") || [];
+        cached.unshift(newItem as Exame);
+        setCachedData("exames", cached);
+        toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+      }
+      setOpen(false);
+      fetchData();
+      return;
+    }
+
     if (editing) {
       const { error } = await supabase.from("exames").update(payload).eq("id", editing.id);
       if (error) { toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" }); return; }
@@ -291,6 +344,14 @@ export default function ExamesModule() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isOnline()) {
+      addToSyncQueue({ table: "exames", type: "delete", payload: { id } });
+      const cached = getCachedData<Exame>("exames") || [];
+      setCachedData("exames", cached.filter(c => c.id !== id));
+      toast({ title: "Excluído offline", description: "Será sincronizado quando houver conexão." });
+      fetchData();
+      return;
+    }
     const { error } = await supabase.from("exames").delete().eq("id", id);
     if (error) { toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Exame excluído" });

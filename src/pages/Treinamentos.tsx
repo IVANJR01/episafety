@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,8 +80,13 @@ export default function Treinamentos() {
   const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
 
   const fetchCursosDB = useCallback(async () => {
+    if (!isOnline()) {
+      const cached = getCachedData<{ nome: string; validade_meses: number }>("cursos_documentos");
+      if (cached) setDbCursos(cached);
+      return;
+    }
     const { data } = await (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome");
-    if (data) setDbCursos(data);
+    if (data) { setDbCursos(data); setCachedData("cursos_documentos", data); }
   }, []);
 
   // Multi-course mode
@@ -94,12 +100,23 @@ export default function Treinamentos() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [{ data: treinos }, { data: funcs }] = await Promise.all([
-      (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
-      supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
-    ]);
-    if (treinos) setItems(treinos);
-    if (funcs) setFuncionarios(funcs);
+    if (!isOnline()) {
+      setItems(getCachedData<ControleTreinamento>("controle_treinamentos") || []);
+      setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
+      setLoading(false);
+      return;
+    }
+    try {
+      const [{ data: treinos }, { data: funcs }] = await Promise.all([
+        (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
+        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
+      ]);
+      if (treinos) { setItems(treinos); setCachedData("controle_treinamentos", treinos); }
+      if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
+    } catch {
+      setItems(getCachedData<ControleTreinamento>("controle_treinamentos") || []);
+      setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
+    }
     setLoading(false);
   };
 
@@ -263,6 +280,25 @@ export default function Treinamentos() {
       empresa_id: empresaId,
     };
 
+    if (!isOnline()) {
+      if (editing) {
+        addToSyncQueue({ table: "controle_treinamentos", type: "update", payload: { id: editing.id, ...payload } });
+        const cached = getCachedData<ControleTreinamento>("controle_treinamentos") || [];
+        setCachedData("controle_treinamentos", cached.map(c => c.id === editing.id ? { ...c, ...payload } : c));
+      } else {
+        const tempId = crypto.randomUUID();
+        const newItem = { ...payload, id: tempId, created_by: null };
+        addToSyncQueue({ table: "controle_treinamentos", type: "insert", payload: newItem });
+        const cached = getCachedData<ControleTreinamento>("controle_treinamentos") || [];
+        cached.unshift(newItem as ControleTreinamento);
+        setCachedData("controle_treinamentos", cached);
+      }
+      toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+      setOpen(false);
+      fetchData();
+      return;
+    }
+
     if (editing) {
       const { error } = await (supabase.from as any)("controle_treinamentos").update(payload).eq("id", editing.id);
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
@@ -293,6 +329,23 @@ export default function Treinamentos() {
       documento_pendente: c.documento_pendente || null,
       empresa_id: empresaId,
     }));
+
+    if (!isOnline()) {
+      const cached = getCachedData<ControleTreinamento>("controle_treinamentos") || [];
+      payloads.forEach(p => {
+        const tempId = crypto.randomUUID();
+        const newItem = { ...p, id: tempId, created_by: null };
+        addToSyncQueue({ table: "controle_treinamentos", type: "insert", payload: newItem });
+        cached.unshift(newItem as ControleTreinamento);
+      });
+      setCachedData("controle_treinamentos", cached);
+      setSavingMulti(false);
+      toast({ title: "Salvo offline", description: `${validCursos.length} curso(s) serão sincronizados.` });
+      setOpen(false);
+      fetchData();
+      return;
+    }
+
     const { error } = await (supabase.from as any)("controle_treinamentos").insert(payloads);
     setSavingMulti(false);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
@@ -316,6 +369,14 @@ export default function Treinamentos() {
   }, [funcionarios, multiFuncSearch]);
 
   const handleDelete = async (id: string) => {
+    if (!isOnline()) {
+      addToSyncQueue({ table: "controle_treinamentos", type: "delete", payload: { id } });
+      const cached = getCachedData<ControleTreinamento>("controle_treinamentos") || [];
+      setCachedData("controle_treinamentos", cached.filter(c => c.id !== id));
+      toast({ title: "Excluído offline", description: "Será sincronizado quando houver conexão." });
+      fetchData();
+      return;
+    }
     await (supabase.from as any)("controle_treinamentos").delete().eq("id", id);
     fetchData();
   };

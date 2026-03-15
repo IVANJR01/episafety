@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,15 +51,23 @@ export default function UsuariosLiberados() {
   }, []);
 
   const loadEmpresas = async () => {
+    if (!isOnline()) {
+      setEmpresas(getCachedData<Empresa>("empresa_config_list") || []);
+      return;
+    }
     const { data } = await supabase.from("empresa_config").select("id, nome").order("nome");
-    if (data) setEmpresas(data);
+    if (data) { setEmpresas(data); setCachedData("empresa_config_list", data); }
   };
 
   const loadUsuarios = async () => {
+    if (!isOnline()) {
+      setUsuarios(getCachedData<UsuarioLiberado>("usuarios_liberados") || []);
+      return;
+    }
     const { data } = await (supabase.from as any)("usuarios_liberados")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setUsuarios(data);
+    if (data) { setUsuarios(data); setCachedData("usuarios_liberados", data); }
   };
 
   const empresaMap = useMemo(() => {
@@ -102,6 +111,10 @@ export default function UsuariosLiberados() {
     }
     if (novaSenha.length < 6) {
       toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+    if (!isOnline()) {
+      toast({ title: "Sem conexão", description: "Criar usuários requer conexão com a internet.", variant: "destructive" });
       return;
     }
 
@@ -201,6 +214,16 @@ export default function UsuariosLiberados() {
     setSavingPerms(userId);
     const user = usuarios.find(u => u.id === userId);
     if (!user) return;
+
+    if (!isOnline()) {
+      addToSyncQueue({ table: "usuarios_liberados", type: "update", payload: { id: userId, modulos_permitidos: user.modulos_permitidos || [] } });
+      const cached = getCachedData<UsuarioLiberado>("usuarios_liberados") || [];
+      setCachedData("usuarios_liberados", cached.map(u => u.id === userId ? { ...u, modulos_permitidos: user.modulos_permitidos } : u));
+      toast({ title: "Permissões salvas offline", description: "Será sincronizado quando houver conexão." });
+      setSavingPerms(null);
+      return;
+    }
+
     const { error } = await (supabase.from as any)("usuarios_liberados")
       .update({ modulos_permitidos: user.modulos_permitidos || [] })
       .eq("id", userId);
