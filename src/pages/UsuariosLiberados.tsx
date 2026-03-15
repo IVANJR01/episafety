@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
