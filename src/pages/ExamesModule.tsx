@@ -576,7 +576,8 @@ export default function ExamesModule() {
                       <TableHead>Nome Completo</TableHead>
                       <TableHead>Função</TableHead>
                       <TableHead>Setor</TableHead>
-                      <TableHead>Tipo de Exame</TableHead>
+                      <TableHead>Exame</TableHead>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Data Exame</TableHead>
                       <TableHead>Vencimento</TableHead>
                       <TableHead>Resultado</TableHead>
@@ -587,7 +588,7 @@ export default function ExamesModule() {
                   </TableHeader>
                   <TableBody>
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
                     ) : filtered.map((e, index) => {
                       const func = funcMap[e.funcionario_id];
                       const status = getStatus(e.data_vencimento);
@@ -597,6 +598,7 @@ export default function ExamesModule() {
                           <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
                           <TableCell>{func?.cargo || "—"}</TableCell>
                           <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
+                          <TableCell className="text-xs font-medium">{e.nome_exame || "—"}</TableCell>
                           <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
                           <TableCell className="font-mono text-xs">{format(parseISO(e.data), "dd/MM/yyyy")}</TableCell>
                           <TableCell className="font-mono text-xs">{e.data_vencimento ? format(parseISO(e.data_vencimento), "dd/MM/yyyy") : "—"}</TableCell>
