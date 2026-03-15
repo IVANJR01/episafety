@@ -883,6 +883,57 @@ export default function ExamesModule() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* === ABA SEM EXAME === */}
+        <TabsContent value="sem_exame">
+          <Card>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+              ) : funcionariosSemExame.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">✅ Todos os funcionários possuem exames cadastrados!</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12 text-center">Nº</TableHead>
+                      <TableHead>Nome Completo</TableHead>
+                      <TableHead>CPF</TableHead>
+                      <TableHead>Matrícula</TableHead>
+                      <TableHead>Função</TableHead>
+                      <TableHead>Setor</TableHead>
+                      <TableHead className="w-32 text-center">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {funcionariosSemExame.map((f, idx) => (
+                      <TableRow key={f.id}>
+                        <TableCell className="text-center font-medium text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="font-medium">{f.nome}</TableCell>
+                        <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
+                        <TableCell className="text-xs">{f.matricula || "—"}</TableCell>
+                        <TableCell>{f.cargo || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
+                        <TableCell className="text-center">
+                          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => {
+                            setEditing(null);
+                            setForm({ funcionario_id: f.id, tipo: "periodico", nome_exame: "", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
+                            setFuncSearch(f.nome);
+                            setMedicoSearch("");
+                            setShowAddMedico(false);
+                            setOpen(true);
+                          }}>
+                            <Plus className="w-3 h-3" />Adicionar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Modal */}
