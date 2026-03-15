@@ -514,27 +514,27 @@ export default function ExamesModule() {
   const vigentesCount = items.filter(e => getStatus(e.data_vencimento).key === "vigente").length;
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
-  // Matrix data: group by employee, tipos as columns
+  // Matrix data: group by employee, nome_exame as columns
   const matrixData = useMemo(() => {
-    const tiposUsados = Array.from(new Set(items.map(e => e.tipo))).sort();
+    const nomesUsados = Array.from(new Set(items.map(e => e.nome_exame || tipoLabels[e.tipo] || e.tipo))).sort();
     const funcIds = Array.from(new Set(items.map(e => e.funcionario_id)));
     const rows = funcIds.map(fid => {
       const func = funcMap[fid];
       if (!func) return null;
       const exames = items.filter(e => e.funcionario_id === fid);
       const tipoData: Record<string, { data: string; vencimento: string | null; resultado: string; status: ReturnType<typeof getStatus> }> = {};
-      tiposUsados.forEach(tipo => {
-        // Get most recent exam of this type
-        const sorted = exames.filter(e => e.tipo === tipo).sort((a, b) => b.data.localeCompare(a.data));
+      nomesUsados.forEach(nome => {
+        // Get most recent exam with this nome_exame
+        const sorted = exames.filter(e => (e.nome_exame || tipoLabels[e.tipo] || e.tipo) === nome).sort((a, b) => b.data.localeCompare(a.data));
         if (sorted.length > 0) {
           const e = sorted[0];
-          tipoData[tipo] = { data: e.data, vencimento: e.data_vencimento, resultado: e.resultado, status: getStatus(e.data_vencimento) };
+          tipoData[nome] = { data: e.data, vencimento: e.data_vencimento, resultado: e.resultado, status: getStatus(e.data_vencimento) };
         }
       });
       return { func, tipoData };
     }).filter(Boolean) as { func: Funcionario; tipoData: Record<string, { data: string; vencimento: string | null; resultado: string; status: ReturnType<typeof getStatus> }> }[];
 
-    return { tipos: tiposUsados, rows };
+    return { tipos: nomesUsados, rows };
   }, [items, funcMap]);
 
   return (
