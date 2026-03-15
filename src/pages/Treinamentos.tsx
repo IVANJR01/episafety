@@ -364,6 +364,14 @@ export default function Treinamentos() {
   }, [funcionarios, multiFuncSearch]);
 
   const handleDelete = async (id: string) => {
+    if (!isOnline()) {
+      addToSyncQueue({ table: "controle_treinamentos", type: "delete", payload: { id } });
+      const cached = getCachedData<ControleTreinamento>("controle_treinamentos") || [];
+      setCachedData("controle_treinamentos", cached.filter(c => c.id !== id));
+      toast({ title: "Excluído offline", description: "Será sincronizado quando houver conexão." });
+      fetchData();
+      return;
+    }
     await (supabase.from as any)("controle_treinamentos").delete().eq("id", id);
     fetchData();
   };
