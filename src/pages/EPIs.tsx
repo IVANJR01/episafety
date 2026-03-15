@@ -32,7 +32,7 @@ const emptyForm = {
 export default function EPIs() {
   const { data: epis, loading, add, update, remove } = useSupabaseCrud<EPI>("epis", "created_at");
   const { canEdit, canCreate, canDelete } = usePermissions("epis");
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isPrincipal } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EPI | null>(null);
   const { form, setForm, resetForm, hasDraft } = useFormDraft("epis", emptyForm);
@@ -127,7 +127,7 @@ export default function EPIs() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {isSuperAdmin && <ConsolidatedEpiPanel />}
+      {(isSuperAdmin || isPrincipal) && <ConsolidatedEpiPanel />}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">EPIs</h1>
