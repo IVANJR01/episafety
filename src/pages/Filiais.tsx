@@ -68,7 +68,7 @@ export default function Filiais() {
     setLoading(true);
     const [{ data: filData }, { data: profData }, { data: empData }] = await Promise.all([
       (supabase.from as any)("empresa_config").select("*").eq("empresa_pai_id", empresaId).order("nome"),
-      isSuperAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
+      isAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
       (supabase.from as any)("empresa_config").select("nome").eq("id", empresaId).single(),
     ]);
     setFiliais(filData || []);
