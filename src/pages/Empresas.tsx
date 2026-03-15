@@ -105,14 +105,20 @@ export default function Empresas() {
     setSaving(true);
     try {
       const payload = { ...form, logo_url: logoUrl };
-      if (existingId) {
-        await (supabase.from as any)("empresa_config").update(payload).eq("id", existingId);
-      } else {
-        // This shouldn't happen for regular users - companies are created by super admin
+      if (!existingId) {
         toast({ title: "Empresa não encontrada. Contacte o administrador.", variant: "destructive" });
         setSaving(false);
         return;
       }
+      if (!isOnline()) {
+        addToSyncQueue({ table: "empresa_config", type: "update", payload: { id: existingId, ...payload } });
+        const cached = getCachedData<any>("empresa_config") || [];
+        setCachedData("empresa_config", cached.map((c: any) => c.id === existingId ? { ...c, ...payload } : c));
+        toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+        setSaving(false);
+        return;
+      }
+      await (supabase.from as any)("empresa_config").update(payload).eq("id", existingId);
       toast({ title: "Dados da empresa salvos com sucesso!" });
     } catch {
       toast({ title: "Erro ao salvar", variant: "destructive" });
