@@ -768,9 +768,9 @@ export default function ExamesModule() {
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
-                        {matrixData.tipos.map(tipo => (
-                          <th key={tipo} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
-                            {tipoLabels[tipo] || tipo}
+                        {matrixData.tipos.map(nome => (
+                          <th key={nome} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
+                            {nome}
                           </th>
                         ))}
                       </tr>
