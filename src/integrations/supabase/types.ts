@@ -317,6 +317,7 @@ export type Database = {
           data: string
           empresa_id: string | null
           epi_id: string
+          foto_reconhecimento: string | null
           funcionario_id: string
           id: string
           nome_assinatura: string | null
@@ -332,6 +333,7 @@ export type Database = {
           data?: string
           empresa_id?: string | null
           epi_id: string
+          foto_reconhecimento?: string | null
           funcionario_id: string
           id?: string
           nome_assinatura?: string | null
@@ -347,6 +349,7 @@ export type Database = {
           data?: string
           empresa_id?: string | null
           epi_id?: string
+          foto_reconhecimento?: string | null
           funcionario_id?: string
           id?: string
           nome_assinatura?: string | null

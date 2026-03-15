@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,8 +19,9 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
 import { gerarFichaEPI } from "@/lib/gerarFichaEPI";
+import CameraCapture from "@/components/CameraCapture";
 
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; }
 interface EpiItem { epi: EPI; quantidade: number; }
@@ -50,6 +51,7 @@ export default function Entregas() {
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
   const [signInputType, setSignInputType] = useState<"assinatura" | "facial">("assinatura");
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
 
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
@@ -281,8 +283,15 @@ export default function Entregas() {
     if (ids.length === 0) return;
 
     let assinaturaColaborador: string | null = null;
+    let fotoUrl: string | null = null;
 
     if (signInputType === "facial") {
+      // Photo is required for facial recognition
+      if (!capturedPhoto) {
+        toast({ title: "Tire a foto do colaborador antes de confirmar", variant: "destructive" });
+        return;
+      }
+
       try {
         // Try Capacitor native biometric first (Face ID)
         const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
@@ -316,21 +325,35 @@ export default function Entregas() {
               });
               assinaturaColaborador = "RECONHECIMENTO_FACIAL";
             } else {
-              toast({ title: "Reconhecimento facial não disponível", description: "Este dispositivo não possui sensor de reconhecimento facial compatível. Use a assinatura manual.", variant: "destructive" });
-              return;
+              // No biometric available — just use photo as proof
+              assinaturaColaborador = "RECONHECIMENTO_FACIAL";
             }
           } catch (webAuthErr: any) {
-            if (webAuthErr?.name === "NotAllowedError") {
-              toast({ title: "Reconhecimento facial cancelado", description: "O colaborador cancelou a autenticação.", variant: "destructive" });
-            } else {
-              toast({ title: "Erro no reconhecimento facial", description: "Use a assinatura manual como alternativa.", variant: "destructive" });
-            }
-            return;
+            // Even if WebAuthn fails, allow with photo as evidence
+            assinaturaColaborador = "RECONHECIMENTO_FACIAL";
           }
         } else {
-          toast({ title: "Reconhecimento facial não confirmado", description: capError?.message || "Tente novamente", variant: "destructive" });
-          return;
+          // Even if Capacitor fails, allow with photo as evidence
+          assinaturaColaborador = "RECONHECIMENTO_FACIAL";
         }
+      }
+
+      // Upload photo to storage
+      try {
+        const blob = await (await fetch(capturedPhoto)).blob();
+        const fileName = `${empresaId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from("fotos-reconhecimento")
+          .upload(fileName, blob, { contentType: "image/jpeg" });
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from("fotos-reconhecimento").getPublicUrl(fileName);
+          fotoUrl = urlData.publicUrl;
+        } else {
+          console.error("Upload error:", uploadError);
+          toast({ title: "Aviso: foto não pôde ser salva no servidor", description: "A entrega será registrada sem a foto.", variant: "destructive" });
+        }
+      } catch (uploadErr) {
+        console.error("Photo upload failed:", uploadErr);
       }
     } else {
       assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
@@ -341,10 +364,13 @@ export default function Entregas() {
     }
 
     // Parallel updates for speed
+    const updatePayload: any = { assinatura_colaborador: assinaturaColaborador };
+    if (fotoUrl) updatePayload.foto_reconhecimento = fotoUrl;
+
     await Promise.all(
       ids.map(id =>
         (supabase.from as any)("entregas")
-          .update({ assinatura_colaborador: assinaturaColaborador })
+          .update(updatePayload)
           .eq("id", id)
       )
     );
@@ -355,6 +381,7 @@ export default function Entregas() {
     setPendingEntrega(null);
     setSelectedUnsigned([]);
     setSignMode("new");
+    setCapturedPhoto(null);
   };
 
   const unsignedEntregas = useMemo(() => entregas.filter(e => !e.assinatura_colaborador), [entregas]);
@@ -485,7 +512,10 @@ export default function Entregas() {
                         </span>
                         {e.assinatura_colaborador ? (
                           e.assinatura_colaborador === "BIOMETRIA_DIGITAL" || e.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><ScanFace className="w-3 h-3" />Rec. Facial</span>
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium">
+                              <ScanFace className="w-3 h-3" />Rec. Facial
+                              {(e as any).foto_reconhecimento && <Camera className="w-3 h-3 ml-0.5" />}
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><CheckCircle2 className="w-3 h-3" />Assinado</span>
                           )
@@ -550,7 +580,10 @@ export default function Entregas() {
                       <TableCell>
                         {e.assinatura_colaborador ? (
                           e.assinatura_colaborador === "BIOMETRIA_DIGITAL" || e.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><ScanFace className="w-3.5 h-3.5" />Rec. Facial</span>
+                            <span className="inline-flex items-center gap-1 text-xs text-success font-medium">
+                              <ScanFace className="w-3.5 h-3.5" />Rec. Facial
+                              {(e as any).foto_reconhecimento && <Camera className="w-3 h-3 ml-0.5" />}
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
                           )
@@ -682,7 +715,7 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignInputType("assinatura"); } }}>
+      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignInputType("assinatura"); setCapturedPhoto(null); } }}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -775,28 +808,32 @@ export default function Entregas() {
             {signInputType === "assinatura" ? (
               <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed rounded-lg bg-muted/20 space-y-4">
-                <ScanFace className="w-16 h-16 text-primary/60 animate-pulse" />
-                <div className="text-center space-y-2">
-                  <p className="font-medium text-sm">Reconhecimento Facial</p>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    Conforme a Portaria Nº 2.175/2022, a NR-6 permite o uso de biometria facial para registro da entrega de EPIs. Ao clicar em "Confirmar Reconhecimento Facial", o sensor do dispositivo será ativado.
-                  </p>
-                  <div className="flex items-center gap-1 justify-center text-xs text-primary">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Conforme NR-6 — Portaria Nº 2.175/2022</span>
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg border bg-muted/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Camera className="w-4 h-4 text-primary" />
+                    <p className="font-medium text-sm">Foto do Colaborador</p>
                   </div>
+                  <CameraCapture
+                    capturedPhoto={capturedPhoto}
+                    onCapture={setCapturedPhoto}
+                    onClear={() => setCapturedPhoto(null)}
+                  />
+                </div>
+                <div className="flex items-center gap-1 justify-center text-xs text-primary">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Conforme NR-6 — Portaria Nº 2.175/2022</span>
                 </div>
               </div>
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); refetch(); }}>
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); refetch(); }}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
+            <Button onClick={handleSaveSignature} disabled={(signMode === "existing" && selectedUnsigned.length === 0) || (signInputType === "facial" && !capturedPhoto)}>
               {signInputType === "facial" ? (
-                <><ScanFace className="w-4 h-4 mr-1.5" />Confirmar Rec. Facial {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
+                <><ScanFace className="w-4 h-4 mr-1.5" />Confirmar com Foto {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
               ) : (
                 <>✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
               )}
