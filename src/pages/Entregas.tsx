@@ -195,6 +195,18 @@ export default function Entregas() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!shouldOpenSignatureAfterSave || open || !pendingEntrega) return;
+
+    const timer = setTimeout(() => {
+      setSignInputType("assinatura");
+      setSignOpen(true);
+      setShouldOpenSignatureAfterSave(false);
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [shouldOpenSignatureAfterSave, open, pendingEntrega]);
+
   const handleSave = async () => {
     if (saving) return;
     if (!form.funcionario_id || epiList.length === 0) {
