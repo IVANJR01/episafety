@@ -374,10 +374,10 @@ export default function ExamesModule() {
     }
 
     const exportItems = filtered;
-    const tiposUsados = Array.from(new Set(exportItems.map(e => e.tipo))).sort();
+    const nomesUsados = Array.from(new Set(exportItems.map(e => e.nome_exame || tipoLabels[e.tipo] || e.tipo))).sort();
     const funcIds = Array.from(new Set(exportItems.map(e => e.funcionario_id)));
     const fixedCols = 5; // Nº, COLABORADOR, CPF, FUNÇÃO, SETOR
-    const totalCols = fixedCols + tiposUsados.length * 3;
+    const totalCols = fixedCols + nomesUsados.length * 3;
 
     const wb = XLSX.utils.book_new();
     const wsData: any[][] = [];
@@ -390,11 +390,11 @@ export default function ExamesModule() {
     wsData.push([""]);
 
     const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "SETOR"];
-    tiposUsados.forEach(t => { header1.push(tipoLabels[t] || t, "", ""); });
+    nomesUsados.forEach(n => { header1.push(n, "", ""); });
     wsData.push(header1);
 
     const header2: any[] = ["", "", "", "", ""];
-    tiposUsados.forEach(() => { header2.push("DATA EXAME", "VENCIMENTO", "STATUS"); });
+    nomesUsados.forEach(() => { header2.push("DATA EXAME", "VENCIMENTO", "STATUS"); });
     wsData.push(header2);
 
     funcIds.forEach((fid, idx) => {
@@ -402,8 +402,8 @@ export default function ExamesModule() {
       if (!func) return;
       const exames = exportItems.filter(e => e.funcionario_id === fid);
       const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—"];
-      tiposUsados.forEach(tipo => {
-        const e = exames.find(ex => ex.tipo === tipo);
+      nomesUsados.forEach(nome => {
+        const e = exames.find(ex => (ex.nome_exame || tipoLabels[ex.tipo] || ex.tipo) === nome);
         if (!e) {
           row.push("—", "—", "—");
         } else {
