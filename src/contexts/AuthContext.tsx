@@ -54,14 +54,28 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
   }
 }
 
-async function loadProfile(userId: string): Promise<{ empresaId: string | null }> {
+async function loadProfile(userId: string, email?: string): Promise<{ empresaId: string | null }> {
   try {
     const { data } = await (supabase.from as any)("profiles")
       .select("empresa_id")
       .eq("user_id", userId)
       .limit(1);
-    if (data && data.length > 0) {
+    if (data && data.length > 0 && data[0].empresa_id) {
       return { empresaId: data[0].empresa_id };
+    }
+    // Fallback: try to get empresa_id from usuarios_liberados
+    if (email) {
+      const { data: ulData } = await (supabase.from as any)("usuarios_liberados")
+        .select("empresa_id")
+        .eq("email", email.toLowerCase())
+        .limit(1);
+      if (ulData && ulData.length > 0 && ulData[0].empresa_id) {
+        // Also update profile so it's correct next time
+        await (supabase.from as any)("profiles")
+          .update({ empresa_id: ulData[0].empresa_id })
+          .eq("user_id", userId);
+        return { empresaId: ulData[0].empresa_id };
+      }
     }
   } catch {}
   return { empresaId: null };
@@ -110,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           const [authResult, profileResult, superAdmin] = await Promise.all([
             checkAuthorized(currentUser.email),
-            loadProfile(currentUser.id),
+            loadProfile(currentUser.id, currentUser.email),
             checkSuperAdmin(currentUser.id),
           ]);
           setAuthorized(authResult.authorized);
