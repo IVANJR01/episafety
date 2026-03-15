@@ -309,6 +309,27 @@ export default function ExamesModule() {
       observacao: form.observacao || null,
       empresa_id: empresaId,
     };
+
+    if (!isOnline()) {
+      if (editing) {
+        addToSyncQueue({ table: "exames", type: "update", payload: { id: editing.id, ...payload } });
+        const cached = getCachedData<Exame>("exames") || [];
+        setCachedData("exames", cached.map(c => c.id === editing.id ? { ...c, ...payload } : c));
+        toast({ title: "Atualizado offline", description: "Será sincronizado quando houver conexão." });
+      } else {
+        const tempId = crypto.randomUUID();
+        const newItem = { ...payload, id: tempId, created_by: null };
+        addToSyncQueue({ table: "exames", type: "insert", payload: newItem });
+        const cached = getCachedData<Exame>("exames") || [];
+        cached.unshift(newItem as Exame);
+        setCachedData("exames", cached);
+        toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+      }
+      setOpen(false);
+      fetchData();
+      return;
+    }
+
     if (editing) {
       const { error } = await supabase.from("exames").update(payload).eq("id", editing.id);
       if (error) { toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" }); return; }
@@ -323,6 +344,14 @@ export default function ExamesModule() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isOnline()) {
+      addToSyncQueue({ table: "exames", type: "delete", payload: { id } });
+      const cached = getCachedData<Exame>("exames") || [];
+      setCachedData("exames", cached.filter(c => c.id !== id));
+      toast({ title: "Excluído offline", description: "Será sincronizado quando houver conexão." });
+      fetchData();
+      return;
+    }
     const { error } = await supabase.from("exames").delete().eq("id", id);
     if (error) { toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Exame excluído" });
