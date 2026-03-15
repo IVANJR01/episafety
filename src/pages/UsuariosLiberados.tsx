@@ -160,7 +160,7 @@ export default function UsuariosLiberados() {
             .update({ empresa_id: empresaId })
             .eq("user_id", fnData.user_id);
         }
-        toast({ title: "Usuário criado e liberado com sucesso!" });
+        toast({ title: fnData?.already_exists ? "Usuário existente vinculado com sucesso!" : "Usuário criado e liberado com sucesso!" });
         setNovoEmail("");
         setNovoNome("");
         setNovaSenha("");
