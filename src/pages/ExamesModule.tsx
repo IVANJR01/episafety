@@ -110,6 +110,13 @@ function calcularVencimento(tipo: string, dataExame: string): string {
   return format(addMonths(data, meses), "yyyy-MM-dd");
 }
 
+function formatDateSafe(value: string | null | undefined): string {
+  if (!value) return "—";
+  const parsed = parseISO(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return format(parsed, "dd/MM/yyyy");
+}
+
 interface Medico {
   id: string;
   nome: string;
