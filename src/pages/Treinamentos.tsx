@@ -388,7 +388,7 @@ export default function Treinamentos() {
     wsData.push(header1);
 
     // Header row 2: sub-headers under each course
-    const header2: any[] = ["", "", "", "", ""];
+    const header2: any[] = ["", "", "", "", "", ""];
     cursos.forEach(() => { header2.push("ÚLTIMA DATA", "DATA RENOVAÇÃO", "STATUS"); });
     wsData.push(header2);
 
