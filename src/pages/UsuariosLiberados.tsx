@@ -35,7 +35,8 @@ const ACAO_ICONS: Record<string, string> = {
 
 export default function UsuariosLiberados() {
   const { toast } = useToast();
-  const { empresaId, isSuperAdmin } = useAuth();
+  const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
+  const isAdmin = isSuperAdmin || isPrincipal;
   const [usuarios, setUsuarios] = useState<UsuarioLiberado[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [novoEmail, setNovoEmail] = useState("");

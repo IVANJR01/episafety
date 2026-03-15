@@ -6,9 +6,9 @@ import { hasPermission } from "@/lib/permissions";
  * Returns helpers: canView, canCreate, canEdit, canDelete
  */
 export function usePermissions(moduleKey: string) {
-  const { modulosPermitidos, isSuperAdmin } = useAuth();
+  const { modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
 
-  if (isSuperAdmin) {
+  if (isSuperAdmin || isPrincipal) {
     return { canView: true, canCreate: true, canEdit: true, canDelete: true };
   }
 
