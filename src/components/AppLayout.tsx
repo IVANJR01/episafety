@@ -136,7 +136,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
           })}
 
-          {visibleCadastroItems.length > 0 && (
+          {visibleEpiItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setEpiOpen(!epiOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isEpiActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Package className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">EPI</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${epiOpen ? "rotate-180" : ""}`} />
+              </button>
+              {epiOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleEpiItems.map((item) => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
             <>
               <button
                 onClick={() => setCadastroOpen(!cadastroOpen)}
