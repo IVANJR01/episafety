@@ -396,11 +396,23 @@ export default function Funcionarios() {
             </SelectContent>
           </Select>
         )}
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {filteredItems.length} de {items.length}
+         <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {filteredItems.length} de {currentList.length}
         </span>
       </div>
 
+      {/* Tabs Ativos / Demitidos */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="ativos" className="gap-1.5">
+            <User className="w-4 h-4" />Ativos <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{ativos.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="demitidos" className="gap-1.5">
+            <UserX className="w-4 h-4" />Demitidos <span className="ml-1 text-xs bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full">{demitidos.length}</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="mt-4">
       {loading ? (
         <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
       ) : (
@@ -409,7 +421,7 @@ export default function Funcionarios() {
           <div className="space-y-3 lg:hidden">
             {filteredItems.length === 0 ? (
               <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">
-                {searchTerm ? "Nenhum funcionário encontrado para esta busca" : "Nenhum funcionário cadastrado"}
+                {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
               </CardContent></Card>
             ) : filteredItems.map(f => (
               <Card key={f.id} className="overflow-hidden">
@@ -504,7 +516,7 @@ export default function Funcionarios() {
           </Card>
         </>
       )}
-      </TabsContent>
+        </TabsContent>
       </Tabs>
 
       {/* Dialog novo/editar */}
