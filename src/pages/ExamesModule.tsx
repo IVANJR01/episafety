@@ -109,11 +109,19 @@ function calcularVencimento(tipo: string, dataExame: string): string {
   return format(addMonths(data, meses), "yyyy-MM-dd");
 }
 
+interface Medico {
+  id: string;
+  nome: string;
+  crm: string | null;
+  especialidade: string | null;
+}
+
 export default function ExamesModule() {
   const { empresaId } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<Exame[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+  const [medicos, setMedicos] = useState<Medico[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Exame | null>(null);
@@ -131,15 +139,20 @@ export default function ExamesModule() {
     observacao: "",
   });
   const [funcSearch, setFuncSearch] = useState("");
+  const [medicoSearch, setMedicoSearch] = useState("");
+  const [showAddMedico, setShowAddMedico] = useState(false);
+  const [novoMedico, setNovoMedico] = useState({ nome: "", crm: "", especialidade: "" });
 
   const fetchData = async () => {
     setLoading(true);
-    const [{ data: exames }, { data: funcs }] = await Promise.all([
+    const [{ data: exames }, { data: funcs }, { data: meds }] = await Promise.all([
       supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
       supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
+      supabase.from("medicos").select("id, nome, crm, especialidade"),
     ]);
     if (exames) setItems(exames);
     if (funcs) setFuncionarios(funcs);
+    if (meds) setMedicos(meds);
     setLoading(false);
   };
 
