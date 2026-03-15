@@ -130,7 +130,7 @@ export default function UsuariosLiberados() {
         },
       });
 
-      if (fnError || fnData?.error) {
+      if (fnError || (fnData?.error && !fnData?.already_exists)) {
         toast({
           title: "Erro ao criar conta",
           description: fnData?.error || fnError?.message || "Erro desconhecido",

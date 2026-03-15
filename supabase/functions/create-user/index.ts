@@ -43,10 +43,20 @@ Deno.serve(async (req) => {
 
     if (createError) {
       console.error("Create user error:", createError.message);
-      const msg = createError.message.includes("already been registered")
-        ? "Este e-mail já possui uma conta cadastrada"
-        : createError.message;
-      return new Response(JSON.stringify({ error: msg }), {
+      // If user already exists, find and return their user_id
+      if (createError.message.includes("already been registered")) {
+        const { data: listData } = await adminClient.auth.admin.listUsers();
+        const existingUser = listData?.users?.find(
+          (u) => u.email?.toLowerCase() === email.toLowerCase().trim()
+        );
+        if (existingUser) {
+          return new Response(JSON.stringify({ user_id: existingUser.id, already_exists: true }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      return new Response(JSON.stringify({ error: createError.message }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
