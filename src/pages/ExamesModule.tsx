@@ -257,12 +257,30 @@ export default function ExamesModule() {
       toast({ title: "Informe o nome do médico", variant: "destructive" });
       return;
     }
-    const { data, error } = await (supabase.from("medicos") as any).insert([{
+    const medicoPayload = {
       nome: novoMedico.nome.trim(),
       crm: novoMedico.crm.trim() || null,
       especialidade: novoMedico.especialidade.trim() || null,
       empresa_id: empresaId,
-    }]).select().single();
+    };
+
+    if (!isOnline()) {
+      const tempId = crypto.randomUUID();
+      const newMedico = { ...medicoPayload, id: tempId } as Medico;
+      addToSyncQueue({ table: "medicos", type: "insert", payload: newMedico });
+      const cached = getCachedData<Medico>("medicos") || [];
+      cached.push(newMedico);
+      setCachedData("medicos", cached);
+      setMedicos(prev => [...prev, newMedico]);
+      setForm(f => ({ ...f, medico: newMedico.nome + (newMedico.crm ? ` - CRM: ${newMedico.crm}` : "") }));
+      setMedicoSearch(newMedico.nome + (newMedico.crm ? ` - CRM: ${newMedico.crm}` : ""));
+      setNovoMedico({ nome: "", crm: "", especialidade: "" });
+      setShowAddMedico(false);
+      toast({ title: "Médico salvo offline" });
+      return;
+    }
+
+    const { data, error } = await (supabase.from("medicos") as any).insert([medicoPayload]).select().single();
     if (error) {
       toast({ title: "Erro ao adicionar médico", description: error.message, variant: "destructive" });
       return;
