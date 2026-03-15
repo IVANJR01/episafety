@@ -383,7 +383,7 @@ export default function Treinamentos() {
     wsData.push([""]);
 
     // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES, then each course spans 3 cols
-    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "PENDENTES"];
+    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "SETOR", "PENDENTES"];
     cursos.forEach(curso => { header1.push(curso, "", ""); });
     wsData.push(header1);
 
