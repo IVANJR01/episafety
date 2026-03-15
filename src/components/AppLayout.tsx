@@ -175,6 +175,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {visibleCadastroItems.length > 0 && (
             <>
               <button
                 onClick={() => setCadastroOpen(!cadastroOpen)}
