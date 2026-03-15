@@ -872,8 +872,82 @@ export default function ExamesModule() {
             </div>
 
             <div>
-              <Label>Médico</Label>
-              <Input value={form.medico} onChange={e => setForm(f => ({ ...f, medico: e.target.value }))} placeholder="Nome do médico" />
+              <div className="flex items-center justify-between mb-1">
+                <Label>Médico</Label>
+                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs gap-1 text-primary" onClick={() => setShowAddMedico(!showAddMedico)}>
+                  <UserPlus className="w-3 h-3" />
+                  {showAddMedico ? "Cancelar" : "Novo Médico"}
+                </Button>
+              </div>
+
+              {showAddMedico ? (
+                <div className="space-y-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                  <Input
+                    placeholder="Nome do médico *"
+                    value={novoMedico.nome}
+                    onChange={e => setNovoMedico(p => ({ ...p, nome: e.target.value }))}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="CRM"
+                      value={novoMedico.crm}
+                      onChange={e => setNovoMedico(p => ({ ...p, crm: e.target.value }))}
+                    />
+                    <Input
+                      placeholder="Especialidade"
+                      value={novoMedico.especialidade}
+                      onChange={e => setNovoMedico(p => ({ ...p, especialidade: e.target.value }))}
+                    />
+                  </div>
+                  <Button type="button" size="sm" className="w-full" onClick={handleAddMedico}>
+                    <Plus className="w-3 h-3 mr-1" />Adicionar Médico
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Pesquisar médico por nome ou CRM..."
+                      value={medicoSearch}
+                      onChange={e => { setMedicoSearch(e.target.value); setForm(f => ({ ...f, medico: "" })); }}
+                      className="pl-9"
+                    />
+                  </div>
+                  {form.medico && (
+                    <div className="mt-1 text-xs text-primary font-medium">✓ {form.medico}</div>
+                  )}
+                  {!form.medico && medicoSearch.trim() && (
+                    <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                      {filteredMedicos.length === 0 ? (
+                        <div className="p-2 text-center">
+                          <p className="text-xs text-muted-foreground">Nenhum médico encontrado</p>
+                          <Button type="button" variant="link" size="sm" className="text-xs h-6 mt-1" onClick={() => {
+                            setNovoMedico({ nome: medicoSearch, crm: "", especialidade: "" });
+                            setShowAddMedico(true);
+                          }}>
+                            <Plus className="w-3 h-3 mr-1" />Cadastrar "{medicoSearch}"
+                          </Button>
+                        </div>
+                      ) : filteredMedicos.map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                          onClick={() => {
+                            const label = m.nome + (m.crm ? ` - CRM: ${m.crm}` : "");
+                            setForm(prev => ({ ...prev, medico: label }));
+                            setMedicoSearch(label);
+                          }}
+                        >
+                          <span className="font-medium">{m.nome}</span>
+                          <span className="text-xs text-muted-foreground">{m.crm ? `CRM: ${m.crm}` : ""} {m.especialidade || ""}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div>
               <Label>Observação</Label>
