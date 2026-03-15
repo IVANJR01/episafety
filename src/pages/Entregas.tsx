@@ -748,7 +748,7 @@ export default function Entregas() {
               </div>
             )}
 
-            {/* Toggle: Assinatura vs Biometria */}
+            {/* Toggle: Assinatura vs Reconhecimento Facial */}
             <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30">
               <Button
                 type="button"
@@ -763,12 +763,12 @@ export default function Entregas() {
               <Button
                 type="button"
                 size="sm"
-                variant={signInputType === "biometria" ? "default" : "outline"}
-                onClick={() => setSignInputType("biometria")}
+                variant={signInputType === "facial" ? "default" : "outline"}
+                onClick={() => setSignInputType("facial")}
                 className="flex-1"
               >
-                <Fingerprint className="w-4 h-4 mr-1.5" />
-                Biometria Digital
+                <ScanFace className="w-4 h-4 mr-1.5" />
+                Rec. Facial
               </Button>
             </div>
 
@@ -776,27 +776,27 @@ export default function Entregas() {
               <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
             ) : (
               <div className="flex flex-col items-center justify-center py-8 px-4 border-2 border-dashed rounded-lg bg-muted/20 space-y-4">
-                <Fingerprint className="w-16 h-16 text-primary/60 animate-pulse" />
+                <ScanFace className="w-16 h-16 text-primary/60 animate-pulse" />
                 <div className="text-center space-y-2">
-                  <p className="font-medium text-sm">Touch ID / Biometria Digital</p>
+                  <p className="font-medium text-sm">Reconhecimento Facial</p>
                   <p className="text-xs text-muted-foreground max-w-sm">
-                    Ao clicar em "Confirmar Biometria", o sensor do aparelho será ativado para o colaborador colocar o dedo e autenticar.
+                    Conforme a Portaria Nº 2.175/2022, a NR-6 permite o uso de biometria facial para registro da entrega de EPIs. Ao clicar em "Confirmar Reconhecimento Facial", o sensor do dispositivo será ativado.
                   </p>
                   <div className="flex items-center gap-1 justify-center text-xs text-primary">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Autenticação via sensor do dispositivo</span>
+                    <span>Conforme NR-6 — Portaria Nº 2.175/2022</span>
                   </div>
                 </div>
               </div>
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); refetch(); if (signMode === "new") toast({ title: "Entrega registrada sem assinatura." }); }}>
-              {signMode === "new" ? "Pular" : "Cancelar"}
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); refetch(); }}>
+              Cancelar
             </Button>
             <Button onClick={handleSaveSignature} disabled={signMode === "existing" && selectedUnsigned.length === 0}>
-              {signInputType === "biometria" ? (
-                <><Fingerprint className="w-4 h-4 mr-1.5" />Confirmar Biometria {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
+              {signInputType === "facial" ? (
+                <><ScanFace className="w-4 h-4 mr-1.5" />Confirmar Rec. Facial {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
               ) : (
                 <>✍️ Salvar Assinatura {signMode === "existing" && selectedUnsigned.length > 0 ? `(${selectedUnsigned.length})` : ""}</>
               )}
