@@ -686,8 +686,8 @@ export default function Entregas() {
         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {signInputType === "biometria" ? <Fingerprint className="w-5 h-5" /> : <PenLine className="w-5 h-5" />}
-              {signInputType === "biometria" ? "Biometria Digital" : "Assinatura do Colaborador"}
+              {signInputType === "facial" ? <ScanFace className="w-5 h-5" /> : <PenLine className="w-5 h-5" />}
+              {signInputType === "facial" ? "Reconhecimento Facial" : "Assinatura do Colaborador"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
