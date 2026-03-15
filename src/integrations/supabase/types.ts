@@ -1055,6 +1055,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_consolidated_epi_stock: { Args: never; Returns: Json }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
