@@ -631,6 +631,21 @@ export default function ExamesModule() {
           </CardContent>
         </Card>
 
+        {/* Pendentes */}
+        <Card className="group hover:shadow-md transition-all duration-200 hover:border-blue-500/30 cursor-pointer"
+          onClick={() => setStatusFilter(statusFilter === "pendente" ? "todos" : "pendente")}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                <Clock className="w-4 h-4" />
+              </div>
+              <span className="text-3xl font-bold text-blue-500">{pendentesCount}</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Pendentes</p>
+            <Progress value={totalItems > 0 ? (pendentesCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-blue-500" />
+          </CardContent>
+        </Card>
+
         {/* Vigentes */}
         <Card className="group hover:shadow-md transition-all duration-200 hover:border-success/30 cursor-pointer"
           onClick={() => setStatusFilter(statusFilter === "vigente" ? "todos" : "vigente")}>
