@@ -49,6 +49,28 @@ const TIPOS_EXAME = [
   { key: "mudanca_funcao", label: "Mudança de Função", validade_meses: 0 },
 ];
 
+const NOMES_EXAME = [
+  { code: "0295", label: "ASO - Avaliação Clínica Ocupacional" },
+  { code: "0296", label: "Acuidade Visual" },
+  { code: "0281", label: "Audiometria Tonal Ocupacional" },
+  { code: "0300", label: "Avaliação Psicossocial" },
+  { code: "0530", label: "ECG - Eletrocardiograma" },
+  { code: "0536", label: "EEG - Eletroencefalograma" },
+  { code: "0658", label: "Glicemia" },
+  { code: "0693", label: "Hemograma Completo" },
+  { code: "1057", label: "Espirometria (Prova de Função Pulmonar)" },
+  { code: "0078", label: "Raio-X de Tórax (PA)" },
+  { code: "0545", label: "EAS - Exame de Urina (Elementos Anormais)" },
+  { code: "0680", label: "Gama GT" },
+  { code: "0860", label: "Lipidograma" },
+  { code: "0855", label: "TGO (AST)" },
+  { code: "0856", label: "TGP (ALT)" },
+  { code: "0870", label: "Creatinina" },
+  { code: "0875", label: "Ureia" },
+  { code: "0640", label: "Toxicológico" },
+  { code: "0000", label: "Outro" },
+];
+
 const tipoLabels: Record<string, string> = {};
 TIPOS_EXAME.forEach(t => { tipoLabels[t.key] = t.label; });
 
