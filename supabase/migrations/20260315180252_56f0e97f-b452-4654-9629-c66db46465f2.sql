@@ -1,0 +1,1 @@
+ALTER TABLE public.exames ALTER COLUMN data DROP NOT NULL;
