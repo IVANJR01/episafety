@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
 
@@ -233,6 +233,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+
+          <Link
+            to="/backups"
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              location.pathname === "/backups"
+                ? "bg-sidebar-accent text-primary"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            }`}
+          >
+            <HardDrive className="w-4 h-4 shrink-0" />
+            <span className="truncate">Backups</span>
+          </Link>
 
           {isSuperAdmin && (
             <Link

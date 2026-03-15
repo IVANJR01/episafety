@@ -25,6 +25,7 @@ import InspecoesSE from "@/pages/InspecoesSE";
 import Treinamentos from "@/pages/Treinamentos";
 import ExamesModule from "@/pages/ExamesModule";
 import CadastroDashboard from "@/pages/CadastroDashboard";
+import Backups from "@/pages/Backups";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -105,6 +106,7 @@ function ProtectedRoute() {
         <Route path="/treinamentos" element={<Treinamentos />} />
         <Route path="/exames" element={<ExamesModule />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
+        <Route path="/backups" element={<Backups />} />
         <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />
         <Route path="*" element={<NotFound />} />
