@@ -536,8 +536,32 @@ export default function Funcionarios() {
             <div>
               <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
             </div>
+            {editing && (
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Data Demissão</Label><Input type="date" value={form.data_demissao} onChange={e => setForm({...form, data_demissao: e.target.value})} /></div>
+                <div></div>
+              </div>
+            )}
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Demissão */}
+      <Dialog open={demissaoOpen} onOpenChange={setDemissaoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><UserX className="w-5 h-5 text-destructive" />Registrar Demissão</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">Funcionário: <strong className="text-foreground">{demissaoTarget?.nome}</strong></p>
+            <div>
+              <Label>Data da Demissão</Label>
+              <Input type="date" value={demissaoDate} onChange={e => setDemissaoDate(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDemissaoOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDemissao} disabled={!demissaoDate}>Confirmar Demissão</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
