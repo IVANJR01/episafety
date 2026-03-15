@@ -113,6 +113,10 @@ export default function UsuariosLiberados() {
       toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
       return;
     }
+    if (!isOnline()) {
+      toast({ title: "Sem conexão", description: "Criar usuários requer conexão com a internet.", variant: "destructive" });
+      return;
+    }
 
     setAddingUser(true);
     try {
