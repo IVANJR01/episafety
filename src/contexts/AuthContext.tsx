@@ -21,38 +21,36 @@ export const useAuth = () => useContext(AuthContext);
 
 const AUTH_CACHE_KEY = "offline_auth_cache";
 
-function saveAuthCache(data: { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean }) {
+function saveAuthCache(data: { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean; isPrincipal: boolean }) {
   try { localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(data)); } catch {}
 }
 
-function loadAuthCache(): { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean } | null {
+function loadAuthCache(): { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean; isPrincipal: boolean } | null {
   try {
     const raw = localStorage.getItem(AUTH_CACHE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
 
-async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[] }> {
-  if (!email) return { authorized: false, modulos: [] };
+async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean }> {
+  if (!email) return { authorized: false, modulos: [], isPrincipal: false };
   try {
     const { count } = await supabase
       .from("usuarios_liberados")
       .select("id", { count: "exact", head: true });
-    if (!count || count === 0) return { authorized: true, modulos: [] };
-    const { data } = await supabase
-      .from("usuarios_liberados")
-      .select("id, modulos_permitidos")
+    if (!count || count === 0) return { authorized: true, modulos: [], isPrincipal: false };
+    const { data } = await (supabase.from as any)("usuarios_liberados")
+      .select("id, modulos_permitidos, is_principal")
       .eq("email", email.toLowerCase())
       .limit(1);
     if (data && data.length > 0) {
-      return { authorized: true, modulos: data[0].modulos_permitidos || [] };
+      return { authorized: true, modulos: data[0].modulos_permitidos || [], isPrincipal: !!data[0].is_principal };
     }
-    return { authorized: false, modulos: [] };
+    return { authorized: false, modulos: [], isPrincipal: false };
   } catch {
-    // On error, try cache instead of granting full access
     const cached = loadAuthCache();
-    if (cached) return { authorized: cached.authorized, modulos: cached.modulos };
-    return { authorized: true, modulos: [] };
+    if (cached) return { authorized: cached.authorized, modulos: cached.modulos, isPrincipal: cached.isPrincipal || false };
+    return { authorized: true, modulos: [], isPrincipal: false };
   }
 }
 
@@ -116,15 +114,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             checkSuperAdmin(currentUser.id),
           ]);
           setAuthorized(authResult.authorized);
-          setModulosPermitidos(authResult.modulos);
+          // Principal users get full access (empty array = no restrictions)
+          setModulosPermitidos(authResult.isPrincipal ? [] : authResult.modulos);
           setEmpresaId(profileResult.empresaId);
           setIsSuperAdmin(superAdmin);
           // Save to cache for offline use
           saveAuthCache({
             authorized: authResult.authorized,
-            modulos: authResult.modulos,
+            modulos: authResult.isPrincipal ? [] : authResult.modulos,
             empresaId: profileResult.empresaId,
             isSuperAdmin: superAdmin,
+            isPrincipal: authResult.isPrincipal,
           });
         }
       } catch {

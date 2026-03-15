@@ -1,0 +1,1 @@
+ALTER TABLE public.usuarios_liberados ADD COLUMN is_principal boolean NOT NULL DEFAULT false;

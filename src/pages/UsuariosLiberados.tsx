@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2 } from "lucide-react";
+import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ interface UsuarioLiberado {
   modulos_permitidos: string[] | null;
   created_at: string;
   empresa_id: string | null;
+  is_principal: boolean;
 }
 
 interface Empresa {
@@ -265,6 +266,30 @@ export default function UsuariosLiberados() {
     return perms.includes(`${moduleKey}:${action}`);
   };
 
+  const handleTogglePrincipal = async (userId: string) => {
+    const user = usuarios.find(u => u.id === userId);
+    if (!user) return;
+    const newVal = !user.is_principal;
+
+    // If marking as principal, set full permissions automatically
+    const updates: any = { is_principal: newVal };
+    if (newVal) {
+      updates.modulos_permitidos = allPermissions();
+    }
+
+    setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, is_principal: newVal, ...(newVal ? { modulos_permitidos: allPermissions() } : {}) } : u));
+
+    if (isOnline()) {
+      const { error } = await (supabase.from as any)("usuarios_liberados").update(updates).eq("id", userId);
+      if (error) {
+        toast({ title: "Erro ao atualizar", variant: "destructive" });
+        setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, is_principal: !newVal } : u));
+      } else {
+        toast({ title: newVal ? "Usuário definido como Principal!" : "Principal removido" });
+      }
+    }
+  };
+
   const renderUserRow = (u: UsuarioLiberado) => {
     const isExpanded = expandedId === u.id;
     const perms = u.modulos_permitidos || [];
@@ -279,9 +304,11 @@ export default function UsuariosLiberados() {
             onClick={() => setExpandedId(isExpanded ? null : u.id)}
           >
             {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-            <div>
+            <div className="flex items-center gap-2">
+              {u.is_principal && <Crown className="w-4 h-4 text-amber-500" />}
               <span className="font-medium text-sm">{u.nome || "—"}</span>
-              <span className="text-muted-foreground text-sm ml-2">{u.email}</span>
+              <span className="text-muted-foreground text-sm">{u.email}</span>
+              {u.is_principal && <span className="text-xs bg-amber-500/10 text-amber-700 px-1.5 py-0.5 rounded font-medium">Principal</span>}
             </div>
           </button>
           <div className="flex items-center gap-1">
@@ -297,7 +324,18 @@ export default function UsuariosLiberados() {
         {isExpanded && (
           <div className="px-4 pb-4 border-t pt-3 space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Permissões por Módulo</Label>
+              <div className="flex items-center gap-3">
+                <Label className="text-sm font-medium">Permissões por Módulo</Label>
+                <Button
+                  variant={u.is_principal ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => handleTogglePrincipal(u.id)}
+                >
+                  <Crown className="w-3.5 h-3.5" />
+                  {u.is_principal ? "Principal ✓" : "Definir como Principal"}
+                </Button>
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => selectAll(u.id)} className="text-xs text-primary hover:underline">
                   Selecionar todos
