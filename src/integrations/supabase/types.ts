@@ -1033,6 +1033,7 @@ export type Database = {
           email: string
           empresa_id: string | null
           id: string
+          is_principal: boolean
           modulos_permitidos: string[] | null
           nome: string | null
         }
@@ -1042,6 +1043,7 @@ export type Database = {
           email: string
           empresa_id?: string | null
           id?: string
+          is_principal?: boolean
           modulos_permitidos?: string[] | null
           nome?: string | null
         }
@@ -1051,6 +1053,7 @@ export type Database = {
           email?: string
           empresa_id?: string | null
           id?: string
+          is_principal?: boolean
           modulos_permitidos?: string[] | null
           nome?: string | null
         }
