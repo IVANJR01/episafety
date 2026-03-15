@@ -758,6 +758,24 @@ export default function ExamesModule() {
               )}
             </div>
 
+            {/* Nome do Exame */}
+            <div>
+              <Label>Nome do Exame *</Label>
+              <Select value={form.nome_exame} onValueChange={v => setForm(f => ({ ...f, nome_exame: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione o exame..." /></SelectTrigger>
+                <SelectContent>
+                  {NOMES_EXAME.map(e => (
+                    <SelectItem key={e.code} value={e.label}>
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-mono">{e.code}</span>
+                        <span>{e.label}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Tipo de Exame</Label>
