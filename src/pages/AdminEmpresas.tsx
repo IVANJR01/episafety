@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Trash2, Users, UserPlus, X, Eye, EyeOff, GitBranch } from "lucide-react";
+import { Building2, Plus, Trash2, Users, UserPlus, X, Eye, EyeOff, GitBranch, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,11 +30,19 @@ interface Profile {
   empresa_id: string | null;
 }
 
+interface UsuarioLiberado {
+  id: string;
+  email: string;
+  is_principal: boolean;
+  empresa_id: string | null;
+}
+
 export default function AdminEmpresas() {
   const { isSuperAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [usuariosLiberados, setUsuariosLiberados] = useState<UsuarioLiberado[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [newOpen, setNewOpen] = useState(false);
@@ -55,12 +63,14 @@ export default function AdminEmpresas() {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: empData }, { data: profData }] = await Promise.all([
+    const [{ data: empData }, { data: profData }, { data: ulData }] = await Promise.all([
       (supabase.from as any)("empresa_config").select("*").order("created_at", { ascending: false }),
       (supabase.from as any)("profiles").select("*"),
+      (supabase.from as any)("usuarios_liberados").select("id, email, is_principal, empresa_id"),
     ]);
     setEmpresas(empData || []);
     setProfiles(profData || []);
+    setUsuariosLiberados(ulData || []);
     setLoading(false);
   };
 
@@ -187,6 +197,32 @@ export default function AdminEmpresas() {
     setNewOpen(true);
   };
 
+  const isUserPrincipal = (email: string | null) => {
+    if (!email) return false;
+    return usuariosLiberados.some(ul => ul.email.toLowerCase() === email.toLowerCase() && ul.is_principal);
+  };
+
+  const handleTogglePrincipal = async (profile: Profile) => {
+    if (!profile.email) return;
+    const emailLower = profile.email.toLowerCase();
+    const ul = usuariosLiberados.find(u => u.email.toLowerCase() === emailLower);
+    const newVal = !ul?.is_principal;
+
+    if (ul) {
+      const { error } = await (supabase.from as any)("usuarios_liberados").update({ is_principal: newVal }).eq("id", ul.id);
+      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    } else {
+      // Create entry in usuarios_liberados
+      const { error } = await (supabase.from as any)("usuarios_liberados").insert({
+        email: emailLower, nome: profile.nome, is_principal: true,
+        modulos_permitidos: [], empresa_id: profile.empresa_id,
+      });
+      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    }
+    toast({ title: newVal ? "✅ Usuário definido como Principal!" : "Principal removido" });
+    await loadData();
+  };
+
   const renderUsers = (empresaId: string) => {
     const users = getUsersForEmpresa(empresaId);
     if (users.length === 0) return <p className="text-sm text-muted-foreground">Nenhum usuário vinculado</p>;
@@ -194,13 +230,26 @@ export default function AdminEmpresas() {
       <div className="space-y-1.5">
         <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Usuários:</p>
         <div className="flex flex-wrap gap-2">
-          {users.map(u => (
-            <Badge key={u.id} variant="secondary" className="flex items-center gap-1.5 py-1 px-3">
-              <span>{u.nome || u.email || "—"}</span>
-              {u.email && <span className="text-muted-foreground text-xs">({u.email})</span>}
-              <button onClick={() => handleUnassignUser(u.user_id)} className="ml-1 hover:text-destructive"><X className="w-3 h-3" /></button>
-            </Badge>
-          ))}
+          {users.map(u => {
+            const principal = isUserPrincipal(u.email);
+            return (
+              <Badge key={u.id} variant={principal ? "default" : "secondary"} className="flex items-center gap-1.5 py-1 px-3">
+                {principal && <Crown className="w-3.5 h-3.5 text-amber-400" />}
+                <span>{u.nome || u.email || "—"}</span>
+                {u.email && <span className="text-xs opacity-70">({u.email})</span>}
+                <button
+                  onClick={() => handleTogglePrincipal(u)}
+                  className="ml-1 hover:text-amber-500"
+                  title={principal ? "Remover Principal" : "Definir como Principal"}
+                >
+                  <Crown className={`w-3 h-3 ${principal ? "text-amber-400" : "opacity-40"}`} />
+                </button>
+                <button onClick={() => handleUnassignUser(u.user_id)} className="ml-0.5 hover:text-destructive">
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            );
+          })}
         </div>
       </div>
     );
