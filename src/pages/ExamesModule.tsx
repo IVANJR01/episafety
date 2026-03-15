@@ -21,6 +21,7 @@ interface Exame {
   id: string;
   funcionario_id: string;
   tipo: string;
+  nome_exame: string | null;
   data: string;
   data_vencimento: string | null;
   resultado: string;
