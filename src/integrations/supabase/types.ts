@@ -750,6 +750,44 @@ export type Database = {
           },
         ]
       }
+      medicos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          crm: string | null
+          empresa_id: string | null
+          especialidade: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          crm?: string | null
+          empresa_id?: string | null
+          especialidade?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          crm?: string | null
+          empresa_id?: string | null
+          especialidade?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           created_at: string
