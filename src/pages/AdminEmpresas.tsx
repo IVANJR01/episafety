@@ -30,11 +30,19 @@ interface Profile {
   empresa_id: string | null;
 }
 
+interface UsuarioLiberado {
+  id: string;
+  email: string;
+  is_principal: boolean;
+  empresa_id: string | null;
+}
+
 export default function AdminEmpresas() {
   const { isSuperAdmin, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [usuariosLiberados, setUsuariosLiberados] = useState<UsuarioLiberado[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [newOpen, setNewOpen] = useState(false);
@@ -55,12 +63,14 @@ export default function AdminEmpresas() {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: empData }, { data: profData }] = await Promise.all([
+    const [{ data: empData }, { data: profData }, { data: ulData }] = await Promise.all([
       (supabase.from as any)("empresa_config").select("*").order("created_at", { ascending: false }),
       (supabase.from as any)("profiles").select("*"),
+      (supabase.from as any)("usuarios_liberados").select("id, email, is_principal, empresa_id"),
     ]);
     setEmpresas(empData || []);
     setProfiles(profData || []);
+    setUsuariosLiberados(ulData || []);
     setLoading(false);
   };
 
