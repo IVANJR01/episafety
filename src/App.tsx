@@ -11,8 +11,8 @@ import InstallBanner from "@/components/InstallBanner";
 import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import Funcionarios from "@/pages/Funcionarios";
-// Entregas integrado ao módulo EPIs
-// Relatorios integrado ao módulo EPIs
+import Entregas from "@/pages/Entregas";
+import Relatorios from "@/pages/Relatorios";
 import Empresas from "@/pages/Empresas";
 import UsuariosLiberados from "@/pages/UsuariosLiberados";
 import Auth from "@/pages/Auth";
