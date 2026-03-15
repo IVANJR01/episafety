@@ -29,12 +29,14 @@ interface EntregaItem {
   status: string;
   data_devolucao: string | null;
   assinatura_colaborador: string | null;
+  foto_reconhecimento?: string | null;
 }
 
 interface FichaData {
   empresa: EmpresaData;
   funcionario: FuncionarioData;
   entregas: EntregaItem[];
+  fotosBase64?: Map<string, string>;
 }
 
 const MARGIN = 15;
@@ -175,10 +177,44 @@ function drawFooter(doc: jsPDF) {
   doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, footerY + 4, { align: "center" });
 }
 
+/** Convert an image URL to a base64 data URL via canvas */
+async function urlToBase64(url: string): Promise<string | null> {
+  try {
+    return await new Promise<string | null>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Pre-load all foto_reconhecimento URLs as base64 for PDF embedding */
+export async function preloadFotosReconhecimento(entregas: EntregaItem[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const promises = entregas
+    .filter(e => e.foto_reconhecimento && !e.foto_reconhecimento.startsWith("data:"))
+    .map(async (e) => {
+      const b64 = await urlToBase64(e.foto_reconhecimento!);
+      if (b64) map.set(e.foto_reconhecimento!, b64);
+    });
+  await Promise.all(promises);
+  return map;
+}
+
 export function gerarFichaEPI(data: FichaData) {
   const doc = new jsPDF("l", "mm", "a4");
-  // Landscape A4: 297mm wide, margins 15 each side = 267mm content
-  // Entrega(32) + Devolução(24) + Qtde(16) + Equipamento(78) + CA nº(24) + Motivo(33) + Assinatura(60) = 267
   const colWidths = [32, 24, 16, 78, 24, 33, 60];
   const ROW_H = 18;
   const MAX_Y = PAGE_H - 30;
@@ -192,9 +228,8 @@ export function gerarFichaEPI(data: FichaData) {
   y = drawTableHeader(doc, y, colWidths);
 
   const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano", troca: "Troca", devolucao: "Devolução" };
-  const statusLabels: Record<string, string> = { ativo: "Ativo", substituido: "Substituído", devolvido: "Devolvido", perdido: "Perdido", danificado: "Danificado", trocado: "Trocado" };
 
-  data.entregas.forEach((entrega, idx) => {
+  data.entregas.forEach((entrega) => {
     if (y + ROW_H > MAX_Y) {
       drawFooter(doc);
       doc.addPage();
@@ -234,19 +269,17 @@ export function gerarFichaEPI(data: FichaData) {
     doc.text(String(entrega.quantidade), x + colWidths[2] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[2];
 
-    // Equipamento - with proper text clipping
+    // Equipamento
     const eqX = x + 2;
     const eqMaxW = colWidths[3] - 4;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
-    // Truncate name if too long
     let epiNome = entrega.epi_nome || "—";
     while (doc.getTextWidth(epiNome) > eqMaxW && epiNome.length > 3) {
       epiNome = epiNome.substring(0, epiNome.length - 4) + "...";
     }
     doc.text(epiNome, eqX, y + 5);
     
-    // Description - properly wrapped and limited
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5.5);
     if (entrega.epi_descricao) {
@@ -254,7 +287,6 @@ export function gerarFichaEPI(data: FichaData) {
       doc.text(descLines.slice(0, 2), eqX, y + 9);
     }
 
-    // Validade do C.A.
     doc.setFontSize(5.5);
     doc.setTextColor(80);
     const validadeText = entrega.epi_validade ? `Val. C.A: ${formatDate(entrega.epi_validade)}` : "";
@@ -277,41 +309,80 @@ export function gerarFichaEPI(data: FichaData) {
     doc.text(motivo, x + colWidths[5] / 2, y + ROW_H / 2 + 1, { align: "center" });
     x += colWidths[5];
 
-    // Assinatura - per-row signature
+    // Assinatura column - now includes foto_reconhecimento
     const sigX = x;
+    const sigW = colWidths[6];
+
     if (entrega.assinatura_colaborador) {
       if (entrega.assinatura_colaborador === "BIOMETRIA_DIGITAL" || entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL") {
-        const cx = sigX + colWidths[6] / 2;
-        const cy = y + ROW_H / 2 - 2;
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 100, 0);
-        const label = entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? "REC. FACIAL" : "BIOMETRIA DIGITAL";
-        doc.text(label, cx, cy, { align: "center" });
-        doc.setFontSize(5.5);
-        doc.setFont("helvetica", "normal");
-        const desc = entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL" 
-          ? "Portaria Nº 2.175/2022 - NR-6" 
-          : "Impressão digital coletada";
-        doc.text(desc, cx, cy + 4, { align: "center" });
-        doc.setTextColor(0);
+        // Try to render the photo
+        let fotoRendered = false;
+        const fotoSrc = entrega.foto_reconhecimento;
+        if (fotoSrc) {
+          try {
+            // Use pre-loaded base64 if available, otherwise try direct
+            const base64 = data.fotosBase64?.get(fotoSrc) || fotoSrc;
+            if (base64.startsWith("data:")) {
+              const photoW = 14;
+              const photoH = 14;
+              const photoX = sigX + 2;
+              const photoY = y + 1;
+              doc.addImage(base64, "JPEG", photoX, photoY, photoW, photoH);
+              fotoRendered = true;
+
+              // Text next to photo
+              const textX = photoX + photoW + 2;
+              doc.setFontSize(6.5);
+              doc.setFont("helvetica", "bold");
+              doc.setTextColor(0, 100, 0);
+              const label = entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? "REC. FACIAL" : "BIOMETRIA";
+              doc.text(label, textX, y + 5);
+              doc.setFontSize(5);
+              doc.setFont("helvetica", "normal");
+              doc.text("Portaria 2.175/2022", textX, y + 9);
+              doc.text("NR-6", textX, y + 12);
+              doc.setTextColor(0);
+            }
+          } catch (e) {
+            // Photo failed, fall through to text-only
+          }
+        }
+
+        if (!fotoRendered) {
+          // Text-only fallback (no photo available)
+          const cx = sigX + sigW / 2;
+          const cy = y + ROW_H / 2 - 2;
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 100, 0);
+          const label = entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? "REC. FACIAL" : "BIOMETRIA DIGITAL";
+          doc.text(label, cx, cy, { align: "center" });
+          doc.setFontSize(5.5);
+          doc.setFont("helvetica", "normal");
+          const desc = entrega.assinatura_colaborador === "RECONHECIMENTO_FACIAL"
+            ? "Portaria Nº 2.175/2022 - NR-6"
+            : "Impressão digital coletada";
+          doc.text(desc, cx, cy + 4, { align: "center" });
+          doc.setTextColor(0);
+        }
       } else {
         try {
-          doc.addImage(entrega.assinatura_colaborador, "PNG", sigX + 2, y + 1, colWidths[6] - 4, ROW_H * 0.55);
+          doc.addImage(entrega.assinatura_colaborador, "PNG", sigX + 2, y + 1, sigW - 4, ROW_H * 0.55);
         } catch (e) { /* ignore */ }
       }
     }
-    // Use individual delivery date+time
+
+    // Timestamp
     doc.setFontSize(4.5);
     doc.setTextColor(100);
     const sigDateTime = formatDateTime(entrega.created_at);
-    doc.text(sigDateTime, sigX + colWidths[6] / 2, y + ROW_H - 2, { align: "center" });
+    doc.text(sigDateTime, sigX + sigW / 2, y + ROW_H - 2, { align: "center" });
     doc.setTextColor(0);
 
     y += ROW_H;
   });
 
-  // Fill empty rows to minimum
+  // Fill empty rows
   const minRows = 5;
   for (let i = data.entregas.length; i < minRows; i++) {
     if (y + ROW_H > MAX_Y) break;
@@ -325,8 +396,6 @@ export function gerarFichaEPI(data: FichaData) {
     y += ROW_H;
   }
 
-  // Footer
   drawFooter(doc);
-
   return doc;
 }

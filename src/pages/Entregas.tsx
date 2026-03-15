@@ -468,6 +468,7 @@ export default function Entregas() {
           status: e.status,
           data_devolucao: dataDevolucao,
           assinatura_colaborador: e.assinatura_colaborador || null,
+          foto_reconhecimento: (e as any).foto_reconhecimento || null,
         };
       }),
     });
