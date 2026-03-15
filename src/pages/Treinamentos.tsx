@@ -423,22 +423,22 @@ export default function Treinamentos() {
     // Merge company header rows across all columns
     const merges: XLSX.Range[] = [];
     for (let r = 0; r < HEADER_OFFSET; r++) {
-      merges.push({ s: { r, c: 0 }, e: { r, c: Math.max(totalCols - 1, 4) } });
+      merges.push({ s: { r, c: 0 }, e: { r, c: Math.max(totalCols - 1, fixedCols - 1) } });
     }
 
     // Merge header cells for course names (row HEADER_OFFSET)
     cursos.forEach((_, i) => {
-      const startCol = 5 + i * 3;
+      const startCol = fixedCols + i * 3;
       merges.push({ s: { r: HEADER_OFFSET, c: startCol }, e: { r: HEADER_OFFSET, c: startCol + 2 } });
     });
-    // Merge Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES across 2 header rows
-    for (let c = 0; c < 5; c++) {
+    // Merge Nº, COLABORADOR, CPF, FUNÇÃO, SETOR, PENDENTES across 2 header rows
+    for (let c = 0; c < fixedCols; c++) {
       merges.push({ s: { r: HEADER_OFFSET, c }, e: { r: HEADER_OFFSET + 1, c } });
     }
     ws["!merges"] = merges;
 
     // Column widths
-    const colWidths: { wch: number }[] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 14 }];
+    const colWidths: { wch: number }[] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 16 }, { wch: 14 }];
     cursos.forEach(() => { colWidths.push({ wch: 14 }, { wch: 16 }, { wch: 12 }); });
     ws["!cols"] = colWidths;
 
