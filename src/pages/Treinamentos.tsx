@@ -80,8 +80,13 @@ export default function Treinamentos() {
   const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
 
   const fetchCursosDB = useCallback(async () => {
+    if (!isOnline()) {
+      const cached = getCachedData<{ nome: string; validade_meses: number }>("cursos_documentos");
+      if (cached) setDbCursos(cached);
+      return;
+    }
     const { data } = await (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome");
-    if (data) setDbCursos(data);
+    if (data) { setDbCursos(data); setCachedData("cursos_documentos", data); }
   }, []);
 
   // Multi-course mode
