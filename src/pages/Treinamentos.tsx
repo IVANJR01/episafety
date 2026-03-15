@@ -354,11 +354,14 @@ export default function Treinamentos() {
       }
     }
 
+    // Use filtered data (respects sector filter) instead of all items
+    const exportItems = filtered;
     const cursoSet = new Set<string>();
-    items.forEach(t => cursoSet.add(t.nome_curso));
+    exportItems.forEach(t => cursoSet.add(t.nome_curso));
     const cursos = Array.from(cursoSet).sort();
-    const funcIds = Array.from(new Set(items.map(t => t.funcionario_id)));
-    const totalCols = 5 + cursos.length * 3;
+    const funcIds = Array.from(new Set(exportItems.map(t => t.funcionario_id)));
+    const fixedCols = 6; // Nº, COLABORADOR, CPF, FUNÇÃO, SETOR, PENDENTES
+    const totalCols = fixedCols + cursos.length * 3;
 
     // Build worksheet manually for full style control
     const wb = XLSX.utils.book_new();
@@ -380,12 +383,12 @@ export default function Treinamentos() {
     wsData.push([""]);
 
     // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES, then each course spans 3 cols
-    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "PENDENTES"];
+    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "SETOR", "PENDENTES"];
     cursos.forEach(curso => { header1.push(curso, "", ""); });
     wsData.push(header1);
 
     // Header row 2: sub-headers under each course
-    const header2: any[] = ["", "", "", "", ""];
+    const header2: any[] = ["", "", "", "", "", ""];
     cursos.forEach(() => { header2.push("ÚLTIMA DATA", "DATA RENOVAÇÃO", "STATUS"); });
     wsData.push(header2);
 
@@ -393,12 +396,12 @@ export default function Treinamentos() {
     funcIds.forEach((fid, idx) => {
       const func = funcMap[fid];
       if (!func) return;
-      const treinos = items.filter(t => t.funcionario_id === fid);
+      const treinos = exportItems.filter(t => t.funcionario_id === fid);
       const docsSet = new Set<string>();
       treinos.forEach(t => {
         if (t.documento_pendente) t.documento_pendente.split(" | ").filter(Boolean).forEach(d => docsSet.add(d));
       });
-      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", docsSet.size > 0 ? Array.from(docsSet).join(", ") : "—"];
+      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—", docsSet.size > 0 ? Array.from(docsSet).join(", ") : "—"];
       cursos.forEach(curso => {
         const t = treinos.find(tr => tr.nome_curso === curso);
         if (!t) {
@@ -420,22 +423,22 @@ export default function Treinamentos() {
     // Merge company header rows across all columns
     const merges: XLSX.Range[] = [];
     for (let r = 0; r < HEADER_OFFSET; r++) {
-      merges.push({ s: { r, c: 0 }, e: { r, c: Math.max(totalCols - 1, 4) } });
+      merges.push({ s: { r, c: 0 }, e: { r, c: Math.max(totalCols - 1, fixedCols - 1) } });
     }
 
     // Merge header cells for course names (row HEADER_OFFSET)
     cursos.forEach((_, i) => {
-      const startCol = 5 + i * 3;
+      const startCol = fixedCols + i * 3;
       merges.push({ s: { r: HEADER_OFFSET, c: startCol }, e: { r: HEADER_OFFSET, c: startCol + 2 } });
     });
-    // Merge Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES across 2 header rows
-    for (let c = 0; c < 5; c++) {
+    // Merge Nº, COLABORADOR, CPF, FUNÇÃO, SETOR, PENDENTES across 2 header rows
+    for (let c = 0; c < fixedCols; c++) {
       merges.push({ s: { r: HEADER_OFFSET, c }, e: { r: HEADER_OFFSET + 1, c } });
     }
     ws["!merges"] = merges;
 
     // Column widths
-    const colWidths: { wch: number }[] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 14 }];
+    const colWidths: { wch: number }[] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 18 }, { wch: 16 }, { wch: 14 }];
     cursos.forEach(() => { colWidths.push({ wch: 14 }, { wch: 16 }, { wch: 12 }); });
     ws["!cols"] = colWidths;
 
@@ -505,7 +508,7 @@ export default function Treinamentos() {
           }
 
           // Color status cells
-          if (C >= 5 && (C - 5) % 3 === 2) {
+          if (C >= fixedCols && (C - fixedCols) % 3 === 2) {
             const val = String(cell.v || "");
             if (val === "Vencido") {
               cell.s.fill = { fgColor: { rgb: "DC2626" } };
