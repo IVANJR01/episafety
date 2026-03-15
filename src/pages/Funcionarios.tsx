@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter, UserX, RotateCcw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,7 @@ import * as XLSX from "xlsx";
 interface Funcionario {
   id: string; nome: string; matricula: string | null; setor: string | null;
   cargo: string | null; data_admissao: string | null; cpf: string | null;
+  data_demissao: string | null;
 }
 
 interface ImportRow {
@@ -26,7 +28,7 @@ interface ImportRow {
   valid: boolean; error?: string; action?: "insert" | "update"; existingId?: string;
 }
 
-const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "" };
+const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "", data_demissao: "" };
 
 function formatCPF(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -97,17 +99,40 @@ export default function Funcionarios() {
   const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (f: Funcionario) => {
     setEditing(f);
-    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "" });
+    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "", data_demissao: f.data_demissao || "" });
     setOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
-    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null };
+    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null };
     if (editing) await update(editing.id, data);
     else await add(data);
     resetForm();
     setOpen(false);
+  };
+
+  // Demissão dialog
+  const [demissaoOpen, setDemissaoOpen] = useState(false);
+  const [demissaoTarget, setDemissaoTarget] = useState<Funcionario | null>(null);
+  const [demissaoDate, setDemissaoDate] = useState("");
+
+  const openDemissao = (f: Funcionario) => {
+    setDemissaoTarget(f);
+    setDemissaoDate(new Date().toISOString().split("T")[0]);
+    setDemissaoOpen(true);
+  };
+
+  const handleDemissao = async () => {
+    if (!demissaoTarget || !demissaoDate) return;
+    await update(demissaoTarget.id, { data_demissao: demissaoDate } as any);
+    setDemissaoOpen(false);
+    toast({ title: "Demissão registrada", description: `${demissaoTarget.nome} foi marcado como demitido.` });
+  };
+
+  const handleReativar = async (f: Funcionario) => {
+    await update(f.id, { data_demissao: null } as any);
+    toast({ title: "Funcionário reativado", description: `${f.nome} voltou para a lista de ativos.` });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -282,8 +307,16 @@ export default function Funcionarios() {
     return unique.sort((a, b) => a.localeCompare(b));
   }, [items]);
 
+  // Separate active vs dismissed
+  const ativos = useMemo(() => items.filter(f => !f.data_demissao), [items]);
+  const demitidos = useMemo(() => items.filter(f => !!f.data_demissao), [items]);
+
+  const [activeTab, setActiveTab] = useState("ativos");
+
+  const currentList = activeTab === "ativos" ? ativos : demitidos;
+
   const filteredItems = useMemo(() => {
-    let result = items;
+    let result = currentList;
     
     // Apply setor filter
     if (filterSetor) {
@@ -305,7 +338,7 @@ export default function Funcionarios() {
     }
     
     return result;
-  }, [items, searchTerm, filterSetor]);
+  }, [currentList, searchTerm, filterSetor]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -363,11 +396,23 @@ export default function Funcionarios() {
             </SelectContent>
           </Select>
         )}
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          {filteredItems.length} de {items.length}
+         <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {filteredItems.length} de {currentList.length}
         </span>
       </div>
 
+      {/* Tabs Ativos / Demitidos */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="ativos" className="gap-1.5">
+            <User className="w-4 h-4" />Ativos <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{ativos.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="demitidos" className="gap-1.5">
+            <UserX className="w-4 h-4" />Demitidos <span className="ml-1 text-xs bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full">{demitidos.length}</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="mt-4">
       {loading ? (
         <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
       ) : (
@@ -376,7 +421,7 @@ export default function Funcionarios() {
           <div className="space-y-3 lg:hidden">
             {filteredItems.length === 0 ? (
               <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">
-                {searchTerm ? "Nenhum funcionário encontrado para esta busca" : "Nenhum funcionário cadastrado"}
+                {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
               </CardContent></Card>
             ) : filteredItems.map(f => (
               <Card key={f.id} className="overflow-hidden">
@@ -392,6 +437,16 @@ export default function Funcionarios() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      {activeTab === "ativos" && canEdit && (
+                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => openDemissao(f)}>
+                          <UserX className="w-3 h-3" />Demitir
+                        </Button>
+                      )}
+                      {activeTab === "demitidos" && canEdit && (
+                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleReativar(f)}>
+                          <RotateCcw className="w-3 h-3" />Reativar
+                        </Button>
+                      )}
                       {canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
                       {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
@@ -400,6 +455,7 @@ export default function Funcionarios() {
                     <div><span className="text-muted-foreground">CPF:</span> <span className="font-mono">{f.cpf || "—"}</span></div>
                     <div><span className="text-muted-foreground">Matrícula:</span> <span className="font-mono">{f.matricula || "—"}</span></div>
                     {f.data_admissao && <div><span className="text-muted-foreground">Admissão:</span> <span className="font-mono">{f.data_admissao.split("-").reverse().join("/")}</span></div>}
+                    {f.data_demissao && <div><span className="text-muted-foreground">Demissão:</span> <span className="font-mono text-destructive">{f.data_demissao.split("-").reverse().join("/")}</span></div>}
                   </div>
                 </CardContent>
               </Card>
@@ -418,13 +474,14 @@ export default function Funcionarios() {
                     <TableHead>Setor</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Admissão</TableHead>
-                    <TableHead className="w-24"></TableHead>
+                    {activeTab === "demitidos" && <TableHead>Demissão</TableHead>}
+                    <TableHead className="w-36"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      {searchTerm ? "Nenhum funcionário encontrado para esta busca" : "Nenhum funcionário cadastrado"}
+                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 8 : 7} className="text-center text-muted-foreground py-8">
+                      {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
                     </TableCell></TableRow>
                   ) : filteredItems.map(f => (
                     <TableRow key={f.id}>
@@ -434,8 +491,19 @@ export default function Funcionarios() {
                       <TableCell>{f.setor || "—"}</TableCell>
                       <TableCell>{f.cargo || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{f.data_admissao ? f.data_admissao.split("-").reverse().join("/") : "—"}</TableCell>
+                      {activeTab === "demitidos" && <TableCell className="font-mono text-xs text-destructive">{f.data_demissao ? f.data_demissao.split("-").reverse().join("/") : "—"}</TableCell>}
                       <TableCell>
                         <div className="flex gap-1 justify-end">
+                          {activeTab === "ativos" && canEdit && (
+                            <Button size="sm" variant="outline" className="h-8 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => openDemissao(f)}>
+                              <UserX className="w-3 h-3" />Demitir
+                            </Button>
+                          )}
+                          {activeTab === "demitidos" && canEdit && (
+                            <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleReativar(f)}>
+                              <RotateCcw className="w-3 h-3" />Reativar
+                            </Button>
+                          )}
                           {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
@@ -448,6 +516,8 @@ export default function Funcionarios() {
           </Card>
         </>
       )}
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog novo/editar */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -466,8 +536,32 @@ export default function Funcionarios() {
             <div>
               <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
             </div>
+            {editing && (
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Data Demissão</Label><Input type="date" value={form.data_demissao} onChange={e => setForm({...form, data_demissao: e.target.value})} /></div>
+                <div></div>
+              </div>
+            )}
           </div>
           <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Demissão */}
+      <Dialog open={demissaoOpen} onOpenChange={setDemissaoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><UserX className="w-5 h-5 text-destructive" />Registrar Demissão</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">Funcionário: <strong className="text-foreground">{demissaoTarget?.nome}</strong></p>
+            <div>
+              <Label>Data da Demissão</Label>
+              <Input type="date" value={demissaoDate} onChange={e => setDemissaoDate(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDemissaoOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDemissao} disabled={!demissaoDate}>Confirmar Demissão</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

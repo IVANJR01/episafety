@@ -559,6 +559,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           data_admissao: string | null
+          data_demissao: string | null
           empresa_id: string | null
           id: string
           matricula: string | null
@@ -572,6 +573,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_admissao?: string | null
+          data_demissao?: string | null
           empresa_id?: string | null
           id?: string
           matricula?: string | null
@@ -585,6 +587,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_admissao?: string | null
+          data_demissao?: string | null
           empresa_id?: string | null
           id?: string
           matricula?: string | null
