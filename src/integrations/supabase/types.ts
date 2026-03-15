@@ -284,6 +284,7 @@ export type Database = {
           logo_url: string | null
           nome: string
           telefone: string | null
+          tipo: string
           updated_at: string
         }
         Insert: {
@@ -296,6 +297,7 @@ export type Database = {
           logo_url?: string | null
           nome?: string
           telefone?: string | null
+          tipo?: string
           updated_at?: string
         }
         Update: {
@@ -308,6 +310,7 @@ export type Database = {
           logo_url?: string | null
           nome?: string
           telefone?: string | null
+          tipo?: string
           updated_at?: string
         }
         Relationships: [
