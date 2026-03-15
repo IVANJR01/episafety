@@ -733,6 +733,7 @@ export default function Treinamentos() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12 text-center">Nº</TableHead>
                       <TableHead>Nome Completo</TableHead>
                       <TableHead>Função</TableHead>
                       <TableHead>Setor</TableHead>
@@ -746,12 +747,13 @@ export default function Treinamentos() {
                   </TableHeader>
                   <TableBody>
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
-                    ) : filtered.map(t => {
+                      <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
+                    ) : filtered.map((t, index) => {
                       const func = funcMap[t.funcionario_id];
                       const status = getStatus(t.data_renovacao);
                       return (
                         <TableRow key={t.id}>
+                          <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
                           <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
                           <TableCell>{func?.cargo || "—"}</TableCell>
                           <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
