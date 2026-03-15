@@ -50,6 +50,7 @@ export default function Entregas() {
   const [signFuncId, setSignFuncId] = useState<string>("");
 
   const [pendingEntrega, setPendingEntrega] = useState<any>(null);
+  const [shouldOpenSignatureAfterSave, setShouldOpenSignatureAfterSave] = useState(false);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
   const [signInputType, setSignInputType] = useState<"assinatura" | "facial">("assinatura");
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -194,6 +195,25 @@ export default function Entregas() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!shouldOpenSignatureAfterSave || open || !pendingEntrega || signOpen) return;
+
+    const openSignature = () => {
+      setSignInputType("assinatura");
+      setSignOpen(true);
+    };
+
+    const firstAttempt = setTimeout(openSignature, 150);
+    const secondAttempt = setTimeout(openSignature, 450);
+    const finalize = setTimeout(() => setShouldOpenSignatureAfterSave(false), 700);
+
+    return () => {
+      clearTimeout(firstAttempt);
+      clearTimeout(secondAttempt);
+      clearTimeout(finalize);
+    };
+  }, [shouldOpenSignatureAfterSave, open, pendingEntrega, signOpen]);
+
   const handleSave = async () => {
     if (saving) return;
     if (!form.funcionario_id || epiList.length === 0) {
@@ -266,9 +286,7 @@ export default function Entregas() {
       setEpiList([]);
       setEpiDropdownResults([]);
       setSaving(false);
-      setSignInputType("assinatura");
-      // Delay to let the first dialog close animation finish before opening signature
-      setTimeout(() => setSignOpen(true), 350);
+      setShouldOpenSignatureAfterSave(true);
       return;
     }
 
@@ -323,9 +341,7 @@ export default function Entregas() {
     setEpiDropdownResults([]);
 
     setSaving(false);
-    setSignInputType("assinatura");
-    // Delay to let the first dialog close animation finish before opening signature
-    setTimeout(() => setSignOpen(true), 350);
+    setShouldOpenSignatureAfterSave(true);
   };
 
   const handleSaveSignature = async () => {
