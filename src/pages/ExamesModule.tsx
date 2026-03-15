@@ -745,8 +745,8 @@ export default function ExamesModule() {
                           <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
                           <TableCell className="text-xs font-medium">{e.nome_exame || "—"}</TableCell>
                           <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
-                          <TableCell className="font-mono text-xs">{format(parseISO(e.data), "dd/MM/yyyy")}</TableCell>
-                          <TableCell className="font-mono text-xs">{e.data_vencimento ? format(parseISO(e.data_vencimento), "dd/MM/yyyy") : "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{formatDateSafe(e.data)}</TableCell>
+                          <TableCell className="font-mono text-xs">{formatDateSafe(e.data_vencimento)}</TableCell>
                           <TableCell>
                             <Badge variant={
                               e.resultado === "apto" ? "default" :
