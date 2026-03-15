@@ -99,17 +99,40 @@ export default function Funcionarios() {
   const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (f: Funcionario) => {
     setEditing(f);
-    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "" });
+    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "", data_demissao: f.data_demissao || "" });
     setOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
-    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null };
+    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null };
     if (editing) await update(editing.id, data);
     else await add(data);
     resetForm();
     setOpen(false);
+  };
+
+  // Demissão dialog
+  const [demissaoOpen, setDemissaoOpen] = useState(false);
+  const [demissaoTarget, setDemissaoTarget] = useState<Funcionario | null>(null);
+  const [demissaoDate, setDemissaoDate] = useState("");
+
+  const openDemissao = (f: Funcionario) => {
+    setDemissaoTarget(f);
+    setDemissaoDate(new Date().toISOString().split("T")[0]);
+    setDemissaoOpen(true);
+  };
+
+  const handleDemissao = async () => {
+    if (!demissaoTarget || !demissaoDate) return;
+    await update(demissaoTarget.id, { data_demissao: demissaoDate } as any);
+    setDemissaoOpen(false);
+    toast({ title: "Demissão registrada", description: `${demissaoTarget.nome} foi marcado como demitido.` });
+  };
+
+  const handleReativar = async (f: Funcionario) => {
+    await update(f.id, { data_demissao: null } as any);
+    toast({ title: "Funcionário reativado", description: `${f.nome} voltou para a lista de ativos.` });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
