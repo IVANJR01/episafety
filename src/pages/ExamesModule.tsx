@@ -140,6 +140,7 @@ export default function ExamesModule() {
     observacao: "",
   });
   const [funcSearch, setFuncSearch] = useState("");
+  const [funcFocused, setFuncFocused] = useState(false);
   const [medicoSearch, setMedicoSearch] = useState("");
   const [showAddMedico, setShowAddMedico] = useState(false);
   const [novoMedico, setNovoMedico] = useState({ nome: "", crm: "", especialidade: "" });
@@ -181,7 +182,7 @@ export default function ExamesModule() {
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const filteredFuncionarios = useMemo(() => {
-    if (!funcSearch.trim()) return funcionarios;
+    if (!funcSearch.trim()) return funcionarios.slice(0, 50);
     const q = normalize(funcSearch);
     return funcionarios.filter(f =>
       normalize(f.nome).includes(q) ||
@@ -842,7 +843,9 @@ export default function ExamesModule() {
                 <Input
                   placeholder="Pesquisar por nome, matrícula ou CPF..."
                   value={funcSearch}
-                  onChange={e => { setFuncSearch(e.target.value); setForm(f => ({ ...f, funcionario_id: "" })); }}
+                  onChange={e => { setFuncSearch(e.target.value); setForm(f => ({ ...f, funcionario_id: "" })); setFuncFocused(true); }}
+                  onFocus={() => setFuncFocused(true)}
+                  onBlur={() => setTimeout(() => setFuncFocused(false), 200)}
                   className="pl-9"
                 />
               </div>
@@ -851,8 +854,8 @@ export default function ExamesModule() {
                   ✓ {funcMap[form.funcionario_id]?.nome}
                 </div>
               )}
-              {!form.funcionario_id && funcSearch.trim() && (
-                <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+              {!form.funcionario_id && funcFocused && (
+                <div className="border rounded-lg mt-1 max-h-48 overflow-y-auto bg-background shadow-md">
                   {filteredFuncionarios.length === 0 ? (
                     <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
                   ) : filteredFuncionarios.map(f => (
@@ -860,7 +863,7 @@ export default function ExamesModule() {
                       key={f.id}
                       type="button"
                       className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
-                      onClick={() => { setForm(prev => ({ ...prev, funcionario_id: f.id })); setFuncSearch(f.nome); }}
+                      onClick={() => { setForm(prev => ({ ...prev, funcionario_id: f.id })); setFuncSearch(f.nome); setFuncFocused(false); }}
                     >
                       <span className="font-medium">{f.nome}</span>
                       <span className="text-xs text-muted-foreground">{f.cargo || ""} {f.matricula ? `• ${f.matricula}` : ""}</span>
