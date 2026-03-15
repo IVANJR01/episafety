@@ -445,7 +445,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
-          data: string
+          data: string | null
           data_vencimento: string | null
           empresa_id: string | null
           funcionario_id: string
@@ -459,7 +459,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
-          data?: string
+          data?: string | null
           data_vencimento?: string | null
           empresa_id?: string | null
           funcionario_id: string
@@ -473,7 +473,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
-          data?: string
+          data?: string | null
           data_vencimento?: string | null
           empresa_id?: string | null
           funcionario_id?: string
