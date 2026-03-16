@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import SignatureCanvas, { SignatureCanvasRef } from "@/components/SignatureCanvas";
 import {
-  Video, Play, Pause, CheckCircle, Clock, Award, LogOut, ChevronRight, AlertTriangle, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX
+  Video, Play, Pause, CheckCircle, Clock, LogOut, ChevronRight, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX
 } from "lucide-react";
 import logoImg from "@/assets/logo-episafety.png";
 
@@ -18,7 +17,6 @@ interface CursoVideo {
   id: string;
   titulo: string;
   descricao: string | null;
-  pontuacao_minima: number;
 }
 
 interface VideoTreinamento {
@@ -27,7 +25,6 @@ interface VideoTreinamento {
   descricao: string | null;
   video_url: string;
   duracao_segundos: number;
-  pontuacao_minima: number;
   created_at: string;
   curso_id: string | null;
   ordem: number;
@@ -38,21 +35,8 @@ interface VideoVisualizacao {
   video_id: string;
   funcionario_id: string;
   percentual_assistido: number;
-  pontuacao: number | null;
   concluido: boolean;
   assinatura: string | null;
-}
-
-interface VideoPergunta {
-  id: string;
-  video_id: string;
-  pergunta: string;
-  opcao_a: string;
-  opcao_b: string;
-  opcao_c: string | null;
-  opcao_d: string | null;
-  resposta_correta: string;
-  ordem: number;
 }
 
 export default function PortalTreinamentos() {
@@ -74,10 +58,8 @@ export default function PortalTreinamentos() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [perguntas, setPerguntas] = useState<VideoPergunta[]>([]);
-  const [respostas, setRespostas] = useState<Record<string, string>>({});
-  const [quizResult, setQuizResult] = useState<{ pontuacao: number; aprovado: boolean } | null>(null);
+
+
 
   const [showSignature, setShowSignature] = useState(false);
   const signatureRef = useRef<SignatureCanvasRef>(null);
@@ -227,10 +209,7 @@ export default function PortalTreinamentos() {
     }
     setWatchingVideo(video);
     setVideoEnded(false);
-    setShowQuiz(false);
-    setQuizResult(null);
     setShowSignature(false);
-    setRespostas({});
     setIsPlaying(true);
     setIsMuted(false);
     setCurrentTime(0);
@@ -257,28 +236,7 @@ export default function PortalTreinamentos() {
   const handleVideoEnded = async () => {
     setVideoEnded(true);
     if (!watchingVideo || !funcionarioId) return;
-    const { data: pergs } = await supabase.from("videos_perguntas").select("*").eq("video_id", watchingVideo.id).order("ordem");
-    if (pergs && pergs.length > 0) {
-      setPerguntas(pergs as VideoPergunta[]);
-      setShowQuiz(true);
-    } else {
-      setShowSignature(true);
-    }
-  };
-
-  const handleSubmitQuiz = () => {
-    if (perguntas.length === 0) return;
-    const unanswered = perguntas.filter(p => !respostas[p.id]);
-    if (unanswered.length > 0) {
-      toast({ title: `Responda todas as ${perguntas.length} perguntas`, variant: "destructive" });
-      return;
-    }
-    let corretas = 0;
-    perguntas.forEach(p => { if (respostas[p.id] === p.resposta_correta) corretas++; });
-    const pontuacao = Math.round((corretas / perguntas.length) * 100);
-    const aprovado = pontuacao >= (watchingVideo?.pontuacao_minima || 70);
-    setQuizResult({ pontuacao, aprovado });
-    if (aprovado) setTimeout(() => setShowSignature(true), 1500);
+    setShowSignature(true);
   };
 
   const handleSign = async () => {
@@ -294,13 +252,12 @@ export default function PortalTreinamentos() {
         video_id: watchingVideo.id,
         funcionario_id: funcionarioId,
         percentual_assistido: 100,
-        pontuacao: quizResult?.pontuacao ?? null,
         concluido: true,
         assinatura,
         empresa_id: null,
       }, { onConflict: "video_id,funcionario_id" });
       if (error) throw error;
-      toast({ title: "Treinamento concluído!", description: "Sua participação foi registrada com sucesso." });
+      toast({ title: "Módulo concluído!", description: "Sua participação foi registrada com sucesso." });
       setWatchingVideo(null);
       fetchData();
     } catch (err: any) {
@@ -433,83 +390,17 @@ export default function PortalTreinamentos() {
 
           {watchingVideo.descricao && <p className="text-sm text-muted-foreground">{watchingVideo.descricao}</p>}
 
-          {videoEnded && !showQuiz && !showSignature && (
+          {videoEnded && !showSignature && (
             <Card className="border-primary">
               <CardContent className="p-6 text-center">
                 <CheckCircle className="h-10 w-10 mx-auto text-primary mb-2" />
                 <p className="font-semibold text-foreground">Vídeo concluído!</p>
-                <p className="text-sm text-muted-foreground">Preparando próxima etapa...</p>
+                <p className="text-sm text-muted-foreground">Preparando assinatura...</p>
               </CardContent>
             </Card>
           )}
 
-          {showQuiz && !showSignature && (
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <div className="text-center">
-                  <Award className="h-8 w-8 mx-auto text-primary mb-2" />
-                  <h2 className="text-lg font-bold text-foreground">Avaliação do Treinamento</h2>
-                  <p className="text-sm text-muted-foreground">Nota mínima: {watchingVideo.pontuacao_minima}%</p>
-                </div>
-
-                {perguntas.map((p, i) => (
-                  <div key={p.id} className="space-y-2">
-                    <Label className="font-semibold">{i + 1}. {p.pergunta}</Label>
-                    <div className="grid gap-2">
-                      {["a", "b", "c", "d"].map(opt => {
-                        const text = p[`opcao_${opt}` as keyof VideoPergunta] as string | null;
-                        if (!text) return null;
-                        const selected = respostas[p.id] === opt;
-                        const isCorrect = quizResult && p.resposta_correta === opt;
-                        const isWrong = quizResult && selected && p.resposta_correta !== opt;
-                        return (
-                          <button key={opt} type="button" disabled={!!quizResult}
-                            className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${
-                              isCorrect ? "border-emerald-500 bg-emerald-50 text-emerald-800" :
-                              isWrong ? "border-destructive bg-destructive/10 text-destructive" :
-                              selected ? "border-primary bg-primary/10 text-foreground" :
-                              "border-border hover:bg-muted"
-                            }`}
-                            onClick={() => setRespostas({ ...respostas, [p.id]: opt })}
-                          >
-                            <span className="font-bold mr-2">{opt.toUpperCase()})</span> {text}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-
-                {!quizResult ? (
-                  <Button onClick={handleSubmitQuiz} className="w-full bg-primary" size="lg">Enviar Respostas</Button>
-                ) : (
-                  <Card className={quizResult.aprovado ? "border-emerald-500" : "border-destructive"}>
-                    <CardContent className="p-4 text-center">
-                      {quizResult.aprovado ? (
-                        <>
-                          <CheckCircle className="h-8 w-8 mx-auto text-emerald-500 mb-2" />
-                          <p className="font-bold text-emerald-700">Aprovado! Pontuação: {quizResult.pontuacao}%</p>
-                          <p className="text-sm text-muted-foreground mt-1">Assine abaixo para confirmar</p>
-                        </>
-                      ) : (
-                        <>
-                          <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-2" />
-                          <p className="font-bold text-destructive">Reprovado. Pontuação: {quizResult.pontuacao}%</p>
-                          <p className="text-sm text-muted-foreground mt-1">Nota mínima: {watchingVideo.pontuacao_minima}%</p>
-                          <Button variant="outline" className="mt-3" onClick={() => {
-                            setShowQuiz(false); setVideoEnded(false); setQuizResult(null); setRespostas({});
-                            if (videoRef.current) { videoRef.current.currentTime = 0; videoRef.current.play(); }
-                          }}>Assistir Novamente</Button>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {showSignature && (quizResult?.aprovado || !showQuiz) && (
+          {showSignature && (
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="text-center">
@@ -519,7 +410,7 @@ export default function PortalTreinamentos() {
                 </div>
                 <SignatureCanvas ref={signatureRef} label="Assinatura do Funcionário" height={200} />
                 <Button onClick={handleSign} disabled={saving} className="w-full bg-primary" size="lg">
-                  {saving ? "Salvando..." : "Concluir Treinamento"}
+                  {saving ? "Salvando..." : "Concluir Módulo"}
                 </Button>
               </CardContent>
             </Card>
@@ -634,7 +525,7 @@ export default function PortalTreinamentos() {
                               {modulo.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
                               <div className="mt-1">
                                 {status === "concluido" ? (
-                                  <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído{viz?.pontuacao != null ? ` • ${viz.pontuacao}%` : ""}</Badge>
+                                  <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído</Badge>
                                 ) : status === "em_andamento" ? (
                                   <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700"><Clock className="h-3 w-3 mr-1" />Em andamento</Badge>
                                 ) : (
