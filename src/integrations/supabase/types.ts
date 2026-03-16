@@ -1067,6 +1067,168 @@ export type Database = {
           },
         ]
       }
+      videos_perguntas: {
+        Row: {
+          created_at: string
+          empresa_id: string | null
+          id: string
+          opcao_a: string
+          opcao_b: string
+          opcao_c: string | null
+          opcao_d: string | null
+          ordem: number | null
+          pergunta: string
+          resposta_correta: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          opcao_a: string
+          opcao_b: string
+          opcao_c?: string | null
+          opcao_d?: string | null
+          ordem?: number | null
+          pergunta: string
+          resposta_correta: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          opcao_a?: string
+          opcao_b?: string
+          opcao_c?: string | null
+          opcao_d?: string | null
+          ordem?: number | null
+          pergunta?: string
+          resposta_correta?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videos_perguntas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "videos_perguntas_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos_treinamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      videos_treinamento: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          duracao_segundos: number | null
+          empresa_id: string | null
+          id: string
+          pontuacao_minima: number | null
+          titulo: string
+          updated_at: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          duracao_segundos?: number | null
+          empresa_id?: string | null
+          id?: string
+          pontuacao_minima?: number | null
+          titulo: string
+          updated_at?: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          duracao_segundos?: number | null
+          empresa_id?: string | null
+          id?: string
+          pontuacao_minima?: number | null
+          titulo?: string
+          updated_at?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videos_treinamento_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      videos_visualizacao: {
+        Row: {
+          concluido: boolean | null
+          created_at: string
+          empresa_id: string | null
+          funcionario_id: string
+          id: string
+          percentual_assistido: number | null
+          pontuacao: number | null
+          updated_at: string
+          video_id: string
+        }
+        Insert: {
+          concluido?: boolean | null
+          created_at?: string
+          empresa_id?: string | null
+          funcionario_id: string
+          id?: string
+          percentual_assistido?: number | null
+          pontuacao?: number | null
+          updated_at?: string
+          video_id: string
+        }
+        Update: {
+          concluido?: boolean | null
+          created_at?: string
+          empresa_id?: string | null
+          funcionario_id?: string
+          id?: string
+          percentual_assistido?: number | null
+          pontuacao?: number | null
+          updated_at?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videos_visualizacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "videos_visualizacao_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "videos_visualizacao_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos_treinamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
