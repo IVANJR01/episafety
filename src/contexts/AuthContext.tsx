@@ -159,8 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ]);
 
           const nextState: AuthCache = {
-            authorized: authResult.authorized,
-            modulos: authResult.isPrincipal ? [] : authResult.modulos,
+            authorized: superAdmin || authResult.authorized,
+            modulos: (superAdmin || authResult.isPrincipal) ? [] : authResult.modulos,
             empresaId: profileResult.empresaId,
             isSuperAdmin: superAdmin,
             isPrincipal: authResult.isPrincipal,
