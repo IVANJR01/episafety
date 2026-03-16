@@ -605,6 +605,59 @@ export type Database = {
           },
         ]
       }
+      faturas: {
+        Row: {
+          ciclo: number
+          created_at: string
+          created_by: string | null
+          data_criacao: string
+          data_vencimento: string
+          empresa_id: string
+          fatura_url: string | null
+          id: string
+          observacao: string | null
+          situacao: Database["public"]["Enums"]["status_fatura"]
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ciclo?: number
+          created_at?: string
+          created_by?: string | null
+          data_criacao?: string
+          data_vencimento: string
+          empresa_id: string
+          fatura_url?: string | null
+          id?: string
+          observacao?: string | null
+          situacao?: Database["public"]["Enums"]["status_fatura"]
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          ciclo?: number
+          created_at?: string
+          created_by?: string | null
+          data_criacao?: string
+          data_vencimento?: string
+          empresa_id?: string
+          fatura_url?: string | null
+          id?: string
+          observacao?: string | null
+          situacao?: Database["public"]["Enums"]["status_fatura"]
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faturas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fichas_entrega: {
         Row: {
           assinatura_colaborador: string | null
@@ -1419,6 +1472,7 @@ export type Database = {
         | "substituido"
         | "perdido"
         | "danificado"
+      status_fatura: "aberto" | "vencido" | "pago" | "cancelado"
       status_inspecao: "pendente" | "em_andamento" | "concluida"
       status_ordem: "emitida" | "assinada" | "cancelada"
       status_treinamento: "agendado" | "realizado" | "cancelado"
@@ -1572,6 +1626,7 @@ export const Constants = {
         "perdido",
         "danificado",
       ],
+      status_fatura: ["aberto", "vencido", "pago", "cancelado"],
       status_inspecao: ["pendente", "em_andamento", "concluida"],
       status_ordem: ["emitida", "assinada", "cancelada"],
       status_treinamento: ["agendado", "realizado", "cancelado"],

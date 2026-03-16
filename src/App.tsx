@@ -29,6 +29,7 @@ import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
 import Filiais from "@/pages/Filiais";
+import Faturas from "@/pages/Faturas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -123,6 +124,7 @@ function ProtectedRoute() {
         <Route path="/exames" element={<ExamesModule />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
+        <Route path="/faturas" element={<Faturas />} />
         <Route path="/backups" element={<Backups />} />
         <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />
