@@ -26,6 +26,7 @@ const afterCadastroItems: NavItem[] = [
   { path: "/inspecoes-se", label: "Inspeções", icon: HardHat, moduleKey: "inspecoes_se" },
   { path: "/treinamentos", label: "Gestão e Controle", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/exames", label: "Exames", icon: Stethoscope, moduleKey: "exames" },
+  { path: "/video-treinamentos", label: "Treinamentos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
 const cadastroItems: NavItem[] = [
