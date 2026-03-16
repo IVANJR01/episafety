@@ -88,9 +88,9 @@ export default function VideoTreinamentos() {
 
   const [form, setForm] = useState({ titulo: "", descricao: "", pontuacao_minima: "70" });
 
-  const canCreate = isSuperAdmin || isPrincipal || hasPermission(modulosPermitidos, "video_treinamentos", "create");
-  const canEdit = isSuperAdmin || isPrincipal || hasPermission(modulosPermitidos, "video_treinamentos", "edit");
-  const canDelete = isSuperAdmin || isPrincipal || hasPermission(modulosPermitidos, "video_treinamentos", "delete");
+  const canCreate = isSuperAdmin;
+  const canEdit = isSuperAdmin;
+  const canDelete = isSuperAdmin;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -179,7 +179,7 @@ export default function VideoTreinamentos() {
           descricao: form.descricao || null,
           video_url: videoUrl,
           pontuacao_minima: parseInt(form.pontuacao_minima) || 70,
-          empresa_id: empresaId,
+          empresa_id: null,
           created_by: (await supabase.auth.getUser()).data.user?.id,
         });
         if (error) throw error;
@@ -228,7 +228,7 @@ export default function VideoTreinamentos() {
       opcao_d: novaPergunta.opcao_d || null,
       resposta_correta: novaPergunta.resposta_correta,
       ordem: perguntas.length + 1,
-      empresa_id: empresaId,
+      empresa_id: null,
     });
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
