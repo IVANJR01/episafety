@@ -318,33 +318,65 @@ export default function PortalTreinamentos() {
 
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
-              <video
-                ref={videoRef}
-                src={watchingVideo.video_url}
-                autoPlay
-                className="w-full aspect-video"
-                onEnded={handleVideoEnded}
-                controlsList="nodownload nofullscreen"
-                disablePictureInPicture
-                onContextMenu={(e) => e.preventDefault()}
-                onSeeking={(e) => {
-                  const vid = e.currentTarget;
-                  // Allow seeking backward only, block forward seeking
-                  if (vid.currentTime > (vid as any).__maxPlayed) {
-                    vid.currentTime = (vid as any).__maxPlayed || 0;
-                  }
-                }}
-                onTimeUpdate={(e) => {
-                  const vid = e.currentTarget;
-                  if (!(vid as any).__maxPlayed || vid.currentTime > (vid as any).__maxPlayed) {
-                    (vid as any).__maxPlayed = vid.currentTime;
-                  }
-                }}
-                onLoadedMetadata={(e) => {
-                  (e.currentTarget as any).__maxPlayed = 0;
-                }}
-                controls
-              />
+              <div className="bg-card">
+                <video
+                  ref={videoRef}
+                  src={watchingVideo.video_url}
+                  autoPlay
+                  playsInline
+                  tabIndex={-1}
+                  className="w-full aspect-video bg-muted"
+                  onEnded={handleVideoEnded}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onLoadedMetadata={(e) => {
+                    maxWatchedTimeRef.current = 0;
+                    setDuration(e.currentTarget.duration || 0);
+                    setCurrentTime(0);
+                  }}
+                  onTimeUpdate={(e) => {
+                    const vid = e.currentTarget;
+                    const nextTime = vid.currentTime;
+                    if (nextTime > maxWatchedTimeRef.current) {
+                      maxWatchedTimeRef.current = nextTime;
+                    }
+                    setCurrentTime(nextTime);
+                    setDuration(vid.duration || 0);
+                  }}
+                  onSeeking={(e) => {
+                    const vid = e.currentTarget;
+                    const allowedTime = maxWatchedTimeRef.current + 0.25;
+                    if (vid.currentTime > allowedTime) {
+                      vid.currentTime = maxWatchedTimeRef.current;
+                    }
+                  }}
+                  controls={false}
+                  controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
+                  disablePictureInPicture
+                />
+
+                <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+                  <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
+                    {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </Button>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-[width] duration-200"
+                        style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
