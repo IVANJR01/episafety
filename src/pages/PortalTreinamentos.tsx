@@ -68,6 +68,7 @@ export default function PortalTreinamentos() {
   const [saving, setSaving] = useState(false);
 
   const [funcionarioId, setFuncionarioId] = useState<string | null>(null);
+  const [funcEmpresaId, setFuncEmpresaId] = useState<string | null>(null);
   const [assignedCursoIds, setAssignedCursoIds] = useState<string[]>([]);
 
   const normalize = (value?: string | null) =>
@@ -85,10 +86,14 @@ export default function PortalTreinamentos() {
       let foundFuncId: string | null = null;
 
       if (profile?.empresa_id && normalizedProfileName) {
-        const { data: funcs } = await supabase.from("funcionarios").select("id, nome")
+        setFuncEmpresaId(profile.empresa_id);
+        const { data: funcs } = await supabase.from("funcionarios").select("id, nome, empresa_id")
           .eq("empresa_id", profile.empresa_id).is("data_demissao", null);
         const matched = funcs?.find(f => normalize(f.nome) === normalizedProfileName);
-        if (matched) foundFuncId = matched.id;
+        if (matched) {
+          foundFuncId = matched.id;
+          setFuncEmpresaId(matched.empresa_id);
+        }
       }
       if (!foundFuncId && normalizedProfileName) {
         const { data: allFuncs } = await supabase.from("funcionarios").select("id, nome").is("data_demissao", null);
@@ -199,10 +204,10 @@ export default function PortalTreinamentos() {
         funcionario_id: funcionarioId,
         percentual_assistido: Math.min(percentual, 100),
         concluido: false,
-        empresa_id: null,
+        empresa_id: funcEmpresaId,
       }, { onConflict: "video_id,funcionario_id" });
     } catch {}
-  }, [funcionarioId]);
+  }, [funcionarioId, funcEmpresaId]);
 
   const handleStartVideo = (video: VideoTreinamento) => {
     // Save progress of current video before switching
@@ -256,7 +261,7 @@ export default function PortalTreinamentos() {
         percentual_assistido: 100,
         concluido: true,
         assinatura,
-        empresa_id: null,
+        empresa_id: funcEmpresaId,
       }, { onConflict: "video_id,funcionario_id" });
       if (error) throw error;
       toast({ title: "Módulo concluído!", description: "Sua participação foi registrada com sucesso." });
