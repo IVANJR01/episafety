@@ -86,10 +86,14 @@ export default function PortalTreinamentos() {
       let foundFuncId: string | null = null;
 
       if (profile?.empresa_id && normalizedProfileName) {
-        const { data: funcs } = await supabase.from("funcionarios").select("id, nome")
+        setFuncEmpresaId(profile.empresa_id);
+        const { data: funcs } = await supabase.from("funcionarios").select("id, nome, empresa_id")
           .eq("empresa_id", profile.empresa_id).is("data_demissao", null);
         const matched = funcs?.find(f => normalize(f.nome) === normalizedProfileName);
-        if (matched) foundFuncId = matched.id;
+        if (matched) {
+          foundFuncId = matched.id;
+          setFuncEmpresaId(matched.empresa_id);
+        }
       }
       if (!foundFuncId && normalizedProfileName) {
         const { data: allFuncs } = await supabase.from("funcionarios").select("id, nome").is("data_demissao", null);
