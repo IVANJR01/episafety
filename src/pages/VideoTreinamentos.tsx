@@ -228,7 +228,7 @@ export default function VideoTreinamentos() {
       opcao_d: novaPergunta.opcao_d || null,
       resposta_correta: novaPergunta.resposta_correta,
       ordem: perguntas.length + 1,
-      empresa_id: empresaId,
+      empresa_id: null,
     });
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
