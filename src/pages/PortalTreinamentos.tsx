@@ -132,11 +132,11 @@ export default function PortalTreinamentos() {
     return "em_andamento";
   };
 
-  // Only show assigned videos (or all if no assignments exist)
+  // Employees should only see videos explicitly assigned to them
   const myVideos = useMemo(() => {
-    if (assignedVideoIds.length === 0) return videos;
+    if (!funcionarioId || assignedVideoIds.length === 0) return [];
     return videos.filter(v => assignedVideoIds.includes(v.id));
-  }, [videos, assignedVideoIds]);
+  }, [videos, assignedVideoIds, funcionarioId]);
 
   const completedCount = useMemo(() => {
     return myVideos.filter(v => getVideoStatus(v.id) === "concluido").length;
