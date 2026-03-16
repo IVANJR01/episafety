@@ -203,18 +203,55 @@ export default function PortalTreinamentos() {
     });
   };
 
+  // Save progress when leaving a video
+  const saveProgress = useCallback(async (videoId: string) => {
+    if (!funcionarioId || !videoRef.current) return;
+    const vid = videoRef.current;
+    const percentual = vid.duration > 0 ? Math.round((maxWatchedTimeRef.current / vid.duration) * 100) : 0;
+    if (percentual <= 0) return;
+    try {
+      await supabase.from("videos_visualizacao").upsert({
+        video_id: videoId,
+        funcionario_id: funcionarioId,
+        percentual_assistido: Math.min(percentual, 100),
+        concluido: false,
+        empresa_id: null,
+      }, { onConflict: "video_id,funcionario_id" });
+    } catch {}
+  }, [funcionarioId]);
+
   const handleStartVideo = (video: VideoTreinamento) => {
+    // Save progress of current video before switching
+    if (watchingVideo && !videoEnded) {
+      saveProgress(watchingVideo.id);
+    }
     setWatchingVideo(video);
     setVideoEnded(false);
     setShowQuiz(false);
     setQuizResult(null);
     setShowSignature(false);
     setRespostas({});
-    maxWatchedTimeRef.current = 0;
     setIsPlaying(true);
     setIsMuted(false);
     setCurrentTime(0);
     setDuration(0);
+
+    // Restore last watched position from visualizacoes
+    const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
+    if (viz && !viz.concluido && viz.percentual_assistido > 0 && viz.percentual_assistido < 100) {
+      // We'll set start time after metadata loads
+      maxWatchedTimeRef.current = -1; // flag to restore
+    } else {
+      maxWatchedTimeRef.current = 0;
+    }
+  };
+
+  const handleGoBack = () => {
+    if (watchingVideo && !videoEnded) {
+      saveProgress(watchingVideo.id);
+    }
+    setWatchingVideo(null);
+    fetchData(); // refresh visualizacoes
   };
 
   const handleVideoEnded = async () => {
