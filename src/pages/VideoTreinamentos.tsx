@@ -285,6 +285,10 @@ export default function VideoTreinamentos() {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
+    if (selectedVideoIds.length === 0) {
+      toast({ title: "Selecione ao menos um treinamento", variant: "destructive" });
+      return;
+    }
     if (accessPassword.length < 6) {
       toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
       return;
@@ -292,29 +296,32 @@ export default function VideoTreinamentos() {
     setCreatingAccess(true);
     try {
       const func = funcionarios.find(f => f.id === accessFuncId);
+      const emailLower = accessEmail.toLowerCase().trim();
+
       // Create auth user via edge function
       const { data, error } = await supabase.functions.invoke("create-user", {
-        body: { email: accessEmail.toLowerCase().trim(), password: accessPassword, nome: func?.nome || "" },
+        body: { email: emailLower, password: accessPassword, nome: func?.nome || "" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const userId = data.id;
+      const userId = data?.user_id;
+      if (!userId) throw new Error("Não foi possível vincular o usuário criado");
 
       // Add to usuarios_liberados with only video_treinamentos permission
-      const emailLower = accessEmail.toLowerCase().trim();
       const { data: existingUL } = await (supabase.from as any)("usuarios_liberados")
         .select("id")
         .eq("email", emailLower)
         .limit(1);
-      
+
       if (existingUL && existingUL.length > 0) {
-        await supabase.from("usuarios_liberados").update({
+        const { error: updateUserError } = await supabase.from("usuarios_liberados").update({
           nome: func?.nome || "",
           empresa_id: empresaId,
           modulos_permitidos: ["video_treinamentos:view"],
           is_principal: false,
         }).eq("id", existingUL[0].id);
+        if (updateUserError) throw new Error("Erro ao atualizar acesso: " + updateUserError.message);
       } else {
         const { error: ulError } = await supabase.from("usuarios_liberados").insert({
           email: emailLower,
@@ -326,30 +333,34 @@ export default function VideoTreinamentos() {
         if (ulError) throw new Error("Erro ao criar acesso: " + ulError.message);
       }
 
-      // Update profile with empresa_id (use edge function for cross-user update)
+      // Update profile with empresa_id and employee name
       const { error: profileError } = await supabase.from("profiles")
-        .update({ empresa_id: empresaId })
+        .update({ empresa_id: empresaId, email: emailLower, nome: func?.nome || "" })
         .eq("user_id", userId);
       if (profileError) {
-        // Fallback: try upsert
-        await supabase.from("profiles").upsert({
+        const { error: profileUpsertError } = await supabase.from("profiles").upsert({
           user_id: userId,
           email: emailLower,
           nome: func?.nome || "",
           empresa_id: empresaId,
         }, { onConflict: "user_id" });
+        if (profileUpsertError) throw new Error("Erro ao vincular perfil: " + profileUpsertError.message);
       }
 
-      // Save video assignments
-      if (selectedVideoIds.length > 0) {
-        const assignments = selectedVideoIds.map(vid => ({
-          video_id: vid,
-          funcionario_id: accessFuncId,
-          empresa_id: empresaId,
-        }));
-        const { error: assignError } = await supabase.from("videos_atribuicao").upsert(assignments, { onConflict: "video_id,funcionario_id" });
-        if (assignError) console.error("Assignment error:", assignError);
-      }
+      // Replace employee assignments with selected videos only
+      const { error: deleteAssignmentsError } = await supabase
+        .from("videos_atribuicao")
+        .delete()
+        .eq("funcionario_id", accessFuncId);
+      if (deleteAssignmentsError) throw new Error("Erro ao limpar treinamentos anteriores: " + deleteAssignmentsError.message);
+
+      const assignments = selectedVideoIds.map(vid => ({
+        video_id: vid,
+        funcionario_id: accessFuncId,
+        empresa_id: empresaId,
+      }));
+      const { error: assignError } = await supabase.from("videos_atribuicao").upsert(assignments, { onConflict: "video_id,funcionario_id" });
+      if (assignError) throw new Error("Erro ao salvar treinamentos: " + assignError.message);
 
       toast({ title: "Acesso criado!", description: `Login: ${accessEmail} / Senha: ${accessPassword}` });
       setOpenAccess(false);
