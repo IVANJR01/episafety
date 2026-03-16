@@ -165,7 +165,7 @@ export default function ExamesModule() {
     try {
       const [{ data: exames }, { data: funcs }, { data: meds }] = await Promise.all([
         supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
-        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
+        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, data_demissao"),
         supabase.from("medicos").select("id, nome, crm, especialidade"),
       ]);
       if (exames) { setItems(exames); setCachedData("exames", exames); }
