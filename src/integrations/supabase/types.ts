@@ -1082,6 +1082,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_in_user_company_tree: {
+        Args: { _empresa_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_principal: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       transfer_epi_stock: {
         Args: {
