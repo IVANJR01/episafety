@@ -1125,7 +1125,7 @@ export default function Treinamentos() {
                   <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
                     {filteredFuncionarios.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
-                    ) : filteredFuncionarios.slice(0, 20).map(f => (
+                    ) : filteredFuncionarios.slice(0, 50).map(f => (
                       <button
                         key={f.id}
                         type="button"
