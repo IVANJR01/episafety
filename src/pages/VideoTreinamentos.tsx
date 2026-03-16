@@ -76,6 +76,7 @@ export default function VideoTreinamentos() {
   const [cursos, setCursos] = useState<CursoVideo[]>([]);
   const [videos, setVideos] = useState<VideoTreinamento[]>([]);
   const [visualizacoes, setVisualizacoes] = useState<VideoVisualizacao[]>([]);
+  const [cursosAtribuicao, setCursosAtribuicao] = useState<{ curso_id: string; funcionario_id: string }[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
