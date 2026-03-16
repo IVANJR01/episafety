@@ -455,6 +455,25 @@ export default function UsuariosLiberados() {
                 className="flex-1"
               />
             </div>
+            {unidadesDisponiveis.length > 1 && (
+              <div>
+                <Select value={novoEmpresaId} onValueChange={setNovoEmpresaId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Vincular à unidade (empresa atual)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unidadesDisponiveis.map(e => (
+                      <SelectItem key={e.id} value={e.id}>
+                        <span className="flex items-center gap-2">
+                          {e.empresa_pai_id ? <GitBranch className="w-3.5 h-3.5 text-muted-foreground" /> : <Building2 className="w-3.5 h-3.5 text-muted-foreground" />}
+                          {e.nome}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Input
