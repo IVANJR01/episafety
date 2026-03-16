@@ -59,10 +59,8 @@ export default function PortalTreinamentos() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [perguntas, setPerguntas] = useState<VideoPergunta[]>([]);
-  const [respostas, setRespostas] = useState<Record<string, string>>({});
-  const [quizResult, setQuizResult] = useState<{ pontuacao: number; aprovado: boolean } | null>(null);
+
+
 
   const [showSignature, setShowSignature] = useState(false);
   const signatureRef = useRef<SignatureCanvasRef>(null);
