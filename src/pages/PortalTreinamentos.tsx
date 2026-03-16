@@ -237,28 +237,7 @@ export default function PortalTreinamentos() {
   const handleVideoEnded = async () => {
     setVideoEnded(true);
     if (!watchingVideo || !funcionarioId) return;
-    const { data: pergs } = await supabase.from("videos_perguntas").select("*").eq("video_id", watchingVideo.id).order("ordem");
-    if (pergs && pergs.length > 0) {
-      setPerguntas(pergs as VideoPergunta[]);
-      setShowQuiz(true);
-    } else {
-      setShowSignature(true);
-    }
-  };
-
-  const handleSubmitQuiz = () => {
-    if (perguntas.length === 0) return;
-    const unanswered = perguntas.filter(p => !respostas[p.id]);
-    if (unanswered.length > 0) {
-      toast({ title: `Responda todas as ${perguntas.length} perguntas`, variant: "destructive" });
-      return;
-    }
-    let corretas = 0;
-    perguntas.forEach(p => { if (respostas[p.id] === p.resposta_correta) corretas++; });
-    const pontuacao = Math.round((corretas / perguntas.length) * 100);
-    const aprovado = pontuacao >= (watchingVideo?.pontuacao_minima || 70);
-    setQuizResult({ pontuacao, aprovado });
-    if (aprovado) setTimeout(() => setShowSignature(true), 1500);
+    setShowSignature(true);
   };
 
   const handleSign = async () => {
@@ -274,13 +253,12 @@ export default function PortalTreinamentos() {
         video_id: watchingVideo.id,
         funcionario_id: funcionarioId,
         percentual_assistido: 100,
-        pontuacao: quizResult?.pontuacao ?? null,
         concluido: true,
         assinatura,
         empresa_id: null,
       }, { onConflict: "video_id,funcionario_id" });
       if (error) throw error;
-      toast({ title: "Treinamento concluído!", description: "Sua participação foi registrada com sucesso." });
+      toast({ title: "Módulo concluído!", description: "Sua participação foi registrada com sucesso." });
       setWatchingVideo(null);
       fetchData();
     } catch (err: any) {
