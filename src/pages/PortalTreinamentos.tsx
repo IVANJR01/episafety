@@ -18,7 +18,6 @@ interface CursoVideo {
   id: string;
   titulo: string;
   descricao: string | null;
-  pontuacao_minima: number;
 }
 
 interface VideoTreinamento {
@@ -27,7 +26,6 @@ interface VideoTreinamento {
   descricao: string | null;
   video_url: string;
   duracao_segundos: number;
-  pontuacao_minima: number;
   created_at: string;
   curso_id: string | null;
   ordem: number;
@@ -38,21 +36,8 @@ interface VideoVisualizacao {
   video_id: string;
   funcionario_id: string;
   percentual_assistido: number;
-  pontuacao: number | null;
   concluido: boolean;
   assinatura: string | null;
-}
-
-interface VideoPergunta {
-  id: string;
-  video_id: string;
-  pergunta: string;
-  opcao_a: string;
-  opcao_b: string;
-  opcao_c: string | null;
-  opcao_d: string | null;
-  resposta_correta: string;
-  ordem: number;
 }
 
 export default function PortalTreinamentos() {
