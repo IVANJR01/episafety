@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
 
@@ -46,6 +47,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { signOut, user, modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [faturasAlerta, setFaturasAlerta] = useState(0);
+
+  // Busca contagem de faturas pendentes/vencidas para o badge no sidebar
+  useEffect(() => {
+    if (!isSuperAdmin && !isPrincipal) return;
+    async function checkFaturas() {
+      const hoje = new Date().toISOString().split("T")[0];
+      const { data } = await (supabase.from as any)("faturas")
+        .select("id, situacao, data_vencimento")
+        .in("situacao", ["aberto", "vencido"]);
+      if (data) {
+        const count = data.filter((f: any) => f.situacao === "vencido" || f.data_vencimento < hoje).length;
+        setFaturasAlerta(count);
+      }
+    }
+    checkFaturas();
+  }, [isSuperAdmin, isPrincipal]);
 
   const canAccess = (moduleKey: string) => isSuperAdmin || isPrincipal || canAccessModule(modulosPermitidos, moduleKey);
 
@@ -261,6 +279,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <FileText className="w-4 h-4 shrink-0" />
               <span className="truncate">Faturas</span>
+              {faturasAlerta > 0 && (
+                <span className="relative ml-auto flex items-center">
+                  <Bell className="w-4 h-4 text-destructive animate-bounce" />
+                  <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {faturasAlerta}
+                  </span>
+                </span>
+              )}
             </Link>
           )}
 
