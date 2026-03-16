@@ -402,7 +402,7 @@ export default function PortalTreinamentos() {
               <span className="text-sm font-medium text-foreground">Seu progresso</span>
               <span className="text-sm font-bold text-primary">{completedCount}/{myVideos.length}</span>
             </div>
-            <Progress value={videos.length > 0 ? (completedCount / videos.length) * 100 : 0} className="h-3" />
+            <Progress value={myVideos.length > 0 ? (completedCount / myVideos.length) * 100 : 0} className="h-3" />
             <p className="text-xs text-muted-foreground mt-2">
               {completedCount === videos.length && videos.length > 0 ? "🎉 Parabéns! Todos os treinamentos concluídos!" : `${videos.length - completedCount} treinamento(s) pendente(s)`}
             </p>
