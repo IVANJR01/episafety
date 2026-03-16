@@ -302,14 +302,29 @@ export default function VideoTreinamentos() {
       const userId = data.id;
 
       // Add to usuarios_liberados with only video_treinamentos permission
-      const { error: ulError } = await supabase.from("usuarios_liberados").upsert({
-        email: accessEmail.toLowerCase().trim(),
-        nome: func?.nome || "",
-        empresa_id: empresaId,
-        modulos_permitidos: ["video_treinamentos:view"],
-        is_principal: false,
-      }, { onConflict: "email" });
-      if (ulError) console.error("UL upsert error:", ulError);
+      const emailLower = accessEmail.toLowerCase().trim();
+      const { data: existingUL } = await (supabase.from as any)("usuarios_liberados")
+        .select("id")
+        .eq("email", emailLower)
+        .limit(1);
+      
+      if (existingUL && existingUL.length > 0) {
+        await supabase.from("usuarios_liberados").update({
+          nome: func?.nome || "",
+          empresa_id: empresaId,
+          modulos_permitidos: ["video_treinamentos:view"],
+          is_principal: false,
+        }).eq("id", existingUL[0].id);
+      } else {
+        const { error: ulError } = await supabase.from("usuarios_liberados").insert({
+          email: emailLower,
+          nome: func?.nome || "",
+          empresa_id: empresaId,
+          modulos_permitidos: ["video_treinamentos:view"],
+          is_principal: false,
+        });
+        if (ulError) throw new Error("Erro ao criar acesso: " + ulError.message);
+      }
 
       // Update profile
       await supabase.from("profiles").upsert({
