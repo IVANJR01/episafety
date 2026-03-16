@@ -834,7 +834,7 @@ export default function VideoTreinamentos() {
                             </TableCell>
                             <TableCell className="text-center">
                               {!viz ? <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>
-                                : viz.concluido && viz.assinatura ? <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído</Badge>
+                                : viz.concluido ? <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído</Badge>
                                 : <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700"><Play className="h-3 w-3 mr-1" />Em andamento</Badge>}
                             </TableCell>
                           </TableRow>
