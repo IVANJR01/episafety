@@ -715,6 +715,78 @@ export default function VideoTreinamentos() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Create Access Dialog */}
+      <Dialog open={openAccess} onOpenChange={setOpenAccess}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Criar Acesso para Funcionário
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Funcionário *</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar funcionário..."
+                  value={accessFuncSearch}
+                  onChange={e => { setAccessFuncSearch(e.target.value); setAccessFuncId(""); setShowAccessFuncList(true); }}
+                  onFocus={() => setShowAccessFuncList(true)}
+                  onBlur={() => setTimeout(() => setShowAccessFuncList(false), 200)}
+                  className="pl-9"
+                />
+              </div>
+              {accessFuncId && (
+                <div className="mt-1 text-xs text-primary font-medium">
+                  ✓ {funcionarios.find(f => f.id === accessFuncId)?.nome}
+                </div>
+              )}
+              {!accessFuncId && showAccessFuncList && (
+                <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
+                  {filteredAccessFuncionarios.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
+                  ) : filteredAccessFuncionarios.slice(0, 30).map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                      onClick={() => {
+                        setAccessFuncId(f.id);
+                        setAccessFuncSearch(f.nome);
+                        setShowAccessFuncList(false);
+                        // Suggest email from name
+                        const suggested = f.nome.toLowerCase().replace(/\s+/g, ".").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        setAccessEmail(suggested + "@treinamento.local");
+                      }}
+                    >
+                      <span className="font-medium">{f.nome}</span>
+                      <span className="text-xs text-muted-foreground">{f.cargo || ""}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>E-mail de Login *</Label>
+              <Input value={accessEmail} onChange={e => setAccessEmail(e.target.value)} placeholder="email@exemplo.com" type="email" />
+            </div>
+            <div>
+              <Label>Senha *</Label>
+              <Input value={accessPassword} onChange={e => setAccessPassword(e.target.value)} placeholder="Mínimo 6 caracteres" type="text" />
+              <p className="text-xs text-muted-foreground mt-1">A senha será exibida ao funcionário para acesso</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenAccess(false)}>Cancelar</Button>
+            <Button onClick={handleCreateAccess} disabled={creatingAccess} className="bg-primary">
+              {creatingAccess ? "Criando..." : "Criar Acesso"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
