@@ -1111,7 +1111,7 @@ export default function Treinamentos() {
                     placeholder="Pesquisar por nome, matrícula ou CPF..."
                     value={funcSearch}
                     onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); setShowFuncList(true); }}
-                    onFocus={() => { if (!form.funcionario_id && funcSearch.trim()) setShowFuncList(true); }}
+                    onFocus={() => setShowFuncList(true)}
                     onBlur={() => setTimeout(() => setShowFuncList(false), 200)}
                     className="pl-9"
                   />
