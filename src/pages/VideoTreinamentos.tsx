@@ -546,6 +546,11 @@ export default function VideoTreinamentos() {
         </div>
         <div className="flex gap-2">
           {(isSuperAdmin || isPrincipal) && (
+            <Button variant="outline" onClick={handleOpenManageCursos}>
+              <Pencil className="h-4 w-4 mr-2" /> Gerenciar Cursos
+            </Button>
+          )}
+          {(isSuperAdmin || isPrincipal) && (
             <Button variant="outline" onClick={() => {
               setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch("");
               setShowAccessFuncList(false); setSelectedCursoIds([]); setOpenAccess(true);
