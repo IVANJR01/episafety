@@ -419,7 +419,7 @@ export default function PortalTreinamentos() {
                 <p className="text-sm">Aguarde novos treinamentos serem publicados</p>
               </CardContent>
             </Card>
-          ) : videos.map(video => {
+          ) : myVideos.map(video => {
             const status = getVideoStatus(video.id);
             const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
             return (
