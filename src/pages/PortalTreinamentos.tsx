@@ -288,32 +288,35 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleFullscreen = async () => {
-    const video = videoRef.current;
     const container = videoContainerRef.current;
-    if (!video || !container) return;
+    if (!container) return;
 
-    // iOS Safari: use webkitEnterFullscreen on video element
-    if ((video as any).webkitEnterFullscreen) {
-      try {
-        (video as any).webkitEnterFullscreen();
-        return;
-      } catch {}
-    }
-
-    // Standard fullscreen on container
-    if (!document.fullscreenElement) {
-      await container.requestFullscreen().catch(() => {});
+    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+      // Try standard first, then webkit (Safari)
+      if (container.requestFullscreen) {
+        await container.requestFullscreen().catch(() => {});
+      } else if ((container as any).webkitRequestFullscreen) {
+        (container as any).webkitRequestFullscreen();
+      }
       setIsFullscreen(true);
     } else {
-      await document.exitFullscreen().catch(() => {});
+      if (document.exitFullscreen) {
+        await document.exitFullscreen().catch(() => {});
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
       setIsFullscreen(false);
     }
   };
 
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    const handler = () => setIsFullscreen(!!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
     document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
+    document.addEventListener("webkitfullscreenchange", handler);
+    return () => {
+      document.removeEventListener("fullscreenchange", handler);
+      document.removeEventListener("webkitfullscreenchange", handler);
+    };
   }, []);
 
   const formatTime = (timeInSeconds: number) => {
@@ -343,7 +346,7 @@ export default function PortalTreinamentos() {
 
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
-              <div ref={videoContainerRef} className="bg-card">
+              <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
                 <video
                   ref={videoRef}
                   src={watchingVideo.video_url}
@@ -354,7 +357,7 @@ export default function PortalTreinamentos() {
                   webkit-playsinline="true"
                   preload="auto"
                   tabIndex={-1}
-                  className="w-full aspect-video bg-muted"
+                  className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
                   onEnded={handleVideoEnded}
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
