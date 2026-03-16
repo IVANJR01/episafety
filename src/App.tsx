@@ -26,6 +26,7 @@ import Treinamentos from "@/pages/Treinamentos";
 import ExamesModule from "@/pages/ExamesModule";
 import CadastroDashboard from "@/pages/CadastroDashboard";
 import Backups from "@/pages/Backups";
+import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import Filiais from "@/pages/Filiais";
 import NotFound from "./pages/NotFound";
 
