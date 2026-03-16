@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import SignatureCanvas, { SignatureCanvasRef } from "@/components/SignatureCanvas";
 import {
-  Video, Play, Pause, CheckCircle, Clock, LogOut, ChevronRight, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX
+  Video, Play, Pause, CheckCircle, Clock, LogOut, ChevronRight, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX, Maximize, Minimize
 } from "lucide-react";
 import logoImg from "@/assets/logo-episafety.png";
 
@@ -52,9 +52,11 @@ export default function PortalTreinamentos() {
   const [watchingVideo, setWatchingVideo] = useState<VideoTreinamento | null>(null);
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
   const maxWatchedTimeRef = useRef(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -285,6 +287,24 @@ export default function PortalTreinamentos() {
     setIsMuted(video.muted);
   };
 
+  const handleToggleFullscreen = async () => {
+    const container = videoContainerRef.current;
+    if (!container) return;
+    if (!document.fullscreenElement) {
+      await container.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      await document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
   const formatTime = (timeInSeconds: number) => {
     const safe = Number.isFinite(timeInSeconds) ? Math.max(0, Math.floor(timeInSeconds)) : 0;
     const minutes = Math.floor(safe / 60);
@@ -312,7 +332,7 @@ export default function PortalTreinamentos() {
 
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
-              <div className="bg-card">
+              <div ref={videoContainerRef} className="bg-card">
                 <video
                   ref={videoRef}
                   src={watchingVideo.video_url}
@@ -383,6 +403,9 @@ export default function PortalTreinamentos() {
                       <span>{formatTime(duration)}</span>
                     </div>
                   </div>
+                  <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
+                    {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
             </CardContent>
