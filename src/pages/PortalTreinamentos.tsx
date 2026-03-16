@@ -368,8 +368,22 @@ export default function PortalTreinamentos() {
                   onPause={() => setIsPlaying(false)}
                   onContextMenu={(e) => e.preventDefault()}
                   onLoadedMetadata={(e) => {
+                    const vid = e.currentTarget;
+                    const dur = vid.duration || 0;
+                    setDuration(dur);
+
+                    // Restore saved position
+                    if (maxWatchedTimeRef.current === -1 && watchingVideo) {
+                      const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+                      if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
+                        const resumeTime = (viz.percentual_assistido / 100) * dur;
+                        vid.currentTime = resumeTime;
+                        maxWatchedTimeRef.current = resumeTime;
+                        setCurrentTime(resumeTime);
+                        return;
+                      }
+                    }
                     maxWatchedTimeRef.current = 0;
-                    setDuration(e.currentTarget.duration || 0);
                     setCurrentTime(0);
                   }}
                   onTimeUpdate={(e) => {
