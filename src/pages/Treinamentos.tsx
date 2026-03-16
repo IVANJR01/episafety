@@ -228,6 +228,12 @@ export default function Treinamentos() {
     return list;
   }, [items, search, statusFilter, funcMap, setorFilter, funcionarios]);
 
+  const refreshFuncionarios = async () => {
+    if (!isOnline()) return;
+    const { data: funcs } = await supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor");
+    if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
+  };
+
   const openNew = () => {
     setEditing(null);
     setMultiMode(false);
@@ -236,6 +242,7 @@ export default function Treinamentos() {
     setMultiCursos([emptyCurso()]);
     setMultiFuncId("");
     setMultiFuncSearch("");
+    refreshFuncionarios();
     setOpen(true);
   };
 
