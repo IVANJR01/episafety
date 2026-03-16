@@ -318,6 +318,15 @@ export default function VideoTreinamentos() {
     return visualizacoes.filter(v => v.video_id === detailVideo.id);
   }, [detailVideo, visualizacoes]);
 
+  // Only show employees assigned to the course of this video
+  const detailFuncionarios = useMemo(() => {
+    if (!detailVideo?.curso_id) return [];
+    const assignedFuncIds = cursosAtribuicao
+      .filter(a => a.curso_id === detailVideo.curso_id)
+      .map(a => a.funcionario_id);
+    return funcionarios.filter(f => assignedFuncIds.includes(f.id));
+  }, [detailVideo, cursosAtribuicao, funcionarios]);
+
   // ============ EMPLOYEE ACCESS ============
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
