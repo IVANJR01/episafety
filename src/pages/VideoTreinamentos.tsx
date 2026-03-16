@@ -70,6 +70,15 @@ export default function VideoTreinamentos() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("videos");
 
+  // Employee access management
+  const [openAccess, setOpenAccess] = useState(false);
+  const [accessFuncId, setAccessFuncId] = useState("");
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessPassword, setAccessPassword] = useState("");
+  const [accessFuncSearch, setAccessFuncSearch] = useState("");
+  const [creatingAccess, setCreatingAccess] = useState(false);
+  const [showAccessFuncList, setShowAccessFuncList] = useState(false);
+
   // Dialog states
   const [openForm, setOpenForm] = useState(false);
   const [editingVideo, setEditingVideo] = useState<VideoTreinamento | null>(null);
@@ -261,6 +270,64 @@ export default function VideoTreinamentos() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const filteredAccessFuncionarios = useMemo(() => {
+    if (!accessFuncSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
+    const q = normalize(accessFuncSearch);
+    return funcionarios.filter(f => normalize(f.nome).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [funcionarios, accessFuncSearch]);
+
+  const handleCreateAccess = async () => {
+    if (!accessFuncId || !accessEmail.trim() || !accessPassword.trim()) {
+      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      return;
+    }
+    if (accessPassword.length < 6) {
+      toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+    setCreatingAccess(true);
+    try {
+      const func = funcionarios.find(f => f.id === accessFuncId);
+      // Create auth user via edge function
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: { email: accessEmail.toLowerCase().trim(), password: accessPassword, nome: func?.nome || "" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const userId = data.id;
+
+      // Add to usuarios_liberados with only video_treinamentos permission
+      await supabase.from("usuarios_liberados").upsert({
+        email: accessEmail.toLowerCase().trim(),
+        nome: func?.nome || "",
+        empresa_id: empresaId,
+        modulos_permitidos: ["video_treinamentos:view"],
+        is_principal: false,
+      }, { onConflict: "email,empresa_id" });
+
+      // Update profile
+      await supabase.from("profiles").upsert({
+        user_id: userId,
+        email: accessEmail.toLowerCase().trim(),
+        nome: func?.nome || "",
+        empresa_id: empresaId,
+      }, { onConflict: "user_id" });
+
+      toast({ title: "Acesso criado!", description: `Login: ${accessEmail} / Senha: ${accessPassword}` });
+      setOpenAccess(false);
+      setAccessFuncId("");
+      setAccessEmail("");
+      setAccessPassword("");
+      setAccessFuncSearch("");
+    } catch (err: any) {
+      toast({ title: "Erro ao criar acesso", description: err.message, variant: "destructive" });
+    }
+    setCreatingAccess(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -280,11 +347,18 @@ export default function VideoTreinamentos() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Gerencie vídeos de treinamento e acompanhe a pontuação dos funcionários</p>
         </div>
-        {canCreate && (
-          <Button onClick={() => { setEditingVideo(null); setForm({ titulo: "", descricao: "", pontuacao_minima: "70" }); setVideoFile(null); setOpenForm(true); }} className="bg-primary hover:bg-primary/90">
-            <Plus className="h-4 w-4 mr-2" /> Adicionar Treinamento
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {(isSuperAdmin || isPrincipal) && (
+            <Button variant="outline" onClick={() => { setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch(""); setShowAccessFuncList(false); setOpenAccess(true); }}>
+              <Users className="h-4 w-4 mr-2" /> Criar Acesso Funcionário
+            </Button>
+          )}
+          {canCreate && (
+            <Button onClick={() => { setEditingVideo(null); setForm({ titulo: "", descricao: "", pontuacao_minima: "70" }); setVideoFile(null); setOpenForm(true); }} className="bg-primary hover:bg-primary/90">
+              <Plus className="h-4 w-4 mr-2" /> Adicionar Treinamento
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Dashboard Cards */}
@@ -639,6 +713,78 @@ export default function VideoTreinamentos() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Access Dialog */}
+      <Dialog open={openAccess} onOpenChange={setOpenAccess}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Criar Acesso para Funcionário
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Funcionário *</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar funcionário..."
+                  value={accessFuncSearch}
+                  onChange={e => { setAccessFuncSearch(e.target.value); setAccessFuncId(""); setShowAccessFuncList(true); }}
+                  onFocus={() => setShowAccessFuncList(true)}
+                  onBlur={() => setTimeout(() => setShowAccessFuncList(false), 200)}
+                  className="pl-9"
+                />
+              </div>
+              {accessFuncId && (
+                <div className="mt-1 text-xs text-primary font-medium">
+                  ✓ {funcionarios.find(f => f.id === accessFuncId)?.nome}
+                </div>
+              )}
+              {!accessFuncId && showAccessFuncList && (
+                <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
+                  {filteredAccessFuncionarios.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
+                  ) : filteredAccessFuncionarios.slice(0, 30).map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                      onClick={() => {
+                        setAccessFuncId(f.id);
+                        setAccessFuncSearch(f.nome);
+                        setShowAccessFuncList(false);
+                        // Suggest email from name
+                        const suggested = f.nome.toLowerCase().replace(/\s+/g, ".").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        setAccessEmail(suggested + "@treinamento.local");
+                      }}
+                    >
+                      <span className="font-medium">{f.nome}</span>
+                      <span className="text-xs text-muted-foreground">{f.cargo || ""}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>E-mail de Login *</Label>
+              <Input value={accessEmail} onChange={e => setAccessEmail(e.target.value)} placeholder="email@exemplo.com" type="email" />
+            </div>
+            <div>
+              <Label>Senha *</Label>
+              <Input value={accessPassword} onChange={e => setAccessPassword(e.target.value)} placeholder="Mínimo 6 caracteres" type="text" />
+              <p className="text-xs text-muted-foreground mt-1">A senha será exibida ao funcionário para acesso</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenAccess(false)}>Cancelar</Button>
+            <Button onClick={handleCreateAccess} disabled={creatingAccess} className="bg-primary">
+              {creatingAccess ? "Criando..." : "Criar Acesso"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

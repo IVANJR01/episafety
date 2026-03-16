@@ -1173,6 +1173,7 @@ export type Database = {
       }
       videos_visualizacao: {
         Row: {
+          assinatura: string | null
           concluido: boolean | null
           created_at: string
           empresa_id: string | null
@@ -1184,6 +1185,7 @@ export type Database = {
           video_id: string
         }
         Insert: {
+          assinatura?: string | null
           concluido?: boolean | null
           created_at?: string
           empresa_id?: string | null
@@ -1195,6 +1197,7 @@ export type Database = {
           video_id: string
         }
         Update: {
+          assinatura?: string | null
           concluido?: boolean | null
           created_at?: string
           empresa_id?: string | null

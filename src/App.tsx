@@ -27,6 +27,7 @@ import ExamesModule from "@/pages/ExamesModule";
 import CadastroDashboard from "@/pages/CadastroDashboard";
 import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
+import PortalTreinamentos from "@/pages/PortalTreinamentos";
 import Filiais from "@/pages/Filiais";
 import NotFound from "./pages/NotFound";
 
@@ -59,7 +60,7 @@ function DashboardGuard() {
 }
 
 function ProtectedRoute() {
-  const { user, loading, authorized, signOut } = useAuth();
+  const { user, loading, authorized, signOut, modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
 
   if (loading) {
     return (
@@ -89,6 +90,18 @@ function ProtectedRoute() {
           </button>
         </div>
       </div>
+    );
+  }
+
+  // If user only has video_treinamentos permission, show portal
+  const isVideoOnly = !isSuperAdmin && !isPrincipal && modulosPermitidos.length > 0 &&
+    modulosPermitidos.every(p => p.startsWith("video_treinamentos"));
+
+  if (isVideoOnly) {
+    return (
+      <Routes>
+        <Route path="/*" element={<PortalTreinamentos />} />
+      </Routes>
     );
   }
 
