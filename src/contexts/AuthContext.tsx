@@ -20,17 +20,35 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-const AUTH_CACHE_KEY = "offline_auth_cache";
+const AUTH_CACHE_KEY_PREFIX = "offline_auth_cache";
 
-function saveAuthCache(data: { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean; isPrincipal: boolean }) {
-  try { localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(data)); } catch {}
+type AuthCache = {
+  authorized: boolean;
+  modulos: string[];
+  empresaId: string | null;
+  isSuperAdmin: boolean;
+  isPrincipal: boolean;
+};
+
+function getAuthCacheKey(email?: string | null) {
+  return `${AUTH_CACHE_KEY_PREFIX}:${email?.toLowerCase().trim() || "anonymous"}`;
 }
 
-function loadAuthCache(): { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean; isPrincipal: boolean } | null {
+function saveAuthCache(email: string | undefined, data: AuthCache) {
+  if (!email) return;
+  try { localStorage.setItem(getAuthCacheKey(email), JSON.stringify(data)); } catch {}
+}
+
+function loadAuthCache(email: string | undefined): AuthCache | null {
+  if (!email) return null;
   try {
-    const raw = localStorage.getItem(AUTH_CACHE_KEY);
+    const raw = localStorage.getItem(getAuthCacheKey(email));
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
+}
+
+function clearLegacyAuthCache() {
+  try { localStorage.removeItem(AUTH_CACHE_KEY_PREFIX); } catch {}
 }
 
 async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean }> {
@@ -53,7 +71,7 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
 
     return { authorized: false, modulos: [], isPrincipal: false };
   } catch {
-    const cached = loadAuthCache();
+    const cached = loadAuthCache(email);
     if (cached) return { authorized: cached.authorized, modulos: cached.modulos, isPrincipal: cached.isPrincipal || false };
     return { authorized: false, modulos: [], isPrincipal: false };
   }
@@ -110,57 +128,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isPrincipal, setIsPrincipal] = useState(false);
 
   const handleAuthCheck = useCallback(async (currentUser: User | null) => {
+    const applyCachedState = (cached: AuthCache | null) => {
+      if (!cached) {
+        setAuthorized(false);
+        setModulosPermitidos([]);
+        setEmpresaId(null);
+        setIsSuperAdmin(false);
+        setIsPrincipal(false);
+        return;
+      }
+
+      setAuthorized(cached.authorized);
+      setModulosPermitidos(cached.modulos);
+      setEmpresaId(cached.empresaId);
+      setIsSuperAdmin(cached.isSuperAdmin);
+      setIsPrincipal(cached.isPrincipal || false);
+    };
+
+    clearLegacyAuthCache();
+
     if (currentUser) {
       try {
         if (!navigator.onLine) {
-          const cached = loadAuthCache();
-          if (cached) {
-            setAuthorized(cached.authorized);
-            setModulosPermitidos(cached.modulos);
-            setEmpresaId(cached.empresaId);
-            setIsSuperAdmin(cached.isSuperAdmin);
-            setIsPrincipal(cached.isPrincipal || false);
-          } else {
-            setAuthorized(true);
-            setModulosPermitidos([]);
-            setEmpresaId(null);
-            setIsSuperAdmin(false);
-            setIsPrincipal(false);
-          }
+          applyCachedState(loadAuthCache(currentUser.email));
         } else {
           const [authResult, profileResult, superAdmin] = await Promise.all([
             checkAuthorized(currentUser.email),
             loadProfile(currentUser.id, currentUser.email),
             checkSuperAdmin(currentUser.id),
           ]);
-          setAuthorized(authResult.authorized);
-          setModulosPermitidos(authResult.isPrincipal ? [] : authResult.modulos);
-          setEmpresaId(profileResult.empresaId);
-          setIsSuperAdmin(superAdmin);
-          setIsPrincipal(authResult.isPrincipal);
-          saveAuthCache({
+
+          const nextState: AuthCache = {
             authorized: authResult.authorized,
             modulos: authResult.isPrincipal ? [] : authResult.modulos,
             empresaId: profileResult.empresaId,
             isSuperAdmin: superAdmin,
             isPrincipal: authResult.isPrincipal,
-          });
+          };
+
+          setAuthorized(nextState.authorized);
+          setModulosPermitidos(nextState.modulos);
+          setEmpresaId(nextState.empresaId);
+          setIsSuperAdmin(nextState.isSuperAdmin);
+          setIsPrincipal(nextState.isPrincipal);
+          saveAuthCache(currentUser.email, nextState);
         }
       } catch {
-        const cached = loadAuthCache();
-        if (cached) {
-          setAuthorized(cached.authorized);
-          setModulosPermitidos(cached.modulos);
-          setEmpresaId(cached.empresaId);
-          setIsSuperAdmin(cached.isSuperAdmin);
-          setIsPrincipal(cached.isPrincipal || false);
-        } else {
-          setAuthorized(true);
-          setModulosPermitidos([]);
-          setEmpresaId(null);
-          setIsSuperAdmin(false);
-          setIsPrincipal(false);
-        }
+        applyCachedState(loadAuthCache(currentUser.email));
       }
     } else {
       setAuthorized(true);

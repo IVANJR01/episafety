@@ -74,46 +74,60 @@ export default function PortalTreinamentos() {
   const [funcionarioId, setFuncionarioId] = useState<string | null>(null);
   const [assignedVideoIds, setAssignedVideoIds] = useState<string[]>([]);
 
+  const normalize = (value?: string | null) =>
+    (value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Get profile info
-      const { data: profile } = await supabase.from("profiles").select("nome, empresa_id").eq("user_id", user?.id || "").single();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome, empresa_id")
+        .eq("user_id", user?.id || "")
+        .maybeSingle();
+
       if (profile) setUserName(profile.nome || user?.email || "");
 
+      const normalizedProfileName = normalize(profile?.nome);
       let foundFuncId: string | null = null;
 
-      // Find linked funcionario by name/email
-      if (profile?.empresa_id) {
-        const { data: funcs } = await supabase.from("funcionarios").select("id, nome").eq("empresa_id", profile.empresa_id);
-        const matched = funcs?.find(f => f.nome.toLowerCase() === (profile.nome || "").toLowerCase());
+      if (profile?.empresa_id && normalizedProfileName) {
+        const { data: funcs } = await supabase
+          .from("funcionarios")
+          .select("id, nome")
+          .eq("empresa_id", profile.empresa_id)
+          .is("data_demissao", null);
+
+        const matched = funcs?.find(f => normalize(f.nome) === normalizedProfileName);
         if (matched) foundFuncId = matched.id;
-        else if (funcs && funcs.length > 0) foundFuncId = funcs[0].id;
       }
 
-      if (!foundFuncId) {
-        // Try without empresa filter
-        const { data: allFuncs } = await supabase.from("funcionarios").select("id, nome");
-        const matched = allFuncs?.find(f => f.nome.toLowerCase() === (profile?.nome || "").toLowerCase());
+      if (!foundFuncId && normalizedProfileName) {
+        const { data: allFuncs } = await supabase
+          .from("funcionarios")
+          .select("id, nome")
+          .is("data_demissao", null);
+
+        const matched = allFuncs?.find(f => normalize(f.nome) === normalizedProfileName);
         if (matched) foundFuncId = matched.id;
       }
 
       setFuncionarioId(foundFuncId);
 
-      // Get assigned videos for this employee
       if (foundFuncId) {
-        const { data: assignments } = await supabase.from("videos_atribuicao").select("video_id").eq("funcionario_id", foundFuncId);
+        const { data: assignments } = await supabase
+          .from("videos_atribuicao")
+          .select("video_id")
+          .eq("funcionario_id", foundFuncId);
         const ids = (assignments || []).map((a: any) => a.video_id);
         setAssignedVideoIds(ids);
       } else {
         setAssignedVideoIds([]);
       }
 
-      // Get all global videos
       const { data: vids } = await supabase.from("videos_treinamento").select("*").order("created_at", { ascending: false });
       if (vids) setVideos(vids as VideoTreinamento[]);
 
-      // Get visualizações
       const { data: vizs } = await supabase.from("videos_visualizacao").select("*");
       if (vizs) setVisualizacoes(vizs as VideoVisualizacao[]);
     } catch {
@@ -417,8 +431,8 @@ export default function PortalTreinamentos() {
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
                 <Video className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                <p className="font-medium">Nenhum treinamento disponível</p>
-                <p className="text-sm">Aguarde novos treinamentos serem publicados</p>
+                <p className="font-medium">Nenhum treinamento atribuído</p>
+                <p className="text-sm">Seu acesso mostra apenas os cursos selecionados pelo administrador</p>
               </CardContent>
             </Card>
           ) : myVideos.map(video => {
