@@ -20,17 +20,35 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-const AUTH_CACHE_KEY = "offline_auth_cache";
+const AUTH_CACHE_KEY_PREFIX = "offline_auth_cache";
 
-function saveAuthCache(data: { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean; isPrincipal: boolean }) {
-  try { localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(data)); } catch {}
+type AuthCache = {
+  authorized: boolean;
+  modulos: string[];
+  empresaId: string | null;
+  isSuperAdmin: boolean;
+  isPrincipal: boolean;
+};
+
+function getAuthCacheKey(email?: string | null) {
+  return `${AUTH_CACHE_KEY_PREFIX}:${email?.toLowerCase().trim() || "anonymous"}`;
 }
 
-function loadAuthCache(): { authorized: boolean; modulos: string[]; empresaId: string | null; isSuperAdmin: boolean; isPrincipal: boolean } | null {
+function saveAuthCache(email: string | undefined, data: AuthCache) {
+  if (!email) return;
+  try { localStorage.setItem(getAuthCacheKey(email), JSON.stringify(data)); } catch {}
+}
+
+function loadAuthCache(email: string | undefined): AuthCache | null {
+  if (!email) return null;
   try {
-    const raw = localStorage.getItem(AUTH_CACHE_KEY);
+    const raw = localStorage.getItem(getAuthCacheKey(email));
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
+}
+
+function clearLegacyAuthCache() {
+  try { localStorage.removeItem(AUTH_CACHE_KEY_PREFIX); } catch {}
 }
 
 async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean }> {
