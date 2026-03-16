@@ -71,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
-  const [epiOpen, setEpiOpen] = useState(isEpiActive);
+  const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
 
   // Bottom nav items: first 4 main items + "Mais" button
