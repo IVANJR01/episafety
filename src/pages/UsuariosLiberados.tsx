@@ -81,6 +81,13 @@ export default function UsuariosLiberados() {
     return map;
   }, [empresas]);
 
+  // Available units: own empresa + filiais
+  const unidadesDisponiveis = useMemo(() => {
+    if (isSuperAdmin) return empresas;
+    if (!empresaId) return [];
+    return empresas.filter(e => e.id === empresaId || e.empresa_pai_id === empresaId);
+  }, [empresas, empresaId, isSuperAdmin]);
+
   const groupedByEmpresa = useMemo(() => {
     const groups: { empresaId: string | null; empresaNome: string; users: UsuarioLiberado[] }[] = [];
     const map = new Map<string, UsuarioLiberado[]>();
