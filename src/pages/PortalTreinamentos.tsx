@@ -72,6 +72,7 @@ export default function PortalTreinamentos() {
 
   // Fetch linked funcionario_id for the logged user
   const [funcionarioId, setFuncionarioId] = useState<string | null>(null);
+  const [assignedVideoIds, setAssignedVideoIds] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -80,16 +81,30 @@ export default function PortalTreinamentos() {
       const { data: profile } = await supabase.from("profiles").select("nome, empresa_id").eq("user_id", user?.id || "").single();
       if (profile) setUserName(profile.nome || user?.email || "");
 
+      let foundFuncId: string | null = null;
+
       // Find linked funcionario by name/email
       if (profile?.empresa_id) {
         const { data: funcs } = await supabase.from("funcionarios").select("id, nome").eq("empresa_id", profile.empresa_id);
-        // Try matching by name
         const matched = funcs?.find(f => f.nome.toLowerCase() === (profile.nome || "").toLowerCase());
-        if (matched) setFuncionarioId(matched.id);
-        else if (funcs && funcs.length > 0) {
-          // Fallback: use first func (admin created access for this user)
-          setFuncionarioId(funcs[0].id);
-        }
+        if (matched) foundFuncId = matched.id;
+        else if (funcs && funcs.length > 0) foundFuncId = funcs[0].id;
+      }
+
+      if (!foundFuncId) {
+        // Try without empresa filter
+        const { data: allFuncs } = await supabase.from("funcionarios").select("id, nome");
+        const matched = allFuncs?.find(f => f.nome.toLowerCase() === (profile?.nome || "").toLowerCase());
+        if (matched) foundFuncId = matched.id;
+      }
+
+      setFuncionarioId(foundFuncId);
+
+      // Get assigned videos for this employee
+      if (foundFuncId) {
+        const { data: assignments } = await supabase.from("videos_atribuicao").select("video_id").eq("funcionario_id", foundFuncId);
+        const ids = (assignments || []).map((a: any) => a.video_id);
+        setAssignedVideoIds(ids);
       }
 
       // Get all global videos
