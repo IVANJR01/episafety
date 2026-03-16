@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import SignatureCanvas, { SignatureCanvasRef } from "@/components/SignatureCanvas";
 import {
-  Video, Play, Pause, CheckCircle, Clock, Award, LogOut, ChevronRight, AlertTriangle, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX
+  Video, Play, Pause, CheckCircle, Clock, LogOut, ChevronRight, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX
 } from "lucide-react";
 import logoImg from "@/assets/logo-episafety.png";
 
