@@ -270,6 +270,64 @@ export default function VideoTreinamentos() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const filteredAccessFuncionarios = useMemo(() => {
+    if (!accessFuncSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
+    const q = normalize(accessFuncSearch);
+    return funcionarios.filter(f => normalize(f.nome).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [funcionarios, accessFuncSearch]);
+
+  const handleCreateAccess = async () => {
+    if (!accessFuncId || !accessEmail.trim() || !accessPassword.trim()) {
+      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      return;
+    }
+    if (accessPassword.length < 6) {
+      toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+    setCreatingAccess(true);
+    try {
+      const func = funcionarios.find(f => f.id === accessFuncId);
+      // Create auth user via edge function
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: { email: accessEmail.toLowerCase().trim(), password: accessPassword, nome: func?.nome || "" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const userId = data.id;
+
+      // Add to usuarios_liberados with only video_treinamentos permission
+      await supabase.from("usuarios_liberados").upsert({
+        email: accessEmail.toLowerCase().trim(),
+        nome: func?.nome || "",
+        empresa_id: empresaId,
+        modulos_permitidos: ["video_treinamentos:view"],
+        is_principal: false,
+      }, { onConflict: "email,empresa_id" });
+
+      // Update profile
+      await supabase.from("profiles").upsert({
+        user_id: userId,
+        email: accessEmail.toLowerCase().trim(),
+        nome: func?.nome || "",
+        empresa_id: empresaId,
+      }, { onConflict: "user_id" });
+
+      toast({ title: "Acesso criado!", description: `Login: ${accessEmail} / Senha: ${accessPassword}` });
+      setOpenAccess(false);
+      setAccessFuncId("");
+      setAccessEmail("");
+      setAccessPassword("");
+      setAccessFuncSearch("");
+    } catch (err: any) {
+      toast({ title: "Erro ao criar acesso", description: err.message, variant: "destructive" });
+    }
+    setCreatingAccess(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
