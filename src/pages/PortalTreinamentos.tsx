@@ -130,9 +130,15 @@ export default function PortalTreinamentos() {
     return "em_andamento";
   };
 
+  // Only show assigned videos (or all if no assignments exist)
+  const myVideos = useMemo(() => {
+    if (assignedVideoIds.length === 0) return videos;
+    return videos.filter(v => assignedVideoIds.includes(v.id));
+  }, [videos, assignedVideoIds]);
+
   const completedCount = useMemo(() => {
-    return videos.filter(v => getVideoStatus(v.id) === "concluido").length;
-  }, [videos, visualizacoes, funcionarioId]);
+    return myVideos.filter(v => getVideoStatus(v.id) === "concluido").length;
+  }, [myVideos, visualizacoes, funcionarioId]);
 
   const handleStartVideo = (video: VideoTreinamento) => {
     setWatchingVideo(video);
