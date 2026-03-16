@@ -400,7 +400,7 @@ export default function PortalTreinamentos() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-foreground">Seu progresso</span>
-              <span className="text-sm font-bold text-primary">{completedCount}/{videos.length}</span>
+              <span className="text-sm font-bold text-primary">{completedCount}/{myVideos.length}</span>
             </div>
             <Progress value={videos.length > 0 ? (completedCount / videos.length) * 100 : 0} className="h-3" />
             <p className="text-xs text-muted-foreground mt-2">
