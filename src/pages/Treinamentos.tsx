@@ -183,13 +183,13 @@ export default function Treinamentos() {
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const filteredFuncionarios = useMemo(() => {
-    if (!funcSearch.trim()) return funcionarios;
+    if (!funcSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
     const q = normalize(funcSearch);
     return funcionarios.filter(f =>
       normalize(f.nome).includes(q) ||
       (f.matricula && f.matricula.toLowerCase().includes(q)) ||
       (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
-    );
+    ).sort((a, b) => a.nome.localeCompare(b.nome));
   }, [funcionarios, funcSearch]);
 
   const filteredCursos = useMemo(() => {
