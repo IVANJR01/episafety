@@ -62,17 +62,13 @@ export default function Faturas() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isSuperAdmin || isPrincipal) loadData();
+  }, [isSuperAdmin, isPrincipal]);
 
   // Only super_admin and principal can see this module
   if (!isSuperAdmin && !isPrincipal) {
     return <Navigate to="/" replace />;
   }
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   async function loadData() {
     setLoading(true);
