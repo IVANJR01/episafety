@@ -288,8 +288,19 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleFullscreen = async () => {
+    const video = videoRef.current;
     const container = videoContainerRef.current;
-    if (!container) return;
+    if (!video || !container) return;
+
+    // iOS Safari: use webkitEnterFullscreen on video element
+    if ((video as any).webkitEnterFullscreen) {
+      try {
+        (video as any).webkitEnterFullscreen();
+        return;
+      } catch {}
+    }
+
+    // Standard fullscreen on container
     if (!document.fullscreenElement) {
       await container.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
@@ -337,7 +348,11 @@ export default function PortalTreinamentos() {
                   ref={videoRef}
                   src={watchingVideo.video_url}
                   autoPlay
+                  muted
                   playsInline
+                  // @ts-ignore - webkit attribute for iOS
+                  webkit-playsinline="true"
+                  preload="auto"
                   tabIndex={-1}
                   className="w-full aspect-video bg-muted"
                   onEnded={handleVideoEnded}
@@ -348,6 +363,10 @@ export default function PortalTreinamentos() {
                     const vid = e.currentTarget;
                     const dur = vid.duration || 0;
                     setDuration(dur);
+
+                    // Unmute after autoplay starts (user initiated navigation)
+                    vid.muted = false;
+                    setIsMuted(false);
 
                     // Restore saved position
                     if (maxWatchedTimeRef.current === -1 && watchingVideo) {
@@ -378,6 +397,9 @@ export default function PortalTreinamentos() {
                     if (vid.currentTime > allowedTime) {
                       vid.currentTime = maxWatchedTimeRef.current;
                     }
+                  }}
+                  onError={(e) => {
+                    console.error("Video load error:", (e.currentTarget as any).error);
                   }}
                   controls={false}
                   controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
