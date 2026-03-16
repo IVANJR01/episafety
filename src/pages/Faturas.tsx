@@ -74,7 +74,7 @@ export default function Faturas() {
     setLoading(true);
     const [fRes, eRes] = await Promise.all([
       (supabase.from as any)("faturas").select("*").order("data_vencimento", { ascending: false }),
-      (supabase.from as any)("empresa_config").select("id, nome").order("nome"),
+      (supabase.from as any)("empresa_config").select("id, nome").is("empresa_pai_id", null).order("nome"),
     ]);
     setFaturas(fRes.data || []);
     setEmpresas(eRes.data || []);
