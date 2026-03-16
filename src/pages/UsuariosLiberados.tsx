@@ -25,6 +25,7 @@ interface UsuarioLiberado {
 interface Empresa {
   id: string;
   nome: string;
+  empresa_pai_id: string | null;
 }
 
 const ACAO_ICONS: Record<string, string> = {
