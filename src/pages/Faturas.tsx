@@ -61,6 +61,10 @@ export default function Faturas() {
     observacao: "",
   });
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
   // Only super_admin and principal can see this module
   if (!isSuperAdmin && !isPrincipal) {
     return <Navigate to="/" replace />;
