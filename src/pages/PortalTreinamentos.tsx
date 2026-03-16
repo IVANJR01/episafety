@@ -403,6 +403,9 @@ export default function PortalTreinamentos() {
                       <span>{formatTime(duration)}</span>
                     </div>
                   </div>
+                  <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
+                    {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
             </CardContent>
