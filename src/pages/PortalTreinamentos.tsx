@@ -391,83 +391,17 @@ export default function PortalTreinamentos() {
 
           {watchingVideo.descricao && <p className="text-sm text-muted-foreground">{watchingVideo.descricao}</p>}
 
-          {videoEnded && !showQuiz && !showSignature && (
+          {videoEnded && !showSignature && (
             <Card className="border-primary">
               <CardContent className="p-6 text-center">
                 <CheckCircle className="h-10 w-10 mx-auto text-primary mb-2" />
                 <p className="font-semibold text-foreground">Vídeo concluído!</p>
-                <p className="text-sm text-muted-foreground">Preparando próxima etapa...</p>
+                <p className="text-sm text-muted-foreground">Preparando assinatura...</p>
               </CardContent>
             </Card>
           )}
 
-          {showQuiz && !showSignature && (
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <div className="text-center">
-                  <Award className="h-8 w-8 mx-auto text-primary mb-2" />
-                  <h2 className="text-lg font-bold text-foreground">Avaliação do Treinamento</h2>
-                  <p className="text-sm text-muted-foreground">Nota mínima: {watchingVideo.pontuacao_minima}%</p>
-                </div>
-
-                {perguntas.map((p, i) => (
-                  <div key={p.id} className="space-y-2">
-                    <Label className="font-semibold">{i + 1}. {p.pergunta}</Label>
-                    <div className="grid gap-2">
-                      {["a", "b", "c", "d"].map(opt => {
-                        const text = p[`opcao_${opt}` as keyof VideoPergunta] as string | null;
-                        if (!text) return null;
-                        const selected = respostas[p.id] === opt;
-                        const isCorrect = quizResult && p.resposta_correta === opt;
-                        const isWrong = quizResult && selected && p.resposta_correta !== opt;
-                        return (
-                          <button key={opt} type="button" disabled={!!quizResult}
-                            className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${
-                              isCorrect ? "border-emerald-500 bg-emerald-50 text-emerald-800" :
-                              isWrong ? "border-destructive bg-destructive/10 text-destructive" :
-                              selected ? "border-primary bg-primary/10 text-foreground" :
-                              "border-border hover:bg-muted"
-                            }`}
-                            onClick={() => setRespostas({ ...respostas, [p.id]: opt })}
-                          >
-                            <span className="font-bold mr-2">{opt.toUpperCase()})</span> {text}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-
-                {!quizResult ? (
-                  <Button onClick={handleSubmitQuiz} className="w-full bg-primary" size="lg">Enviar Respostas</Button>
-                ) : (
-                  <Card className={quizResult.aprovado ? "border-emerald-500" : "border-destructive"}>
-                    <CardContent className="p-4 text-center">
-                      {quizResult.aprovado ? (
-                        <>
-                          <CheckCircle className="h-8 w-8 mx-auto text-emerald-500 mb-2" />
-                          <p className="font-bold text-emerald-700">Aprovado! Pontuação: {quizResult.pontuacao}%</p>
-                          <p className="text-sm text-muted-foreground mt-1">Assine abaixo para confirmar</p>
-                        </>
-                      ) : (
-                        <>
-                          <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-2" />
-                          <p className="font-bold text-destructive">Reprovado. Pontuação: {quizResult.pontuacao}%</p>
-                          <p className="text-sm text-muted-foreground mt-1">Nota mínima: {watchingVideo.pontuacao_minima}%</p>
-                          <Button variant="outline" className="mt-3" onClick={() => {
-                            setShowQuiz(false); setVideoEnded(false); setQuizResult(null); setRespostas({});
-                            if (videoRef.current) { videoRef.current.currentTime = 0; videoRef.current.play(); }
-                          }}>Assistir Novamente</Button>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {showSignature && (quizResult?.aprovado || !showQuiz) && (
+          {showSignature && (
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="text-center">
@@ -477,7 +411,7 @@ export default function PortalTreinamentos() {
                 </div>
                 <SignatureCanvas ref={signatureRef} label="Assinatura do Funcionário" height={200} />
                 <Button onClick={handleSign} disabled={saving} className="w-full bg-primary" size="lg">
-                  {saving ? "Salvando..." : "Concluir Treinamento"}
+                  {saving ? "Salvando..." : "Concluir Módulo"}
                 </Button>
               </CardContent>
             </Card>
