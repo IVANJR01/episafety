@@ -124,16 +124,18 @@ export default function VideoTreinamentos() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: cursosData }, { data: vids }, { data: vizs }, { data: funcs }] = await Promise.all([
+      const [{ data: cursosData }, { data: vids }, { data: vizs }, { data: funcs }, { data: atrib }] = await Promise.all([
         supabase.from("cursos_video").select("*").order("created_at", { ascending: false }),
         supabase.from("videos_treinamento").select("*").order("ordem", { ascending: true }),
         supabase.from("videos_visualizacao").select("*"),
         supabase.from("funcionarios").select("id, nome, cargo, setor").is("data_demissao", null),
+        supabase.from("cursos_atribuicao").select("curso_id, funcionario_id"),
       ]);
       if (cursosData) setCursos(cursosData as any);
       if (vids) setVideos(vids as any);
       if (vizs) setVisualizacoes(vizs as any);
       if (funcs) setFuncionarios(funcs as any);
+      if (atrib) setCursosAtribuicao(atrib as any);
     } catch {
       toast({ title: "Erro ao carregar dados", variant: "destructive" });
     }
