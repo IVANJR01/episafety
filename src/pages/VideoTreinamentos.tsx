@@ -117,6 +117,14 @@ export default function VideoTreinamentos() {
   const [showAccessFuncList, setShowAccessFuncList] = useState(false);
   const [selectedCursoIds, setSelectedCursoIds] = useState<string[]>([]);
 
+  // Manage courses for existing employee
+  const [openManageCursos, setOpenManageCursos] = useState(false);
+  const [manageFuncId, setManageFuncId] = useState("");
+  const [manageFuncSearch, setManageFuncSearch] = useState("");
+  const [showManageFuncList, setShowManageFuncList] = useState(false);
+  const [manageCursoIds, setManageCursoIds] = useState<string[]>([]);
+  const [savingManage, setSavingManage] = useState(false);
+
   const canCreate = isSuperAdmin;
   const canEdit = isSuperAdmin;
   const canDelete = isSuperAdmin;
@@ -418,6 +426,70 @@ export default function VideoTreinamentos() {
     setCreatingAccess(false);
   };
 
+  // ============ MANAGE COURSES FOR EXISTING EMPLOYEE ============
+  const filteredManageFuncionarios = useMemo(() => {
+    // Only show employees that already have curso assignments
+    const assignedFuncIds = new Set(cursosAtribuicao.map(a => a.funcionario_id));
+    const assigned = funcionarios.filter(f => assignedFuncIds.has(f.id));
+    if (!manageFuncSearch.trim()) return assigned.sort((a, b) => a.nome.localeCompare(b.nome));
+    const q = normalize(manageFuncSearch);
+    return assigned.filter(f => normalize(f.nome).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [funcionarios, cursosAtribuicao, manageFuncSearch]);
+
+  const handleOpenManageCursos = () => {
+    setManageFuncId(""); setManageFuncSearch(""); setShowManageFuncList(false);
+    setManageCursoIds([]); setOpenManageCursos(true);
+  };
+
+  const handleSelectManageFunc = (funcId: string) => {
+    setManageFuncId(funcId);
+    setManageFuncSearch(funcionarios.find(f => f.id === funcId)?.nome || "");
+    setShowManageFuncList(false);
+    // Pre-select currently assigned courses
+    const current = cursosAtribuicao.filter(a => a.funcionario_id === funcId).map(a => a.curso_id);
+    setManageCursoIds(current);
+  };
+
+  const handleSaveManageCursos = async () => {
+    if (!manageFuncId) {
+      toast({ title: "Selecione um funcionário", variant: "destructive" });
+      return;
+    }
+    if (manageCursoIds.length === 0) {
+      toast({ title: "Selecione ao menos um curso", variant: "destructive" });
+      return;
+    }
+    setSavingManage(true);
+    try {
+      // Replace curso assignments
+      await supabase.from("cursos_atribuicao").delete().eq("funcionario_id", manageFuncId);
+      const assignments = manageCursoIds.map(cid => ({
+        curso_id: cid,
+        funcionario_id: manageFuncId,
+        empresa_id: empresaId,
+      }));
+      const { error } = await supabase.from("cursos_atribuicao").insert(assignments);
+      if (error) throw error;
+
+      // Sync videos_atribuicao
+      await supabase.from("videos_atribuicao").delete().eq("funcionario_id", manageFuncId);
+      const videoIds = manageCursoIds.flatMap(cid => getModulos(cid).map(m => m.id));
+      if (videoIds.length > 0) {
+        const videoAssignments = videoIds.map(vid => ({
+          video_id: vid, funcionario_id: manageFuncId, empresa_id: empresaId,
+        }));
+        await supabase.from("videos_atribuicao").upsert(videoAssignments, { onConflict: "video_id,funcionario_id" });
+      }
+
+      toast({ title: "Cursos atualizados!", description: `${manageCursoIds.length} curso(s) atribuído(s).` });
+      setOpenManageCursos(false);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    }
+    setSavingManage(false);
+  };
+
   // ============ STATS ============
   const stats = useMemo(() => {
     const totalCursos = cursos.length;
@@ -473,6 +545,11 @@ export default function VideoTreinamentos() {
           <p className="text-muted-foreground text-sm mt-1">Gerencie cursos com módulos de vídeo</p>
         </div>
         <div className="flex gap-2">
+          {(isSuperAdmin || isPrincipal) && (
+            <Button variant="outline" onClick={handleOpenManageCursos}>
+              <Pencil className="h-4 w-4 mr-2" /> Gerenciar Cursos
+            </Button>
+          )}
           {(isSuperAdmin || isPrincipal) && (
             <Button variant="outline" onClick={() => {
               setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch("");
@@ -1018,6 +1095,84 @@ export default function VideoTreinamentos() {
             <Button variant="outline" onClick={() => setOpenAccess(false)}>Cancelar</Button>
             <Button onClick={handleCreateAccess} disabled={creatingAccess} className="bg-primary">
               {creatingAccess ? "Criando..." : "Criar Acesso"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Courses Dialog */}
+      <Dialog open={openManageCursos} onOpenChange={setOpenManageCursos}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              Gerenciar Cursos do Funcionário
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Funcionário *</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar funcionário com acesso..."
+                  value={manageFuncSearch}
+                  onChange={e => { setManageFuncSearch(e.target.value); setManageFuncId(""); setShowManageFuncList(true); }}
+                  onFocus={() => setShowManageFuncList(true)}
+                  onBlur={() => setTimeout(() => setShowManageFuncList(false), 200)}
+                  className="pl-9"
+                />
+              </div>
+              {manageFuncId && (
+                <div className="mt-1 text-xs text-primary font-medium">✓ {funcionarios.find(f => f.id === manageFuncId)?.nome}</div>
+              )}
+              {!manageFuncId && showManageFuncList && (
+                <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
+                  {filteredManageFuncionarios.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário com acesso encontrado</p>
+                  ) : filteredManageFuncionarios.slice(0, 30).map(f => {
+                    const cursoCount = cursosAtribuicao.filter(a => a.funcionario_id === f.id).length;
+                    return (
+                      <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                        onClick={() => handleSelectManageFunc(f.id)}>
+                        <span className="font-medium">{f.nome}</span>
+                        <span className="text-xs text-muted-foreground">{cursoCount} curso(s)</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            {manageFuncId && (
+              <div>
+                <Label>Cursos *</Label>
+                <p className="text-xs text-muted-foreground mb-2">Marque/desmarque os cursos atribuídos</p>
+                <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+                  {cursos.map(c => (
+                    <label key={c.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer">
+                      <Checkbox
+                        checked={manageCursoIds.includes(c.id)}
+                        onCheckedChange={checked => {
+                          setManageCursoIds(prev => checked ? [...prev, c.id] : prev.filter(id => id !== c.id));
+                        }}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium">{c.titulo}</span>
+                        <span className="text-xs text-muted-foreground ml-2">({getModulos(c.id).length} módulos)</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {manageCursoIds.length > 0 && (
+                  <p className="text-xs text-primary mt-1">{manageCursoIds.length} curso(s) selecionado(s)</p>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenManageCursos(false)}>Cancelar</Button>
+            <Button onClick={handleSaveManageCursos} disabled={savingManage || !manageFuncId} className="bg-primary">
+              {savingManage ? "Salvando..." : "Salvar Cursos"}
             </Button>
           </DialogFooter>
         </DialogContent>
