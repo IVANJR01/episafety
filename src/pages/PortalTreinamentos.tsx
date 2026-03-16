@@ -105,6 +105,8 @@ export default function PortalTreinamentos() {
         const { data: assignments } = await supabase.from("videos_atribuicao").select("video_id").eq("funcionario_id", foundFuncId);
         const ids = (assignments || []).map((a: any) => a.video_id);
         setAssignedVideoIds(ids);
+      } else {
+        setAssignedVideoIds([]);
       }
 
       // Get all global videos
