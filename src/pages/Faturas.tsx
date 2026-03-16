@@ -175,8 +175,33 @@ export default function Faturas() {
     return date.toLocaleDateString("pt-BR");
   }
 
+  const alertas = useMemo(() => {
+    const hoje = new Date().toISOString().split("T")[0];
+    const vencidas = faturas.filter(f => f.situacao === "vencido" || (f.situacao === "aberto" && f.data_vencimento < hoje));
+    const pendentes = faturas.filter(f => f.situacao === "aberto" && f.data_vencimento >= hoje);
+    return { vencidas: vencidas.length, pendentes: pendentes.length };
+  }, [faturas]);
+
   return (
     <div className="space-y-6">
+      {/* Alert banners */}
+      {alertas.vencidas > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive">
+          <span className="text-lg">⚠️</span>
+          <span className="text-sm font-semibold">
+            ATENÇÃO: {alertas.vencidas === 1 ? "Existe 1 fatura vencida" : `Existem ${alertas.vencidas} faturas vencidas`} para sua empresa
+          </span>
+        </div>
+      )}
+      {alertas.pendentes > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400">
+          <span className="text-lg">📋</span>
+          <span className="text-sm font-semibold">
+            ATENÇÃO: {alertas.pendentes === 1 ? "Temos 1 fatura pendente" : `Temos ${alertas.pendentes} faturas pendentes`} para sua empresa
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Faturas</h1>
