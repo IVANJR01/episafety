@@ -1099,6 +1099,84 @@ export default function VideoTreinamentos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Manage Courses Dialog */}
+      <Dialog open={openManageCursos} onOpenChange={setOpenManageCursos}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              Gerenciar Cursos do Funcionário
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Funcionário *</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar funcionário com acesso..."
+                  value={manageFuncSearch}
+                  onChange={e => { setManageFuncSearch(e.target.value); setManageFuncId(""); setShowManageFuncList(true); }}
+                  onFocus={() => setShowManageFuncList(true)}
+                  onBlur={() => setTimeout(() => setShowManageFuncList(false), 200)}
+                  className="pl-9"
+                />
+              </div>
+              {manageFuncId && (
+                <div className="mt-1 text-xs text-primary font-medium">✓ {funcionarios.find(f => f.id === manageFuncId)?.nome}</div>
+              )}
+              {!manageFuncId && showManageFuncList && (
+                <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
+                  {filteredManageFuncionarios.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário com acesso encontrado</p>
+                  ) : filteredManageFuncionarios.slice(0, 30).map(f => {
+                    const cursoCount = cursosAtribuicao.filter(a => a.funcionario_id === f.id).length;
+                    return (
+                      <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                        onClick={() => handleSelectManageFunc(f.id)}>
+                        <span className="font-medium">{f.nome}</span>
+                        <span className="text-xs text-muted-foreground">{cursoCount} curso(s)</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            {manageFuncId && (
+              <div>
+                <Label>Cursos *</Label>
+                <p className="text-xs text-muted-foreground mb-2">Marque/desmarque os cursos atribuídos</p>
+                <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+                  {cursos.map(c => (
+                    <label key={c.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer">
+                      <Checkbox
+                        checked={manageCursoIds.includes(c.id)}
+                        onCheckedChange={checked => {
+                          setManageCursoIds(prev => checked ? [...prev, c.id] : prev.filter(id => id !== c.id));
+                        }}
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium">{c.titulo}</span>
+                        <span className="text-xs text-muted-foreground ml-2">({getModulos(c.id).length} módulos)</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                {manageCursoIds.length > 0 && (
+                  <p className="text-xs text-primary mt-1">{manageCursoIds.length} curso(s) selecionado(s)</p>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenManageCursos(false)}>Cancelar</Button>
+            <Button onClick={handleSaveManageCursos} disabled={savingManage || !manageFuncId} className="bg-primary">
+              {savingManage ? "Salvando..." : "Salvar Cursos"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
