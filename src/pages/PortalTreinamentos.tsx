@@ -332,7 +332,7 @@ export default function PortalTreinamentos() {
 
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
-              <div className="bg-card">
+              <div ref={videoContainerRef} className="bg-card">
                 <video
                   ref={videoRef}
                   src={watchingVideo.video_url}
