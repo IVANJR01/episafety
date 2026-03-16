@@ -254,6 +254,7 @@ export default function Treinamentos() {
     setMultiCursos([emptyCurso()]);
     setMultiFuncId("");
     setMultiFuncSearch("");
+    refreshFuncionarios();
     setOpen(true);
   };
 
