@@ -71,7 +71,7 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
 
     return { authorized: false, modulos: [], isPrincipal: false };
   } catch {
-    const cached = loadAuthCache();
+    const cached = loadAuthCache(email);
     if (cached) return { authorized: cached.authorized, modulos: cached.modulos, isPrincipal: cached.isPrincipal || false };
     return { authorized: false, modulos: [], isPrincipal: false };
   }
