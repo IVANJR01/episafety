@@ -261,7 +261,7 @@ export default function PortalTreinamentos() {
         percentual_assistido: 100,
         concluido: true,
         assinatura,
-        empresa_id: null,
+        empresa_id: funcEmpresaId,
       }, { onConflict: "video_id,funcionario_id" });
       if (error) throw error;
       toast({ title: "Módulo concluído!", description: "Sua participação foi registrada com sucesso." });
