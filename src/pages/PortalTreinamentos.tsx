@@ -411,7 +411,7 @@ export default function PortalTreinamentos() {
 
         {/* Video list */}
         <div className="space-y-3">
-          {videos.length === 0 ? (
+          {myVideos.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
                 <Video className="h-12 w-12 mx-auto mb-3 opacity-40" />
