@@ -364,7 +364,7 @@ export default function VideoTreinamentos() {
         </div>
         <div className="flex gap-2">
           {(isSuperAdmin || isPrincipal) && (
-            <Button variant="outline" onClick={() => { setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch(""); setShowAccessFuncList(false); setOpenAccess(true); }}>
+            <Button variant="outline" onClick={() => { setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch(""); setShowAccessFuncList(false); setSelectedVideoIds([]); setOpenAccess(true); }}>
               <Users className="h-4 w-4 mr-2" /> Criar Acesso Funcionário
             </Button>
           )}
