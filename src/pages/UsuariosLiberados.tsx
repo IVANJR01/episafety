@@ -44,6 +44,7 @@ export default function UsuariosLiberados() {
   const [novoEmail, setNovoEmail] = useState("");
   const [novoNome, setNovoNome] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
+  const [novoEmpresaId, setNovoEmpresaId] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
