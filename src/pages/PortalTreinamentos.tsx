@@ -288,8 +288,19 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleFullscreen = async () => {
+    const video = videoRef.current;
     const container = videoContainerRef.current;
-    if (!container) return;
+    if (!video || !container) return;
+
+    // iOS Safari: use webkitEnterFullscreen on video element
+    if ((video as any).webkitEnterFullscreen) {
+      try {
+        (video as any).webkitEnterFullscreen();
+        return;
+      } catch {}
+    }
+
+    // Standard fullscreen on container
     if (!document.fullscreenElement) {
       await container.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
