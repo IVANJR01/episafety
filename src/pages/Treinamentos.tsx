@@ -183,13 +183,13 @@ export default function Treinamentos() {
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const filteredFuncionarios = useMemo(() => {
-    if (!funcSearch.trim()) return funcionarios;
+    if (!funcSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
     const q = normalize(funcSearch);
     return funcionarios.filter(f =>
       normalize(f.nome).includes(q) ||
       (f.matricula && f.matricula.toLowerCase().includes(q)) ||
       (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
-    );
+    ).sort((a, b) => a.nome.localeCompare(b.nome));
   }, [funcionarios, funcSearch]);
 
   const filteredCursos = useMemo(() => {
@@ -1111,7 +1111,7 @@ export default function Treinamentos() {
                     placeholder="Pesquisar por nome, matrícula ou CPF..."
                     value={funcSearch}
                     onChange={e => { setFuncSearch(e.target.value); setForm({ ...form, funcionario_id: "" }); setShowFuncList(true); }}
-                    onFocus={() => { if (!form.funcionario_id && funcSearch.trim()) setShowFuncList(true); }}
+                    onFocus={() => setShowFuncList(true)}
                     onBlur={() => setTimeout(() => setShowFuncList(false), 200)}
                     className="pl-9"
                   />
@@ -1125,7 +1125,7 @@ export default function Treinamentos() {
                   <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
                     {filteredFuncionarios.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
-                    ) : filteredFuncionarios.slice(0, 20).map(f => (
+                    ) : filteredFuncionarios.slice(0, 50).map(f => (
                       <button
                         key={f.id}
                         type="button"
