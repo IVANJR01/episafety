@@ -431,8 +431,8 @@ export default function PortalTreinamentos() {
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
                 <Video className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                <p className="font-medium">Nenhum treinamento disponível</p>
-                <p className="text-sm">Aguarde novos treinamentos serem publicados</p>
+                <p className="font-medium">Nenhum treinamento atribuído</p>
+                <p className="text-sm">Seu acesso mostra apenas os cursos selecionados pelo administrador</p>
               </CardContent>
             </Card>
           ) : myVideos.map(video => {
