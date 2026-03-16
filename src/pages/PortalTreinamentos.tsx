@@ -526,7 +526,7 @@ export default function PortalTreinamentos() {
                               {modulo.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
                               <div className="mt-1">
                                 {status === "concluido" ? (
-                                  <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído{viz?.pontuacao != null ? ` • ${viz.pontuacao}%` : ""}</Badge>
+                                  <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído</Badge>
                                 ) : status === "em_andamento" ? (
                                   <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700"><Clock className="h-3 w-3 mr-1" />Em andamento</Badge>
                                 ) : (
