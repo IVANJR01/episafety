@@ -384,15 +384,10 @@ export default function VideoTreinamentos() {
         });
       }
 
-      // Update profile
-      const { error: profileError } = await supabase.from("profiles")
-        .update({ empresa_id: empresaId, email: emailLower, nome: func?.nome || "" })
-        .eq("user_id", userId);
-      if (profileError) {
-        await supabase.from("profiles").upsert({
-          user_id: userId, email: emailLower, nome: func?.nome || "", empresa_id: empresaId,
-        }, { onConflict: "user_id" });
-      }
+      // Upsert profile (update won't create if row doesn't exist yet)
+      await supabase.from("profiles").upsert({
+        user_id: userId, email: emailLower, nome: func?.nome || "", empresa_id: empresaId,
+      }, { onConflict: "user_id" });
 
       // Replace curso assignments
       await supabase.from("cursos_atribuicao").delete().eq("funcionario_id", accessFuncId);
