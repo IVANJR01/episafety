@@ -39,6 +39,7 @@ interface Funcionario {
   cpf: string | null;
   matricula: string | null;
   setor: string | null;
+  data_demissao: string | null;
 }
 
 type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente" | "sem_exame";
