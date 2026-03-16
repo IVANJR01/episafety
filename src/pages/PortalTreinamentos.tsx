@@ -493,31 +493,33 @@ export default function PortalTreinamentos() {
   // Main portal view
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logoImg} alt="EPISafety" className="h-8" />
+      {/* Header sticky mobile-friendly */}
+      <header className="border-b bg-card sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <img src={logoImg} alt="EPISafety" className="h-7 sm:h-8" />
             <div>
-              <h1 className="font-bold text-foreground text-sm">Portal de Treinamentos</h1>
-              <p className="text-xs text-muted-foreground">{userName}</p>
+              <h1 className="font-bold text-foreground text-xs sm:text-sm">Portal de Treinamentos</h1>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-none">{userName}</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
-            <LogOut className="h-4 w-4 mr-1" /> Sair
+          <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground px-2 sm:px-3">
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline ml-1">Sair</span>
           </Button>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
-        {/* Progress */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-foreground">Seu progresso</span>
+      <div className="max-w-4xl mx-auto px-3 py-4 sm:p-4 space-y-4 sm:space-y-6">
+        {/* Progress card */}
+        <Card className="border-primary/20">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs sm:text-sm font-medium text-foreground">Seu progresso</span>
               <span className="text-sm font-bold text-primary">{completedCount}/{totalModules}</span>
             </div>
-            <Progress value={totalModules > 0 ? (completedCount / totalModules) * 100 : 0} className="h-3" />
-            <p className="text-xs text-muted-foreground mt-2">
+            <Progress value={totalModules > 0 ? (completedCount / totalModules) * 100 : 0} className="h-2.5 sm:h-3" />
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1.5">
               {completedCount === totalModules && totalModules > 0
                 ? "🎉 Parabéns! Todos os treinamentos concluídos!"
                 : `${totalModules - completedCount} módulo(s) pendente(s)`}
@@ -528,14 +530,14 @@ export default function PortalTreinamentos() {
         {/* Content */}
         {!hasContent ? (
           <Card>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              <Video className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">Nenhum treinamento atribuído</p>
-              <p className="text-sm">Seu acesso mostra apenas os cursos selecionados pelo administrador</p>
+            <CardContent className="p-6 sm:p-8 text-center text-muted-foreground">
+              <Video className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 opacity-40" />
+              <p className="font-medium text-sm">Nenhum treinamento atribuído</p>
+              <p className="text-xs">Seu acesso mostra apenas os cursos selecionados pelo administrador</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* Cursos with modules */}
             {myCursos.map(curso => {
               const modulos = getModulos(curso.id);
@@ -545,68 +547,79 @@ export default function PortalTreinamentos() {
 
               return (
                 <Card key={curso.id} className="overflow-hidden">
-                  <div className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleExpand(curso.id)}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="bg-primary/10 p-2 rounded-lg">
-                          <BookOpen className="h-5 w-5 text-primary" />
+                  {/* Curso header */}
+                  <div className="p-3 sm:p-4 cursor-pointer hover:bg-muted/50 active:bg-muted/70 transition-colors" onClick={() => toggleExpand(curso.id)}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <div className="bg-primary/10 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+                          <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground">{curso.titulo}</h3>
-                          {curso.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{curso.descricao}</p>}
+                          <h3 className="font-semibold text-foreground text-sm leading-tight truncate">{curso.titulo}</h3>
+                          {curso.descricao && <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 mt-0.5">{curso.descricao}</p>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant={cursoCompleted === cursoTotal && cursoTotal > 0 ? "default" : "outline"} className={cursoCompleted === cursoTotal && cursoTotal > 0 ? "bg-emerald-100 text-emerald-700" : ""}>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Badge variant={cursoCompleted === cursoTotal && cursoTotal > 0 ? "default" : "outline"} className={`text-[10px] sm:text-xs px-1.5 sm:px-2 ${cursoCompleted === cursoTotal && cursoTotal > 0 ? "bg-emerald-100 text-emerald-700" : ""}`}>
                           {cursoCompleted}/{cursoTotal}
                         </Badge>
-                        {isExpanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                        {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                       </div>
                     </div>
                     {cursoTotal > 0 && (
-                      <Progress value={(cursoCompleted / cursoTotal) * 100} className="h-1.5 mt-3" />
+                      <Progress value={(cursoCompleted / cursoTotal) * 100} className="h-1 sm:h-1.5 mt-2.5" />
                     )}
                   </div>
 
+                  {/* Module list */}
                   {isExpanded && (
                     <div className="border-t divide-y">
                       {modulos.length === 0 ? (
-                        <div className="p-4 text-center text-muted-foreground text-sm">Nenhum módulo disponível</div>
+                        <div className="p-3 text-center text-muted-foreground text-xs">Nenhum módulo disponível</div>
                       ) : modulos.map((modulo, idx) => {
                         const status = getVideoStatus(modulo.id);
-                        const viz = visualizacoes.find(v => v.video_id === modulo.id && v.funcionario_id === funcionarioId);
                         return (
-                          <div key={modulo.id} className={`p-4 flex items-center gap-4 ${status === "concluido" ? "opacity-75 bg-muted/30" : ""}`}>
-                            <span className="bg-primary/10 text-primary font-bold text-xs rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0">
-                              {String(idx + 1).padStart(2, "0")}
-                            </span>
+                          <div key={modulo.id} className={`p-2.5 sm:p-4 ${status === "concluido" ? "opacity-75 bg-muted/30" : ""}`}>
+                            <div className="flex items-center gap-2 sm:gap-4">
+                              {/* Number */}
+                              <span className="bg-primary/10 text-primary font-bold text-[10px] sm:text-xs rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0">
+                                {String(idx + 1).padStart(2, "0")}
+                              </span>
 
-                            <div className="relative w-20 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
-                              <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                {status === "concluido" ? <CheckCircle className="h-4 w-4 text-emerald-400" /> : <Play className="h-4 w-4 text-white" />}
+                              {/* Thumbnail */}
+                              <div className="relative w-12 sm:w-20 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
+                                <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  {status === "concluido" ? <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-400" /> : <Play className="h-3 w-3 sm:h-4 sm:w-4 text-white" />}
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-foreground text-sm">{modulo.titulo}</h4>
-                              {modulo.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
-                              <div className="mt-1">
-                                {status === "concluido" ? (
-                                  <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído</Badge>
-                                ) : status === "em_andamento" ? (
-                                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700"><Clock className="h-3 w-3 mr-1" />Em andamento</Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>
-                                )}
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-foreground text-xs sm:text-sm leading-tight truncate">{modulo.titulo}</h4>
+                                {modulo.descricao && <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 hidden sm:block">{modulo.descricao}</p>}
+                                <div className="mt-1">
+                                  {status === "concluido" ? (
+                                    <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0"><CheckCircle className="h-2.5 w-2.5 mr-0.5" />Concluído</Badge>
+                                  ) : status === "em_andamento" ? (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200"><Clock className="h-2.5 w-2.5 mr-0.5" />Em andamento</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0"><Clock className="h-2.5 w-2.5 mr-0.5" />Pendente</Badge>
+                                  )}
+                                </div>
                               </div>
-                            </div>
 
-                            <Button variant={status === "concluido" ? "ghost" : "default"} size="sm"
-                              onClick={() => handleStartVideo(modulo)} className={status !== "concluido" ? "bg-primary" : ""}>
-                              {status === "concluido" ? "Rever" : "Assistir"}
-                              <ChevronRight className="h-4 w-4 ml-1" />
-                            </Button>
+                              {/* Action */}
+                              <Button
+                                variant={status === "concluido" ? "ghost" : "default"}
+                                size="sm"
+                                onClick={() => handleStartVideo(modulo)}
+                                className={`text-[10px] sm:text-xs px-2 sm:px-3 h-7 sm:h-8 flex-shrink-0 ${status !== "concluido" ? "bg-primary" : ""}`}
+                              >
+                                {status === "concluido" ? "Rever" : "Assistir"}
+                                <ChevronRight className="h-3 w-3 ml-0.5" />
+                              </Button>
+                            </div>
                           </div>
                         );
                       })}
@@ -616,32 +629,31 @@ export default function PortalTreinamentos() {
               );
             })}
 
-            {/* Legacy videos (no curso) */}
+            {/* Legacy videos */}
             {legacyVideos.map(video => {
               const status = getVideoStatus(video.id);
-              const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
               return (
                 <Card key={video.id} className={`transition-shadow hover:shadow-md ${status === "concluido" ? "opacity-75" : ""}`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="relative w-24 aspect-video bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                  <CardContent className="p-2.5 sm:p-4">
+                    <div className="flex items-center gap-2.5 sm:gap-4">
+                      <div className="relative w-14 sm:w-24 aspect-video bg-muted rounded-lg overflow-hidden flex-shrink-0">
                         <video src={video.video_url} className="w-full h-full object-cover" preload="metadata" />
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          {status === "concluido" ? <CheckCircle className="h-6 w-6 text-emerald-400" /> : <Play className="h-6 w-6 text-white" />}
+                          {status === "concluido" ? <CheckCircle className="h-4 w-4 sm:h-6 sm:w-6 text-emerald-400" /> : <Play className="h-4 w-4 sm:h-6 sm:w-6 text-white" />}
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground text-sm">{video.titulo}</h3>
-                        {video.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{video.descricao}</p>}
-                        <div className="flex gap-2 mt-2">
+                        <h3 className="font-semibold text-foreground text-xs sm:text-sm truncate">{video.titulo}</h3>
+                        {video.descricao && <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 mt-0.5">{video.descricao}</p>}
+                        <div className="mt-1.5">
                           {status === "concluido" ? (
-                            <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído</Badge>
-                          ) : <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>}
+                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5"><CheckCircle className="h-2.5 w-2.5 mr-0.5" />Concluído</Badge>
+                          ) : <Badge variant="outline" className="text-[10px] px-1.5"><Clock className="h-2.5 w-2.5 mr-0.5" />Pendente</Badge>}
                         </div>
                       </div>
                       <Button variant={status === "concluido" ? "ghost" : "default"} size="sm"
-                        onClick={() => handleStartVideo(video)} className={status !== "concluido" ? "bg-primary" : ""}>
-                        {status === "concluido" ? "Rever" : "Assistir"}<ChevronRight className="h-4 w-4 ml-1" />
+                        onClick={() => handleStartVideo(video)} className={`text-[10px] sm:text-xs px-2 sm:px-3 h-7 sm:h-8 flex-shrink-0 ${status !== "concluido" ? "bg-primary" : ""}`}>
+                        {status === "concluido" ? "Rever" : "Assistir"}<ChevronRight className="h-3 w-3 ml-0.5" />
                       </Button>
                     </div>
                   </CardContent>
