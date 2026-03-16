@@ -792,6 +792,31 @@ export default function VideoTreinamentos() {
               <Input value={accessPassword} onChange={e => setAccessPassword(e.target.value)} placeholder="Mínimo 6 caracteres" type="text" />
               <p className="text-xs text-muted-foreground mt-1">A senha será exibida ao funcionário para acesso</p>
             </div>
+            {/* Video selection */}
+            <div>
+              <Label>Cursos / Treinamentos *</Label>
+              <p className="text-xs text-muted-foreground mb-2">Selecione quais treinamentos o funcionário deve cursar</p>
+              {videos.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">Nenhum treinamento cadastrado</p>
+              ) : (
+                <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+                  {videos.map(v => (
+                    <label key={v.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer">
+                      <Checkbox
+                        checked={selectedVideoIds.includes(v.id)}
+                        onCheckedChange={checked => {
+                          setSelectedVideoIds(prev => checked ? [...prev, v.id] : prev.filter(id => id !== v.id));
+                        }}
+                      />
+                      <span className="text-sm font-medium">{v.titulo}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {selectedVideoIds.length > 0 && (
+                <p className="text-xs text-primary mt-1">{selectedVideoIds.length} treinamento(s) selecionado(s)</p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenAccess(false)}>Cancelar</Button>
