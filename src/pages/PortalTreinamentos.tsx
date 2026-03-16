@@ -404,7 +404,7 @@ export default function PortalTreinamentos() {
             </div>
             <Progress value={myVideos.length > 0 ? (completedCount / myVideos.length) * 100 : 0} className="h-3" />
             <p className="text-xs text-muted-foreground mt-2">
-              {completedCount === videos.length && videos.length > 0 ? "🎉 Parabéns! Todos os treinamentos concluídos!" : `${videos.length - completedCount} treinamento(s) pendente(s)`}
+              {completedCount === myVideos.length && myVideos.length > 0 ? "🎉 Parabéns! Todos os treinamentos concluídos!" : `${myVideos.length - completedCount} treinamento(s) pendente(s)`}
             </p>
           </CardContent>
         </Card>
