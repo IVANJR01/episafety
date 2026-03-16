@@ -300,13 +300,14 @@ export default function VideoTreinamentos() {
       const userId = data.id;
 
       // Add to usuarios_liberados with only video_treinamentos permission
-      await supabase.from("usuarios_liberados").upsert({
+      const { error: ulError } = await supabase.from("usuarios_liberados").upsert({
         email: accessEmail.toLowerCase().trim(),
         nome: func?.nome || "",
         empresa_id: empresaId,
         modulos_permitidos: ["video_treinamentos:view"],
         is_principal: false,
-      }, { onConflict: "email,empresa_id" });
+      }, { onConflict: "email" });
+      if (ulError) console.error("UL upsert error:", ulError);
 
       // Update profile
       await supabase.from("profiles").upsert({
