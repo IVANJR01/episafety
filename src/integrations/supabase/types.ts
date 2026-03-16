@@ -136,6 +136,52 @@ export type Database = {
           },
         ]
       }
+      cursos_atribuicao: {
+        Row: {
+          created_at: string
+          curso_id: string
+          empresa_id: string | null
+          funcionario_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          curso_id: string
+          empresa_id?: string | null
+          funcionario_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          curso_id?: string
+          empresa_id?: string | null
+          funcionario_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cursos_atribuicao_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos_video"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_atribuicao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_atribuicao_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cursos_documentos: {
         Row: {
           created_at: string
@@ -167,6 +213,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "cursos_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cursos_video: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          pontuacao_minima: number
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          pontuacao_minima?: number
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          pontuacao_minima?: number
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cursos_video_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresa_config"
@@ -1174,10 +1261,12 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          curso_id: string | null
           descricao: string | null
           duracao_segundos: number | null
           empresa_id: string | null
           id: string
+          ordem: number
           pontuacao_minima: number | null
           titulo: string
           updated_at: string
@@ -1186,10 +1275,12 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          curso_id?: string | null
           descricao?: string | null
           duracao_segundos?: number | null
           empresa_id?: string | null
           id?: string
+          ordem?: number
           pontuacao_minima?: number | null
           titulo: string
           updated_at?: string
@@ -1198,16 +1289,25 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          curso_id?: string | null
           descricao?: string | null
           duracao_segundos?: number | null
           empresa_id?: string | null
           id?: string
+          ordem?: number
           pontuacao_minima?: number | null
           titulo?: string
           updated_at?: string
           video_url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "videos_treinamento_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos_video"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "videos_treinamento_empresa_id_fkey"
             columns: ["empresa_id"]
