@@ -158,9 +158,9 @@ export default function UsuariosLiberados() {
           variant: "destructive",
         });
       } else {
-        if (empresaId && fnData?.user_id) {
+        if (targetEmpresaId && fnData?.user_id) {
           await (supabase.from as any)("profiles")
-            .update({ empresa_id: empresaId })
+            .update({ empresa_id: targetEmpresaId })
             .eq("user_id", fnData.user_id);
         }
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado com sucesso!" : "Usuário criado e liberado com sucesso!" });
