@@ -210,10 +210,7 @@ export default function PortalTreinamentos() {
     }
     setWatchingVideo(video);
     setVideoEnded(false);
-    setShowQuiz(false);
-    setQuizResult(null);
     setShowSignature(false);
-    setRespostas({});
     setIsPlaying(true);
     setIsMuted(false);
     setCurrentTime(0);
