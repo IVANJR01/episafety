@@ -601,109 +601,97 @@ export default function ExamesModule() {
       </div>
 
       {/* Indicadores */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-7">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-7">
         {/* Conformidade */}
-        <Card className="col-span-2 lg:col-span-1 border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
-          <CardContent className="p-4 sm:p-5 flex flex-col items-center justify-center text-center gap-2">
-            <div className="relative w-20 h-20">
-              <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/10 to-transparent">
+          <CardContent className="p-4 flex flex-col items-center justify-center text-center gap-2">
+            <div className="relative w-16 h-16">
+              <svg className="w-16 h-16 -rotate-90" viewBox="0 0 80 80">
                 <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
                 <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--primary))" strokeWidth="8"
                   strokeDasharray={`${conformidade * 2.136} 213.6`}
                   strokeLinecap="round" className="transition-all duration-1000" />
               </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-primary">{conformidade}%</span>
+              <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-primary">{conformidade}%</span>
             </div>
             <p className="text-xs font-medium text-muted-foreground">Conformidade</p>
           </CardContent>
         </Card>
 
         {/* Total */}
-        <Card className="group hover:shadow-md transition-all duration-200 hover:border-primary/30">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="p-2 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-              <span className="text-3xl font-bold text-foreground">{totalItems}</span>
+        <Card className="group hover:shadow-md transition-all cursor-pointer" onClick={() => setStatusFilter("todos")}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <span className="text-2xl font-bold text-foreground">{totalItems}</span>
             </div>
             <p className="text-xs font-medium text-muted-foreground">Total de Exames</p>
-            <Progress value={100} className="mt-2 h-1.5" />
+            <Progress value={100} className="mt-2 h-1" />
           </CardContent>
         </Card>
 
         {/* Vencidos */}
-        <Card className="group hover:shadow-md transition-all duration-200 hover:border-destructive/30 cursor-pointer"
+        <Card className="group hover:shadow-md transition-all cursor-pointer hover:border-destructive/30"
           onClick={() => setStatusFilter(statusFilter === "vencido" ? "todos" : "vencido")}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="p-2 rounded-xl bg-destructive/10 text-destructive group-hover:bg-destructive group-hover:text-destructive-foreground transition-colors">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <span className="text-3xl font-bold text-destructive">{vencidosCount}</span>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+              <span className="text-2xl font-bold text-destructive">{vencidosCount}</span>
             </div>
             <p className="text-xs font-medium text-muted-foreground">Vencidos</p>
-            <Progress value={totalItems > 0 ? (vencidosCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-destructive" />
+            <Progress value={totalItems > 0 ? (vencidosCount / totalItems) * 100 : 0} className="mt-2 h-1 [&>div]:bg-destructive" />
           </CardContent>
         </Card>
 
-        {/* Atenção */}
-        <Card className="group hover:shadow-md transition-all duration-200 hover:border-warning/30 cursor-pointer"
+        {/* A Vencer */}
+        <Card className="group hover:shadow-md transition-all cursor-pointer hover:border-warning/30"
           onClick={() => setStatusFilter(statusFilter === "atencao" ? "todos" : "atencao")}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="p-2 rounded-xl bg-warning/10 text-warning group-hover:bg-warning group-hover:text-warning-foreground transition-colors">
-                <Clock className="w-4 h-4" />
-              </div>
-              <span className="text-3xl font-bold text-warning">{atencaoCount}</span>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <Clock className="w-4 h-4 text-warning" />
+              <span className="text-2xl font-bold text-warning">{atencaoCount}</span>
             </div>
             <p className="text-xs font-medium text-muted-foreground">A Vencer</p>
-            <Progress value={totalItems > 0 ? (atencaoCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-warning" />
+            <Progress value={totalItems > 0 ? (atencaoCount / totalItems) * 100 : 0} className="mt-2 h-1 [&>div]:bg-warning" />
           </CardContent>
         </Card>
 
         {/* Pendentes */}
-        <Card className="group hover:shadow-md transition-all duration-200 hover:border-blue-500/30 cursor-pointer"
+        <Card className="group hover:shadow-md transition-all cursor-pointer hover:border-primary/30"
           onClick={() => setStatusFilter(statusFilter === "pendente" ? "todos" : "pendente")}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                <Clock className="w-4 h-4" />
-              </div>
-              <span className="text-3xl font-bold text-blue-500">{pendentesCount}</span>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <Clock className="w-4 h-4 text-primary" />
+              <span className="text-2xl font-bold text-primary">{pendentesCount}</span>
             </div>
             <p className="text-xs font-medium text-muted-foreground">Pendentes</p>
-            <Progress value={totalItems > 0 ? (pendentesCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-blue-500" />
+            <Progress value={totalItems > 0 ? (pendentesCount / totalItems) * 100 : 0} className="mt-2 h-1" />
+          </CardContent>
+        </Card>
+
+        {/* Sem Exame */}
+        <Card className="group hover:shadow-md transition-all cursor-pointer hover:border-destructive/30"
+          onClick={() => setStatusFilter(statusFilter === "sem_exame" ? "todos" : "sem_exame")}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <UserX className="w-4 h-4 text-destructive" />
+              <span className="text-2xl font-bold text-destructive">{semExameCount}</span>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Sem Exame</p>
+            <Progress value={funcionariosAtivos.length > 0 ? (semExameCount / funcionariosAtivos.length) * 100 : 0} className="mt-2 h-1 [&>div]:bg-destructive" />
           </CardContent>
         </Card>
 
         {/* Vigentes */}
-        <Card className="group hover:shadow-md transition-all duration-200 hover:border-success/30 cursor-pointer"
+        <Card className="group hover:shadow-md transition-all cursor-pointer hover:border-success/30"
           onClick={() => setStatusFilter(statusFilter === "vigente" ? "todos" : "vigente")}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="p-2 rounded-xl bg-success/10 text-success group-hover:bg-success group-hover:text-success-foreground transition-colors">
-                <CheckCircle className="w-4 h-4" />
-
-        {/* Sem Exame */}
-        <Card className="group hover:shadow-md transition-all duration-200 hover:border-orange-500/30 cursor-pointer"
-          onClick={() => setStatusFilter(statusFilter === "sem_exame" as any ? "todos" : "sem_exame" as any)}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
-                <UserX className="w-4 h-4" />
-              </div>
-              <span className="text-3xl font-bold text-orange-500">{semExameCount}</span>
-            </div>
-            <p className="text-xs font-medium text-muted-foreground">Sem Exame</p>
-            <Progress value={funcionarios.length > 0 ? (semExameCount / funcionarios.length) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-orange-500" />
-          </CardContent>
-        </Card>
-      </div>
-              <span className="text-3xl font-bold text-success">{vigentesCount}</span>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-1">
+              <CheckCircle className="w-4 h-4 text-success" />
+              <span className="text-2xl font-bold text-success">{vigentesCount}</span>
             </div>
             <p className="text-xs font-medium text-muted-foreground">Vigentes</p>
-            <Progress value={totalItems > 0 ? (vigentesCount / totalItems) * 100 : 0} className="mt-2 h-1.5 [&>div]:bg-success" />
+            <Progress value={totalItems > 0 ? (vigentesCount / totalItems) * 100 : 0} className="mt-2 h-1 [&>div]:bg-success" />
           </CardContent>
         </Card>
       </div>
