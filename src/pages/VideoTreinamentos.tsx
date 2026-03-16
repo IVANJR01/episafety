@@ -88,9 +88,9 @@ export default function VideoTreinamentos() {
 
   const [form, setForm] = useState({ titulo: "", descricao: "", pontuacao_minima: "70" });
 
-  const canCreate = isSuperAdmin || isPrincipal || hasPermission(modulosPermitidos, "video_treinamentos", "create");
-  const canEdit = isSuperAdmin || isPrincipal || hasPermission(modulosPermitidos, "video_treinamentos", "edit");
-  const canDelete = isSuperAdmin || isPrincipal || hasPermission(modulosPermitidos, "video_treinamentos", "delete");
+  const canCreate = isSuperAdmin;
+  const canEdit = isSuperAdmin;
+  const canDelete = isSuperAdmin;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
