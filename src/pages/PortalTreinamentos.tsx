@@ -288,24 +288,23 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleFullscreen = async () => {
-    const video = videoRef.current;
     const container = videoContainerRef.current;
-    if (!video || !container) return;
+    if (!container) return;
 
-    // iOS Safari: use webkitEnterFullscreen on video element
-    if ((video as any).webkitEnterFullscreen) {
-      try {
-        (video as any).webkitEnterFullscreen();
-        return;
-      } catch {}
-    }
-
-    // Standard fullscreen on container
-    if (!document.fullscreenElement) {
-      await container.requestFullscreen().catch(() => {});
+    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+      // Try standard first, then webkit (Safari)
+      if (container.requestFullscreen) {
+        await container.requestFullscreen().catch(() => {});
+      } else if ((container as any).webkitRequestFullscreen) {
+        (container as any).webkitRequestFullscreen();
+      }
       setIsFullscreen(true);
     } else {
-      await document.exitFullscreen().catch(() => {});
+      if (document.exitFullscreen) {
+        await document.exitFullscreen().catch(() => {});
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
       setIsFullscreen(false);
     }
   };
