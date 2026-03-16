@@ -426,6 +426,70 @@ export default function VideoTreinamentos() {
     setCreatingAccess(false);
   };
 
+  // ============ MANAGE COURSES FOR EXISTING EMPLOYEE ============
+  const filteredManageFuncionarios = useMemo(() => {
+    // Only show employees that already have curso assignments
+    const assignedFuncIds = new Set(cursosAtribuicao.map(a => a.funcionario_id));
+    const assigned = funcionarios.filter(f => assignedFuncIds.has(f.id));
+    if (!manageFuncSearch.trim()) return assigned.sort((a, b) => a.nome.localeCompare(b.nome));
+    const q = normalize(manageFuncSearch);
+    return assigned.filter(f => normalize(f.nome).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [funcionarios, cursosAtribuicao, manageFuncSearch]);
+
+  const handleOpenManageCursos = () => {
+    setManageFuncId(""); setManageFuncSearch(""); setShowManageFuncList(false);
+    setManageCursoIds([]); setOpenManageCursos(true);
+  };
+
+  const handleSelectManageFunc = (funcId: string) => {
+    setManageFuncId(funcId);
+    setManageFuncSearch(funcionarios.find(f => f.id === funcId)?.nome || "");
+    setShowManageFuncList(false);
+    // Pre-select currently assigned courses
+    const current = cursosAtribuicao.filter(a => a.funcionario_id === funcId).map(a => a.curso_id);
+    setManageCursoIds(current);
+  };
+
+  const handleSaveManageCursos = async () => {
+    if (!manageFuncId) {
+      toast({ title: "Selecione um funcionário", variant: "destructive" });
+      return;
+    }
+    if (manageCursoIds.length === 0) {
+      toast({ title: "Selecione ao menos um curso", variant: "destructive" });
+      return;
+    }
+    setSavingManage(true);
+    try {
+      // Replace curso assignments
+      await supabase.from("cursos_atribuicao").delete().eq("funcionario_id", manageFuncId);
+      const assignments = manageCursoIds.map(cid => ({
+        curso_id: cid,
+        funcionario_id: manageFuncId,
+        empresa_id: empresaId,
+      }));
+      const { error } = await supabase.from("cursos_atribuicao").insert(assignments);
+      if (error) throw error;
+
+      // Sync videos_atribuicao
+      await supabase.from("videos_atribuicao").delete().eq("funcionario_id", manageFuncId);
+      const videoIds = manageCursoIds.flatMap(cid => getModulos(cid).map(m => m.id));
+      if (videoIds.length > 0) {
+        const videoAssignments = videoIds.map(vid => ({
+          video_id: vid, funcionario_id: manageFuncId, empresa_id: empresaId,
+        }));
+        await supabase.from("videos_atribuicao").upsert(videoAssignments, { onConflict: "video_id,funcionario_id" });
+      }
+
+      toast({ title: "Cursos atualizados!", description: `${manageCursoIds.length} curso(s) atribuído(s).` });
+      setOpenManageCursos(false);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    }
+    setSavingManage(false);
+  };
+
   // ============ STATS ============
   const stats = useMemo(() => {
     const totalCursos = cursos.length;
