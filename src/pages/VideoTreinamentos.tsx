@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, Search, Video, Upload, Play, CheckCircle, Clock, AlertTriangle,
   Eye, Award, Users, BarChart3, Pencil, X, ChevronDown, ChevronUp
@@ -78,6 +79,7 @@ export default function VideoTreinamentos() {
   const [accessFuncSearch, setAccessFuncSearch] = useState("");
   const [creatingAccess, setCreatingAccess] = useState(false);
   const [showAccessFuncList, setShowAccessFuncList] = useState(false);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
 
   // Dialog states
   const [openForm, setOpenForm] = useState(false);
@@ -300,13 +302,14 @@ export default function VideoTreinamentos() {
       const userId = data.id;
 
       // Add to usuarios_liberados with only video_treinamentos permission
-      await supabase.from("usuarios_liberados").upsert({
+      const { error: ulError } = await supabase.from("usuarios_liberados").upsert({
         email: accessEmail.toLowerCase().trim(),
         nome: func?.nome || "",
         empresa_id: empresaId,
         modulos_permitidos: ["video_treinamentos:view"],
         is_principal: false,
-      }, { onConflict: "email,empresa_id" });
+      }, { onConflict: "email" });
+      if (ulError) console.error("UL upsert error:", ulError);
 
       // Update profile
       await supabase.from("profiles").upsert({
@@ -316,12 +319,24 @@ export default function VideoTreinamentos() {
         empresa_id: empresaId,
       }, { onConflict: "user_id" });
 
+      // Save video assignments
+      if (selectedVideoIds.length > 0) {
+        const assignments = selectedVideoIds.map(vid => ({
+          video_id: vid,
+          funcionario_id: accessFuncId,
+          empresa_id: empresaId,
+        }));
+        const { error: assignError } = await supabase.from("videos_atribuicao").upsert(assignments, { onConflict: "video_id,funcionario_id" });
+        if (assignError) console.error("Assignment error:", assignError);
+      }
+
       toast({ title: "Acesso criado!", description: `Login: ${accessEmail} / Senha: ${accessPassword}` });
       setOpenAccess(false);
       setAccessFuncId("");
       setAccessEmail("");
       setAccessPassword("");
       setAccessFuncSearch("");
+      setSelectedVideoIds([]);
     } catch (err: any) {
       toast({ title: "Erro ao criar acesso", description: err.message, variant: "destructive" });
     }
@@ -349,7 +364,7 @@ export default function VideoTreinamentos() {
         </div>
         <div className="flex gap-2">
           {(isSuperAdmin || isPrincipal) && (
-            <Button variant="outline" onClick={() => { setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch(""); setShowAccessFuncList(false); setOpenAccess(true); }}>
+            <Button variant="outline" onClick={() => { setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch(""); setShowAccessFuncList(false); setSelectedVideoIds([]); setOpenAccess(true); }}>
               <Users className="h-4 w-4 mr-2" /> Criar Acesso Funcionário
             </Button>
           )}
@@ -777,6 +792,31 @@ export default function VideoTreinamentos() {
               <Label>Senha *</Label>
               <Input value={accessPassword} onChange={e => setAccessPassword(e.target.value)} placeholder="Mínimo 6 caracteres" type="text" />
               <p className="text-xs text-muted-foreground mt-1">A senha será exibida ao funcionário para acesso</p>
+            </div>
+            {/* Video selection */}
+            <div>
+              <Label>Cursos / Treinamentos *</Label>
+              <p className="text-xs text-muted-foreground mb-2">Selecione quais treinamentos o funcionário deve cursar</p>
+              {videos.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">Nenhum treinamento cadastrado</p>
+              ) : (
+                <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+                  {videos.map(v => (
+                    <label key={v.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer">
+                      <Checkbox
+                        checked={selectedVideoIds.includes(v.id)}
+                        onCheckedChange={checked => {
+                          setSelectedVideoIds(prev => checked ? [...prev, v.id] : prev.filter(id => id !== v.id));
+                        }}
+                      />
+                      <span className="text-sm font-medium">{v.titulo}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {selectedVideoIds.length > 0 && (
+                <p className="text-xs text-primary mt-1">{selectedVideoIds.length} treinamento(s) selecionado(s)</p>
+              )}
             </div>
           </div>
           <DialogFooter>

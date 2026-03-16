@@ -72,6 +72,7 @@ export default function PortalTreinamentos() {
 
   // Fetch linked funcionario_id for the logged user
   const [funcionarioId, setFuncionarioId] = useState<string | null>(null);
+  const [assignedVideoIds, setAssignedVideoIds] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -80,16 +81,30 @@ export default function PortalTreinamentos() {
       const { data: profile } = await supabase.from("profiles").select("nome, empresa_id").eq("user_id", user?.id || "").single();
       if (profile) setUserName(profile.nome || user?.email || "");
 
+      let foundFuncId: string | null = null;
+
       // Find linked funcionario by name/email
       if (profile?.empresa_id) {
         const { data: funcs } = await supabase.from("funcionarios").select("id, nome").eq("empresa_id", profile.empresa_id);
-        // Try matching by name
         const matched = funcs?.find(f => f.nome.toLowerCase() === (profile.nome || "").toLowerCase());
-        if (matched) setFuncionarioId(matched.id);
-        else if (funcs && funcs.length > 0) {
-          // Fallback: use first func (admin created access for this user)
-          setFuncionarioId(funcs[0].id);
-        }
+        if (matched) foundFuncId = matched.id;
+        else if (funcs && funcs.length > 0) foundFuncId = funcs[0].id;
+      }
+
+      if (!foundFuncId) {
+        // Try without empresa filter
+        const { data: allFuncs } = await supabase.from("funcionarios").select("id, nome");
+        const matched = allFuncs?.find(f => f.nome.toLowerCase() === (profile?.nome || "").toLowerCase());
+        if (matched) foundFuncId = matched.id;
+      }
+
+      setFuncionarioId(foundFuncId);
+
+      // Get assigned videos for this employee
+      if (foundFuncId) {
+        const { data: assignments } = await supabase.from("videos_atribuicao").select("video_id").eq("funcionario_id", foundFuncId);
+        const ids = (assignments || []).map((a: any) => a.video_id);
+        setAssignedVideoIds(ids);
       }
 
       // Get all global videos
@@ -115,9 +130,15 @@ export default function PortalTreinamentos() {
     return "em_andamento";
   };
 
+  // Only show assigned videos (or all if no assignments exist)
+  const myVideos = useMemo(() => {
+    if (assignedVideoIds.length === 0) return videos;
+    return videos.filter(v => assignedVideoIds.includes(v.id));
+  }, [videos, assignedVideoIds]);
+
   const completedCount = useMemo(() => {
-    return videos.filter(v => getVideoStatus(v.id) === "concluido").length;
-  }, [videos, visualizacoes, funcionarioId]);
+    return myVideos.filter(v => getVideoStatus(v.id) === "concluido").length;
+  }, [myVideos, visualizacoes, funcionarioId]);
 
   const handleStartVideo = (video: VideoTreinamento) => {
     setWatchingVideo(video);
@@ -379,18 +400,18 @@ export default function PortalTreinamentos() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-foreground">Seu progresso</span>
-              <span className="text-sm font-bold text-primary">{completedCount}/{videos.length}</span>
+              <span className="text-sm font-bold text-primary">{completedCount}/{myVideos.length}</span>
             </div>
-            <Progress value={videos.length > 0 ? (completedCount / videos.length) * 100 : 0} className="h-3" />
+            <Progress value={myVideos.length > 0 ? (completedCount / myVideos.length) * 100 : 0} className="h-3" />
             <p className="text-xs text-muted-foreground mt-2">
-              {completedCount === videos.length && videos.length > 0 ? "🎉 Parabéns! Todos os treinamentos concluídos!" : `${videos.length - completedCount} treinamento(s) pendente(s)`}
+              {completedCount === myVideos.length && myVideos.length > 0 ? "🎉 Parabéns! Todos os treinamentos concluídos!" : `${myVideos.length - completedCount} treinamento(s) pendente(s)`}
             </p>
           </CardContent>
         </Card>
 
         {/* Video list */}
         <div className="space-y-3">
-          {videos.length === 0 ? (
+          {myVideos.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
                 <Video className="h-12 w-12 mx-auto mb-3 opacity-40" />
@@ -398,7 +419,7 @@ export default function PortalTreinamentos() {
                 <p className="text-sm">Aguarde novos treinamentos serem publicados</p>
               </CardContent>
             </Card>
-          ) : videos.map(video => {
+          ) : myVideos.map(video => {
             const status = getVideoStatus(video.id);
             const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
             return (

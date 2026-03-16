@@ -1067,6 +1067,52 @@ export type Database = {
           },
         ]
       }
+      videos_atribuicao: {
+        Row: {
+          created_at: string
+          empresa_id: string | null
+          funcionario_id: string
+          id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id?: string | null
+          funcionario_id: string
+          id?: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string | null
+          funcionario_id?: string
+          id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videos_atribuicao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "videos_atribuicao_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "videos_atribuicao_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos_treinamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       videos_perguntas: {
         Row: {
           created_at: string
