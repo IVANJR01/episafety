@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2, Crown, GitBranch } from "lucide-react";
+import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2, Crown, GitBranch, Search, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { MODULOS, ACOES, allPermissions, allActionsForModule } from "@/lib/permissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface UsuarioLiberado {
   id: string;
@@ -47,8 +50,20 @@ export default function UsuariosLiberados() {
   const [novoEmpresaId, setNovoEmpresaId] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [savingPerms, setSavingPerms] = useState<string | null>(null);
+
+  // Filters
+  const [filterEmail, setFilterEmail] = useState("");
+  const [filterNome, setFilterNome] = useState("");
+  const [filterEmpresa, setFilterEmpresa] = useState("");
+
+  // Dialog states
+  const [newOpen, setNewOpen] = useState(false);
+  const [permsUserId, setPermsUserId] = useState<string | null>(null);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 25;
 
   useEffect(() => {
     loadUsuarios();
@@ -71,7 +86,7 @@ export default function UsuariosLiberados() {
     }
     const { data } = await (supabase.from as any)("usuarios_liberados")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("nome", { ascending: true });
     if (data) { setUsuarios(data); setCachedData("usuarios_liberados", data); }
   };
 
@@ -81,40 +96,28 @@ export default function UsuariosLiberados() {
     return map;
   }, [empresas]);
 
-  // Available units: own empresa + filiais
   const unidadesDisponiveis = useMemo(() => {
     if (isSuperAdmin) return empresas;
     if (!empresaId) return [];
     return empresas.filter(e => e.id === empresaId || e.empresa_pai_id === empresaId);
   }, [empresas, empresaId, isSuperAdmin]);
 
-  const groupedByEmpresa = useMemo(() => {
-    const groups: { empresaId: string | null; empresaNome: string; users: UsuarioLiberado[] }[] = [];
-    const map = new Map<string, UsuarioLiberado[]>();
-
-    usuarios.forEach(u => {
-      const key = u.empresa_id || "__sem_empresa__";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(u);
+  const filteredUsuarios = useMemo(() => {
+    return usuarios.filter(u => {
+      if (filterEmail && !u.email.toLowerCase().includes(filterEmail.toLowerCase())) return false;
+      if (filterNome && !(u.nome || "").toLowerCase().includes(filterNome.toLowerCase())) return false;
+      if (filterEmpresa) {
+        const empNome = u.empresa_id ? (empresaMap[u.empresa_id] || "") : "";
+        if (!empNome.toLowerCase().includes(filterEmpresa.toLowerCase())) return false;
+      }
+      return true;
     });
+  }, [usuarios, filterEmail, filterNome, filterEmpresa, empresaMap]);
 
-    // Sort: companies with names first, then "sem empresa"
-    const keys = Array.from(map.keys()).sort((a, b) => {
-      if (a === "__sem_empresa__") return 1;
-      if (b === "__sem_empresa__") return -1;
-      return (empresaMap[a] || "").localeCompare(empresaMap[b] || "");
-    });
+  const totalPages = Math.max(1, Math.ceil(filteredUsuarios.length / pageSize));
+  const paginatedUsuarios = filteredUsuarios.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-    keys.forEach(key => {
-      groups.push({
-        empresaId: key === "__sem_empresa__" ? null : key,
-        empresaNome: key === "__sem_empresa__" ? "Sem empresa vinculada" : (empresaMap[key] || "Empresa desconhecida"),
-        users: map.get(key)!,
-      });
-    });
-
-    return groups;
-  }, [usuarios, empresaMap]);
+  useEffect(() => { setCurrentPage(1); }, [filterEmail, filterNome, filterEmpresa]);
 
   const handleAddUser = async () => {
     if (!novoEmail.trim() || !novaSenha.trim()) {
@@ -141,11 +144,7 @@ export default function UsuariosLiberados() {
       });
 
       if (fnError || (fnData?.error && !fnData?.already_exists)) {
-        toast({
-          title: "Erro ao criar conta",
-          description: fnData?.error || fnError?.message || "Erro desconhecido",
-          variant: "destructive",
-        });
+        toast({ title: "Erro ao criar conta", description: fnData?.error || fnError?.message, variant: "destructive" });
         setAddingUser(false);
         return;
       }
@@ -160,22 +159,14 @@ export default function UsuariosLiberados() {
       });
 
       if (error) {
-        toast({
-          title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast({ title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar", description: error.message, variant: "destructive" });
       } else {
         if (targetEmpresaId && fnData?.user_id) {
-          await (supabase.from as any)("profiles")
-            .update({ empresa_id: targetEmpresaId })
-            .eq("user_id", fnData.user_id);
+          await (supabase.from as any)("profiles").update({ empresa_id: targetEmpresaId }).eq("user_id", fnData.user_id);
         }
-        toast({ title: fnData?.already_exists ? "Usuário existente vinculado com sucesso!" : "Usuário criado e liberado com sucesso!" });
-        setNovoEmail("");
-        setNovoNome("");
-        setNovaSenha("");
-        setNovoEmpresaId("");
+        toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado com sucesso!" });
+        setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId("");
+        setNewOpen(false);
         await loadUsuarios();
       }
     } catch (err: any) {
@@ -190,7 +181,7 @@ export default function UsuariosLiberados() {
       const cached = getCachedData<UsuarioLiberado>("usuarios_liberados") || [];
       setCachedData("usuarios_liberados", cached.filter(u => u.id !== id));
       setUsuarios(prev => prev.filter(u => u.id !== id));
-      toast({ title: "Removido offline", description: "Será sincronizado quando houver conexão." });
+      toast({ title: "Removido offline" });
       return;
     }
     const { error } = await (supabase.from as any)("usuarios_liberados").delete().eq("id", id);
@@ -207,9 +198,7 @@ export default function UsuariosLiberados() {
       prev.map(u => {
         if (u.id !== userId) return u;
         const current = u.modulos_permitidos || [];
-        const updated = current.includes(permKey)
-          ? current.filter(p => p !== permKey)
-          : [...current, permKey];
+        const updated = current.includes(permKey) ? current.filter(p => p !== permKey) : [...current, permKey];
         return { ...u, modulos_permitidos: updated };
       })
     );
@@ -223,11 +212,7 @@ export default function UsuariosLiberados() {
         const modulePerms = allActionsForModule(moduleKey);
         const hasAll = modulePerms.every(p => current.includes(p));
         const cleaned = current.filter(p => p !== moduleKey && !modulePerms.includes(p));
-        if (hasAll) {
-          return { ...u, modulos_permitidos: cleaned };
-        } else {
-          return { ...u, modulos_permitidos: [...cleaned, ...modulePerms] };
-        }
+        return { ...u, modulos_permitidos: hasAll ? cleaned : [...cleaned, ...modulePerms] };
       })
     );
   };
@@ -239,9 +224,7 @@ export default function UsuariosLiberados() {
 
     if (!isOnline()) {
       addToSyncQueue({ table: "usuarios_liberados", type: "update", payload: { id: userId, modulos_permitidos: user.modulos_permitidos || [] } });
-      const cached = getCachedData<UsuarioLiberado>("usuarios_liberados") || [];
-      setCachedData("usuarios_liberados", cached.map(u => u.id === userId ? { ...u, modulos_permitidos: user.modulos_permitidos } : u));
-      toast({ title: "Permissões salvas offline", description: "Será sincronizado quando houver conexão." });
+      toast({ title: "Permissões salvas offline" });
       setSavingPerms(null);
       return;
     }
@@ -253,20 +236,17 @@ export default function UsuariosLiberados() {
       toast({ title: "Erro ao salvar permissões", variant: "destructive" });
     } else {
       toast({ title: "Permissões atualizadas!" });
+      setPermsUserId(null);
     }
     setSavingPerms(null);
   };
 
   const selectAll = (userId: string) => {
-    setUsuarios(prev =>
-      prev.map(u => u.id === userId ? { ...u, modulos_permitidos: allPermissions() } : u)
-    );
+    setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, modulos_permitidos: allPermissions() } : u));
   };
 
   const deselectAll = (userId: string) => {
-    setUsuarios(prev =>
-      prev.map(u => u.id === userId ? { ...u, modulos_permitidos: [] } : u)
-    );
+    setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, modulos_permitidos: [] } : u));
   };
 
   const getModulePermCount = (perms: string[], moduleKey: string): number => {
@@ -283,12 +263,8 @@ export default function UsuariosLiberados() {
     const user = usuarios.find(u => u.id === userId);
     if (!user) return;
     const newVal = !user.is_principal;
-
-    // If marking as principal, set full permissions automatically
     const updates: any = { is_principal: newVal };
-    if (newVal) {
-      updates.modulos_permitidos = allPermissions();
-    }
+    if (newVal) updates.modulos_permitidos = allPermissions();
 
     setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, is_principal: newVal, ...(newVal ? { modulos_permitidos: allPermissions() } : {}) } : u));
 
@@ -303,163 +279,179 @@ export default function UsuariosLiberados() {
     }
   };
 
-  const renderUserRow = (u: UsuarioLiberado) => {
-    const isExpanded = expandedId === u.id;
-    const perms = u.modulos_permitidos || [];
-    const totalPerms = MODULOS.reduce((s, m) => s + getModulePermCount(perms, m.key), 0);
-    const maxPerms = MODULOS.length * ACOES.length;
-
-    return (
-      <div key={u.id} className="rounded-lg border bg-card">
-        <div className="flex items-center justify-between p-3">
-          <button
-            className="flex items-center gap-2 flex-1 text-left"
-            onClick={() => setExpandedId(isExpanded ? null : u.id)}
-          >
-            {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-            <div className="flex items-center gap-2">
-              {u.is_principal && <Crown className="w-4 h-4 text-amber-500" />}
-              <span className="font-medium text-sm">{u.nome || "—"}</span>
-              <span className="text-muted-foreground text-sm">{u.email}</span>
-              {u.is_principal && <span className="text-xs bg-amber-500/10 text-amber-700 px-1.5 py-0.5 rounded font-medium">Principal</span>}
-            </div>
-          </button>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-muted-foreground mr-2">
-              {totalPerms}/{maxPerms} permissões
-            </span>
-            <Button variant="ghost" size="icon" onClick={() => handleRemoveUser(u.id)}>
-              <Trash2 className="w-4 h-4 text-destructive" />
-            </Button>
-          </div>
-        </div>
-
-        {isExpanded && (
-          <div className="px-4 pb-4 border-t pt-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Label className="text-sm font-medium">Permissões por Módulo</Label>
-                <Button
-                  variant={u.is_principal ? "default" : "outline"}
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={() => handleTogglePrincipal(u.id)}
-                >
-                  <Crown className="w-3.5 h-3.5" />
-                  {u.is_principal ? "Principal ✓" : "Definir como Principal"}
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => selectAll(u.id)} className="text-xs text-primary hover:underline">
-                  Selecionar todos
-                </button>
-                <span className="text-muted-foreground text-xs">|</span>
-                <button onClick={() => deselectAll(u.id)} className="text-xs text-muted-foreground hover:underline">
-                  Limpar
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-1">
-                <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
-                {ACOES.map(a => (
-                  <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
-                    {ACAO_ICONS[a.key]} {a.label}
-                  </span>
-                ))}
-              </div>
-
-              {MODULOS.map(mod => {
-                const modulePermCount = getModulePermCount(perms, mod.key);
-                const hasAllModule = modulePermCount === ACOES.length;
-
-                return (
-                  <div
-                    key={mod.key}
-                    className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
-                      modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
-                    }`}
-                  >
-                    <label
-                      className="flex items-center gap-2 cursor-pointer"
-                      onClick={() => toggleModuleAll(u.id, mod.key)}
-                    >
-                      <Checkbox
-                        checked={hasAllModule}
-                        className="pointer-events-none"
-                      />
-                      <span className="text-sm font-medium">{mod.label}</span>
-                    </label>
-
-                    {ACOES.map(acao => (
-                      <div key={acao.key} className="flex justify-center">
-                        <Checkbox
-                          checked={hasModulePerm(perms, mod.key, acao.key)}
-                          onCheckedChange={() => togglePerm(u.id, `${mod.key}:${acao.key}`)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex justify-end pt-1">
-              <Button
-                size="sm"
-                onClick={() => handleSavePermissions(u.id)}
-                disabled={savingPerms === u.id}
-              >
-                <Save className="w-3.5 h-3.5 mr-1.5" />
-                {savingPerms === u.id ? "Salvando..." : "Salvar Permissões"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+  const permsUser = permsUserId ? usuarios.find(u => u.id === permsUserId) : null;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Usuários Liberados</h1>
-        <p className="text-muted-foreground text-sm mt-1">Gerencie quem pode acessar o sistema e suas permissões detalhadas</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Shield className="w-6 h-6" />
+            Lista de Usuários
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Gerencie quem pode acessar o sistema e suas permissões
+          </p>
+        </div>
+        <Button onClick={() => setNewOpen(true)}>
+          <UserPlus className="w-4 h-4 mr-2" />Novo
+        </Button>
       </div>
 
-      <Card className="max-w-4xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Shield className="w-5 h-5" />
-            Controle de Acesso
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Cadastre os e-mails autorizados, defina uma senha e escolha quais módulos e ações cada usuário pode realizar.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                placeholder="Nome do usuário"
-                value={novoNome}
-                onChange={e => setNovoNome(e.target.value)}
-                className="sm:w-40"
-              />
-              <Input
-                type="email"
-                placeholder="email@exemplo.com"
-                value={novoEmail}
-                onChange={e => setNovoEmail(e.target.value)}
-                className="flex-1"
-              />
+      {/* Stats */}
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <span>{filteredUsuarios.length} de {usuarios.length} registros</span>
+        {totalPages > 1 && (
+          <span>Página {currentPage} de {totalPages}</span>
+        )}
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-[30%]">Login</TableHead>
+                  <TableHead className="w-[25%]">Nome</TableHead>
+                  <TableHead className="w-[25%]">Empresa</TableHead>
+                  <TableHead className="w-[20%] text-right">Ações</TableHead>
+                </TableRow>
+                {/* Filter row */}
+                <TableRow>
+                  <TableHead className="py-2">
+                    <Input
+                      placeholder="Filtrar e-mail..."
+                      value={filterEmail}
+                      onChange={e => setFilterEmail(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </TableHead>
+                  <TableHead className="py-2">
+                    <Input
+                      placeholder="Filtrar nome..."
+                      value={filterNome}
+                      onChange={e => setFilterNome(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </TableHead>
+                  <TableHead className="py-2">
+                    <Input
+                      placeholder="Filtrar empresa..."
+                      value={filterEmpresa}
+                      onChange={e => setFilterEmpresa(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedUsuarios.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      Nenhum usuário encontrado.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedUsuarios.map(u => (
+                    <TableRow key={u.id} className="hover:bg-muted/30">
+                      <TableCell className="font-mono text-sm">
+                        <div className="flex items-center gap-2">
+                          {u.is_principal && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                          {u.email}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium uppercase">
+                        {u.nome || "—"}
+                        {u.is_principal && (
+                          <Badge variant="outline" className="ml-2 text-[10px] py-0 px-1.5 text-amber-600 border-amber-300">
+                            Principal
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {u.empresa_id ? (empresaMap[u.empresa_id] || "—") : <span className="text-muted-foreground italic">Sem empresa</span>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={() => setPermsUserId(u.id)}
+                          >
+                            <Pencil className="w-3 h-3" />
+                            Alterar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-destructive hover:text-destructive gap-1"
+                            onClick={() => handleRemoveUser(u.id)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Remover
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 py-3 border-t">
+              <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+                ‹
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                ›
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* New User Dialog */}
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              Novo Usuário
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div>
+              <Label>Nome</Label>
+              <Input placeholder="Nome do usuário" value={novoNome} onChange={e => setNovoNome(e.target.value)} />
+            </div>
+            <div>
+              <Label>E-mail (Login)</Label>
+              <Input type="email" placeholder="email@exemplo.com" value={novoEmail} onChange={e => setNovoEmail(e.target.value)} />
             </div>
             {unidadesDisponiveis.length > 1 && (
               <div>
+                <Label>Vincular à unidade</Label>
                 <Select value={novoEmpresaId} onValueChange={setNovoEmpresaId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Vincular à unidade (empresa atual)" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Empresa atual" />
                   </SelectTrigger>
                   <SelectContent>
                     {unidadesDisponiveis.map(e => (
@@ -474,52 +466,109 @@ export default function UsuariosLiberados() {
                 </Select>
               </div>
             )}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
+            <div>
+              <Label>Senha</Label>
+              <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Senha (mín. 6 caracteres)"
+                  placeholder="Mín. 6 caracteres"
                   value={novaSenha}
                   onChange={e => setNovaSenha(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && handleAddUser()}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <Button onClick={handleAddUser} disabled={addingUser || !novoEmail.trim() || !novaSenha.trim()}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                {addingUser ? "Criando..." : "Adicionar"}
-              </Button>
             </div>
           </div>
+          <DialogFooter>
+            <Button onClick={handleAddUser} disabled={addingUser || !novoEmail.trim() || !novaSenha.trim()}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              {addingUser ? "Criando..." : "Criar e Adicionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          {usuarios.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhum usuário liberado. Qualquer usuário autenticado poderá acessar.
-            </p>
-          ) : (
-            <div className="space-y-6">
-              {groupedByEmpresa.map(group => (
-                <div key={group.empresaId || "none"} className="space-y-2">
-                  <div className="flex items-center gap-2 pb-1 border-b border-border">
-                    <Building2 className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-semibold text-foreground">{group.empresaNome}</h3>
-                    <span className="text-xs text-muted-foreground">({group.users.length} usuário{group.users.length !== 1 ? "s" : ""})</span>
-                  </div>
-                  <div className="space-y-2">
-                    {group.users.map(u => renderUserRow(u))}
+      {/* Permissions Dialog */}
+      <Dialog open={!!permsUserId} onOpenChange={(open) => { if (!open) setPermsUserId(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          {permsUser && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Pencil className="w-5 h-5" />
+                  Permissões — {permsUser.nome || permsUser.email}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant={permsUser.is_principal ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => handleTogglePrincipal(permsUser.id)}
+                  >
+                    <Crown className="w-3.5 h-3.5" />
+                    {permsUser.is_principal ? "Principal ✓" : "Definir como Principal"}
+                  </Button>
+                  <div className="flex gap-2">
+                    <button onClick={() => selectAll(permsUser.id)} className="text-xs text-primary hover:underline">Selecionar todos</button>
+                    <span className="text-muted-foreground text-xs">|</span>
+                    <button onClick={() => deselectAll(permsUser.id)} className="text-xs text-muted-foreground hover:underline">Limpar</button>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="space-y-1">
+                  <div className="grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-1">
+                    <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
+                    {ACOES.map(a => (
+                      <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
+                        {ACAO_ICONS[a.key]} {a.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  {MODULOS.map(mod => {
+                    const perms = permsUser.modulos_permitidos || [];
+                    const modulePermCount = getModulePermCount(perms, mod.key);
+                    const hasAllModule = modulePermCount === ACOES.length;
+
+                    return (
+                      <div
+                        key={mod.key}
+                        className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
+                          modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <label className="flex items-center gap-2 cursor-pointer" onClick={() => toggleModuleAll(permsUser.id, mod.key)}>
+                          <Checkbox checked={hasAllModule} className="pointer-events-none" />
+                          <span className="text-sm font-medium">{mod.label}</span>
+                        </label>
+                        {ACOES.map(acao => (
+                          <div key={acao.key} className="flex justify-center">
+                            <Checkbox
+                              checked={hasModulePerm(perms, mod.key, acao.key)}
+                              onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => handleSavePermissions(permsUser.id)} disabled={savingPerms === permsUser.id}>
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  {savingPerms === permsUser.id ? "Salvando..." : "Salvar Permissões"}
+                </Button>
+              </DialogFooter>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

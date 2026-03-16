@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, Trash2, Users, UserPlus, X, Eye, EyeOff, GitBranch, Crown } from "lucide-react";
+import { Building2, Plus, Trash2, Users, UserPlus, Eye, EyeOff, GitBranch, Crown, Pencil, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Navigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Empresa {
   id: string;
@@ -45,10 +47,16 @@ export default function AdminEmpresas() {
   const [usuariosLiberados, setUsuariosLiberados] = useState<UsuarioLiberado[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Filters
+  const [filterEmpresa, setFilterEmpresa] = useState("");
+  const [filterUsuario, setFilterUsuario] = useState("");
+
+  // New company dialog
   const [newOpen, setNewOpen] = useState(false);
   const [newForm, setNewForm] = useState({ nome: "", cnpj: "", email: "", telefone: "", empresa_pai_id: "" });
   const [saving, setSaving] = useState(false);
 
+  // Assign user dialog
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignEmpresaId, setAssignEmpresaId] = useState<string | null>(null);
   const [assignEmail, setAssignEmail] = useState("");
@@ -82,24 +90,42 @@ export default function AdminEmpresas() {
     return <Navigate to="/" replace />;
   }
 
-    const parentEmpresas = empresas.filter(e => !e.empresa_pai_id);
-    const getFiliais = (parentId: string) => empresas.filter(e => e.empresa_pai_id === parentId);
+  const parentEmpresas = empresas.filter(e => !e.empresa_pai_id);
+  const getFiliais = (parentId: string) => empresas.filter(e => e.empresa_pai_id === parentId);
   const getUsersForEmpresa = (empresaId: string) => profiles.filter(p => p.empresa_id === empresaId);
+
+  const filteredEmpresas = parentEmpresas.filter(e =>
+    !filterEmpresa || e.nome.toLowerCase().includes(filterEmpresa.toLowerCase()) || (e.cnpj || "").includes(filterEmpresa)
+  );
+
+  const allUsers = profiles.filter(p => p.empresa_id);
+  const filteredUsers = allUsers.filter(u => {
+    if (!filterUsuario) return true;
+    const term = filterUsuario.toLowerCase();
+    return (u.nome || "").toLowerCase().includes(term) || (u.email || "").toLowerCase().includes(term);
+  });
+
+  const getEmpresaNome = (empId: string | null) => {
+    if (!empId) return "—";
+    return empresas.find(e => e.id === empId)?.nome || "—";
+  };
+
+  const isUserPrincipal = (email: string | null) => {
+    if (!email) return false;
+    return usuariosLiberados.some(ul => ul.email.toLowerCase() === email.toLowerCase() && ul.is_principal);
+  };
 
   const handleCreateEmpresa = async () => {
     if (!newForm.nome.trim()) return;
     setSaving(true);
     const { error } = await (supabase.from as any)("empresa_config").insert({
-      nome: newForm.nome,
-      cnpj: newForm.cnpj || null,
-      email: newForm.email || null,
-      telefone: newForm.telefone || null,
-      empresa_pai_id: newForm.empresa_pai_id || null,
+      nome: newForm.nome, cnpj: newForm.cnpj || null, email: newForm.email || null,
+      telefone: newForm.telefone || null, empresa_pai_id: newForm.empresa_pai_id || null,
     });
     if (error) {
       toast({ title: "Erro ao criar", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: newForm.empresa_pai_id ? "Filial criada com sucesso!" : "Empresa criada com sucesso!" });
+      toast({ title: newForm.empresa_pai_id ? "Filial criada!" : "Empresa criada!" });
       setNewOpen(false);
       setNewForm({ nome: "", cnpj: "", email: "", telefone: "", empresa_pai_id: "" });
       await loadData();
@@ -110,7 +136,7 @@ export default function AdminEmpresas() {
   const handleDeleteEmpresa = async (id: string) => {
     const filiais = getFiliais(id);
     if (filiais.length > 0) {
-      toast({ title: "Não é possível excluir", description: "Remova as filiais antes de excluir a empresa mãe.", variant: "destructive" });
+      toast({ title: "Não é possível excluir", description: "Remova as filiais antes.", variant: "destructive" });
       return;
     }
     const { error } = await (supabase.from as any)("empresa_config").delete().eq("id", id);
@@ -128,21 +154,12 @@ export default function AdminEmpresas() {
     const nome = assignNome.trim();
     const allModules = ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
 
-    // Helper: ensure user is in usuarios_liberados
     const ensureUsuarioLiberado = async (empresaId: string) => {
-      const { data: existing } = await (supabase.from as any)("usuarios_liberados")
-        .select("id")
-        .eq("email", emailLower)
-        .limit(1);
+      const { data: existing } = await (supabase.from as any)("usuarios_liberados").select("id").eq("email", emailLower).limit(1);
       if (!existing || existing.length === 0) {
-        await (supabase.from as any)("usuarios_liberados").insert({
-          email: emailLower, nome, modulos_permitidos: allModules, empresa_id: empresaId,
-        });
+        await (supabase.from as any)("usuarios_liberados").insert({ email: emailLower, nome, modulos_permitidos: allModules, empresa_id: empresaId });
       } else {
-        // Update empresa_id if needed
-        await (supabase.from as any)("usuarios_liberados")
-          .update({ empresa_id: empresaId })
-          .eq("email", emailLower);
+        await (supabase.from as any)("usuarios_liberados").update({ empresa_id: empresaId }).eq("email", emailLower);
       }
     };
 
@@ -153,7 +170,7 @@ export default function AdminEmpresas() {
         toast({ title: "Erro ao vincular", description: error.message, variant: "destructive" });
       } else {
         await ensureUsuarioLiberado(assignEmpresaId);
-        toast({ title: `Usuário ${existingProfile.nome || existingProfile.email} vinculado e autorizado!` });
+        toast({ title: `Usuário ${existingProfile.nome || existingProfile.email} vinculado!` });
         setAssignOpen(false); setAssignEmail(""); setAssignNome(""); setAssignSenha("");
         await loadData();
       }
@@ -174,7 +191,7 @@ export default function AdminEmpresas() {
         await (supabase.from as any)("profiles").update({ empresa_id: assignEmpresaId }).eq("user_id", fnData.user_id);
         await ensureUsuarioLiberado(assignEmpresaId);
       }
-      toast({ title: fnData?.already_exists ? "Usuário existente vinculado e autorizado!" : "Usuário criado e vinculado com sucesso!" });
+      toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado e vinculado!" });
       setAssignOpen(false); setAssignEmail(""); setAssignNome(""); setAssignSenha("");
       await loadData();
     } catch (err: any) {
@@ -192,16 +209,6 @@ export default function AdminEmpresas() {
     }
   };
 
-  const openNewEmpresa = (parentId?: string) => {
-    setNewForm({ nome: "", cnpj: "", email: "", telefone: "", empresa_pai_id: parentId || "" });
-    setNewOpen(true);
-  };
-
-  const isUserPrincipal = (email: string | null) => {
-    if (!email) return false;
-    return usuariosLiberados.some(ul => ul.email.toLowerCase() === email.toLowerCase() && ul.is_principal);
-  };
-
   const handleTogglePrincipal = async (profile: Profile) => {
     if (!profile.email) return;
     const emailLower = profile.email.toLowerCase();
@@ -212,10 +219,8 @@ export default function AdminEmpresas() {
       const { error } = await (supabase.from as any)("usuarios_liberados").update({ is_principal: newVal }).eq("id", ul.id);
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     } else {
-      // Create entry in usuarios_liberados
       const { error } = await (supabase.from as any)("usuarios_liberados").insert({
-        email: emailLower, nome: profile.nome, is_principal: true,
-        modulos_permitidos: [], empresa_id: profile.empresa_id,
+        email: emailLower, nome: profile.nome, is_principal: true, modulos_permitidos: [], empresa_id: profile.empresa_id,
       });
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     }
@@ -223,36 +228,9 @@ export default function AdminEmpresas() {
     await loadData();
   };
 
-  const renderUsers = (empresaId: string) => {
-    const users = getUsersForEmpresa(empresaId);
-    if (users.length === 0) return <p className="text-sm text-muted-foreground">Nenhum usuário vinculado</p>;
-    return (
-      <div className="space-y-1.5">
-        <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Usuários:</p>
-        <div className="flex flex-wrap gap-2">
-          {users.map(u => {
-            const principal = isUserPrincipal(u.email);
-            return (
-              <Badge key={u.id} variant={principal ? "default" : "secondary"} className="flex items-center gap-1.5 py-1 px-3">
-                {principal && <Crown className="w-3.5 h-3.5 text-amber-400" />}
-                <span>{u.nome || u.email || "—"}</span>
-                {u.email && <span className="text-xs opacity-70">({u.email})</span>}
-                <button
-                  onClick={() => handleTogglePrincipal(u)}
-                  className="ml-1 hover:text-amber-500"
-                  title={principal ? "Remover Principal" : "Definir como Principal"}
-                >
-                  <Crown className={`w-3 h-3 ${principal ? "text-amber-400" : "opacity-40"}`} />
-                </button>
-                <button onClick={() => handleUnassignUser(u.user_id)} className="ml-0.5 hover:text-destructive">
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            );
-          })}
-        </div>
-      </div>
-    );
+  const openNewEmpresa = (parentId?: string) => {
+    setNewForm({ nome: "", cnpj: "", email: "", telefone: "", empresa_pai_id: parentId || "" });
+    setNewOpen(true);
   };
 
   return (
@@ -269,70 +247,211 @@ export default function AdminEmpresas() {
 
       {loading ? (
         <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
-      ) : parentEmpresas.length === 0 ? (
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhuma empresa cadastrada.</CardContent></Card>
       ) : (
-        <div className="space-y-4">
-          {parentEmpresas.map(emp => {
-            const filiais = getFiliais(emp.id);
-            return (
-              <Card key={emp.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Building2 className="w-4 h-4" />
-                      {emp.nome}
-                      {emp.cnpj && <span className="text-xs text-muted-foreground font-normal ml-2">CNPJ: {emp.cnpj}</span>}
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => openNewEmpresa(emp.id)}>
-                        <GitBranch className="w-3.5 h-3.5 mr-1" />Nova Filial
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => { setAssignEmpresaId(emp.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
-                        <UserPlus className="w-3.5 h-3.5 mr-1" />Vincular Usuário
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDeleteEmpresa(emp.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {renderUsers(emp.id)}
+        <Tabs defaultValue="empresas">
+          <TabsList>
+            <TabsTrigger value="empresas" className="gap-2">
+              <Building2 className="w-4 h-4" />
+              Empresas ({parentEmpresas.length})
+            </TabsTrigger>
+            <TabsTrigger value="usuarios" className="gap-2">
+              <Users className="w-4 h-4" />
+              Todos os Usuários ({allUsers.length})
+            </TabsTrigger>
+          </TabsList>
 
-                  {/* Filiais */}
-                  {filiais.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t">
-                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                        <GitBranch className="w-3.5 h-3.5" /> Filiais ({filiais.length})
-                      </p>
-                      {filiais.map(filial => (
-                        <div key={filial.id} className="ml-4 border rounded-lg p-3 bg-muted/30 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
-                              <span className="font-medium text-sm">{filial.nome}</span>
-                              {filial.cnpj && <span className="text-xs text-muted-foreground">CNPJ: {filial.cnpj}</span>}
-                            </div>
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAssignEmpresaId(filial.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
-                                <UserPlus className="w-3 h-3 mr-1" />Vincular
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDeleteEmpresa(filial.id)}>
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                              </Button>
-                            </div>
-                          </div>
-                          {renderUsers(filial.id)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+          {/* Empresas Tab */}
+          <TabsContent value="empresas" className="space-y-4 mt-4">
+            <Input
+              placeholder="Filtrar por nome ou CNPJ..."
+              value={filterEmpresa}
+              onChange={e => setFilterEmpresa(e.target.value)}
+              className="max-w-sm"
+            />
+
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Empresa</TableHead>
+                      <TableHead>CNPJ</TableHead>
+                      <TableHead>Filiais</TableHead>
+                      <TableHead>Usuários</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEmpresas.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhuma empresa encontrada.</TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredEmpresas.map(emp => {
+                        const filiais = getFiliais(emp.id);
+                        const users = getUsersForEmpresa(emp.id);
+                        const totalUsers = users.length + filiais.reduce((sum, f) => sum + getUsersForEmpresa(f.id).length, 0);
+
+                        return (
+                          <TableRow key={emp.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                                <span className="font-medium">{emp.nome}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{emp.cnpj || "—"}</TableCell>
+                            <TableCell>
+                              {filiais.length > 0 ? (
+                                <Badge variant="secondary" className="gap-1">
+                                  <GitBranch className="w-3 h-3" />{filiais.length}
+                                </Badge>
+                              ) : "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="gap-1">
+                                <Users className="w-3 h-3" />{totalUsers}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openNewEmpresa(emp.id)}>
+                                  <GitBranch className="w-3 h-3 mr-1" />Filial
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAssignEmpresaId(emp.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
+                                  <UserPlus className="w-3 h-3 mr-1" />Vincular
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDeleteEmpresa(emp.id)}>
+                                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Filiais detail below */}
+            {filteredEmpresas.filter(e => getFiliais(e.id).length > 0).map(emp => (
+              <Card key={emp.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <GitBranch className="w-4 h-4 text-primary" />
+                    Filiais de {emp.nome}
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30">
+                        <TableHead>Filial</TableHead>
+                        <TableHead>CNPJ</TableHead>
+                        <TableHead>Usuários</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getFiliais(emp.id).map(filial => {
+                        const fUsers = getUsersForEmpresa(filial.id);
+                        return (
+                          <TableRow key={filial.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span className="font-medium text-sm">{filial.nome}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{filial.cnpj || "—"}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="gap-1"><Users className="w-3 h-3" />{fUsers.length}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAssignEmpresaId(filial.id); setAssignEmail(""); setAssignNome(""); setAssignSenha(""); setAssignOpen(true); }}>
+                                  <UserPlus className="w-3 h-3 mr-1" />Vincular
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDeleteEmpresa(filial.id)}>
+                                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            ))}
+          </TabsContent>
+
+          {/* Usuarios Tab */}
+          <TabsContent value="usuarios" className="space-y-4 mt-4">
+            <Input
+              placeholder="Filtrar por nome ou e-mail..."
+              value={filterUsuario}
+              onChange={e => setFilterUsuario(e.target.value)}
+              className="max-w-sm"
+            />
+
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>E-mail</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Empresa</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Nenhum usuário encontrado.</TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredUsers.map(u => {
+                        const principal = isUserPrincipal(u.email);
+                        return (
+                          <TableRow key={u.id}>
+                            <TableCell className="font-mono text-sm">
+                              <div className="flex items-center gap-2">
+                                {principal && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                                {u.email || "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium uppercase">
+                              {u.nome || "—"}
+                              {principal && (
+                                <Badge variant="outline" className="ml-2 text-[10px] py-0 px-1.5 text-amber-600 border-amber-300">Principal</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">{getEmpresaNome(u.empresa_id)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => handleTogglePrincipal(u)}>
+                                  <Crown className={`w-3 h-3 ${principal ? "text-amber-500" : ""}`} />
+                                  {principal ? "Remover" : "Principal"}
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive gap-1" onClick={() => handleUnassignUser(u.user_id)}>
+                                  <Trash2 className="w-3 h-3" />
+                                  Desvincular
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* New Company/Branch Dialog */}
