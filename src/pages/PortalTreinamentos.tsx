@@ -68,6 +68,7 @@ export default function PortalTreinamentos() {
   const [saving, setSaving] = useState(false);
 
   const [funcionarioId, setFuncionarioId] = useState<string | null>(null);
+  const [funcEmpresaId, setFuncEmpresaId] = useState<string | null>(null);
   const [assignedCursoIds, setAssignedCursoIds] = useState<string[]>([]);
 
   const normalize = (value?: string | null) =>
