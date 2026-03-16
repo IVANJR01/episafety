@@ -53,13 +53,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isSuperAdmin && !isPrincipal) return;
     async function checkFaturas() {
-      const hoje = new Date().toISOString().split("T")[0];
       const { data } = await (supabase.from as any)("faturas")
         .select("id, situacao, data_vencimento")
         .in("situacao", ["aberto", "vencido"]);
       if (data) {
-        const count = data.filter((f: any) => f.situacao === "vencido" || f.data_vencimento < hoje).length;
-        setFaturasAlerta(count);
+        setFaturasAlerta(data.length);
       }
     }
     checkFaturas();
