@@ -68,6 +68,11 @@ export default function PortalTreinamentos() {
   const [watchingVideo, setWatchingVideo] = useState<VideoTreinamento | null>(null);
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const maxWatchedTimeRef = useRef(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   const [showQuiz, setShowQuiz] = useState(false);
   const [perguntas, setPerguntas] = useState<VideoPergunta[]>([]);
