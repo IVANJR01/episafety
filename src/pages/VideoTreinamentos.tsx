@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, Search, Video, Upload, Play, CheckCircle, Clock, AlertTriangle,
   Eye, Award, Users, BarChart3, Pencil, X, ChevronDown, ChevronUp
