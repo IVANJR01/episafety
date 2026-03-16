@@ -78,6 +78,7 @@ export default function VideoTreinamentos() {
   const [accessFuncSearch, setAccessFuncSearch] = useState("");
   const [creatingAccess, setCreatingAccess] = useState(false);
   const [showAccessFuncList, setShowAccessFuncList] = useState(false);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
 
   // Dialog states
   const [openForm, setOpenForm] = useState(false);
