@@ -124,6 +124,7 @@ function ProtectedRoute() {
         <Route path="/exames" element={<ExamesModule />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
+        <Route path="/faturas" element={<Faturas />} />
         <Route path="/backups" element={<Backups />} />
         <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />
