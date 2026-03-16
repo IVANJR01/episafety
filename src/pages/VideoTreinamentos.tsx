@@ -427,10 +427,36 @@ export default function VideoTreinamentos() {
   const stats = useMemo(() => {
     const totalCursos = cursos.length;
     const totalModulos = videos.filter(v => v.curso_id).length;
-    const totalFunc = funcionarios.length;
+    const totalFunc = new Set(cursosAtribuicao.map(a => a.funcionario_id)).size;
     const concluidos = visualizacoes.filter(v => v.concluido).length;
     return { totalCursos, totalModulos, totalFunc, concluidos };
-  }, [cursos, videos, visualizacoes, funcionarios]);
+  }, [cursos, videos, visualizacoes, cursosAtribuicao]);
+
+  // Per-course consolidated stats
+  const cursosConsolidados = useMemo(() => {
+    return cursos.map(curso => {
+      const modulos = getModulos(curso.id);
+      const totalModulos = modulos.length;
+      const videoIds = modulos.map(m => m.id);
+      const assignedFuncIds = [...new Set(cursosAtribuicao.filter(a => a.curso_id === curso.id).map(a => a.funcionario_id))];
+      const totalAtribuidos = assignedFuncIds.length;
+
+      let concluidos = 0;
+      let emAndamento = 0;
+      let pendentes = 0;
+
+      assignedFuncIds.forEach(funcId => {
+        if (totalModulos === 0) { pendentes++; return; }
+        const funcVizs = visualizacoes.filter(v => videoIds.includes(v.video_id) && v.funcionario_id === funcId);
+        const modulosConcluidos = funcVizs.filter(v => v.concluido).length;
+        if (modulosConcluidos >= totalModulos) concluidos++;
+        else if (modulosConcluidos > 0 || funcVizs.some(v => v.percentual_assistido > 0)) emAndamento++;
+        else pendentes++;
+      });
+
+      return { ...curso, totalModulos, totalAtribuidos, concluidos, emAndamento, pendentes };
+    }).filter(c => c.totalAtribuidos > 0);
+  }, [cursos, videos, visualizacoes, cursosAtribuicao]);
 
   if (loading) {
     return (
@@ -503,6 +529,68 @@ export default function VideoTreinamentos() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Painel Consolidado por Curso */}
+      {cursosConsolidados.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Painel Consolidado por Curso
+            </h3>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Curso</TableHead>
+                    <TableHead className="text-center">Módulos</TableHead>
+                    <TableHead className="text-center">Atribuídos</TableHead>
+                    <TableHead className="text-center">
+                      <span className="text-emerald-600">Concluídos</span>
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <span className="text-amber-600">Em andamento</span>
+                    </TableHead>
+                    <TableHead className="text-center">
+                      <span className="text-muted-foreground">Pendentes</span>
+                    </TableHead>
+                    <TableHead className="text-center">Progresso</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cursosConsolidados.map(c => {
+                    const pct = c.totalAtribuidos > 0 ? Math.round((c.concluidos / c.totalAtribuidos) * 100) : 0;
+                    return (
+                      <TableRow key={c.id}>
+                        <TableCell><span className="font-medium text-sm">{c.titulo}</span></TableCell>
+                        <TableCell className="text-center text-sm">{c.totalModulos}</TableCell>
+                        <TableCell className="text-center text-sm">{c.totalAtribuidos}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="bg-emerald-100 text-emerald-700 text-xs">{c.concluidos}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">{c.emAndamento}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs">{c.pendentes}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-medium text-muted-foreground w-8">{pct}%</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search */}
       <div className="relative max-w-md">
