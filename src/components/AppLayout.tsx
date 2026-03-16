@@ -47,6 +47,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { signOut, user, modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [faturasAlerta, setFaturasAlerta] = useState(0);
+
+  // Busca contagem de faturas pendentes/vencidas para o badge no sidebar
+  useEffect(() => {
+    if (!isSuperAdmin && !isPrincipal) return;
+    async function checkFaturas() {
+      const hoje = new Date().toISOString().split("T")[0];
+      const { data } = await (supabase.from as any)("faturas")
+        .select("id, situacao, data_vencimento")
+        .in("situacao", ["aberto", "vencido"]);
+      if (data) {
+        const count = data.filter((f: any) => f.situacao === "vencido" || f.data_vencimento < hoje).length;
+        setFaturasAlerta(count);
+      }
+    }
+    checkFaturas();
+  }, [isSuperAdmin, isPrincipal]);
 
   const canAccess = (moduleKey: string) => isSuperAdmin || isPrincipal || canAccessModule(modulosPermitidos, moduleKey);
 
