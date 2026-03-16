@@ -282,7 +282,33 @@ export default function PortalTreinamentos() {
 
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
-              <video ref={videoRef} src={watchingVideo.video_url} controls autoPlay className="w-full aspect-video" onEnded={handleVideoEnded} controlsList="nodownload" />
+              <video
+                ref={videoRef}
+                src={watchingVideo.video_url}
+                autoPlay
+                className="w-full aspect-video"
+                onEnded={handleVideoEnded}
+                controlsList="nodownload nofullscreen"
+                disablePictureInPicture
+                onContextMenu={(e) => e.preventDefault()}
+                onSeeking={(e) => {
+                  const vid = e.currentTarget;
+                  // Allow seeking backward only, block forward seeking
+                  if (vid.currentTime > (vid as any).__maxPlayed) {
+                    vid.currentTime = (vid as any).__maxPlayed || 0;
+                  }
+                }}
+                onTimeUpdate={(e) => {
+                  const vid = e.currentTarget;
+                  if (!(vid as any).__maxPlayed || vid.currentTime > (vid as any).__maxPlayed) {
+                    (vid as any).__maxPlayed = vid.currentTime;
+                  }
+                }}
+                onLoadedMetadata={(e) => {
+                  (e.currentTarget as any).__maxPlayed = 0;
+                }}
+                controls
+              />
             </CardContent>
           </Card>
 
