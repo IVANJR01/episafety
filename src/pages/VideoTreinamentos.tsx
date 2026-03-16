@@ -326,13 +326,19 @@ export default function VideoTreinamentos() {
         if (ulError) throw new Error("Erro ao criar acesso: " + ulError.message);
       }
 
-      // Update profile
-      await supabase.from("profiles").upsert({
-        user_id: userId,
-        email: accessEmail.toLowerCase().trim(),
-        nome: func?.nome || "",
-        empresa_id: empresaId,
-      }, { onConflict: "user_id" });
+      // Update profile with empresa_id (use edge function for cross-user update)
+      const { error: profileError } = await supabase.from("profiles")
+        .update({ empresa_id: empresaId })
+        .eq("user_id", userId);
+      if (profileError) {
+        // Fallback: try upsert
+        await supabase.from("profiles").upsert({
+          user_id: userId,
+          email: emailLower,
+          nome: func?.nome || "",
+          empresa_id: empresaId,
+        }, { onConflict: "user_id" });
+      }
 
       // Save video assignments
       if (selectedVideoIds.length > 0) {
