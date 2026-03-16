@@ -204,7 +204,7 @@ export default function PortalTreinamentos() {
         funcionario_id: funcionarioId,
         percentual_assistido: Math.min(percentual, 100),
         concluido: false,
-        empresa_id: null,
+        empresa_id: funcEmpresaId,
       }, { onConflict: "video_id,funcionario_id" });
     } catch {}
   }, [funcionarioId]);
