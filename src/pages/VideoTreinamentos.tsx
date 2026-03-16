@@ -318,12 +318,24 @@ export default function VideoTreinamentos() {
         empresa_id: empresaId,
       }, { onConflict: "user_id" });
 
+      // Save video assignments
+      if (selectedVideoIds.length > 0) {
+        const assignments = selectedVideoIds.map(vid => ({
+          video_id: vid,
+          funcionario_id: accessFuncId,
+          empresa_id: empresaId,
+        }));
+        const { error: assignError } = await supabase.from("videos_atribuicao").upsert(assignments, { onConflict: "video_id,funcionario_id" });
+        if (assignError) console.error("Assignment error:", assignError);
+      }
+
       toast({ title: "Acesso criado!", description: `Login: ${accessEmail} / Senha: ${accessPassword}` });
       setOpenAccess(false);
       setAccessFuncId("");
       setAccessEmail("");
       setAccessPassword("");
       setAccessFuncSearch("");
+      setSelectedVideoIds([]);
     } catch (err: any) {
       toast({ title: "Erro ao criar acesso", description: err.message, variant: "destructive" });
     }
