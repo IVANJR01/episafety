@@ -279,6 +279,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <FileText className="w-4 h-4 shrink-0" />
               <span className="truncate">Faturas</span>
+              {faturasAlerta > 0 && (
+                <span className="relative ml-auto flex items-center">
+                  <Bell className="w-4 h-4 text-destructive animate-bounce" />
+                  <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {faturasAlerta}
+                  </span>
+                </span>
+              )}
             </Link>
           )}
 
