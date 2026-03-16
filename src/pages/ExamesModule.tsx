@@ -533,6 +533,9 @@ export default function ExamesModule() {
     toast({ title: "Exportado com sucesso!", description: "Matriz exportada com cores e formatação." });
   };
 
+  // Only count active employees (not demitidos)
+  const funcionariosAtivos = useMemo(() => funcionarios.filter(f => !f.data_demissao), [funcionarios]);
+
   const totalItems = items.length;
   const pendentesCount = items.filter(e => e.resultado === "pendente").length;
   const vencidosCount = items.filter(e => getStatus(e.data_vencimento).key === "vencido").length;
@@ -540,11 +543,11 @@ export default function ExamesModule() {
   const vigentesCount = items.filter(e => getStatus(e.data_vencimento).key === "vigente").length;
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
-  // Funcionários sem nenhum exame cadastrado
+  // Funcionários ativos sem nenhum exame cadastrado (exclui demitidos)
   const funcionariosSemExame = useMemo(() => {
     const idsComExame = new Set(items.map(e => e.funcionario_id));
-    return funcionarios.filter(f => !idsComExame.has(f.id));
-  }, [items, funcionarios]);
+    return funcionariosAtivos.filter(f => !idsComExame.has(f.id));
+  }, [items, funcionariosAtivos]);
   const semExameCount = funcionariosSemExame.length;
 
   // Matrix data: group by employee, nome_exame as columns
