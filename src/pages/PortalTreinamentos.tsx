@@ -210,6 +210,11 @@ export default function PortalTreinamentos() {
     setQuizResult(null);
     setShowSignature(false);
     setRespostas({});
+    maxWatchedTimeRef.current = 0;
+    setIsPlaying(true);
+    setIsMuted(false);
+    setCurrentTime(0);
+    setDuration(0);
   };
 
   const handleVideoEnded = async () => {
