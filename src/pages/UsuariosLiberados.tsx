@@ -60,7 +60,7 @@ export default function UsuariosLiberados() {
       setEmpresas(getCachedData<Empresa>("empresa_config_list") || []);
       return;
     }
-    const { data } = await supabase.from("empresa_config").select("id, nome").order("nome");
+    const { data } = await supabase.from("empresa_config").select("id, nome, empresa_pai_id").order("nome");
     if (data) { setEmpresas(data); setCachedData("empresa_config_list", data); }
   };
 
