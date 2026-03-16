@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2, Crown } from "lucide-react";
+import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2, Crown, GitBranch } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { MODULOS, ACOES, allPermissions, allActionsForModule } from "@/lib/permissions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface UsuarioLiberado {
   id: string;
@@ -24,6 +25,7 @@ interface UsuarioLiberado {
 interface Empresa {
   id: string;
   nome: string;
+  empresa_pai_id: string | null;
 }
 
 const ACAO_ICONS: Record<string, string> = {
@@ -42,6 +44,7 @@ export default function UsuariosLiberados() {
   const [novoEmail, setNovoEmail] = useState("");
   const [novoNome, setNovoNome] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
+  const [novoEmpresaId, setNovoEmpresaId] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -57,7 +60,7 @@ export default function UsuariosLiberados() {
       setEmpresas(getCachedData<Empresa>("empresa_config_list") || []);
       return;
     }
-    const { data } = await supabase.from("empresa_config").select("id, nome").order("nome");
+    const { data } = await supabase.from("empresa_config").select("id, nome, empresa_pai_id").order("nome");
     if (data) { setEmpresas(data); setCachedData("empresa_config_list", data); }
   };
 
@@ -77,6 +80,13 @@ export default function UsuariosLiberados() {
     empresas.forEach(e => { map[e.id] = e.nome; });
     return map;
   }, [empresas]);
+
+  // Available units: own empresa + filiais
+  const unidadesDisponiveis = useMemo(() => {
+    if (isSuperAdmin) return empresas;
+    if (!empresaId) return [];
+    return empresas.filter(e => e.id === empresaId || e.empresa_pai_id === empresaId);
+  }, [empresas, empresaId, isSuperAdmin]);
 
   const groupedByEmpresa = useMemo(() => {
     const groups: { empresaId: string | null; empresaNome: string; users: UsuarioLiberado[] }[] = [];
@@ -141,11 +151,12 @@ export default function UsuariosLiberados() {
       }
 
       const allPerms = allPermissions();
+      const targetEmpresaId = novoEmpresaId || empresaId;
       const { error } = await (supabase.from as any)("usuarios_liberados").insert({
         email: novoEmail.trim().toLowerCase(),
         nome: novoNome.trim(),
         modulos_permitidos: allPerms,
-        empresa_id: empresaId,
+        empresa_id: targetEmpresaId,
       });
 
       if (error) {
@@ -155,15 +166,16 @@ export default function UsuariosLiberados() {
           variant: "destructive",
         });
       } else {
-        if (empresaId && fnData?.user_id) {
+        if (targetEmpresaId && fnData?.user_id) {
           await (supabase.from as any)("profiles")
-            .update({ empresa_id: empresaId })
+            .update({ empresa_id: targetEmpresaId })
             .eq("user_id", fnData.user_id);
         }
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado com sucesso!" : "Usuário criado e liberado com sucesso!" });
         setNovoEmail("");
         setNovoNome("");
         setNovaSenha("");
+        setNovoEmpresaId("");
         await loadUsuarios();
       }
     } catch (err: any) {
@@ -443,6 +455,25 @@ export default function UsuariosLiberados() {
                 className="flex-1"
               />
             </div>
+            {unidadesDisponiveis.length > 1 && (
+              <div>
+                <Select value={novoEmpresaId} onValueChange={setNovoEmpresaId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Vincular à unidade (empresa atual)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unidadesDisponiveis.map(e => (
+                      <SelectItem key={e.id} value={e.id}>
+                        <span className="flex items-center gap-2">
+                          {e.empresa_pai_id ? <GitBranch className="w-3.5 h-3.5 text-muted-foreground" /> : <Building2 className="w-3.5 h-3.5 text-muted-foreground" />}
+                          {e.nome}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Input
