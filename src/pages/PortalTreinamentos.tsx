@@ -10,9 +10,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import SignatureCanvas, { SignatureCanvasRef } from "@/components/SignatureCanvas";
 import {
-  Video, Play, CheckCircle, Clock, Award, LogOut, ChevronRight, AlertTriangle
+  Video, Play, CheckCircle, Clock, Award, LogOut, ChevronRight, AlertTriangle, BookOpen, ChevronDown, ChevronUp
 } from "lucide-react";
 import logoImg from "@/assets/logo-episafety.png";
+
+interface CursoVideo {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  pontuacao_minima: number;
+}
 
 interface VideoTreinamento {
   id: string;
@@ -22,6 +29,8 @@ interface VideoTreinamento {
   duracao_segundos: number;
   pontuacao_minima: number;
   created_at: string;
+  curso_id: string | null;
+  ordem: number;
 }
 
 interface VideoVisualizacao {
@@ -49,30 +58,28 @@ interface VideoPergunta {
 export default function PortalTreinamentos() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const [cursos, setCursos] = useState<CursoVideo[]>([]);
   const [videos, setVideos] = useState<VideoTreinamento[]>([]);
   const [visualizacoes, setVisualizacoes] = useState<VideoVisualizacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
+  const [expandedCursos, setExpandedCursos] = useState<Set<string>>(new Set());
 
-  // Watch state
   const [watchingVideo, setWatchingVideo] = useState<VideoTreinamento | null>(null);
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Quiz state
   const [showQuiz, setShowQuiz] = useState(false);
   const [perguntas, setPerguntas] = useState<VideoPergunta[]>([]);
   const [respostas, setRespostas] = useState<Record<string, string>>({});
   const [quizResult, setQuizResult] = useState<{ pontuacao: number; aprovado: boolean } | null>(null);
 
-  // Signature state
   const [showSignature, setShowSignature] = useState(false);
   const signatureRef = useRef<SignatureCanvasRef>(null);
   const [saving, setSaving] = useState(false);
 
-  // Fetch linked funcionario_id for the logged user
   const [funcionarioId, setFuncionarioId] = useState<string | null>(null);
-  const [assignedVideoIds, setAssignedVideoIds] = useState<string[]>([]);
+  const [assignedCursoIds, setAssignedCursoIds] = useState<string[]>([]);
 
   const normalize = (value?: string | null) =>
     (value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
@@ -81,10 +88,7 @@ export default function PortalTreinamentos() {
     setLoading(true);
     try {
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("nome, empresa_id")
-        .eq("user_id", user?.id || "")
-        .maybeSingle();
+        .from("profiles").select("nome, empresa_id").eq("user_id", user?.id || "").maybeSingle();
 
       if (profile) setUserName(profile.nome || user?.email || "");
 
@@ -92,44 +96,54 @@ export default function PortalTreinamentos() {
       let foundFuncId: string | null = null;
 
       if (profile?.empresa_id && normalizedProfileName) {
-        const { data: funcs } = await supabase
-          .from("funcionarios")
-          .select("id, nome")
-          .eq("empresa_id", profile.empresa_id)
-          .is("data_demissao", null);
-
+        const { data: funcs } = await supabase.from("funcionarios").select("id, nome")
+          .eq("empresa_id", profile.empresa_id).is("data_demissao", null);
         const matched = funcs?.find(f => normalize(f.nome) === normalizedProfileName);
         if (matched) foundFuncId = matched.id;
       }
-
       if (!foundFuncId && normalizedProfileName) {
-        const { data: allFuncs } = await supabase
-          .from("funcionarios")
-          .select("id, nome")
-          .is("data_demissao", null);
-
+        const { data: allFuncs } = await supabase.from("funcionarios").select("id, nome").is("data_demissao", null);
         const matched = allFuncs?.find(f => normalize(f.nome) === normalizedProfileName);
         if (matched) foundFuncId = matched.id;
       }
-
       setFuncionarioId(foundFuncId);
 
+      // Fetch curso assignments
+      let cursoIds: string[] = [];
       if (foundFuncId) {
-        const { data: assignments } = await supabase
-          .from("videos_atribuicao")
-          .select("video_id")
-          .eq("funcionario_id", foundFuncId);
-        const ids = (assignments || []).map((a: any) => a.video_id);
-        setAssignedVideoIds(ids);
-      } else {
-        setAssignedVideoIds([]);
+        const { data: cursoAssign } = await supabase.from("cursos_atribuicao")
+          .select("curso_id").eq("funcionario_id", foundFuncId);
+        cursoIds = (cursoAssign || []).map((a: any) => a.curso_id);
+      }
+      setAssignedCursoIds(cursoIds);
+
+      // Fallback: also check videos_atribuicao for legacy assignments
+      let legacyVideoIds: string[] = [];
+      if (foundFuncId && cursoIds.length === 0) {
+        const { data: videoAssign } = await supabase.from("videos_atribuicao")
+          .select("video_id").eq("funcionario_id", foundFuncId);
+        legacyVideoIds = (videoAssign || []).map((a: any) => a.video_id);
       }
 
-      const { data: vids } = await supabase.from("videos_treinamento").select("*").order("created_at", { ascending: false });
-      if (vids) setVideos(vids as VideoTreinamento[]);
+      const [{ data: cursosData }, { data: vids }, { data: vizs }] = await Promise.all([
+        supabase.from("cursos_video").select("*").order("created_at", { ascending: false }),
+        supabase.from("videos_treinamento").select("*").order("ordem", { ascending: true }),
+        supabase.from("videos_visualizacao").select("*"),
+      ]);
 
-      const { data: vizs } = await supabase.from("videos_visualizacao").select("*");
-      if (vizs) setVisualizacoes(vizs as VideoVisualizacao[]);
+      if (cursosData) setCursos(cursosData as any);
+      if (vids) {
+        let filteredVids = vids as any as VideoTreinamento[];
+        // If legacy mode (no curso assignments), keep legacy video filtering
+        if (cursoIds.length === 0 && legacyVideoIds.length > 0) {
+          filteredVids = filteredVids.filter(v => legacyVideoIds.includes(v.id));
+        }
+        setVideos(filteredVids);
+      }
+      if (vizs) setVisualizacoes(vizs as any);
+
+      // Auto-expand all assigned cursos
+      if (cursoIds.length > 0) setExpandedCursos(new Set(cursoIds));
     } catch {
       toast({ title: "Erro ao carregar dados", variant: "destructive" });
     }
@@ -146,15 +160,43 @@ export default function PortalTreinamentos() {
     return "em_andamento";
   };
 
-  // Employees should only see videos explicitly assigned to them
-  const myVideos = useMemo(() => {
-    if (!funcionarioId || assignedVideoIds.length === 0) return [];
-    return videos.filter(v => assignedVideoIds.includes(v.id));
-  }, [videos, assignedVideoIds, funcionarioId]);
+  // Get courses assigned to this employee
+  const myCursos = useMemo(() => {
+    if (assignedCursoIds.length > 0) {
+      return cursos.filter(c => assignedCursoIds.includes(c.id));
+    }
+    return [];
+  }, [cursos, assignedCursoIds]);
+
+  const getModulos = (cursoId: string) => videos.filter(v => v.curso_id === cursoId).sort((a, b) => a.ordem - b.ordem);
+
+  // Legacy: videos without curso assignment
+  const legacyVideos = useMemo(() => {
+    if (assignedCursoIds.length > 0) return [];
+    return videos.filter(v => !v.curso_id);
+  }, [videos, assignedCursoIds]);
+
+  const allModuleIds = useMemo(() => {
+    if (myCursos.length > 0) {
+      return myCursos.flatMap(c => getModulos(c.id).map(m => m.id));
+    }
+    return legacyVideos.map(v => v.id);
+  }, [myCursos, videos, legacyVideos]);
 
   const completedCount = useMemo(() => {
-    return myVideos.filter(v => getVideoStatus(v.id) === "concluido").length;
-  }, [myVideos, visualizacoes, funcionarioId]);
+    return allModuleIds.filter(id => getVideoStatus(id) === "concluido").length;
+  }, [allModuleIds, visualizacoes, funcionarioId]);
+
+  const totalModules = allModuleIds.length;
+
+  const toggleExpand = (cursoId: string) => {
+    setExpandedCursos(prev => {
+      const next = new Set(prev);
+      if (next.has(cursoId)) next.delete(cursoId);
+      else next.add(cursoId);
+      return next;
+    });
+  };
 
   const handleStartVideo = (video: VideoTreinamento) => {
     setWatchingVideo(video);
@@ -168,42 +210,28 @@ export default function PortalTreinamentos() {
   const handleVideoEnded = async () => {
     setVideoEnded(true);
     if (!watchingVideo || !funcionarioId) return;
-
-    // Load quiz questions
     const { data: pergs } = await supabase.from("videos_perguntas").select("*").eq("video_id", watchingVideo.id).order("ordem");
     if (pergs && pergs.length > 0) {
       setPerguntas(pergs as VideoPergunta[]);
       setShowQuiz(true);
     } else {
-      // No quiz, go directly to signature
       setShowSignature(true);
     }
   };
 
   const handleSubmitQuiz = () => {
     if (perguntas.length === 0) return;
-
-    // Check if all questions answered
     const unanswered = perguntas.filter(p => !respostas[p.id]);
     if (unanswered.length > 0) {
       toast({ title: `Responda todas as ${perguntas.length} perguntas`, variant: "destructive" });
       return;
     }
-
-    // Calculate score
     let corretas = 0;
-    perguntas.forEach(p => {
-      if (respostas[p.id] === p.resposta_correta) corretas++;
-    });
+    perguntas.forEach(p => { if (respostas[p.id] === p.resposta_correta) corretas++; });
     const pontuacao = Math.round((corretas / perguntas.length) * 100);
     const aprovado = pontuacao >= (watchingVideo?.pontuacao_minima || 70);
-
     setQuizResult({ pontuacao, aprovado });
-
-    if (aprovado) {
-      // Show signature after a moment
-      setTimeout(() => setShowSignature(true), 1500);
-    }
+    if (aprovado) setTimeout(() => setShowSignature(true), 1500);
   };
 
   const handleSign = async () => {
@@ -212,12 +240,9 @@ export default function PortalTreinamentos() {
       return;
     }
     if (!watchingVideo || !funcionarioId) return;
-
     setSaving(true);
     try {
       const assinatura = signatureRef.current.getDataURL();
-
-      // Upsert visualização
       const { error } = await supabase.from("videos_visualizacao").upsert({
         video_id: watchingVideo.id,
         funcionario_id: funcionarioId,
@@ -227,9 +252,7 @@ export default function PortalTreinamentos() {
         assinatura,
         empresa_id: null,
       }, { onConflict: "video_id,funcionario_id" });
-
       if (error) throw error;
-
       toast({ title: "Treinamento concluído!", description: "Sua participação foi registrada com sucesso." });
       setWatchingVideo(null);
       fetchData();
@@ -252,34 +275,19 @@ export default function PortalTreinamentos() {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto p-4 space-y-4">
-          {/* Header */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => setWatchingVideo(null)} className="text-sm">
-              ← Voltar
-            </Button>
+            <Button variant="ghost" onClick={() => setWatchingVideo(null)} className="text-sm">← Voltar</Button>
             <Badge variant="outline">{watchingVideo.titulo}</Badge>
           </div>
 
-          {/* Video Player */}
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
-              <video
-                ref={videoRef}
-                src={watchingVideo.video_url}
-                controls
-                autoPlay
-                className="w-full aspect-video"
-                onEnded={handleVideoEnded}
-                controlsList="nodownload"
-              />
+              <video ref={videoRef} src={watchingVideo.video_url} controls autoPlay className="w-full aspect-video" onEnded={handleVideoEnded} controlsList="nodownload" />
             </CardContent>
           </Card>
 
-          {watchingVideo.descricao && (
-            <p className="text-sm text-muted-foreground">{watchingVideo.descricao}</p>
-          )}
+          {watchingVideo.descricao && <p className="text-sm text-muted-foreground">{watchingVideo.descricao}</p>}
 
-          {/* Video ended message */}
           {videoEnded && !showQuiz && !showSignature && (
             <Card className="border-primary">
               <CardContent className="p-6 text-center">
@@ -290,14 +298,13 @@ export default function PortalTreinamentos() {
             </Card>
           )}
 
-          {/* Quiz */}
           {showQuiz && !showSignature && (
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div className="text-center">
                   <Award className="h-8 w-8 mx-auto text-primary mb-2" />
                   <h2 className="text-lg font-bold text-foreground">Avaliação do Treinamento</h2>
-                  <p className="text-sm text-muted-foreground">Responda as perguntas abaixo (nota mínima: {watchingVideo.pontuacao_minima}%)</p>
+                  <p className="text-sm text-muted-foreground">Nota mínima: {watchingVideo.pontuacao_minima}%</p>
                 </div>
 
                 {perguntas.map((p, i) => (
@@ -311,10 +318,7 @@ export default function PortalTreinamentos() {
                         const isCorrect = quizResult && p.resposta_correta === opt;
                         const isWrong = quizResult && selected && p.resposta_correta !== opt;
                         return (
-                          <button
-                            key={opt}
-                            type="button"
-                            disabled={!!quizResult}
+                          <button key={opt} type="button" disabled={!!quizResult}
                             className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${
                               isCorrect ? "border-emerald-500 bg-emerald-50 text-emerald-800" :
                               isWrong ? "border-destructive bg-destructive/10 text-destructive" :
@@ -332,9 +336,7 @@ export default function PortalTreinamentos() {
                 ))}
 
                 {!quizResult ? (
-                  <Button onClick={handleSubmitQuiz} className="w-full bg-primary" size="lg">
-                    Enviar Respostas
-                  </Button>
+                  <Button onClick={handleSubmitQuiz} className="w-full bg-primary" size="lg">Enviar Respostas</Button>
                 ) : (
                   <Card className={quizResult.aprovado ? "border-emerald-500" : "border-destructive"}>
                     <CardContent className="p-4 text-center">
@@ -348,19 +350,11 @@ export default function PortalTreinamentos() {
                         <>
                           <AlertTriangle className="h-8 w-8 mx-auto text-destructive mb-2" />
                           <p className="font-bold text-destructive">Reprovado. Pontuação: {quizResult.pontuacao}%</p>
-                          <p className="text-sm text-muted-foreground mt-1">Nota mínima: {watchingVideo.pontuacao_minima}%. Assista novamente o vídeo.</p>
+                          <p className="text-sm text-muted-foreground mt-1">Nota mínima: {watchingVideo.pontuacao_minima}%</p>
                           <Button variant="outline" className="mt-3" onClick={() => {
-                            setShowQuiz(false);
-                            setVideoEnded(false);
-                            setQuizResult(null);
-                            setRespostas({});
-                            if (videoRef.current) {
-                              videoRef.current.currentTime = 0;
-                              videoRef.current.play();
-                            }
-                          }}>
-                            Assistir Novamente
-                          </Button>
+                            setShowQuiz(false); setVideoEnded(false); setQuizResult(null); setRespostas({});
+                            if (videoRef.current) { videoRef.current.currentTime = 0; videoRef.current.play(); }
+                          }}>Assistir Novamente</Button>
                         </>
                       )}
                     </CardContent>
@@ -370,14 +364,13 @@ export default function PortalTreinamentos() {
             </Card>
           )}
 
-          {/* Signature */}
           {showSignature && (quizResult?.aprovado || !showQuiz) && (
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div className="text-center">
                   <CheckCircle className="h-8 w-8 mx-auto text-primary mb-2" />
                   <h2 className="text-lg font-bold text-foreground">Confirme sua participação</h2>
-                  <p className="text-sm text-muted-foreground">Assine abaixo para finalizar o treinamento</p>
+                  <p className="text-sm text-muted-foreground">Assine abaixo para finalizar</p>
                 </div>
                 <SignatureCanvas ref={signatureRef} label="Assinatura do Funcionário" height={200} />
                 <Button onClick={handleSign} disabled={saving} className="w-full bg-primary" size="lg">
@@ -391,10 +384,11 @@ export default function PortalTreinamentos() {
     );
   }
 
+  const hasContent = myCursos.length > 0 || legacyVideos.length > 0;
+
   // Main portal view
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-card">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -411,86 +405,147 @@ export default function PortalTreinamentos() {
       </header>
 
       <div className="max-w-4xl mx-auto p-4 space-y-6">
-        {/* Progress overview */}
+        {/* Progress */}
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-foreground">Seu progresso</span>
-              <span className="text-sm font-bold text-primary">{completedCount}/{myVideos.length}</span>
+              <span className="text-sm font-bold text-primary">{completedCount}/{totalModules}</span>
             </div>
-            <Progress value={myVideos.length > 0 ? (completedCount / myVideos.length) * 100 : 0} className="h-3" />
+            <Progress value={totalModules > 0 ? (completedCount / totalModules) * 100 : 0} className="h-3" />
             <p className="text-xs text-muted-foreground mt-2">
-              {completedCount === myVideos.length && myVideos.length > 0 ? "🎉 Parabéns! Todos os treinamentos concluídos!" : `${myVideos.length - completedCount} treinamento(s) pendente(s)`}
+              {completedCount === totalModules && totalModules > 0
+                ? "🎉 Parabéns! Todos os treinamentos concluídos!"
+                : `${totalModules - completedCount} módulo(s) pendente(s)`}
             </p>
           </CardContent>
         </Card>
 
-        {/* Video list */}
-        <div className="space-y-3">
-          {myVideos.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                <Video className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                <p className="font-medium">Nenhum treinamento atribuído</p>
-                <p className="text-sm">Seu acesso mostra apenas os cursos selecionados pelo administrador</p>
-              </CardContent>
-            </Card>
-          ) : myVideos.map(video => {
-            const status = getVideoStatus(video.id);
-            const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
-            return (
-              <Card key={video.id} className={`transition-shadow hover:shadow-md ${status === "concluido" ? "opacity-75" : ""}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    {/* Thumbnail */}
-                    <div className="relative w-24 sm:w-32 aspect-video bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                      <video src={video.video_url} className="w-full h-full object-cover" preload="metadata" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                        {status === "concluido" ? (
-                          <CheckCircle className="h-6 w-6 text-emerald-400" />
-                        ) : (
-                          <Play className="h-6 w-6 text-white" />
-                        )}
+        {/* Content */}
+        {!hasContent ? (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              <Video className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">Nenhum treinamento atribuído</p>
+              <p className="text-sm">Seu acesso mostra apenas os cursos selecionados pelo administrador</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {/* Cursos with modules */}
+            {myCursos.map(curso => {
+              const modulos = getModulos(curso.id);
+              const isExpanded = expandedCursos.has(curso.id);
+              const cursoCompleted = modulos.filter(m => getVideoStatus(m.id) === "concluido").length;
+              const cursoTotal = modulos.length;
+
+              return (
+                <Card key={curso.id} className="overflow-hidden">
+                  <div className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleExpand(curso.id)}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="bg-primary/10 p-2 rounded-lg">
+                          <BookOpen className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground">{curso.titulo}</h3>
+                          {curso.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{curso.descricao}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={cursoCompleted === cursoTotal && cursoTotal > 0 ? "default" : "outline"} className={cursoCompleted === cursoTotal && cursoTotal > 0 ? "bg-emerald-100 text-emerald-700" : ""}>
+                          {cursoCompleted}/{cursoTotal}
+                        </Badge>
+                        {isExpanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
                       </div>
                     </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground text-sm sm:text-base">{video.titulo}</h3>
-                      {video.descricao && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{video.descricao}</p>}
-                      <div className="flex gap-2 mt-2">
-                        {status === "concluido" ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 text-xs">
-                            <CheckCircle className="h-3 w-3 mr-1" /> Concluído {viz?.pontuacao !== null ? `• ${viz?.pontuacao}%` : ""}
-                          </Badge>
-                        ) : status === "em_andamento" ? (
-                          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700">
-                            <Clock className="h-3 w-3 mr-1" /> Em andamento
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs">
-                            <Clock className="h-3 w-3 mr-1" /> Pendente
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action */}
-                    <Button
-                      variant={status === "concluido" ? "ghost" : "default"}
-                      size="sm"
-                      onClick={() => handleStartVideo(video)}
-                      className={status !== "concluido" ? "bg-primary" : ""}
-                    >
-                      {status === "concluido" ? "Rever" : "Assistir"}
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
+                    {cursoTotal > 0 && (
+                      <Progress value={(cursoCompleted / cursoTotal) * 100} className="h-1.5 mt-3" />
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+
+                  {isExpanded && (
+                    <div className="border-t divide-y">
+                      {modulos.length === 0 ? (
+                        <div className="p-4 text-center text-muted-foreground text-sm">Nenhum módulo disponível</div>
+                      ) : modulos.map((modulo, idx) => {
+                        const status = getVideoStatus(modulo.id);
+                        const viz = visualizacoes.find(v => v.video_id === modulo.id && v.funcionario_id === funcionarioId);
+                        return (
+                          <div key={modulo.id} className={`p-4 flex items-center gap-4 ${status === "concluido" ? "opacity-75 bg-muted/30" : ""}`}>
+                            <span className="bg-primary/10 text-primary font-bold text-xs rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0">
+                              {String(idx + 1).padStart(2, "0")}
+                            </span>
+
+                            <div className="relative w-20 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
+                              <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                {status === "concluido" ? <CheckCircle className="h-4 w-4 text-emerald-400" /> : <Play className="h-4 w-4 text-white" />}
+                              </div>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-foreground text-sm">{modulo.titulo}</h4>
+                              {modulo.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
+                              <div className="mt-1">
+                                {status === "concluido" ? (
+                                  <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído{viz?.pontuacao != null ? ` • ${viz.pontuacao}%` : ""}</Badge>
+                                ) : status === "em_andamento" ? (
+                                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700"><Clock className="h-3 w-3 mr-1" />Em andamento</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            <Button variant={status === "concluido" ? "ghost" : "default"} size="sm"
+                              onClick={() => handleStartVideo(modulo)} className={status !== "concluido" ? "bg-primary" : ""}>
+                              {status === "concluido" ? "Rever" : "Assistir"}
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+
+            {/* Legacy videos (no curso) */}
+            {legacyVideos.map(video => {
+              const status = getVideoStatus(video.id);
+              const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
+              return (
+                <Card key={video.id} className={`transition-shadow hover:shadow-md ${status === "concluido" ? "opacity-75" : ""}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-24 aspect-video bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                        <video src={video.video_url} className="w-full h-full object-cover" preload="metadata" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          {status === "concluido" ? <CheckCircle className="h-6 w-6 text-emerald-400" /> : <Play className="h-6 w-6 text-white" />}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground text-sm">{video.titulo}</h3>
+                        {video.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{video.descricao}</p>}
+                        <div className="flex gap-2 mt-2">
+                          {status === "concluido" ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído</Badge>
+                          ) : <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>}
+                        </div>
+                      </div>
+                      <Button variant={status === "concluido" ? "ghost" : "default"} size="sm"
+                        onClick={() => handleStartVideo(video)} className={status !== "concluido" ? "bg-primary" : ""}>
+                        {status === "concluido" ? "Rever" : "Assistir"}<ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

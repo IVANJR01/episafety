@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { hasPermission } from "@/lib/permissions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,13 +11,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Trash2, Search, Video, Upload, Play, CheckCircle, Clock, AlertTriangle,
-  Eye, Award, Users, BarChart3, Pencil, X, ChevronDown, ChevronUp
+  Eye, Award, Users, BarChart3, Pencil, X, ChevronDown, ChevronUp, BookOpen, Layers, GripVertical
 } from "lucide-react";
+
+interface CursoVideo {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  pontuacao_minima: number;
+  empresa_id: string | null;
+  created_at: string;
+}
 
 interface VideoTreinamento {
   id: string;
@@ -29,6 +36,8 @@ interface VideoTreinamento {
   pontuacao_minima: number;
   empresa_id: string | null;
   created_at: string;
+  curso_id: string | null;
+  ordem: number;
 }
 
 interface VideoVisualizacao {
@@ -62,30 +71,30 @@ interface Funcionario {
 }
 
 export default function VideoTreinamentos() {
-  const { empresaId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
+  const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
   const { toast } = useToast();
+  const [cursos, setCursos] = useState<CursoVideo[]>([]);
   const [videos, setVideos] = useState<VideoTreinamento[]>([]);
   const [visualizacoes, setVisualizacoes] = useState<VideoVisualizacao[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("videos");
 
-  // Employee access management
-  const [openAccess, setOpenAccess] = useState(false);
-  const [accessFuncId, setAccessFuncId] = useState("");
-  const [accessEmail, setAccessEmail] = useState("");
-  const [accessPassword, setAccessPassword] = useState("");
-  const [accessFuncSearch, setAccessFuncSearch] = useState("");
-  const [creatingAccess, setCreatingAccess] = useState(false);
-  const [showAccessFuncList, setShowAccessFuncList] = useState(false);
-  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
+  // Expanded courses
+  const [expandedCursos, setExpandedCursos] = useState<Set<string>>(new Set());
 
-  // Dialog states
-  const [openForm, setOpenForm] = useState(false);
-  const [editingVideo, setEditingVideo] = useState<VideoTreinamento | null>(null);
-  const [uploading, setUploading] = useState(false);
+  // Course form
+  const [openCursoForm, setOpenCursoForm] = useState(false);
+  const [editingCurso, setEditingCurso] = useState<CursoVideo | null>(null);
+  const [cursoForm, setCursoForm] = useState({ titulo: "", descricao: "", pontuacao_minima: "70" });
+
+  // Module (video) form
+  const [openModuloForm, setOpenModuloForm] = useState(false);
+  const [editingModulo, setEditingModulo] = useState<VideoTreinamento | null>(null);
+  const [moduloCursoId, setModuloCursoId] = useState("");
+  const [moduloForm, setModuloForm] = useState({ titulo: "", descricao: "" });
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Quiz dialog
   const [openQuiz, setOpenQuiz] = useState(false);
@@ -97,7 +106,15 @@ export default function VideoTreinamentos() {
   const [openDetail, setOpenDetail] = useState(false);
   const [detailVideo, setDetailVideo] = useState<VideoTreinamento | null>(null);
 
-  const [form, setForm] = useState({ titulo: "", descricao: "", pontuacao_minima: "70" });
+  // Employee access management
+  const [openAccess, setOpenAccess] = useState(false);
+  const [accessFuncId, setAccessFuncId] = useState("");
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessPassword, setAccessPassword] = useState("");
+  const [accessFuncSearch, setAccessFuncSearch] = useState("");
+  const [creatingAccess, setCreatingAccess] = useState(false);
+  const [showAccessFuncList, setShowAccessFuncList] = useState(false);
+  const [selectedCursoIds, setSelectedCursoIds] = useState<string[]>([]);
 
   const canCreate = isSuperAdmin;
   const canEdit = isSuperAdmin;
@@ -106,14 +123,16 @@ export default function VideoTreinamentos() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: vids }, { data: vizs }, { data: funcs }] = await Promise.all([
-        supabase.from("videos_treinamento").select("*").order("created_at", { ascending: false }),
+      const [{ data: cursosData }, { data: vids }, { data: vizs }, { data: funcs }] = await Promise.all([
+        supabase.from("cursos_video").select("*").order("created_at", { ascending: false }),
+        supabase.from("videos_treinamento").select("*").order("ordem", { ascending: true }),
         supabase.from("videos_visualizacao").select("*"),
         supabase.from("funcionarios").select("id, nome, cargo, setor").is("data_demissao", null),
       ]);
-      if (vids) setVideos(vids as VideoTreinamento[]);
-      if (vizs) setVisualizacoes(vizs as VideoVisualizacao[]);
-      if (funcs) setFuncionarios(funcs as Funcionario[]);
+      if (cursosData) setCursos(cursosData as any);
+      if (vids) setVideos(vids as any);
+      if (vizs) setVisualizacoes(vizs as any);
+      if (funcs) setFuncionarios(funcs as any);
     } catch {
       toast({ title: "Erro ao carregar dados", variant: "destructive" });
     }
@@ -122,50 +141,85 @@ export default function VideoTreinamentos() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Stats
-  const stats = useMemo(() => {
-    const totalVideos = videos.length;
-    const totalFunc = funcionarios.length;
-    const totalViews = visualizacoes.length;
-    const concluidos = visualizacoes.filter(v => v.concluido).length;
-    const aprovados = visualizacoes.filter(v => {
-      const video = videos.find(vid => vid.id === v.video_id);
-      return v.pontuacao !== null && video && v.pontuacao >= video.pontuacao_minima;
-    }).length;
-    const mediaGeral = totalViews > 0 ? Math.round(visualizacoes.reduce((s, v) => s + (v.pontuacao || 0), 0) / totalViews) : 0;
-    return { totalVideos, totalFunc, totalViews, concluidos, aprovados, mediaGeral };
-  }, [videos, visualizacoes, funcionarios]);
-
-  const filteredVideos = useMemo(() => {
-    if (!search.trim()) return videos;
+  const filteredCursos = useMemo(() => {
+    if (!search.trim()) return cursos;
     const q = search.toLowerCase();
-    return videos.filter(v => v.titulo.toLowerCase().includes(q) || (v.descricao || "").toLowerCase().includes(q));
-  }, [videos, search]);
+    return cursos.filter(c => c.titulo.toLowerCase().includes(q) || (c.descricao || "").toLowerCase().includes(q));
+  }, [cursos, search]);
 
-  const getVideoStats = (videoId: string) => {
-    const vizs = visualizacoes.filter(v => v.video_id === videoId);
-    const total = funcionarios.length;
-    const assistiram = vizs.length;
+  const getModulos = (cursoId: string) => videos.filter(v => v.curso_id === cursoId).sort((a, b) => a.ordem - b.ordem);
+
+  const getCursoStats = (cursoId: string) => {
+    const modulos = getModulos(cursoId);
+    const totalModulos = modulos.length;
+    const videoIds = modulos.map(m => m.id);
+    const vizs = visualizacoes.filter(v => videoIds.includes(v.video_id));
     const concluidos = vizs.filter(v => v.concluido).length;
-    const video = videos.find(v => v.id === videoId);
-    const aprovados = vizs.filter(v => v.pontuacao !== null && video && v.pontuacao >= video.pontuacao_minima).length;
-    const mediaPontuacao = vizs.length > 0 ? Math.round(vizs.filter(v => v.pontuacao !== null).reduce((s, v) => s + (v.pontuacao || 0), 0) / Math.max(vizs.filter(v => v.pontuacao !== null).length, 1)) : 0;
-    return { total, assistiram, concluidos, aprovados, mediaPontuacao, percentAssistiram: total > 0 ? Math.round((assistiram / total) * 100) : 0 };
+    return { totalModulos, totalVisualizacoes: vizs.length, concluidos };
   };
 
-  const handleUpload = async () => {
-    if (!form.titulo.trim()) {
-      toast({ title: "Informe o título do treinamento", variant: "destructive" });
+  const toggleExpand = (cursoId: string) => {
+    setExpandedCursos(prev => {
+      const next = new Set(prev);
+      if (next.has(cursoId)) next.delete(cursoId);
+      else next.add(cursoId);
+      return next;
+    });
+  };
+
+  // ============ CURSO CRUD ============
+  const handleSaveCurso = async () => {
+    if (!cursoForm.titulo.trim()) {
+      toast({ title: "Informe o título do curso", variant: "destructive" });
       return;
     }
-    if (!videoFile && !editingVideo) {
+    try {
+      if (editingCurso) {
+        const { error } = await supabase.from("cursos_video").update({
+          titulo: cursoForm.titulo,
+          descricao: cursoForm.descricao || null,
+          pontuacao_minima: parseInt(cursoForm.pontuacao_minima) || 70,
+        }).eq("id", editingCurso.id);
+        if (error) throw error;
+        toast({ title: "Curso atualizado!" });
+      } else {
+        const { error } = await supabase.from("cursos_video").insert({
+          titulo: cursoForm.titulo,
+          descricao: cursoForm.descricao || null,
+          pontuacao_minima: parseInt(cursoForm.pontuacao_minima) || 70,
+          empresa_id: null,
+          created_by: (await supabase.auth.getUser()).data.user?.id,
+        });
+        if (error) throw error;
+        toast({ title: "Curso criado!" });
+      }
+      setOpenCursoForm(false);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteCurso = async (id: string) => {
+    if (!confirm("Excluir este curso e todos os módulos vinculados?")) return;
+    const { error } = await supabase.from("cursos_video").delete().eq("id", id);
+    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
+    else { toast({ title: "Curso excluído" }); fetchData(); }
+  };
+
+  // ============ MODULE CRUD ============
+  const handleSaveModulo = async () => {
+    if (!moduloForm.titulo.trim()) {
+      toast({ title: "Informe o título do módulo", variant: "destructive" });
+      return;
+    }
+    if (!videoFile && !editingModulo) {
       toast({ title: "Selecione um vídeo", variant: "destructive" });
       return;
     }
     setUploading(true);
     try {
-      let videoUrl = editingVideo?.video_url || "";
-
+      let videoUrl = editingModulo?.video_url || "";
       if (videoFile) {
         const fileExt = videoFile.name.split(".").pop();
         const fileName = `${crypto.randomUUID()}.${fileExt}`;
@@ -175,28 +229,31 @@ export default function VideoTreinamentos() {
         videoUrl = urlData.publicUrl;
       }
 
-      if (editingVideo) {
+      if (editingModulo) {
         const { error } = await supabase.from("videos_treinamento").update({
-          titulo: form.titulo,
-          descricao: form.descricao || null,
-          pontuacao_minima: parseInt(form.pontuacao_minima) || 70,
+          titulo: moduloForm.titulo,
+          descricao: moduloForm.descricao || null,
           ...(videoFile ? { video_url: videoUrl } : {}),
-        }).eq("id", editingVideo.id);
+        }).eq("id", editingModulo.id);
         if (error) throw error;
-        toast({ title: "Treinamento atualizado!" });
+        toast({ title: "Módulo atualizado!" });
       } else {
+        const nextOrdem = getModulos(moduloCursoId).length + 1;
+        const curso = cursos.find(c => c.id === moduloCursoId);
         const { error } = await supabase.from("videos_treinamento").insert({
-          titulo: form.titulo,
-          descricao: form.descricao || null,
+          titulo: moduloForm.titulo,
+          descricao: moduloForm.descricao || null,
           video_url: videoUrl,
-          pontuacao_minima: parseInt(form.pontuacao_minima) || 70,
+          pontuacao_minima: curso?.pontuacao_minima || 70,
+          curso_id: moduloCursoId,
+          ordem: nextOrdem,
           empresa_id: null,
           created_by: (await supabase.auth.getUser()).data.user?.id,
         });
         if (error) throw error;
-        toast({ title: "Treinamento cadastrado!" });
+        toast({ title: "Módulo adicionado!" });
       }
-      setOpenForm(false);
+      setOpenModuloForm(false);
       setVideoFile(null);
       fetchData();
     } catch (err: any) {
@@ -205,18 +262,14 @@ export default function VideoTreinamentos() {
     setUploading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Excluir este treinamento e todos os dados vinculados?")) return;
+  const handleDeleteModulo = async (id: string) => {
+    if (!confirm("Excluir este módulo?")) return;
     const { error } = await supabase.from("videos_treinamento").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Treinamento excluído" });
-      fetchData();
-    }
+    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
+    else { toast({ title: "Módulo excluído" }); fetchData(); }
   };
 
-  // Quiz management
+  // ============ QUIZ ============
   const openQuizManager = async (videoId: string) => {
     setQuizVideoId(videoId);
     const { data } = await supabase.from("videos_perguntas").select("*").eq("video_id", videoId).order("ordem");
@@ -227,7 +280,7 @@ export default function VideoTreinamentos() {
 
   const addPergunta = async () => {
     if (!novaPergunta.pergunta.trim() || !novaPergunta.opcao_a.trim() || !novaPergunta.opcao_b.trim()) {
-      toast({ title: "Preencha a pergunta e pelo menos as opções A e B", variant: "destructive" });
+      toast({ title: "Preencha pergunta e opções A/B", variant: "destructive" });
       return;
     }
     const { error } = await supabase.from("videos_perguntas").insert({
@@ -241,10 +294,7 @@ export default function VideoTreinamentos() {
       ordem: perguntas.length + 1,
       empresa_id: null,
     });
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
-    }
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Pergunta adicionada!" });
     openQuizManager(quizVideoId);
   };
@@ -254,7 +304,7 @@ export default function VideoTreinamentos() {
     openQuizManager(quizVideoId);
   };
 
-  // Detail view
+  // ============ DETAIL ============
   const openVideoDetail = (video: VideoTreinamento) => {
     setDetailVideo(video);
     setOpenDetail(true);
@@ -265,13 +315,7 @@ export default function VideoTreinamentos() {
     return visualizacoes.filter(v => v.video_id === detailVideo.id);
   }, [detailVideo, visualizacoes]);
 
-  const formatDuration = (seconds: number) => {
-    if (!seconds) return "--";
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
-
+  // ============ EMPLOYEE ACCESS ============
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const filteredAccessFuncionarios = useMemo(() => {
@@ -285,8 +329,8 @@ export default function VideoTreinamentos() {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
-    if (selectedVideoIds.length === 0) {
-      toast({ title: "Selecione ao menos um treinamento", variant: "destructive" });
+    if (selectedCursoIds.length === 0) {
+      toast({ title: "Selecione ao menos um curso", variant: "destructive" });
       return;
     }
     if (accessPassword.length < 6) {
@@ -298,7 +342,6 @@ export default function VideoTreinamentos() {
       const func = funcionarios.find(f => f.id === accessFuncId);
       const emailLower = accessEmail.toLowerCase().trim();
 
-      // Create auth user via edge function
       const { data, error } = await supabase.functions.invoke("create-user", {
         body: { email: emailLower, password: accessPassword, nome: func?.nome || "" },
       });
@@ -308,72 +351,74 @@ export default function VideoTreinamentos() {
       const userId = data?.user_id;
       if (!userId) throw new Error("Não foi possível vincular o usuário criado");
 
-      // Add to usuarios_liberados with only video_treinamentos permission
+      // Add to usuarios_liberados
       const { data: existingUL } = await (supabase.from as any)("usuarios_liberados")
-        .select("id")
-        .eq("email", emailLower)
-        .limit(1);
+        .select("id").eq("email", emailLower).limit(1);
 
       if (existingUL && existingUL.length > 0) {
-        const { error: updateUserError } = await supabase.from("usuarios_liberados").update({
+        await supabase.from("usuarios_liberados").update({
           nome: func?.nome || "",
           empresa_id: empresaId,
           modulos_permitidos: ["video_treinamentos:view"],
           is_principal: false,
         }).eq("id", existingUL[0].id);
-        if (updateUserError) throw new Error("Erro ao atualizar acesso: " + updateUserError.message);
       } else {
-        const { error: ulError } = await supabase.from("usuarios_liberados").insert({
+        await supabase.from("usuarios_liberados").insert({
           email: emailLower,
           nome: func?.nome || "",
           empresa_id: empresaId,
           modulos_permitidos: ["video_treinamentos:view"],
           is_principal: false,
         });
-        if (ulError) throw new Error("Erro ao criar acesso: " + ulError.message);
       }
 
-      // Update profile with empresa_id and employee name
+      // Update profile
       const { error: profileError } = await supabase.from("profiles")
         .update({ empresa_id: empresaId, email: emailLower, nome: func?.nome || "" })
         .eq("user_id", userId);
       if (profileError) {
-        const { error: profileUpsertError } = await supabase.from("profiles").upsert({
-          user_id: userId,
-          email: emailLower,
-          nome: func?.nome || "",
-          empresa_id: empresaId,
+        await supabase.from("profiles").upsert({
+          user_id: userId, email: emailLower, nome: func?.nome || "", empresa_id: empresaId,
         }, { onConflict: "user_id" });
-        if (profileUpsertError) throw new Error("Erro ao vincular perfil: " + profileUpsertError.message);
       }
 
-      // Replace employee assignments with selected videos only
-      const { error: deleteAssignmentsError } = await supabase
-        .from("videos_atribuicao")
-        .delete()
-        .eq("funcionario_id", accessFuncId);
-      if (deleteAssignmentsError) throw new Error("Erro ao limpar treinamentos anteriores: " + deleteAssignmentsError.message);
-
-      const assignments = selectedVideoIds.map(vid => ({
-        video_id: vid,
+      // Replace curso assignments
+      await supabase.from("cursos_atribuicao").delete().eq("funcionario_id", accessFuncId);
+      const assignments = selectedCursoIds.map(cid => ({
+        curso_id: cid,
         funcionario_id: accessFuncId,
         empresa_id: empresaId,
       }));
-      const { error: assignError } = await supabase.from("videos_atribuicao").upsert(assignments, { onConflict: "video_id,funcionario_id" });
-      if (assignError) throw new Error("Erro ao salvar treinamentos: " + assignError.message);
+      const { error: assignError } = await supabase.from("cursos_atribuicao").insert(assignments);
+      if (assignError) throw new Error("Erro ao salvar cursos: " + assignError.message);
+
+      // Also keep videos_atribuicao in sync for backward compatibility
+      await supabase.from("videos_atribuicao").delete().eq("funcionario_id", accessFuncId);
+      const videoIds = selectedCursoIds.flatMap(cid => getModulos(cid).map(m => m.id));
+      if (videoIds.length > 0) {
+        const videoAssignments = videoIds.map(vid => ({
+          video_id: vid, funcionario_id: accessFuncId, empresa_id: empresaId,
+        }));
+        await supabase.from("videos_atribuicao").upsert(videoAssignments, { onConflict: "video_id,funcionario_id" });
+      }
 
       toast({ title: "Acesso criado!", description: `Login: ${accessEmail} / Senha: ${accessPassword}` });
       setOpenAccess(false);
-      setAccessFuncId("");
-      setAccessEmail("");
-      setAccessPassword("");
-      setAccessFuncSearch("");
-      setSelectedVideoIds([]);
+      setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch(""); setSelectedCursoIds([]);
     } catch (err: any) {
       toast({ title: "Erro ao criar acesso", description: err.message, variant: "destructive" });
     }
     setCreatingAccess(false);
   };
+
+  // ============ STATS ============
+  const stats = useMemo(() => {
+    const totalCursos = cursos.length;
+    const totalModulos = videos.filter(v => v.curso_id).length;
+    const totalFunc = funcionarios.length;
+    const concluidos = visualizacoes.filter(v => v.concluido).length;
+    return { totalCursos, totalModulos, totalFunc, concluidos };
+  }, [cursos, videos, visualizacoes, funcionarios]);
 
   if (loading) {
     return (
@@ -389,32 +434,46 @@ export default function VideoTreinamentos() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Video className="h-7 w-7 text-primary" />
+            <BookOpen className="h-7 w-7 text-primary" />
             Treinamentos em Vídeo
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Gerencie vídeos de treinamento e acompanhe a pontuação dos funcionários</p>
+          <p className="text-muted-foreground text-sm mt-1">Gerencie cursos com módulos de vídeo</p>
         </div>
         <div className="flex gap-2">
           {(isSuperAdmin || isPrincipal) && (
-            <Button variant="outline" onClick={() => { setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch(""); setShowAccessFuncList(false); setSelectedVideoIds([]); setOpenAccess(true); }}>
+            <Button variant="outline" onClick={() => {
+              setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch("");
+              setShowAccessFuncList(false); setSelectedCursoIds([]); setOpenAccess(true);
+            }}>
               <Users className="h-4 w-4 mr-2" /> Criar Acesso Funcionário
             </Button>
           )}
           {canCreate && (
-            <Button onClick={() => { setEditingVideo(null); setForm({ titulo: "", descricao: "", pontuacao_minima: "70" }); setVideoFile(null); setOpenForm(true); }} className="bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4 mr-2" /> Adicionar Treinamento
+            <Button onClick={() => {
+              setEditingCurso(null);
+              setCursoForm({ titulo: "", descricao: "", pontuacao_minima: "70" });
+              setOpenCursoForm(true);
+            }} className="bg-primary hover:bg-primary/90">
+              <Plus className="h-4 w-4 mr-2" /> Novo Curso
             </Button>
           )}
         </div>
       </div>
 
-      {/* Dashboard Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-4 text-center">
-            <Video className="h-5 w-5 mx-auto text-primary mb-1" />
-            <div className="text-2xl font-bold text-foreground">{stats.totalVideos}</div>
-            <div className="text-xs text-muted-foreground">Treinamentos</div>
+            <BookOpen className="h-5 w-5 mx-auto text-primary mb-1" />
+            <div className="text-2xl font-bold text-foreground">{stats.totalCursos}</div>
+            <div className="text-xs text-muted-foreground">Cursos</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <Layers className="h-5 w-5 mx-auto text-primary mb-1" />
+            <div className="text-2xl font-bold text-foreground">{stats.totalModulos}</div>
+            <div className="text-xs text-muted-foreground">Módulos</div>
           </CardContent>
         </Card>
         <Card>
@@ -426,30 +485,9 @@ export default function VideoTreinamentos() {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <Eye className="h-5 w-5 mx-auto text-primary mb-1" />
-            <div className="text-2xl font-bold text-foreground">{stats.totalViews}</div>
-            <div className="text-xs text-muted-foreground">Visualizações</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
             <CheckCircle className="h-5 w-5 mx-auto text-emerald-500 mb-1" />
             <div className="text-2xl font-bold text-foreground">{stats.concluidos}</div>
             <div className="text-xs text-muted-foreground">Concluídos</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Award className="h-5 w-5 mx-auto text-amber-500 mb-1" />
-            <div className="text-2xl font-bold text-foreground">{stats.aprovados}</div>
-            <div className="text-xs text-muted-foreground">Aprovados</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <BarChart3 className="h-5 w-5 mx-auto text-primary mb-1" />
-            <div className="text-2xl font-bold text-foreground">{stats.mediaGeral}%</div>
-            <div className="text-xs text-muted-foreground">Média Geral</div>
           </CardContent>
         </Card>
       </div>
@@ -457,129 +495,208 @@ export default function VideoTreinamentos() {
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Pesquisar treinamento..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Pesquisar curso..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      {/* Videos list */}
-      <div className="grid gap-4">
-        {filteredVideos.length === 0 ? (
+      {/* Cursos List */}
+      <div className="space-y-4">
+        {filteredCursos.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
-              <Video className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">Nenhum treinamento cadastrado</p>
-              <p className="text-sm">Clique em "Adicionar Treinamento" para começar</p>
+              <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">Nenhum curso cadastrado</p>
+              <p className="text-sm">Clique em "Novo Curso" para começar</p>
             </CardContent>
           </Card>
-        ) : filteredVideos.map(video => {
-          const vs = getVideoStats(video.id);
+        ) : filteredCursos.map(curso => {
+          const modulos = getModulos(curso.id);
+          const cursoStats = getCursoStats(curso.id);
+          const isExpanded = expandedCursos.has(curso.id);
           return (
-            <Card key={video.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex flex-col lg:flex-row gap-4">
-                  {/* Video preview */}
-                  <div className="relative w-full lg:w-64 aspect-video bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                    <video src={video.video_url} className="w-full h-full object-cover" preload="metadata" />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <Play className="h-10 w-10 text-white" />
+            <Card key={curso.id} className="overflow-hidden">
+              {/* Course header */}
+              <div
+                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => toggleExpand(curso.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="bg-primary/10 p-2 rounded-lg">
+                      <BookOpen className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-foreground text-lg truncate">{curso.titulo}</h3>
+                      {curso.descricao && <p className="text-sm text-muted-foreground line-clamp-1">{curso.descricao}</p>}
                     </div>
                   </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-semibold text-foreground text-lg">{video.titulo}</h3>
-                        {video.descricao && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{video.descricao}</p>}
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" onClick={() => openVideoDetail(video)} title="Ver detalhes">
-                          <Eye className="h-4 w-4" />
+                  <div className="flex items-center gap-3">
+                    <div className="flex gap-2 text-xs text-muted-foreground">
+                      <Badge variant="outline">{cursoStats.totalModulos} módulo(s)</Badge>
+                      <Badge variant="outline">Nota mín: {curso.pontuacao_minima}%</Badge>
+                    </div>
+                    <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                      {canCreate && (
+                        <Button variant="ghost" size="icon" title="Adicionar Módulo" onClick={() => {
+                          setEditingModulo(null);
+                          setModuloCursoId(curso.id);
+                          setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "" });
+                          setVideoFile(null);
+                          setOpenModuloForm(true);
+                        }}>
+                          <Plus className="h-4 w-4" />
                         </Button>
-                        {canEdit && (
-                          <Button variant="ghost" size="icon" onClick={() => openQuizManager(video.id)} title="Gerenciar Quiz">
-                            <Award className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canEdit && (
-                          <Button variant="ghost" size="icon" onClick={() => {
-                            setEditingVideo(video);
-                            setForm({ titulo: video.titulo, descricao: video.descricao || "", pontuacao_minima: String(video.pontuacao_minima) });
-                            setVideoFile(null);
-                            setOpenForm(true);
-                          }} title="Editar">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(video.id)} title="Excluir" className="text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                      )}
+                      {canEdit && (
+                        <Button variant="ghost" size="icon" title="Editar Curso" onClick={() => {
+                          setEditingCurso(curso);
+                          setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima) });
+                          setOpenCursoForm(true);
+                        }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCurso(curso.id)} className="text-destructive hover:text-destructive" title="Excluir Curso">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
-
-                    {/* Stats row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-foreground">{vs.assistiram}/{vs.total}</div>
-                        <div className="text-xs text-muted-foreground">Assistiram</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-foreground">{vs.concluidos}</div>
-                        <div className="text-xs text-muted-foreground">Concluídos</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-foreground">{vs.aprovados}</div>
-                        <div className="text-xs text-muted-foreground">Aprovados</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-foreground">{vs.mediaPontuacao}%</div>
-                        <div className="text-xs text-muted-foreground">Média</div>
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="mt-3">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>Progresso geral</span>
-                        <span>{vs.percentAssistiram}%</span>
-                      </div>
-                      <Progress value={vs.percentAssistiram} className="h-2" />
-                    </div>
-
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      <Badge variant="outline" className="text-xs">Nota mínima: {video.pontuacao_minima}%</Badge>
-                      <Badge variant="outline" className="text-xs">{new Date(video.created_at).toLocaleDateString("pt-BR")}</Badge>
-                    </div>
+                    {isExpanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
                   </div>
                 </div>
-              </CardContent>
+              </div>
+
+              {/* Expanded modules */}
+              {isExpanded && (
+                <div className="border-t bg-muted/30">
+                  {modulos.length === 0 ? (
+                    <div className="p-6 text-center text-muted-foreground">
+                      <Video className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                      <p className="text-sm">Nenhum módulo adicionado</p>
+                      {canCreate && (
+                        <Button variant="outline" size="sm" className="mt-2" onClick={() => {
+                          setEditingModulo(null);
+                          setModuloCursoId(curso.id);
+                          setModuloForm({ titulo: "Módulo 1", descricao: "" });
+                          setVideoFile(null);
+                          setOpenModuloForm(true);
+                        }}>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar Módulo
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {modulos.map((modulo, idx) => {
+                        const vizs = visualizacoes.filter(v => v.video_id === modulo.id);
+                        const concluidos = vizs.filter(v => v.concluido).length;
+                        return (
+                          <div key={modulo.id} className="p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <span className="bg-primary/10 text-primary font-bold text-sm rounded-full w-8 h-8 flex items-center justify-center">
+                                {String(idx + 1).padStart(2, "0")}
+                              </span>
+                            </div>
+
+                            <div className="relative w-24 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
+                              <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <Play className="h-5 w-5 text-white" />
+                              </div>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-foreground text-sm truncate">{modulo.titulo}</h4>
+                              {modulo.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
+                              <div className="flex gap-2 mt-1">
+                                <span className="text-xs text-muted-foreground">{concluidos} concluíram</span>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" onClick={() => openVideoDetail(modulo)} title="Detalhes" className="h-8 w-8">
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              {canEdit && (
+                                <Button variant="ghost" size="icon" onClick={() => openQuizManager(modulo.id)} title="Quiz" className="h-8 w-8">
+                                  <Award className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              {canEdit && (
+                                <Button variant="ghost" size="icon" onClick={() => {
+                                  setEditingModulo(modulo);
+                                  setModuloCursoId(modulo.curso_id || "");
+                                  setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "" });
+                                  setVideoFile(null);
+                                  setOpenModuloForm(true);
+                                }} title="Editar" className="h-8 w-8">
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button variant="ghost" size="icon" onClick={() => handleDeleteModulo(modulo.id)} className="text-destructive h-8 w-8" title="Excluir">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           );
         })}
       </div>
 
-      {/* Upload / Edit Dialog */}
-      <Dialog open={openForm} onOpenChange={setOpenForm}>
+      {/* ============ DIALOGS ============ */}
+
+      {/* Curso Form Dialog */}
+      <Dialog open={openCursoForm} onOpenChange={setOpenCursoForm}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingVideo ? "Editar Treinamento" : "Adicionar Treinamento"}</DialogTitle>
+            <DialogTitle>{editingCurso ? "Editar Curso" : "Novo Curso"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Título *</Label>
-              <Input value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} placeholder="Ex: NR-35 Trabalho em Altura" />
+              <Label>Título do Curso *</Label>
+              <Input value={cursoForm.titulo} onChange={e => setCursoForm({ ...cursoForm, titulo: e.target.value })} placeholder="Ex: NR-35 Trabalho em Altura" />
             </div>
             <div>
               <Label>Descrição</Label>
-              <Textarea value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} placeholder="Descrição do treinamento..." rows={3} />
+              <Textarea value={cursoForm.descricao} onChange={e => setCursoForm({ ...cursoForm, descricao: e.target.value })} placeholder="Descrição do curso..." rows={3} />
             </div>
             <div>
               <Label>Pontuação Mínima (%)</Label>
-              <Input type="number" min={0} max={100} value={form.pontuacao_minima} onChange={e => setForm({ ...form, pontuacao_minima: e.target.value })} />
+              <Input type="number" min={0} max={100} value={cursoForm.pontuacao_minima} onChange={e => setCursoForm({ ...cursoForm, pontuacao_minima: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenCursoForm(false)}>Cancelar</Button>
+            <Button onClick={handleSaveCurso} className="bg-primary">{editingCurso ? "Salvar" : "Criar Curso"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Module Form Dialog */}
+      <Dialog open={openModuloForm} onOpenChange={setOpenModuloForm}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingModulo ? "Editar Módulo" : "Adicionar Módulo"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Título do Módulo *</Label>
+              <Input value={moduloForm.titulo} onChange={e => setModuloForm({ ...moduloForm, titulo: e.target.value })} placeholder="Ex: Módulo 01 - Introdução" />
             </div>
             <div>
-              <Label>{editingVideo ? "Substituir vídeo (opcional)" : "Vídeo *"}</Label>
+              <Label>Descrição</Label>
+              <Textarea value={moduloForm.descricao} onChange={e => setModuloForm({ ...moduloForm, descricao: e.target.value })} placeholder="Descrição do módulo..." rows={2} />
+            </div>
+            <div>
+              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Vídeo *"}</Label>
               <div className="mt-1">
                 <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
                   <Upload className="h-5 w-5 text-muted-foreground" />
@@ -592,9 +709,9 @@ export default function VideoTreinamentos() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenForm(false)}>Cancelar</Button>
-            <Button onClick={handleUpload} disabled={uploading} className="bg-primary">
-              {uploading ? "Enviando..." : editingVideo ? "Salvar" : "Cadastrar"}
+            <Button variant="outline" onClick={() => setOpenModuloForm(false)}>Cancelar</Button>
+            <Button onClick={handleSaveModulo} disabled={uploading} className="bg-primary">
+              {uploading ? "Enviando..." : editingModulo ? "Salvar" : "Adicionar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -606,15 +723,13 @@ export default function VideoTreinamentos() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Award className="h-5 w-5 text-primary" />
-              Gerenciar Quiz - {videos.find(v => v.id === quizVideoId)?.titulo}
+              Quiz - {videos.find(v => v.id === quizVideoId)?.titulo}
             </DialogTitle>
           </DialogHeader>
-
-          {/* Existing questions */}
           <div className="space-y-3">
             <h3 className="font-semibold text-sm text-foreground">Perguntas ({perguntas.length})</h3>
             {perguntas.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma pergunta cadastrada ainda.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma pergunta cadastrada.</p>
             ) : perguntas.map((p, i) => (
               <Card key={p.id}>
                 <CardContent className="p-3">
@@ -638,48 +753,30 @@ export default function VideoTreinamentos() {
               </Card>
             ))}
           </div>
-
-          {/* Add new question */}
           {canCreate && (
             <div className="border-t pt-4 space-y-3">
               <h3 className="font-semibold text-sm text-foreground">Nova Pergunta</h3>
               <div>
                 <Label className="text-xs">Pergunta *</Label>
-                <Input value={novaPergunta.pergunta} onChange={e => setNovaPergunta({ ...novaPergunta, pergunta: e.target.value })} placeholder="Digite a pergunta..." />
+                <Input value={novaPergunta.pergunta} onChange={e => setNovaPergunta({ ...novaPergunta, pergunta: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Opção A *</Label>
-                  <Input value={novaPergunta.opcao_a} onChange={e => setNovaPergunta({ ...novaPergunta, opcao_a: e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">Opção B *</Label>
-                  <Input value={novaPergunta.opcao_b} onChange={e => setNovaPergunta({ ...novaPergunta, opcao_b: e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">Opção C</Label>
-                  <Input value={novaPergunta.opcao_c} onChange={e => setNovaPergunta({ ...novaPergunta, opcao_c: e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">Opção D</Label>
-                  <Input value={novaPergunta.opcao_d} onChange={e => setNovaPergunta({ ...novaPergunta, opcao_d: e.target.value })} />
-                </div>
+                <div><Label className="text-xs">Opção A *</Label><Input value={novaPergunta.opcao_a} onChange={e => setNovaPergunta({ ...novaPergunta, opcao_a: e.target.value })} /></div>
+                <div><Label className="text-xs">Opção B *</Label><Input value={novaPergunta.opcao_b} onChange={e => setNovaPergunta({ ...novaPergunta, opcao_b: e.target.value })} /></div>
+                <div><Label className="text-xs">Opção C</Label><Input value={novaPergunta.opcao_c} onChange={e => setNovaPergunta({ ...novaPergunta, opcao_c: e.target.value })} /></div>
+                <div><Label className="text-xs">Opção D</Label><Input value={novaPergunta.opcao_d} onChange={e => setNovaPergunta({ ...novaPergunta, opcao_d: e.target.value })} /></div>
               </div>
               <div>
                 <Label className="text-xs">Resposta Correta</Label>
                 <Select value={novaPergunta.resposta_correta} onValueChange={v => setNovaPergunta({ ...novaPergunta, resposta_correta: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="a">A</SelectItem>
-                    <SelectItem value="b">B</SelectItem>
-                    <SelectItem value="c">C</SelectItem>
-                    <SelectItem value="d">D</SelectItem>
+                    <SelectItem value="a">A</SelectItem><SelectItem value="b">B</SelectItem>
+                    <SelectItem value="c">C</SelectItem><SelectItem value="d">D</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={addPergunta} className="w-full bg-primary">
-                <Plus className="h-4 w-4 mr-2" /> Adicionar Pergunta
-              </Button>
+              <Button onClick={addPergunta} className="w-full bg-primary"><Plus className="h-4 w-4 mr-2" /> Adicionar Pergunta</Button>
             </div>
           )}
         </DialogContent>
@@ -693,14 +790,10 @@ export default function VideoTreinamentos() {
           </DialogHeader>
           {detailVideo && (
             <div className="space-y-4">
-              {/* Video player */}
               <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                 <video src={detailVideo.video_url} controls className="w-full h-full" preload="metadata" />
               </div>
-
               {detailVideo.descricao && <p className="text-sm text-muted-foreground">{detailVideo.descricao}</p>}
-
-              {/* Funcionários status */}
               <div>
                 <h3 className="font-semibold text-sm mb-2">Acompanhamento de Funcionários</h3>
                 <div className="border rounded-lg overflow-hidden">
@@ -719,37 +812,17 @@ export default function VideoTreinamentos() {
                         const aprovado = viz?.pontuacao !== null && viz?.pontuacao !== undefined && viz.pontuacao >= (detailVideo.pontuacao_minima || 70);
                         return (
                           <TableRow key={func.id}>
-                            <TableCell>
-                              <div>
-                                <span className="font-medium text-sm">{func.nome}</span>
-                                {func.cargo && <span className="text-xs text-muted-foreground ml-2">{func.cargo}</span>}
-                              </div>
+                            <TableCell><span className="font-medium text-sm">{func.nome}</span></TableCell>
+                            <TableCell className="text-center">
+                              {viz ? <span className="text-xs">{viz.percentual_assistido}%</span> : <span className="text-xs text-muted-foreground">--</span>}
                             </TableCell>
                             <TableCell className="text-center">
-                              {viz ? (
-                                <div className="flex items-center gap-2 justify-center">
-                                  <Progress value={viz.percentual_assistido} className="h-2 w-16" />
-                                  <span className="text-xs">{viz.percentual_assistido}%</span>
-                                </div>
-                              ) : <span className="text-xs text-muted-foreground">--</span>}
+                              {viz?.pontuacao != null ? <span className={`font-bold text-sm ${aprovado ? "text-emerald-600" : "text-destructive"}`}>{viz.pontuacao}%</span> : <span className="text-xs text-muted-foreground">--</span>}
                             </TableCell>
                             <TableCell className="text-center">
-                              {viz?.pontuacao !== null && viz?.pontuacao !== undefined ? (
-                                <span className={`font-bold text-sm ${aprovado ? "text-emerald-600" : "text-destructive"}`}>{viz.pontuacao}%</span>
-                              ) : <span className="text-xs text-muted-foreground">--</span>}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {!viz ? (
-                                <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>
-                              ) : viz.concluido ? (
-                                aprovado ? (
-                                  <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" /> Aprovado</Badge>
-                                ) : (
-                                  <Badge variant="destructive" className="text-xs"><AlertTriangle className="h-3 w-3 mr-1" /> Reprovado</Badge>
-                                )
-                              ) : (
-                                <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700"><Play className="h-3 w-3 mr-1" /> Em andamento</Badge>
-                              )}
+                              {!viz ? <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>
+                                : viz.concluido ? (aprovado ? <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Aprovado</Badge> : <Badge variant="destructive" className="text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Reprovado</Badge>)
+                                : <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700"><Play className="h-3 w-3 mr-1" />Em andamento</Badge>}
                             </TableCell>
                           </TableRow>
                         );
@@ -787,28 +860,19 @@ export default function VideoTreinamentos() {
                 />
               </div>
               {accessFuncId && (
-                <div className="mt-1 text-xs text-primary font-medium">
-                  ✓ {funcionarios.find(f => f.id === accessFuncId)?.nome}
-                </div>
+                <div className="mt-1 text-xs text-primary font-medium">✓ {funcionarios.find(f => f.id === accessFuncId)?.nome}</div>
               )}
               {!accessFuncId && showAccessFuncList && (
                 <div className="border rounded-lg mt-1 max-h-40 overflow-y-auto bg-background">
                   {filteredAccessFuncionarios.length === 0 ? (
                     <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
                   ) : filteredAccessFuncionarios.slice(0, 30).map(f => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
+                    <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex justify-between items-center"
                       onClick={() => {
-                        setAccessFuncId(f.id);
-                        setAccessFuncSearch(f.nome);
-                        setShowAccessFuncList(false);
-                        // Suggest email from name
+                        setAccessFuncId(f.id); setAccessFuncSearch(f.nome); setShowAccessFuncList(false);
                         const suggested = f.nome.toLowerCase().replace(/\s+/g, ".").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                         setAccessEmail(suggested + "@treinamento.local");
-                      }}
-                    >
+                      }}>
                       <span className="font-medium">{f.nome}</span>
                       <span className="text-xs text-muted-foreground">{f.cargo || ""}</span>
                     </button>
@@ -825,29 +889,32 @@ export default function VideoTreinamentos() {
               <Input value={accessPassword} onChange={e => setAccessPassword(e.target.value)} placeholder="Mínimo 6 caracteres" type="text" />
               <p className="text-xs text-muted-foreground mt-1">A senha será exibida ao funcionário para acesso</p>
             </div>
-            {/* Video selection */}
+            {/* Curso selection */}
             <div>
-              <Label>Cursos / Treinamentos *</Label>
-              <p className="text-xs text-muted-foreground mb-2">Selecione quais treinamentos o funcionário deve cursar</p>
-              {videos.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-3">Nenhum treinamento cadastrado</p>
+              <Label>Cursos *</Label>
+              <p className="text-xs text-muted-foreground mb-2">Selecione quais cursos o funcionário deve cursar</p>
+              {cursos.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">Nenhum curso cadastrado</p>
               ) : (
                 <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
-                  {videos.map(v => (
-                    <label key={v.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer">
+                  {cursos.map(c => (
+                    <label key={c.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted cursor-pointer">
                       <Checkbox
-                        checked={selectedVideoIds.includes(v.id)}
+                        checked={selectedCursoIds.includes(c.id)}
                         onCheckedChange={checked => {
-                          setSelectedVideoIds(prev => checked ? [...prev, v.id] : prev.filter(id => id !== v.id));
+                          setSelectedCursoIds(prev => checked ? [...prev, c.id] : prev.filter(id => id !== c.id));
                         }}
                       />
-                      <span className="text-sm font-medium">{v.titulo}</span>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium">{c.titulo}</span>
+                        <span className="text-xs text-muted-foreground ml-2">({getModulos(c.id).length} módulos)</span>
+                      </div>
                     </label>
                   ))}
                 </div>
               )}
-              {selectedVideoIds.length > 0 && (
-                <p className="text-xs text-primary mt-1">{selectedVideoIds.length} treinamento(s) selecionado(s)</p>
+              {selectedCursoIds.length > 0 && (
+                <p className="text-xs text-primary mt-1">{selectedCursoIds.length} curso(s) selecionado(s)</p>
               )}
             </div>
           </div>
