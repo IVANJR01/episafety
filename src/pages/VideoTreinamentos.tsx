@@ -117,6 +117,14 @@ export default function VideoTreinamentos() {
   const [showAccessFuncList, setShowAccessFuncList] = useState(false);
   const [selectedCursoIds, setSelectedCursoIds] = useState<string[]>([]);
 
+  // Manage courses for existing employee
+  const [openManageCursos, setOpenManageCursos] = useState(false);
+  const [manageFuncId, setManageFuncId] = useState("");
+  const [manageFuncSearch, setManageFuncSearch] = useState("");
+  const [showManageFuncList, setShowManageFuncList] = useState(false);
+  const [manageCursoIds, setManageCursoIds] = useState<string[]>([]);
+  const [savingManage, setSavingManage] = useState(false);
+
   const canCreate = isSuperAdmin;
   const canEdit = isSuperAdmin;
   const canDelete = isSuperAdmin;
