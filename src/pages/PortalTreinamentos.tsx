@@ -207,7 +207,7 @@ export default function PortalTreinamentos() {
         empresa_id: funcEmpresaId,
       }, { onConflict: "video_id,funcionario_id" });
     } catch {}
-  }, [funcionarioId]);
+  }, [funcionarioId, funcEmpresaId]);
 
   const handleStartVideo = (video: VideoTreinamento) => {
     // Save progress of current video before switching
