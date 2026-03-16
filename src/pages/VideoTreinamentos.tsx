@@ -427,10 +427,36 @@ export default function VideoTreinamentos() {
   const stats = useMemo(() => {
     const totalCursos = cursos.length;
     const totalModulos = videos.filter(v => v.curso_id).length;
-    const totalFunc = funcionarios.length;
+    const totalFunc = new Set(cursosAtribuicao.map(a => a.funcionario_id)).size;
     const concluidos = visualizacoes.filter(v => v.concluido).length;
     return { totalCursos, totalModulos, totalFunc, concluidos };
-  }, [cursos, videos, visualizacoes, funcionarios]);
+  }, [cursos, videos, visualizacoes, cursosAtribuicao]);
+
+  // Per-course consolidated stats
+  const cursosConsolidados = useMemo(() => {
+    return cursos.map(curso => {
+      const modulos = getModulos(curso.id);
+      const totalModulos = modulos.length;
+      const videoIds = modulos.map(m => m.id);
+      const assignedFuncIds = [...new Set(cursosAtribuicao.filter(a => a.curso_id === curso.id).map(a => a.funcionario_id))];
+      const totalAtribuidos = assignedFuncIds.length;
+
+      let concluidos = 0;
+      let emAndamento = 0;
+      let pendentes = 0;
+
+      assignedFuncIds.forEach(funcId => {
+        if (totalModulos === 0) { pendentes++; return; }
+        const funcVizs = visualizacoes.filter(v => videoIds.includes(v.video_id) && v.funcionario_id === funcId);
+        const modulosConcluidos = funcVizs.filter(v => v.concluido).length;
+        if (modulosConcluidos >= totalModulos) concluidos++;
+        else if (modulosConcluidos > 0 || funcVizs.some(v => v.percentual_assistido > 0)) emAndamento++;
+        else pendentes++;
+      });
+
+      return { ...curso, totalModulos, totalAtribuidos, concluidos, emAndamento, pendentes };
+    }).filter(c => c.totalAtribuidos > 0);
+  }, [cursos, videos, visualizacoes, cursosAtribuicao]);
 
   if (loading) {
     return (
