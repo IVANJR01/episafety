@@ -167,6 +167,7 @@ export default function UsuariosLiberados() {
         setNovoEmail("");
         setNovoNome("");
         setNovaSenha("");
+        setNovoEmpresaId("");
         await loadUsuarios();
       }
     } catch (err: any) {
