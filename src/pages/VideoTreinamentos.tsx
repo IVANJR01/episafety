@@ -70,6 +70,15 @@ export default function VideoTreinamentos() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("videos");
 
+  // Employee access management
+  const [openAccess, setOpenAccess] = useState(false);
+  const [accessFuncId, setAccessFuncId] = useState("");
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessPassword, setAccessPassword] = useState("");
+  const [accessFuncSearch, setAccessFuncSearch] = useState("");
+  const [creatingAccess, setCreatingAccess] = useState(false);
+  const [showAccessFuncList, setShowAccessFuncList] = useState(false);
+
   // Dialog states
   const [openForm, setOpenForm] = useState(false);
   const [editingVideo, setEditingVideo] = useState<VideoTreinamento | null>(null);
