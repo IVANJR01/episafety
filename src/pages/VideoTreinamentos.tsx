@@ -347,11 +347,18 @@ export default function VideoTreinamentos() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Gerencie vídeos de treinamento e acompanhe a pontuação dos funcionários</p>
         </div>
-        {canCreate && (
-          <Button onClick={() => { setEditingVideo(null); setForm({ titulo: "", descricao: "", pontuacao_minima: "70" }); setVideoFile(null); setOpenForm(true); }} className="bg-primary hover:bg-primary/90">
-            <Plus className="h-4 w-4 mr-2" /> Adicionar Treinamento
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {(isSuperAdmin || isPrincipal) && (
+            <Button variant="outline" onClick={() => { setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch(""); setShowAccessFuncList(false); setOpenAccess(true); }}>
+              <Users className="h-4 w-4 mr-2" /> Criar Acesso Funcionário
+            </Button>
+          )}
+          {canCreate && (
+            <Button onClick={() => { setEditingVideo(null); setForm({ titulo: "", descricao: "", pontuacao_minima: "70" }); setVideoFile(null); setOpenForm(true); }} className="bg-primary hover:bg-primary/90">
+              <Plus className="h-4 w-4 mr-2" /> Adicionar Treinamento
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Dashboard Cards */}
