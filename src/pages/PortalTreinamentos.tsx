@@ -414,9 +414,29 @@ export default function PortalTreinamentos() {
                     {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                   </Button>
                   <div className="flex-1 space-y-2">
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
+                      onClick={(e) => {
+                        if (!videoRef.current || duration <= 0) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const clickX = e.clientX - rect.left;
+                        const clickPercent = clickX / rect.width;
+                        const clickTime = clickPercent * duration;
+                        // Allow seeking backward only (up to maxWatched)
+                        if (clickTime <= maxWatchedTimeRef.current + 0.25) {
+                          videoRef.current.currentTime = clickTime;
+                          setCurrentTime(clickTime);
+                        }
+                      }}
+                    >
+                      {/* Watched range indicator */}
                       <div
-                        className="h-full rounded-full bg-primary transition-[width] duration-200"
+                        className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
+                        style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
+                      />
+                      {/* Current position */}
+                      <div
+                        className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
                         style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                       />
                     </div>
