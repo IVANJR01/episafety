@@ -814,14 +814,18 @@ export default function VideoTreinamentos() {
                       <TableRow>
                         <TableHead>Funcionário</TableHead>
                         <TableHead className="text-center">% Assistido</TableHead>
-                        <TableHead className="text-center">Pontuação</TableHead>
                         <TableHead className="text-center">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {funcionarios.map(func => {
+                      {detailFuncionarios.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground text-sm py-6">
+                            Nenhum funcionário atribuído a este curso
+                          </TableCell>
+                        </TableRow>
+                      ) : detailFuncionarios.map(func => {
                         const viz = detailVisualizacoes.find(v => v.funcionario_id === func.id);
-                        const aprovado = viz?.pontuacao !== null && viz?.pontuacao !== undefined && viz.pontuacao >= (detailVideo.pontuacao_minima || 70);
                         return (
                           <TableRow key={func.id}>
                             <TableCell><span className="font-medium text-sm">{func.nome}</span></TableCell>
@@ -829,11 +833,8 @@ export default function VideoTreinamentos() {
                               {viz ? <span className="text-xs">{viz.percentual_assistido}%</span> : <span className="text-xs text-muted-foreground">--</span>}
                             </TableCell>
                             <TableCell className="text-center">
-                              {viz?.pontuacao != null ? <span className={`font-bold text-sm ${aprovado ? "text-emerald-600" : "text-destructive"}`}>{viz.pontuacao}%</span> : <span className="text-xs text-muted-foreground">--</span>}
-                            </TableCell>
-                            <TableCell className="text-center">
                               {!viz ? <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />Pendente</Badge>
-                                : viz.concluido ? (aprovado ? <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Aprovado</Badge> : <Badge variant="destructive" className="text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Reprovado</Badge>)
+                                : viz.concluido && viz.assinatura ? <Badge className="bg-emerald-100 text-emerald-700 text-xs"><CheckCircle className="h-3 w-3 mr-1" />Concluído</Badge>
                                 : <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700"><Play className="h-3 w-3 mr-1" />Em andamento</Badge>}
                             </TableCell>
                           </TableRow>
