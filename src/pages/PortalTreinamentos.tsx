@@ -287,6 +287,24 @@ export default function PortalTreinamentos() {
     setIsMuted(video.muted);
   };
 
+  const handleToggleFullscreen = async () => {
+    const container = videoContainerRef.current;
+    if (!container) return;
+    if (!document.fullscreenElement) {
+      await container.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      await document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
   const formatTime = (timeInSeconds: number) => {
     const safe = Number.isFinite(timeInSeconds) ? Math.max(0, Math.floor(timeInSeconds)) : 0;
     const minutes = Math.floor(safe / 60);
