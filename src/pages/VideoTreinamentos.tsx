@@ -179,7 +179,7 @@ export default function VideoTreinamentos() {
           descricao: form.descricao || null,
           video_url: videoUrl,
           pontuacao_minima: parseInt(form.pontuacao_minima) || 70,
-          empresa_id: empresaId,
+          empresa_id: null,
           created_by: (await supabase.auth.getUser()).data.user?.id,
         });
         if (error) throw error;
