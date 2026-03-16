@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import SignatureCanvas, { SignatureCanvasRef } from "@/components/SignatureCanvas";
 import {
-  Video, Play, CheckCircle, Clock, Award, LogOut, ChevronRight, AlertTriangle, BookOpen, ChevronDown, ChevronUp
+  Video, Play, Pause, CheckCircle, Clock, Award, LogOut, ChevronRight, AlertTriangle, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX
 } from "lucide-react";
 import logoImg from "@/assets/logo-episafety.png";
 
@@ -68,6 +68,11 @@ export default function PortalTreinamentos() {
   const [watchingVideo, setWatchingVideo] = useState<VideoTreinamento | null>(null);
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const maxWatchedTimeRef = useRef(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   const [showQuiz, setShowQuiz] = useState(false);
   const [perguntas, setPerguntas] = useState<VideoPergunta[]>([]);
@@ -205,6 +210,11 @@ export default function PortalTreinamentos() {
     setQuizResult(null);
     setShowSignature(false);
     setRespostas({});
+    maxWatchedTimeRef.current = 0;
+    setIsPlaying(true);
+    setIsMuted(false);
+    setCurrentTime(0);
+    setDuration(0);
   };
 
   const handleVideoEnded = async () => {
@@ -262,6 +272,32 @@ export default function PortalTreinamentos() {
     setSaving(false);
   };
 
+  const handleTogglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      void video.play();
+      setIsPlaying(true);
+    } else {
+      video.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleToggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
+  };
+
+  const formatTime = (timeInSeconds: number) => {
+    const safe = Number.isFinite(timeInSeconds) ? Math.max(0, Math.floor(timeInSeconds)) : 0;
+    const minutes = Math.floor(safe / 60);
+    const seconds = safe % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -282,33 +318,65 @@ export default function PortalTreinamentos() {
 
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
-              <video
-                ref={videoRef}
-                src={watchingVideo.video_url}
-                autoPlay
-                className="w-full aspect-video"
-                onEnded={handleVideoEnded}
-                controlsList="nodownload nofullscreen"
-                disablePictureInPicture
-                onContextMenu={(e) => e.preventDefault()}
-                onSeeking={(e) => {
-                  const vid = e.currentTarget;
-                  // Allow seeking backward only, block forward seeking
-                  if (vid.currentTime > (vid as any).__maxPlayed) {
-                    vid.currentTime = (vid as any).__maxPlayed || 0;
-                  }
-                }}
-                onTimeUpdate={(e) => {
-                  const vid = e.currentTarget;
-                  if (!(vid as any).__maxPlayed || vid.currentTime > (vid as any).__maxPlayed) {
-                    (vid as any).__maxPlayed = vid.currentTime;
-                  }
-                }}
-                onLoadedMetadata={(e) => {
-                  (e.currentTarget as any).__maxPlayed = 0;
-                }}
-                controls
-              />
+              <div className="bg-card">
+                <video
+                  ref={videoRef}
+                  src={watchingVideo.video_url}
+                  autoPlay
+                  playsInline
+                  tabIndex={-1}
+                  className="w-full aspect-video bg-muted"
+                  onEnded={handleVideoEnded}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onLoadedMetadata={(e) => {
+                    maxWatchedTimeRef.current = 0;
+                    setDuration(e.currentTarget.duration || 0);
+                    setCurrentTime(0);
+                  }}
+                  onTimeUpdate={(e) => {
+                    const vid = e.currentTarget;
+                    const nextTime = vid.currentTime;
+                    if (nextTime > maxWatchedTimeRef.current) {
+                      maxWatchedTimeRef.current = nextTime;
+                    }
+                    setCurrentTime(nextTime);
+                    setDuration(vid.duration || 0);
+                  }}
+                  onSeeking={(e) => {
+                    const vid = e.currentTarget;
+                    const allowedTime = maxWatchedTimeRef.current + 0.25;
+                    if (vid.currentTime > allowedTime) {
+                      vid.currentTime = maxWatchedTimeRef.current;
+                    }
+                  }}
+                  controls={false}
+                  controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
+                  disablePictureInPicture
+                />
+
+                <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+                  <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
+                    {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </Button>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-[width] duration-200"
+                        style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
