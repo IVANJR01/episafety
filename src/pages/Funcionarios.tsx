@@ -497,6 +497,8 @@ export default function Funcionarios() {
                     <TableHead>Nome</TableHead>
                     <TableHead>CPF</TableHead>
                     <TableHead>Matrícula</TableHead>
+                    <TableHead>Unidade</TableHead>
+                    <TableHead>Contrato</TableHead>
                     <TableHead>Setor</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Admissão</TableHead>
@@ -506,7 +508,7 @@ export default function Funcionarios() {
                 </TableHeader>
                 <TableBody>
                   {filteredItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 8 : 7} className="text-center text-muted-foreground py-8">
+                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 10 : 9} className="text-center text-muted-foreground py-8">
                       {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
                     </TableCell></TableRow>
                   ) : filteredItems.map(f => (
@@ -514,6 +516,8 @@ export default function Funcionarios() {
                       <TableCell className="font-medium">{f.nome}</TableCell>
                       <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{f.matricula || "—"}</TableCell>
+                      <TableCell>{f.unidade_id ? unidadeMap.get(f.unidade_id) || "—" : "—"}</TableCell>
+                      <TableCell>{f.contrato_id ? contratoMap.get(f.contrato_id) || "—" : "—"}</TableCell>
                       <TableCell>{f.setor || "—"}</TableCell>
                       <TableCell>{f.cargo || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{f.data_admissao ? f.data_admissao.split("-").reverse().join("/") : "—"}</TableCell>
