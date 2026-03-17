@@ -8,8 +8,12 @@ export const ACOES = [
   { key: "create", label: "Criar / Adicionar" },
   { key: "edit", label: "Editar" },
   { key: "delete", label: "Excluir" },
-  { key: "gestao_estoque", label: "Gestão de Estoque (todas unidades)" },
 ] as const;
+
+/** Special per-module actions (shown as extra checkboxes) */
+export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> = {
+  epis: [{ key: "gestao_estoque", label: "Gestão de Estoque (todas unidades)" }],
+};
 
 export type Acao = typeof ACOES[number]["key"];
 
