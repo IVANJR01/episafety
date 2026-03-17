@@ -399,6 +399,11 @@ export default function VideoTreinamentos() {
         user_id: userId, email: emailLower, nome: func?.nome || "", empresa_id: empresaId,
       }, { onConflict: "user_id" });
 
+      // Link funcionario to auth user for secure RLS matching
+      if (accessFuncId && userId) {
+        await (supabase.from as any)("funcionarios").update({ user_id: userId }).eq("id", accessFuncId);
+      }
+
       // Replace curso assignments
       await supabase.from("cursos_atribuicao").delete().eq("funcionario_id", accessFuncId);
       const assignments = selectedCursoIds.map(cid => ({
