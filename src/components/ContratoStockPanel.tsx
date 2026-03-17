@@ -839,7 +839,6 @@ export default function ContratoStockPanel() {
                 <SelectTrigger><SelectValue placeholder="Selecione o contrato" /></SelectTrigger>
                 <SelectContent>
                   {contratos
-                    .filter(c => !transferUnidadeId || c.unidade_id === transferUnidadeId)
                     .map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                     ))}
