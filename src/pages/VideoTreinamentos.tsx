@@ -714,7 +714,7 @@ export default function VideoTreinamentos() {
                         <Button variant="ghost" size="icon" title="Adicionar Módulo" onClick={() => {
                           setEditingModulo(null);
                           setModuloCursoId(curso.id);
-                          setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "" });
+                          setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "", videoUrl: "" });
                           setVideoFile(null);
                           setOpenModuloForm(true);
                         }}>
