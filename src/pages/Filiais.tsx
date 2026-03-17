@@ -137,6 +137,8 @@ export default function Filiais() {
   // Assign user
   const handleAssignUser = async () => {
     if (!assignEmail.trim() || !assignFilialId) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(assignEmail.trim())) { toast({ title: "E-mail inválido", description: "Verifique o formato do e-mail (ex: usuario@empresa.com)", variant: "destructive" }); return; }
     const existingProfile = profiles.find(p => p.email?.toLowerCase() === assignEmail.trim().toLowerCase());
     if (existingProfile) {
       const { error } = await (supabase.from as any)("profiles").update({ empresa_id: assignFilialId }).eq("user_id", existingProfile.user_id);
