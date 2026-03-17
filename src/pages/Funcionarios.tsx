@@ -54,6 +54,8 @@ function normalizeHeader(h: string): string {
     "data admissao": "data_admissao", "data admissão": "data_admissao", "data_admissao": "data_admissao",
     "data de admissão": "data_admissao", "data de admissao": "data_admissao", "admissao": "data_admissao",
     "admissão": "data_admissao",
+    "unidade": "unidade", "filial": "unidade", "obra": "unidade",
+    "contrato": "contrato",
   };
   const normalized = h.trim().toLowerCase().replace(/[_\-]/g, " ");
   return map[normalized] || normalized;
