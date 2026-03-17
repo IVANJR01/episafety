@@ -8,6 +8,7 @@ export const ACOES = [
   { key: "create", label: "Criar / Adicionar" },
   { key: "edit", label: "Editar" },
   { key: "delete", label: "Excluir" },
+  { key: "gestao_estoque", label: "Gestão de Estoque (todas unidades)" },
 ] as const;
 
 export type Acao = typeof ACOES[number]["key"];
