@@ -27,6 +27,7 @@ type AuthCache = {
   authorized: boolean;
   modulos: string[];
   empresaId: string | null;
+  contratoId: string | null;
   isSuperAdmin: boolean;
   isPrincipal: boolean;
 };
