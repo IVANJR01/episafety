@@ -276,6 +276,7 @@ export default function Funcionarios() {
       const payloads = toInsert.map(r => ({
         nome: r.nome, cpf: r.cpf || null, matricula: r.matricula || null,
         setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null,
+        unidade_id: r.unidade_id || null, contrato_id: r.contrato_id || null,
         empresa_id: empresaId,
       }));
       const { error, data: inserted } = await (supabase.from as any)("funcionarios").insert(payloads).select();
