@@ -146,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthorized(cached.authorized);
       setModulosPermitidos(cached.modulos);
       setEmpresaId(cached.empresaId);
+      setContratoId(cached.contratoId || null);
       setIsSuperAdmin(cached.isSuperAdmin);
       setIsPrincipal(cached.isPrincipal || false);
     };
