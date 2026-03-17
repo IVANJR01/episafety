@@ -1,0 +1,1 @@
+ALTER TABLE public.cursos_video ADD COLUMN link_externo text DEFAULT NULL;
