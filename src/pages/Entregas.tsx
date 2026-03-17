@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
+import FullscreenSignature from "@/components/FullscreenSignature";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
 
@@ -60,6 +61,8 @@ export default function Entregas() {
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
   const [signInputType, setSignInputType] = useState<"assinatura" | "facial">("assinatura");
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
+  const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
 
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
@@ -389,7 +392,7 @@ export default function Entregas() {
           }
         }
       } else {
-        assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+        assinaturaColaborador = savedSignatureDataUrl || sigEntregaRef.current?.getDataURL() || null;
         if (!assinaturaColaborador) {
           toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
           return;
@@ -817,7 +820,7 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignInputType("assinatura"); setCapturedPhoto(null); } }}>
+      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignInputType("assinatura"); setCapturedPhoto(null); setSavedSignatureDataUrl(null); } }}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -908,7 +911,24 @@ export default function Entregas() {
             </div>
 
             {signInputType === "assinatura" ? (
-              <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
+              <div className="space-y-3">
+                {savedSignatureDataUrl ? (
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Assinatura do Colaborador</span>
+                    <div className="border border-input rounded-lg p-2 bg-white">
+                      <img src={savedSignatureDataUrl} alt="Assinatura" className="w-full h-24 object-contain" />
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => { setSavedSignatureDataUrl(null); setFullscreenSigOpen(true); }}>
+                      <PenLine className="w-3.5 h-3.5 mr-1" /> Refazer assinatura
+                    </Button>
+                  </div>
+                ) : (
+                  <Button type="button" variant="outline" className="w-full h-20 border-dashed flex flex-col gap-1" onClick={() => setFullscreenSigOpen(true)}>
+                    <PenLine className="w-5 h-5" />
+                    <span className="text-sm">Toque para assinar em tela cheia</span>
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="space-y-4">
                 <div className="p-3 rounded-lg border bg-muted/20">
@@ -930,7 +950,7 @@ export default function Entregas() {
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); refetch(); }}>
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); setSavedSignatureDataUrl(null); refetch(); }}>
               Cancelar
             </Button>
             <Button
@@ -948,6 +968,26 @@ export default function Entregas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Fullscreen signature overlay */}
+      <FullscreenSignature
+        open={fullscreenSigOpen}
+        employeeName={(() => {
+          const fid = signMode === "new" ? pendingEntrega?.funcionario_id : signFuncId;
+          const func = funcionarios?.find((f: any) => f.id === fid);
+          return func?.nome;
+        })()}
+        employeeRole={(() => {
+          const fid = signMode === "new" ? pendingEntrega?.funcionario_id : signFuncId;
+          const func = funcionarios?.find((f: any) => f.id === fid);
+          return func?.cargo || undefined;
+        })()}
+        onCancel={() => setFullscreenSigOpen(false)}
+        onSave={(dataUrl) => {
+          setSavedSignatureDataUrl(dataUrl);
+          setFullscreenSigOpen(false);
+        }}
+      />
 
       <Dialog open={fichaOpen} onOpenChange={setFichaOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
