@@ -284,8 +284,41 @@ export default function EPIs() {
             <div><Label>Aprovado Para</Label><Textarea value={form.aprovado_para} onChange={e => setForm({...form, aprovado_para: e.target.value})} placeholder="Proteção contra..." rows={2} /></div>
             <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Descrição técnica do EPI" rows={3} /></div>
             <div><Label>Valor Unitário (R$)</Label><Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({...form, valor: Number(e.target.value)})} placeholder="0.00" /></div>
+            {editing && (
+              <div className="border rounded-lg p-3 bg-muted/30 space-y-3">
+                <Label className="text-sm font-semibold">Movimentação de Estoque</Label>
+                <p className="text-xs text-muted-foreground">Estoque atual: <span className="font-mono font-bold">{editing.estoque}</span> unidades</p>
+                <div className="flex gap-2">
+                  <Button type="button" variant={form.ajuste_tipo === "entrada" ? "default" : "outline"} size="sm" className="flex-1"
+                    onClick={() => setForm(prev => ({ ...prev, ajuste_tipo: prev.ajuste_tipo === "entrada" ? "" : "entrada", ajuste_quantidade: prev.ajuste_tipo === "entrada" ? 0 : prev.ajuste_quantidade }))}>
+                    + Entrada
+                  </Button>
+                  <Button type="button" variant={form.ajuste_tipo === "saida" ? "destructive" : "outline"} size="sm" className="flex-1"
+                    onClick={() => setForm(prev => ({ ...prev, ajuste_tipo: prev.ajuste_tipo === "saida" ? "" : "saida", ajuste_quantidade: prev.ajuste_tipo === "saida" ? 0 : prev.ajuste_quantidade }))}>
+                    - Saída
+                  </Button>
+                </div>
+                {form.ajuste_tipo && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Quantidade</Label>
+                      <Input type="number" min="1" value={form.ajuste_quantidade || ""} onChange={e => setForm(prev => ({ ...prev, ajuste_quantidade: Number(e.target.value) }))} placeholder="Qtd" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Motivo</Label>
+                      <Input value={form.ajuste_motivo} onChange={e => setForm(prev => ({ ...prev, ajuste_motivo: e.target.value }))} placeholder={form.ajuste_tipo === "entrada" ? "Ex: Compra" : "Ex: Descarte"} />
+                    </div>
+                    {form.ajuste_quantidade > 0 && (
+                      <p className="col-span-2 text-xs font-medium">
+                        Novo estoque: <span className="font-mono">{form.ajuste_tipo === "entrada" ? editing.estoque + form.ajuste_quantidade : Math.max(0, editing.estoque - form.ajuste_quantidade)}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Estoque</Label><Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} /></div>
+              <div><Label>Estoque {editing ? "(manual)" : ""}</Label><Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} disabled={!!editing && !!form.ajuste_tipo} /></div>
               <div><Label>Estoque Mín.</Label><Input type="number" value={form.estoque_minimo} onChange={e => setForm({...form, estoque_minimo: Number(e.target.value)})} /></div>
             </div>
           </div>
