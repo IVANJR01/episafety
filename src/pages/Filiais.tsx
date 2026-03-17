@@ -185,7 +185,7 @@ export default function Filiais() {
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <GitBranch className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
-            <p>Nenhuma filial, obra ou setor cadastrado.</p>
+            <p>Nenhuma unidade cadastrada.</p>
             <p className="text-xs mt-1">Clique em "Nova Unidade" para criar.</p>
           </CardContent>
         </Card>
