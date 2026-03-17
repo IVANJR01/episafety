@@ -9,13 +9,14 @@ interface AuthContextType {
   authorized: boolean;
   modulosPermitidos: string[];
   empresaId: string | null;
+  contratoId: string | null;
   isSuperAdmin: boolean;
   isPrincipal: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, isSuperAdmin: false, isPrincipal: false, signOut: async () => {},
+  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, contratoId: null, isSuperAdmin: false, isPrincipal: false, signOut: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
