@@ -26,7 +26,10 @@ interface EPI {
 
 const emptyForm = {
   nome: "", ca: "", validade: "", estoque: 0, estoque_minimo: 5,
-  categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: 0
+  categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: 0,
+  ajuste_tipo: "" as "" | "entrada" | "saida",
+  ajuste_quantidade: 0,
+  ajuste_motivo: ""
 };
 
 export default function EPIs() {
