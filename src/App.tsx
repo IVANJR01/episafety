@@ -112,6 +112,7 @@ function ProtectedRoute() {
       <Routes>
         <Route path="/" element={<DashboardGuard />} />
         <Route path="/epis" element={<EPIs />} />
+        <Route path="/epis/controle-contrato" element={<ControleEstoqueContrato />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/cadastro" element={<CadastroDashboard />} />
