@@ -167,7 +167,7 @@ export default function Filiais() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Filiais / Obras / Setores</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Unidades</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
             Unidades vinculadas a <strong>{empresaNome}</strong>
           </p>
