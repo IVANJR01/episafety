@@ -390,7 +390,7 @@ export default function ContratoStockPanel() {
     }
   };
 
-  if (!hasGestaoEstoque && !isContratoUser) return null;
+  if (!canAccessPanel) return null;
   if (loading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   // Build hierarchy: group contratos by unidade
