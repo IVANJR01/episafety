@@ -45,12 +45,19 @@ interface FilialEpi {
   contratos: EpiContrato[];
 }
 
+interface FilialContrato {
+  id: string;
+  nome: string;
+}
+
 export default function ConsolidatedEpiPanel() {
   const [data, setData] = useState<ParentCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [expandedFilialId, setExpandedFilialId] = useState<string | null>(null);
   const [filialEpis, setFilialEpis] = useState<FilialEpi[]>([]);
+  const [filialContratos, setFilialContratos] = useState<FilialContrato[]>([]);
+  const [selectedContratoId, setSelectedContratoId] = useState<string | null>(null);
   const [loadingFilialEpis, setLoadingFilialEpis] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
@@ -66,15 +73,32 @@ export default function ConsolidatedEpiPanel() {
     if (expandedFilialId === filialId) {
       setExpandedFilialId(null);
       setFilialEpis([]);
+      setFilialContratos([]);
+      setSelectedContratoId(null);
       return;
     }
     setExpandedFilialId(filialId);
+    setSelectedContratoId(null);
     setLoadingFilialEpis(true);
-    const { data: result } = await supabase.rpc("get_filial_epis", { _filial_id: filialId });
-    if (result && Array.isArray(result)) setFilialEpis(result as unknown as FilialEpi[]);
+
+    const [episRes, contratosRes] = await Promise.all([
+      supabase.rpc("get_filial_epis", { _filial_id: filialId }),
+      supabase.from("contratos").select("id, nome").eq("unidade_id", filialId).order("nome"),
+    ]);
+
+    if (episRes.data && Array.isArray(episRes.data)) setFilialEpis(episRes.data as unknown as FilialEpi[]);
     else setFilialEpis([]);
+
+    if (contratosRes.data) setFilialContratos(contratosRes.data);
+    else setFilialContratos([]);
+
     setLoadingFilialEpis(false);
   };
+
+  // Filter EPIs by selected contract
+  const filteredEpis = selectedContratoId
+    ? filialEpis.filter(epi => epi.contratos?.some(c => c.contrato_id === selectedContratoId))
+    : filialEpis;
 
   const loadData = useCallback(async () => {
     const { data: result } = await supabase.rpc("get_consolidated_epi_stock");
