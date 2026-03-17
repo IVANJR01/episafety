@@ -77,6 +77,7 @@ export default function Entregas() {
   }, []);
 
   const openFullscreenSignature = useCallback(() => {
+    setShouldOpenSignatureAfterSave(false);
     setSignOpen(false);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setFullscreenSigOpen(true));
@@ -241,14 +242,17 @@ export default function Entregas() {
 
     const firstAttempt = setTimeout(openSignature, 150);
     const secondAttempt = setTimeout(openSignature, 450);
-    const finalize = setTimeout(() => setShouldOpenSignatureAfterSave(false), 700);
 
     return () => {
       clearTimeout(firstAttempt);
       clearTimeout(secondAttempt);
-      clearTimeout(finalize);
     };
   }, [shouldOpenSignatureAfterSave, open, pendingEntrega, signOpen]);
+
+  useEffect(() => {
+    if (!signOpen || !shouldOpenSignatureAfterSave) return;
+    setShouldOpenSignatureAfterSave(false);
+  }, [signOpen, shouldOpenSignatureAfterSave]);
 
   const handleSave = async () => {
     if (saving) return;
