@@ -412,6 +412,34 @@ export default function Entregas() {
     setShouldOpenSignatureAfterSave(true);
   };
 
+  const handleDevolver = async (entrega: Entrega) => {
+    if (!canEdit) return;
+    const epiObj = epis.find(ep => ep.id === entrega.epi_id);
+    const funcObj = funcionarios.find(f => f.id === entrega.funcionario_id);
+    
+    try {
+      // Update the original delivery status to "devolvido"
+      await (supabase.from as any)("entregas").update({ status: "devolvido" }).eq("id", entrega.id);
+      
+      // Create a new "devolucao" record
+      await (supabase.from as any)("entregas").insert({
+        funcionario_id: entrega.funcionario_id,
+        epi_id: entrega.epi_id,
+        quantidade: entrega.quantidade,
+        data: new Date().toISOString().split("T")[0],
+        tipo: "devolucao",
+        status: "devolvido",
+        observacao: `Devolução ref. entrega de ${entrega.data}`,
+        empresa_id: empresaId,
+      });
+
+      toast({ title: "EPI devolvido ao estoque!", description: `${epiObj?.nome || "EPI"} devolvido por ${funcObj?.nome || "colaborador"}.` });
+      refetch();
+    } catch {
+      toast({ title: "Erro ao devolver EPI", variant: "destructive" });
+    }
+  };
+
   const handleSaveSignature = async () => {
     if (savingConfirmation) return;
 
