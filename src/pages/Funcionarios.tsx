@@ -195,14 +195,35 @@ export default function Funcionarios() {
 
         const seenCpfs = new Set<string>();
 
+        // Build name-to-id maps for unidade/contrato matching
+        const unidadeNameMap = new Map(unidades.map(u => [u.nome.toLowerCase().trim(), u.id]));
+        const contratoNameMap = new Map(contratos.map(c => [c.nome.toLowerCase().trim(), { id: c.id, unidade_id: c.unidade_id }]));
+
         const rows: ImportRow[] = jsonData.map(raw => {
-          const mapped: any = { nome: "", cpf: "", matricula: "", setor: "", cargo: "", data_admissao: "" };
+          const mapped: any = { nome: "", cpf: "", matricula: "", setor: "", cargo: "", data_admissao: "", unidade: "", contrato: "" };
           Object.entries(headerMap).forEach(([orig, norm]) => {
             let val = raw[orig] != null ? String(raw[orig]).trim() : "";
             if (norm === "data_admissao") val = parseExcelDate(raw[orig]);
             if (norm === "cpf" && val) val = formatCPF(val);
             mapped[norm] = val;
           });
+
+          // Resolve unidade name to ID
+          let resolvedUnidadeId: string | undefined;
+          if (mapped.unidade) {
+            resolvedUnidadeId = unidadeNameMap.get(mapped.unidade.toLowerCase().trim());
+          }
+
+          // Resolve contrato name to ID
+          let resolvedContratoId: string | undefined;
+          if (mapped.contrato) {
+            const contratoMatch = contratoNameMap.get(mapped.contrato.toLowerCase().trim());
+            if (contratoMatch) {
+              resolvedContratoId = contratoMatch.id;
+              // If no unidade specified, infer from contrato
+              if (!resolvedUnidadeId) resolvedUnidadeId = contratoMatch.unidade_id;
+            }
+          }
 
           let validation = validateRow(mapped);
           let action: "insert" | "update" = "insert";
@@ -222,7 +243,7 @@ export default function Funcionarios() {
             }
           }
 
-          return { ...mapped, ...validation, action, existingId };
+          return { ...mapped, ...validation, action, existingId, unidade_id: resolvedUnidadeId, contrato_id: resolvedContratoId };
         });
 
         setImportRows(rows);
