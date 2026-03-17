@@ -103,7 +103,7 @@ export default function Funcionarios() {
   };
 
   // Load unidades/contratos on mount for display in table
-  useState(() => { fetchUnidadesContratos(); });
+  useEffect(() => { fetchUnidadesContratos(); }, []);
 
   // Helper maps for display
   const unidadeMap = useMemo(() => new Map(unidades.map(u => [u.id, u.nome])), [unidades]);
