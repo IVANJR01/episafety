@@ -272,18 +272,14 @@ export default function Entregas() {
   }, []);
 
   useEffect(() => {
-    if (!shouldOpenSignatureAfterSave || open || !pendingEntrega) return;
-    if (fullscreenSigOpen || signOpen) return;
+    if (!shouldOpenSignatureAfterSave || !pendingEntrega) return;
+    // Wait for the "Nova Movimentação" dialog to fully close
+    if (open || fullscreenSigOpen || signOpen) return;
 
     setShouldOpenSignatureAfterSave(false);
-    // Go directly to fullscreen signature, skip the intermediate dialog
-    const timer = setTimeout(() => {
-      setSignMode("new");
-      setSignInputType("assinatura");
-      setFullscreenSigOpen(true);
-    }, 150);
-
-    return () => clearTimeout(timer);
+    setSignMode("new");
+    setSignInputType("assinatura");
+    setFullscreenSigOpen(true);
   }, [shouldOpenSignatureAfterSave, open, pendingEntrega, fullscreenSigOpen, signOpen]);
 
   const handleSave = async () => {
