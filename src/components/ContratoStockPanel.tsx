@@ -70,7 +70,7 @@ interface ConsumoMensal {
 export default function ContratoStockPanel() {
   const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
   // Global stock management (Rafaela-type: sees ALL units/contracts)
-  const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
+  const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque");
   // Per-contract stock permission (technician-type: sees only their unit/contract)
   const hasEstoqueContrato = modulosPermitidos.includes("estoque_contrato") || modulosPermitidos.some(p => p.startsWith("estoque_contrato:"));
   // Contract-bound user: has contract ID and is NOT a global manager
