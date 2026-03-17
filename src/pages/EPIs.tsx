@@ -98,15 +98,32 @@ export default function EPIs() {
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
+    
+    // Calculate stock adjustment
+    let estoqueAjustado = form.estoque;
+    if (editing && form.ajuste_tipo && form.ajuste_quantidade > 0) {
+      if (form.ajuste_tipo === "entrada") {
+        estoqueAjustado = editing.estoque + form.ajuste_quantidade;
+      } else if (form.ajuste_tipo === "saida") {
+        estoqueAjustado = Math.max(0, editing.estoque - form.ajuste_quantidade);
+      }
+    }
+    
     const data = {
       nome: form.nome, ca: form.ca || null, validade: form.validade || null,
-      estoque: form.estoque, estoque_minimo: form.estoque_minimo,
+      estoque: estoqueAjustado, estoque_minimo: form.estoque_minimo,
       categoria: form.categoria || null, descricao: form.descricao || null,
       fabricante: form.fabricante || null, aprovado_para: form.aprovado_para || null,
       valor: form.valor || 0
     };
-    if (editing) await update(editing.id, data);
-    else await add(data);
+    if (editing) {
+      await update(editing.id, data);
+      if (form.ajuste_tipo && form.ajuste_quantidade > 0) {
+        toast({ title: `${form.ajuste_tipo === "entrada" ? "Entrada" : "Saída"} registrada`, description: `${form.ajuste_quantidade} unidade(s) ${form.ajuste_tipo === "entrada" ? "adicionada(s) ao" : "removida(s) do"} estoque` });
+      }
+    } else {
+      await add(data);
+    }
     resetForm();
     setOpen(false);
   };
