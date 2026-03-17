@@ -558,7 +558,7 @@ export default function ContratoStockPanel() {
                                               ]}
                                             />
                                             <Legend wrapperStyle={{ fontSize: 10 }} />
-                                            <Bar dataKey="quantidade" name="Quantidade" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="quantidade" name="Quantidade" fill="hsl(var(--chart-1, var(--primary)))" radius={[4, 4, 0, 0]} />
                                             <Bar dataKey="custo" name="Custo (R$)" fill="hsl(var(--primary) / 0.5)" radius={[4, 4, 0, 0]} />
                                           </BarChart>
                                         </ResponsiveContainer>
