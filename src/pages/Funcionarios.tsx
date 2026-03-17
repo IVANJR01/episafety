@@ -290,7 +290,7 @@ export default function Funcionarios() {
     if (toUpdate.length > 0) {
       for (const r of toUpdate) {
         const { error } = await (supabase.from as any)("funcionarios")
-          .update({ nome: r.nome, matricula: r.matricula || null, setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null })
+          .update({ nome: r.nome, matricula: r.matricula || null, setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null, unidade_id: r.unidade_id || null, contrato_id: r.contrato_id || null })
           .eq("id", r.existingId);
         if (!error) successCount++;
         else errorCount++;
