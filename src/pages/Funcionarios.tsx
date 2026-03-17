@@ -426,6 +426,9 @@ export default function Funcionarios() {
             <Button variant="outline" onClick={() => fileRef.current?.click()} className="w-full sm:w-auto">
               <Upload className="w-4 h-4 mr-2" />Importar
             </Button>
+            <Button variant="outline" onClick={downloadTemplate} className="w-full sm:w-auto">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />Modelo
+            </Button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
             <Button onClick={openNew} className="w-full sm:w-auto relative">
               <Plus className="w-4 h-4 mr-2" />Novo Funcionário
