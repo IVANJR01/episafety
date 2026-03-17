@@ -577,10 +577,23 @@ export default function PortalTreinamentos() {
                     )}
                   </div>
 
-                  {/* Module list */}
+                  {/* External link or Module list */}
                   {isExpanded && (
                     <div className="border-t divide-y">
-                      {modulos.length === 0 ? (
+                      {curso.link_externo ? (
+                        <div className="p-4 sm:p-6 text-center space-y-3">
+                          <ExternalLink className="h-8 w-8 mx-auto text-primary opacity-70" />
+                          <p className="text-xs sm:text-sm text-muted-foreground">Este curso é realizado em uma plataforma externa</p>
+                          <Button
+                            size="lg"
+                            className="bg-primary"
+                            onClick={() => window.open(curso.link_externo!, "_blank", "noopener,noreferrer")}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Acessar Curso
+                          </Button>
+                        </div>
+                      ) : modulos.length === 0 ? (
                         <div className="p-3 text-center text-muted-foreground text-xs">Nenhum módulo disponível</div>
                       ) : modulos.map((modulo, idx) => {
                         const status = getVideoStatus(modulo.id);
