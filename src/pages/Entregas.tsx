@@ -950,7 +950,7 @@ export default function Entregas() {
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); refetch(); }}>
+            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); setSavedSignatureDataUrl(null); refetch(); }}>
               Cancelar
             </Button>
             <Button
