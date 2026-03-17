@@ -707,7 +707,7 @@ export default function ContratoStockPanel() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{m.epi_nome}</span>
-                      <span className={`font-mono ${m.tipo === "entrada" ? "text-green-600" : "text-destructive"}`}>
+                      <span className={`font-mono ${m.tipo === "entrada" ? "text-emerald-500 dark:text-emerald-400" : "text-destructive"}`}>
                         {m.tipo === "entrada" ? "+" : "-"}{m.quantidade} un.
                       </span>
                     </div>
