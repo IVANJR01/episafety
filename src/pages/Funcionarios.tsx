@@ -550,6 +550,28 @@ export default function Funcionarios() {
               <div><Label>Data Admissão</Label><Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} /></div>
               <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({...form, setor: e.target.value})} placeholder="Ex: Produção" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Unidade</Label>
+                <Select value={form.unidade_id} onValueChange={v => setForm({...form, unidade_id: v === "none" ? "" : v, contrato_id: ""})}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a unidade" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    {unidades.map(u => <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Contrato</Label>
+                <Select value={form.contrato_id} onValueChange={v => setForm({...form, contrato_id: v === "none" ? "" : v})} disabled={!form.unidade_id}>
+                  <SelectTrigger><SelectValue placeholder={form.unidade_id ? "Selecione o contrato" : "Selecione a unidade primeiro"} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {contratosFiltrados.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
               <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
             </div>
