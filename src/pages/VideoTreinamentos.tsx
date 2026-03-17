@@ -93,7 +93,7 @@ export default function VideoTreinamentos() {
   const [openModuloForm, setOpenModuloForm] = useState(false);
   const [editingModulo, setEditingModulo] = useState<VideoTreinamento | null>(null);
   const [moduloCursoId, setModuloCursoId] = useState("");
-  const [moduloForm, setModuloForm] = useState({ titulo: "", descricao: "" });
+  const [moduloForm, setModuloForm] = useState({ titulo: "", descricao: "", videoUrl: "" });
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -224,8 +224,8 @@ export default function VideoTreinamentos() {
       toast({ title: "Informe o título do módulo", variant: "destructive" });
       return;
     }
-    if (!videoFile && !editingModulo) {
-      toast({ title: "Selecione um vídeo", variant: "destructive" });
+    if (!videoFile && !moduloForm.videoUrl.trim() && !editingModulo) {
+      toast({ title: "Selecione um vídeo ou informe uma URL", variant: "destructive" });
       return;
     }
     setUploading(true);
@@ -238,6 +238,8 @@ export default function VideoTreinamentos() {
         if (uploadError) throw uploadError;
         const { data: urlData } = supabase.storage.from("videos-treinamento").getPublicUrl(fileName);
         videoUrl = urlData.publicUrl;
+      } else if (moduloForm.videoUrl.trim()) {
+        videoUrl = moduloForm.videoUrl.trim();
       }
 
       if (editingModulo) {
@@ -712,7 +714,7 @@ export default function VideoTreinamentos() {
                         <Button variant="ghost" size="icon" title="Adicionar Módulo" onClick={() => {
                           setEditingModulo(null);
                           setModuloCursoId(curso.id);
-                          setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "" });
+                          setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "", videoUrl: "" });
                           setVideoFile(null);
                           setOpenModuloForm(true);
                         }}>
@@ -750,7 +752,8 @@ export default function VideoTreinamentos() {
                         <Button variant="outline" size="sm" className="mt-2" onClick={() => {
                           setEditingModulo(null);
                           setModuloCursoId(curso.id);
-                          setModuloForm({ titulo: "Módulo 1", descricao: "" });
+                          
+                          setModuloForm({ titulo: "Módulo 1", descricao: "", videoUrl: "" });
                           setVideoFile(null);
                           setOpenModuloForm(true);
                         }}>
@@ -799,7 +802,7 @@ export default function VideoTreinamentos() {
                                 <Button variant="ghost" size="icon" onClick={() => {
                                   setEditingModulo(modulo);
                                   setModuloCursoId(modulo.curso_id || "");
-                                  setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "" });
+                                  setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "", videoUrl: modulo.video_url || "" });
                                   setVideoFile(null);
                                   setOpenModuloForm(true);
                                 }} title="Editar" className="h-8 w-8">
@@ -869,7 +872,16 @@ export default function VideoTreinamentos() {
               <Textarea value={moduloForm.descricao} onChange={e => setModuloForm({ ...moduloForm, descricao: e.target.value })} placeholder="Descrição do módulo..." rows={2} />
             </div>
             <div>
-              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Vídeo *"}</Label>
+              <Label>URL do Vídeo</Label>
+              <Input
+                value={moduloForm.videoUrl}
+                onChange={e => setModuloForm({ ...moduloForm, videoUrl: e.target.value })}
+                placeholder="https://exemplo.com/video.mp4"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Cole a URL do vídeo ou faça upload abaixo</p>
+            </div>
+            <div>
+              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Upload de Vídeo"}</Label>
               <div className="mt-1">
                 <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
                   <Upload className="h-5 w-5 text-muted-foreground" />
