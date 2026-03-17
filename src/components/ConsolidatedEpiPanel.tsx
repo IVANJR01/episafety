@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, AlertTriangle, TrendingUp, DollarSign, Building2, ChevronDown, ChevronUp, GitBranch, ArrowRightLeft, Loader2, Eye, FileText } from "lucide-react";
+import { Package, AlertTriangle, TrendingUp, DollarSign, Building2, ChevronDown, ChevronUp, GitBranch, ArrowRightLeft, Loader2, Eye, FileText, Users, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface FilialStock {
   empresa_id: string;
@@ -50,6 +51,13 @@ interface FilialContrato {
   nome: string;
 }
 
+interface ContratoResponsavel {
+  id: string;
+  contrato_id: string;
+  funcionario_id: string;
+  funcionario_nome?: string;
+}
+
 export default function ConsolidatedEpiPanel() {
   const [data, setData] = useState<ParentCompany[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +75,11 @@ export default function ConsolidatedEpiPanel() {
   const [loadingEpis, setLoadingEpis] = useState(false);
   const [selectedEpiId, setSelectedEpiId] = useState("");
   const [quantidade, setQuantidade] = useState(1);
+  // Responsáveis por contrato
+  const [responsaveisMap, setResponsaveisMap] = useState<Record<string, ContratoResponsavel[]>>({});
+  const [filialFuncionarios, setFilialFuncionarios] = useState<{ id: string; nome: string }[]>([]);
+  const [addingResp, setAddingResp] = useState<string | null>(null);
+  const [newRespFuncId, setNewRespFuncId] = useState("");
   const { toast } = useToast();
 
   const toggleFilialDetail = async (filialId: string) => {
@@ -75,24 +88,90 @@ export default function ConsolidatedEpiPanel() {
       setFilialEpis([]);
       setFilialContratos([]);
       setSelectedContratoId(null);
+      setResponsaveisMap({});
+      setFilialFuncionarios([]);
       return;
     }
     setExpandedFilialId(filialId);
     setSelectedContratoId(null);
     setLoadingFilialEpis(true);
 
-    const [episRes, contratosRes] = await Promise.all([
+    const [episRes, contratosRes, funcsRes] = await Promise.all([
       supabase.rpc("get_filial_epis", { _filial_id: filialId }),
       supabase.from("contratos").select("id, nome").eq("unidade_id", filialId).order("nome"),
+      supabase.from("funcionarios").select("id, nome").eq("empresa_id", filialId).order("nome"),
     ]);
 
     if (episRes.data && Array.isArray(episRes.data)) setFilialEpis(episRes.data as unknown as FilialEpi[]);
     else setFilialEpis([]);
 
-    if (contratosRes.data) setFilialContratos(contratosRes.data);
-    else setFilialContratos([]);
+    const contratos = contratosRes.data || [];
+    setFilialContratos(contratos);
+    setFilialFuncionarios(funcsRes.data || []);
+
+    // Load responsáveis for all contracts in this unit
+    if (contratos.length > 0) {
+      const contratoIds = contratos.map(c => c.id);
+      const { data: resps } = await supabase
+        .from("contrato_responsaveis")
+        .select("id, contrato_id, funcionario_id")
+        .in("contrato_id", contratoIds);
+      
+      const map: Record<string, ContratoResponsavel[]> = {};
+      (resps || []).forEach((r: any) => {
+        const func = (funcsRes.data || []).find((f: any) => f.id === r.funcionario_id);
+        const entry = { ...r, funcionario_nome: func?.nome || "Desconhecido" };
+        if (!map[r.contrato_id]) map[r.contrato_id] = [];
+        map[r.contrato_id].push(entry);
+      });
+      setResponsaveisMap(map);
+    } else {
+      setResponsaveisMap({});
+    }
 
     setLoadingFilialEpis(false);
+  };
+
+  const addResponsavel = async (contratoId: string) => {
+    if (!newRespFuncId || !expandedFilialId) return;
+    const existing = responsaveisMap[contratoId]?.find(r => r.funcionario_id === newRespFuncId);
+    if (existing) {
+      toast({ title: "Funcionário já é responsável", variant: "destructive" });
+      return;
+    }
+    const { data: inserted, error } = await supabase.from("contrato_responsaveis").insert({
+      contrato_id: contratoId,
+      funcionario_id: newRespFuncId,
+      empresa_id: expandedFilialId,
+      created_by: (await supabase.auth.getUser()).data.user?.id,
+    }).select("id, contrato_id, funcionario_id").single();
+
+    if (error) {
+      toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
+      return;
+    }
+    const func = filialFuncionarios.find(f => f.id === newRespFuncId);
+    const newEntry: ContratoResponsavel = { ...inserted, funcionario_nome: func?.nome || "" };
+    setResponsaveisMap(prev => ({
+      ...prev,
+      [contratoId]: [...(prev[contratoId] || []), newEntry],
+    }));
+    setNewRespFuncId("");
+    setAddingResp(null);
+    toast({ title: "Responsável adicionado!" });
+  };
+
+  const removeResponsavel = async (contratoId: string, respId: string) => {
+    const { error } = await supabase.from("contrato_responsaveis").delete().eq("id", respId);
+    if (error) {
+      toast({ title: "Erro ao remover", description: error.message, variant: "destructive" });
+      return;
+    }
+    setResponsaveisMap(prev => ({
+      ...prev,
+      [contratoId]: (prev[contratoId] || []).filter(r => r.id !== respId),
+    }));
+    toast({ title: "Responsável removido" });
   };
 
   // Filter EPIs by selected contract
@@ -300,31 +379,108 @@ export default function ConsolidatedEpiPanel() {
                             <div>
                               {/* Contract filter tabs */}
                               {filialContratos.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-1.5 p-2 border-b bg-muted/30">
-                                  <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                  <span className="text-[11px] text-muted-foreground font-medium mr-1">Contrato:</span>
-                                  <Button
-                                    variant={selectedContratoId === null ? "default" : "outline"}
-                                    size="sm"
-                                    className="h-6 px-2 text-[11px] rounded-full"
-                                    onClick={() => setSelectedContratoId(null)}
-                                  >
-                                    Todos ({filialEpis.length})
-                                  </Button>
-                                  {filialContratos.map(ct => {
-                                    const count = filialEpis.filter(epi => epi.contratos?.some(c => c.contrato_id === ct.id)).length;
-                                    return (
-                                      <Button
-                                        key={ct.id}
-                                        variant={selectedContratoId === ct.id ? "default" : "outline"}
-                                        size="sm"
-                                        className="h-6 px-2 text-[11px] rounded-full"
-                                        onClick={() => setSelectedContratoId(ct.id)}
-                                      >
-                                        {ct.nome} ({count})
-                                      </Button>
-                                    );
-                                  })}
+                                <div className="border-b bg-muted/30 p-2 space-y-2">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-[11px] text-muted-foreground font-medium mr-1">Contrato:</span>
+                                    <Button
+                                      variant={selectedContratoId === null ? "default" : "outline"}
+                                      size="sm"
+                                      className="h-6 px-2 text-[11px] rounded-full"
+                                      onClick={() => setSelectedContratoId(null)}
+                                    >
+                                      Todos ({filialEpis.length})
+                                    </Button>
+                                    {filialContratos.map(ct => {
+                                      const count = filialEpis.filter(epi => epi.contratos?.some(c => c.contrato_id === ct.id)).length;
+                                      const resps = responsaveisMap[ct.id] || [];
+                                      return (
+                                        <Popover key={ct.id}>
+                                          <div className="flex items-center gap-0.5">
+                                            <Button
+                                              variant={selectedContratoId === ct.id ? "default" : "outline"}
+                                              size="sm"
+                                              className="h-6 px-2 text-[11px] rounded-full rounded-r-none"
+                                              onClick={() => setSelectedContratoId(ct.id)}
+                                            >
+                                              {ct.nome} ({count})
+                                            </Button>
+                                            <PopoverTrigger asChild>
+                                              <Button
+                                                variant={selectedContratoId === ct.id ? "default" : "outline"}
+                                                size="sm"
+                                                className="h-6 w-6 p-0 text-[11px] rounded-full rounded-l-none border-l-0"
+                                              >
+                                                <Users className="w-3 h-3" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                          </div>
+                                          <PopoverContent className="w-64 p-3" align="start">
+                                            <div className="space-y-2">
+                                              <p className="text-xs font-semibold flex items-center gap-1.5">
+                                                <Users className="w-3.5 h-3.5 text-primary" />
+                                                Responsáveis — {ct.nome}
+                                              </p>
+                                              {resps.length === 0 ? (
+                                                <p className="text-[11px] text-muted-foreground">Nenhum responsável atribuído.</p>
+                                              ) : (
+                                                <div className="space-y-1">
+                                                  {resps.map(r => (
+                                                    <div key={r.id} className="flex items-center justify-between gap-1 py-0.5">
+                                                      <span className="text-xs truncate">{r.funcionario_nome}</span>
+                                                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={() => removeResponsavel(ct.id, r.id)}>
+                                                        <X className="w-3 h-3 text-destructive" />
+                                                      </Button>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                              <div className="border-t pt-2 mt-1">
+                                                {addingResp === ct.id ? (
+                                                  <div className="space-y-1.5">
+                                                    <Select value={newRespFuncId} onValueChange={setNewRespFuncId}>
+                                                      <SelectTrigger className="h-7 text-xs">
+                                                        <SelectValue placeholder="Selecionar funcionário" />
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        {filialFuncionarios
+                                                          .filter(f => !resps.some(r => r.funcionario_id === f.id))
+                                                          .map(f => (
+                                                            <SelectItem key={f.id} value={f.id} className="text-xs">{f.nome}</SelectItem>
+                                                          ))}
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <div className="flex gap-1">
+                                                      <Button size="sm" className="h-6 text-[11px] flex-1" disabled={!newRespFuncId} onClick={() => addResponsavel(ct.id)}>
+                                                        Confirmar
+                                                      </Button>
+                                                      <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => { setAddingResp(null); setNewRespFuncId(""); }}>
+                                                        Cancelar
+                                                      </Button>
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <Button variant="outline" size="sm" className="h-6 text-[11px] w-full gap-1" onClick={() => setAddingResp(ct.id)}>
+                                                    <Plus className="w-3 h-3" /> Adicionar Responsável
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </PopoverContent>
+                                        </Popover>
+                                      );
+                                    })}
+                                  </div>
+                                  {/* Show selected contract responsáveis inline */}
+                                  {selectedContratoId && (responsaveisMap[selectedContratoId] || []).length > 0 && (
+                                    <div className="flex items-center gap-1.5 pl-5">
+                                      <Users className="w-3 h-3 text-muted-foreground" />
+                                      <span className="text-[10px] text-muted-foreground">Responsáveis:</span>
+                                      {(responsaveisMap[selectedContratoId] || []).map(r => (
+                                        <Badge key={r.id} variant="secondary" className="text-[10px] px-1.5 py-0">{r.funcionario_nome}</Badge>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               )}
 

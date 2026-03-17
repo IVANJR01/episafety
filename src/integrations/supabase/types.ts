@@ -82,6 +82,55 @@ export type Database = {
           },
         ]
       }
+      contrato_responsaveis: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          funcionario_id: string
+          id: string
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          funcionario_id: string
+          id?: string
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          funcionario_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_responsaveis_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_responsaveis_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_responsaveis_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contratos: {
         Row: {
           created_at: string
