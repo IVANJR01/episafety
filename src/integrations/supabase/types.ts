@@ -82,6 +82,61 @@ export type Database = {
           },
         ]
       }
+      contrato_epis: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          epi_id: string
+          estoque: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          epi_id: string
+          estoque?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          epi_id?: string
+          estoque?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_epis_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_epis_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_epis_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "epis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contrato_responsaveis: {
         Row: {
           contrato_id: string

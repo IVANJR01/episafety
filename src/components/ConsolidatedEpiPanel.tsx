@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, AlertTriangle, TrendingUp, DollarSign, Building2, ChevronDown, ChevronUp, GitBranch, ArrowRightLeft, Loader2, Eye, FileText, Users, Plus, X } from "lucide-react";
 import ContratoConsumoChart from "@/components/ContratoConsumoChart";
+import ContratoEstoquePanel from "@/components/ContratoEstoquePanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -549,6 +550,14 @@ export default function ConsolidatedEpiPanel() {
 
                               {selectedContratoId && expandedFilialId && (
                                 <ContratoConsumoChart
+                                  filialId={expandedFilialId}
+                                  contratoId={selectedContratoId}
+                                  contratoNome={filialContratos.find(c => c.id === selectedContratoId)?.nome || ""}
+                                />
+                              )}
+
+                              {selectedContratoId && expandedFilialId && (
+                                <ContratoEstoquePanel
                                   filialId={expandedFilialId}
                                   contratoId={selectedContratoId}
                                   contratoNome={filialContratos.find(c => c.id === selectedContratoId)?.nome || ""}
