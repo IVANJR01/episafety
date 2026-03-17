@@ -397,7 +397,7 @@ export default function ContratoStockPanel() {
 
       {allUnits.map(unidade => {
         if (!unidade) return null;
-        const unitContratos = contratos.filter(c => c.unidade_id === unidade.id);
+        const unitContratos = visibleContratos.filter(c => c.unidade_id === unidade.id);
         if (unitContratos.length === 0) return null;
 
         const isUnitExpanded = expandedUnidades.has(unidade.id);
