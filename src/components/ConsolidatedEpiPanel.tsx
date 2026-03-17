@@ -28,6 +28,12 @@ interface ParentCompany {
   filiais: FilialStock[];
 }
 
+interface EpiContrato {
+  contrato_id: string;
+  contrato_nome: string;
+  qtd_entregue: number;
+}
+
 interface FilialEpi {
   id: string;
   nome: string;
@@ -36,6 +42,7 @@ interface FilialEpi {
   estoque: number;
   estoque_minimo: number;
   valor: number | null;
+  contratos: EpiContrato[];
 }
 
 export default function ConsolidatedEpiPanel() {
@@ -272,6 +279,7 @@ export default function ConsolidatedEpiPanel() {
                                   <TableHead className="text-xs py-1.5">EPI</TableHead>
                                   <TableHead className="text-xs py-1.5">CA</TableHead>
                                   <TableHead className="text-xs py-1.5">Categoria</TableHead>
+                                  <TableHead className="text-xs py-1.5">Contratos</TableHead>
                                   <TableHead className="text-xs py-1.5 text-right">Estoque</TableHead>
                                   <TableHead className="text-xs py-1.5 text-right">Mínimo</TableHead>
                                   <TableHead className="text-xs py-1.5 text-right">Valor un.</TableHead>
@@ -283,6 +291,19 @@ export default function ConsolidatedEpiPanel() {
                                     <TableCell className="text-xs py-1.5 font-medium">{epi.nome}</TableCell>
                                     <TableCell className="text-xs py-1.5">{epi.ca || "—"}</TableCell>
                                     <TableCell className="text-xs py-1.5">{epi.categoria || "—"}</TableCell>
+                                    <TableCell className="text-xs py-1.5">
+                                      {epi.contratos && epi.contratos.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1">
+                                          {epi.contratos.map(c => (
+                                            <Badge key={c.contrato_id} variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
+                                              {c.contrato_nome} ({c.qtd_entregue} ent.)
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <span className="text-muted-foreground">—</span>
+                                      )}
+                                    </TableCell>
                                     <TableCell className="text-xs py-1.5 text-right font-semibold">{epi.estoque}</TableCell>
                                     <TableCell className="text-xs py-1.5 text-right">{epi.estoque_minimo}</TableCell>
                                     <TableCell className="text-xs py-1.5 text-right">
