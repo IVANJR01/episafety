@@ -55,6 +55,7 @@ export default function Filiais() {
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [usuariosContratos, setUsuariosContratos] = useState<{ id: string; nome: string | null; contrato_id: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [empresaNome, setEmpresaNome] = useState("");
   const [expandedFiliais, setExpandedFiliais] = useState<Set<string>>(new Set());
@@ -86,16 +87,18 @@ export default function Filiais() {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: filData }, { data: profData }, { data: empData }, { data: contData }] = await Promise.all([
+    const [{ data: filData }, { data: profData }, { data: empData }, { data: contData }, { data: ulData }] = await Promise.all([
       (supabase.from as any)("empresa_config").select("*").eq("empresa_pai_id", empresaId).order("nome"),
       isAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
       (supabase.from as any)("empresa_config").select("nome").eq("id", empresaId).single(),
       (supabase.from as any)("contratos").select("*").order("nome"),
+      (supabase.from as any)("usuarios_liberados").select("id, nome, contrato_id").not("contrato_id", "is", null),
     ]);
     setFiliais(filData || []);
     setProfiles(profData || []);
     setEmpresaNome(empData?.nome || "");
     setContratos(contData || []);
+    setUsuariosContratos(ulData || []);
     setLoading(false);
   };
 
@@ -109,6 +112,7 @@ export default function Filiais() {
 
   const getContratosForFilial = (id: string) => contratos.filter(c => c.unidade_id === id);
   const getUsersForFilial = (id: string) => profiles.filter(p => p.empresa_id === id);
+  const getUsersForContrato = (id: string) => usuariosContratos.filter(u => u.contrato_id === id);
 
   // Unit CRUD
   const openNew = () => { setEditing(null); setForm({ nome: "", cnpj: "", email: "", telefone: "", endereco: "", tipo: "filial" }); setDialogOpen(true); };
@@ -297,26 +301,38 @@ export default function Filiais() {
                         {filContratos.length === 0 ? (
                           <p className="text-xs text-muted-foreground italic">Nenhum contrato cadastrado.</p>
                         ) : (
-                          filContratos.map(c => (
-                            <div key={c.id} className="flex items-center justify-between gap-2 bg-muted/50 rounded-md px-3 py-1.5">
-                              <div className="min-w-0">
-                                <p className="text-xs font-medium truncate">{c.nome}</p>
-                                {c.descricao && <p className="text-[10px] text-muted-foreground truncate">{c.descricao}</p>}
-                              </div>
-                              <div className="flex gap-0.5 shrink-0">
-                                {(canEdit || isAdmin) && (
-                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEditContrato(c)}>
-                                    <Pencil className="w-3 h-3" />
-                                  </Button>
+                          filContratos.map(c => {
+                            const contratoUsers = getUsersForContrato(c.id);
+                            return (
+                              <div key={c.id} className="bg-muted/50 rounded-md px-3 py-1.5 space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-medium truncate">{c.nome}</p>
+                                    {c.descricao && <p className="text-[10px] text-muted-foreground truncate">{c.descricao}</p>}
+                                  </div>
+                                  <div className="flex gap-0.5 shrink-0">
+                                    {(canEdit || isAdmin) && (
+                                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEditContrato(c)}>
+                                        <Pencil className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                    {(canDelete || isAdmin) && (
+                                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDeleteContrato(c.id)}>
+                                        <Trash2 className="w-3 h-3 text-destructive" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                                {contratoUsers.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {contratoUsers.map(u => (
+                                      <Badge key={u.id} variant="secondary" className="text-[10px] py-0 px-1.5">{u.nome || "—"}</Badge>
+                                    ))}
+                                  </div>
                                 )}
-                                {(canDelete || isAdmin) && (
-                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDeleteContrato(c.id)}>
-                                    <Trash2 className="w-3 h-3 text-destructive" />
-                                  </Button>
-                                )}
                               </div>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                         {(canCreate || isAdmin) && (
                           <Button size="sm" variant="outline" className="h-7 text-xs mt-1" onClick={() => openNewContrato(f.id)}>
