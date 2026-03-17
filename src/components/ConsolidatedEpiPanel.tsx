@@ -379,31 +379,108 @@ export default function ConsolidatedEpiPanel() {
                             <div>
                               {/* Contract filter tabs */}
                               {filialContratos.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-1.5 p-2 border-b bg-muted/30">
-                                  <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                  <span className="text-[11px] text-muted-foreground font-medium mr-1">Contrato:</span>
-                                  <Button
-                                    variant={selectedContratoId === null ? "default" : "outline"}
-                                    size="sm"
-                                    className="h-6 px-2 text-[11px] rounded-full"
-                                    onClick={() => setSelectedContratoId(null)}
-                                  >
-                                    Todos ({filialEpis.length})
-                                  </Button>
-                                  {filialContratos.map(ct => {
-                                    const count = filialEpis.filter(epi => epi.contratos?.some(c => c.contrato_id === ct.id)).length;
-                                    return (
-                                      <Button
-                                        key={ct.id}
-                                        variant={selectedContratoId === ct.id ? "default" : "outline"}
-                                        size="sm"
-                                        className="h-6 px-2 text-[11px] rounded-full"
-                                        onClick={() => setSelectedContratoId(ct.id)}
-                                      >
-                                        {ct.nome} ({count})
-                                      </Button>
-                                    );
-                                  })}
+                                <div className="border-b bg-muted/30 p-2 space-y-2">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-[11px] text-muted-foreground font-medium mr-1">Contrato:</span>
+                                    <Button
+                                      variant={selectedContratoId === null ? "default" : "outline"}
+                                      size="sm"
+                                      className="h-6 px-2 text-[11px] rounded-full"
+                                      onClick={() => setSelectedContratoId(null)}
+                                    >
+                                      Todos ({filialEpis.length})
+                                    </Button>
+                                    {filialContratos.map(ct => {
+                                      const count = filialEpis.filter(epi => epi.contratos?.some(c => c.contrato_id === ct.id)).length;
+                                      const resps = responsaveisMap[ct.id] || [];
+                                      return (
+                                        <Popover key={ct.id}>
+                                          <div className="flex items-center gap-0.5">
+                                            <Button
+                                              variant={selectedContratoId === ct.id ? "default" : "outline"}
+                                              size="sm"
+                                              className="h-6 px-2 text-[11px] rounded-full rounded-r-none"
+                                              onClick={() => setSelectedContratoId(ct.id)}
+                                            >
+                                              {ct.nome} ({count})
+                                            </Button>
+                                            <PopoverTrigger asChild>
+                                              <Button
+                                                variant={selectedContratoId === ct.id ? "default" : "outline"}
+                                                size="sm"
+                                                className="h-6 w-6 p-0 text-[11px] rounded-full rounded-l-none border-l-0"
+                                              >
+                                                <Users className="w-3 h-3" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                          </div>
+                                          <PopoverContent className="w-64 p-3" align="start">
+                                            <div className="space-y-2">
+                                              <p className="text-xs font-semibold flex items-center gap-1.5">
+                                                <Users className="w-3.5 h-3.5 text-primary" />
+                                                Responsáveis — {ct.nome}
+                                              </p>
+                                              {resps.length === 0 ? (
+                                                <p className="text-[11px] text-muted-foreground">Nenhum responsável atribuído.</p>
+                                              ) : (
+                                                <div className="space-y-1">
+                                                  {resps.map(r => (
+                                                    <div key={r.id} className="flex items-center justify-between gap-1 py-0.5">
+                                                      <span className="text-xs truncate">{r.funcionario_nome}</span>
+                                                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 shrink-0" onClick={() => removeResponsavel(ct.id, r.id)}>
+                                                        <X className="w-3 h-3 text-destructive" />
+                                                      </Button>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                              <div className="border-t pt-2 mt-1">
+                                                {addingResp === ct.id ? (
+                                                  <div className="space-y-1.5">
+                                                    <Select value={newRespFuncId} onValueChange={setNewRespFuncId}>
+                                                      <SelectTrigger className="h-7 text-xs">
+                                                        <SelectValue placeholder="Selecionar funcionário" />
+                                                      </SelectTrigger>
+                                                      <SelectContent>
+                                                        {filialFuncionarios
+                                                          .filter(f => !resps.some(r => r.funcionario_id === f.id))
+                                                          .map(f => (
+                                                            <SelectItem key={f.id} value={f.id} className="text-xs">{f.nome}</SelectItem>
+                                                          ))}
+                                                      </SelectContent>
+                                                    </Select>
+                                                    <div className="flex gap-1">
+                                                      <Button size="sm" className="h-6 text-[11px] flex-1" disabled={!newRespFuncId} onClick={() => addResponsavel(ct.id)}>
+                                                        Confirmar
+                                                      </Button>
+                                                      <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => { setAddingResp(null); setNewRespFuncId(""); }}>
+                                                        Cancelar
+                                                      </Button>
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <Button variant="outline" size="sm" className="h-6 text-[11px] w-full gap-1" onClick={() => setAddingResp(ct.id)}>
+                                                    <Plus className="w-3 h-3" /> Adicionar Responsável
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </PopoverContent>
+                                        </Popover>
+                                      );
+                                    })}
+                                  </div>
+                                  {/* Show selected contract responsáveis inline */}
+                                  {selectedContratoId && (responsaveisMap[selectedContratoId] || []).length > 0 && (
+                                    <div className="flex items-center gap-1.5 pl-5">
+                                      <Users className="w-3 h-3 text-muted-foreground" />
+                                      <span className="text-[10px] text-muted-foreground">Responsáveis:</span>
+                                      {(responsaveisMap[selectedContratoId] || []).map(r => (
+                                        <Badge key={r.id} variant="secondary" className="text-[10px] px-1.5 py-0">{r.funcionario_nome}</Badge>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
