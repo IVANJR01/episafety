@@ -539,7 +539,7 @@ export default function ContratoStockPanel() {
                                               <TableCell className="text-xs">
                                                 <div className="flex gap-0.5 justify-end">
                                                   <Button variant="ghost" size="icon" className="h-6 w-6"
-                                                    onClick={() => openStockUpdate(contrato.id, contrato.empresa_id || unidade.id, epi.id, epi.epi_id)}
+                                                    onClick={() => openStockUpdate(contrato.id, unidade.id, epi.id, epi.epi_id)}
                                                     title="Atualizar estoque">
                                                     <Package className="w-3 h-3" />
                                                   </Button>
