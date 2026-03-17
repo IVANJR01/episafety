@@ -28,6 +28,7 @@ interface Contrato { id: string; nome: string; unidade_id: string; }
 
 interface ImportRow {
   nome: string; cpf: string; matricula: string; setor: string; cargo: string; data_admissao: string;
+  unidade: string; contrato: string; unidade_id?: string; contrato_id?: string;
   valid: boolean; error?: string; action?: "insert" | "update"; existingId?: string;
 }
 
