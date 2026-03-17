@@ -236,20 +236,65 @@ export default function ConsolidatedEpiPanel() {
               {isExpanded && (
                 <div className="border-t pt-3 space-y-2">
                   {parent.filiais.map((f) => (
-                    <div key={f.empresa_id} className="flex flex-wrap items-center justify-between gap-2 py-2 px-3 rounded-md bg-background/60 text-xs">
-                      <span className="font-medium min-w-[140px] flex items-center gap-1.5">
-                        <GitBranch className="w-3 h-3 text-muted-foreground" />
-                        {f.empresa_nome}
-                      </span>
-                      <div className="flex flex-wrap gap-3">
-                        <span><span className="text-muted-foreground">Itens:</span> {f.total_itens}</span>
-                        <span><span className="text-muted-foreground">Estoque:</span> {f.estoque_total}</span>
-                        <span><span className="text-muted-foreground">Valor:</span> R$ {f.valor_total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                        <span><span className="text-muted-foreground">Consumo/mês:</span> {f.consumo_medio_mensal} un.</span>
-                        {f.itens_baixo_estoque > 0 && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{f.itens_baixo_estoque} baixo</Badge>
-                        )}
+                    <div key={f.empresa_id}>
+                      <div
+                        className="flex flex-wrap items-center justify-between gap-2 py-2 px-3 rounded-md bg-background/60 text-xs cursor-pointer hover:bg-background/80 transition-colors"
+                        onClick={() => toggleFilialDetail(f.empresa_id)}
+                      >
+                        <span className="font-medium min-w-[140px] flex items-center gap-1.5">
+                          <GitBranch className="w-3 h-3 text-muted-foreground" />
+                          {f.empresa_nome}
+                          <Eye className="w-3 h-3 text-muted-foreground/60" />
+                        </span>
+                        <div className="flex flex-wrap gap-3">
+                          <span><span className="text-muted-foreground">Itens:</span> {f.total_itens}</span>
+                          <span><span className="text-muted-foreground">Estoque:</span> {f.estoque_total}</span>
+                          <span><span className="text-muted-foreground">Valor:</span> R$ {f.valor_total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          <span><span className="text-muted-foreground">Consumo/mês:</span> {f.consumo_medio_mensal} un.</span>
+                          {f.itens_baixo_estoque > 0 && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{f.itens_baixo_estoque} baixo</Badge>
+                          )}
+                        </div>
                       </div>
+                      {/* Detail: items in this unit */}
+                      {expandedFilialId === f.empresa_id && (
+                        <div className="ml-4 mt-1 mb-2 border rounded-md overflow-hidden">
+                          {loadingFilialEpis ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground p-3">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando itens...
+                            </div>
+                          ) : filialEpis.length === 0 ? (
+                            <p className="text-xs text-muted-foreground p-3">Nenhum EPI cadastrado nesta unidade.</p>
+                          ) : (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="text-xs py-1.5">EPI</TableHead>
+                                  <TableHead className="text-xs py-1.5">CA</TableHead>
+                                  <TableHead className="text-xs py-1.5">Categoria</TableHead>
+                                  <TableHead className="text-xs py-1.5 text-right">Estoque</TableHead>
+                                  <TableHead className="text-xs py-1.5 text-right">Mínimo</TableHead>
+                                  <TableHead className="text-xs py-1.5 text-right">Valor un.</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {filialEpis.map(epi => (
+                                  <TableRow key={epi.id} className={epi.estoque <= epi.estoque_minimo ? "bg-destructive/5" : ""}>
+                                    <TableCell className="text-xs py-1.5 font-medium">{epi.nome}</TableCell>
+                                    <TableCell className="text-xs py-1.5">{epi.ca || "—"}</TableCell>
+                                    <TableCell className="text-xs py-1.5">{epi.categoria || "—"}</TableCell>
+                                    <TableCell className="text-xs py-1.5 text-right font-semibold">{epi.estoque}</TableCell>
+                                    <TableCell className="text-xs py-1.5 text-right">{epi.estoque_minimo}</TableCell>
+                                    <TableCell className="text-xs py-1.5 text-right">
+                                      {epi.valor ? `R$ ${Number(epi.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
