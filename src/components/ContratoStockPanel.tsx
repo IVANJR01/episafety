@@ -398,8 +398,8 @@ export default function ContratoStockPanel() {
   const matrizId = unidades.find(u => !u.empresa_pai_id)?.id;
   const allUnits = matrizId ? [unidades.find(u => u.id === matrizId)!, ...filiais] : filiais;
 
-  // Filter contratos for contract-bound users
-  const visibleContratos = isContratoUser
+  // Filter contratos: global managers see all, contract-bound users see only theirs
+  const visibleContratos = (isContratoUser || (hasEstoqueContrato && !hasGestaoEstoque && userContratoId))
     ? contratos.filter(c => c.id === userContratoId)
     : contratos;
 
