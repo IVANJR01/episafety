@@ -69,9 +69,14 @@ interface ConsumoMensal {
 
 export default function ContratoStockPanel() {
   const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
-  const hasEstoqueContrato = modulosPermitidos.includes("estoque_contrato") || modulosPermitidos.includes("estoque_contrato:view");
-  const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis") || hasEstoqueContrato;
+  // Global stock management (Rafaela-type: sees ALL units/contracts)
+  const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
+  // Per-contract stock permission (technician-type: sees only their unit/contract)
+  const hasEstoqueContrato = modulosPermitidos.includes("estoque_contrato") || modulosPermitidos.some(p => p.startsWith("estoque_contrato:"));
+  // Contract-bound user: has contract ID and is NOT a global manager
   const isContratoUser = !!userContratoId && !hasGestaoEstoque;
+  // Can access the panel at all
+  const canAccessPanel = hasGestaoEstoque || hasEstoqueContrato || isContratoUser;
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
