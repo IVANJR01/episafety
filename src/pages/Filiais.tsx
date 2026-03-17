@@ -112,6 +112,7 @@ export default function Filiais() {
 
   const getContratosForFilial = (id: string) => contratos.filter(c => c.unidade_id === id);
   const getUsersForFilial = (id: string) => profiles.filter(p => p.empresa_id === id);
+  const getUsersForContrato = (id: string) => usuariosContratos.filter(u => u.contrato_id === id);
 
   // Unit CRUD
   const openNew = () => { setEditing(null); setForm({ nome: "", cnpj: "", email: "", telefone: "", endereco: "", tipo: "filial" }); setDialogOpen(true); };
