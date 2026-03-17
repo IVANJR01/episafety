@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, AlertTriangle, TrendingUp, DollarSign, Building2, ChevronDown, ChevronUp, GitBranch, ArrowRightLeft, Loader2, Eye } from "lucide-react";
+import { Package, AlertTriangle, TrendingUp, DollarSign, Building2, ChevronDown, ChevronUp, GitBranch, ArrowRightLeft, Loader2, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -45,12 +45,19 @@ interface FilialEpi {
   contratos: EpiContrato[];
 }
 
+interface FilialContrato {
+  id: string;
+  nome: string;
+}
+
 export default function ConsolidatedEpiPanel() {
   const [data, setData] = useState<ParentCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [expandedFilialId, setExpandedFilialId] = useState<string | null>(null);
   const [filialEpis, setFilialEpis] = useState<FilialEpi[]>([]);
+  const [filialContratos, setFilialContratos] = useState<FilialContrato[]>([]);
+  const [selectedContratoId, setSelectedContratoId] = useState<string | null>(null);
   const [loadingFilialEpis, setLoadingFilialEpis] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
@@ -66,15 +73,32 @@ export default function ConsolidatedEpiPanel() {
     if (expandedFilialId === filialId) {
       setExpandedFilialId(null);
       setFilialEpis([]);
+      setFilialContratos([]);
+      setSelectedContratoId(null);
       return;
     }
     setExpandedFilialId(filialId);
+    setSelectedContratoId(null);
     setLoadingFilialEpis(true);
-    const { data: result } = await supabase.rpc("get_filial_epis", { _filial_id: filialId });
-    if (result && Array.isArray(result)) setFilialEpis(result as unknown as FilialEpi[]);
+
+    const [episRes, contratosRes] = await Promise.all([
+      supabase.rpc("get_filial_epis", { _filial_id: filialId }),
+      supabase.from("contratos").select("id, nome").eq("unidade_id", filialId).order("nome"),
+    ]);
+
+    if (episRes.data && Array.isArray(episRes.data)) setFilialEpis(episRes.data as unknown as FilialEpi[]);
     else setFilialEpis([]);
+
+    if (contratosRes.data) setFilialContratos(contratosRes.data);
+    else setFilialContratos([]);
+
     setLoadingFilialEpis(false);
   };
+
+  // Filter EPIs by selected contract
+  const filteredEpis = selectedContratoId
+    ? filialEpis.filter(epi => epi.contratos?.some(c => c.contrato_id === selectedContratoId))
+    : filialEpis;
 
   const loadData = useCallback(async () => {
     const { data: result } = await supabase.rpc("get_consolidated_epi_stock");
@@ -265,7 +289,7 @@ export default function ConsolidatedEpiPanel() {
                       </div>
                       {/* Detail: items in this unit */}
                       {expandedFilialId === f.empresa_id && (
-                        <div className="ml-4 mt-1 mb-2 border rounded-md overflow-hidden">
+                         <div className="ml-4 mt-1 mb-2 border rounded-md overflow-hidden">
                           {loadingFilialEpis ? (
                             <div className="flex items-center gap-2 text-xs text-muted-foreground p-3">
                               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando itens...
@@ -273,46 +297,82 @@ export default function ConsolidatedEpiPanel() {
                           ) : filialEpis.length === 0 ? (
                             <p className="text-xs text-muted-foreground p-3">Nenhum EPI cadastrado nesta unidade.</p>
                           ) : (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="text-xs py-1.5">EPI</TableHead>
-                                  <TableHead className="text-xs py-1.5">CA</TableHead>
-                                  <TableHead className="text-xs py-1.5">Categoria</TableHead>
-                                  <TableHead className="text-xs py-1.5">Contratos</TableHead>
-                                  <TableHead className="text-xs py-1.5 text-right">Estoque</TableHead>
-                                  <TableHead className="text-xs py-1.5 text-right">Mínimo</TableHead>
-                                  <TableHead className="text-xs py-1.5 text-right">Valor un.</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {filialEpis.map(epi => (
-                                  <TableRow key={epi.id} className={epi.estoque <= epi.estoque_minimo ? "bg-destructive/5" : ""}>
-                                    <TableCell className="text-xs py-1.5 font-medium">{epi.nome}</TableCell>
-                                    <TableCell className="text-xs py-1.5">{epi.ca || "—"}</TableCell>
-                                    <TableCell className="text-xs py-1.5">{epi.categoria || "—"}</TableCell>
-                                    <TableCell className="text-xs py-1.5">
-                                      {epi.contratos && epi.contratos.length > 0 ? (
-                                        <div className="flex flex-wrap gap-1">
-                                          {epi.contratos.map(c => (
-                                            <Badge key={c.contrato_id} variant="outline" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
-                                              {c.contrato_nome} ({c.qtd_entregue} ent.)
-                                            </Badge>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <span className="text-muted-foreground">—</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-xs py-1.5 text-right font-semibold">{epi.estoque}</TableCell>
-                                    <TableCell className="text-xs py-1.5 text-right">{epi.estoque_minimo}</TableCell>
-                                    <TableCell className="text-xs py-1.5 text-right">
-                                      {epi.valor ? `R$ ${Number(epi.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
+                            <div>
+                              {/* Contract filter tabs */}
+                              {filialContratos.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1.5 p-2 border-b bg-muted/30">
+                                  <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-[11px] text-muted-foreground font-medium mr-1">Contrato:</span>
+                                  <Button
+                                    variant={selectedContratoId === null ? "default" : "outline"}
+                                    size="sm"
+                                    className="h-6 px-2 text-[11px] rounded-full"
+                                    onClick={() => setSelectedContratoId(null)}
+                                  >
+                                    Todos ({filialEpis.length})
+                                  </Button>
+                                  {filialContratos.map(ct => {
+                                    const count = filialEpis.filter(epi => epi.contratos?.some(c => c.contrato_id === ct.id)).length;
+                                    return (
+                                      <Button
+                                        key={ct.id}
+                                        variant={selectedContratoId === ct.id ? "default" : "outline"}
+                                        size="sm"
+                                        className="h-6 px-2 text-[11px] rounded-full"
+                                        onClick={() => setSelectedContratoId(ct.id)}
+                                      >
+                                        {ct.nome} ({count})
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {filteredEpis.length === 0 ? (
+                                <p className="text-xs text-muted-foreground p-3">Nenhum EPI vinculado a este contrato.</p>
+                              ) : (
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="text-xs py-1.5">EPI</TableHead>
+                                      <TableHead className="text-xs py-1.5">CA</TableHead>
+                                      <TableHead className="text-xs py-1.5">Categoria</TableHead>
+                                      <TableHead className="text-xs py-1.5">Contratos</TableHead>
+                                      <TableHead className="text-xs py-1.5 text-right">Estoque</TableHead>
+                                      <TableHead className="text-xs py-1.5 text-right">Mínimo</TableHead>
+                                      <TableHead className="text-xs py-1.5 text-right">Valor un.</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {filteredEpis.map(epi => (
+                                      <TableRow key={epi.id} className={epi.estoque <= epi.estoque_minimo ? "bg-destructive/5" : ""}>
+                                        <TableCell className="text-xs py-1.5 font-medium">{epi.nome}</TableCell>
+                                        <TableCell className="text-xs py-1.5">{epi.ca || "—"}</TableCell>
+                                        <TableCell className="text-xs py-1.5">{epi.categoria || "—"}</TableCell>
+                                        <TableCell className="text-xs py-1.5">
+                                          {epi.contratos && epi.contratos.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1">
+                                              {epi.contratos.map(c => (
+                                                <Badge key={c.contrato_id} variant={selectedContratoId === c.contrato_id ? "default" : "outline"} className="text-[10px] px-1.5 py-0 whitespace-nowrap">
+                                                  {c.contrato_nome} ({c.qtd_entregue} ent.)
+                                                </Badge>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <span className="text-muted-foreground">—</span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-xs py-1.5 text-right font-semibold">{epi.estoque}</TableCell>
+                                        <TableCell className="text-xs py-1.5 text-right">{epi.estoque_minimo}</TableCell>
+                                        <TableCell className="text-xs py-1.5 text-right">
+                                          {epi.valor ? `R$ ${Number(epi.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
