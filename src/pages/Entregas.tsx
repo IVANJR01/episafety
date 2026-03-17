@@ -911,7 +911,24 @@ export default function Entregas() {
             </div>
 
             {signInputType === "assinatura" ? (
-              <SignatureCanvas ref={sigEntregaRef} label="Assinatura do Colaborador" height={400} />
+              <div className="space-y-3">
+                {savedSignatureDataUrl ? (
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Assinatura do Colaborador</span>
+                    <div className="border border-input rounded-lg p-2 bg-white">
+                      <img src={savedSignatureDataUrl} alt="Assinatura" className="w-full h-24 object-contain" />
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => { setSavedSignatureDataUrl(null); setFullscreenSigOpen(true); }}>
+                      <PenLine className="w-3.5 h-3.5 mr-1" /> Refazer assinatura
+                    </Button>
+                  </div>
+                ) : (
+                  <Button type="button" variant="outline" className="w-full h-20 border-dashed flex flex-col gap-1" onClick={() => setFullscreenSigOpen(true)}>
+                    <PenLine className="w-5 h-5" />
+                    <span className="text-sm">Toque para assinar em tela cheia</span>
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="space-y-4">
                 <div className="p-3 rounded-lg border bg-muted/20">
