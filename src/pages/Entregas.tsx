@@ -64,6 +64,33 @@ export default function Entregas() {
   const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
   const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
 
+  const resetSignFlow = useCallback(() => {
+    setSignOpen(false);
+    setPendingEntrega(null);
+    setSelectedUnsigned([]);
+    setSignMode("new");
+    setSignFuncId("");
+    setSignInputType("assinatura");
+    setCapturedPhoto(null);
+    setSavedSignatureDataUrl(null);
+    setFullscreenSigOpen(false);
+  }, []);
+
+  const openFullscreenSignature = useCallback(() => {
+    setSignOpen(false);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setFullscreenSigOpen(true));
+    });
+  }, []);
+
+  const closeFullscreenSignature = useCallback((dataUrl?: string) => {
+    if (dataUrl) setSavedSignatureDataUrl(dataUrl);
+    setFullscreenSigOpen(false);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setSignOpen(true));
+    });
+  }, []);
+
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
