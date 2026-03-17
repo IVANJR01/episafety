@@ -607,27 +607,22 @@ export default function VideoTreinamentos() {
       {/* Painel Consolidado por Curso */}
       {cursosConsolidados.length > 0 && (
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <h3 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
               Painel Consolidado por Curso
             </h3>
-            <div className="border rounded-lg overflow-hidden">
+            {/* Desktop table */}
+            <div className="hidden md:block border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Curso</TableHead>
                     <TableHead className="text-center">Módulos</TableHead>
                     <TableHead className="text-center">Atribuídos</TableHead>
-                    <TableHead className="text-center">
-                      <span className="text-emerald-600">Concluídos</span>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <span className="text-amber-600">Em andamento</span>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <span className="text-muted-foreground">Pendentes</span>
-                    </TableHead>
+                    <TableHead className="text-center"><span className="text-emerald-600">Concluídos</span></TableHead>
+                    <TableHead className="text-center"><span className="text-amber-600">Em andamento</span></TableHead>
+                    <TableHead className="text-center"><span className="text-muted-foreground">Pendentes</span></TableHead>
                     <TableHead className="text-center">Progresso</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -639,15 +634,9 @@ export default function VideoTreinamentos() {
                         <TableCell><span className="font-medium text-sm">{c.titulo}</span></TableCell>
                         <TableCell className="text-center text-sm">{c.totalModulos}</TableCell>
                         <TableCell className="text-center text-sm">{c.totalAtribuidos}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge className="bg-emerald-100 text-emerald-700 text-xs">{c.concluidos}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">{c.emAndamento}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="text-xs">{c.pendentes}</Badge>
-                        </TableCell>
+                        <TableCell className="text-center"><Badge className="bg-emerald-100 text-emerald-700 text-xs">{c.concluidos}</Badge></TableCell>
+                        <TableCell className="text-center"><Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">{c.emAndamento}</Badge></TableCell>
+                        <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.pendentes}</Badge></TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
@@ -661,6 +650,28 @@ export default function VideoTreinamentos() {
                   })}
                 </TableBody>
               </Table>
+            </div>
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-2">
+              {cursosConsolidados.map(c => {
+                const pct = c.totalAtribuidos > 0 ? Math.round((c.concluidos / c.totalAtribuidos) * 100) : 0;
+                return (
+                  <div key={c.id} className="border rounded-lg p-3 bg-background space-y-2">
+                    <p className="font-medium text-sm text-foreground">{c.titulo}</p>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div><span className="text-muted-foreground block">Módulos</span><span className="font-semibold">{c.totalModulos}</span></div>
+                      <div><span className="text-muted-foreground block">Atribuídos</span><span className="font-semibold">{c.totalAtribuidos}</span></div>
+                      <div><span className="text-emerald-600 block">Concluídos</span><span className="font-semibold text-emerald-700">{c.concluidos}</span></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs font-medium text-muted-foreground w-8">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
