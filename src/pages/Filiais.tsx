@@ -370,6 +370,20 @@ export default function Filiais() {
             <div><Label>Nome</Label><Input value={assignNome} onChange={e => setAssignNome(e.target.value)} placeholder="Nome" /></div>
             <div><Label>E-mail</Label><Input type="email" value={assignEmail} onChange={e => setAssignEmail(e.target.value)} placeholder="usuario@email.com" /></div>
             <div>
+              <Label>Contrato (opcional)</Label>
+              <Select value={assignContratoId} onValueChange={setAssignContratoId}>
+                <SelectTrigger><SelectValue placeholder="Selecione um contrato" /></SelectTrigger>
+                <SelectContent>
+                  {contratos.filter(c => c.unidade_id === assignFilialId).map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {contratos.filter(c => c.unidade_id === assignFilialId).length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nenhum contrato cadastrado nesta unidade.</p>
+              )}
+            </div>
+            <div>
               <Label>Senha (novo usuário)</Label>
               <div className="relative">
                 <Input type={showPassword ? "text" : "password"} value={assignSenha} onChange={e => setAssignSenha(e.target.value)} placeholder="Mín. 6 caracteres" />
