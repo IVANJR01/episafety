@@ -91,6 +91,19 @@ export default function Funcionarios() {
   const { form, setForm, resetForm, hasDraft } = useFormDraft("funcionarios", emptyForm);
   const { toast } = useToast();
 
+  // Unidades and Contratos for selects
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
+
+  const fetchUnidadesContratos = async () => {
+    const { data: u } = await supabase.from("empresa_config").select("id, nome, tipo").neq("tipo", "empresa").order("nome");
+    if (u) setUnidades(u as Unidade[]);
+    const { data: c } = await supabase.from("contratos").select("id, nome, unidade_id").order("nome");
+    if (c) setContratos(c as Contrato[]);
+  };
+
+  const contratosFiltrados = form.unidade_id ? contratos.filter(c => c.unidade_id === form.unidade_id) : contratos;
+
   // Import state
   const [importOpen, setImportOpen] = useState(false);
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
