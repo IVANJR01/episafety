@@ -777,53 +777,51 @@ export default function VideoTreinamentos() {
                         const vizs = visualizacoes.filter(v => v.video_id === modulo.id);
                         const concluidos = vizs.filter(v => v.concluido).length;
                         return (
-                          <div key={modulo.id} className="p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <span className="bg-primary/10 text-primary font-bold text-sm rounded-full w-8 h-8 flex items-center justify-center">
+                          <div key={modulo.id} className="p-3 sm:p-4 hover:bg-muted/50 transition-colors">
+                            <div className="flex items-start sm:items-center gap-2 sm:gap-4">
+                              <span className="bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                                 {String(idx + 1).padStart(2, "0")}
                               </span>
-                            </div>
 
-                            <div className="relative w-24 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
-                              <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                <Play className="h-5 w-5 text-white" />
+                              <div className="hidden sm:block relative w-24 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
+                                <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  <Play className="h-5 w-5 text-white" />
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-foreground text-sm truncate">{modulo.titulo}</h4>
-                              {modulo.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
-                              <div className="flex gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground">{concluidos} concluíram</span>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-foreground text-xs sm:text-sm truncate">{modulo.titulo}</h4>
+                                {modulo.descricao && <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
+                                <span className="text-[10px] sm:text-xs text-muted-foreground">{concluidos} concluíram</span>
                               </div>
-                            </div>
 
-                            <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" onClick={() => openVideoDetail(modulo)} title="Detalhes" className="h-8 w-8">
-                                <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                              {canEdit && (
-                                <Button variant="ghost" size="icon" onClick={() => openQuizManager(modulo.id)} title="Quiz" className="h-8 w-8">
-                                  <Award className="h-3.5 w-3.5" />
+                              <div className="flex gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" onClick={() => openVideoDetail(modulo)} title="Detalhes" className="h-7 w-7 sm:h-8 sm:w-8">
+                                  <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                 </Button>
-                              )}
-                              {canEdit && (
-                                <Button variant="ghost" size="icon" onClick={() => {
-                                  setEditingModulo(modulo);
-                                  setModuloCursoId(modulo.curso_id || "");
-                                  setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "", videoUrl: modulo.video_url || "" });
-                                  setVideoFile(null);
-                                  setOpenModuloForm(true);
-                                }} title="Editar" className="h-8 w-8">
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
-                              {canDelete && (
-                                <Button variant="ghost" size="icon" onClick={() => handleDeleteModulo(modulo.id)} className="text-destructive h-8 w-8" title="Excluir">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
+                                {canEdit && (
+                                  <Button variant="ghost" size="icon" onClick={() => openQuizManager(modulo.id)} title="Quiz" className="h-7 w-7 sm:h-8 sm:w-8">
+                                    <Award className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                  </Button>
+                                )}
+                                {canEdit && (
+                                  <Button variant="ghost" size="icon" onClick={() => {
+                                    setEditingModulo(modulo);
+                                    setModuloCursoId(modulo.curso_id || "");
+                                    setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "", videoUrl: modulo.video_url || "" });
+                                    setVideoFile(null);
+                                    setOpenModuloForm(true);
+                                  }} title="Editar" className="h-7 w-7 sm:h-8 sm:w-8">
+                                    <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteModulo(modulo.id)} className="text-destructive h-7 w-7 sm:h-8 sm:w-8" title="Excluir">
+                                    <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
