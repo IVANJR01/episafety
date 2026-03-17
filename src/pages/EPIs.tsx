@@ -26,7 +26,10 @@ interface EPI {
 
 const emptyForm = {
   nome: "", ca: "", validade: "", estoque: 0, estoque_minimo: 5,
-  categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: 0
+  categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: 0,
+  ajuste_tipo: "" as "" | "entrada" | "saida",
+  ajuste_quantidade: 0,
+  ajuste_motivo: ""
 };
 
 export default function EPIs() {
@@ -54,7 +57,8 @@ export default function EPIs() {
       estoque: e.estoque, estoque_minimo: e.estoque_minimo,
       categoria: e.categoria || "", descricao: e.descricao || "",
       fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || "",
-      valor: e.valor || 0
+      valor: e.valor || 0,
+      ajuste_tipo: "", ajuste_quantidade: 0, ajuste_motivo: ""
     });
     setOpen(true);
   };
@@ -94,15 +98,32 @@ export default function EPIs() {
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
+    
+    // Calculate stock adjustment
+    let estoqueAjustado = form.estoque;
+    if (editing && form.ajuste_tipo && form.ajuste_quantidade > 0) {
+      if (form.ajuste_tipo === "entrada") {
+        estoqueAjustado = editing.estoque + form.ajuste_quantidade;
+      } else if (form.ajuste_tipo === "saida") {
+        estoqueAjustado = Math.max(0, editing.estoque - form.ajuste_quantidade);
+      }
+    }
+    
     const data = {
       nome: form.nome, ca: form.ca || null, validade: form.validade || null,
-      estoque: form.estoque, estoque_minimo: form.estoque_minimo,
+      estoque: estoqueAjustado, estoque_minimo: form.estoque_minimo,
       categoria: form.categoria || null, descricao: form.descricao || null,
       fabricante: form.fabricante || null, aprovado_para: form.aprovado_para || null,
       valor: form.valor || 0
     };
-    if (editing) await update(editing.id, data);
-    else await add(data);
+    if (editing) {
+      await update(editing.id, data);
+      if (form.ajuste_tipo && form.ajuste_quantidade > 0) {
+        toast({ title: `${form.ajuste_tipo === "entrada" ? "Entrada" : "Saída"} registrada`, description: `${form.ajuste_quantidade} unidade(s) ${form.ajuste_tipo === "entrada" ? "adicionada(s) ao" : "removida(s) do"} estoque` });
+      }
+    } else {
+      await add(data);
+    }
     resetForm();
     setOpen(false);
   };
@@ -263,8 +284,41 @@ export default function EPIs() {
             <div><Label>Aprovado Para</Label><Textarea value={form.aprovado_para} onChange={e => setForm({...form, aprovado_para: e.target.value})} placeholder="Proteção contra..." rows={2} /></div>
             <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Descrição técnica do EPI" rows={3} /></div>
             <div><Label>Valor Unitário (R$)</Label><Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({...form, valor: Number(e.target.value)})} placeholder="0.00" /></div>
+            {editing && (
+              <div className="border rounded-lg p-3 bg-muted/30 space-y-3">
+                <Label className="text-sm font-semibold">Movimentação de Estoque</Label>
+                <p className="text-xs text-muted-foreground">Estoque atual: <span className="font-mono font-bold">{editing.estoque}</span> unidades</p>
+                <div className="flex gap-2">
+                  <Button type="button" variant={form.ajuste_tipo === "entrada" ? "default" : "outline"} size="sm" className="flex-1"
+                    onClick={() => setForm(prev => ({ ...prev, ajuste_tipo: prev.ajuste_tipo === "entrada" ? "" : "entrada", ajuste_quantidade: prev.ajuste_tipo === "entrada" ? 0 : prev.ajuste_quantidade }))}>
+                    + Entrada
+                  </Button>
+                  <Button type="button" variant={form.ajuste_tipo === "saida" ? "destructive" : "outline"} size="sm" className="flex-1"
+                    onClick={() => setForm(prev => ({ ...prev, ajuste_tipo: prev.ajuste_tipo === "saida" ? "" : "saida", ajuste_quantidade: prev.ajuste_tipo === "saida" ? 0 : prev.ajuste_quantidade }))}>
+                    - Saída
+                  </Button>
+                </div>
+                {form.ajuste_tipo && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Quantidade</Label>
+                      <Input type="number" min="1" value={form.ajuste_quantidade || ""} onChange={e => setForm(prev => ({ ...prev, ajuste_quantidade: Number(e.target.value) }))} placeholder="Qtd" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Motivo</Label>
+                      <Input value={form.ajuste_motivo} onChange={e => setForm(prev => ({ ...prev, ajuste_motivo: e.target.value }))} placeholder={form.ajuste_tipo === "entrada" ? "Ex: Compra" : "Ex: Descarte"} />
+                    </div>
+                    {form.ajuste_quantidade > 0 && (
+                      <p className="col-span-2 text-xs font-medium">
+                        Novo estoque: <span className="font-mono">{form.ajuste_tipo === "entrada" ? editing.estoque + form.ajuste_quantidade : Math.max(0, editing.estoque - form.ajuste_quantidade)}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Estoque</Label><Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} /></div>
+              <div><Label>Estoque {editing ? "(manual)" : ""}</Label><Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} disabled={!!editing && !!form.ajuste_tipo} /></div>
               <div><Label>Estoque Mín.</Label><Input type="number" value={form.estoque_minimo} onChange={e => setForm({...form, estoque_minimo: Number(e.target.value)})} /></div>
             </div>
           </div>
