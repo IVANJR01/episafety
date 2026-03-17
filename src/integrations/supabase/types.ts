@@ -227,6 +227,7 @@ export type Database = {
           descricao: string | null
           empresa_id: string | null
           id: string
+          link_externo: string | null
           pontuacao_minima: number
           titulo: string
           updated_at: string
@@ -237,6 +238,7 @@ export type Database = {
           descricao?: string | null
           empresa_id?: string | null
           id?: string
+          link_externo?: string | null
           pontuacao_minima?: number
           titulo: string
           updated_at?: string
@@ -247,6 +249,7 @@ export type Database = {
           descricao?: string | null
           empresa_id?: string | null
           id?: string
+          link_externo?: string | null
           pontuacao_minima?: number
           titulo?: string
           updated_at?: string
