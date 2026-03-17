@@ -102,6 +102,13 @@ export default function Funcionarios() {
     if (c) setContratos(c as Contrato[]);
   };
 
+  // Load unidades/contratos on mount for display in table
+  useState(() => { fetchUnidadesContratos(); });
+
+  // Helper maps for display
+  const unidadeMap = useMemo(() => new Map(unidades.map(u => [u.id, u.nome])), [unidades]);
+  const contratoMap = useMemo(() => new Map(contratos.map(c => [c.id, c.nome])), [contratos]);
+
   const contratosFiltrados = form.unidade_id ? contratos.filter(c => c.unidade_id === form.unidade_id) : contratos;
 
   // Import state
