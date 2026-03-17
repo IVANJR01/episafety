@@ -25,7 +25,6 @@ interface CursoVideo {
   pontuacao_minima: number;
   empresa_id: string | null;
   created_at: string;
-  link_externo: string | null;
 }
 
 interface VideoTreinamento {
@@ -88,7 +87,7 @@ export default function VideoTreinamentos() {
   // Course form
   const [openCursoForm, setOpenCursoForm] = useState(false);
   const [editingCurso, setEditingCurso] = useState<CursoVideo | null>(null);
-  const [cursoForm, setCursoForm] = useState({ titulo: "", descricao: "", pontuacao_minima: "70", link_externo: "" });
+  const [cursoForm, setCursoForm] = useState({ titulo: "", descricao: "", pontuacao_minima: "70" });
 
   // Module (video) form
   const [openModuloForm, setOpenModuloForm] = useState(false);
@@ -191,7 +190,6 @@ export default function VideoTreinamentos() {
           titulo: cursoForm.titulo,
           descricao: cursoForm.descricao || null,
           pontuacao_minima: parseInt(cursoForm.pontuacao_minima) || 70,
-          link_externo: cursoForm.link_externo || null,
         }).eq("id", editingCurso.id);
         if (error) throw error;
         toast({ title: "Curso atualizado!" });
@@ -200,7 +198,6 @@ export default function VideoTreinamentos() {
           titulo: cursoForm.titulo,
           descricao: cursoForm.descricao || null,
           pontuacao_minima: parseInt(cursoForm.pontuacao_minima) || 70,
-          link_externo: cursoForm.link_externo || null,
           empresa_id: null,
           created_by: (await supabase.auth.getUser()).data.user?.id,
         });
@@ -564,7 +561,7 @@ export default function VideoTreinamentos() {
           {canCreate && (
             <Button onClick={() => {
               setEditingCurso(null);
-              setCursoForm({ titulo: "", descricao: "", pontuacao_minima: "70", link_externo: "" });
+              setCursoForm({ titulo: "", descricao: "", pontuacao_minima: "70" });
               setOpenCursoForm(true);
             }} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" /> Novo Curso
@@ -708,7 +705,7 @@ export default function VideoTreinamentos() {
                     <div className="flex gap-2 text-xs text-muted-foreground">
                       <Badge variant="outline">{cursoStats.totalModulos} módulo(s)</Badge>
                       <Badge variant="outline">Nota mín: {curso.pontuacao_minima}%</Badge>
-                      {(curso as any).link_externo && <Badge variant="secondary" className="text-xs">🔗 Link Externo</Badge>}
+                      
                     </div>
                     <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                       {canCreate && (
@@ -725,7 +722,7 @@ export default function VideoTreinamentos() {
                       {canEdit && (
                         <Button variant="ghost" size="icon" title="Editar Curso" onClick={() => {
                           setEditingCurso(curso);
-                          setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima), link_externo: curso.link_externo || "" });
+                          setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima) });
                           setOpenCursoForm(true);
                         }}>
                           <Pencil className="h-4 w-4" />
@@ -847,11 +844,6 @@ export default function VideoTreinamentos() {
             <div>
               <Label>Pontuação Mínima (%)</Label>
               <Input type="number" min={0} max={100} value={cursoForm.pontuacao_minima} onChange={e => setCursoForm({ ...cursoForm, pontuacao_minima: e.target.value })} />
-            </div>
-            <div>
-              <Label>Link Externo (opcional)</Label>
-              <Input value={cursoForm.link_externo} onChange={e => setCursoForm({ ...cursoForm, link_externo: e.target.value })} placeholder="https://exemplo.com/curso" />
-              <p className="text-xs text-muted-foreground mt-1">Se preenchido, o funcionário será redirecionado para este link ao invés de assistir vídeos internos.</p>
             </div>
           </div>
           <DialogFooter>
