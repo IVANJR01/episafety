@@ -120,13 +120,8 @@ export default function UsuariosLiberados() {
   useEffect(() => { setCurrentPage(1); }, [filterEmail, filterNome, filterEmpresa]);
 
   const handleAddUser = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!novoEmail.trim() || !novaSenha.trim()) {
       toast({ title: "Preencha e-mail e senha", variant: "destructive" });
-      return;
-    }
-    if (!emailRegex.test(novoEmail.trim())) {
-      toast({ title: "E-mail inválido", description: "Verifique o formato do e-mail digitado (ex: usuario@empresa.com)", variant: "destructive" });
       return;
     }
     if (novaSenha.length < 6) {
