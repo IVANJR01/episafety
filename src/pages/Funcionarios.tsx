@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter, UserX, RotateCcw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -101,6 +101,13 @@ export default function Funcionarios() {
     const { data: c } = await supabase.from("contratos").select("id, nome, unidade_id").order("nome");
     if (c) setContratos(c as Contrato[]);
   };
+
+  // Load unidades/contratos on mount for display in table
+  useEffect(() => { fetchUnidadesContratos(); }, []);
+
+  // Helper maps for display
+  const unidadeMap = useMemo(() => new Map(unidades.map(u => [u.id, u.nome])), [unidades]);
+  const contratoMap = useMemo(() => new Map(contratos.map(c => [c.id, c.nome])), [contratos]);
 
   const contratosFiltrados = form.unidade_id ? contratos.filter(c => c.unidade_id === form.unidade_id) : contratos;
 
@@ -284,12 +291,14 @@ export default function Funcionarios() {
       "Nome": f.nome,
       "CPF": f.cpf || "",
       "Matrícula": f.matricula || "",
+      "Unidade": f.unidade_id ? unidadeMap.get(f.unidade_id) || "" : "",
+      "Contrato": f.contrato_id ? contratoMap.get(f.contrato_id) || "" : "",
       "Setor": f.setor || "",
       "Cargo": f.cargo || "",
       "Data Admissão": f.data_admissao || "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
     XLSX.writeFile(wb, "funcionarios.xlsx");
@@ -471,6 +480,8 @@ export default function Funcionarios() {
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                     <div><span className="text-muted-foreground">CPF:</span> <span className="font-mono">{f.cpf || "—"}</span></div>
                     <div><span className="text-muted-foreground">Matrícula:</span> <span className="font-mono">{f.matricula || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Unidade:</span> <span>{f.unidade_id ? unidadeMap.get(f.unidade_id) || "—" : "—"}</span></div>
+                    <div><span className="text-muted-foreground">Contrato:</span> <span>{f.contrato_id ? contratoMap.get(f.contrato_id) || "—" : "—"}</span></div>
                     {f.data_admissao && <div><span className="text-muted-foreground">Admissão:</span> <span className="font-mono">{f.data_admissao.split("-").reverse().join("/")}</span></div>}
                     {f.data_demissao && <div><span className="text-muted-foreground">Demissão:</span> <span className="font-mono text-destructive">{f.data_demissao.split("-").reverse().join("/")}</span></div>}
                   </div>
@@ -488,6 +499,8 @@ export default function Funcionarios() {
                     <TableHead>Nome</TableHead>
                     <TableHead>CPF</TableHead>
                     <TableHead>Matrícula</TableHead>
+                    <TableHead>Unidade</TableHead>
+                    <TableHead>Contrato</TableHead>
                     <TableHead>Setor</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Admissão</TableHead>
@@ -497,7 +510,7 @@ export default function Funcionarios() {
                 </TableHeader>
                 <TableBody>
                   {filteredItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 8 : 7} className="text-center text-muted-foreground py-8">
+                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 10 : 9} className="text-center text-muted-foreground py-8">
                       {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
                     </TableCell></TableRow>
                   ) : filteredItems.map(f => (
@@ -505,6 +518,8 @@ export default function Funcionarios() {
                       <TableCell className="font-medium">{f.nome}</TableCell>
                       <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{f.matricula || "—"}</TableCell>
+                      <TableCell>{f.unidade_id ? unidadeMap.get(f.unidade_id) || "—" : "—"}</TableCell>
+                      <TableCell>{f.contrato_id ? contratoMap.get(f.contrato_id) || "—" : "—"}</TableCell>
                       <TableCell>{f.setor || "—"}</TableCell>
                       <TableCell>{f.cargo || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{f.data_admissao ? f.data_admissao.split("-").reverse().join("/") : "—"}</TableCell>
