@@ -88,7 +88,7 @@ export default function VideoTreinamentos() {
   // Course form
   const [openCursoForm, setOpenCursoForm] = useState(false);
   const [editingCurso, setEditingCurso] = useState<CursoVideo | null>(null);
-  const [cursoForm, setCursoForm] = useState({ titulo: "", descricao: "", pontuacao_minima: "70" });
+  const [cursoForm, setCursoForm] = useState({ titulo: "", descricao: "", pontuacao_minima: "70", link_externo: "" });
 
   // Module (video) form
   const [openModuloForm, setOpenModuloForm] = useState(false);
