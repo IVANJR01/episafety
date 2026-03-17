@@ -28,6 +28,7 @@ interface Contrato { id: string; nome: string; unidade_id: string; }
 
 interface ImportRow {
   nome: string; cpf: string; matricula: string; setor: string; cargo: string; data_admissao: string;
+  unidade: string; contrato: string; unidade_id?: string; contrato_id?: string;
   valid: boolean; error?: string; action?: "insert" | "update"; existingId?: string;
 }
 
@@ -41,7 +42,7 @@ function formatCPF(value: string): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
-const EXPECTED_COLUMNS = ["nome", "cpf", "matricula", "setor", "cargo", "data_admissao"];
+const EXPECTED_COLUMNS = ["nome", "cpf", "matricula", "setor", "cargo", "data_admissao", "unidade", "contrato"];
 
 function normalizeHeader(h: string): string {
   const map: Record<string, string> = {
@@ -53,6 +54,8 @@ function normalizeHeader(h: string): string {
     "data admissao": "data_admissao", "data admissão": "data_admissao", "data_admissao": "data_admissao",
     "data de admissão": "data_admissao", "data de admissao": "data_admissao", "admissao": "data_admissao",
     "admissão": "data_admissao",
+    "unidade": "unidade", "filial": "unidade", "obra": "unidade",
+    "contrato": "contrato",
   };
   const normalized = h.trim().toLowerCase().replace(/[_\-]/g, " ");
   return map[normalized] || normalized;
@@ -192,14 +195,35 @@ export default function Funcionarios() {
 
         const seenCpfs = new Set<string>();
 
+        // Build name-to-id maps for unidade/contrato matching
+        const unidadeNameMap = new Map(unidades.map(u => [u.nome.toLowerCase().trim(), u.id]));
+        const contratoNameMap = new Map(contratos.map(c => [c.nome.toLowerCase().trim(), { id: c.id, unidade_id: c.unidade_id }]));
+
         const rows: ImportRow[] = jsonData.map(raw => {
-          const mapped: any = { nome: "", cpf: "", matricula: "", setor: "", cargo: "", data_admissao: "" };
+          const mapped: any = { nome: "", cpf: "", matricula: "", setor: "", cargo: "", data_admissao: "", unidade: "", contrato: "" };
           Object.entries(headerMap).forEach(([orig, norm]) => {
             let val = raw[orig] != null ? String(raw[orig]).trim() : "";
             if (norm === "data_admissao") val = parseExcelDate(raw[orig]);
             if (norm === "cpf" && val) val = formatCPF(val);
             mapped[norm] = val;
           });
+
+          // Resolve unidade name to ID
+          let resolvedUnidadeId: string | undefined;
+          if (mapped.unidade) {
+            resolvedUnidadeId = unidadeNameMap.get(mapped.unidade.toLowerCase().trim());
+          }
+
+          // Resolve contrato name to ID
+          let resolvedContratoId: string | undefined;
+          if (mapped.contrato) {
+            const contratoMatch = contratoNameMap.get(mapped.contrato.toLowerCase().trim());
+            if (contratoMatch) {
+              resolvedContratoId = contratoMatch.id;
+              // If no unidade specified, infer from contrato
+              if (!resolvedUnidadeId) resolvedUnidadeId = contratoMatch.unidade_id;
+            }
+          }
 
           let validation = validateRow(mapped);
           let action: "insert" | "update" = "insert";
@@ -219,7 +243,7 @@ export default function Funcionarios() {
             }
           }
 
-          return { ...mapped, ...validation, action, existingId };
+          return { ...mapped, ...validation, action, existingId, unidade_id: resolvedUnidadeId, contrato_id: resolvedContratoId };
         });
 
         setImportRows(rows);
@@ -252,6 +276,7 @@ export default function Funcionarios() {
       const payloads = toInsert.map(r => ({
         nome: r.nome, cpf: r.cpf || null, matricula: r.matricula || null,
         setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null,
+        unidade_id: r.unidade_id || null, contrato_id: r.contrato_id || null,
         empresa_id: empresaId,
       }));
       const { error, data: inserted } = await (supabase.from as any)("funcionarios").insert(payloads).select();
@@ -265,7 +290,7 @@ export default function Funcionarios() {
     if (toUpdate.length > 0) {
       for (const r of toUpdate) {
         const { error } = await (supabase.from as any)("funcionarios")
-          .update({ nome: r.nome, matricula: r.matricula || null, setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null })
+          .update({ nome: r.nome, matricula: r.matricula || null, setor: r.setor || null, cargo: r.cargo || null, data_admissao: r.data_admissao || null, unidade_id: r.unidade_id || null, contrato_id: r.contrato_id || null })
           .eq("id", r.existingId);
         if (!error) successCount++;
         else errorCount++;
@@ -305,13 +330,33 @@ export default function Funcionarios() {
   };
 
   const downloadTemplate = () => {
+    // Main sheet with example row
+    const exampleUnidade = unidades.length > 0 ? unidades[0].nome : "Nome da Unidade";
+    const exampleContrato = contratos.length > 0 ? contratos[0].nome : "Nome do Contrato";
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Nome", "CPF", "Matrícula", "Setor", "Cargo", "Data Admissão"],
-      ["João da Silva", "123.456.789-00", "001", "Produção", "Operador", "01/01/2024"],
+      ["Nome", "CPF", "Matrícula", "Setor", "Cargo", "Data Admissão", "Unidade", "Contrato"],
+      ["João da Silva", "123.456.789-00", "001", "Produção", "Operador", "01/01/2024", exampleUnidade, exampleContrato],
     ]);
-    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 25 }, { wch: 25 }];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
+
+    // Reference sheet with list of valid Unidades and Contratos
+    const refData: string[][] = [["Unidades Disponíveis", "", "Contratos Disponíveis", "Unidade do Contrato"]];
+    const maxRows = Math.max(unidades.length, contratos.length, 1);
+    for (let i = 0; i < maxRows; i++) {
+      refData.push([
+        unidades[i]?.nome || "",
+        "",
+        contratos[i]?.nome || "",
+        contratos[i] ? (unidades.find(u => u.id === contratos[i].unidade_id)?.nome || "") : "",
+      ]);
+    }
+    const wsRef = XLSX.utils.aoa_to_sheet(refData);
+    wsRef["!cols"] = [{ wch: 30 }, { wch: 3 }, { wch: 30 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, wsRef, "Referência - Unidades e Contratos");
+
     XLSX.writeFile(wb, "modelo_funcionarios.xlsx");
   };
 
