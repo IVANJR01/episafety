@@ -724,7 +724,7 @@ export default function VideoTreinamentos() {
                       {canEdit && (
                         <Button variant="ghost" size="icon" title="Editar Curso" onClick={() => {
                           setEditingCurso(curso);
-                          setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima) });
+                          setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima), link_externo: curso.link_externo || "" });
                           setOpenCursoForm(true);
                         }}>
                           <Pencil className="h-4 w-4" />
