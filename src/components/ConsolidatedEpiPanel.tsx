@@ -484,6 +484,68 @@ export default function ConsolidatedEpiPanel() {
                                 </div>
                               )}
 
+                              {/* Contract stock summary panel */}
+                              {selectedContratoId && (() => {
+                                const contratoEpis = filialEpis.filter(epi => epi.contratos?.some(c => c.contrato_id === selectedContratoId));
+                                const contratoTotals = contratoEpis.reduce((acc, epi) => {
+                                  const cInfo = epi.contratos?.find(c => c.contrato_id === selectedContratoId);
+                                  return {
+                                    itens: acc.itens + 1,
+                                    estoque: acc.estoque + epi.estoque,
+                                    valor: acc.valor + (epi.estoque * (Number(epi.valor) || 0)),
+                                    baixo: acc.baixo + (epi.estoque <= epi.estoque_minimo ? 1 : 0),
+                                    entregues: acc.entregues + (cInfo?.qtd_entregue || 0),
+                                  };
+                                }, { itens: 0, estoque: 0, valor: 0, baixo: 0, entregues: 0 });
+                                const contratoNome = filialContratos.find(c => c.id === selectedContratoId)?.nome || "";
+
+                                return (
+                                  <div className="border-b bg-muted/20 px-3 py-2.5">
+                                    <p className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                                      <FileText className="w-3.5 h-3.5 text-primary" />
+                                      Resumo — {contratoNome}
+                                    </p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                      <div className="flex items-center gap-1.5 bg-background rounded px-2 py-1.5">
+                                        <Package className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        <div>
+                                          <p className="text-[10px] text-muted-foreground">Itens</p>
+                                          <p className="font-bold text-xs">{contratoTotals.itens}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 bg-background rounded px-2 py-1.5">
+                                        <Package className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        <div>
+                                          <p className="text-[10px] text-muted-foreground">Estoque</p>
+                                          <p className="font-bold text-xs">{contratoTotals.estoque} un.</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 bg-background rounded px-2 py-1.5">
+                                        <DollarSign className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        <div>
+                                          <p className="text-[10px] text-muted-foreground">Valor Estoque</p>
+                                          <p className="font-bold text-xs">R$ {contratoTotals.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 bg-background rounded px-2 py-1.5">
+                                        <TrendingUp className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        <div>
+                                          <p className="text-[10px] text-muted-foreground">Entregues</p>
+                                          <p className="font-bold text-xs">{contratoTotals.entregues} un.</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 bg-background rounded px-2 py-1.5">
+                                        <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${contratoTotals.baixo > 0 ? "text-destructive" : "text-muted-foreground"}`} />
+                                        <div>
+                                          <p className="text-[10px] text-muted-foreground">Baixo Estoque</p>
+                                          <p className={`font-bold text-xs ${contratoTotals.baixo > 0 ? "text-destructive" : ""}`}>{contratoTotals.baixo}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
                               {filteredEpis.length === 0 ? (
                                 <p className="text-xs text-muted-foreground p-3">Nenhum EPI vinculado a este contrato.</p>
                               ) : (
