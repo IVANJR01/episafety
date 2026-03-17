@@ -714,6 +714,11 @@ export default function Entregas() {
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
+                        {e.status === "ativo" && canEdit && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Devolver ao estoque" onClick={() => handleDevolver(e)}>
+                            <Undo2 className="w-3 h-3 text-primary" />
+                          </Button>
+                        )}
                         {!e.assinatura_colaborador && canEdit && (
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
                             <PenLine className="w-3 h-3 text-amber-500" />
