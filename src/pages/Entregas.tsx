@@ -233,26 +233,19 @@ export default function Entregas() {
   }, []);
 
   useEffect(() => {
-    if (!shouldOpenSignatureAfterSave || open || !pendingEntrega || signOpen) return;
+    if (!shouldOpenSignatureAfterSave || open || !pendingEntrega) return;
+    if (fullscreenSigOpen || signOpen) return;
 
-    const openSignature = () => {
-      setSignInputType("assinatura");
-      setSignOpen(true);
-    };
-
-    const firstAttempt = setTimeout(openSignature, 150);
-    const secondAttempt = setTimeout(openSignature, 450);
-
-    return () => {
-      clearTimeout(firstAttempt);
-      clearTimeout(secondAttempt);
-    };
-  }, [shouldOpenSignatureAfterSave, open, pendingEntrega, signOpen]);
-
-  useEffect(() => {
-    if (!signOpen || !shouldOpenSignatureAfterSave) return;
     setShouldOpenSignatureAfterSave(false);
-  }, [signOpen, shouldOpenSignatureAfterSave]);
+    // Go directly to fullscreen signature, skip the intermediate dialog
+    const timer = setTimeout(() => {
+      setSignMode("new");
+      setSignInputType("assinatura");
+      setFullscreenSigOpen(true);
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [shouldOpenSignatureAfterSave, open, pendingEntrega, fullscreenSigOpen, signOpen]);
 
   const handleSave = async () => {
     if (saving) return;
