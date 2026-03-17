@@ -10,6 +10,7 @@ import OfflineBanner from "@/components/OfflineBanner";
 import InstallBanner from "@/components/InstallBanner";
 import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
+import ControleEstoqueContrato from "@/pages/ControleEstoqueContrato";
 import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
 import Relatorios from "@/pages/Relatorios";
@@ -111,6 +112,7 @@ function ProtectedRoute() {
       <Routes>
         <Route path="/" element={<DashboardGuard />} />
         <Route path="/epis" element={<EPIs />} />
+        <Route path="/epis/controle-contrato" element={<ControleEstoqueContrato />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/cadastro" element={<CadastroDashboard />} />
