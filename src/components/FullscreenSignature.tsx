@@ -8,6 +8,7 @@ interface Props {
   employeeRole?: string;
   onSave: (dataUrl: string) => void;
   onCancel: () => void;
+  onFacialRecognition?: () => void;
 }
 
 export default function FullscreenSignature({ open, employeeName, employeeRole, onSave, onCancel }: Props) {
