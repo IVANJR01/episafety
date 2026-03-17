@@ -969,6 +969,26 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
+      {/* Fullscreen signature overlay */}
+      <FullscreenSignature
+        open={fullscreenSigOpen}
+        employeeName={(() => {
+          const fid = signMode === "new" ? pendingEntrega?.funcionario_id : signFuncId;
+          const func = funcionarios?.find((f: any) => f.id === fid);
+          return func?.nome;
+        })()}
+        employeeRole={(() => {
+          const fid = signMode === "new" ? pendingEntrega?.funcionario_id : signFuncId;
+          const func = funcionarios?.find((f: any) => f.id === fid);
+          return func?.cargo || undefined;
+        })()}
+        onCancel={() => setFullscreenSigOpen(false)}
+        onSave={(dataUrl) => {
+          setSavedSignatureDataUrl(dataUrl);
+          setFullscreenSigOpen(false);
+        }}
+      />
+
       <Dialog open={fichaOpen} onOpenChange={setFichaOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
