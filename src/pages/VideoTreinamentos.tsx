@@ -845,11 +845,6 @@ export default function VideoTreinamentos() {
               <Label>Pontuação Mínima (%)</Label>
               <Input type="number" min={0} max={100} value={cursoForm.pontuacao_minima} onChange={e => setCursoForm({ ...cursoForm, pontuacao_minima: e.target.value })} />
             </div>
-            <div>
-              <Label>Link Externo (opcional)</Label>
-              <Input value={cursoForm.link_externo} onChange={e => setCursoForm({ ...cursoForm, link_externo: e.target.value })} placeholder="https://exemplo.com/curso" />
-              <p className="text-xs text-muted-foreground mt-1">Se preenchido, o funcionário será redirecionado para este link ao invés de assistir vídeos internos.</p>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenCursoForm(false)}>Cancelar</Button>
