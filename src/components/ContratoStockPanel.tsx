@@ -115,6 +115,15 @@ export default function ContratoStockPanel() {
   const [addEpiId, setAddEpiId] = useState("");
   const [addEstoque, setAddEstoque] = useState(0);
 
+  // Transfer from unit stock to contract
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferUnidadeId, setTransferUnidadeId] = useState("");
+  const [transferContratoId, setTransferContratoId] = useState("");
+  const [transferEpiId, setTransferEpiId] = useState("");
+  const [transferQtd, setTransferQtd] = useState(1);
+  const [transferring, setTransferring] = useState(false);
+  const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; ca: string | null; estoque: number }[]>([]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id");
