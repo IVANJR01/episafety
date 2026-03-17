@@ -36,8 +36,9 @@ const emptyForm = {
 export default function EPIs() {
   const { data: epis, loading, add, update, remove } = useSupabaseCrud<EPI>("epis", "created_at");
   const { canEdit, canCreate, canDelete } = usePermissions("epis");
-  const { isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
+  const { isSuperAdmin, isPrincipal, modulosPermitidos, contratoId: userContratoId } = useAuth();
   const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
+  const hasContratoAccess = !!userContratoId;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EPI | null>(null);
   const { form, setForm, resetForm, hasDraft } = useFormDraft("epis", emptyForm);
@@ -151,7 +152,7 @@ export default function EPIs() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {hasGestaoEstoque && <ConsolidatedEpiPanel />}
-      {hasGestaoEstoque && <ContratoStockPanel />}
+      {(hasGestaoEstoque || hasContratoAccess) && <ContratoStockPanel />}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">EPIs</h1>

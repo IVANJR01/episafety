@@ -68,8 +68,9 @@ interface ConsumoMensal {
 }
 
 export default function ContratoStockPanel() {
-  const { empresaId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
+  const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
   const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
+  const isContratoUser = !!userContratoId && !hasGestaoEstoque;
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -110,9 +111,7 @@ export default function ContratoStockPanel() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    // Load units
     const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id");
-    // Load contracts
     const { data: contratosData } = await supabase.from("contratos").select("id, nome, unidade_id, empresa_id");
 
     if (unidadesData) setUnidades(unidadesData as Unidade[]);
@@ -121,6 +120,19 @@ export default function ContratoStockPanel() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-expand for contract-bound users
+  const [autoExpanded, setAutoExpanded] = useState(false);
+  useEffect(() => {
+    if (autoExpanded || !userContratoId || contratos.length === 0) return;
+    const userContrato = contratos.find(c => c.id === userContratoId);
+    if (userContrato) {
+      setExpandedUnidades(new Set([userContrato.unidade_id]));
+      setExpandedContratos(new Set([userContratoId]));
+      loadContratoDetails(userContratoId, userContrato.empresa_id);
+      setAutoExpanded(true);
+    }
+  }, [userContratoId, contratos, autoExpanded]);
 
   const loadContratoDetails = useCallback(async (contratoId: string, empresaId: string | null) => {
     setLoadingContrato(prev => new Set(prev).add(contratoId));
@@ -372,7 +384,7 @@ export default function ContratoStockPanel() {
     }
   };
 
-  if (!hasGestaoEstoque) return null;
+  if (!hasGestaoEstoque && !isContratoUser) return null;
   if (loading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   // Build hierarchy: group contratos by unidade
@@ -380,7 +392,12 @@ export default function ContratoStockPanel() {
   const matrizId = unidades.find(u => !u.empresa_pai_id)?.id;
   const allUnits = matrizId ? [unidades.find(u => u.id === matrizId)!, ...filiais] : filiais;
 
-  if (allUnits.length === 0 || contratos.length === 0) return null;
+  // Filter contratos for contract-bound users
+  const visibleContratos = isContratoUser
+    ? contratos.filter(c => c.id === userContratoId)
+    : contratos;
+
+  if (allUnits.length === 0 || visibleContratos.length === 0) return null;
 
   return (
     <div className="space-y-4">
@@ -391,7 +408,7 @@ export default function ContratoStockPanel() {
 
       {allUnits.map(unidade => {
         if (!unidade) return null;
-        const unitContratos = contratos.filter(c => c.unidade_id === unidade.id);
+        const unitContratos = visibleContratos.filter(c => c.unidade_id === unidade.id);
         if (unitContratos.length === 0) return null;
 
         const isUnitExpanded = expandedUnidades.has(unidade.id);

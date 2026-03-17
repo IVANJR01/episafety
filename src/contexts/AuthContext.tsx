@@ -9,13 +9,14 @@ interface AuthContextType {
   authorized: boolean;
   modulosPermitidos: string[];
   empresaId: string | null;
+  contratoId: string | null;
   isSuperAdmin: boolean;
   isPrincipal: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, isSuperAdmin: false, isPrincipal: false, signOut: async () => {},
+  user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, contratoId: null, isSuperAdmin: false, isPrincipal: false, signOut: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -26,6 +27,7 @@ type AuthCache = {
   authorized: boolean;
   modulos: string[];
   empresaId: string | null;
+  contratoId: string | null;
   isSuperAdmin: boolean;
   isPrincipal: boolean;
 };
@@ -51,11 +53,11 @@ function clearLegacyAuthCache() {
   try { localStorage.removeItem(AUTH_CACHE_KEY_PREFIX); } catch {}
 }
 
-async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean }> {
-  if (!email) return { authorized: false, modulos: [], isPrincipal: false };
+async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean; contratoId: string | null }> {
+  if (!email) return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
   try {
     const { data, error } = await (supabase.from as any)("usuarios_liberados")
-      .select("id, modulos_permitidos, is_principal")
+      .select("id, modulos_permitidos, is_principal, contrato_id")
       .eq("email", email.toLowerCase())
       .maybeSingle();
 
@@ -66,14 +68,15 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
         authorized: true,
         modulos: data.modulos_permitidos || [],
         isPrincipal: !!data.is_principal,
+        contratoId: data.contrato_id || null,
       };
     }
 
-    return { authorized: false, modulos: [], isPrincipal: false };
+    return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
   } catch {
     const cached = loadAuthCache(email);
-    if (cached) return { authorized: cached.authorized, modulos: cached.modulos, isPrincipal: cached.isPrincipal || false };
-    return { authorized: false, modulos: [], isPrincipal: false };
+    if (cached) return { authorized: cached.authorized, modulos: cached.modulos, isPrincipal: cached.isPrincipal || false, contratoId: cached.contratoId || null };
+    return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
   }
 }
 
@@ -124,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authorized, setAuthorized] = useState(true);
   const [modulosPermitidos, setModulosPermitidos] = useState<string[]>([]);
   const [empresaId, setEmpresaId] = useState<string | null>(null);
+  const [contratoId, setContratoId] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isPrincipal, setIsPrincipal] = useState(false);
 
@@ -133,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthorized(false);
         setModulosPermitidos([]);
         setEmpresaId(null);
+        setContratoId(null);
         setIsSuperAdmin(false);
         setIsPrincipal(false);
         return;
@@ -141,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthorized(cached.authorized);
       setModulosPermitidos(cached.modulos);
       setEmpresaId(cached.empresaId);
+      setContratoId(cached.contratoId || null);
       setIsSuperAdmin(cached.isSuperAdmin);
       setIsPrincipal(cached.isPrincipal || false);
     };
@@ -162,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             authorized: superAdmin || authResult.authorized,
             modulos: (superAdmin || authResult.isPrincipal) ? [] : authResult.modulos,
             empresaId: profileResult.empresaId,
+            contratoId: authResult.contratoId,
             isSuperAdmin: superAdmin,
             isPrincipal: authResult.isPrincipal,
           };
@@ -169,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthorized(nextState.authorized);
           setModulosPermitidos(nextState.modulos);
           setEmpresaId(nextState.empresaId);
+          setContratoId(nextState.contratoId);
           setIsSuperAdmin(nextState.isSuperAdmin);
           setIsPrincipal(nextState.isPrincipal);
           saveAuthCache(currentUser.email, nextState);
@@ -180,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthorized(true);
       setModulosPermitidos([]);
       setEmpresaId(null);
+      setContratoId(null);
       setIsSuperAdmin(false);
       setIsPrincipal(false);
     }
@@ -210,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, isSuperAdmin, isPrincipal, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, contratoId, isSuperAdmin, isPrincipal, signOut }}>
       {children}
     </AuthContext.Provider>
   );
