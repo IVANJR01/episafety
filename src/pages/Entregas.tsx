@@ -1049,6 +1049,14 @@ export default function Entregas() {
         })()}
         onCancel={() => closeFullscreenSignature()}
         onSave={(dataUrl) => closeFullscreenSignature(dataUrl)}
+        onFacialRecognition={() => {
+          setFullscreenSigOpen(false);
+          setSignInputType("facial");
+          setCapturedPhoto(null);
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => setSignOpen(true));
+          });
+        }}
       />
 
       <Dialog open={fichaOpen} onOpenChange={setFichaOpen}>

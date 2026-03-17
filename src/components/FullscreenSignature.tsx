@@ -8,9 +8,10 @@ interface Props {
   employeeRole?: string;
   onSave: (dataUrl: string) => void;
   onCancel: () => void;
+  onFacialRecognition?: () => void;
 }
 
-export default function FullscreenSignature({ open, employeeName, employeeRole, onSave, onCancel }: Props) {
+export default function FullscreenSignature({ open, employeeName, employeeRole, onSave, onCancel, onFacialRecognition }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const retryTimerRef = useRef<number | null>(null);
@@ -249,7 +250,13 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         {!showNameInput && (
           <button
             type="button"
-            onClick={() => setShowNameInput(true)}
+            onClick={() => {
+              if (onFacialRecognition) {
+                onFacialRecognition();
+              } else {
+                setShowNameInput(true);
+              }
+            }}
             className="text-xs text-primary font-semibold underline underline-offset-2 mb-1"
           >
             Não sabe assinar? Toque aqui
