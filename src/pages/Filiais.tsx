@@ -157,7 +157,7 @@ export default function Filiais() {
   if (!empresaId) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Filiais / Obras / Setores</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Unidades</h1>
         <Card><CardContent className="py-8 text-center text-muted-foreground">Você não está vinculado a nenhuma empresa.</CardContent></Card>
       </div>
     );
@@ -167,7 +167,7 @@ export default function Filiais() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Filiais / Obras / Setores</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Unidades</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
             Unidades vinculadas a <strong>{empresaNome}</strong>
           </p>
@@ -185,7 +185,7 @@ export default function Filiais() {
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <GitBranch className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
-            <p>Nenhuma filial, obra ou setor cadastrado.</p>
+            <p>Nenhuma unidade cadastrada.</p>
             <p className="text-xs mt-1">Clique em "Nova Unidade" para criar.</p>
           </CardContent>
         </Card>
