@@ -16,6 +16,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   const retryTimerRef = useRef<number | null>(null);
   const resizeTimerRef = useRef<number | null>(null);
 
+  const isClearingRef = useRef(false);
+
   const initPad = useCallback(() => {
     if (!canvasRef.current) return false;
 
@@ -29,7 +31,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     const nextWidth = Math.round(width * ratio);
     const nextHeight = Math.round(height * ratio);
-    const previousData = padRef.current?.toData() ?? [];
+    const previousData = isClearingRef.current ? [] : (padRef.current?.toData() ?? []);
 
     canvas.width = nextWidth;
     canvas.height = nextHeight;
@@ -38,7 +40,10 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     if (!ctx) return false;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.scale(ratio, ratio);
+    ctx.fillStyle = "rgb(255, 255, 255)";
+    ctx.fillRect(0, 0, width, height);
 
     padRef.current?.off();
     padRef.current = new SignaturePad(canvas, {
@@ -52,8 +57,11 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
 
     if (previousData.length > 0) {
       padRef.current.fromData(previousData);
+    } else {
+      padRef.current.clear();
     }
 
+    isClearingRef.current = false;
     return true;
   }, []);
 
@@ -64,6 +72,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     const previousTouchAction = document.body.style.touchAction;
     document.body.style.overflow = "hidden";
     document.body.style.touchAction = "none";
+    isClearingRef.current = false;
 
     let attempts = 0;
     let disposed = false;
@@ -97,7 +106,22 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     };
   }, [open, initPad]);
 
-  const handleClear = () => padRef.current?.clear();
+  const handleClear = () => {
+    isClearingRef.current = true;
+    padRef.current?.clear();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgb(255, 255, 255)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  };
 
   const handleSave = () => {
     if (padRef.current?.isEmpty()) return;
