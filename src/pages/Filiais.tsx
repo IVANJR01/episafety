@@ -87,16 +87,18 @@ export default function Filiais() {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: filData }, { data: profData }, { data: empData }, { data: contData }] = await Promise.all([
+    const [{ data: filData }, { data: profData }, { data: empData }, { data: contData }, { data: ulData }] = await Promise.all([
       (supabase.from as any)("empresa_config").select("*").eq("empresa_pai_id", empresaId).order("nome"),
       isAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
       (supabase.from as any)("empresa_config").select("nome").eq("id", empresaId).single(),
       (supabase.from as any)("contratos").select("*").order("nome"),
+      (supabase.from as any)("usuarios_liberados").select("id, nome, contrato_id").not("contrato_id", "is", null),
     ]);
     setFiliais(filData || []);
     setProfiles(profData || []);
     setEmpresaNome(empData?.nome || "");
     setContratos(contData || []);
+    setUsuariosContratos(ulData || []);
     setLoading(false);
   };
 
