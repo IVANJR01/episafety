@@ -75,6 +75,11 @@ export default function ConsolidatedEpiPanel() {
   const [loadingEpis, setLoadingEpis] = useState(false);
   const [selectedEpiId, setSelectedEpiId] = useState("");
   const [quantidade, setQuantidade] = useState(1);
+  // Responsáveis por contrato
+  const [responsaveisMap, setResponsaveisMap] = useState<Record<string, ContratoResponsavel[]>>({});
+  const [filialFuncionarios, setFilialFuncionarios] = useState<{ id: string; nome: string }[]>([]);
+  const [addingResp, setAddingResp] = useState<string | null>(null);
+  const [newRespFuncId, setNewRespFuncId] = useState("");
   const { toast } = useToast();
 
   const toggleFilialDetail = async (filialId: string) => {
