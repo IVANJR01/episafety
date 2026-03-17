@@ -872,7 +872,16 @@ export default function VideoTreinamentos() {
               <Textarea value={moduloForm.descricao} onChange={e => setModuloForm({ ...moduloForm, descricao: e.target.value })} placeholder="Descrição do módulo..." rows={2} />
             </div>
             <div>
-              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Vídeo *"}</Label>
+              <Label>URL do Vídeo</Label>
+              <Input
+                value={moduloForm.videoUrl}
+                onChange={e => setModuloForm({ ...moduloForm, videoUrl: e.target.value })}
+                placeholder="https://exemplo.com/video.mp4"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Cole a URL do vídeo ou faça upload abaixo</p>
+            </div>
+            <div>
+              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Upload de Vídeo"}</Label>
               <div className="mt-1">
                 <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
                   <Upload className="h-5 w-5 text-muted-foreground" />
