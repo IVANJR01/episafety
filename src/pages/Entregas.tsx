@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, Undo2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -412,6 +412,34 @@ export default function Entregas() {
     setShouldOpenSignatureAfterSave(true);
   };
 
+  const handleDevolver = async (entrega: Entrega) => {
+    if (!canEdit) return;
+    const epiObj = epis.find(ep => ep.id === entrega.epi_id);
+    const funcObj = funcionarios.find(f => f.id === entrega.funcionario_id);
+    
+    try {
+      // Update the original delivery status to "devolvido"
+      await (supabase.from as any)("entregas").update({ status: "devolvido" }).eq("id", entrega.id);
+      
+      // Create a new "devolucao" record
+      await (supabase.from as any)("entregas").insert({
+        funcionario_id: entrega.funcionario_id,
+        epi_id: entrega.epi_id,
+        quantidade: entrega.quantidade,
+        data: new Date().toISOString().split("T")[0],
+        tipo: "devolucao",
+        status: "devolvido",
+        observacao: `Devolução ref. entrega de ${entrega.data}`,
+        empresa_id: empresaId,
+      });
+
+      toast({ title: "EPI devolvido ao estoque!", description: `${epiObj?.nome || "EPI"} devolvido por ${funcObj?.nome || "colaborador"}.` });
+      refetch();
+    } catch {
+      toast({ title: "Erro ao devolver EPI", variant: "destructive" });
+    }
+  };
+
   const handleSaveSignature = async () => {
     if (savingConfirmation) return;
 
@@ -686,6 +714,11 @@ export default function Entregas() {
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
+                        {e.status === "ativo" && canEdit && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Devolver ao estoque" onClick={() => handleDevolver(e)}>
+                            <Undo2 className="w-3 h-3 text-primary" />
+                          </Button>
+                        )}
                         {!e.assinatura_colaborador && canEdit && (
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
                             <PenLine className="w-3 h-3 text-amber-500" />
@@ -760,6 +793,11 @@ export default function Entregas() {
                       <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
+                          {e.status === "ativo" && canEdit && (
+                            <Button size="icon" variant="ghost" title="Devolver ao estoque" onClick={() => handleDevolver(e)}>
+                              <Undo2 className="w-3.5 h-3.5 text-primary" />
+                            </Button>
+                          )}
                           {canEdit && <Button size="icon" variant="ghost" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3.5 h-3.5" /></Button>}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
