@@ -1417,6 +1417,7 @@ export type Database = {
       }
       usuarios_liberados: {
         Row: {
+          contrato_id: string | null
           created_at: string
           created_by: string | null
           email: string
@@ -1427,6 +1428,7 @@ export type Database = {
           nome: string | null
         }
         Insert: {
+          contrato_id?: string | null
           created_at?: string
           created_by?: string | null
           email: string
@@ -1437,6 +1439,7 @@ export type Database = {
           nome?: string | null
         }
         Update: {
+          contrato_id?: string | null
           created_at?: string
           created_by?: string | null
           email?: string
@@ -1447,6 +1450,13 @@ export type Database = {
           nome?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "usuarios_liberados_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "usuarios_liberados_empresa_id_fkey"
             columns: ["empresa_id"]

@@ -70,6 +70,7 @@ export default function Filiais() {
   const [assignEmail, setAssignEmail] = useState("");
   const [assignNome, setAssignNome] = useState("");
   const [assignSenha, setAssignSenha] = useState("");
+  const [assignContratoId, setAssignContratoId] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
@@ -141,7 +142,11 @@ export default function Filiais() {
     if (existingProfile) {
       const { error } = await (supabase.from as any)("profiles").update({ empresa_id: assignFilialId }).eq("user_id", existingProfile.user_id);
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
-      toast({ title: "Usuário vinculado!" }); setAssignOpen(false); await loadData(); return;
+      // Update contrato_id on usuarios_liberados if a contract was selected
+      if (assignContratoId) {
+        await (supabase.from as any)("usuarios_liberados").update({ contrato_id: assignContratoId }).eq("email", assignEmail.trim().toLowerCase());
+      }
+      toast({ title: "Usuário vinculado!" }); setAssignOpen(false); setAssignContratoId(""); await loadData(); return;
     }
     if (!assignSenha.trim() || assignSenha.length < 6) { toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" }); return; }
     setAssigning(true);
@@ -150,9 +155,11 @@ export default function Filiais() {
       if (fnError || fnData?.error) { toast({ title: "Erro", description: fnData?.error || fnError?.message, variant: "destructive" }); setAssigning(false); return; }
       if (fnData?.user_id) {
         await (supabase.from as any)("profiles").update({ empresa_id: assignFilialId }).eq("user_id", fnData.user_id);
-        await (supabase.from as any)("usuarios_liberados").insert({ email: assignEmail.trim().toLowerCase(), nome: assignNome.trim(), modulos_permitidos: ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"], empresa_id: assignFilialId });
+        const ulPayload: any = { email: assignEmail.trim().toLowerCase(), nome: assignNome.trim(), modulos_permitidos: ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"], empresa_id: assignFilialId };
+        if (assignContratoId) ulPayload.contrato_id = assignContratoId;
+        await (supabase.from as any)("usuarios_liberados").insert(ulPayload);
       }
-      toast({ title: "Usuário criado e vinculado!" }); setAssignOpen(false); await loadData();
+      toast({ title: "Usuário criado e vinculado!" }); setAssignOpen(false); setAssignContratoId(""); await loadData();
     } catch (err: any) { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
     setAssigning(false);
   };
@@ -362,6 +369,20 @@ export default function Filiais() {
             <p className="text-sm text-muted-foreground">Se o e-mail já existir, será vinculado. Caso contrário, uma nova conta será criada.</p>
             <div><Label>Nome</Label><Input value={assignNome} onChange={e => setAssignNome(e.target.value)} placeholder="Nome" /></div>
             <div><Label>E-mail</Label><Input type="email" value={assignEmail} onChange={e => setAssignEmail(e.target.value)} placeholder="usuario@email.com" /></div>
+            <div>
+              <Label>Contrato (opcional)</Label>
+              <Select value={assignContratoId} onValueChange={setAssignContratoId}>
+                <SelectTrigger><SelectValue placeholder="Selecione um contrato" /></SelectTrigger>
+                <SelectContent>
+                  {contratos.filter(c => c.unidade_id === assignFilialId).map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {contratos.filter(c => c.unidade_id === assignFilialId).length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nenhum contrato cadastrado nesta unidade.</p>
+              )}
+            </div>
             <div>
               <Label>Senha (novo usuário)</Label>
               <div className="relative">
