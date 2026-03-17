@@ -28,6 +28,12 @@ interface ParentCompany {
   filiais: FilialStock[];
 }
 
+interface EpiContrato {
+  contrato_id: string;
+  contrato_nome: string;
+  qtd_entregue: number;
+}
+
 interface FilialEpi {
   id: string;
   nome: string;
@@ -36,6 +42,7 @@ interface FilialEpi {
   estoque: number;
   estoque_minimo: number;
   valor: number | null;
+  contratos: EpiContrato[];
 }
 
 export default function ConsolidatedEpiPanel() {
