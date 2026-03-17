@@ -547,6 +547,14 @@ export default function ConsolidatedEpiPanel() {
                                 );
                               })()}
 
+                              {selectedContratoId && expandedFilialId && (
+                                <ContratoConsumoChart
+                                  filialId={expandedFilialId}
+                                  contratoId={selectedContratoId}
+                                  contratoNome={filialContratos.find(c => c.id === selectedContratoId)?.nome || ""}
+                                />
+                              )}
+
                               {filteredEpis.length === 0 ? (
                                 <p className="text-xs text-muted-foreground p-3">Nenhum EPI vinculado a este contrato.</p>
                               ) : (
