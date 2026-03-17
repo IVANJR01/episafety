@@ -93,7 +93,7 @@ export default function VideoTreinamentos() {
   const [openModuloForm, setOpenModuloForm] = useState(false);
   const [editingModulo, setEditingModulo] = useState<VideoTreinamento | null>(null);
   const [moduloCursoId, setModuloCursoId] = useState("");
-  const [moduloForm, setModuloForm] = useState({ titulo: "", descricao: "" });
+  const [moduloForm, setModuloForm] = useState({ titulo: "", descricao: "", videoUrl: "" });
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
