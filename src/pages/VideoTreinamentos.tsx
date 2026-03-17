@@ -701,53 +701,52 @@ export default function VideoTreinamentos() {
             <Card key={curso.id} className="overflow-hidden">
               {/* Course header */}
               <div
-                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                className="p-3 sm:p-4 cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => toggleExpand(curso.id)}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="bg-primary/10 p-2 rounded-lg">
-                      <BookOpen className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground text-lg truncate">{curso.titulo}</h3>
-                      {curso.descricao && <p className="text-sm text-muted-foreground line-clamp-1">{curso.descricao}</p>}
-                    </div>
+                <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+                  <div className="bg-primary/10 p-1.5 sm:p-2 rounded-lg shrink-0 mt-0.5 sm:mt-0">
+                    <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline">{cursoStats.totalModulos} módulo(s)</Badge>
-                      <Badge variant="outline">Nota mín: {curso.pontuacao_minima}%</Badge>
-                      
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-foreground text-sm sm:text-lg leading-tight">{curso.titulo}</h3>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isExpanded ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />}
+                      </div>
                     </div>
-                    <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                      {canCreate && (
-                        <Button variant="ghost" size="icon" title="Adicionar Módulo" onClick={() => {
-                          setEditingModulo(null);
-                          setModuloCursoId(curso.id);
-                          setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "", videoUrl: "" });
-                          setVideoFile(null);
-                          setOpenModuloForm(true);
-                        }}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canEdit && (
-                        <Button variant="ghost" size="icon" title="Editar Curso" onClick={() => {
-                          setEditingCurso(curso);
-                          setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima) });
-                          setOpenCursoForm(true);
-                        }}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCurso(curso.id)} className="text-destructive hover:text-destructive" title="Excluir Curso">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                    {curso.descricao && <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 mt-0.5">{curso.descricao}</p>}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0">{cursoStats.totalModulos} módulo(s)</Badge>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0">Nota mín: {curso.pontuacao_minima}%</Badge>
+                      <div className="flex gap-0.5 ml-auto" onClick={e => e.stopPropagation()}>
+                        {canCreate && (
+                          <Button variant="ghost" size="icon" title="Adicionar Módulo" className="h-7 w-7" onClick={() => {
+                            setEditingModulo(null);
+                            setModuloCursoId(curso.id);
+                            setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "", videoUrl: "" });
+                            setVideoFile(null);
+                            setOpenModuloForm(true);
+                          }}>
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <Button variant="ghost" size="icon" title="Editar Curso" className="h-7 w-7" onClick={() => {
+                            setEditingCurso(curso);
+                            setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima) });
+                            setOpenCursoForm(true);
+                          }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteCurso(curso.id)} className="text-destructive hover:text-destructive h-7 w-7" title="Excluir Curso">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    {isExpanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
                   </div>
                 </div>
               </div>
