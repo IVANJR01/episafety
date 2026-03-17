@@ -250,7 +250,13 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         {!showNameInput && (
           <button
             type="button"
-            onClick={() => setShowNameInput(true)}
+            onClick={() => {
+              if (onFacialRecognition) {
+                onFacialRecognition();
+              } else {
+                setShowNameInput(true);
+              }
+            }}
             className="text-xs text-primary font-semibold underline underline-offset-2 mb-1"
           >
             Não sabe assinar? Toque aqui
