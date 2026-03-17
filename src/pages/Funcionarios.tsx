@@ -355,7 +355,7 @@ export default function Funcionarios() {
     }
     const wsRef = XLSX.utils.aoa_to_sheet(refData);
     wsRef["!cols"] = [{ wch: 30 }, { wch: 3 }, { wch: 30 }, { wch: 30 }];
-    XLSX.utils.book_append_sheet(wb, wsRef, "Referência - Unidades e Contratos");
+    XLSX.utils.book_append_sheet(wb, wsRef, "Ref - Unidades e Contratos");
 
     XLSX.writeFile(wb, "modelo_funcionarios.xlsx");
   };
