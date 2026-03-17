@@ -538,35 +538,35 @@ export default function VideoTreinamentos() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="h-7 w-7 text-primary" />
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+            <BookOpen className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
             Treinamentos em Vídeo
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Gerencie cursos com módulos de vídeo</p>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Gerencie cursos com módulos de vídeo</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(isSuperAdmin || isPrincipal) && (
-            <Button variant="outline" onClick={handleOpenManageCursos}>
-              <Pencil className="h-4 w-4 mr-2" /> Gerenciar Cursos
+            <Button variant="outline" size="sm" onClick={handleOpenManageCursos} className="text-xs h-8">
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Gerenciar Cursos
             </Button>
           )}
           {(isSuperAdmin || isPrincipal) && (
-            <Button variant="outline" onClick={() => {
+            <Button variant="outline" size="sm" onClick={() => {
               setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch("");
               setShowAccessFuncList(false); setSelectedCursoIds([]); setOpenAccess(true);
-            }}>
-              <Users className="h-4 w-4 mr-2" /> Criar Acesso Funcionário
+            }} className="text-xs h-8">
+              <Users className="h-3.5 w-3.5 mr-1.5" /> Criar Acesso
             </Button>
           )}
           {canCreate && (
-            <Button onClick={() => {
+            <Button size="sm" onClick={() => {
               setEditingCurso(null);
               setCursoForm({ titulo: "", descricao: "", pontuacao_minima: "70" });
               setOpenCursoForm(true);
-            }} className="bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4 mr-2" /> Novo Curso
+            }} className="bg-primary hover:bg-primary/90 text-xs h-8">
+              <Plus className="h-3.5 w-3.5 mr-1.5" /> Novo Curso
             </Button>
           )}
         </div>
@@ -607,27 +607,22 @@ export default function VideoTreinamentos() {
       {/* Painel Consolidado por Curso */}
       {cursosConsolidados.length > 0 && (
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <h3 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
               Painel Consolidado por Curso
             </h3>
-            <div className="border rounded-lg overflow-hidden">
+            {/* Desktop table */}
+            <div className="hidden md:block border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Curso</TableHead>
                     <TableHead className="text-center">Módulos</TableHead>
                     <TableHead className="text-center">Atribuídos</TableHead>
-                    <TableHead className="text-center">
-                      <span className="text-emerald-600">Concluídos</span>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <span className="text-amber-600">Em andamento</span>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <span className="text-muted-foreground">Pendentes</span>
-                    </TableHead>
+                    <TableHead className="text-center"><span className="text-emerald-600">Concluídos</span></TableHead>
+                    <TableHead className="text-center"><span className="text-amber-600">Em andamento</span></TableHead>
+                    <TableHead className="text-center"><span className="text-muted-foreground">Pendentes</span></TableHead>
                     <TableHead className="text-center">Progresso</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -639,15 +634,9 @@ export default function VideoTreinamentos() {
                         <TableCell><span className="font-medium text-sm">{c.titulo}</span></TableCell>
                         <TableCell className="text-center text-sm">{c.totalModulos}</TableCell>
                         <TableCell className="text-center text-sm">{c.totalAtribuidos}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge className="bg-emerald-100 text-emerald-700 text-xs">{c.concluidos}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">{c.emAndamento}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="text-xs">{c.pendentes}</Badge>
-                        </TableCell>
+                        <TableCell className="text-center"><Badge className="bg-emerald-100 text-emerald-700 text-xs">{c.concluidos}</Badge></TableCell>
+                        <TableCell className="text-center"><Badge variant="outline" className="bg-amber-50 text-amber-700 text-xs">{c.emAndamento}</Badge></TableCell>
+                        <TableCell className="text-center"><Badge variant="outline" className="text-xs">{c.pendentes}</Badge></TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
@@ -661,6 +650,28 @@ export default function VideoTreinamentos() {
                   })}
                 </TableBody>
               </Table>
+            </div>
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-2">
+              {cursosConsolidados.map(c => {
+                const pct = c.totalAtribuidos > 0 ? Math.round((c.concluidos / c.totalAtribuidos) * 100) : 0;
+                return (
+                  <div key={c.id} className="border rounded-lg p-3 bg-background space-y-2">
+                    <p className="font-medium text-sm text-foreground">{c.titulo}</p>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div><span className="text-muted-foreground block">Módulos</span><span className="font-semibold">{c.totalModulos}</span></div>
+                      <div><span className="text-muted-foreground block">Atribuídos</span><span className="font-semibold">{c.totalAtribuidos}</span></div>
+                      <div><span className="text-emerald-600 block">Concluídos</span><span className="font-semibold text-emerald-700">{c.concluidos}</span></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs font-medium text-muted-foreground w-8">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -690,53 +701,52 @@ export default function VideoTreinamentos() {
             <Card key={curso.id} className="overflow-hidden">
               {/* Course header */}
               <div
-                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                className="p-3 sm:p-4 cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => toggleExpand(curso.id)}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="bg-primary/10 p-2 rounded-lg">
-                      <BookOpen className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground text-lg truncate">{curso.titulo}</h3>
-                      {curso.descricao && <p className="text-sm text-muted-foreground line-clamp-1">{curso.descricao}</p>}
-                    </div>
+                <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+                  <div className="bg-primary/10 p-1.5 sm:p-2 rounded-lg shrink-0 mt-0.5 sm:mt-0">
+                    <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline">{cursoStats.totalModulos} módulo(s)</Badge>
-                      <Badge variant="outline">Nota mín: {curso.pontuacao_minima}%</Badge>
-                      
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-foreground text-sm sm:text-lg leading-tight">{curso.titulo}</h3>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isExpanded ? <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />}
+                      </div>
                     </div>
-                    <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                      {canCreate && (
-                        <Button variant="ghost" size="icon" title="Adicionar Módulo" onClick={() => {
-                          setEditingModulo(null);
-                          setModuloCursoId(curso.id);
-                          setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "", videoUrl: "" });
-                          setVideoFile(null);
-                          setOpenModuloForm(true);
-                        }}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canEdit && (
-                        <Button variant="ghost" size="icon" title="Editar Curso" onClick={() => {
-                          setEditingCurso(curso);
-                          setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima) });
-                          setOpenCursoForm(true);
-                        }}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCurso(curso.id)} className="text-destructive hover:text-destructive" title="Excluir Curso">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                    {curso.descricao && <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 mt-0.5">{curso.descricao}</p>}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0">{cursoStats.totalModulos} módulo(s)</Badge>
+                      <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0">Nota mín: {curso.pontuacao_minima}%</Badge>
+                      <div className="flex gap-0.5 ml-auto" onClick={e => e.stopPropagation()}>
+                        {canCreate && (
+                          <Button variant="ghost" size="icon" title="Adicionar Módulo" className="h-7 w-7" onClick={() => {
+                            setEditingModulo(null);
+                            setModuloCursoId(curso.id);
+                            setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "", videoUrl: "" });
+                            setVideoFile(null);
+                            setOpenModuloForm(true);
+                          }}>
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <Button variant="ghost" size="icon" title="Editar Curso" className="h-7 w-7" onClick={() => {
+                            setEditingCurso(curso);
+                            setCursoForm({ titulo: curso.titulo, descricao: curso.descricao || "", pontuacao_minima: String(curso.pontuacao_minima) });
+                            setOpenCursoForm(true);
+                          }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteCurso(curso.id)} className="text-destructive hover:text-destructive h-7 w-7" title="Excluir Curso">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    {isExpanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
                   </div>
                 </div>
               </div>
@@ -767,53 +777,51 @@ export default function VideoTreinamentos() {
                         const vizs = visualizacoes.filter(v => v.video_id === modulo.id);
                         const concluidos = vizs.filter(v => v.concluido).length;
                         return (
-                          <div key={modulo.id} className="p-4 flex items-center gap-4 hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <span className="bg-primary/10 text-primary font-bold text-sm rounded-full w-8 h-8 flex items-center justify-center">
+                          <div key={modulo.id} className="p-3 sm:p-4 hover:bg-muted/50 transition-colors">
+                            <div className="flex items-start sm:items-center gap-2 sm:gap-4">
+                              <span className="bg-primary/10 text-primary font-bold text-xs sm:text-sm rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                                 {String(idx + 1).padStart(2, "0")}
                               </span>
-                            </div>
 
-                            <div className="relative w-24 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
-                              <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                <Play className="h-5 w-5 text-white" />
+                              <div className="hidden sm:block relative w-24 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
+                                <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  <Play className="h-5 w-5 text-white" />
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-foreground text-sm truncate">{modulo.titulo}</h4>
-                              {modulo.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
-                              <div className="flex gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground">{concluidos} concluíram</span>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-foreground text-xs sm:text-sm truncate">{modulo.titulo}</h4>
+                                {modulo.descricao && <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1">{modulo.descricao}</p>}
+                                <span className="text-[10px] sm:text-xs text-muted-foreground">{concluidos} concluíram</span>
                               </div>
-                            </div>
 
-                            <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" onClick={() => openVideoDetail(modulo)} title="Detalhes" className="h-8 w-8">
-                                <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                              {canEdit && (
-                                <Button variant="ghost" size="icon" onClick={() => openQuizManager(modulo.id)} title="Quiz" className="h-8 w-8">
-                                  <Award className="h-3.5 w-3.5" />
+                              <div className="flex gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" onClick={() => openVideoDetail(modulo)} title="Detalhes" className="h-7 w-7 sm:h-8 sm:w-8">
+                                  <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                 </Button>
-                              )}
-                              {canEdit && (
-                                <Button variant="ghost" size="icon" onClick={() => {
-                                  setEditingModulo(modulo);
-                                  setModuloCursoId(modulo.curso_id || "");
-                                  setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "", videoUrl: modulo.video_url || "" });
-                                  setVideoFile(null);
-                                  setOpenModuloForm(true);
-                                }} title="Editar" className="h-8 w-8">
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
-                              {canDelete && (
-                                <Button variant="ghost" size="icon" onClick={() => handleDeleteModulo(modulo.id)} className="text-destructive h-8 w-8" title="Excluir">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
+                                {canEdit && (
+                                  <Button variant="ghost" size="icon" onClick={() => openQuizManager(modulo.id)} title="Quiz" className="h-7 w-7 sm:h-8 sm:w-8">
+                                    <Award className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                  </Button>
+                                )}
+                                {canEdit && (
+                                  <Button variant="ghost" size="icon" onClick={() => {
+                                    setEditingModulo(modulo);
+                                    setModuloCursoId(modulo.curso_id || "");
+                                    setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "", videoUrl: modulo.video_url || "" });
+                                    setVideoFile(null);
+                                    setOpenModuloForm(true);
+                                  }} title="Editar" className="h-7 w-7 sm:h-8 sm:w-8">
+                                    <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteModulo(modulo.id)} className="text-destructive h-7 w-7 sm:h-8 sm:w-8" title="Excluir">
+                                    <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
