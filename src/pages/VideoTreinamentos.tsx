@@ -802,7 +802,7 @@ export default function VideoTreinamentos() {
                                 <Button variant="ghost" size="icon" onClick={() => {
                                   setEditingModulo(modulo);
                                   setModuloCursoId(modulo.curso_id || "");
-                                  setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "" });
+                                  setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "", videoUrl: modulo.video_url || "" });
                                   setVideoFile(null);
                                   setOpenModuloForm(true);
                                 }} title="Editar" className="h-8 w-8">
