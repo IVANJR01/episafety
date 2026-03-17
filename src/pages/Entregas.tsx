@@ -64,6 +64,33 @@ export default function Entregas() {
   const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
   const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
 
+  const resetSignFlow = useCallback(() => {
+    setSignOpen(false);
+    setPendingEntrega(null);
+    setSelectedUnsigned([]);
+    setSignMode("new");
+    setSignFuncId("");
+    setSignInputType("assinatura");
+    setCapturedPhoto(null);
+    setSavedSignatureDataUrl(null);
+    setFullscreenSigOpen(false);
+  }, []);
+
+  const openFullscreenSignature = useCallback(() => {
+    setSignOpen(false);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setFullscreenSigOpen(true));
+    });
+  }, []);
+
+  const closeFullscreenSignature = useCallback((dataUrl?: string) => {
+    if (dataUrl) setSavedSignatureDataUrl(dataUrl);
+    setFullscreenSigOpen(false);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setSignOpen(true));
+    });
+  }, []);
+
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
@@ -820,7 +847,17 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={signOpen} onOpenChange={v => { if (!v) { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignInputType("assinatura"); setCapturedPhoto(null); setSavedSignatureDataUrl(null); } }}>
+      <Dialog open={signOpen} onOpenChange={(v) => {
+        if (!v) {
+          if (fullscreenSigOpen) {
+            setSignOpen(false);
+            return;
+          }
+          resetSignFlow();
+          return;
+        }
+        setSignOpen(true);
+      }}>
         <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -838,7 +875,6 @@ export default function Entregas() {
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">Selecione o colaborador e as entregas pendentes de assinatura:</p>
                 
-                {/* Employee selector */}
                 <div>
                   <Label className="text-xs">Colaborador</Label>
                   <Select value={signFuncId} onValueChange={v => { setSignFuncId(v); setSelectedUnsigned([]); }}>
@@ -859,7 +895,6 @@ export default function Entregas() {
                   </Select>
                 </div>
 
-                {/* Entries for selected employee */}
                 {signFuncId && (() => {
                   const funcUnsigned = unsignedEntregas.filter(e => e.funcionario_id === signFuncId);
                   return (
@@ -886,7 +921,6 @@ export default function Entregas() {
               </div>
             )}
 
-            {/* Toggle: Assinatura vs Reconhecimento Facial */}
             <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30">
               <Button
                 type="button"
@@ -918,12 +952,12 @@ export default function Entregas() {
                     <div className="border border-input rounded-lg p-2 bg-white">
                       <img src={savedSignatureDataUrl} alt="Assinatura" className="w-full h-24 object-contain" />
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => { setSavedSignatureDataUrl(null); setFullscreenSigOpen(true); }}>
+                    <Button type="button" variant="outline" size="sm" onClick={openFullscreenSignature}>
                       <PenLine className="w-3.5 h-3.5 mr-1" /> Refazer assinatura
                     </Button>
                   </div>
                 ) : (
-                  <Button type="button" variant="outline" className="w-full h-20 border-dashed flex flex-col gap-1" onClick={() => setFullscreenSigOpen(true)}>
+                  <Button type="button" variant="outline" className="w-full h-20 border-dashed flex flex-col gap-1" onClick={openFullscreenSignature}>
                     <PenLine className="w-5 h-5" />
                     <span className="text-sm">Toque para assinar em tela cheia</span>
                   </Button>
@@ -950,7 +984,7 @@ export default function Entregas() {
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { setSignOpen(false); setPendingEntrega(null); setSelectedUnsigned([]); setSignMode("new"); setSignFuncId(""); setSignInputType("assinatura"); setCapturedPhoto(null); setSavedSignatureDataUrl(null); refetch(); }}>
+            <Button variant="outline" onClick={() => { resetSignFlow(); refetch(); }}>
               Cancelar
             </Button>
             <Button
@@ -969,7 +1003,6 @@ export default function Entregas() {
         </DialogContent>
       </Dialog>
 
-      {/* Fullscreen signature overlay */}
       <FullscreenSignature
         open={fullscreenSigOpen}
         employeeName={(() => {
@@ -982,11 +1015,8 @@ export default function Entregas() {
           const func = funcionarios?.find((f: any) => f.id === fid);
           return func?.cargo || undefined;
         })()}
-        onCancel={() => setFullscreenSigOpen(false)}
-        onSave={(dataUrl) => {
-          setSavedSignatureDataUrl(dataUrl);
-          setFullscreenSigOpen(false);
-        }}
+        onCancel={() => closeFullscreenSignature()}
+        onSave={(dataUrl) => closeFullscreenSignature(dataUrl)}
       />
 
       <Dialog open={fichaOpen} onOpenChange={setFichaOpen}>
