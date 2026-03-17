@@ -77,6 +77,7 @@ export default function Entregas() {
   }, []);
 
   const openFullscreenSignature = useCallback(() => {
+    setShouldOpenSignatureAfterSave(false);
     setSignOpen(false);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setFullscreenSigOpen(true));
