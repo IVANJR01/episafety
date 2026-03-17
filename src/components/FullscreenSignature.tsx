@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import SignaturePad from "signature_pad";
 
@@ -15,8 +15,9 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   const padRef = useRef<SignaturePad | null>(null);
   const retryTimerRef = useRef<number | null>(null);
   const resizeTimerRef = useRef<number | null>(null);
-
   const isClearingRef = useRef(false);
+  const [showNameInput, setShowNameInput] = useState(false);
+  const [indicativeName, setIndicativeName] = useState("");
 
   const initPad = useCallback(() => {
     if (!canvasRef.current) return false;
@@ -73,6 +74,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     document.body.style.overflow = "hidden";
     document.body.style.touchAction = "none";
     isClearingRef.current = false;
+    setShowNameInput(false);
+    setIndicativeName("");
 
     let attempts = 0;
     let disposed = false;
@@ -129,6 +132,51 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     onSave(dataUrl);
   };
 
+  const handleSaveIndicativeName = () => {
+    const name = indicativeName.trim();
+    if (!name) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Draw the name on a clean canvas and export
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.round(rect.width);
+    const height = Math.round(rect.height);
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(ratio, ratio);
+    ctx.fillStyle = "rgb(255, 255, 255)";
+    ctx.fillRect(0, 0, width, height);
+
+    // Draw name centered
+    const fontSize = Math.min(32, width / (name.length * 0.6));
+    ctx.fillStyle = "rgb(0, 0, 0)";
+    ctx.font = `italic ${fontSize}px "Georgia", serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(name.toUpperCase(), width / 2, height / 2);
+
+    // Underline
+    const textWidth = ctx.measureText(name.toUpperCase()).width;
+    ctx.strokeStyle = "rgb(0, 0, 0)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo((width - textWidth) / 2, height / 2 + fontSize * 0.55);
+    ctx.lineTo((width + textWidth) / 2, height / 2 + fontSize * 0.55);
+    ctx.stroke();
+
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    onSave(dataUrl);
+  };
+
   if (!open) return null;
 
   return createPortal(
@@ -157,21 +205,65 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         </button>
       </div>
 
-      <div className="flex-1 relative min-h-0">
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
-        />
-      </div>
-
-      {employeeName && (
-        <div className="text-center py-3 border-t bg-muted/30 shrink-0 safe-area-bottom">
-          <p className="text-sm font-bold tracking-wide uppercase">{employeeName}</p>
-          {employeeRole && (
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">{employeeRole}</p>
-          )}
+      {showNameInput ? (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4 bg-white">
+          <p className="text-sm text-muted-foreground text-center">
+            Para quem não sabe assinar, digite o nome completo abaixo:
+          </p>
+          <input
+            type="text"
+            autoFocus
+            value={indicativeName}
+            onChange={e => setIndicativeName(e.target.value)}
+            placeholder="Nome completo do colaborador"
+            className="w-full max-w-sm border border-input rounded-lg px-4 py-3 text-lg text-center font-semibold uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => { setShowNameInput(false); setIndicativeName(""); }}
+              className="px-5 py-2.5 text-sm font-semibold text-muted-foreground border border-input rounded-lg"
+            >
+              Voltar
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveIndicativeName}
+              disabled={!indicativeName.trim()}
+              className="px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-lg disabled:opacity-40"
+            >
+              Confirmar Nome
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 relative min-h-0">
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
+          />
         </div>
       )}
+
+      <div className="text-center py-3 border-t bg-muted/30 shrink-0 safe-area-bottom">
+        {!showNameInput && (
+          <button
+            type="button"
+            onClick={() => setShowNameInput(true)}
+            className="text-xs text-primary font-semibold underline underline-offset-2 mb-1"
+          >
+            Não sabe assinar? Toque aqui
+          </button>
+        )}
+        {employeeName && (
+          <>
+            <p className="text-sm font-bold tracking-wide uppercase">{employeeName}</p>
+            {employeeRole && (
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">{employeeRole}</p>
+            )}
+          </>
+        )}
+      </div>
     </div>,
     document.body,
   );
