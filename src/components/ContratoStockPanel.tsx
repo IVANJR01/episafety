@@ -69,9 +69,14 @@ interface ConsumoMensal {
 
 export default function ContratoStockPanel() {
   const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
-  const hasEstoqueContrato = modulosPermitidos.includes("estoque_contrato") || modulosPermitidos.includes("estoque_contrato:view");
-  const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis") || hasEstoqueContrato;
+  // Global stock management (Rafaela-type: sees ALL units/contracts)
+  const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
+  // Per-contract stock permission (technician-type: sees only their unit/contract)
+  const hasEstoqueContrato = modulosPermitidos.includes("estoque_contrato") || modulosPermitidos.some(p => p.startsWith("estoque_contrato:"));
+  // Contract-bound user: has contract ID and is NOT a global manager
   const isContratoUser = !!userContratoId && !hasGestaoEstoque;
+  // Can access the panel at all
+  const canAccessPanel = hasGestaoEstoque || hasEstoqueContrato || isContratoUser;
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -385,7 +390,7 @@ export default function ContratoStockPanel() {
     }
   };
 
-  if (!hasGestaoEstoque && !isContratoUser) return null;
+  if (!canAccessPanel) return null;
   if (loading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   // Build hierarchy: group contratos by unidade
@@ -393,8 +398,8 @@ export default function ContratoStockPanel() {
   const matrizId = unidades.find(u => !u.empresa_pai_id)?.id;
   const allUnits = matrizId ? [unidades.find(u => u.id === matrizId)!, ...filiais] : filiais;
 
-  // Filter contratos for contract-bound users
-  const visibleContratos = isContratoUser
+  // Filter contratos: global managers see all, contract-bound users see only theirs
+  const visibleContratos = (isContratoUser || (hasEstoqueContrato && !hasGestaoEstoque && userContratoId))
     ? contratos.filter(c => c.id === userContratoId)
     : contratos;
 
