@@ -15,11 +15,14 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   const [ready, setReady] = useState(false);
 
   const initPad = useCallback(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current) return false;
     const canvas = canvasRef.current;
+    const w = canvas.offsetWidth;
+    const h = canvas.offsetHeight;
+    if (w === 0 || h === 0) return false;
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = canvas.offsetWidth * ratio;
-    canvas.height = canvas.offsetHeight * ratio;
+    canvas.width = w * ratio;
+    canvas.height = h * ratio;
     const ctx = canvas.getContext("2d");
     if (ctx) ctx.scale(ratio, ratio);
     if (padRef.current) padRef.current.off();
@@ -32,14 +35,27 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       velocityFilterWeight: 0.7,
     });
     setReady(true);
+    return true;
   }, []);
 
   useEffect(() => {
     if (!open) return;
-    // Lock body scroll
     document.body.style.overflow = "hidden";
-    const timer = setTimeout(() => initPad(), 100);
-    const handleResize = () => setTimeout(() => initPad(), 100);
+
+    // Retry init until canvas has dimensions
+    let attempts = 0;
+    const tryInit = () => {
+      attempts++;
+      if (!initPad() && attempts < 20) {
+        return setTimeout(tryInit, 50);
+      }
+      return null;
+    };
+    const timer = setTimeout(tryInit, 50);
+
+    const handleResize = () => {
+      setTimeout(() => initPad(), 100);
+    };
     window.addEventListener("resize", handleResize);
     return () => {
       clearTimeout(timer);
