@@ -811,6 +811,83 @@ export default function ContratoStockPanel() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Transfer to Contract Dialog */}
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <ArrowRightLeft className="w-4 h-4 text-primary" />
+              Transferir EPI para Contrato
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div>
+              <Label className="text-xs">Unidade (Origem)</Label>
+              <Select value={transferUnidadeId} onValueChange={v => { setTransferUnidadeId(v); setTransferContratoId(""); }}>
+                <SelectTrigger><SelectValue placeholder="Selecione a unidade" /></SelectTrigger>
+                <SelectContent>
+                  {allUnits.filter(Boolean).map(u => (
+                    <SelectItem key={u!.id} value={u!.id}>{u!.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Contrato (Destino)</Label>
+              <Select value={transferContratoId} onValueChange={setTransferContratoId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o contrato" /></SelectTrigger>
+                <SelectContent>
+                  {contratos
+                    .filter(c => !transferUnidadeId || c.unidade_id === transferUnidadeId)
+                    .map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">EPI</Label>
+              <Select value={transferEpiId} onValueChange={setTransferEpiId}>
+                <SelectTrigger><SelectValue placeholder={transferUnidadeId ? "Selecione o EPI" : "Selecione a unidade primeiro"} /></SelectTrigger>
+                <SelectContent>
+                  {transferEpis.map(e => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.nome} {e.ca ? `(CA: ${e.ca})` : ""} — Disp: {e.estoque}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {transferUnidadeId && transferEpis.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nenhum EPI com estoque disponível nesta unidade</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">Quantidade</Label>
+              <Input
+                type="number"
+                min={1}
+                max={transferEpis.find(e => e.id === transferEpiId)?.estoque || 999}
+                value={transferQtd}
+                onChange={e => setTransferQtd(Math.max(1, Number(e.target.value)))}
+              />
+              {transferEpiId && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Disponível: {transferEpis.find(e => e.id === transferEpiId)?.estoque || 0} un.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+            <Button size="sm" onClick={handleTransferToContract}
+              disabled={transferring || !transferUnidadeId || !transferContratoId || !transferEpiId || transferQtd <= 0}>
+              {transferring ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />}
+              Transferir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
