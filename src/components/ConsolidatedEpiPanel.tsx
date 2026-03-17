@@ -88,24 +88,90 @@ export default function ConsolidatedEpiPanel() {
       setFilialEpis([]);
       setFilialContratos([]);
       setSelectedContratoId(null);
+      setResponsaveisMap({});
+      setFilialFuncionarios([]);
       return;
     }
     setExpandedFilialId(filialId);
     setSelectedContratoId(null);
     setLoadingFilialEpis(true);
 
-    const [episRes, contratosRes] = await Promise.all([
+    const [episRes, contratosRes, funcsRes] = await Promise.all([
       supabase.rpc("get_filial_epis", { _filial_id: filialId }),
       supabase.from("contratos").select("id, nome").eq("unidade_id", filialId).order("nome"),
+      supabase.from("funcionarios").select("id, nome").eq("empresa_id", filialId).order("nome"),
     ]);
 
     if (episRes.data && Array.isArray(episRes.data)) setFilialEpis(episRes.data as unknown as FilialEpi[]);
     else setFilialEpis([]);
 
-    if (contratosRes.data) setFilialContratos(contratosRes.data);
-    else setFilialContratos([]);
+    const contratos = contratosRes.data || [];
+    setFilialContratos(contratos);
+    setFilialFuncionarios(funcsRes.data || []);
+
+    // Load responsáveis for all contracts in this unit
+    if (contratos.length > 0) {
+      const contratoIds = contratos.map(c => c.id);
+      const { data: resps } = await supabase
+        .from("contrato_responsaveis")
+        .select("id, contrato_id, funcionario_id")
+        .in("contrato_id", contratoIds);
+      
+      const map: Record<string, ContratoResponsavel[]> = {};
+      (resps || []).forEach((r: any) => {
+        const func = (funcsRes.data || []).find((f: any) => f.id === r.funcionario_id);
+        const entry = { ...r, funcionario_nome: func?.nome || "Desconhecido" };
+        if (!map[r.contrato_id]) map[r.contrato_id] = [];
+        map[r.contrato_id].push(entry);
+      });
+      setResponsaveisMap(map);
+    } else {
+      setResponsaveisMap({});
+    }
 
     setLoadingFilialEpis(false);
+  };
+
+  const addResponsavel = async (contratoId: string) => {
+    if (!newRespFuncId || !expandedFilialId) return;
+    const existing = responsaveisMap[contratoId]?.find(r => r.funcionario_id === newRespFuncId);
+    if (existing) {
+      toast({ title: "Funcionário já é responsável", variant: "destructive" });
+      return;
+    }
+    const { data: inserted, error } = await supabase.from("contrato_responsaveis").insert({
+      contrato_id: contratoId,
+      funcionario_id: newRespFuncId,
+      empresa_id: expandedFilialId,
+      created_by: (await supabase.auth.getUser()).data.user?.id,
+    }).select("id, contrato_id, funcionario_id").single();
+
+    if (error) {
+      toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
+      return;
+    }
+    const func = filialFuncionarios.find(f => f.id === newRespFuncId);
+    const newEntry: ContratoResponsavel = { ...inserted, funcionario_nome: func?.nome || "" };
+    setResponsaveisMap(prev => ({
+      ...prev,
+      [contratoId]: [...(prev[contratoId] || []), newEntry],
+    }));
+    setNewRespFuncId("");
+    setAddingResp(null);
+    toast({ title: "Responsável adicionado!" });
+  };
+
+  const removeResponsavel = async (contratoId: string, respId: string) => {
+    const { error } = await supabase.from("contrato_responsaveis").delete().eq("id", respId);
+    if (error) {
+      toast({ title: "Erro ao remover", description: error.message, variant: "destructive" });
+      return;
+    }
+    setResponsaveisMap(prev => ({
+      ...prev,
+      [contratoId]: (prev[contratoId] || []).filter(r => r.id !== respId),
+    }));
+    toast({ title: "Responsável removido" });
   };
 
   // Filter EPIs by selected contract
