@@ -561,7 +561,7 @@ export default function VideoTreinamentos() {
           {canCreate && (
             <Button onClick={() => {
               setEditingCurso(null);
-              setCursoForm({ titulo: "", descricao: "", pontuacao_minima: "70", link_externo: "" });
+              setCursoForm({ titulo: "", descricao: "", pontuacao_minima: "70" });
               setOpenCursoForm(true);
             }} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" /> Novo Curso
