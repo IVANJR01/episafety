@@ -700,7 +700,7 @@ export default function ContratoStockPanel() {
               (contratoMovimentacoes[historyContratoId] || []).map(m => (
                 <div key={m.id} className="flex items-center gap-2 text-xs py-2 px-3 rounded border bg-background">
                   {m.tipo === "entrada" ? (
-                    <Plus className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                    <Plus className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
                   ) : (
                     <Minus className="w-3.5 h-3.5 text-destructive shrink-0" />
                   )}
