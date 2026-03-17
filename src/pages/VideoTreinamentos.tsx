@@ -190,7 +190,6 @@ export default function VideoTreinamentos() {
           titulo: cursoForm.titulo,
           descricao: cursoForm.descricao || null,
           pontuacao_minima: parseInt(cursoForm.pontuacao_minima) || 70,
-          link_externo: cursoForm.link_externo || null,
         }).eq("id", editingCurso.id);
         if (error) throw error;
         toast({ title: "Curso atualizado!" });
