@@ -87,10 +87,49 @@ export default function Entregas() {
   const closeFullscreenSignature = useCallback((dataUrl?: string) => {
     if (dataUrl) setSavedSignatureDataUrl(dataUrl);
     setFullscreenSigOpen(false);
+
+    // If coming from "new" flow (after Registrar) and we have a dataUrl, save directly
+    if (dataUrl && signMode === "new" && pendingEntrega) {
+      // Save signature immediately without opening signOpen dialog
+      const saveDirectly = async () => {
+        const ids = pendingEntrega?.entrega_ids || [];
+        if (ids.length === 0) return;
+
+        setSavingConfirmation(true);
+        try {
+          const updatePayload = { assinatura_colaborador: dataUrl };
+
+          if (!isOnline()) {
+            for (const id of ids) {
+              addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+            }
+            const cached = getCachedData<Entrega>("entregas") || [];
+            setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
+            toast({ title: "Assinatura salva offline", description: `${ids.length} entrega(s) atualizada(s).` });
+          } else {
+            await Promise.all(
+              ids.map(id =>
+                (supabase.from as any)("entregas").update(updatePayload).eq("id", id)
+              )
+            );
+            toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+          }
+          refetch();
+        } finally {
+          setSavingConfirmation(false);
+          setPendingEntrega(null);
+          setSavedSignatureDataUrl(null);
+        }
+      };
+      saveDirectly();
+      return;
+    }
+
+    // For existing flow, reopen the dialog
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setSignOpen(true));
     });
-  }, []);
+  }, [signMode, pendingEntrega, empresaId, refetch, toast]);
 
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
