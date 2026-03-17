@@ -835,15 +835,23 @@ export default function ContratoStockPanel() {
             </div>
             <div>
               <Label className="text-xs">Contrato (Destino)</Label>
-              <Select value={transferContratoId} onValueChange={setTransferContratoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o contrato" /></SelectTrigger>
-                <SelectContent>
-                  {contratos
-                    .map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              {contratos.length === 0 ? (
+                <p className="text-xs text-muted-foreground border rounded-md p-2">Nenhum contrato disponível</p>
+              ) : (
+                <Select value={transferContratoId} onValueChange={setTransferContratoId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o contrato" /></SelectTrigger>
+                  <SelectContent>
+                    {contratos.map(c => {
+                      const unidadeNome = unidades.find(u => u.id === c.unidade_id)?.nome;
+                      return (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nome}{unidadeNome ? ` (${unidadeNome})` : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <Label className="text-xs">EPI</Label>
