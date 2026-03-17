@@ -137,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthorized(false);
         setModulosPermitidos([]);
         setEmpresaId(null);
+        setContratoId(null);
         setIsSuperAdmin(false);
         setIsPrincipal(false);
         return;
