@@ -793,6 +793,11 @@ export default function Entregas() {
                       <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
+                          {e.status === "ativo" && canEdit && (
+                            <Button size="icon" variant="ghost" title="Devolver ao estoque" onClick={() => handleDevolver(e)}>
+                              <Undo2 className="w-3.5 h-3.5 text-primary" />
+                            </Button>
+                          )}
                           {canEdit && <Button size="icon" variant="ghost" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3.5 h-3.5" /></Button>}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
