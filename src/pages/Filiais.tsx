@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { GitBranch, Plus, Trash2, Pencil, Users, UserPlus, X, Eye, EyeOff, Building2, Briefcase, MapPin } from "lucide-react";
+import { GitBranch, Plus, Trash2, Pencil, UserPlus, Eye, EyeOff, Briefcase, MapPin, FileText, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,15 @@ interface Profile {
   empresa_id: string | null;
 }
 
+interface Contrato {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  unidade_id: string;
+  empresa_id: string | null;
+  created_at: string;
+}
+
 const TIPO_LABELS: Record<string, { label: string; icon: any; color: string }> = {
   filial: { label: "Filial", icon: GitBranch, color: "bg-primary/10 text-primary" },
   obra: { label: "Obra", icon: Briefcase, color: "bg-amber-500/10 text-amber-700" },
@@ -45,13 +54,17 @@ export default function Filiais() {
   const { toast } = useToast();
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
   const [loading, setLoading] = useState(true);
   const [empresaNome, setEmpresaNome] = useState("");
+  const [expandedFiliais, setExpandedFiliais] = useState<Set<string>>(new Set());
 
+  // Unit dialog
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Filial | null>(null);
   const [form, setForm] = useState({ nome: "", cnpj: "", email: "", telefone: "", endereco: "", tipo: "filial" });
 
+  // Assign user dialog
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignFilialId, setAssignFilialId] = useState<string | null>(null);
   const [assignEmail, setAssignEmail] = useState("");
@@ -60,45 +73,49 @@ export default function Filiais() {
   const [showPassword, setShowPassword] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
+  // Contract dialog
+  const [contratoOpen, setContratoOpen] = useState(false);
+  const [editingContrato, setEditingContrato] = useState<Contrato | null>(null);
+  const [contratoFilialId, setContratoFilialId] = useState<string | null>(null);
+  const [contratoForm, setContratoForm] = useState({ nome: "", descricao: "" });
+
   useEffect(() => {
     if (empresaId) loadData();
   }, [empresaId]);
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: filData }, { data: profData }, { data: empData }] = await Promise.all([
+    const [{ data: filData }, { data: profData }, { data: empData }, { data: contData }] = await Promise.all([
       (supabase.from as any)("empresa_config").select("*").eq("empresa_pai_id", empresaId).order("nome"),
       isAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
       (supabase.from as any)("empresa_config").select("nome").eq("id", empresaId).single(),
+      (supabase.from as any)("contratos").select("*").order("nome"),
     ]);
     setFiliais(filData || []);
     setProfiles(profData || []);
     setEmpresaNome(empData?.nome || "");
+    setContratos(contData || []);
     setLoading(false);
   };
 
-  const openNew = () => {
-    setEditing(null);
-    setForm({ nome: "", cnpj: "", email: "", telefone: "", endereco: "", tipo: "filial" });
-    setDialogOpen(true);
+  const toggleExpand = (id: string) => {
+    setExpandedFiliais(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
-  const openEdit = (f: Filial) => {
-    setEditing(f);
-    setForm({
-      nome: f.nome, cnpj: f.cnpj || "", email: f.email || "",
-      telefone: f.telefone || "", endereco: f.endereco || "", tipo: f.tipo || "filial",
-    });
-    setDialogOpen(true);
-  };
+  const getContratosForFilial = (id: string) => contratos.filter(c => c.unidade_id === id);
+  const getUsersForFilial = (id: string) => profiles.filter(p => p.empresa_id === id);
+
+  // Unit CRUD
+  const openNew = () => { setEditing(null); setForm({ nome: "", cnpj: "", email: "", telefone: "", endereco: "", tipo: "filial" }); setDialogOpen(true); };
+  const openEdit = (f: Filial) => { setEditing(f); setForm({ nome: f.nome, cnpj: f.cnpj || "", email: f.email || "", telefone: f.telefone || "", endereco: f.endereco || "", tipo: f.tipo || "filial" }); setDialogOpen(true); };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
-    const payload = {
-      nome: form.nome, cnpj: form.cnpj || null, email: form.email || null,
-      telefone: form.telefone || null, endereco: form.endereco || null,
-      tipo: form.tipo, empresa_pai_id: empresaId,
-    };
+    const payload = { nome: form.nome, cnpj: form.cnpj || null, email: form.email || null, telefone: form.telefone || null, endereco: form.endereco || null, tipo: form.tipo, empresa_pai_id: empresaId };
     if (editing) {
       const { error } = await (supabase.from as any)("empresa_config").update(payload).eq("id", editing.id);
       if (error) { toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" }); return; }
@@ -108,19 +125,16 @@ export default function Filiais() {
       if (error) { toast({ title: "Erro ao criar", description: error.message, variant: "destructive" }); return; }
       toast({ title: `${TIPO_LABELS[form.tipo]?.label || "Item"} criado com sucesso!` });
     }
-    setDialogOpen(false);
-    await loadData();
+    setDialogOpen(false); await loadData();
   };
 
   const handleDelete = async (id: string) => {
     const { error } = await (supabase.from as any)("empresa_config").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Excluído com sucesso" }); await loadData();
-    }
+    if (error) { toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Excluído com sucesso" }); await loadData(); }
   };
 
+  // Assign user
   const handleAssignUser = async () => {
     if (!assignEmail.trim() || !assignFilialId) return;
     const existingProfile = profiles.find(p => p.email?.toLowerCase() === assignEmail.trim().toLowerCase());
@@ -129,30 +143,53 @@ export default function Filiais() {
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Usuário vinculado!" }); setAssignOpen(false); await loadData(); return;
     }
-    if (!assignSenha.trim() || assignSenha.length < 6) {
-      toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" }); return;
-    }
+    if (!assignSenha.trim() || assignSenha.length < 6) { toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" }); return; }
     setAssigning(true);
     try {
-      const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
-        body: { email: assignEmail.trim().toLowerCase(), password: assignSenha, nome: assignNome.trim() },
-      });
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", { body: { email: assignEmail.trim().toLowerCase(), password: assignSenha, nome: assignNome.trim() } });
       if (fnError || fnData?.error) { toast({ title: "Erro", description: fnData?.error || fnError?.message, variant: "destructive" }); setAssigning(false); return; }
       if (fnData?.user_id) {
         await (supabase.from as any)("profiles").update({ empresa_id: assignFilialId }).eq("user_id", fnData.user_id);
-        await (supabase.from as any)("usuarios_liberados").insert({
-          email: assignEmail.trim().toLowerCase(), nome: assignNome.trim(),
-          modulos_permitidos: ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"],
-          empresa_id: assignFilialId,
-        });
+        await (supabase.from as any)("usuarios_liberados").insert({ email: assignEmail.trim().toLowerCase(), nome: assignNome.trim(), modulos_permitidos: ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"], empresa_id: assignFilialId });
       }
-      toast({ title: "Usuário criado e vinculado!" });
-      setAssignOpen(false); await loadData();
+      toast({ title: "Usuário criado e vinculado!" }); setAssignOpen(false); await loadData();
     } catch (err: any) { toast({ title: "Erro", description: err.message, variant: "destructive" }); }
     setAssigning(false);
   };
 
-  const getUsersForFilial = (id: string) => profiles.filter(p => p.empresa_id === id);
+  // Contract CRUD
+  const openNewContrato = (filialId: string) => {
+    setEditingContrato(null); setContratoFilialId(filialId); setContratoForm({ nome: "", descricao: "" }); setContratoOpen(true);
+  };
+  const openEditContrato = (c: Contrato) => {
+    setEditingContrato(c); setContratoFilialId(c.unidade_id); setContratoForm({ nome: c.nome, descricao: c.descricao || "" }); setContratoOpen(true);
+  };
+
+  const handleSaveContrato = async () => {
+    if (!contratoForm.nome.trim() || !contratoFilialId) return;
+    // Find the empresa_id (parent) for this filial
+    const filial = filiais.find(f => f.id === contratoFilialId);
+    const empId = filial?.empresa_pai_id || empresaId;
+
+    const payload = { nome: contratoForm.nome, descricao: contratoForm.descricao || null, unidade_id: contratoFilialId, empresa_id: empId, created_by: undefined as any };
+
+    if (editingContrato) {
+      const { error } = await (supabase.from as any)("contratos").update({ nome: payload.nome, descricao: payload.descricao }).eq("id", editingContrato.id);
+      if (error) { toast({ title: "Erro ao salvar contrato", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "Contrato atualizado!" });
+    } else {
+      const { error } = await (supabase.from as any)("contratos").insert(payload);
+      if (error) { toast({ title: "Erro ao criar contrato", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "Contrato criado com sucesso!" });
+    }
+    setContratoOpen(false); await loadData();
+  };
+
+  const handleDeleteContrato = async (id: string) => {
+    const { error } = await (supabase.from as any)("contratos").delete().eq("id", id);
+    if (error) { toast({ title: "Erro ao excluir contrato", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Contrato excluído" }); await loadData(); }
+  };
 
   if (!empresaId) {
     return (
@@ -168,14 +205,10 @@ export default function Filiais() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Unidades</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-            Unidades vinculadas a <strong>{empresaNome}</strong>
-          </p>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Unidades vinculadas a <strong>{empresaNome}</strong></p>
         </div>
         {(canCreate || isAdmin) && (
-          <Button onClick={openNew} className="text-xs sm:text-sm">
-            <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova Unidade
-          </Button>
+          <Button onClick={openNew} className="text-xs sm:text-sm"><Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova Unidade</Button>
         )}
       </div>
 
@@ -195,6 +228,9 @@ export default function Filiais() {
             const tipoInfo = TIPO_LABELS[f.tipo] || TIPO_LABELS.filial;
             const TipoIcon = tipoInfo.icon;
             const users = getUsersForFilial(f.id);
+            const filContratos = getContratosForFilial(f.id);
+            const isExpanded = expandedFiliais.has(f.id);
+
             return (
               <Card key={f.id}>
                 <CardContent className="p-4 space-y-3">
@@ -229,16 +265,60 @@ export default function Filiais() {
                     {f.email && <span>{f.email}</span>}
                   </div>
 
-                  {/* Users (super admin only) */}
+                  {/* Users */}
                   {isAdmin && users.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {users.map(u => (
-                        <Badge key={u.id} variant="secondary" className="text-[10px] py-0.5 px-2">
-                          {u.nome || u.email || "—"}
-                        </Badge>
+                        <Badge key={u.id} variant="secondary" className="text-[10px] py-0.5 px-2">{u.nome || u.email || "—"}</Badge>
                       ))}
                     </div>
                   )}
+
+                  {/* Contratos section */}
+                  <div className="border-t pt-2">
+                    <button
+                      onClick={() => toggleExpand(f.id)}
+                      className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                    >
+                      {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      <FileText className="w-3.5 h-3.5" />
+                      Contratos ({filContratos.length})
+                    </button>
+
+                    {isExpanded && (
+                      <div className="mt-2 space-y-1.5 pl-5">
+                        {filContratos.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic">Nenhum contrato cadastrado.</p>
+                        ) : (
+                          filContratos.map(c => (
+                            <div key={c.id} className="flex items-center justify-between gap-2 bg-muted/50 rounded-md px-3 py-1.5">
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate">{c.nome}</p>
+                                {c.descricao && <p className="text-[10px] text-muted-foreground truncate">{c.descricao}</p>}
+                              </div>
+                              <div className="flex gap-0.5 shrink-0">
+                                {(canEdit || isAdmin) && (
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEditContrato(c)}>
+                                    <Pencil className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                {(canDelete || isAdmin) && (
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDeleteContrato(c.id)}>
+                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                        {(canCreate || isAdmin) && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs mt-1" onClick={() => openNewContrato(f.id)}>
+                            <Plus className="w-3 h-3 mr-1" />Novo Contrato
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -246,19 +326,15 @@ export default function Filiais() {
         </div>
       )}
 
-      {/* New/Edit Dialog */}
+      {/* New/Edit Unit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Editar Unidade" : "Nova Unidade"}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "Editar Unidade" : "Nova Unidade"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-2">
             <div>
               <Label>Tipo</Label>
               <Select value={form.tipo} onValueChange={v => setForm({ ...form, tipo: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="filial"><span className="flex items-center gap-2"><GitBranch className="w-3.5 h-3.5" /> Filial</span></SelectItem>
                   <SelectItem value="obra"><span className="flex items-center gap-2"><Briefcase className="w-3.5 h-3.5" /> Obra</span></SelectItem>
@@ -274,13 +350,11 @@ export default function Filiais() {
               <div><Label>E-mail</Label><Input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contato@filial.com" /></div>
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleSave}>{editing ? "Salvar" : "Criar"}</Button>
-          </DialogFooter>
+          <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Criar"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Assign User Dialog (super admin) */}
+      {/* Assign User Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Vincular Usuário</DialogTitle></DialogHeader>
@@ -298,9 +372,19 @@ export default function Filiais() {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleAssignUser} disabled={!assignEmail.trim() || assigning}>{assigning ? "Criando..." : "Vincular"}</Button>
-          </DialogFooter>
+          <DialogFooter><Button onClick={handleAssignUser} disabled={!assignEmail.trim() || assigning}>{assigning ? "Criando..." : "Vincular"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contract Dialog */}
+      <Dialog open={contratoOpen} onOpenChange={setContratoOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editingContrato ? "Editar Contrato" : "Novo Contrato"}</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div><Label>Nome do Contrato</Label><Input value={contratoForm.nome} onChange={e => setContratoForm({ ...contratoForm, nome: e.target.value })} placeholder="Ex: Contrato Linhas" /></div>
+            <div><Label>Descrição (opcional)</Label><Input value={contratoForm.descricao} onChange={e => setContratoForm({ ...contratoForm, descricao: e.target.value })} placeholder="Descrição do contrato" /></div>
+          </div>
+          <DialogFooter><Button onClick={handleSaveContrato} disabled={!contratoForm.nome.trim()}>{editingContrato ? "Salvar" : "Criar"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
