@@ -582,7 +582,7 @@ export default function ContratoStockPanel() {
                                               <Minus className="w-3 h-3 text-destructive shrink-0" />
                                             )}
                                             <span className="font-medium">{m.epi_nome}</span>
-                                            <span className={m.tipo === "entrada" ? "text-green-600 font-mono" : "text-destructive font-mono"}>
+                                            <span className={m.tipo === "entrada" ? "text-emerald-500 dark:text-emerald-400 font-mono" : "text-destructive font-mono"}>
                                               {m.tipo === "entrada" ? "+" : "-"}{m.quantidade}
                                             </span>
                                             {m.motivo && <span className="text-muted-foreground truncate">— {m.motivo}</span>}
