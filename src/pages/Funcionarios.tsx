@@ -20,8 +20,11 @@ import * as XLSX from "xlsx";
 interface Funcionario {
   id: string; nome: string; matricula: string | null; setor: string | null;
   cargo: string | null; data_admissao: string | null; cpf: string | null;
-  data_demissao: string | null;
+  data_demissao: string | null; unidade_id: string | null; contrato_id: string | null;
 }
+
+interface Unidade { id: string; nome: string; tipo: string; }
+interface Contrato { id: string; nome: string; unidade_id: string; }
 
 interface ImportRow {
   nome: string; cpf: string; matricula: string; setor: string; cargo: string; data_admissao: string;
