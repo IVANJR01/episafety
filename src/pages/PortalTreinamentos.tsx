@@ -576,43 +576,25 @@ export default function PortalTreinamentos() {
                     )}
                   </div>
 
-                  {/* External link or Module list */}
+                  {/* Module list */}
                   {isExpanded && (
                     <div className="border-t divide-y">
-                      {curso.link_externo ? (
-                        <div className="p-4 sm:p-6 text-center space-y-3">
-                          <ExternalLink className="h-8 w-8 mx-auto text-primary opacity-70" />
-                          <p className="text-xs sm:text-sm text-muted-foreground">Este curso é realizado em uma plataforma externa</p>
-                          <Button
-                            size="lg"
-                            className="bg-primary"
-                            onClick={() => window.open(curso.link_externo!, "_blank", "noopener,noreferrer")}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Acessar Curso
-                          </Button>
-                        </div>
-                      ) : modulos.length === 0 ? (
+                      {modulos.length === 0 ? (
                         <div className="p-3 text-center text-muted-foreground text-xs">Nenhum módulo disponível</div>
                       ) : modulos.map((modulo, idx) => {
                         const status = getVideoStatus(modulo.id);
                         return (
                           <div key={modulo.id} className={`p-2.5 sm:p-4 ${status === "concluido" ? "opacity-75 bg-muted/30" : ""}`}>
                             <div className="flex items-center gap-2 sm:gap-4">
-                              {/* Number */}
                               <span className="bg-primary/10 text-primary font-bold text-[10px] sm:text-xs rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0">
                                 {String(idx + 1).padStart(2, "0")}
                               </span>
-
-                              {/* Thumbnail */}
                               <div className="relative w-12 sm:w-20 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
                                 <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                                   {status === "concluido" ? <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-400" /> : <Play className="h-3 w-3 sm:h-4 sm:w-4 text-white" />}
                                 </div>
                               </div>
-
-                              {/* Info */}
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-foreground text-xs sm:text-sm leading-tight truncate">{modulo.titulo}</h4>
                                 {modulo.descricao && <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 hidden sm:block">{modulo.descricao}</p>}
@@ -626,8 +608,6 @@ export default function PortalTreinamentos() {
                                   )}
                                 </div>
                               </div>
-
-                              {/* Action */}
                               <Button
                                 variant={status === "concluido" ? "ghost" : "default"}
                                 size="sm"
