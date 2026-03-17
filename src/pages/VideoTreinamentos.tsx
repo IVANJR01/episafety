@@ -752,6 +752,7 @@ export default function VideoTreinamentos() {
                         <Button variant="outline" size="sm" className="mt-2" onClick={() => {
                           setEditingModulo(null);
                           setModuloCursoId(curso.id);
+                          
                           setModuloForm({ titulo: "Módulo 1", descricao: "" });
                           setVideoFile(null);
                           setOpenModuloForm(true);
