@@ -399,7 +399,55 @@ export default function ContratoStockPanel() {
     }
   };
 
-  if (!canAccessPanel) return null;
+  // Load EPIs when transfer unit changes
+  useEffect(() => {
+    if (!transferUnidadeId) { setTransferEpis([]); return; }
+    (async () => {
+      const { data: epis } = await supabase
+        .from("epis")
+        .select("id, nome, ca, estoque")
+        .eq("empresa_id", transferUnidadeId)
+        .gt("estoque", 0)
+        .order("nome");
+      setTransferEpis((epis || []) as { id: string; nome: string; ca: string | null; estoque: number }[]);
+      setTransferEpiId("");
+    })();
+  }, [transferUnidadeId]);
+
+  const handleTransferToContract = async () => {
+    if (!transferUnidadeId || !transferContratoId || !transferEpiId || transferQtd <= 0) return;
+    setTransferring(true);
+    try {
+      const { data: result } = await supabase.rpc("transfer_epi_to_contract" as any, {
+        _source_empresa_id: transferUnidadeId,
+        _contrato_id: transferContratoId,
+        _epi_id: transferEpiId,
+        _quantidade: transferQtd,
+      });
+      const res = result as any;
+      if (res?.success) {
+        toast({ title: "Transferência realizada!", description: `${transferQtd} un. transferidas para o contrato.` });
+        setTransferOpen(false);
+        setTransferUnidadeId("");
+        setTransferContratoId("");
+        setTransferEpiId("");
+        setTransferQtd(1);
+        // Reload contract details if expanded
+        if (expandedContratos.has(transferContratoId)) {
+          const contrato = contratos.find(c => c.id === transferContratoId);
+          if (contrato) await loadContratoDetails(transferContratoId, contrato.empresa_id);
+        }
+        await loadData();
+      } else {
+        toast({ title: "Erro na transferência", description: res?.error || "Erro desconhecido", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   // Build hierarchy: group contratos by unidade
