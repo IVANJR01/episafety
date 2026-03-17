@@ -42,6 +42,9 @@ export default function ConsolidatedEpiPanel() {
   const [data, setData] = useState<ParentCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [expandedFilialId, setExpandedFilialId] = useState<string | null>(null);
+  const [filialEpis, setFilialEpis] = useState<FilialEpi[]>([]);
+  const [loadingFilialEpis, setLoadingFilialEpis] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [sourceEmpresaId, setSourceEmpresaId] = useState("");
@@ -51,6 +54,20 @@ export default function ConsolidatedEpiPanel() {
   const [selectedEpiId, setSelectedEpiId] = useState("");
   const [quantidade, setQuantidade] = useState(1);
   const { toast } = useToast();
+
+  const toggleFilialDetail = async (filialId: string) => {
+    if (expandedFilialId === filialId) {
+      setExpandedFilialId(null);
+      setFilialEpis([]);
+      return;
+    }
+    setExpandedFilialId(filialId);
+    setLoadingFilialEpis(true);
+    const { data: result } = await supabase.rpc("get_filial_epis", { _filial_id: filialId });
+    if (result && Array.isArray(result)) setFilialEpis(result as unknown as FilialEpi[]);
+    else setFilialEpis([]);
+    setLoadingFilialEpis(false);
+  };
 
   const loadData = useCallback(async () => {
     const { data: result } = await supabase.rpc("get_consolidated_epi_stock");
