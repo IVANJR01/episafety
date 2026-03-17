@@ -168,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             authorized: superAdmin || authResult.authorized,
             modulos: (superAdmin || authResult.isPrincipal) ? [] : authResult.modulos,
             empresaId: profileResult.empresaId,
+            contratoId: authResult.contratoId,
             isSuperAdmin: superAdmin,
             isPrincipal: authResult.isPrincipal,
           };
@@ -175,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAuthorized(nextState.authorized);
           setModulosPermitidos(nextState.modulos);
           setEmpresaId(nextState.empresaId);
+          setContratoId(nextState.contratoId);
           setIsSuperAdmin(nextState.isSuperAdmin);
           setIsPrincipal(nextState.isPrincipal);
           saveAuthCache(currentUser.email, nextState);
