@@ -149,12 +149,11 @@ export default function UsuariosLiberados() {
         return;
       }
 
-      const allPerms = allPermissions();
       const targetEmpresaId = novoEmpresaId || empresaId;
       const { error } = await (supabase.from as any)("usuarios_liberados").insert({
         email: novoEmail.trim().toLowerCase(),
         nome: novoNome.trim(),
-        modulos_permitidos: allPerms,
+        modulos_permitidos: [],
         empresa_id: targetEmpresaId,
       });
 
