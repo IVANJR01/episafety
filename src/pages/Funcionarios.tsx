@@ -42,7 +42,7 @@ function formatCPF(value: string): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
-const EXPECTED_COLUMNS = ["nome", "cpf", "matricula", "setor", "cargo", "data_admissao"];
+const EXPECTED_COLUMNS = ["nome", "cpf", "matricula", "setor", "cargo", "data_admissao", "unidade", "contrato"];
 
 function normalizeHeader(h: string): string {
   const map: Record<string, string> = {
