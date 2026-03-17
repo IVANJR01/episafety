@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
+import ContratoStockPanel from "@/components/ContratoStockPanel";
 
 interface EPI {
   id: string; nome: string; ca: string | null; validade: string | null;
@@ -150,6 +151,7 @@ export default function EPIs() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {hasGestaoEstoque && <ConsolidatedEpiPanel />}
+      {hasGestaoEstoque && <ContratoStockPanel />}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">EPIs</h1>
