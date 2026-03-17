@@ -51,8 +51,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       penColor: "rgb(0, 0, 0)",
       minWidth: 0.5,
       maxWidth: 2.5,
-      throttle: 16,
-      velocityFilterWeight: 0.7,
+      throttle: 0,
+      velocityFilterWeight: 0.4,
     });
 
     if (previousData.length > 0) {
