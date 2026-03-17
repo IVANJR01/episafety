@@ -10,6 +10,11 @@ export const ACOES = [
   { key: "delete", label: "Excluir" },
 ] as const;
 
+/** Special per-module actions (shown as extra checkboxes) */
+export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> = {
+  epis: [{ key: "gestao_estoque", label: "Gestão de Estoque (todas unidades)" }],
+};
+
 export type Acao = typeof ACOES[number]["key"];
 
 export const MODULOS = [

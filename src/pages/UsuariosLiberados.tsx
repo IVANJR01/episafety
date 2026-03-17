@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { MODULOS, ACOES, allPermissions, allActionsForModule } from "@/lib/permissions";
+import { MODULOS, ACOES, ACOES_ESPECIAIS, allPermissions, allActionsForModule } from "@/lib/permissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -554,6 +554,20 @@ export default function UsuariosLiberados() {
                             />
                           </div>
                         ))}
+                        {/* Special per-module actions */}
+                        {ACOES_ESPECIAIS[mod.key] && (
+                          <div className="col-span-full flex items-center gap-2 pl-6 pt-1">
+                            {ACOES_ESPECIAIS[mod.key].map(acao => (
+                              <label key={acao.key} className="flex items-center gap-1.5 cursor-pointer">
+                                <Checkbox
+                                  checked={perms.includes(`${mod.key}:${acao.key}`)}
+                                  onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
+                                />
+                                <span className="text-xs text-muted-foreground">{acao.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
