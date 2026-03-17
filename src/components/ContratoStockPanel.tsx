@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Building2, ChevronDown, ChevronUp, Package, Users, Plus, Minus,
-  TrendingUp, History, Loader2, FileText, BarChart3, AlertTriangle
+  TrendingUp, History, Loader2, FileText, BarChart3, AlertTriangle, ArrowRightLeft
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { format, subMonths, startOfMonth } from "date-fns";
