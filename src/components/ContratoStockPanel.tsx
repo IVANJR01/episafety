@@ -117,9 +117,20 @@ export default function ContratoStockPanel() {
     const { data: contratosData } = await supabase.from("contratos").select("id, nome, unidade_id, empresa_id");
 
     if (unidadesData) setUnidades(unidadesData as Unidade[]);
-    if (contratosData) setContratos(contratosData as Contrato[]);
+    if (contratosData) {
+      setContratos(contratosData as Contrato[]);
+      // Auto-expand for contract-bound users
+      if (userContratoId) {
+        const userContrato = (contratosData as Contrato[]).find(c => c.id === userContratoId);
+        if (userContrato) {
+          setExpandedUnidades(new Set([userContrato.unidade_id]));
+          setExpandedContratos(new Set([userContratoId]));
+          loadContratoDetails(userContratoId, userContrato.empresa_id);
+        }
+      }
+    }
     setLoading(false);
-  }, []);
+  }, [userContratoId, loadContratoDetails]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
