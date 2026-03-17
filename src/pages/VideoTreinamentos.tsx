@@ -200,6 +200,7 @@ export default function VideoTreinamentos() {
           titulo: cursoForm.titulo,
           descricao: cursoForm.descricao || null,
           pontuacao_minima: parseInt(cursoForm.pontuacao_minima) || 70,
+          link_externo: cursoForm.link_externo || null,
           empresa_id: null,
           created_by: (await supabase.auth.getUser()).data.user?.id,
         });
