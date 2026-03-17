@@ -291,12 +291,14 @@ export default function Funcionarios() {
       "Nome": f.nome,
       "CPF": f.cpf || "",
       "Matrícula": f.matricula || "",
+      "Unidade": f.unidade_id ? unidadeMap.get(f.unidade_id) || "" : "",
+      "Contrato": f.contrato_id ? contratoMap.get(f.contrato_id) || "" : "",
       "Setor": f.setor || "",
       "Cargo": f.cargo || "",
       "Data Admissão": f.data_admissao || "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
     XLSX.writeFile(wb, "funcionarios.xlsx");
