@@ -137,6 +137,77 @@ export type Database = {
           },
         ]
       }
+      contrato_epis_movimentacoes: {
+        Row: {
+          contrato_epi_id: string
+          contrato_id: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          epi_id: string
+          id: string
+          motivo: string | null
+          quantidade: number
+          responsavel_nome: string | null
+          tipo: string
+        }
+        Insert: {
+          contrato_epi_id: string
+          contrato_id: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          epi_id: string
+          id?: string
+          motivo?: string | null
+          quantidade?: number
+          responsavel_nome?: string | null
+          tipo?: string
+        }
+        Update: {
+          contrato_epi_id?: string
+          contrato_id?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          epi_id?: string
+          id?: string
+          motivo?: string | null
+          quantidade?: number
+          responsavel_nome?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_epis_movimentacoes_contrato_epi_id_fkey"
+            columns: ["contrato_epi_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_epis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_epis_movimentacoes_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_epis_movimentacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contrato_epis_movimentacoes_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "epis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contrato_responsaveis: {
         Row: {
           contrato_id: string
