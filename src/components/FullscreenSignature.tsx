@@ -11,7 +11,7 @@ interface Props {
   onFacialRecognition?: () => void;
 }
 
-export default function FullscreenSignature({ open, employeeName, employeeRole, onSave, onCancel }: Props) {
+export default function FullscreenSignature({ open, employeeName, employeeRole, onSave, onCancel, onFacialRecognition }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const retryTimerRef = useRef<number | null>(null);
