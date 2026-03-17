@@ -51,6 +51,13 @@ interface FilialContrato {
   nome: string;
 }
 
+interface ContratoResponsavel {
+  id: string;
+  contrato_id: string;
+  funcionario_id: string;
+  funcionario_nome?: string;
+}
+
 export default function ConsolidatedEpiPanel() {
   const [data, setData] = useState<ParentCompany[]>([]);
   const [loading, setLoading] = useState(true);
