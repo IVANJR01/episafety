@@ -31,7 +31,7 @@ interface ImportRow {
   valid: boolean; error?: string; action?: "insert" | "update"; existingId?: string;
 }
 
-const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "", data_demissao: "" };
+const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "", data_demissao: "", unidade_id: "", contrato_id: "" };
 
 function formatCPF(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11);
