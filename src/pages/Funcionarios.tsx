@@ -330,13 +330,33 @@ export default function Funcionarios() {
   };
 
   const downloadTemplate = () => {
+    // Main sheet with example row
+    const exampleUnidade = unidades.length > 0 ? unidades[0].nome : "Nome da Unidade";
+    const exampleContrato = contratos.length > 0 ? contratos[0].nome : "Nome do Contrato";
     const ws = XLSX.utils.aoa_to_sheet([
-      ["Nome", "CPF", "Matrícula", "Setor", "Cargo", "Data Admissão"],
-      ["João da Silva", "123.456.789-00", "001", "Produção", "Operador", "01/01/2024"],
+      ["Nome", "CPF", "Matrícula", "Setor", "Cargo", "Data Admissão", "Unidade", "Contrato"],
+      ["João da Silva", "123.456.789-00", "001", "Produção", "Operador", "01/01/2024", exampleUnidade, exampleContrato],
     ]);
-    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 25 }, { wch: 25 }];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
+
+    // Reference sheet with list of valid Unidades and Contratos
+    const refData: string[][] = [["Unidades Disponíveis", "", "Contratos Disponíveis", "Unidade do Contrato"]];
+    const maxRows = Math.max(unidades.length, contratos.length, 1);
+    for (let i = 0; i < maxRows; i++) {
+      refData.push([
+        unidades[i]?.nome || "",
+        "",
+        contratos[i]?.nome || "",
+        contratos[i] ? (unidades.find(u => u.id === contratos[i].unidade_id)?.nome || "") : "",
+      ]);
+    }
+    const wsRef = XLSX.utils.aoa_to_sheet(refData);
+    wsRef["!cols"] = [{ wch: 30 }, { wch: 3 }, { wch: 30 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, wsRef, "Referência - Unidades e Contratos");
+
     XLSX.writeFile(wb, "modelo_funcionarios.xlsx");
   };
 
