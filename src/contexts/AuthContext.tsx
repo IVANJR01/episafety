@@ -53,11 +53,11 @@ function clearLegacyAuthCache() {
   try { localStorage.removeItem(AUTH_CACHE_KEY_PREFIX); } catch {}
 }
 
-async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean }> {
-  if (!email) return { authorized: false, modulos: [], isPrincipal: false };
+async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean; contratoId: string | null }> {
+  if (!email) return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
   try {
     const { data, error } = await (supabase.from as any)("usuarios_liberados")
-      .select("id, modulos_permitidos, is_principal")
+      .select("id, modulos_permitidos, is_principal, contrato_id")
       .eq("email", email.toLowerCase())
       .maybeSingle();
 
@@ -68,14 +68,15 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
         authorized: true,
         modulos: data.modulos_permitidos || [],
         isPrincipal: !!data.is_principal,
+        contratoId: data.contrato_id || null,
       };
     }
 
-    return { authorized: false, modulos: [], isPrincipal: false };
+    return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
   } catch {
     const cached = loadAuthCache(email);
-    if (cached) return { authorized: cached.authorized, modulos: cached.modulos, isPrincipal: cached.isPrincipal || false };
-    return { authorized: false, modulos: [], isPrincipal: false };
+    if (cached) return { authorized: cached.authorized, modulos: cached.modulos, isPrincipal: cached.isPrincipal || false, contratoId: cached.contratoId || null };
+    return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
   }
 }
 
