@@ -127,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authorized, setAuthorized] = useState(true);
   const [modulosPermitidos, setModulosPermitidos] = useState<string[]>([]);
   const [empresaId, setEmpresaId] = useState<string | null>(null);
+  const [contratoId, setContratoId] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isPrincipal, setIsPrincipal] = useState(false);
 
