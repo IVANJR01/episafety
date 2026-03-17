@@ -538,35 +538,35 @@ export default function VideoTreinamentos() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="h-7 w-7 text-primary" />
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+            <BookOpen className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
             Treinamentos em Vídeo
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Gerencie cursos com módulos de vídeo</p>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Gerencie cursos com módulos de vídeo</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(isSuperAdmin || isPrincipal) && (
-            <Button variant="outline" onClick={handleOpenManageCursos}>
-              <Pencil className="h-4 w-4 mr-2" /> Gerenciar Cursos
+            <Button variant="outline" size="sm" onClick={handleOpenManageCursos} className="text-xs h-8">
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Gerenciar Cursos
             </Button>
           )}
           {(isSuperAdmin || isPrincipal) && (
-            <Button variant="outline" onClick={() => {
+            <Button variant="outline" size="sm" onClick={() => {
               setAccessFuncId(""); setAccessEmail(""); setAccessPassword(""); setAccessFuncSearch("");
               setShowAccessFuncList(false); setSelectedCursoIds([]); setOpenAccess(true);
-            }}>
-              <Users className="h-4 w-4 mr-2" /> Criar Acesso Funcionário
+            }} className="text-xs h-8">
+              <Users className="h-3.5 w-3.5 mr-1.5" /> Criar Acesso
             </Button>
           )}
           {canCreate && (
-            <Button onClick={() => {
+            <Button size="sm" onClick={() => {
               setEditingCurso(null);
               setCursoForm({ titulo: "", descricao: "", pontuacao_minima: "70" });
               setOpenCursoForm(true);
-            }} className="bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4 mr-2" /> Novo Curso
+            }} className="bg-primary hover:bg-primary/90 text-xs h-8">
+              <Plus className="h-3.5 w-3.5 mr-1.5" /> Novo Curso
             </Button>
           )}
         </div>
