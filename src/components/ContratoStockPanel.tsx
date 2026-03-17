@@ -577,7 +577,7 @@ export default function ContratoStockPanel() {
                                         {movimentacoes.slice(0, 5).map(m => (
                                           <div key={m.id} className="flex items-center gap-2 text-[11px] py-1 px-2 rounded bg-background">
                                             {m.tipo === "entrada" ? (
-                                              <Plus className="w-3 h-3 text-green-600 shrink-0" />
+                                              <Plus className="w-3 h-3 text-emerald-500 dark:text-emerald-400 shrink-0" />
                                             ) : (
                                               <Minus className="w-3 h-3 text-destructive shrink-0" />
                                             )}
