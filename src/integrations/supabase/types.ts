@@ -763,6 +763,7 @@ export type Database = {
       funcionarios: {
         Row: {
           cargo: string | null
+          contrato_id: string | null
           cpf: string | null
           created_at: string
           created_by: string | null
@@ -773,10 +774,12 @@ export type Database = {
           matricula: string | null
           nome: string
           setor: string | null
+          unidade_id: string | null
           updated_at: string
         }
         Insert: {
           cargo?: string | null
+          contrato_id?: string | null
           cpf?: string | null
           created_at?: string
           created_by?: string | null
@@ -787,10 +790,12 @@ export type Database = {
           matricula?: string | null
           nome: string
           setor?: string | null
+          unidade_id?: string | null
           updated_at?: string
         }
         Update: {
           cargo?: string | null
+          contrato_id?: string | null
           cpf?: string | null
           created_at?: string
           created_by?: string | null
@@ -801,12 +806,27 @@ export type Database = {
           matricula?: string | null
           nome?: string
           setor?: string | null
+          unidade_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "funcionarios_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "funcionarios_empresa_id_fkey"
             columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funcionarios_unidade_id_fkey"
+            columns: ["unidade_id"]
             isOneToOne: false
             referencedRelation: "empresa_config"
             referencedColumns: ["id"]

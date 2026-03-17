@@ -20,15 +20,18 @@ import * as XLSX from "xlsx";
 interface Funcionario {
   id: string; nome: string; matricula: string | null; setor: string | null;
   cargo: string | null; data_admissao: string | null; cpf: string | null;
-  data_demissao: string | null;
+  data_demissao: string | null; unidade_id: string | null; contrato_id: string | null;
 }
+
+interface Unidade { id: string; nome: string; tipo: string; }
+interface Contrato { id: string; nome: string; unidade_id: string; }
 
 interface ImportRow {
   nome: string; cpf: string; matricula: string; setor: string; cargo: string; data_admissao: string;
   valid: boolean; error?: string; action?: "insert" | "update"; existingId?: string;
 }
 
-const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "", data_demissao: "" };
+const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "", data_demissao: "", unidade_id: "", contrato_id: "" };
 
 function formatCPF(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -88,6 +91,19 @@ export default function Funcionarios() {
   const { form, setForm, resetForm, hasDraft } = useFormDraft("funcionarios", emptyForm);
   const { toast } = useToast();
 
+  // Unidades and Contratos for selects
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
+
+  const fetchUnidadesContratos = async () => {
+    const { data: u } = await supabase.from("empresa_config").select("id, nome, tipo").neq("tipo", "empresa").order("nome");
+    if (u) setUnidades(u as Unidade[]);
+    const { data: c } = await supabase.from("contratos").select("id, nome, unidade_id").order("nome");
+    if (c) setContratos(c as Contrato[]);
+  };
+
+  const contratosFiltrados = form.unidade_id ? contratos.filter(c => c.unidade_id === form.unidade_id) : contratos;
+
   // Import state
   const [importOpen, setImportOpen] = useState(false);
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
@@ -96,16 +112,17 @@ export default function Funcionarios() {
   const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
+  const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); fetchUnidadesContratos(); setOpen(true); };
   const openEdit = (f: Funcionario) => {
     setEditing(f);
-    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "", data_demissao: f.data_demissao || "" });
+    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "", data_demissao: f.data_demissao || "", unidade_id: f.unidade_id || "", contrato_id: f.contrato_id || "" });
+    fetchUnidadesContratos();
     setOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
-    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null };
+    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null, unidade_id: form.unidade_id || null, contrato_id: form.contrato_id || null };
     if (editing) await update(editing.id, data);
     else await add(data);
     resetForm();
@@ -532,6 +549,28 @@ export default function Funcionarios() {
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Data Admissão</Label><Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} /></div>
               <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({...form, setor: e.target.value})} placeholder="Ex: Produção" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Unidade</Label>
+                <Select value={form.unidade_id} onValueChange={v => setForm({...form, unidade_id: v === "none" ? "" : v, contrato_id: ""})}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a unidade" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    {unidades.map(u => <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Contrato</Label>
+                <Select value={form.contrato_id} onValueChange={v => setForm({...form, contrato_id: v === "none" ? "" : v})} disabled={!form.unidade_id}>
+                  <SelectTrigger><SelectValue placeholder={form.unidade_id ? "Selecione o contrato" : "Selecione a unidade primeiro"} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {contratosFiltrados.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
