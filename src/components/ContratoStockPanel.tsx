@@ -111,28 +111,28 @@ export default function ContratoStockPanel() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    // Load units
     const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id");
-    // Load contracts
     const { data: contratosData } = await supabase.from("contratos").select("id, nome, unidade_id, empresa_id");
 
     if (unidadesData) setUnidades(unidadesData as Unidade[]);
-    if (contratosData) {
-      setContratos(contratosData as Contrato[]);
-      // Auto-expand for contract-bound users
-      if (userContratoId) {
-        const userContrato = (contratosData as Contrato[]).find(c => c.id === userContratoId);
-        if (userContrato) {
-          setExpandedUnidades(new Set([userContrato.unidade_id]));
-          setExpandedContratos(new Set([userContratoId]));
-          loadContratoDetails(userContratoId, userContrato.empresa_id);
-        }
-      }
-    }
+    if (contratosData) setContratos(contratosData as Contrato[]);
     setLoading(false);
-  }, [userContratoId, loadContratoDetails]);
+  }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-expand for contract-bound users
+  const [autoExpanded, setAutoExpanded] = useState(false);
+  useEffect(() => {
+    if (autoExpanded || !userContratoId || contratos.length === 0) return;
+    const userContrato = contratos.find(c => c.id === userContratoId);
+    if (userContrato) {
+      setExpandedUnidades(new Set([userContrato.unidade_id]));
+      setExpandedContratos(new Set([userContratoId]));
+      loadContratoDetails(userContratoId, userContrato.empresa_id);
+      setAutoExpanded(true);
+    }
+  }, [userContratoId, contratos, autoExpanded]);
 
   const loadContratoDetails = useCallback(async (contratoId: string, empresaId: string | null) => {
     setLoadingContrato(prev => new Set(prev).add(contratoId));
