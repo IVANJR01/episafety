@@ -753,7 +753,7 @@ export default function VideoTreinamentos() {
                           setEditingModulo(null);
                           setModuloCursoId(curso.id);
                           
-                          setModuloForm({ titulo: "Módulo 1", descricao: "" });
+                          setModuloForm({ titulo: "Módulo 1", descricao: "", videoUrl: "" });
                           setVideoFile(null);
                           setOpenModuloForm(true);
                         }}>
