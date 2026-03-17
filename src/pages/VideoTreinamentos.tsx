@@ -351,6 +351,11 @@ export default function VideoTreinamentos() {
       toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(accessEmail.trim())) {
+      toast({ title: "E-mail inválido", description: "Verifique o formato do e-mail (ex: usuario@empresa.com)", variant: "destructive" });
+      return;
+    }
     if (selectedCursoIds.length === 0) {
       toast({ title: "Selecione ao menos um curso", variant: "destructive" });
       return;

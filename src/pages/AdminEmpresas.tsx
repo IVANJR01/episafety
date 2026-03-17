@@ -150,6 +150,8 @@ export default function AdminEmpresas() {
 
   const handleAssignUser = async () => {
     if (!assignEmail.trim() || !assignEmpresaId) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(assignEmail.trim())) { toast({ title: "E-mail inválido", description: "Verifique o formato do e-mail (ex: usuario@empresa.com)", variant: "destructive" }); return; }
     const emailLower = assignEmail.trim().toLowerCase();
     const nome = assignNome.trim();
     const allModules = ["dashboard", "epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
