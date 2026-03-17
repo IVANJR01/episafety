@@ -392,7 +392,7 @@ export default function Entregas() {
           }
         }
       } else {
-        assinaturaColaborador = sigEntregaRef.current?.getDataURL() || null;
+        assinaturaColaborador = savedSignatureDataUrl || sigEntregaRef.current?.getDataURL() || null;
         if (!assinaturaColaborador) {
           toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
           return;
