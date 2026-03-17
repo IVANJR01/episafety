@@ -25,6 +25,7 @@ interface CursoVideo {
   pontuacao_minima: number;
   empresa_id: string | null;
   created_at: string;
+  link_externo: string | null;
 }
 
 interface VideoTreinamento {
