@@ -68,8 +68,9 @@ interface ConsumoMensal {
 }
 
 export default function ContratoStockPanel() {
-  const { empresaId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
+  const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
   const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
+  const isContratoUser = !!userContratoId && !hasGestaoEstoque;
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
