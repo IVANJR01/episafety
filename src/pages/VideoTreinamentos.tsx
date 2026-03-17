@@ -705,7 +705,7 @@ export default function VideoTreinamentos() {
                     <div className="flex gap-2 text-xs text-muted-foreground">
                       <Badge variant="outline">{cursoStats.totalModulos} módulo(s)</Badge>
                       <Badge variant="outline">Nota mín: {curso.pontuacao_minima}%</Badge>
-                      {(curso as any).link_externo && <Badge variant="secondary" className="text-xs">🔗 Link Externo</Badge>}
+                      
                     </div>
                     <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                       {canCreate && (
