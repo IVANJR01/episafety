@@ -17,6 +17,7 @@ interface CursoVideo {
   id: string;
   titulo: string;
   descricao: string | null;
+  link_externo: string | null;
 }
 
 interface VideoTreinamento {
