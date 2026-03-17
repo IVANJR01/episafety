@@ -70,6 +70,7 @@ export default function Filiais() {
   const [assignEmail, setAssignEmail] = useState("");
   const [assignNome, setAssignNome] = useState("");
   const [assignSenha, setAssignSenha] = useState("");
+  const [assignContratoId, setAssignContratoId] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
