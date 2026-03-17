@@ -951,6 +951,7 @@ export type Database = {
           setor: string | null
           unidade_id: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           cargo?: string | null
@@ -967,6 +968,7 @@ export type Database = {
           setor?: string | null
           unidade_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           cargo?: string | null
@@ -983,6 +985,7 @@ export type Database = {
           setor?: string | null
           unidade_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1684,6 +1687,7 @@ export type Database = {
     Functions: {
       get_consolidated_epi_stock: { Args: never; Returns: Json }
       get_filial_epis: { Args: { _filial_id: string }; Returns: Json }
+      get_my_funcionario_ids: { Args: never; Returns: string[] }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1697,6 +1701,10 @@ export type Database = {
         Returns: boolean
       }
       is_principal: { Args: { _user_id: string }; Returns: boolean }
+      is_same_company_user: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       transfer_epi_stock: {
         Args: {
