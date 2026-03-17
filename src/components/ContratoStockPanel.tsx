@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Building2, ChevronDown, ChevronUp, Package, Users, Plus, Minus,
-  TrendingUp, History, Loader2, FileText, BarChart3, AlertTriangle
+  TrendingUp, History, Loader2, FileText, BarChart3, AlertTriangle, ArrowRightLeft
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { format, subMonths, startOfMonth } from "date-fns";
@@ -114,6 +114,15 @@ export default function ContratoStockPanel() {
   const [addEmpresaId, setAddEmpresaId] = useState("");
   const [addEpiId, setAddEpiId] = useState("");
   const [addEstoque, setAddEstoque] = useState(0);
+
+  // Transfer from unit stock to contract
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferUnidadeId, setTransferUnidadeId] = useState("");
+  const [transferContratoId, setTransferContratoId] = useState("");
+  const [transferEpiId, setTransferEpiId] = useState("");
+  const [transferQtd, setTransferQtd] = useState(1);
+  const [transferring, setTransferring] = useState(false);
+  const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; ca: string | null; estoque: number }[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -390,7 +399,55 @@ export default function ContratoStockPanel() {
     }
   };
 
-  if (!canAccessPanel) return null;
+  // Load EPIs when transfer unit changes
+  useEffect(() => {
+    if (!transferUnidadeId) { setTransferEpis([]); return; }
+    (async () => {
+      const { data: epis } = await supabase
+        .from("epis")
+        .select("id, nome, ca, estoque")
+        .eq("empresa_id", transferUnidadeId)
+        .gt("estoque", 0)
+        .order("nome");
+      setTransferEpis((epis || []) as { id: string; nome: string; ca: string | null; estoque: number }[]);
+      setTransferEpiId("");
+    })();
+  }, [transferUnidadeId]);
+
+  const handleTransferToContract = async () => {
+    if (!transferUnidadeId || !transferContratoId || !transferEpiId || transferQtd <= 0) return;
+    setTransferring(true);
+    try {
+      const { data: result } = await supabase.rpc("transfer_epi_to_contract" as any, {
+        _source_empresa_id: transferUnidadeId,
+        _contrato_id: transferContratoId,
+        _epi_id: transferEpiId,
+        _quantidade: transferQtd,
+      });
+      const res = result as any;
+      if (res?.success) {
+        toast({ title: "Transferência realizada!", description: `${transferQtd} un. transferidas para o contrato.` });
+        setTransferOpen(false);
+        setTransferUnidadeId("");
+        setTransferContratoId("");
+        setTransferEpiId("");
+        setTransferQtd(1);
+        // Reload contract details if expanded
+        if (expandedContratos.has(transferContratoId)) {
+          const contrato = contratos.find(c => c.id === transferContratoId);
+          if (contrato) await loadContratoDetails(transferContratoId, contrato.empresa_id);
+        }
+        await loadData();
+      } else {
+        toast({ title: "Erro na transferência", description: res?.error || "Erro desconhecido", variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   // Build hierarchy: group contratos by unidade
@@ -407,9 +464,17 @@ export default function ContratoStockPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <FileText className="w-5 h-5 text-primary" />
-        <h2 className="font-bold text-base sm:text-lg">Controle de Estoque por Contrato</h2>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-primary" />
+          <h2 className="font-bold text-base sm:text-lg">Controle de Estoque por Contrato</h2>
+        </div>
+        {hasGestaoEstoque && (
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setTransferOpen(true)}>
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            Transferir para Contrato
+          </Button>
+        )}
       </div>
 
       {allUnits.map(unidade => {
@@ -744,6 +809,83 @@ export default function ContratoStockPanel() {
               ))
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer to Contract Dialog */}
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <ArrowRightLeft className="w-4 h-4 text-primary" />
+              Transferir EPI para Contrato
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div>
+              <Label className="text-xs">Unidade (Origem)</Label>
+              <Select value={transferUnidadeId} onValueChange={v => { setTransferUnidadeId(v); setTransferContratoId(""); }}>
+                <SelectTrigger><SelectValue placeholder="Selecione a unidade" /></SelectTrigger>
+                <SelectContent>
+                  {allUnits.filter(Boolean).map(u => (
+                    <SelectItem key={u!.id} value={u!.id}>{u!.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Contrato (Destino)</Label>
+              <Select value={transferContratoId} onValueChange={setTransferContratoId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o contrato" /></SelectTrigger>
+                <SelectContent>
+                  {contratos
+                    .filter(c => !transferUnidadeId || c.unidade_id === transferUnidadeId)
+                    .map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">EPI</Label>
+              <Select value={transferEpiId} onValueChange={setTransferEpiId}>
+                <SelectTrigger><SelectValue placeholder={transferUnidadeId ? "Selecione o EPI" : "Selecione a unidade primeiro"} /></SelectTrigger>
+                <SelectContent>
+                  {transferEpis.map(e => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.nome} {e.ca ? `(CA: ${e.ca})` : ""} — Disp: {e.estoque}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {transferUnidadeId && transferEpis.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nenhum EPI com estoque disponível nesta unidade</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">Quantidade</Label>
+              <Input
+                type="number"
+                min={1}
+                max={transferEpis.find(e => e.id === transferEpiId)?.estoque || 999}
+                value={transferQtd}
+                onChange={e => setTransferQtd(Math.max(1, Number(e.target.value)))}
+              />
+              {transferEpiId && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Disponível: {transferEpis.find(e => e.id === transferEpiId)?.estoque || 0} un.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+            <Button size="sm" onClick={handleTransferToContract}
+              disabled={transferring || !transferUnidadeId || !transferContratoId || !transferEpiId || transferQtd <= 0}>
+              {transferring ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />}
+              Transferir
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

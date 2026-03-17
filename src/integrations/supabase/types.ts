@@ -1725,6 +1725,15 @@ export type Database = {
         }
         Returns: Json
       }
+      transfer_epi_to_contract: {
+        Args: {
+          _contrato_id: string
+          _epi_id: string
+          _quantidade: number
+          _source_empresa_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "tecnico" | "usuario" | "super_admin"
