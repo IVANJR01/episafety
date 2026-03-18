@@ -4,6 +4,7 @@ import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
+import { APP_VERSION } from "@/lib/version";
 
 interface NavItem {
   path: string;
@@ -361,6 +362,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
           )}
           <p className="text-xs text-sidebar-foreground/40 text-center truncate">{user?.email}</p>
+          <p className="text-[10px] text-sidebar-foreground/30 text-center">v{APP_VERSION}</p>
           <button onClick={signOut} className="flex items-center gap-2 w-full px-4 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
             <LogOut className="w-4 h-4" />
             <span>Sair</span>
