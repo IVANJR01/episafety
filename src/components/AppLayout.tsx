@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
@@ -52,6 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [faturasAlerta, setFaturasAlerta] = useState(0);
+  const [checking, setChecking] = useState(false);
 
   // Busca contagem de faturas pendentes/vencidas para o badge no sidebar
   useEffect(() => {
@@ -117,6 +119,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setShowInstallButton(false);
         }
       });
+    }
+  };
+
+  const handleCheckUpdate = async () => {
+    setChecking(true);
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) {
+        await reg.update();
+        // Give a moment for the SW to detect changes
+        await new Promise((r) => setTimeout(r, 1500));
+        if (reg.waiting) {
+          toast.info("Nova versão disponível! Atualizando...");
+          reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          window.location.reload();
+        } else {
+          toast.success("Você já está na versão mais recente ✓");
+        }
+      } else {
+        toast.success("Você já está na versão mais recente ✓");
+      }
+    } catch {
+      toast.error("Erro ao verificar atualizações");
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -362,7 +389,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
           )}
           <p className="text-xs text-sidebar-foreground/40 text-center truncate">{user?.email}</p>
-          <p className="text-[10px] text-sidebar-foreground/30 text-center">v{APP_VERSION}</p>
+          <button
+            onClick={handleCheckUpdate}
+            disabled={checking}
+            className="flex items-center justify-center gap-1.5 text-[10px] text-sidebar-foreground/30 hover:text-sidebar-foreground/60 transition-colors mx-auto"
+            title="Verificar atualizações"
+          >
+            <RefreshCw className={`w-3 h-3 ${checking ? "animate-spin" : ""}`} />
+            <span>v{APP_VERSION}{checking ? " verificando..." : " · Atualizar"}</span>
+          </button>
           <button onClick={signOut} className="flex items-center gap-2 w-full px-4 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
             <LogOut className="w-4 h-4" />
             <span>Sair</span>
