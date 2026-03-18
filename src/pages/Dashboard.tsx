@@ -423,8 +423,8 @@ export default function Dashboard() {
 
       {/* Contract consumption chart */}
       {contratoChartData.length > 0 && (
+        <motion.div variants={fadeUp} custom={7}>
         <Card className="shadow-md border-border/50">
-          <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
                 <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
