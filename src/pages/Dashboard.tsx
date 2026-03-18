@@ -862,7 +862,7 @@ export default function Dashboard() {
                 <div className="p-2 rounded-lg bg-primary/10">
                   <Users className="w-4 h-4 text-primary" />
                 </div>
-                <CardTitle className="text-base font-bold">Entregas por Colaborador</CardTitle>
+                <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
                 {entregasPorResponsavel.length > 0 && (
                   <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
                 )}
