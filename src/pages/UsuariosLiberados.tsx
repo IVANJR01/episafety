@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, UserPlus, Trash2, ChevronDown, ChevronUp, Save, Eye, EyeOff, Building2, Crown, GitBranch, Search, Pencil } from "lucide-react";
+import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 
 interface UsuarioLiberado {
   id: string;
@@ -23,6 +25,8 @@ interface UsuarioLiberado {
   created_at: string;
   empresa_id: string | null;
   is_principal: boolean;
+  contrato_id: string | null;
+  ativo: boolean;
 }
 
 interface Empresa {
@@ -60,6 +64,13 @@ export default function UsuariosLiberados() {
   // Dialog states
   const [newOpen, setNewOpen] = useState(false);
   const [permsUserId, setPermsUserId] = useState<string | null>(null);
+  const [editTab, setEditTab] = useState<string>("dados");
+
+  // Edit fields
+  const [editNome, setEditNome] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editEmpresaId, setEditEmpresaId] = useState<string>("");
+  const [savingData, setSavingData] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,7 +98,12 @@ export default function UsuariosLiberados() {
     const { data } = await (supabase.from as any)("usuarios_liberados")
       .select("*")
       .order("nome", { ascending: true });
-    if (data) { setUsuarios(data); setCachedData("usuarios_liberados", data); }
+    if (data) {
+      // Ensure ativo field exists for backward compat
+      const normalized = data.map((u: any) => ({ ...u, ativo: u.ativo !== false }));
+      setUsuarios(normalized);
+      setCachedData("usuarios_liberados", normalized);
+    }
   };
 
   const empresaMap = useMemo(() => {
@@ -240,6 +256,44 @@ export default function UsuariosLiberados() {
     setSavingPerms(null);
   };
 
+  const handleSaveUserData = async (userId: string) => {
+    setSavingData(true);
+    const { error } = await (supabase.from as any)("usuarios_liberados")
+      .update({
+        nome: editNome.trim(),
+        email: editEmail.trim().toLowerCase(),
+        empresa_id: editEmpresaId || null,
+      })
+      .eq("id", userId);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message.includes("unique") ? "Este e-mail já está cadastrado" : error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Dados atualizados!" });
+      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: editNome.trim(), email: editEmail.trim().toLowerCase(), empresa_id: editEmpresaId || null } : u));
+    }
+    setSavingData(false);
+  };
+
+  const handleToggleAtivo = async (userId: string) => {
+    const user = usuarios.find(u => u.id === userId);
+    if (!user) return;
+    const newVal = !user.ativo;
+
+    setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, ativo: newVal } : u));
+
+    if (isOnline()) {
+      const { error } = await (supabase.from as any)("usuarios_liberados")
+        .update({ ativo: newVal })
+        .eq("id", userId);
+      if (error) {
+        toast({ title: "Erro ao atualizar status", variant: "destructive" });
+        setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, ativo: !newVal } : u));
+      } else {
+        toast({ title: newVal ? "Usuário ativado!" : "Usuário desativado!" });
+      }
+    }
+  };
+
   const selectAll = (userId: string) => {
     setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, modulos_permitidos: allPermissions() } : u));
   };
@@ -278,10 +332,15 @@ export default function UsuariosLiberados() {
     }
   };
 
-  // When opening permissions dialog, auto-populate empty arrays with all perms
-  // so admin sees everything checked and can uncheck what's not permitted
+  // When opening edit dialog, populate edit fields and auto-populate perms
   useEffect(() => {
     if (permsUserId) {
+      const user = usuarios.find(u => u.id === permsUserId);
+      if (user) {
+        setEditNome(user.nome || "");
+        setEditEmail(user.email || "");
+        setEditEmpresaId(user.empresa_id || "");
+      }
       setUsuarios(prev => prev.map(u => {
         if (u.id !== permsUserId) return u;
         if (!u.is_principal && (!u.modulos_permitidos || u.modulos_permitidos.length === 0)) {
@@ -289,6 +348,7 @@ export default function UsuariosLiberados() {
         }
         return u;
       }));
+      setEditTab("dados");
     }
   }, [permsUserId]);
 
@@ -326,10 +386,11 @@ export default function UsuariosLiberados() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="w-[30%]">Login</TableHead>
-                  <TableHead className="w-[25%]">Nome</TableHead>
-                  <TableHead className="w-[25%]">Empresa</TableHead>
-                  <TableHead className="w-[20%] text-right">Ações</TableHead>
+                  <TableHead className="w-[25%]">Login</TableHead>
+                  <TableHead className="w-[20%]">Nome</TableHead>
+                  <TableHead className="w-[20%]">Empresa</TableHead>
+                  <TableHead className="w-[10%] text-center">Status</TableHead>
+                  <TableHead className="w-[25%] text-right">Ações</TableHead>
                 </TableRow>
                 {/* Filter row */}
                 <TableRow>
@@ -358,18 +419,19 @@ export default function UsuariosLiberados() {
                     />
                   </TableHead>
                   <TableHead />
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedUsuarios.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       Nenhum usuário encontrado.
                     </TableCell>
                   </TableRow>
                 ) : (
                   paginatedUsuarios.map(u => (
-                    <TableRow key={u.id} className="hover:bg-muted/30">
+                    <TableRow key={u.id} className={`hover:bg-muted/30 ${!u.ativo ? "opacity-50" : ""}`}>
                       <TableCell className="font-mono text-sm">
                         <div className="flex items-center gap-2">
                           {u.is_principal && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
@@ -386,6 +448,13 @@ export default function UsuariosLiberados() {
                       </TableCell>
                       <TableCell className="text-sm">
                         {u.empresa_id ? (empresaMap[u.empresa_id] || "—") : <span className="text-muted-foreground italic">Sem empresa</span>}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {u.ativo ? (
+                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">Ativo</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground text-[10px]">Inativo</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -504,7 +573,7 @@ export default function UsuariosLiberados() {
         </DialogContent>
       </Dialog>
 
-      {/* Permissions Dialog */}
+      {/* Edit User Dialog with Tabs */}
       <Dialog open={!!permsUserId} onOpenChange={(open) => { if (!open) setPermsUserId(null); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           {permsUser && (
@@ -512,86 +581,175 @@ export default function UsuariosLiberados() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Pencil className="w-5 h-5" />
-                  Permissões — {permsUser.nome || permsUser.email}
+                  {permsUser.nome || permsUser.email}
+                  {!permsUser.ativo && (
+                    <Badge variant="outline" className="text-muted-foreground text-[10px] ml-2">Inativo</Badge>
+                  )}
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant={permsUser.is_principal ? "default" : "outline"}
-                    size="sm"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => handleTogglePrincipal(permsUser.id)}
-                  >
-                    <Crown className="w-3.5 h-3.5" />
-                    {permsUser.is_principal ? "Principal ✓" : "Definir como Principal"}
-                  </Button>
-                  <div className="flex gap-2">
-                    <button onClick={() => selectAll(permsUser.id)} className="text-xs text-primary hover:underline">Selecionar todos</button>
-                    <span className="text-muted-foreground text-xs">|</span>
-                    <button onClick={() => deselectAll(permsUser.id)} className="text-xs text-muted-foreground hover:underline">Limpar</button>
-                  </div>
-                </div>
 
-                <div className="space-y-1">
-                  <div className="grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
-                    {ACOES.map(a => (
-                      <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
-                        {ACAO_ICONS[a.key]} {a.label}
-                      </span>
-                    ))}
-                  </div>
+              <Tabs value={editTab} onValueChange={setEditTab} className="w-full">
+                <TabsList className="w-full grid grid-cols-2">
+                  <TabsTrigger value="dados">Dados do Usuário</TabsTrigger>
+                  <TabsTrigger value="permissoes">Permissões</TabsTrigger>
+                </TabsList>
 
-                  {MODULOS.map(mod => {
-                    const perms = permsUser.modulos_permitidos || [];
-                    const modulePermCount = getModulePermCount(perms, mod.key);
-                    const hasAllModule = modulePermCount === ACOES.length;
-
-                    return (
-                      <div
-                        key={mod.key}
-                        className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
-                          modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
-                        }`}
-                      >
-                        <label className="flex items-center gap-2 cursor-pointer" onClick={() => toggleModuleAll(permsUser.id, mod.key)}>
-                          <Checkbox checked={hasAllModule} className="pointer-events-none" />
-                          <span className="text-sm font-medium">{mod.label}</span>
-                        </label>
-                        {ACOES.map(acao => (
-                          <div key={acao.key} className="flex justify-center">
-                            <Checkbox
-                              checked={hasModulePerm(perms, mod.key, acao.key)}
-                              onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
-                            />
-                          </div>
-                        ))}
-                        {/* Special per-module actions */}
-                        {ACOES_ESPECIAIS[mod.key] && (
-                          <div className="col-span-full flex items-center gap-2 pl-6 pt-1">
-                            {ACOES_ESPECIAIS[mod.key].map(acao => (
-                              <label key={acao.key} className="flex items-center gap-1.5 cursor-pointer">
-                                <Checkbox
-                                  checked={perms.includes(`${mod.key}:${acao.key}`)}
-                                  onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
-                                />
-                                <span className="text-xs text-muted-foreground">{acao.label}</span>
-                              </label>
+                {/* Tab: Dados */}
+                <TabsContent value="dados" className="space-y-4 pt-2">
+                  <div className="grid gap-4">
+                    <div>
+                      <Label>Nome</Label>
+                      <Input value={editNome} onChange={e => setEditNome(e.target.value)} placeholder="Nome do usuário" />
+                    </div>
+                    <div>
+                      <Label>E-mail (Login)</Label>
+                      <Input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="email@exemplo.com" />
+                    </div>
+                    {unidadesDisponiveis.length > 0 && (
+                      <div>
+                        <Label>Unidade / Empresa</Label>
+                        <Select value={editEmpresaId} onValueChange={setEditEmpresaId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a unidade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unidadesDisponiveis.map(e => (
+                              <SelectItem key={e.id} value={e.id}>
+                                <span className="flex items-center gap-2">
+                                  {e.empresa_pai_id ? <GitBranch className="w-3.5 h-3.5 text-muted-foreground" /> : <Building2 className="w-3.5 h-3.5 text-muted-foreground" />}
+                                  {e.nome}
+                                </span>
+                              </SelectItem>
                             ))}
-                          </div>
-                        )}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={() => handleSavePermissions(permsUser.id)} disabled={savingPerms === permsUser.id}>
-                  <Save className="w-3.5 h-3.5 mr-1.5" />
-                  {savingPerms === permsUser.id ? "Salvando..." : "Salvar Permissões"}
-                </Button>
-              </DialogFooter>
+                    )}
+
+                    {/* Status ativo/inativo */}
+                    <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        {permsUser.ativo ? (
+                          <UserCheck className="w-5 h-5 text-emerald-600" />
+                        ) : (
+                          <UserX className="w-5 h-5 text-muted-foreground" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium">
+                            {permsUser.ativo ? "Usuário Ativo" : "Usuário Inativo"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {permsUser.ativo
+                              ? "O usuário pode acessar o sistema normalmente"
+                              : "O acesso do usuário está bloqueado"}
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={permsUser.ativo}
+                        onCheckedChange={() => handleToggleAtivo(permsUser.id)}
+                      />
+                    </div>
+
+                    {/* Principal toggle */}
+                    <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <Crown className={`w-5 h-5 ${permsUser.is_principal ? "text-amber-500" : "text-muted-foreground"}`} />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {permsUser.is_principal ? "Usuário Principal" : "Usuário Comum"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Principal tem acesso administrativo à árvore da empresa
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={permsUser.is_principal}
+                        onCheckedChange={() => handleTogglePrincipal(permsUser.id)}
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button onClick={() => handleSaveUserData(permsUser.id)} disabled={savingData || !editEmail.trim()}>
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      {savingData ? "Salvando..." : "Salvar Dados"}
+                    </Button>
+                  </DialogFooter>
+                </TabsContent>
+
+                {/* Tab: Permissões */}
+                <TabsContent value="permissoes" className="space-y-4 pt-2">
+                  <div className="flex items-center justify-end">
+                    <div className="flex gap-2">
+                      <button onClick={() => selectAll(permsUser.id)} className="text-xs text-primary hover:underline">Selecionar todos</button>
+                      <span className="text-muted-foreground text-xs">|</span>
+                      <button onClick={() => deselectAll(permsUser.id)} className="text-xs text-muted-foreground hover:underline">Limpar</button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-1">
+                      <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
+                      {ACOES.map(a => (
+                        <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
+                          {ACAO_ICONS[a.key]} {a.label}
+                        </span>
+                      ))}
+                    </div>
+
+                    {MODULOS.map(mod => {
+                      const perms = permsUser.modulos_permitidos || [];
+                      const modulePermCount = getModulePermCount(perms, mod.key);
+                      const hasAllModule = modulePermCount === ACOES.length;
+
+                      return (
+                        <div
+                          key={mod.key}
+                          className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
+                            modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
+                          }`}
+                        >
+                          <label className="flex items-center gap-2 cursor-pointer" onClick={() => toggleModuleAll(permsUser.id, mod.key)}>
+                            <Checkbox checked={hasAllModule} className="pointer-events-none" />
+                            <span className="text-sm font-medium">{mod.label}</span>
+                          </label>
+                          {ACOES.map(acao => (
+                            <div key={acao.key} className="flex justify-center">
+                              <Checkbox
+                                checked={hasModulePerm(perms, mod.key, acao.key)}
+                                onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
+                              />
+                            </div>
+                          ))}
+                          {/* Special per-module actions */}
+                          {ACOES_ESPECIAIS[mod.key] && (
+                            <div className="col-span-full flex items-center gap-2 pl-6 pt-1">
+                              {ACOES_ESPECIAIS[mod.key].map(acao => (
+                                <label key={acao.key} className="flex items-center gap-1.5 cursor-pointer">
+                                  <Checkbox
+                                    checked={perms.includes(`${mod.key}:${acao.key}`)}
+                                    onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
+                                  />
+                                  <span className="text-xs text-muted-foreground">{acao.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <DialogFooter>
+                    <Button onClick={() => handleSavePermissions(permsUser.id)} disabled={savingPerms === permsUser.id}>
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      {savingPerms === permsUser.id ? "Salvando..." : "Salvar Permissões"}
+                    </Button>
+                  </DialogFooter>
+                </TabsContent>
+              </Tabs>
             </>
           )}
         </DialogContent>
