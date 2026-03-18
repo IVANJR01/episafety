@@ -166,7 +166,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <Package className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">EPI</span>
+                <span className="truncate flex-1 text-left">Gestão de EPIs</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${epiOpen ? "rotate-180" : ""}`} />
               </button>
               {epiOpen && (
