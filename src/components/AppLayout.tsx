@@ -186,7 +186,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{item.label}</span>
+                        <div className="truncate">
+                          <span>{item.label}</span>
+                          {item.description && (
+                            <p className="text-[10px] font-normal text-sidebar-foreground/50 truncate">{item.description}</p>
+                          )}
+                        </div>
                       </Link>
                     );
                   })}
