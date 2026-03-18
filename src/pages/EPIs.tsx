@@ -15,8 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
-import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
-import ContratoStockPanel from "@/components/ContratoStockPanel";
 
 interface EPI {
   id: string; nome: string; ca: string | null; validade: string | null;
