@@ -66,7 +66,7 @@ export default function Dashboard() {
           (supabase.from as any)("contratos").select("id, nome")
         ),
         cachedQuery<Profile>("dashboard_profiles", () =>
-          supabase.from("profiles").select("id, user_id, nome")
+          supabase.from("profiles").select("id, user_id, nome") as any
         ),
       ]);
       setMovimentacoes(movResult.data);
