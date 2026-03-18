@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { cachedQuery, isOnline, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -166,11 +167,16 @@ export default function ContratoStockPanel() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id");
-    const { data: contratosData } = await supabase.from("contratos").select("id, nome, unidade_id, empresa_id");
-
-    if (unidadesData) setUnidades(unidadesData as Unidade[]);
-    if (contratosData) setContratos(contratosData as Contrato[]);
+    const [unidadesResult, contratosResult] = await Promise.all([
+      cachedQuery<Unidade>("empresa_config", () =>
+        supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id") as any
+      ),
+      cachedQuery<Contrato>("contratos", () =>
+        supabase.from("contratos").select("id, nome, unidade_id, empresa_id") as any
+      ),
+    ]);
+    setUnidades(unidadesResult.data as Unidade[]);
+    setContratos(contratosResult.data as Contrato[]);
     setLoading(false);
   }, []);
 
@@ -180,6 +186,15 @@ export default function ContratoStockPanel() {
   useEffect(() => {
     if (!hasGestaoEstoque) return;
     const loadPending = async () => {
+      if (!isOnline()) {
+        // Use cached solicitations
+        const cached = getCachedData<any>("solicitacoes_epi_pending");
+        if (cached) {
+          setGlobalPendingCount(cached.length);
+          setGlobalPendingSolicitacoes(cached);
+        }
+        return;
+      }
       const { data, count } = await (supabase.from as any)("solicitacoes_epi")
         .select("id, contrato_id, epi_id, quantidade, solicitante_nome, created_at, empresa_id", { count: "exact" })
         .eq("status", "pendente")
@@ -206,7 +221,7 @@ export default function ContratoStockPanel() {
           const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome").in("id", unidadeIds);
           unidadesMap = new Map((unidadesData || []).map((u: any) => [u.id, u.nome]));
         }
-        setGlobalPendingSolicitacoes(data.map((s: any) => {
+        const enriched = data.map((s: any) => {
           const contrato = contratosMap.get(s.contrato_id);
           return {
             id: s.id,
@@ -217,7 +232,9 @@ export default function ContratoStockPanel() {
             solicitante_nome: s.solicitante_nome,
             created_at: s.created_at,
           };
-        }));
+        });
+        setGlobalPendingSolicitacoes(enriched);
+        setCachedData("solicitacoes_epi_pending", enriched);
       }
     };
     loadPending();
@@ -238,6 +255,21 @@ export default function ContratoStockPanel() {
 
   const loadContratoDetails = useCallback(async (contratoId: string, empresaId: string | null) => {
     setLoadingContrato(prev => new Set(prev).add(contratoId));
+
+    // Check offline - use cached enriched data
+    if (!isOnline()) {
+      const cached = getCachedData<any>(`contrato_details_${contratoId}`);
+      if (cached && cached.length > 0) {
+        const c = cached[0];
+        setContratoEpis(prev => ({ ...prev, [contratoId]: c.epis || [] }));
+        setContratoResponsaveis(prev => ({ ...prev, [contratoId]: c.responsaveis || [] }));
+        setContratoMovimentacoes(prev => ({ ...prev, [contratoId]: c.movimentacoes || [] }));
+        setContratoConsumo(prev => ({ ...prev, [contratoId]: c.consumo || [] }));
+        setContratoSolicitacoes(prev => ({ ...prev, [contratoId]: c.solicitacoes || [] }));
+      }
+      setLoadingContrato(prev => { const n = new Set(prev); n.delete(contratoId); return n; });
+      return;
+    }
 
     // Load EPIs for this contract
     const { data: episData } = await supabase
@@ -370,6 +402,16 @@ export default function ContratoStockPanel() {
     setContratoMovimentacoes(prev => ({ ...prev, [contratoId]: enrichedMov }));
     setContratoConsumo(prev => ({ ...prev, [contratoId]: consumoData }));
     setContratoSolicitacoes(prev => ({ ...prev, [contratoId]: enrichedSol }));
+
+    // Cache the enriched data for offline use
+    setCachedData(`contrato_details_${contratoId}`, [{
+      epis: enrichedEpis,
+      responsaveis: enrichedResp,
+      movimentacoes: enrichedMov,
+      consumo: consumoData,
+      solicitacoes: enrichedSol,
+    }]);
+
     setLoadingContrato(prev => { const n = new Set(prev); n.delete(contratoId); return n; });
   }, []);
 

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { preCacheAllData } from "@/lib/offlineStorage";
 
 interface AuthContextType {
   user: User | null;
@@ -184,6 +185,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsSuperAdmin(nextState.isSuperAdmin);
           setIsPrincipal(nextState.isPrincipal);
           saveAuthCache(currentUser.email, nextState);
+
+          // Pre-cache all data for offline use (fire and forget)
+          preCacheAllData().catch(() => {});
         }
       } catch {
         applyCachedState(loadAuthCache(currentUser.email));

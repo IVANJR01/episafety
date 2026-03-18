@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { cachedRpc, isOnline, getCachedData } from "@/lib/offlineStorage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, AlertTriangle, TrendingUp, DollarSign, Building2, ChevronDown, ChevronUp, GitBranch, ArrowRightLeft, Loader2 } from "lucide-react";
@@ -58,8 +59,8 @@ export default function ConsolidatedEpiPanel() {
   const { toast } = useToast();
 
   const loadData = useCallback(async () => {
-    const { data: result } = await supabase.rpc("get_consolidated_epi_stock");
-    if (result && Array.isArray(result)) setData(result as unknown as ParentCompany[]);
+    const { data: result } = await cachedRpc<ParentCompany[]>("rpc_consolidated_stock", "get_consolidated_epi_stock");
+    if (result && Array.isArray(result)) setData(result);
     setLoading(false);
   }, []);
 
@@ -78,8 +79,8 @@ export default function ConsolidatedEpiPanel() {
     (async () => {
       setLoadingEpis(true);
       setSelectedEpiId("");
-      const { data: result } = await supabase.rpc("get_filial_epis", { _filial_id: sourceEmpresaId });
-      if (result && Array.isArray(result)) setSourceEpis(result as unknown as FilialEpi[]);
+      const { data: result } = await cachedRpc<FilialEpi[]>(`rpc_filial_epis_${sourceEmpresaId}`, "get_filial_epis", { _filial_id: sourceEmpresaId });
+      if (result && Array.isArray(result)) setSourceEpis(result);
       else setSourceEpis([]);
       setLoadingEpis(false);
     })();

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getSyncQueue, removeFromSyncQueue, SyncOperation } from "@/lib/offlineStorage";
+import { getSyncQueue, removeFromSyncQueue, preCacheAllData, SyncOperation } from "@/lib/offlineStorage";
 import { useToast } from "@/hooks/use-toast";
 
 export function useOfflineSync() {
@@ -48,6 +48,8 @@ export function useOfflineSync() {
         title: "Dados sincronizados",
         description: `${synced} operação(ões) sincronizada(s) com sucesso.`,
       });
+      // Re-cache all data after sync to keep offline data fresh
+      preCacheAllData().catch(() => {});
     }
     if (failed > 0) {
       toast({

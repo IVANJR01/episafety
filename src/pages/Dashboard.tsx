@@ -1,6 +1,7 @@
 import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
+import { cachedQuery } from "@/lib/offlineStorage";
 import { motion } from "framer-motion";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,16 +52,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function fetchContractData() {
-      const [movRes, contRes] = await Promise.all([
-        (supabase.from as any)("contrato_epis_movimentacoes")
-          .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
-          .eq("tipo", "saida")
-          .gte("created_at", new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
-          .order("created_at", { ascending: true }),
-        (supabase.from as any)("contratos").select("id, nome"),
+      const [movResult, contResult] = await Promise.all([
+        cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
+          (supabase.from as any)("contrato_epis_movimentacoes")
+            .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
+            .eq("tipo", "saida")
+            .gte("created_at", new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
+            .order("created_at", { ascending: true })
+        ),
+        cachedQuery<Contrato>("dashboard_contratos", () =>
+          (supabase.from as any)("contratos").select("id, nome")
+        ),
       ]);
-      if (movRes.data) setMovimentacoes(movRes.data);
-      if (contRes.data) setContratos(contRes.data);
+      setMovimentacoes(movResult.data);
+      setContratos(contResult.data);
     }
     fetchContractData();
   }, []);

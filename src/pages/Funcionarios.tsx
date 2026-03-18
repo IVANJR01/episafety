@@ -7,6 +7,7 @@ import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { cachedQuery } from "@/lib/offlineStorage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,10 +100,16 @@ export default function Funcionarios() {
   const [contratos, setContratos] = useState<Contrato[]>([]);
 
   const fetchUnidadesContratos = async () => {
-    const { data: u } = await supabase.from("empresa_config").select("id, nome, tipo").neq("tipo", "empresa").order("nome");
-    if (u) setUnidades(u as Unidade[]);
-    const { data: c } = await supabase.from("contratos").select("id, nome, unidade_id").order("nome");
-    if (c) setContratos(c as Contrato[]);
+    const [uResult, cResult] = await Promise.all([
+      cachedQuery<Unidade>("empresa_config_unidades", () =>
+        supabase.from("empresa_config").select("id, nome, tipo").neq("tipo", "empresa").order("nome") as any
+      ),
+      cachedQuery<Contrato>("contratos_list", () =>
+        supabase.from("contratos").select("id, nome, unidade_id").order("nome") as any
+      ),
+    ]);
+    setUnidades(uResult.data as Unidade[]);
+    setContratos(cResult.data as Contrato[]);
   };
 
   // Load unidades/contratos on mount for display in table
