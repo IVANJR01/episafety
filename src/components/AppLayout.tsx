@@ -429,7 +429,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </header>
 
-        <div className="p-4 lg:p-8 max-w-7xl">{children}</div>
+        <div className="p-4 lg:p-8 max-w-7xl mx-auto">{children}</div>
       </main>
 
       {/* Mobile bottom navigation bar */}
