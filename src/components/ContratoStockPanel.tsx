@@ -297,10 +297,30 @@ export default function ContratoStockPanel() {
       }
     }
 
+    // Load solicitações
+    const { data: solData } = await (supabase.from as any)("solicitacoes_epi")
+      .select("id, contrato_id, epi_id, empresa_id, quantidade, motivo, status, solicitante_nome, aprovador_nome, observacao_resposta, created_at")
+      .eq("contrato_id", contratoId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    let enrichedSol: SolicitacaoEpi[] = [];
+    if (solData && solData.length > 0) {
+      const epiIds = [...new Set(solData.map((s: any) => s.epi_id))];
+      const { data: episInfo } = await supabase.from("epis").select("id, nome, ca").in("id", epiIds);
+      const episMap = new Map((episInfo || []).map(e => [e.id, e]));
+      enrichedSol = solData.map((s: any) => ({
+        ...s,
+        epi_nome: episMap.get(s.epi_id)?.nome || "—",
+        epi_ca: episMap.get(s.epi_id)?.ca || null,
+      }));
+    }
+
     setContratoEpis(prev => ({ ...prev, [contratoId]: enrichedEpis }));
     setContratoResponsaveis(prev => ({ ...prev, [contratoId]: enrichedResp }));
     setContratoMovimentacoes(prev => ({ ...prev, [contratoId]: enrichedMov }));
     setContratoConsumo(prev => ({ ...prev, [contratoId]: consumoData }));
+    setContratoSolicitacoes(prev => ({ ...prev, [contratoId]: enrichedSol }));
     setLoadingContrato(prev => { const n = new Set(prev); n.delete(contratoId); return n; });
   }, []);
 
