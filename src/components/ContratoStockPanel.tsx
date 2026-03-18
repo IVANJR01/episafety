@@ -615,6 +615,18 @@ export default function ContratoStockPanel() {
                                         <TableBody>
                                           {epis.map(epi => {
                                             const valorTotal = epi.estoque * (epi.epi_valor || 0);
+                                            // Calculate per-EPI average monthly spending from consumo data
+                                            const epiMediaMensal = (() => {
+                                              if (!consumo.length || !epi.epi_valor) return 0;
+                                              // We need per-epi data; use movimentacoes for this EPI
+                                              const epiMovs = movimentacoes.filter(m => m.epi_nome === epi.epi_nome && m.tipo === "saida");
+                                              // Alternative: count from entregas in consumo (aggregate), but we don't have per-epi breakdown
+                                              // Use movimentacoes count * valor / months with data
+                                              const mesesComDados = consumo.filter(c => c.entrega > 0 || c.troca > 0 || c.substituicao > 0 || c.perda > 0 || c.dano > 0).length;
+                                              if (mesesComDados === 0) return 0;
+                                              const totalQtdEpi = epiMovs.reduce((s, m) => s + m.quantidade, 0);
+                                              return (totalQtdEpi * Number(epi.epi_valor)) / mesesComDados;
+                                            })();
                                             return (
                                             <TableRow key={epi.id}>
                                               <TableCell className="text-xs font-medium">{epi.epi_nome}</TableCell>
@@ -630,6 +642,9 @@ export default function ContratoStockPanel() {
                                               </TableCell>
                                               <TableCell className="text-xs text-right font-mono font-semibold">
                                                 {valorTotal > 0 ? `R$ ${valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                              </TableCell>
+                                              <TableCell className="text-xs text-right font-mono">
+                                                {epiMediaMensal > 0 ? `R$ ${epiMediaMensal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
                                               </TableCell>
                                               <TableCell className="text-xs">
                                                 <div className="flex gap-0.5 justify-end">
