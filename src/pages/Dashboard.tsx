@@ -31,7 +31,7 @@ const staggerContainer = {
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; }
-interface Profile { id: string; user_id: string; nome: string; }
+interface Profile { id: string; user_id: string; nome: string; email: string | null; }
 interface ContratoMovimentacao {
   id: string;
   contrato_id: string;
@@ -66,7 +66,7 @@ export default function Dashboard() {
           (supabase.from as any)("contratos").select("id, nome")
         ),
         cachedQuery<Profile>("dashboard_profiles", () =>
-          supabase.from("profiles").select("id, user_id, nome") as any
+          supabase.from("profiles").select("id, user_id, nome, email") as any
         ),
       ]);
       setMovimentacoes(movResult.data);
@@ -209,19 +209,20 @@ export default function Dashboard() {
     }, 0);
   }, [entregas, epis]);
 
-  // Entregas por funcionário (quem recebeu o EPI)
+  // Entregas por responsável (usuário que registrou a entrega)
   const entregasPorResponsavel = useMemo(() => {
-    const funcMap = new Map(funcionarios.map(f => [f.id, f.nome]));
+    const profileMap = new Map(profiles.map(p => [p.user_id, p.nome || p.email || "Desconhecido"]));
     const contagem: Record<string, number> = {};
     entregas.forEach(e => {
-      if (e.tipo !== "entrega" && e.tipo !== "substituicao" && e.tipo !== "troca") return;
-      const nome = funcMap.get(e.funcionario_id) || "Desconhecido";
+      const userId = (e as any).created_by;
+      if (!userId) return;
+      const nome = profileMap.get(userId) || "Desconhecido";
       contagem[nome] = (contagem[nome] || 0) + e.quantidade;
     });
     return Object.entries(contagem)
       .map(([nome, quantidade]) => ({ nome: nome.length > 20 ? nome.substring(0, 18) + "..." : nome, quantidade }))
       .sort((a, b) => b.quantidade - a.quantidade);
-  }, [entregas, funcionarios]);
+  }, [entregas, profiles]);
 
   const recentEntregas = entregas.slice(0, 20).map(e => ({
     ...e,
@@ -663,7 +664,7 @@ export default function Dashboard() {
                   <div className="p-1.5 rounded-lg bg-primary/10">
                     <Users className="w-3.5 h-3.5 text-primary" />
                   </div>
-                  <CardTitle className="text-sm font-bold">Entregas por Colaborador</CardTitle>
+                  <CardTitle className="text-sm font-bold">Entregas por Responsável</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
@@ -861,7 +862,7 @@ export default function Dashboard() {
                 <div className="p-2 rounded-lg bg-primary/10">
                   <Users className="w-4 h-4 text-primary" />
                 </div>
-                <CardTitle className="text-base font-bold">Entregas por Colaborador</CardTitle>
+                <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
                 {entregasPorResponsavel.length > 0 && (
                   <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
                 )}
