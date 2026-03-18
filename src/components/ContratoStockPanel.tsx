@@ -507,6 +507,88 @@ export default function ContratoStockPanel() {
     }
   };
 
+  // --- Solicitation functions ---
+  const openSolicitacao = async (contratoId: string, empresaId: string) => {
+    setSolicitacaoContratoId(contratoId);
+    setSolicitacaoEmpresaId(empresaId);
+    setSolicitacaoEpiId("");
+    setSolicitacaoQtd(1);
+    setSolicitacaoMotivo("");
+    const epis = contratoEpis[contratoId] || [];
+    setSolicitacaoEpis(epis.map(e => ({ id: e.epi_id, nome: e.epi_nome || "", ca: e.epi_ca || null })));
+    setSolicitacaoOpen(true);
+  };
+
+  const handleSolicitacao = async () => {
+    if (!solicitacaoEpiId || solicitacaoQtd <= 0) return;
+    setSavingSolicitacao(true);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id || "")
+        .single();
+
+      const { error } = await (supabase.from as any)("solicitacoes_epi").insert({
+        contrato_id: solicitacaoContratoId,
+        epi_id: solicitacaoEpiId,
+        empresa_id: solicitacaoEmpresaId,
+        quantidade: solicitacaoQtd,
+        motivo: solicitacaoMotivo || null,
+        solicitante_nome: profile?.nome || "Desconhecido",
+        created_by: (await supabase.auth.getUser()).data.user?.id || null,
+      });
+
+      if (error) throw error;
+      toast({ title: "Solicitação enviada!", description: "Aguarde a aprovação do responsável." });
+      setSolicitacaoOpen(false);
+      await loadContratoDetails(solicitacaoContratoId, solicitacaoEmpresaId);
+    } catch (err: any) {
+      toast({ title: "Erro ao solicitar", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingSolicitacao(false);
+    }
+  };
+
+  const handleRespostaSolicitacao = async (solicitacaoId: string, novoStatus: "aprovada" | "rejeitada") => {
+    setRespondingSolicitacao(solicitacaoId);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id || "")
+        .single();
+
+      const { error } = await (supabase.from as any)("solicitacoes_epi")
+        .update({
+          status: novoStatus,
+          aprovador_nome: profile?.nome || "Desconhecido",
+          aprovado_por: (await supabase.auth.getUser()).data.user?.id || null,
+          observacao_resposta: respostaObs || null,
+        })
+        .eq("id", solicitacaoId);
+
+      if (error) throw error;
+      toast({ title: novoStatus === "aprovada" ? "Solicitação aprovada!" : "Solicitação rejeitada" });
+      setRespostaObs("");
+      if (solicitacoesContratoId) {
+        const contrato = contratos.find(c => c.id === solicitacoesContratoId);
+        if (contrato) await loadContratoDetails(solicitacoesContratoId, contrato.empresa_id);
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setRespondingSolicitacao(null);
+    }
+  };
+
+  const statusConfig: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+    pendente: { label: "Pendente", icon: <Clock className="w-3 h-3" />, className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" },
+    aprovada: { label: "Aprovada", icon: <CheckCircle2 className="w-3 h-3" />, className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
+    rejeitada: { label: "Rejeitada", icon: <XCircle className="w-3 h-3" />, className: "bg-destructive/10 text-destructive" },
+    entregue: { label: "Entregue", icon: <Package className="w-3 h-3" />, className: "bg-primary/10 text-primary" },
+  };
+
   if (loading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   // Build hierarchy: group contratos by unidade
