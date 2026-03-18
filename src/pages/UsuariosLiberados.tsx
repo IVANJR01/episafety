@@ -278,6 +278,20 @@ export default function UsuariosLiberados() {
     }
   };
 
+  // When opening permissions dialog, auto-populate empty arrays with all perms
+  // so admin sees everything checked and can uncheck what's not permitted
+  useEffect(() => {
+    if (permsUserId) {
+      setUsuarios(prev => prev.map(u => {
+        if (u.id !== permsUserId) return u;
+        if (!u.is_principal && (!u.modulos_permitidos || u.modulos_permitidos.length === 0)) {
+          return { ...u, modulos_permitidos: allPermissions() };
+        }
+        return u;
+      }));
+    }
+  }, [permsUserId]);
+
   const permsUser = permsUserId ? usuarios.find(u => u.id === permsUserId) : null;
 
   return (
