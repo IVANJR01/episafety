@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { cachedRpc, isOnline, getCachedData } from "@/lib/offlineStorage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, AlertTriangle, TrendingUp, DollarSign, Building2, ChevronDown, ChevronUp, GitBranch, ArrowRightLeft, Loader2 } from "lucide-react";
