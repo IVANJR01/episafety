@@ -74,6 +74,22 @@ interface ConsumoMensal {
   custo: number;
 }
 
+interface SolicitacaoEpi {
+  id: string;
+  contrato_id: string;
+  epi_id: string;
+  empresa_id: string | null;
+  quantidade: number;
+  motivo: string | null;
+  status: "pendente" | "aprovada" | "rejeitada" | "entregue";
+  solicitante_nome: string | null;
+  aprovador_nome: string | null;
+  observacao_resposta: string | null;
+  created_at: string;
+  epi_nome?: string;
+  epi_ca?: string;
+}
+
 export default function ContratoStockPanel() {
   const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
   // Global stock management (Rafaela-type: sees ALL units/contracts)
