@@ -691,7 +691,7 @@ export default function Entregas() {
             </Button>
           )}
           {canCreate && (
-            <Button onClick={() => setOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm">
+            <Button onClick={() => { refetchEpis(); setOpen(true); }} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
             </Button>
           )}
