@@ -29,7 +29,7 @@ import CadastroDashboard from "@/pages/CadastroDashboard";
 import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
-import Filiais from "@/pages/Filiais";
+
 import Faturas from "@/pages/Faturas";
 import NotFound from "./pages/NotFound";
 
@@ -117,7 +117,7 @@ function ProtectedRoute() {
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/cadastro" element={<CadastroDashboard />} />
         <Route path="/cadastro/empresas" element={<Empresas />} />
-        <Route path="/cadastro/filiais" element={<Filiais />} />
+        <Route path="/cadastro/filiais" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
         <Route path="/dds" element={<DDS />} />
