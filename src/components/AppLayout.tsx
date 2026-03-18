@@ -156,12 +156,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Desktop sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform lg:translate-x-0 flex flex-col ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex items-center justify-between px-6 py-5 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <img alt="EPISafety" className="w-10 h-10 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
-            <div>
-              <h1 className="font-bold text-sm text-sidebar-primary-foreground">EPISafety</h1>
-              <p className="text-xs text-sidebar-foreground/60">Segurança do Trabalho</p>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border">
+          <div className="flex items-center gap-2.5">
+            <img alt="EPISafety" className="w-8 h-8 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
+            <div className="leading-tight">
+              <h1 className="font-bold text-base tracking-tight text-sidebar-primary-foreground">EPISafety</h1>
+              <p className="text-[10px] text-sidebar-foreground/50 font-medium">Segurança do Trabalho</p>
             </div>
           </div>
           <button onClick={() => setMobileOpen(false)} className="lg:hidden p-1 text-sidebar-foreground/60 hover:text-sidebar-foreground">
