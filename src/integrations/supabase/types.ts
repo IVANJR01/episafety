@@ -1301,6 +1301,79 @@ export type Database = {
           },
         ]
       }
+      solicitacoes_epi: {
+        Row: {
+          aprovado_por: string | null
+          aprovador_nome: string | null
+          contrato_id: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          epi_id: string
+          id: string
+          motivo: string | null
+          observacao_resposta: string | null
+          quantidade: number
+          solicitante_nome: string | null
+          status: Database["public"]["Enums"]["status_solicitacao"]
+          updated_at: string
+        }
+        Insert: {
+          aprovado_por?: string | null
+          aprovador_nome?: string | null
+          contrato_id: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          epi_id: string
+          id?: string
+          motivo?: string | null
+          observacao_resposta?: string | null
+          quantidade?: number
+          solicitante_nome?: string | null
+          status?: Database["public"]["Enums"]["status_solicitacao"]
+          updated_at?: string
+        }
+        Update: {
+          aprovado_por?: string | null
+          aprovador_nome?: string | null
+          contrato_id?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          epi_id?: string
+          id?: string
+          motivo?: string | null
+          observacao_resposta?: string | null
+          quantidade?: number
+          solicitante_nome?: string | null
+          status?: Database["public"]["Enums"]["status_solicitacao"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_epi_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_epi_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_epi_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "epis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treinamento_participantes: {
         Row: {
           empresa_id: string | null
@@ -1748,6 +1821,7 @@ export type Database = {
       status_fatura: "aberto" | "vencido" | "pago" | "cancelado"
       status_inspecao: "pendente" | "em_andamento" | "concluida"
       status_ordem: "emitida" | "assinada" | "cancelada"
+      status_solicitacao: "pendente" | "aprovada" | "rejeitada" | "entregue"
       status_treinamento: "agendado" | "realizado" | "cancelado"
       tipo_entrega:
         | "entrega"
@@ -1902,6 +1976,7 @@ export const Constants = {
       status_fatura: ["aberto", "vencido", "pago", "cancelado"],
       status_inspecao: ["pendente", "em_andamento", "concluida"],
       status_ordem: ["emitida", "assinada", "cancelada"],
+      status_solicitacao: ["pendente", "aprovada", "rejeitada", "entregue"],
       status_treinamento: ["agendado", "realizado", "cancelado"],
       tipo_entrega: [
         "entrega",

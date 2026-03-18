@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Building2, ChevronDown, ChevronUp, Package, Users, Plus, Minus,
-  TrendingUp, History, Loader2, FileText, BarChart3, AlertTriangle, ArrowRightLeft
+  TrendingUp, History, Loader2, FileText, BarChart3, AlertTriangle, ArrowRightLeft,
+  ClipboardList, Send, CheckCircle2, XCircle, Clock
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { format, subMonths, startOfMonth } from "date-fns";
@@ -72,6 +74,22 @@ interface ConsumoMensal {
   custo: number;
 }
 
+interface SolicitacaoEpi {
+  id: string;
+  contrato_id: string;
+  epi_id: string;
+  empresa_id: string | null;
+  quantidade: number;
+  motivo: string | null;
+  status: "pendente" | "aprovada" | "rejeitada" | "entregue";
+  solicitante_nome: string | null;
+  aprovador_nome: string | null;
+  observacao_resposta: string | null;
+  created_at: string;
+  epi_nome?: string;
+  epi_ca?: string;
+}
+
 export default function ContratoStockPanel() {
   const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
   // Global stock management (Rafaela-type: sees ALL units/contracts)
@@ -128,6 +146,21 @@ export default function ContratoStockPanel() {
   const [transferQtd, setTransferQtd] = useState(1);
   const [transferring, setTransferring] = useState(false);
   const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; ca: string | null; estoque: number }[]>([]);
+
+  // Solicitation state
+  const [solicitacaoOpen, setSolicitacaoOpen] = useState(false);
+  const [solicitacaoContratoId, setSolicitacaoContratoId] = useState("");
+  const [solicitacaoEmpresaId, setSolicitacaoEmpresaId] = useState("");
+  const [solicitacaoEpiId, setSolicitacaoEpiId] = useState("");
+  const [solicitacaoQtd, setSolicitacaoQtd] = useState(1);
+  const [solicitacaoMotivo, setSolicitacaoMotivo] = useState("");
+  const [savingSolicitacao, setSavingSolicitacao] = useState(false);
+  const [solicitacaoEpis, setSolicitacaoEpis] = useState<{ id: string; nome: string; ca: string | null }[]>([]);
+  const [contratoSolicitacoes, setContratoSolicitacoes] = useState<Record<string, SolicitacaoEpi[]>>({});
+  const [solicitacoesOpen, setSolicitacoesOpen] = useState(false);
+  const [solicitacoesContratoId, setSolicitacoesContratoId] = useState("");
+  const [respondingSolicitacao, setRespondingSolicitacao] = useState<string | null>(null);
+  const [respostaObs, setRespostaObs] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -264,10 +297,30 @@ export default function ContratoStockPanel() {
       }
     }
 
+    // Load solicitações
+    const { data: solData } = await (supabase.from as any)("solicitacoes_epi")
+      .select("id, contrato_id, epi_id, empresa_id, quantidade, motivo, status, solicitante_nome, aprovador_nome, observacao_resposta, created_at")
+      .eq("contrato_id", contratoId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    let enrichedSol: SolicitacaoEpi[] = [];
+    if (solData && solData.length > 0) {
+      const epiIds = [...new Set(solData.map((s: any) => s.epi_id))] as string[];
+      const { data: episInfo } = await supabase.from("epis").select("id, nome, ca").in("id", epiIds);
+      const episMap = new Map((episInfo || []).map(e => [e.id, e]));
+      enrichedSol = solData.map((s: any) => ({
+        ...s,
+        epi_nome: episMap.get(s.epi_id)?.nome || "—",
+        epi_ca: episMap.get(s.epi_id)?.ca || null,
+      }));
+    }
+
     setContratoEpis(prev => ({ ...prev, [contratoId]: enrichedEpis }));
     setContratoResponsaveis(prev => ({ ...prev, [contratoId]: enrichedResp }));
     setContratoMovimentacoes(prev => ({ ...prev, [contratoId]: enrichedMov }));
     setContratoConsumo(prev => ({ ...prev, [contratoId]: consumoData }));
+    setContratoSolicitacoes(prev => ({ ...prev, [contratoId]: enrichedSol }));
     setLoadingContrato(prev => { const n = new Set(prev); n.delete(contratoId); return n; });
   }, []);
 
@@ -454,6 +507,88 @@ export default function ContratoStockPanel() {
     }
   };
 
+  // --- Solicitation functions ---
+  const openSolicitacao = async (contratoId: string, empresaId: string) => {
+    setSolicitacaoContratoId(contratoId);
+    setSolicitacaoEmpresaId(empresaId);
+    setSolicitacaoEpiId("");
+    setSolicitacaoQtd(1);
+    setSolicitacaoMotivo("");
+    const epis = contratoEpis[contratoId] || [];
+    setSolicitacaoEpis(epis.map(e => ({ id: e.epi_id, nome: e.epi_nome || "", ca: e.epi_ca || null })));
+    setSolicitacaoOpen(true);
+  };
+
+  const handleSolicitacao = async () => {
+    if (!solicitacaoEpiId || solicitacaoQtd <= 0) return;
+    setSavingSolicitacao(true);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id || "")
+        .single();
+
+      const { error } = await (supabase.from as any)("solicitacoes_epi").insert({
+        contrato_id: solicitacaoContratoId,
+        epi_id: solicitacaoEpiId,
+        empresa_id: solicitacaoEmpresaId,
+        quantidade: solicitacaoQtd,
+        motivo: solicitacaoMotivo || null,
+        solicitante_nome: profile?.nome || "Desconhecido",
+        created_by: (await supabase.auth.getUser()).data.user?.id || null,
+      });
+
+      if (error) throw error;
+      toast({ title: "Solicitação enviada!", description: "Aguarde a aprovação do responsável." });
+      setSolicitacaoOpen(false);
+      await loadContratoDetails(solicitacaoContratoId, solicitacaoEmpresaId);
+    } catch (err: any) {
+      toast({ title: "Erro ao solicitar", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingSolicitacao(false);
+    }
+  };
+
+  const handleRespostaSolicitacao = async (solicitacaoId: string, novoStatus: "aprovada" | "rejeitada") => {
+    setRespondingSolicitacao(solicitacaoId);
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("user_id", (await supabase.auth.getUser()).data.user?.id || "")
+        .single();
+
+      const { error } = await (supabase.from as any)("solicitacoes_epi")
+        .update({
+          status: novoStatus,
+          aprovador_nome: profile?.nome || "Desconhecido",
+          aprovado_por: (await supabase.auth.getUser()).data.user?.id || null,
+          observacao_resposta: respostaObs || null,
+        })
+        .eq("id", solicitacaoId);
+
+      if (error) throw error;
+      toast({ title: novoStatus === "aprovada" ? "Solicitação aprovada!" : "Solicitação rejeitada" });
+      setRespostaObs("");
+      if (solicitacoesContratoId) {
+        const contrato = contratos.find(c => c.id === solicitacoesContratoId);
+        if (contrato) await loadContratoDetails(solicitacoesContratoId, contrato.empresa_id);
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setRespondingSolicitacao(null);
+    }
+  };
+
+  const statusConfig: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
+    pendente: { label: "Pendente", icon: <Clock className="w-3 h-3" />, className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" },
+    aprovada: { label: "Aprovada", icon: <CheckCircle2 className="w-3 h-3" />, className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
+    rejeitada: { label: "Rejeitada", icon: <XCircle className="w-3 h-3" />, className: "bg-destructive/10 text-destructive" },
+    entregue: { label: "Entregue", icon: <Package className="w-3 h-3" />, className: "bg-primary/10 text-primary" },
+  };
+
   if (loading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   // Build hierarchy: group contratos by unidade
@@ -518,6 +653,8 @@ export default function ContratoStockPanel() {
                     const responsaveis = contratoResponsaveis[contrato.id] || [];
                     const consumo = contratoConsumo[contrato.id] || [];
                     const movimentacoes = contratoMovimentacoes[contrato.id] || [];
+                    const solicitacoes = contratoSolicitacoes[contrato.id] || [];
+                    const solicitacoesPendentes = solicitacoes.filter(s => s.status === "pendente").length;
 
                     const totalEstoque = epis.reduce((s, e) => s + e.estoque, 0);
                     const totalValor = epis.reduce((s, e) => s + e.estoque * (e.epi_valor || 0), 0);
@@ -548,6 +685,17 @@ export default function ContratoStockPanel() {
                                   <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
                                     onClick={() => { setHistoryContratoId(contrato.id); setHistoryOpen(true); }}>
                                     <History className="w-3 h-3" />Histórico
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                    onClick={() => openSolicitacao(contrato.id, unidade.id)}>
+                                    <Send className="w-3 h-3" />Solicitar
+                                    {solicitacoesPendentes > 0 && (
+                                      <Badge className="h-4 px-1 text-[9px] ml-0.5 bg-amber-500 text-white">{solicitacoesPendentes}</Badge>
+                                    )}
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                    onClick={() => { setSolicitacoesContratoId(contrato.id); setSolicitacoesOpen(true); }}>
+                                    <ClipboardList className="w-3 h-3" />Solicitações
                                   </Button>
                                 </>
                               )}
@@ -939,6 +1087,124 @@ export default function ContratoStockPanel() {
               Transferir
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Solicitar EPI Dialog */}
+      <Dialog open={solicitacaoOpen} onOpenChange={setSolicitacaoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Send className="w-4 h-4 text-primary" />
+              Solicitar EPI
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div>
+              <Label className="text-xs">EPI</Label>
+              <Select value={solicitacaoEpiId} onValueChange={setSolicitacaoEpiId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o EPI" /></SelectTrigger>
+                <SelectContent>
+                  {solicitacaoEpis.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.nome} {e.ca ? `(CA: ${e.ca})` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {solicitacaoEpis.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nenhum EPI vinculado a este contrato</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">Quantidade</Label>
+              <Input type="number" min={1} value={solicitacaoQtd} onChange={e => setSolicitacaoQtd(Math.max(1, Number(e.target.value)))} />
+            </div>
+            <div>
+              <Label className="text-xs">Motivo / Justificativa</Label>
+              <Textarea
+                value={solicitacaoMotivo}
+                onChange={e => setSolicitacaoMotivo(e.target.value)}
+                placeholder="Ex: Estoque baixo, necessidade de reposição para nova equipe..."
+                className="min-h-[60px] text-xs"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setSolicitacaoOpen(false)}>Cancelar</Button>
+            <Button size="sm" onClick={handleSolicitacao} disabled={savingSolicitacao || !solicitacaoEpiId || solicitacaoQtd <= 0}>
+              {savingSolicitacao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-3.5 h-3.5 mr-1" />}
+              Enviar Solicitação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Solicitações List Dialog */}
+      <Dialog open={solicitacoesOpen} onOpenChange={setSolicitacoesOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-primary" />
+              Solicitações de EPIs
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {(contratoSolicitacoes[solicitacoesContratoId] || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma solicitação registrada</p>
+            ) : (
+              (contratoSolicitacoes[solicitacoesContratoId] || []).map(sol => {
+                const cfg = statusConfig[sol.status] || statusConfig.pendente;
+                return (
+                  <div key={sol.id} className="rounded-md border bg-background p-3 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold">{sol.epi_nome}</span>
+                        {sol.epi_ca && <span className="text-[10px] text-muted-foreground font-mono">CA: {sol.epi_ca}</span>}
+                        <span className="text-xs font-mono font-semibold">{sol.quantidade} un.</span>
+                      </div>
+                      <Badge className={`text-[10px] gap-1 ${cfg.className}`}>
+                        {cfg.icon}
+                        {cfg.label}
+                      </Badge>
+                    </div>
+                    {sol.motivo && (
+                      <p className="text-[11px] text-muted-foreground">{sol.motivo}</p>
+                    )}
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <span>Solicitado por: {sol.solicitante_nome}</span>
+                      <span>· {format(new Date(sol.created_at), "dd/MM/yyyy HH:mm")}</span>
+                    </div>
+                    {sol.aprovador_nome && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {sol.status === "aprovada" ? "Aprovado" : "Rejeitado"} por: {sol.aprovador_nome}
+                        {sol.observacao_resposta && <span> — {sol.observacao_resposta}</span>}
+                      </div>
+                    )}
+                    {/* Approve/Reject buttons for pending solicitations (only for managers) */}
+                    {sol.status === "pendente" && hasGestaoEstoque && (
+                      <div className="flex items-center gap-2 pt-1 border-t">
+                        <Input
+                          placeholder="Observação (opcional)"
+                          className="h-7 text-xs flex-1"
+                          value={respondingSolicitacao === sol.id ? respostaObs : ""}
+                          onChange={e => { setRespondingSolicitacao(sol.id); setRespostaObs(e.target.value); }}
+                          onFocus={() => setRespondingSolicitacao(sol.id)}
+                        />
+                        <Button size="sm" className="h-7 text-[10px] gap-1" variant="outline"
+                          onClick={() => handleRespostaSolicitacao(sol.id, "aprovada")}
+                          disabled={respondingSolicitacao === sol.id && savingSolicitacao}>
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />Aprovar
+                        </Button>
+                        <Button size="sm" className="h-7 text-[10px] gap-1" variant="outline"
+                          onClick={() => handleRespostaSolicitacao(sol.id, "rejeitada")}
+                          disabled={respondingSolicitacao === sol.id && savingSolicitacao}>
+                          <XCircle className="w-3 h-3 text-destructive" />Rejeitar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
