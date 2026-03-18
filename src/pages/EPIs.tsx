@@ -155,7 +155,7 @@ export default function EPIs() {
       {(hasGestaoEstoque || hasContratoAccess) && <ContratoStockPanel />}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">EPIs</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Cadastro de EPIs</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar equipamentos de proteção</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
