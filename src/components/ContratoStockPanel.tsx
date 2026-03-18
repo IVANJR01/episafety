@@ -63,7 +63,12 @@ interface Movimentacao {
 
 interface ConsumoMensal {
   mes: string;
-  quantidade: number;
+  entrega: number;
+  troca: number;
+  substituicao: number;
+  devolucao: number;
+  perda: number;
+  dano: number;
   custo: number;
 }
 
@@ -223,36 +228,37 @@ export default function ContratoStockPanel() {
         .from("entregas")
         .select("data, quantidade, epi_id, tipo")
         .in("funcionario_id", funcIds)
-        .in("tipo", ["entrega", "substituicao"])
         .gte("data", sixMonthsAgo)
         .order("data");
 
       if (entregasData && entregasData.length > 0) {
-        // Get EPI values
         const epiIds = [...new Set(entregasData.map(e => e.epi_id))];
         const { data: episInfo } = await supabase.from("epis").select("id, valor").in("id", epiIds);
         const valMap = new Map((episInfo || []).map(e => [e.id, e.valor || 0]));
 
-        // Group by month
-        const monthMap = new Map<string, { quantidade: number; custo: number }>();
+        const emptyMonth = () => ({ entrega: 0, troca: 0, substituicao: 0, devolucao: 0, perda: 0, dano: 0, custo: 0 });
+        const monthMap = new Map<string, ReturnType<typeof emptyMonth>>();
         for (let i = 5; i >= 0; i--) {
           const d = subMonths(new Date(), i);
           const key = format(startOfMonth(d), "yyyy-MM");
-          monthMap.set(key, { quantidade: 0, custo: 0 });
+          monthMap.set(key, emptyMonth());
         }
 
         entregasData.forEach(e => {
-          const key = e.data.substring(0, 7); // yyyy-MM
+          const key = e.data.substring(0, 7);
           const existing = monthMap.get(key);
           if (existing) {
-            existing.quantidade += e.quantidade;
+            const tipo = e.tipo as keyof typeof existing;
+            if (tipo in existing && tipo !== "custo") {
+              (existing as any)[tipo] += e.quantidade;
+            }
             existing.custo += e.quantidade * (valMap.get(e.epi_id) || 0);
           }
         });
 
         consumoData = Array.from(monthMap.entries()).map(([key, val]) => ({
           mes: format(new Date(key + "-01"), "MMM/yy", { locale: ptBR }),
-          quantidade: val.quantidade,
+          ...val,
           custo: Number(val.custo.toFixed(2)),
         }));
       }
@@ -626,28 +632,34 @@ export default function ContratoStockPanel() {
                                   )}
 
                                   {/* Consumption chart */}
-                                  {consumo.length > 0 && consumo.some(c => c.quantidade > 0) && (
+                                  {consumo.length > 0 && consumo.some(c => c.entrega > 0 || c.troca > 0 || c.substituicao > 0 || c.devolucao > 0 || c.perda > 0 || c.dano > 0) && (
                                     <div className="space-y-2">
                                       <div className="flex items-center gap-1.5">
                                         <BarChart3 className="w-3.5 h-3.5 text-primary" />
-                                        <span className="text-xs font-semibold">Consumo Mensal</span>
+                                        <span className="text-xs font-semibold">Movimentações Mensais por Tipo</span>
                                       </div>
-                                      <div className="h-[180px] w-full">
+                                      <div className="h-[220px] w-full">
                                         <ResponsiveContainer width="100%" height="100%">
                                           <BarChart data={consumo} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                                             <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                                             <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
-                                            <YAxis tick={{ fontSize: 10 }} width={35} />
+                                            <YAxis yAxisId="qty" tick={{ fontSize: 10 }} width={30} />
+                                            <YAxis yAxisId="cost" orientation="right" tick={{ fontSize: 9 }} width={50} tickFormatter={v => `R$${v}`} />
                                             <Tooltip
                                               contentStyle={{ fontSize: 11, borderRadius: 8 }}
                                               formatter={(value: number, name: string) => [
-                                                name === "Quantidade" ? `${value} un.` : `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                                                name === "Quantidade" ? "Quantidade" : "Custo"
+                                                name === "Custo (R$)" ? `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : `${value} un.`,
+                                                name
                                               ]}
                                             />
                                             <Legend wrapperStyle={{ fontSize: 10 }} />
-                                            <Bar dataKey="quantidade" name="Quantidade" fill="hsl(var(--chart-1, var(--primary)))" radius={[4, 4, 0, 0]} />
-                                            <Bar dataKey="custo" name="Custo (R$)" fill="hsl(var(--chart-2, var(--secondary)))" radius={[4, 4, 0, 0]} />
+                                            {consumo.some(c => c.entrega > 0) && <Bar yAxisId="qty" dataKey="entrega" name="Entrega" stackId="tipo" fill="hsl(199, 89%, 48%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.troca > 0) && <Bar yAxisId="qty" dataKey="troca" name="Troca" stackId="tipo" fill="hsl(25, 95%, 53%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.substituicao > 0) && <Bar yAxisId="qty" dataKey="substituicao" name="Substituição" stackId="tipo" fill="hsl(262, 83%, 58%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.devolucao > 0) && <Bar yAxisId="qty" dataKey="devolucao" name="Devolução" stackId="tipo" fill="hsl(142, 71%, 45%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.perda > 0) && <Bar yAxisId="qty" dataKey="perda" name="Perda" stackId="tipo" fill="hsl(346, 77%, 50%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.dano > 0) && <Bar yAxisId="qty" dataKey="dano" name="Dano" stackId="tipo" fill="hsl(47, 95%, 53%)" radius={[0, 0, 0, 0]} />}
+                                            <Bar yAxisId="cost" dataKey="custo" name="Custo (R$)" fill="hsl(var(--chart-2, var(--secondary)))" radius={[4, 4, 0, 0]} />
                                           </BarChart>
                                         </ResponsiveContainer>
                                       </div>
