@@ -63,7 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     checkFaturas();
   }, [isSuperAdmin, isPrincipal]);
 
-  const canAccess = (moduleKey: string) => isSuperAdmin || isPrincipal || canAccessModule(modulosPermitidos, moduleKey);
+  const canAccess = (moduleKey: string) => isSuperAdmin || canAccessModule(modulosPermitidos, moduleKey);
 
   const visibleMainItems = mainNavItems.filter((i) => canAccess(i.moduleKey));
   const visibleEpiItems = epiItems.filter((i) => canAccess(i.moduleKey));
