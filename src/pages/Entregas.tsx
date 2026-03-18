@@ -400,10 +400,14 @@ export default function Entregas() {
     });
 
     if (failedEpis.length > 0) {
-      toast({ title: `${failedEpis.length} EPI(s) com erro`, description: `Falha: ${failedEpis.join(", ")}. Os demais foram registrados.`, variant: "destructive" });
+      const errorDetails = results
+        .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+        .map(r => r.reason?.message || r.reason?.details || JSON.stringify(r.reason))
+        .join("; ");
+      toast({ title: `${failedEpis.length} EPI(s) com erro`, description: `Falha: ${failedEpis.join(", ")}. ${errorDetails}`, variant: "destructive" });
     }
     if (insertedIds.length === 0) {
-      toast({ title: "Nenhum EPI foi registrado", variant: "destructive" });
+      toast({ title: "Nenhum EPI foi registrado", description: "Verifique permissões ou tente novamente.", variant: "destructive" });
       setSaving(false);
       return;
     }
