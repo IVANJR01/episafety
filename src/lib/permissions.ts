@@ -20,7 +20,7 @@ export type Acao = typeof ACOES[number]["key"];
 export const MODULOS = [
   { key: "dashboard", label: "Dashboard", path: "/" },
   { key: "epis", label: "Controle de EPI", path: "/epis" },
-  { key: "estoque_contrato", label: "Estoque por Contrato", path: "/epis/controle-contrato" },
+  { key: "estoque_contrato", label: "Estoque por Unidade", path: "/epis/controle-contrato" },
   { key: "entregas", label: "Entregas", path: "/entregas" },
   { key: "relatorios", label: "Relatórios", path: "/relatorios" },
   { key: "cadastro_empresas", label: "Cadastro → Empresas", path: "/cadastro/empresas" },

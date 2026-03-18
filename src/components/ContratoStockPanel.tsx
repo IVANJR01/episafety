@@ -658,7 +658,7 @@ export default function ContratoStockPanel() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary" />
-          <h2 className="font-bold text-base sm:text-lg">Controle de Estoque por Contrato</h2>
+          <h2 className="font-bold text-base sm:text-lg">Controle de Estoque por Unidade</h2>
         </div>
         {hasGestaoEstoque && (
           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setTransferOpen(true)}>
