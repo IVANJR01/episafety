@@ -1,16 +1,26 @@
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
+import { supabase } from "@/integrations/supabase/client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; }
+interface ContratoMovimentacao {
+  id: string;
+  contrato_id: string;
+  epi_id: string;
+  tipo: string;
+  quantidade: number;
+  created_at: string;
+}
+interface Contrato { id: string; nome: string; }
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
@@ -18,8 +28,27 @@ export default function Dashboard() {
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
 
-  const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
+  // Fetch contract movements and contracts for the chart
+  const [movimentacoes, setMovimentacoes] = useState<ContratoMovimentacao[]>([]);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
 
+  useEffect(() => {
+    async function fetchContractData() {
+      const [movRes, contRes] = await Promise.all([
+        (supabase.from as any)("contrato_epis_movimentacoes")
+          .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
+          .eq("tipo", "saida")
+          .gte("created_at", new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
+          .order("created_at", { ascending: true }),
+        (supabase.from as any)("contratos").select("id, nome"),
+      ]);
+      if (movRes.data) setMovimentacoes(movRes.data);
+      if (contRes.data) setContratos(contRes.data);
+    }
+    fetchContractData();
+  }, []);
+
+  const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
 
   // Calculate monthly costs
   const valorEstoqueAtual = useMemo(() => {
@@ -43,8 +72,6 @@ export default function Dashboard() {
       estoque: Number(valorEstoqueAtual.toFixed(2)),
     }));
   }, [entregas, epis, valorEstoqueAtual]);
-
-  // valorEstoqueAtual already defined above
 
   const estoqueChartData = useMemo(() => {
     const items = epis
@@ -73,6 +100,41 @@ export default function Dashboard() {
     "hsl(346, 77%, 50%)",
     "hsl(173, 80%, 40%)",
   ];
+
+  // Contract consumption chart data
+  const { contratoChartData, contratoNomes } = useMemo(() => {
+    if (movimentacoes.length === 0 || contratos.length === 0) {
+      return { contratoChartData: [], contratoNomes: [] as string[] };
+    }
+
+    const contratoMap = new Map(contratos.map(c => [c.id, c.nome]));
+    const mesesSet = new Set<string>();
+    const porMesContrato: Record<string, Record<string, number>> = {};
+
+    movimentacoes.forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (!mes) return;
+      mesesSet.add(mes);
+      const nomeContrato = contratoMap.get(m.contrato_id) || "Sem contrato";
+      if (!porMesContrato[mes]) porMesContrato[mes] = {};
+      porMesContrato[mes][nomeContrato] = (porMesContrato[mes][nomeContrato] || 0) + m.quantidade;
+    });
+
+    const meses = Array.from(mesesSet).sort().slice(-12);
+    const allContratos = Array.from(new Set(
+      movimentacoes.map(m => contratoMap.get(m.contrato_id) || "Sem contrato")
+    )).sort();
+
+    const chartData = meses.map(mes => {
+      const row: Record<string, any> = { mes: mes.split("-").reverse().join("/") };
+      allContratos.forEach(c => {
+        row[c] = porMesContrato[mes]?.[c] || 0;
+      });
+      return row;
+    });
+
+    return { contratoChartData: chartData, contratoNomes: allContratos };
+  }, [movimentacoes, contratos]);
 
   // Consumo mensal por EPI com detalhamento por mês
   const { mediaMensalEPI, mesesOrdenados } = useMemo(() => {
@@ -205,6 +267,44 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Contract consumption chart */}
+      {contratoChartData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileBarChart className="w-4 h-4 text-primary" />
+              Consumo Mensal por Contrato
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Quantidade de EPIs consumidos por contrato nos últimos 12 meses
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={contratoChartData} barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="mes" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                  formatter={(value: number, name: string) => [`${value} un.`, name]}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                {contratoNomes.map((nome, i) => (
+                  <Bar
+                    key={nome}
+                    dataKey={nome}
+                    stackId="contratos"
+                    fill={CHART_COLORS[i % CHART_COLORS.length]}
+                    radius={i === contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stock value chart */}
       <Card>
