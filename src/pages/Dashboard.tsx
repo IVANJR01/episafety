@@ -181,7 +181,7 @@ export default function Dashboard() {
     }, 0);
   }, [entregas, epis]);
 
-  const recentEntregas = entregas.slice(0, 5).map(e => ({
+  const recentEntregas = entregas.slice(0, 20).map(e => ({
     ...e,
     funcionarioNome: funcionarios.find(f => f.id === e.funcionario_id)?.nome || "—",
     epiNome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
