@@ -384,7 +384,10 @@ export default function Entregas() {
           .select("id")
           .single();
 
-        if (insertResult.error) throw insertResult.error;
+        if (insertResult.error) {
+          console.error("Entrega insert error:", JSON.stringify(insertResult.error), "payload:", { funcionario_id: form.funcionario_id, epi_id: item.epi.id, empresa_id: empresaId, tipo: form.tipo });
+          throw insertResult.error;
+        }
 
         // Contract stock sync is now handled by DB trigger (trg_sync_contrato_stock)
 
