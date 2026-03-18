@@ -767,7 +767,7 @@ export default function ContratoStockPanel() {
 
         return (
           <Card key={unidade.id} className="border-secondary/30">
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-3 sm:p-4 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-secondary-foreground" />
