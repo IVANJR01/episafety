@@ -854,7 +854,7 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Entregas por Responsável */}
+          {/* Entregas por Colaborador */}
           <Card className="shadow-md border-border/50">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
