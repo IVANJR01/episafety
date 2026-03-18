@@ -57,13 +57,17 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
   if (!email) return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
   try {
     const { data, error } = await (supabase.from as any)("usuarios_liberados")
-      .select("id, modulos_permitidos, is_principal, contrato_id")
+      .select("id, modulos_permitidos, is_principal, contrato_id, ativo")
       .eq("email", email.toLowerCase())
       .maybeSingle();
 
     if (error) throw error;
 
     if (data) {
+      // Block inactive users
+      if (data.ativo === false) {
+        return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
+      }
       return {
         authorized: true,
         modulos: data.modulos_permitidos || [],
