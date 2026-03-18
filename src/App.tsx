@@ -29,7 +29,7 @@ import CadastroDashboard from "@/pages/CadastroDashboard";
 import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
-import Filiais from "@/pages/Filiais";
+
 import Faturas from "@/pages/Faturas";
 import NotFound from "./pages/NotFound";
 
