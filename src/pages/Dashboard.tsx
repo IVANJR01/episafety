@@ -538,7 +538,7 @@ export default function Dashboard() {
       <motion.div variants={fadeUp} custom={9}>
       {isMobile ? (
         <Tabs defaultValue="consumo" className="w-full">
-          <TabsList className="w-full grid grid-cols-3 h-11">
+          <TabsList className="w-full grid grid-cols-4 h-11">
             <TabsTrigger value="consumo" className="text-xs font-semibold">
               <TrendingUp className="w-3.5 h-3.5 mr-1" /> Consumo
             </TabsTrigger>
@@ -550,6 +550,9 @@ export default function Dashboard() {
             </TabsTrigger>
             <TabsTrigger value="entregas" className="text-xs font-semibold">
               <ClipboardList className="w-3.5 h-3.5 mr-1" /> Entregas
+            </TabsTrigger>
+            <TabsTrigger value="responsaveis" className="text-xs font-semibold">
+              <Users className="w-3.5 h-3.5 mr-1" /> Resp.
             </TabsTrigger>
           </TabsList>
 
