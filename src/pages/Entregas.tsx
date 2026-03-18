@@ -31,6 +31,19 @@ interface EpiItem { epi: EPI; quantidade: number; }
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
 
+const normalizeEntregaTipo = (value?: string | null): keyof typeof tipoLabels => {
+  const normalized = (value || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (normalized.includes("substit")) return "substituicao";
+  if (normalized.includes("perda")) return "perda";
+  if (normalized.includes("dano")) return "dano";
+  return "entrega";
+};
+
 export default function Entregas() {
   const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
