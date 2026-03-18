@@ -375,6 +375,7 @@ export default function Entregas() {
             status,
             observacao: form.observacao || null,
             empresa_id: empresaId,
+            created_by: currentUserId,
           })
           .select("id")
           .single();
