@@ -577,7 +577,7 @@ export default function ContratoStockPanel() {
                                           <p className="font-bold text-sm">{epis.length}</p>
                                         </div>
                                         <div className="rounded-md border p-2 bg-background">
-                                          <p className="text-[10px] text-muted-foreground">Estoque Total</p>
+                                          <p className="text-[10px] text-muted-foreground">Estoque Atual</p>
                                           <p className="font-bold text-sm">{totalEstoque} un.</p>
                                         </div>
                                         <div className="rounded-md border p-2 bg-background">
