@@ -668,7 +668,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 {entregasPorResponsavel.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega com responsável registrado</p>
+                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada</p>
                 ) : (
                   <div className="space-y-2">
                     {entregasPorResponsavel.map((r, idx) => (
