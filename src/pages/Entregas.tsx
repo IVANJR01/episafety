@@ -371,7 +371,7 @@ export default function Entregas() {
             epi_id: item.epi.id,
             quantidade: item.quantidade,
             data: form.data,
-            tipo: form.tipo,
+            tipo: form.tipo.toLowerCase(),
             status,
             observacao: form.observacao || null,
             empresa_id: empresaId,
