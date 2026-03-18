@@ -3,20 +3,23 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import "./index.css";
 
-// Register service worker with auto-update — reloads immediately when new version is available
+// Register service worker — notify user when update is available instead of auto-reloading
 const updateSW = registerSW({
   onNeedRefresh() {
-    // Automatically reload when a new version is detected
-    updateSW(true);
+    // Dispatch event so UpdateBanner can show
+    window.dispatchEvent(
+      new CustomEvent("sw-update-available", {
+        detail: (reloadPage?: boolean) => updateSW(reloadPage),
+      })
+    );
   },
   onOfflineReady() {
     console.log("PWA pronto para uso offline");
   },
-  // Check for updates every 60 seconds
   immediate: true,
 });
 
-// Also check for updates periodically (every 60s) so installed app stays fresh
+// Check for updates periodically (every 60s)
 setInterval(() => {
   updateSW();
 }, 60 * 1000);
