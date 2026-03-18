@@ -211,7 +211,7 @@ export default function ContratoStockPanel() {
           return {
             id: s.id,
             contrato_nome: contrato?.nome || "—",
-            unidade_nome: contrato ? (unidadesMap.get(contrato.unidade_id) || empresasMap.get(s.empresa_id)?.nome || "—") : (empresasMap.get(s.empresa_id)?.nome || "—"),
+            unidade_nome: contrato ? (unidadesMap.get(contrato.unidade_id) || (empresasMap.get(s.empresa_id) as any)?.nome || "—") : ((empresasMap.get(s.empresa_id) as any)?.nome || "—"),
             epi_nome: episMap.get(s.epi_id)?.nome || "—",
             quantidade: s.quantidade,
             solicitante_nome: s.solicitante_nome,
