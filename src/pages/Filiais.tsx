@@ -236,9 +236,10 @@ export default function Filiais() {
           {filiais.map(f => {
             const tipoInfo = TIPO_LABELS[f.tipo] || TIPO_LABELS.filial;
             const TipoIcon = tipoInfo.icon;
-            const users = getUsersForFilial(f.id);
             const filContratos = getContratosForFilial(f.id);
+            const usersWithoutContract = getUsersWithoutContrato(f.id);
             const isExpanded = expandedFiliais.has(f.id);
+            const totalUsers = filContratos.reduce((acc, c) => acc + getUsersForContrato(c.id).length, 0) + usersWithoutContract.length;
 
             return (
               <Card key={f.id}>
@@ -274,16 +275,7 @@ export default function Filiais() {
                     {f.email && <span>{f.email}</span>}
                   </div>
 
-                  {/* Users */}
-                  {isAdmin && users.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {users.map(u => (
-                        <Badge key={u.id} variant="secondary" className="text-[10px] py-0.5 px-2">{u.nome || u.email || "—"}</Badge>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Contratos section */}
+                  {/* Contratos & Usuários section */}
                   <div className="border-t pt-2">
                     <button
                       onClick={() => toggleExpand(f.id)}
@@ -292,45 +284,69 @@ export default function Filiais() {
                       {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       <FileText className="w-3.5 h-3.5" />
                       Contratos ({filContratos.length})
+                      {totalUsers > 0 && (
+                        <span className="text-muted-foreground/60 ml-1">· {totalUsers} usuário{totalUsers !== 1 ? "s" : ""}</span>
+                      )}
                     </button>
 
                     {isExpanded && (
-                      <div className="mt-2 space-y-1.5 pl-5">
-                        {filContratos.length === 0 ? (
+                      <div className="mt-2 space-y-2 pl-5">
+                        {filContratos.length === 0 && usersWithoutContract.length === 0 ? (
                           <p className="text-xs text-muted-foreground italic">Nenhum contrato cadastrado.</p>
                         ) : (
-                          filContratos.map(c => {
-                            const contratoUsers = getUsersForContrato(c.id);
-                            return (
-                              <div key={c.id} className="bg-muted/50 rounded-md px-3 py-1.5 space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-medium truncate">{c.nome}</p>
-                                    {c.descricao && <p className="text-[10px] text-muted-foreground truncate">{c.descricao}</p>}
+                          <>
+                            {filContratos.map(c => {
+                              const contratoUsers = getUsersForContrato(c.id);
+                              return (
+                                <div key={c.id} className="bg-muted/50 rounded-md px-3 py-2 space-y-1.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-medium truncate">{c.nome}</p>
+                                      {c.descricao && <p className="text-[10px] text-muted-foreground truncate">{c.descricao}</p>}
+                                    </div>
+                                    <div className="flex gap-0.5 shrink-0">
+                                      {(canEdit || isAdmin) && (
+                                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEditContrato(c)}>
+                                          <Pencil className="w-3 h-3" />
+                                        </Button>
+                                      )}
+                                      {(canDelete || isAdmin) && (
+                                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDeleteContrato(c.id)}>
+                                          <Trash2 className="w-3 h-3 text-destructive" />
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex gap-0.5 shrink-0">
-                                    {(canEdit || isAdmin) && (
-                                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEditContrato(c)}>
-                                        <Pencil className="w-3 h-3" />
-                                      </Button>
-                                    )}
-                                    {(canDelete || isAdmin) && (
-                                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDeleteContrato(c.id)}>
-                                        <Trash2 className="w-3 h-3 text-destructive" />
-                                      </Button>
-                                    )}
-                                  </div>
+                                  {contratoUsers.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {contratoUsers.map(u => (
+                                        <Badge key={u.id} variant="secondary" className="text-[10px] py-0.5 px-2 flex items-center gap-1">
+                                          <Users className="w-2.5 h-2.5" />
+                                          {u.nome || u.email || "—"}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-[10px] text-muted-foreground italic">Nenhum usuário vinculado</p>
+                                  )}
                                 </div>
-                                {contratoUsers.length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {contratoUsers.map(u => (
-                                      <Badge key={u.id} variant="secondary" className="text-[10px] py-0 px-1.5">{u.nome || "—"}</Badge>
-                                    ))}
-                                  </div>
-                                )}
+                              );
+                            })}
+
+                            {usersWithoutContract.length > 0 && (
+                              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2 space-y-1.5">
+                                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Sem contrato vinculado</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {usersWithoutContract.map(u => (
+                                    <Badge key={u.id} variant="outline" className="text-[10px] py-0.5 px-2 border-amber-300 text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                      <Users className="w-2.5 h-2.5" />
+                                      {u.nome || u.email || "—"}
+                                    </Badge>
+                                  ))}
+                                </div>
                               </div>
-                            );
-                          })
+                            )}
+                          </>
                         )}
                         {(canCreate || isAdmin) && (
                           <Button size="sm" variant="outline" className="h-7 text-xs mt-1" onClick={() => openNewContrato(f.id)}>
