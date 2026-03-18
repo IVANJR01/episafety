@@ -92,7 +92,7 @@ export default function Filiais() {
       isAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
       (supabase.from as any)("empresa_config").select("nome").eq("id", empresaId).single(),
       (supabase.from as any)("contratos").select("*").order("nome"),
-      (supabase.from as any)("usuarios_liberados").select("id, nome, contrato_id").not("contrato_id", "is", null),
+      (supabase.from as any)("usuarios_liberados").select("id, nome, contrato_id, empresa_id, email"),
     ]);
     setFiliais(filData || []);
     setProfiles(profData || []);
