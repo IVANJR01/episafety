@@ -538,7 +538,7 @@ export default function Dashboard() {
       <motion.div variants={fadeUp} custom={9}>
       {isMobile ? (
         <Tabs defaultValue="consumo" className="w-full">
-          <TabsList className="w-full grid grid-cols-3 h-11">
+          <TabsList className="w-full grid grid-cols-4 h-11">
             <TabsTrigger value="consumo" className="text-xs font-semibold">
               <TrendingUp className="w-3.5 h-3.5 mr-1" /> Consumo
             </TabsTrigger>
@@ -550,6 +550,9 @@ export default function Dashboard() {
             </TabsTrigger>
             <TabsTrigger value="entregas" className="text-xs font-semibold">
               <ClipboardList className="w-3.5 h-3.5 mr-1" /> Entregas
+            </TabsTrigger>
+            <TabsTrigger value="responsaveis" className="text-xs font-semibold">
+              <Users className="w-3.5 h-3.5 mr-1" /> Resp.
             </TabsTrigger>
           </TabsList>
 
@@ -646,6 +649,38 @@ export default function Dashboard() {
                           <span className="text-[10px] text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded-full">{e.data}</span>
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{e.epiNome} ({e.quantidade}x)</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="responsaveis">
+            <Card className="shadow-md border-border/50">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <Users className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <CardTitle className="text-sm font-bold">Entregas por Responsável</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {entregasPorResponsavel.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega com responsável registrado</p>
+                ) : (
+                  <div className="space-y-2">
+                    {entregasPorResponsavel.map((r, idx) => (
+                      <div key={r.nome} className="flex items-center justify-between text-sm p-3 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${idx < 3 ? "bg-primary" : "bg-primary/50"}`}>
+                            {idx + 1}
+                          </span>
+                          <span className="font-semibold truncate">{r.nome}</span>
+                        </div>
+                        <span className="font-mono text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">{r.quantidade} un.</span>
                       </div>
                     ))}
                   </div>
@@ -821,18 +856,22 @@ export default function Dashboard() {
           </div>
 
           {/* Entregas por Responsável */}
-          {entregasPorResponsavel.length > 0 && (
-            <Card className="shadow-md border-border/50">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="w-4 h-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
-                  <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
+          <Card className="shadow-md border-border/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Users className="w-4 h-4 text-primary" />
                 </div>
-              </CardHeader>
-              <CardContent>
+                <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
+                {entregasPorResponsavel.length > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {entregasPorResponsavel.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega com responsável registrado</p>
+              ) : (
                 <ResponsiveContainer width="100%" height={Math.max(250, entregasPorResponsavel.length * 40)}>
                   <BarChart data={entregasPorResponsavel} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
@@ -849,9 +888,9 @@ export default function Dashboard() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
       </motion.div>
