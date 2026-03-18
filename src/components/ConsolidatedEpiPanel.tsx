@@ -24,6 +24,12 @@ interface FilialStock {
 interface ParentCompany {
   empresa_id: string;
   empresa_nome: string;
+  total_itens: number;
+  estoque_total: number;
+  valor_total: number;
+  itens_baixo_estoque: number;
+  consumo_medio_mensal: number;
+  custo_medio_mensal: number;
   filiais: FilialStock[];
 }
 
@@ -138,7 +144,7 @@ export default function ConsolidatedEpiPanel() {
       {data.map((parent) => {
         if (!parent.filiais || parent.filiais.length === 0) return null;
 
-        const totals = parent.filiais.reduce(
+        const totals = (parent.filiais || []).reduce(
           (acc, f) => ({
             itens: acc.itens + f.total_itens,
             estoque: acc.estoque + f.estoque_total,
@@ -147,7 +153,14 @@ export default function ConsolidatedEpiPanel() {
             consumo: acc.consumo + f.consumo_medio_mensal,
             custo: acc.custo + f.custo_medio_mensal,
           }),
-          { itens: 0, estoque: 0, valor: 0, baixo: 0, consumo: 0, custo: 0 }
+          {
+            itens: parent.total_itens || 0,
+            estoque: parent.estoque_total || 0,
+            valor: parent.valor_total || 0,
+            baixo: parent.itens_baixo_estoque || 0,
+            consumo: parent.consumo_medio_mensal || 0,
+            custo: parent.custo_medio_mensal || 0,
+          }
         );
 
         const isExpanded = expandedParents.has(parent.empresa_id);
