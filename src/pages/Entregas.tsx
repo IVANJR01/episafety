@@ -870,7 +870,7 @@ export default function Entregas() {
           <div className="grid gap-4 py-2">
             <div>
               <Label>Tipo</Label>
-              <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v})}>
+              <Select value={normalizeEntregaTipo(form.tipo)} onValueChange={v => setForm({ ...form, tipo: normalizeEntregaTipo(v) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                  <SelectContent>
                   <SelectItem value="entrega">📦 Entrega</SelectItem>
