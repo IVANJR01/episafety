@@ -697,13 +697,13 @@ export default function ContratoStockPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          <h2 className="font-bold text-base sm:text-lg">Controle de Estoque por Unidade</h2>
+          <FileText className="w-5 h-5 text-primary shrink-0" />
+          <h2 className="font-bold text-sm sm:text-lg">Controle de Estoque por Unidade</h2>
         </div>
         {hasGestaoEstoque && (
-          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => setTransferOpen(true)}>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full sm:w-auto" onClick={() => setTransferOpen(true)}>
             <ArrowRightLeft className="w-3.5 h-3.5" />
             Transferir para Contrato
           </Button>
@@ -733,19 +733,23 @@ export default function ContratoStockPanel() {
               <Badge className="bg-amber-500 text-white">{globalPendingCount}</Badge>
             </div>
             {globalPendingSolicitacoes.length > 0 && (
-              <div className="ml-11 space-y-1.5">
+              <div className="ml-0 sm:ml-11 space-y-1.5 mt-2">
                 {globalPendingSolicitacoes.map(sol => (
-                  <div key={sol.id} className="flex items-center gap-2 text-xs bg-background/80 rounded-md px-3 py-1.5 border border-amber-200 dark:border-amber-800/40">
-                    <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-amber-700 dark:text-amber-300">{sol.unidade_nome}</span>
-                    <span className="text-muted-foreground">›</span>
-                    <span className="font-medium">{sol.contrato_nome}</span>
-                    <span className="text-muted-foreground">—</span>
-                    <span>{sol.epi_nome}</span>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">{sol.quantidade} un.</Badge>
-                    {sol.solicitante_nome && (
-                      <span className="text-muted-foreground ml-auto text-[10px]">por {sol.solicitante_nome}</span>
-                    )}
+                  <div key={sol.id} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs bg-background/80 rounded-md px-3 py-2 border border-amber-200 dark:border-amber-800/40">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <span className="font-semibold text-amber-700 dark:text-amber-300">{sol.unidade_nome}</span>
+                      <span className="text-muted-foreground">›</span>
+                      <span className="font-medium">{sol.contrato_nome}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap pl-4 sm:pl-0">
+                      <span className="text-muted-foreground hidden sm:inline">—</span>
+                      <span className="truncate max-w-[200px]">{sol.epi_nome}</span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono shrink-0">{sol.quantidade} un.</Badge>
+                      {sol.solicitante_nome && (
+                        <span className="text-muted-foreground text-[10px]">por {sol.solicitante_nome}</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -763,19 +767,19 @@ export default function ContratoStockPanel() {
 
         return (
           <Card key={unidade.id} className="border-secondary/30">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-secondary-foreground" />
-                  <span className="font-semibold text-sm">{unidade.nome}</span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{unidade.tipo}</Badge>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            <CardContent className="p-3 sm:p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <Building2 className="w-4 h-4 text-secondary-foreground shrink-0" />
+                  <span className="font-semibold text-sm truncate">{unidade.nome}</span>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize shrink-0">{unidade.tipo}</Badge>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
                     {unitContratos.length} contrato{unitContratos.length > 1 ? "s" : ""}
                   </Badge>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => toggleUnidade(unidade.id)} className="h-7 px-2 text-xs">
+                <Button variant="ghost" size="sm" onClick={() => toggleUnidade(unidade.id)} className="h-7 px-2 text-xs shrink-0">
                   {isUnitExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  {isUnitExpanded ? "Recolher" : "Expandir"}
+                  <span className="hidden sm:inline">{isUnitExpanded ? "Recolher" : "Expandir"}</span>
                 </Button>
               </div>
 
@@ -799,45 +803,45 @@ export default function ContratoStockPanel() {
                       <Card key={contrato.id} className="bg-muted/30">
                         <CardContent className="p-3 space-y-3">
                           {/* Contrato header */}
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <FileText className="w-3.5 h-3.5 text-primary" />
-                              <span className="font-medium text-sm">{contrato.nome}</span>
-                              {responsaveis.length > 0 && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                                  <Users className="w-3 h-3" />
-                                  {responsaveis.map(r => r.funcionario_nome).join(", ")}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {isContratoExpanded && (
-                                <>
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                    onClick={() => openAddEpi(contrato.id, unidade.id, unidade.id)}>
-                                    <Plus className="w-3 h-3" />EPI
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                    onClick={() => { setHistoryContratoId(contrato.id); setHistoryOpen(true); }}>
-                                    <History className="w-3 h-3" />Histórico
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                    onClick={() => openSolicitacao(contrato.id, unidade.id)}>
-                                    <Send className="w-3 h-3" />Solicitar
-                                    {solicitacoesPendentes > 0 && (
-                                      <Badge className="h-4 px-1 text-[9px] ml-0.5 bg-amber-500 text-white">{solicitacoesPendentes}</Badge>
-                                    )}
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                    onClick={() => { setSolicitacoesContratoId(contrato.id); setSolicitacoesOpen(true); }}>
-                                    <ClipboardList className="w-3 h-3" />Solicitações
-                                  </Button>
-                                </>
-                              )}
-                              <Button variant="ghost" size="sm" onClick={() => toggleContrato(contrato)} className="h-6 px-2 text-[10px]">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="font-medium text-sm truncate">{contrato.nome}</span>
+                                {responsaveis.length > 0 && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 hidden sm:inline-flex">
+                                    <Users className="w-3 h-3" />
+                                    {responsaveis.map(r => r.funcionario_nome).join(", ")}
+                                  </Badge>
+                                )}
+                              </div>
+                              <Button variant="ghost" size="sm" onClick={() => toggleContrato(contrato)} className="h-6 px-2 text-[10px] shrink-0">
                                 {isContratoExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                               </Button>
                             </div>
+                            {isContratoExpanded && (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => openAddEpi(contrato.id, unidade.id, unidade.id)}>
+                                  <Plus className="w-3 h-3" />EPI
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => { setHistoryContratoId(contrato.id); setHistoryOpen(true); }}>
+                                  <History className="w-3 h-3" />Histórico
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => openSolicitacao(contrato.id, unidade.id)}>
+                                  <Send className="w-3 h-3" />Solicitar
+                                  {solicitacoesPendentes > 0 && (
+                                    <Badge className="h-4 px-1 text-[9px] ml-0.5 bg-amber-500 text-white">{solicitacoesPendentes}</Badge>
+                                  )}
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => { setSolicitacoesContratoId(contrato.id); setSolicitacoesOpen(true); }}>
+                                  <ClipboardList className="w-3 h-3" />Solicitações
+                                </Button>
+                              </div>
+                            )}
                           </div>
 
                           {isContratoExpanded && (
