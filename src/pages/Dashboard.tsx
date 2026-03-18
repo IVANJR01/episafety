@@ -1,6 +1,7 @@
 import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
+import { motion } from "framer-motion";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,6 +10,22 @@ import { Progress } from "@/components/ui/progress";
 import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+const MotionCard = motion.create(Card);
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
