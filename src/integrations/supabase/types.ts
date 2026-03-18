@@ -1490,6 +1490,7 @@ export type Database = {
       }
       usuarios_liberados: {
         Row: {
+          ativo: boolean
           contrato_id: string | null
           created_at: string
           created_by: string | null
@@ -1501,6 +1502,7 @@ export type Database = {
           nome: string | null
         }
         Insert: {
+          ativo?: boolean
           contrato_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1512,6 +1514,7 @@ export type Database = {
           nome?: string | null
         }
         Update: {
+          ativo?: boolean
           contrato_id?: string | null
           created_at?: string
           created_by?: string | null
