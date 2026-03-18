@@ -22,7 +22,259 @@ import FullscreenSignature from "@/components/FullscreenSignature";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
 import { syncContractStockFromEntrega } from "@/lib/contractStock";
-...
+
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; }
+interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
+interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; }
+interface EpiItem { epi: EPI; quantidade: number; }
+
+const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
+const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
+
+export default function Entregas() {
+  const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
+  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
+  const { data: epis } = useSupabaseQuery<EPI>("epis");
+  const { toast } = useToast();
+  const { canEdit, canCreate, canDelete } = usePermissions("entregas");
+  const { empresaId } = useAuth();
+
+  const offlinePendingIds = useMemo(() => {
+    const queue = getSyncQueue();
+    return new Set(queue.filter(op => op.table === "entregas").map(op => op.payload?.id).filter(Boolean));
+  }, [entregas]);
+
+  const [open, setOpen] = useState(false);
+  const [fichaOpen, setFichaOpen] = useState(false);
+  const [signOpen, setSignOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [fichaSearch, setFichaSearch] = useState("");
+  const [fichaFuncId, setFichaFuncId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savingConfirmation, setSavingConfirmation] = useState(false);
+  const [selectedUnsigned, setSelectedUnsigned] = useState<string[]>([]);
+  const [signMode, setSignMode] = useState<"new" | "existing">("new");
+  const [signFuncId, setSignFuncId] = useState<string>("");
+
+  const [pendingEntrega, setPendingEntrega] = useState<any>(null);
+  const [shouldOpenSignatureAfterSave, setShouldOpenSignatureAfterSave] = useState(false);
+  const sigEntregaRef = useRef<SignatureCanvasRef>(null);
+  const [signInputType, setSignInputType] = useState<"assinatura" | "facial">("assinatura");
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
+  const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
+
+  const resetSignFlow = useCallback(() => {
+    setSignOpen(false);
+    setPendingEntrega(null);
+    setSelectedUnsigned([]);
+    setSignMode("new");
+    setSignFuncId("");
+    setSignInputType("assinatura");
+    setCapturedPhoto(null);
+    setSavedSignatureDataUrl(null);
+    setFullscreenSigOpen(false);
+  }, []);
+
+  const openFullscreenSignature = useCallback(() => {
+    setShouldOpenSignatureAfterSave(false);
+    setSignOpen(false);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setFullscreenSigOpen(true));
+    });
+  }, []);
+
+  const closeFullscreenSignature = useCallback((dataUrl?: string) => {
+    if (dataUrl) setSavedSignatureDataUrl(dataUrl);
+    setFullscreenSigOpen(false);
+
+    if (dataUrl && signMode === "new" && pendingEntrega) {
+      const saveDirectly = async () => {
+        const ids = pendingEntrega?.entrega_ids || [];
+        if (ids.length === 0) return;
+
+        setSavingConfirmation(true);
+        try {
+          const updatePayload = { assinatura_colaborador: dataUrl };
+
+          if (!isOnline()) {
+            for (const id of ids) {
+              addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
+            }
+            const cached = getCachedData<Entrega>("entregas") || [];
+            setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
+            toast({ title: "Assinatura salva offline", description: `${ids.length} entrega(s) atualizada(s).` });
+          } else {
+            await Promise.all(
+              ids.map(id =>
+                (supabase.from as any)("entregas").update(updatePayload).eq("id", id)
+              )
+            );
+            toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+          }
+          refetch();
+        } finally {
+          setSavingConfirmation(false);
+          setPendingEntrega(null);
+          setSavedSignatureDataUrl(null);
+        }
+      };
+      saveDirectly();
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setSignOpen(true));
+    });
+  }, [signMode, pendingEntrega, empresaId, refetch, toast]);
+
+  const entregaDefaults = {
+    funcionario_id: "", quantidade: 1,
+    data: new Date().toISOString().split("T")[0],
+    tipo: "entrega" as string, observacao: "",
+  };
+  const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
+
+  const [epiCaSearch, setEpiCaSearch] = useState("");
+  const [epiSearching, setEpiSearching] = useState(false);
+  const [epiDropdownResults, setEpiDropdownResults] = useState<EPI[]>([]);
+  const [epiList, setEpiList] = useState<EpiItem[]>([]);
+  const [epiQtd, setEpiQtd] = useState(1);
+
+  const addEpiToList = useCallback((epi: EPI) => {
+    setEpiList(prev => {
+      const existing = prev.find(e => e.epi.id === epi.id);
+      if (existing) return prev.map(e => e.epi.id === epi.id ? { ...e, quantidade: e.quantidade + epiQtd } : e);
+      return [...prev, { epi, quantidade: epiQtd }];
+    });
+    setEpiCaSearch("");
+    setEpiDropdownResults([]);
+    setEpiQtd(1);
+  }, [epiQtd]);
+
+  const removeEpiFromList = (epiId: string) => {
+    setEpiList(prev => prev.filter(e => e.epi.id !== epiId));
+  };
+
+  useEffect(() => {
+    const term = epiCaSearch.trim().toLowerCase();
+    if (!term || term.length < 2) {
+      setEpiDropdownResults([]);
+      return;
+    }
+    const matched = epis.filter(e =>
+      e.nome.toLowerCase().includes(term) ||
+      (e.descricao && e.descricao.toLowerCase().includes(term)) ||
+      (e.ca && e.ca.includes(term))
+    );
+    setEpiDropdownResults(matched);
+  }, [epiCaSearch, epis]);
+
+  const handleSearchCA = async () => {
+    if (!epiCaSearch.trim()) return;
+    const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
+    if (foundByCA) {
+      addEpiToList(foundByCA);
+      return;
+    }
+    if (epiDropdownResults.length > 0) return;
+
+    setEpiSearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("consulta-ca", {
+        body: { ca: epiCaSearch.trim() },
+      });
+      if (error || !data?.nome) {
+        toast({ title: "C.A. não encontrado", description: "Verifique o número do C.A. e tente novamente.", variant: "destructive" });
+        setEpiSearching(false);
+        return;
+      }
+      const { data: newEpi, error: insertErr } = await (supabase.from as any)("epis").insert({
+        nome: data.nome,
+        ca: epiCaSearch.trim(),
+        categoria: data.categoria || null,
+        fabricante: data.fabricante || null,
+        descricao: data.descricao || null,
+        aprovado_para: data.aprovado_para || null,
+        validade: data.validade || null,
+        estoque: 0,
+        empresa_id: empresaId,
+      }).select().single();
+      if (insertErr) {
+        toast({ title: "Erro ao cadastrar EPI", variant: "destructive" });
+      } else {
+        addEpiToList(newEpi);
+        toast({ title: `EPI "${data.nome}" cadastrado automaticamente via C.A.` });
+      }
+    } catch {
+      toast({ title: "Erro na consulta do C.A.", variant: "destructive" });
+    }
+    setEpiSearching(false);
+  };
+
+  const matchFunc = (func: Funcionario, term: string) => {
+    if (!term) return true;
+    const t = term.toLowerCase();
+    return func.nome.toLowerCase().includes(t) || (func.cpf && func.cpf.includes(t)) || (func.matricula && func.matricula.toLowerCase().includes(t));
+  };
+
+  const filteredEntregas = useMemo(() => {
+    if (!searchTerm) return entregas;
+    return entregas.filter(e => {
+      const func = funcionarios.find(f => f.id === e.funcionario_id);
+      return func && matchFunc(func, searchTerm);
+    });
+  }, [entregas, funcionarios, searchTerm]);
+
+  const fichaFilteredFuncs = useMemo(() => {
+    if (!fichaSearch) return funcionarios;
+    return funcionarios.filter(f => matchFunc(f, fichaSearch));
+  }, [funcionarios, fichaSearch]);
+
+  const [formFuncSearch, setFormFuncSearch] = useState("");
+  const formFilteredFuncs = useMemo(() => {
+    if (!formFuncSearch) return funcionarios;
+    return funcionarios.filter(f => matchFunc(f, formFuncSearch));
+  }, [funcionarios, formFuncSearch]);
+
+  const optimizePhotoDataUrl = useCallback(async (dataUrl: string) => {
+    try {
+      return await new Promise<string>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxSide = 960;
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.72));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+      });
+    } catch {
+      return dataUrl;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!shouldOpenSignatureAfterSave || !pendingEntrega) return;
+    if (open || fullscreenSigOpen || signOpen) return;
+
+    setShouldOpenSignatureAfterSave(false);
+    setSignMode("new");
+    setSignInputType("assinatura");
+    setFullscreenSigOpen(true);
+  }, [shouldOpenSignatureAfterSave, open, pendingEntrega, fullscreenSigOpen, signOpen]);
+
   const handleSave = async () => {
     if (saving) return;
     if (!form.funcionario_id || epiList.length === 0) {
@@ -101,8 +353,8 @@ import { syncContractStockFromEntrega } from "@/lib/contractStock";
 
     const userResult = await supabase.auth.getUser();
     const currentUserId = userResult.data.user?.id || null;
-
     let responsavelNome: string | null = null;
+
     if (currentUserId) {
       const { data: profile } = await (supabase.from as any)("profiles")
         .select("nome")
@@ -127,9 +379,7 @@ import { syncContractStockFromEntrega } from "@/lib/contractStock";
           .select("id")
           .single();
 
-        if (insertResult.error) {
-          throw insertResult.error;
-        }
+        if (insertResult.error) throw insertResult.error;
 
         await syncContractStockFromEntrega({
           funcionarioId: form.funcionario_id,
@@ -142,10 +392,7 @@ import { syncContractStockFromEntrega } from "@/lib/contractStock";
           responsavelNome,
         });
 
-        return {
-          id: insertResult.data.id as string,
-          nome: item.epi.nome,
-        };
+        return insertResult.data.id as string;
       })
     );
 
@@ -153,7 +400,7 @@ import { syncContractStockFromEntrega } from "@/lib/contractStock";
     const failedEpis: string[] = [];
     results.forEach((r, i) => {
       if (r.status === "fulfilled") {
-        insertedIds.push(r.value.id);
+        insertedIds.push(r.value);
       } else {
         failedEpis.push(epiList[i].epi.nome);
         console.error("Erro ao registrar entrega:", r.reason);
@@ -169,18 +416,13 @@ import { syncContractStockFromEntrega } from "@/lib/contractStock";
       return;
     }
 
-    setPendingEntrega({
-      funcionario_id: form.funcionario_id,
-      entrega_ids: insertedIds,
-    });
-
+    setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
     setOpen(false);
     resetForm();
     setFormFuncSearch("");
     setEpiCaSearch("");
     setEpiList([]);
     setEpiDropdownResults([]);
-
     setSaving(false);
     setShouldOpenSignatureAfterSave(true);
   };
@@ -233,119 +475,6 @@ import { syncContractStockFromEntrega } from "@/lib/contractStock";
       refetch();
     } catch {
       toast({ title: "Erro ao devolver EPI", variant: "destructive" });
-    }
-  };
-
-  const handleSaveSignature = async () => {
-    if (savingConfirmation) return;
-
-    const ids = signMode === "new" ? (pendingEntrega?.entrega_ids || []) : selectedUnsigned;
-    if (ids.length === 0) return;
-
-    setSavingConfirmation(true);
-
-    try {
-      let assinaturaColaborador: string | null = null;
-      let fotoUrl: string | null = null;
-      let fotoFallbackDataUrl: string | null = null;
-
-      if (signInputType === "facial") {
-        if (!capturedPhoto) {
-          toast({ title: "Tire a foto do colaborador antes de confirmar", variant: "destructive" });
-          return;
-        }
-
-        assinaturaColaborador = "RECONHECIMENTO_FACIAL";
-        fotoFallbackDataUrl = await optimizePhotoDataUrl(capturedPhoto);
-
-        if (isOnline()) {
-          try {
-            const blob = await (await fetch(fotoFallbackDataUrl)).blob();
-            const fileName = `${empresaId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
-            const { error: uploadError } = await supabase.storage
-              .from("fotos-reconhecimento")
-              .upload(fileName, blob, { contentType: "image/jpeg" });
-
-            if (!uploadError) {
-              const { data: urlData } = supabase.storage.from("fotos-reconhecimento").getPublicUrl(fileName);
-              fotoUrl = urlData.publicUrl;
-            }
-          } catch (uploadErr) {
-            console.error("Photo upload failed:", uploadErr);
-          }
-        }
-      } else {
-        assinaturaColaborador = savedSignatureDataUrl || sigEntregaRef.current?.getDataURL() || null;
-        if (!assinaturaColaborador) {
-          toast({ title: "Desenhe a assinatura antes de salvar", variant: "destructive" });
-          return;
-        }
-      }
-
-      const updatePayload: any = { assinatura_colaborador: assinaturaColaborador };
-      if (fotoUrl) updatePayload.foto_reconhecimento = fotoUrl;
-      if (!fotoUrl && fotoFallbackDataUrl) updatePayload.foto_reconhecimento = fotoFallbackDataUrl;
-
-      if (!isOnline()) {
-        const queuedIds: string[] = [];
-
-        for (const id of ids) {
-          const queued = addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
-          if (!queued) break;
-          queuedIds.push(id);
-        }
-
-        if (queuedIds.length === 0) {
-          toast({
-            title: "Não foi possível salvar offline",
-            description: "A memória offline está cheia. Sincronize as pendências e tente novamente.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        const cached = getCachedData<Entrega>("entregas") || [];
-        setCachedData("entregas", cached.map(e => queuedIds.includes(e.id) ? { ...e, ...updatePayload } : e));
-
-        toast({
-          title: signInputType === "facial" ? "Confirmação por foto salva offline" : "Assinatura salva offline",
-          description: `${queuedIds.length} entrega(s) atualizada(s) e pronta(s) para sincronização.`,
-        });
-      } else {
-        const results = await Promise.all(
-          ids.map(id =>
-            (supabase.from as any)("entregas")
-              .update(updatePayload)
-              .eq("id", id)
-          )
-        );
-
-        const failed = results.filter(r => r.error);
-        if (failed.length === ids.length) {
-          toast({ title: "Falha ao salvar confirmação", description: "Tente novamente.", variant: "destructive" });
-          return;
-        }
-
-        if (failed.length > 0) {
-          toast({
-            title: "Salvo parcialmente",
-            description: `${ids.length - failed.length} de ${ids.length} entrega(s) confirmada(s).`,
-            variant: "destructive",
-          });
-        } else {
-          toast({ title: signInputType === "facial" ? `Reconhecimento facial registrado em ${ids.length} entrega(s)!` : `Assinatura salva em ${ids.length} entrega(s)!` });
-        }
-      }
-
-      refetch();
-      setSignOpen(false);
-      setPendingEntrega(null);
-      setSelectedUnsigned([]);
-      setSignMode("new");
-      setSignFuncId("");
-      setCapturedPhoto(null);
-    } finally {
-      setSavingConfirmation(false);
     }
   };
 
