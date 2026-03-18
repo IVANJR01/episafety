@@ -1,12 +1,13 @@
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { useMemo, useState, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
@@ -28,7 +29,6 @@ export default function Dashboard() {
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
 
-  // Fetch contract movements and contracts for the chart
   const [movimentacoes, setMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
 
@@ -50,7 +50,6 @@ export default function Dashboard() {
 
   const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
 
-  // Calculate monthly costs
   const valorEstoqueAtual = useMemo(() => {
     return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
   }, [epis]);
@@ -91,17 +90,16 @@ export default function Dashboard() {
   }, [epis]);
 
   const CHART_COLORS = [
-    "hsl(var(--primary))",
-    "hsl(25, 95%, 53%)",
-    "hsl(142, 71%, 45%)",
-    "hsl(47, 95%, 53%)",
+    "hsl(24, 95%, 53%)",
     "hsl(199, 89%, 48%)",
+    "hsl(142, 71%, 45%)",
     "hsl(262, 83%, 58%)",
     "hsl(346, 77%, 50%)",
+    "hsl(47, 95%, 53%)",
     "hsl(173, 80%, 40%)",
+    "hsl(25, 95%, 53%)",
   ];
 
-  // Contract consumption chart data
   const { contratoChartData, contratoNomes } = useMemo(() => {
     if (movimentacoes.length === 0 || contratos.length === 0) {
       return { contratoChartData: [], contratoNomes: [] as string[] };
@@ -136,7 +134,6 @@ export default function Dashboard() {
     return { contratoChartData: chartData, contratoNomes: allContratos };
   }, [movimentacoes, contratos]);
 
-  // Consumo mensal por EPI com detalhamento por mês
   const { mediaMensalEPI, mesesOrdenados } = useMemo(() => {
     if (entregas.length === 0) return { mediaMensalEPI: [], mesesOrdenados: [] as string[] };
 
@@ -184,85 +181,207 @@ export default function Dashboard() {
     }, 0);
   }, [entregas, epis]);
 
-  const stats = [
-    { label: "EPIs Cadastrados", value: epis.length, icon: Package, color: "text-primary" },
-    { label: "Funcionários", value: funcionarios.length, icon: Users, color: "text-success" },
-    { label: "Entregas", value: entregas.length, icon: ClipboardList, color: "text-muted-foreground" },
-    { label: "Alertas", value: alertasEstoque.length, icon: AlertTriangle, color: "text-warning" },
-  ];
-
   const recentEntregas = entregas.slice(0, 5).map(e => ({
     ...e,
     funcionarioNome: funcionarios.find(f => f.id === e.funcionario_id)?.nome || "—",
     epiNome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
   }));
 
+  // Compliance score (items in stock / total items)
+  const complianceScore = epis.length > 0
+    ? Math.round((epis.filter(e => e.estoque > e.estoque_minimo).length / epis.length) * 100)
+    : 100;
+
+  const heroStats = [
+    {
+      label: "EPIs Cadastrados",
+      value: epis.length,
+      icon: Package,
+      gradient: "from-[hsl(24,95%,53%)] to-[hsl(24,95%,40%)]",
+      iconBg: "bg-white/20",
+      textColor: "text-white",
+    },
+    {
+      label: "Funcionários Ativos",
+      value: funcionarios.length,
+      icon: Users,
+      gradient: "from-[hsl(199,89%,48%)] to-[hsl(199,89%,35%)]",
+      iconBg: "bg-white/20",
+      textColor: "text-white",
+    },
+    {
+      label: "Entregas Realizadas",
+      value: entregas.length,
+      icon: ClipboardList,
+      gradient: "from-[hsl(142,71%,45%)] to-[hsl(142,71%,32%)]",
+      iconBg: "bg-white/20",
+      textColor: "text-white",
+    },
+    {
+      label: "Alertas de Estoque",
+      value: alertasEstoque.length,
+      icon: AlertTriangle,
+      gradient: alertasEstoque.length > 0
+        ? "from-[hsl(0,72%,51%)] to-[hsl(0,72%,38%)]"
+        : "from-[hsl(142,71%,45%)] to-[hsl(142,71%,32%)]",
+      iconBg: "bg-white/20",
+      textColor: "text-white",
+    },
+  ];
+
   return (
-    <div className="space-y-5 sm:space-y-8">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Visão geral da Segurança do Trabalho</p>
+    <div className="space-y-6 sm:space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-1.5 h-8 rounded-full bg-primary" />
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Gestão de EPIs
+            </h1>
+          </div>
+          <p className="text-muted-foreground text-sm ml-3.5">
+            Painel de controle de segurança do trabalho
+          </p>
+        </div>
+        <div className="flex items-center gap-2 ml-3.5 sm:ml-0">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${
+            complianceScore >= 80 ? "bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,32%)]" :
+            complianceScore >= 50 ? "bg-warning/10 text-warning" :
+            "bg-destructive/10 text-destructive"
+          }`}>
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Conformidade: {complianceScore}%
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        {stats.map(s => (
-          <Card key={s.label}>
-            <CardContent className="flex items-center gap-3 p-3 sm:p-5">
-              <div className={`p-2 sm:p-3 rounded-xl bg-muted ${s.color}`}>
-                <s.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+      {/* Hero Stats */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        {heroStats.map(s => (
+          <Card key={s.label} className={`bg-gradient-to-br ${s.gradient} border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative`}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+            <CardContent className="relative flex items-center gap-3 p-4 sm:p-5">
+              <div className={`${s.iconBg} p-2.5 sm:p-3 rounded-xl backdrop-blur-sm group-hover:scale-110 transition-transform duration-300`}>
+                <s.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <p className="text-lg sm:text-2xl font-bold">{s.value}</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">{s.label}</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-sm">{s.value}</p>
+                <p className="text-[10px] sm:text-xs text-white/80 leading-tight font-medium">{s.label}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Monthly cost chart */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-primary" />
-            Custo Mensal de EPIs — Saída vs Estoque
-          </CardTitle>
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 mt-2">
-            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-              <div className="w-3 h-3 rounded-sm" style={{ background: 'hsl(var(--primary))' }} />
-              <span className="text-[10px] sm:text-xs text-muted-foreground">Saída (Total):</span>
-              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorSaida.toFixed(2)}</span>
+      {/* Financial Overview — Two big cards */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="shadow-md border-border/50 hover:shadow-lg transition-shadow">
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Boxes className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Valor em Estoque</p>
+                  <p className="text-xl sm:text-2xl font-extrabold font-mono tracking-tight">
+                    R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 text-[hsl(142,71%,45%)] bg-[hsl(142,71%,45%)]/10 px-2 py-1 rounded-full text-xs font-semibold">
+                <ArrowUpRight className="w-3 h-3" />
+                Ativo
+              </div>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-              <div className="w-3 h-3 rounded-sm" style={{ background: 'hsl(142, 71%, 45%)' }} />
-              <span className="text-[10px] sm:text-xs text-muted-foreground">Estoque Atual:</span>
-              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
+            <Progress value={Math.min(100, (epis.filter(e => e.estoque > 0).length / Math.max(epis.length, 1)) * 100)} className="h-2" />
+            <p className="text-[10px] text-muted-foreground mt-1.5">{epis.filter(e => e.estoque > 0).length} de {epis.length} EPIs com estoque</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md border-border/50 hover:shadow-lg transition-shadow">
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-destructive/10">
+                  <DollarSign className="w-4 h-4 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Total de Saídas</p>
+                  <p className="text-xl sm:text-2xl font-extrabold font-mono tracking-tight">
+                    R$ {valorSaida.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 text-destructive bg-destructive/10 px-2 py-1 rounded-full text-xs font-semibold">
+                <ArrowDownRight className="w-3 h-3" />
+                Saída
+              </div>
+            </div>
+            <Progress value={valorEstoqueAtual > 0 ? Math.min(100, (valorSaida / valorEstoqueAtual) * 100) : 0} className="h-2 [&>div]:bg-destructive" />
+            <p className="text-[10px] text-muted-foreground mt-1.5">{entregas.length} entregas realizadas no período</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Cost Evolution Chart — Area chart */}
+      <Card className="shadow-md border-border/50">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <TrendingUp className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold">Evolução de Custos</CardTitle>
+                <p className="text-xs text-muted-foreground">Saída mensal vs Valor em estoque</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 mt-3">
+            <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
+              <div className="w-3 h-3 rounded-full bg-primary" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Saída:</span>
+              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorSaida.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg bg-[hsl(142,71%,45%)]/5 border border-[hsl(142,71%,45%)]/20 px-3 py-2">
+              <div className="w-3 h-3 rounded-full bg-[hsl(142,71%,45%)]" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground">Estoque:</span>
+              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {custoMensalData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum dado de custo disponível</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Nenhum dado de custo disponível</p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={custoMensalData} barGap={4}>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={custoMensalData}>
+                <defs>
+                  <linearGradient id="gradSaida" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(24, 95%, 53%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(24, 95%, 53%)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradEstoque" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="mes" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                <XAxis dataKey="mes" tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
+                <YAxis tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} tickFormatter={v => `R$${v}`} />
                 <Tooltip
                   formatter={(value: number, name: string) => [
-                    `R$ ${value.toFixed(2)}`,
+                    `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
                     name === "saida" ? "Saída Mensal" : "Estoque Atual"
                   ]}
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                  contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 15%, 88%)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
                 />
-                <Legend
-                  formatter={(value: string) => value === "saida" ? "Saída Mensal" : "Estoque Atual"}
-                  wrapperStyle={{ fontSize: '12px' }}
-                />
-                <Bar dataKey="saida" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="estoque" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Legend formatter={(value: string) => value === "saida" ? "Saída Mensal" : "Estoque Atual"} wrapperStyle={{ fontSize: '12px' }} />
+                <Area type="monotone" dataKey="saida" stroke="hsl(24, 95%, 53%)" strokeWidth={2.5} fill="url(#gradSaida)" />
+                <Area type="monotone" dataKey="estoque" stroke="hsl(142, 71%, 45%)" strokeWidth={2.5} fill="url(#gradEstoque)" />
+              </AreaChart>
             </ResponsiveContainer>
           )}
         </CardContent>
@@ -270,24 +389,28 @@ export default function Dashboard() {
 
       {/* Contract consumption chart */}
       {contratoChartData.length > 0 && (
-        <Card>
+        <Card className="shadow-md border-border/50">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileBarChart className="w-4 h-4 text-primary" />
-              Consumo Mensal por Contrato
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Quantidade de EPIs consumidos por contrato nos últimos 12 meses
-            </p>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
+                <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-bold">Consumo por Contrato</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Quantidade de EPIs consumidos por contrato — últimos 12 meses
+                </p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={contratoChartData} barGap={2}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="mes" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                <XAxis dataKey="mes" tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
+                <YAxis tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
                 <Tooltip
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                  contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 15%, 88%)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '12px' }}
                   formatter={(value: number, name: string) => [`${value} un.`, name]}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px' }} />
@@ -307,47 +430,34 @@ export default function Dashboard() {
       )}
 
       {/* Stock value chart */}
-      <Card>
+      <Card className="shadow-md border-border/50">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Package className="w-4 h-4 text-primary" />
-            Valor do Estoque Atual por EPI
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toFixed(2)}</span>
-          </p>
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Package className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-bold">Valor do Estoque por EPI</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+              </p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {estoqueChartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">Nenhum EPI com valor em estoque</p>
-          ) : isMobile ? (
-            <ResponsiveContainer width="100%" height={Math.max(200, estoqueChartData.length * 48)}>
-              <BarChart data={estoqueChartData} layout="vertical" margin={{ left: 8, right: 12, top: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} tickFormatter={v => `R$${v}`} />
-                <YAxis type="category" dataKey="nome" width={100} tick={{ fill: 'hsl(var(--foreground))', fontSize: 11 }} />
-                <Tooltip
-                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Valor"]}
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-                />
-                <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
-                  {estoqueChartData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <p className="text-sm text-muted-foreground py-8 text-center">Nenhum EPI com valor em estoque</p>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(250, estoqueChartData.length * 48)}>
-              <BarChart data={estoqueChartData} layout="vertical" margin={{ left: 8, right: 16, top: 4, bottom: 4 }}>
+            <ResponsiveContainer width="100%" height={Math.max(250, estoqueChartData.length * 52)}>
+              <BarChart data={estoqueChartData} layout="vertical" margin={{ left: isMobile ? 8 : 8, right: 16, top: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={v => `R$${v}`} />
-                <YAxis type="category" dataKey="nome" width={140} tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }} />
+                <XAxis type="number" tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                <YAxis type="category" dataKey="nome" width={isMobile ? 100 : 140} tick={{ fill: 'hsl(220, 25%, 10%)', fontSize: isMobile ? 11 : 12 }} />
                 <Tooltip
-                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Valor"]}
-                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                  formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Valor"]}
+                  contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 15%, 88%)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
                 />
-                <Bar dataKey="valor" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="valor" radius={[0, 6, 6, 0]} barSize={24}>
                   {estoqueChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
@@ -361,29 +471,33 @@ export default function Dashboard() {
       {/* Mobile: Tabs | Desktop: stacked */}
       {isMobile ? (
         <Tabs defaultValue="consumo" className="w-full">
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="consumo" className="text-xs">
+          <TabsList className="w-full grid grid-cols-3 h-11">
+            <TabsTrigger value="consumo" className="text-xs font-semibold">
               <TrendingUp className="w-3.5 h-3.5 mr-1" /> Consumo
             </TabsTrigger>
-            <TabsTrigger value="alertas" className="text-xs">
+            <TabsTrigger value="alertas" className="text-xs font-semibold">
               <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Alertas
               {alertasEstoque.length > 0 && (
-                <span className="ml-1 bg-destructive text-destructive-foreground text-[10px] rounded-full px-1.5">{alertasEstoque.length}</span>
+                <span className="ml-1 bg-destructive text-destructive-foreground text-[10px] rounded-full px-1.5 animate-pulse">{alertasEstoque.length}</span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="entregas" className="text-xs">
+            <TabsTrigger value="entregas" className="text-xs font-semibold">
               <ClipboardList className="w-3.5 h-3.5 mr-1" /> Entregas
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="consumo">
-            <Card>
+            <Card className="shadow-md border-border/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  Média Mensal de Consumo
-                </CardTitle>
-                <p className="text-[10px] text-muted-foreground">Planejamento de compras</p>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-bold">Média Mensal de Consumo</CardTitle>
+                    <p className="text-[10px] text-muted-foreground">Planejamento de compras</p>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 {mediaMensalEPI.length === 0 ? (
@@ -391,14 +505,14 @@ export default function Dashboard() {
                 ) : (
                   <div className="space-y-2 p-3">
                     {mediaMensalEPI.map(e => (
-                      <div key={e.id} className="rounded-lg border border-border p-3 space-y-1">
+                      <div key={e.id} className="rounded-xl border border-border/60 p-3 space-y-2 hover:bg-muted/30 transition-colors">
                         <div className="flex justify-between items-start">
-                          <span className="font-medium text-sm leading-tight">{e.nome}</span>
+                          <span className="font-semibold text-sm leading-tight">{e.nome}</span>
                           {e.mesesEstoque !== null && (
                             <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
-                              e.mesesEstoque <= 1 ? "bg-destructive/10 text-destructive" :
+                              e.mesesEstoque <= 1 ? "bg-destructive/10 text-destructive animate-pulse" :
                               e.mesesEstoque <= 3 ? "bg-warning/10 text-warning" :
-                              "bg-green-500/10 text-green-600"
+                              "bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,32%)]"
                             }`}>
                               {e.mesesEstoque}m
                             </span>
@@ -418,20 +532,25 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="alertas">
-            <Card className={alertasEstoque.length > 0 ? "border-warning/30" : ""}>
+            <Card className={`shadow-md border-border/50 ${alertasEstoque.length > 0 ? "border-destructive/30" : ""}`}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-warning" />
-                  Alertas de Estoque
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${alertasEstoque.length > 0 ? "bg-destructive/10" : "bg-[hsl(142,71%,45%)]/10"}`}>
+                    <AlertTriangle className={`w-3.5 h-3.5 ${alertasEstoque.length > 0 ? "text-destructive" : "text-[hsl(142,71%,45%)]"}`} />
+                  </div>
+                  <CardTitle className="text-sm font-bold">Alertas de Estoque</CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 {alertasEstoque.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Nenhum alerta no momento ✅</p>
+                  <div className="flex flex-col items-center py-6 gap-2">
+                    <ShieldCheck className="w-10 h-10 text-[hsl(142,71%,45%)]" />
+                    <p className="text-sm font-medium text-[hsl(142,71%,32%)]">Todos os estoques estão OK!</p>
+                  </div>
                 ) : alertasEstoque.map(a => (
-                  <div key={a.id} className="flex justify-between items-center text-sm p-2.5 rounded-lg bg-warning/5">
-                    <span><span className="font-medium">{a.nome}</span> — estoque baixo</span>
-                    <span className="text-warning font-mono text-xs font-bold">{a.estoque} un.</span>
+                  <div key={a.id} className="flex justify-between items-center text-sm p-3 rounded-xl bg-destructive/5 border border-destructive/10">
+                    <span><span className="font-semibold">{a.nome}</span> — estoque crítico</span>
+                    <span className="text-destructive font-mono text-xs font-bold bg-destructive/10 px-2 py-0.5 rounded-full">{a.estoque} un.</span>
                   </div>
                 ))}
               </CardContent>
@@ -439,9 +558,14 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="entregas">
-            <Card>
+            <Card className="shadow-md border-border/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Últimas Entregas</CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-[hsl(199,89%,48%)]/10">
+                    <ClipboardList className="w-3.5 h-3.5 text-[hsl(199,89%,48%)]" />
+                  </div>
+                  <CardTitle className="text-sm font-bold">Últimas Entregas</CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 {recentEntregas.length === 0 ? (
@@ -449,10 +573,10 @@ export default function Dashboard() {
                 ) : (
                   <div className="space-y-2">
                     {recentEntregas.map(e => (
-                      <div key={e.id} className="rounded-lg bg-muted/50 p-2.5 space-y-0.5">
+                      <div key={e.id} className="rounded-xl bg-muted/40 p-3 space-y-0.5 hover:bg-muted/60 transition-colors">
                         <div className="flex justify-between items-center">
-                          <span className="font-medium text-sm">{e.funcionarioNome}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
+                          <span className="font-semibold text-sm">{e.funcionarioNome}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded-full">{e.data}</span>
                         </div>
                         <p className="text-xs text-muted-foreground">{e.epiNome} ({e.quantidade}x)</p>
                       </div>
@@ -465,16 +589,20 @@ export default function Dashboard() {
         </Tabs>
       ) : (
         <>
-          {/* Desktop: original layout */}
-          <Card>
+          {/* Desktop: Consumption table */}
+          <Card className="shadow-md border-border/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                Média Mensal de Consumo por EPI
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Base para planejamento de compras — quanto maior o consumo, mais atenção ao reabastecimento
-              </p>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold">Média Mensal de Consumo por EPI</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Base para planejamento de compras — quanto maior o consumo, mais atenção ao reabastecimento
+                  </p>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               {mediaMensalEPI.length === 0 ? (
@@ -484,31 +612,35 @@ export default function Dashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="sticky left-0 bg-card z-10">EPI</TableHead>
+                        <TableHead className="sticky left-0 bg-card z-10 font-bold">EPI</TableHead>
                         {mesesOrdenados.map(m => (
                           <TableHead key={m} className="text-center whitespace-nowrap">
                             {m.split("-").reverse().join("/")}
                           </TableHead>
                         ))}
-                        <TableHead className="text-right">Média/Mês</TableHead>
-                        <TableHead className="text-right">Estoque</TableHead>
-                        <TableHead className="text-right">Duração</TableHead>
+                        <TableHead className="text-right font-bold">Média/Mês</TableHead>
+                        <TableHead className="text-right font-bold">Estoque</TableHead>
+                        <TableHead className="text-right font-bold">Duração</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {mediaMensalEPI.map(e => (
-                        <TableRow key={e.id}>
-                          <TableCell className="font-medium sticky left-0 bg-card z-10 max-w-[180px] truncate">{e.nome}</TableCell>
+                        <TableRow key={e.id} className="hover:bg-muted/30">
+                          <TableCell className="font-semibold sticky left-0 bg-card z-10 max-w-[180px] truncate">{e.nome}</TableCell>
                           {mesesOrdenados.map(m => (
                             <TableCell key={m} className="text-center font-mono text-sm">
-                              {e.porMes[m] || <span className="text-muted-foreground">0</span>}
+                              {e.porMes[m] || <span className="text-muted-foreground/40">0</span>}
                             </TableCell>
                           ))}
-                          <TableCell className="text-right font-mono text-sm font-semibold">{e.media}</TableCell>
+                          <TableCell className="text-right font-mono text-sm font-bold text-primary">{e.media}</TableCell>
                           <TableCell className="text-right font-mono text-sm">{e.estoqueAtual}</TableCell>
                           <TableCell className="text-right">
                             {e.mesesEstoque !== null ? (
-                              <span className={`font-mono text-sm font-semibold ${e.mesesEstoque <= 1 ? "text-destructive" : e.mesesEstoque <= 3 ? "text-warning" : "text-green-600"}`}>
+                              <span className={`font-mono text-sm font-bold px-2 py-0.5 rounded-full ${
+                                e.mesesEstoque <= 1 ? "bg-destructive/10 text-destructive" :
+                                e.mesesEstoque <= 3 ? "bg-warning/10 text-warning" :
+                                "bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,32%)]"
+                              }`}>
                                 {e.mesesEstoque}m
                               </span>
                             ) : "—"}
@@ -522,29 +654,46 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            {alertasEstoque.length > 0 && (
-              <Card className="border-warning/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-warning" />
-                    Alertas de Estoque
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {alertasEstoque.map(a => (
-                    <div key={a.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-warning/5">
-                      <span><span className="font-medium">{a.nome}</span> — estoque baixo</span>
-                      <span className="text-warning font-mono text-xs">{a.estoque} un.</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            <Card>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Alerts */}
+            <Card className={`shadow-md border-border/50 ${alertasEstoque.length > 0 ? "border-destructive/30" : ""}`}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Últimas Entregas</CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className={`p-2 rounded-lg ${alertasEstoque.length > 0 ? "bg-destructive/10" : "bg-[hsl(142,71%,45%)]/10"}`}>
+                    <AlertTriangle className={`w-4 h-4 ${alertasEstoque.length > 0 ? "text-destructive" : "text-[hsl(142,71%,45%)]"}`} />
+                  </div>
+                  <CardTitle className="text-base font-bold">Alertas de Estoque</CardTitle>
+                  {alertasEstoque.length > 0 && (
+                    <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-2 py-0.5 animate-pulse">
+                      {alertasEstoque.length}
+                    </span>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {alertasEstoque.length === 0 ? (
+                  <div className="flex flex-col items-center py-6 gap-2">
+                    <ShieldCheck className="w-12 h-12 text-[hsl(142,71%,45%)]" />
+                    <p className="text-sm font-medium text-[hsl(142,71%,32%)]">Todos os estoques dentro do limite!</p>
+                  </div>
+                ) : alertasEstoque.map(a => (
+                  <div key={a.id} className="flex justify-between items-center text-sm p-3 rounded-xl bg-destructive/5 border border-destructive/10 hover:bg-destructive/10 transition-colors">
+                    <span><span className="font-semibold">{a.nome}</span> — estoque crítico</span>
+                    <span className="text-destructive font-mono text-xs font-bold bg-destructive/10 px-2.5 py-0.5 rounded-full">{a.estoque} un.</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Recent deliveries */}
+            <Card className="shadow-md border-border/50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
+                    <ClipboardList className="w-4 h-4 text-[hsl(199,89%,48%)]" />
+                  </div>
+                  <CardTitle className="text-base font-bold">Últimas Entregas</CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 {recentEntregas.length === 0 ? (
@@ -552,12 +701,12 @@ export default function Dashboard() {
                 ) : (
                   <div className="space-y-2">
                     {recentEntregas.map(e => (
-                      <div key={e.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-muted/50">
+                      <div key={e.id} className="flex justify-between items-center text-sm p-3 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors">
                         <div>
-                          <span className="font-medium">{e.funcionarioNome}</span>
+                          <span className="font-semibold">{e.funcionarioNome}</span>
                           <span className="text-muted-foreground"> — {e.epiNome} ({e.quantidade}x)</span>
                         </div>
-                        <span className="text-xs text-muted-foreground font-mono">{e.data}</span>
+                        <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded-full">{e.data}</span>
                       </div>
                     ))}
                   </div>
