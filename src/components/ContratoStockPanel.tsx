@@ -608,6 +608,7 @@ export default function ContratoStockPanel() {
                                             <TableHead className="text-xs text-right">Estoque</TableHead>
                                             <TableHead className="text-xs text-right">Valor Unit.</TableHead>
                                             <TableHead className="text-xs text-right">Valor Total</TableHead>
+                                            <TableHead className="text-xs text-right">Média Gasto/Mês</TableHead>
                                             <TableHead className="text-xs w-20"></TableHead>
                                           </TableRow>
                                         </TableHeader>
