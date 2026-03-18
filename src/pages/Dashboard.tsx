@@ -419,6 +419,7 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Contract consumption chart */}
       {contratoChartData.length > 0 && (
