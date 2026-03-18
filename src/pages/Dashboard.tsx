@@ -30,7 +30,8 @@ const staggerContainer = {
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; }
+interface Profile { id: string; user_id: string; nome: string; }
 interface ContratoMovimentacao {
   id: string;
   contrato_id: string;
@@ -49,10 +50,11 @@ export default function Dashboard() {
 
   const [movimentacoes, setMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
     async function fetchContractData() {
-      const [movResult, contResult] = await Promise.all([
+      const [movResult, contResult, profResult] = await Promise.all([
         cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
           (supabase.from as any)("contrato_epis_movimentacoes")
             .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
@@ -63,9 +65,13 @@ export default function Dashboard() {
         cachedQuery<Contrato>("dashboard_contratos", () =>
           (supabase.from as any)("contratos").select("id, nome")
         ),
+        cachedQuery<Profile>("dashboard_profiles", () =>
+          supabase.from("profiles").select("id, user_id, nome") as any
+        ),
       ]);
       setMovimentacoes(movResult.data);
       setContratos(contResult.data);
+      setProfiles(profResult.data);
     }
     fetchContractData();
   }, []);
@@ -202,6 +208,21 @@ export default function Dashboard() {
       return sum + (epi?.valor || 0) * e.quantidade;
     }, 0);
   }, [entregas, epis]);
+
+  // Entregas por responsável (quem registrou)
+  const entregasPorResponsavel = useMemo(() => {
+    const profileMap = new Map(profiles.map(p => [p.user_id, p.nome]));
+    const contagem: Record<string, number> = {};
+    entregas.forEach(e => {
+      const userId = (e as any).created_by;
+      if (!userId) return;
+      const nome = profileMap.get(userId) || "Desconhecido";
+      contagem[nome] = (contagem[nome] || 0) + e.quantidade;
+    });
+    return Object.entries(contagem)
+      .map(([nome, quantidade]) => ({ nome: nome.length > 20 ? nome.substring(0, 18) + "..." : nome, quantidade }))
+      .sort((a, b) => b.quantidade - a.quantidade);
+  }, [entregas, profiles]);
 
   const recentEntregas = entregas.slice(0, 20).map(e => ({
     ...e,
@@ -798,6 +819,39 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Entregas por Responsável */}
+          {entregasPorResponsavel.length > 0 && (
+            <Card className="shadow-md border-border/50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Users className="w-4 h-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
+                  <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={Math.max(250, entregasPorResponsavel.length * 40)}>
+                  <BarChart data={entregasPorResponsavel} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis dataKey="nome" type="category" width={130} tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                      formatter={(value: number) => [`${value} un.`, "Quantidade"]}
+                    />
+                    <Bar dataKey="quantidade" radius={[0, 6, 6, 0]} maxBarSize={28}>
+                      {entregasPorResponsavel.map((_, idx) => (
+                        <Cell key={idx} fill={idx < 3 ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.5)"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
       </motion.div>
