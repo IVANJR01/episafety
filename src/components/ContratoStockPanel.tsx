@@ -63,7 +63,12 @@ interface Movimentacao {
 
 interface ConsumoMensal {
   mes: string;
-  quantidade: number;
+  entrega: number;
+  troca: number;
+  substituicao: number;
+  devolucao: number;
+  perda: number;
+  dano: number;
   custo: number;
 }
 
