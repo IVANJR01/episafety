@@ -641,8 +641,8 @@ export default function ContratoStockPanel() {
                                             <Tooltip
                                               contentStyle={{ fontSize: 11, borderRadius: 8 }}
                                               formatter={(value: number, name: string) => [
-                                                name === "quantidade" ? `${value} un.` : `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                                                name === "quantidade" ? "Quantidade" : "Custo"
+                                                name === "Quantidade" ? `${value} un.` : `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                                                name === "Quantidade" ? "Quantidade" : "Custo"
                                               ]}
                                             />
                                             <Legend wrapperStyle={{ fontSize: 10 }} />
