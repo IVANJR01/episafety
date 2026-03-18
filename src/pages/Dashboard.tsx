@@ -247,12 +247,22 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <motion.div
+      className="space-y-6 sm:space-y-8"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+      <motion.div variants={fadeUp} custom={0} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-1.5 h-8 rounded-full bg-primary" />
+            <motion.div
+              className="w-1.5 h-8 rounded-full bg-primary"
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            />
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Gestão de EPIs
             </h1>
@@ -271,12 +281,17 @@ export default function Dashboard() {
             Conformidade: {complianceScore}%
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Hero Stats */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        {heroStats.map(s => (
-          <Card key={s.label} className={`bg-gradient-to-br ${s.gradient} border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative`}>
+        {heroStats.map((s, i) => (
+          <MotionCard
+            key={s.label}
+            variants={fadeUp}
+            custom={i + 1}
+            className={`bg-gradient-to-br ${s.gradient} border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative`}
+          >
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
             <CardContent className="relative flex items-center gap-3 p-4 sm:p-5">
               <div className={`${s.iconBg} p-2.5 sm:p-3 rounded-xl backdrop-blur-sm group-hover:scale-110 transition-transform duration-300`}>
@@ -287,7 +302,7 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs text-white/80 leading-tight font-medium">{s.label}</p>
               </div>
             </CardContent>
-          </Card>
+          </MotionCard>
         ))}
       </div>
 
