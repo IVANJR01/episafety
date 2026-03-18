@@ -17,6 +17,14 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [];
 
+// Bottom nav: key shortcuts for mobile
+const mobileBottomItems: NavItem[] = [
+  { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
+  { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
+  { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
+  { path: "/cadastro", label: "Cadastro", icon: Users, moduleKey: "cadastro_funcionarios" },
+];
+
 const epiItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
   { path: "/epis", label: "Cadastro de EPIs", icon: Package, moduleKey: "epis" },
@@ -84,9 +92,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
 
-  // Bottom nav items: first 4 main items + "Mais" button
-  const bottomNavItems = visibleMainItems.slice(0, 4);
-  const hasMore = visibleCadastroItems.length > 0 || isSuperAdmin || isPrincipal;
+  // Bottom nav items for mobile
+  const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
+  const bottomNavItems = visibleMobileBottomItems.slice(0, 4);
+  const hasMore = true; // Always show "Mais" for full sidebar access
 
   useEffect(() => {
     // Captura o evento beforeinstallprompt para usar no botão de instalação
@@ -420,19 +429,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </header>
 
-        <div className="p-4 lg:p-8 max-w-7xl">{children}</div>
+        <div className="p-4 lg:p-8 max-w-7xl mx-auto">{children}</div>
       </main>
 
       {/* Mobile bottom navigation bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border lg:hidden safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border lg:hidden pb-[env(safe-area-inset-bottom,0px)]">
         <div className="flex items-stretch justify-around">
           {bottomNavItems.map((item) => {
-            const active = location.pathname === item.path;
+            const active = item.path === "/" 
+              ? location.pathname === "/" 
+              : location.pathname.startsWith(item.path);
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 flex-1 text-[10px] font-medium transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 flex-1 text-[10px] font-medium transition-colors ${
                   active
                     ? "text-primary"
                     : "text-muted-foreground"
@@ -443,19 +454,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-          {hasMore && (
-            <button
-              onClick={() => setMobileOpen(true)}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 flex-1 text-[10px] font-medium transition-colors ${
-                isCadastroActive || location.pathname === "/admin/empresas"
-                  ? "text-primary"
-                  : "text-muted-foreground"
-              }`}
-            >
-              <Menu className={`w-5 h-5 ${isCadastroActive ? "text-primary" : ""}`} />
-              <span>Mais</span>
-            </button>
-          )}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className={`flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 flex-1 text-[10px] font-medium transition-colors ${
+              mobileOpen
+                ? "text-primary"
+                : "text-muted-foreground"
+            }`}
+          >
+            <Menu className="w-5 h-5" />
+            <span>Mais</span>
+          </button>
         </div>
       </nav>
     </div>
