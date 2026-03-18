@@ -702,34 +702,72 @@ export default function Dashboard() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Alerts */}
-            <Card className={`shadow-md border-border/50 ${alertasEstoque.length > 0 ? "border-destructive/30" : ""}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-lg ${alertasEstoque.length > 0 ? "bg-destructive/10" : "bg-[hsl(142,71%,45%)]/10"}`}>
-                    <AlertTriangle className={`w-4 h-4 ${alertasEstoque.length > 0 ? "text-destructive" : "text-[hsl(142,71%,45%)]"}`} />
-                  </div>
-                  <CardTitle className="text-base font-bold">Alertas de Estoque</CardTitle>
-                  {alertasEstoque.length > 0 && (
-                    <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-2 py-0.5 animate-pulse">
-                      {alertasEstoque.length}
-                    </span>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {alertasEstoque.length === 0 ? (
-                  <div className="flex flex-col items-center py-6 gap-2">
-                    <ShieldCheck className="w-12 h-12 text-[hsl(142,71%,45%)]" />
-                    <p className="text-sm font-medium text-[hsl(142,71%,32%)]">Todos os estoques dentro do limite!</p>
-                  </div>
-                ) : alertasEstoque.map(a => (
-                  <div key={a.id} className="flex justify-between items-center text-sm p-3 rounded-xl bg-destructive/5 border border-destructive/10 hover:bg-destructive/10 transition-colors">
-                    <span><span className="font-semibold">{a.nome}</span> — estoque crítico</span>
-                    <span className="text-destructive font-mono text-xs font-bold bg-destructive/10 px-2.5 py-0.5 rounded-full">{a.estoque} un.</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            {(() => {
+              const semEstoque = alertasEstoque.filter(a => a.estoque === 0);
+              const baixoEstoque = alertasEstoque.filter(a => a.estoque > 0);
+              return (
+                <Card className={`shadow-md border-border/50 ${alertasEstoque.length > 0 ? "border-destructive/30" : ""}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2 rounded-lg ${alertasEstoque.length > 0 ? "bg-destructive/10" : "bg-[hsl(142,71%,45%)]/10"}`}>
+                        <AlertTriangle className={`w-4 h-4 ${alertasEstoque.length > 0 ? "text-destructive" : "text-[hsl(142,71%,45%)]"}`} />
+                      </div>
+                      <CardTitle className="text-base font-bold">Alertas de Estoque</CardTitle>
+                      {alertasEstoque.length > 0 && (
+                        <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-2 py-0.5 animate-pulse">
+                          {alertasEstoque.length}
+                        </span>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {alertasEstoque.length === 0 ? (
+                      <div className="flex flex-col items-center py-6 gap-2">
+                        <ShieldCheck className="w-12 h-12 text-[hsl(142,71%,45%)]" />
+                        <p className="text-sm font-medium text-[hsl(142,71%,32%)]">Todos os estoques dentro do limite!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                        {semEstoque.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 sticky top-0 bg-card py-1 z-10">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-destructive">Sem Estoque</span>
+                              <span className="text-[10px] bg-destructive text-destructive-foreground font-bold rounded-full px-1.5 py-0.5">{semEstoque.length}</span>
+                              <div className="flex-1 border-t border-destructive/20" />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {semEstoque.map(a => (
+                                <div key={a.id} className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-destructive/5 border border-destructive/15 hover:bg-destructive/10 transition-colors">
+                                  <span className="font-medium truncate mr-2">{a.nome}</span>
+                                  <span className="text-destructive font-mono text-[11px] font-bold bg-destructive/10 px-2 py-0.5 rounded-full shrink-0">0 un.</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {baixoEstoque.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 sticky top-0 bg-card py-1 z-10">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Estoque Baixo</span>
+                              <span className="text-[10px] bg-amber-500 text-white font-bold rounded-full px-1.5 py-0.5">{baixoEstoque.length}</span>
+                              <div className="flex-1 border-t border-amber-300/40" />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {baixoEstoque.map(a => (
+                                <div key={a.id} className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 hover:bg-amber-100 dark:hover:bg-amber-950/30 transition-colors">
+                                  <span className="font-medium truncate mr-2">{a.nome}</span>
+                                  <span className="text-amber-700 dark:text-amber-300 font-mono text-[11px] font-bold bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full shrink-0">{a.estoque} un.</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Recent deliveries */}
             <Card className="shadow-md border-border/50">
