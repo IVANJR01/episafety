@@ -571,14 +571,14 @@ export default function Dashboard() {
                 {recentEntregas.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma entrega registrada</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                     {recentEntregas.map(e => (
                       <div key={e.id} className="rounded-xl bg-muted/40 p-3 space-y-0.5 hover:bg-muted/60 transition-colors">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold text-sm">{e.funcionarioNome}</span>
                           <span className="text-[10px] text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded-full">{e.data}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{e.epiNome} ({e.quantidade}x)</p>
+                        <p className="text-xs text-muted-foreground truncate">{e.epiNome} ({e.quantidade}x)</p>
                       </div>
                     ))}
                   </div>
