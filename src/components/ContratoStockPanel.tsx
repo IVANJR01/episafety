@@ -161,6 +161,7 @@ export default function ContratoStockPanel() {
   const [solicitacoesContratoId, setSolicitacoesContratoId] = useState("");
   const [respondingSolicitacao, setRespondingSolicitacao] = useState<string | null>(null);
   const [respostaObs, setRespostaObs] = useState("");
+  const [globalPendingCount, setGlobalPendingCount] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -173,6 +174,18 @@ export default function ContratoStockPanel() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Load global pending solicitations count for gestão users
+  useEffect(() => {
+    if (!hasGestaoEstoque) return;
+    const loadPending = async () => {
+      const { count } = await (supabase.from as any)("solicitacoes_epi")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pendente");
+      setGlobalPendingCount(count || 0);
+    };
+    loadPending();
+  }, [hasGestaoEstoque]);
 
   // Auto-expand for contract-bound users
   const [autoExpanded, setAutoExpanded] = useState(false);
@@ -571,6 +584,7 @@ export default function ContratoStockPanel() {
       if (error) throw error;
       toast({ title: novoStatus === "aprovada" ? "Solicitação aprovada!" : "Solicitação rejeitada" });
       setRespostaObs("");
+      setGlobalPendingCount(prev => Math.max(0, prev - 1));
       if (solicitacoesContratoId) {
         const contrato = contratos.find(c => c.id === solicitacoesContratoId);
         if (contrato) await loadContratoDetails(solicitacoesContratoId, contrato.empresa_id);
@@ -618,6 +632,23 @@ export default function ContratoStockPanel() {
         )}
       </div>
 
+      {hasGestaoEstoque && globalPendingCount > 0 && (
+        <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
+              <ClipboardList className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                {globalPendingCount} solicitaç{globalPendingCount === 1 ? "ão" : "ões"} de EPI pendente{globalPendingCount === 1 ? "" : "s"}
+              </p>
+              <p className="text-xs text-muted-foreground">Expanda os contratos para aprovar ou rejeitar</p>
+            </div>
+            <Badge className="bg-amber-500 text-white">{globalPendingCount}</Badge>
+          </CardContent>
+        </Card>
+      )}
+
       {allUnits.map(unidade => {
         if (!unidade) return null;
         const unitContratos = visibleContratos.filter(c => c.unidade_id === unidade.id);
@@ -628,7 +659,6 @@ export default function ContratoStockPanel() {
         return (
           <Card key={unidade.id} className="border-secondary/30">
             <CardContent className="p-4 space-y-3">
-              {/* Unit header */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-secondary-foreground" />
