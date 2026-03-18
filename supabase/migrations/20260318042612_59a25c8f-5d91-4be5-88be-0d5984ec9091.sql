@@ -1,0 +1,1 @@
+ALTER TABLE public.usuarios_liberados ADD COLUMN ativo boolean NOT NULL DEFAULT true;
