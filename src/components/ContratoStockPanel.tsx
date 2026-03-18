@@ -1089,6 +1089,124 @@ export default function ContratoStockPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Solicitar EPI Dialog */}
+      <Dialog open={solicitacaoOpen} onOpenChange={setSolicitacaoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <Send className="w-4 h-4 text-primary" />
+              Solicitar EPI
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div>
+              <Label className="text-xs">EPI</Label>
+              <Select value={solicitacaoEpiId} onValueChange={setSolicitacaoEpiId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o EPI" /></SelectTrigger>
+                <SelectContent>
+                  {solicitacaoEpis.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.nome} {e.ca ? `(CA: ${e.ca})` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {solicitacaoEpis.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">Nenhum EPI vinculado a este contrato</p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">Quantidade</Label>
+              <Input type="number" min={1} value={solicitacaoQtd} onChange={e => setSolicitacaoQtd(Math.max(1, Number(e.target.value)))} />
+            </div>
+            <div>
+              <Label className="text-xs">Motivo / Justificativa</Label>
+              <Textarea
+                value={solicitacaoMotivo}
+                onChange={e => setSolicitacaoMotivo(e.target.value)}
+                placeholder="Ex: Estoque baixo, necessidade de reposição para nova equipe..."
+                className="min-h-[60px] text-xs"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setSolicitacaoOpen(false)}>Cancelar</Button>
+            <Button size="sm" onClick={handleSolicitacao} disabled={savingSolicitacao || !solicitacaoEpiId || solicitacaoQtd <= 0}>
+              {savingSolicitacao ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-3.5 h-3.5 mr-1" />}
+              Enviar Solicitação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Solicitações List Dialog */}
+      <Dialog open={solicitacoesOpen} onOpenChange={setSolicitacoesOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-primary" />
+              Solicitações de EPIs
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {(contratoSolicitacoes[solicitacoesContratoId] || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma solicitação registrada</p>
+            ) : (
+              (contratoSolicitacoes[solicitacoesContratoId] || []).map(sol => {
+                const cfg = statusConfig[sol.status] || statusConfig.pendente;
+                return (
+                  <div key={sol.id} className="rounded-md border bg-background p-3 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold">{sol.epi_nome}</span>
+                        {sol.epi_ca && <span className="text-[10px] text-muted-foreground font-mono">CA: {sol.epi_ca}</span>}
+                        <span className="text-xs font-mono font-semibold">{sol.quantidade} un.</span>
+                      </div>
+                      <Badge className={`text-[10px] gap-1 ${cfg.className}`}>
+                        {cfg.icon}
+                        {cfg.label}
+                      </Badge>
+                    </div>
+                    {sol.motivo && (
+                      <p className="text-[11px] text-muted-foreground">{sol.motivo}</p>
+                    )}
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <span>Solicitado por: {sol.solicitante_nome}</span>
+                      <span>· {format(new Date(sol.created_at), "dd/MM/yyyy HH:mm")}</span>
+                    </div>
+                    {sol.aprovador_nome && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {sol.status === "aprovada" ? "Aprovado" : "Rejeitado"} por: {sol.aprovador_nome}
+                        {sol.observacao_resposta && <span> — {sol.observacao_resposta}</span>}
+                      </div>
+                    )}
+                    {/* Approve/Reject buttons for pending solicitations (only for managers) */}
+                    {sol.status === "pendente" && hasGestaoEstoque && (
+                      <div className="flex items-center gap-2 pt-1 border-t">
+                        <Input
+                          placeholder="Observação (opcional)"
+                          className="h-7 text-xs flex-1"
+                          value={respondingSolicitacao === sol.id ? respostaObs : ""}
+                          onChange={e => { setRespondingSolicitacao(sol.id); setRespostaObs(e.target.value); }}
+                          onFocus={() => setRespondingSolicitacao(sol.id)}
+                        />
+                        <Button size="sm" className="h-7 text-[10px] gap-1" variant="outline"
+                          onClick={() => handleRespostaSolicitacao(sol.id, "aprovada")}
+                          disabled={respondingSolicitacao === sol.id && savingSolicitacao}>
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />Aprovar
+                        </Button>
+                        <Button size="sm" className="h-7 text-[10px] gap-1" variant="outline"
+                          onClick={() => handleRespostaSolicitacao(sol.id, "rejeitada")}
+                          disabled={respondingSolicitacao === sol.id && savingSolicitacao}>
+                          <XCircle className="w-3 h-3 text-destructive" />Rejeitar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
