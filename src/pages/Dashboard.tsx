@@ -664,7 +664,7 @@ export default function Dashboard() {
                   <div className="p-1.5 rounded-lg bg-primary/10">
                     <Users className="w-3.5 h-3.5 text-primary" />
                   </div>
-                  <CardTitle className="text-sm font-bold">Entregas por Colaborador</CardTitle>
+                  <CardTitle className="text-sm font-bold">Entregas por Responsável</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
