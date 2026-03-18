@@ -451,16 +451,7 @@ export default function Entregas() {
 
       if (devolucaoError) throw devolucaoError;
 
-      await syncContractStockFromEntrega({
-        funcionarioId: entrega.funcionario_id,
-        epiId: entrega.epi_id,
-        quantidade: entrega.quantidade,
-        tipo: "devolucao",
-        empresaId,
-        observacao: `Devolução ref. entrega de ${entrega.data}`,
-        createdBy: currentUserId,
-        responsavelNome,
-      });
+      // Contract stock sync is now handled by DB trigger (trg_sync_contrato_stock)
 
       toast({ title: "EPI devolvido ao estoque!", description: `${epiObj?.nome || "EPI"} devolvido por ${funcObj?.nome || "colaborador"}.` });
       refetch();
