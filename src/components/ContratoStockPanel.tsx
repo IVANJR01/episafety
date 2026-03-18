@@ -228,36 +228,37 @@ export default function ContratoStockPanel() {
         .from("entregas")
         .select("data, quantidade, epi_id, tipo")
         .in("funcionario_id", funcIds)
-        .in("tipo", ["entrega", "substituicao"])
         .gte("data", sixMonthsAgo)
         .order("data");
 
       if (entregasData && entregasData.length > 0) {
-        // Get EPI values
         const epiIds = [...new Set(entregasData.map(e => e.epi_id))];
         const { data: episInfo } = await supabase.from("epis").select("id, valor").in("id", epiIds);
         const valMap = new Map((episInfo || []).map(e => [e.id, e.valor || 0]));
 
-        // Group by month
-        const monthMap = new Map<string, { quantidade: number; custo: number }>();
+        const emptyMonth = () => ({ entrega: 0, troca: 0, substituicao: 0, devolucao: 0, perda: 0, dano: 0, custo: 0 });
+        const monthMap = new Map<string, ReturnType<typeof emptyMonth>>();
         for (let i = 5; i >= 0; i--) {
           const d = subMonths(new Date(), i);
           const key = format(startOfMonth(d), "yyyy-MM");
-          monthMap.set(key, { quantidade: 0, custo: 0 });
+          monthMap.set(key, emptyMonth());
         }
 
         entregasData.forEach(e => {
-          const key = e.data.substring(0, 7); // yyyy-MM
+          const key = e.data.substring(0, 7);
           const existing = monthMap.get(key);
           if (existing) {
-            existing.quantidade += e.quantidade;
+            const tipo = e.tipo as keyof typeof existing;
+            if (tipo in existing && tipo !== "custo") {
+              (existing as any)[tipo] += e.quantidade;
+            }
             existing.custo += e.quantidade * (valMap.get(e.epi_id) || 0);
           }
         });
 
         consumoData = Array.from(monthMap.entries()).map(([key, val]) => ({
           mes: format(new Date(key + "-01"), "MMM/yy", { locale: ptBR }),
-          quantidade: val.quantidade,
+          ...val,
           custo: Number(val.custo.toFixed(2)),
         }));
       }
