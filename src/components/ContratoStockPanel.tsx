@@ -162,6 +162,7 @@ export default function ContratoStockPanel() {
   const [respondingSolicitacao, setRespondingSolicitacao] = useState<string | null>(null);
   const [respostaObs, setRespostaObs] = useState("");
   const [globalPendingCount, setGlobalPendingCount] = useState(0);
+  const [globalPendingSolicitacoes, setGlobalPendingSolicitacoes] = useState<Array<{id: string; contrato_nome: string; unidade_nome: string; epi_nome: string; quantidade: number; solicitante_nome: string | null; created_at: string}>>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
