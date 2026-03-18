@@ -17,6 +17,14 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [];
 
+// Bottom nav: key shortcuts for mobile
+const mobileBottomItems: NavItem[] = [
+  { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
+  { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
+  { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
+  { path: "/cadastro", label: "Cadastro", icon: Users, moduleKey: "cadastro_funcionarios" },
+];
+
 const epiItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
   { path: "/epis", label: "Cadastro de EPIs", icon: Package, moduleKey: "epis" },
