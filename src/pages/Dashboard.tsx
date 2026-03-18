@@ -50,6 +50,7 @@ export default function Dashboard() {
 
   const [movimentacoes, setMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
     async function fetchContractData() {
