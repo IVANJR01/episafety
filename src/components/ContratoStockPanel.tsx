@@ -670,17 +670,37 @@ export default function ContratoStockPanel() {
 
       {hasGestaoEstoque && globalPendingCount > 0 && (
         <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
-              <ClipboardList className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20 shrink-0">
+                <ClipboardList className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">
+                  {globalPendingCount} solicitaç{globalPendingCount === 1 ? "ão" : "ões"} de EPI pendente{globalPendingCount === 1 ? "" : "s"}
+                </p>
+                <p className="text-xs text-muted-foreground">Expanda os contratos abaixo para aprovar ou rejeitar</p>
+              </div>
+              <Badge className="bg-amber-500 text-white">{globalPendingCount}</Badge>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">
-                {globalPendingCount} solicitaç{globalPendingCount === 1 ? "ão" : "ões"} de EPI pendente{globalPendingCount === 1 ? "" : "s"}
-              </p>
-              <p className="text-xs text-muted-foreground">Expanda os contratos para aprovar ou rejeitar</p>
-            </div>
-            <Badge className="bg-amber-500 text-white">{globalPendingCount}</Badge>
+            {globalPendingSolicitacoes.length > 0 && (
+              <div className="ml-11 space-y-1.5">
+                {globalPendingSolicitacoes.map(sol => (
+                  <div key={sol.id} className="flex items-center gap-2 text-xs bg-background/80 rounded-md px-3 py-1.5 border border-amber-200 dark:border-amber-800/40">
+                    <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="font-semibold text-amber-700 dark:text-amber-300">{sol.unidade_nome}</span>
+                    <span className="text-muted-foreground">›</span>
+                    <span className="font-medium">{sol.contrato_nome}</span>
+                    <span className="text-muted-foreground">—</span>
+                    <span>{sol.epi_nome}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">{sol.quantidade} un.</Badge>
+                    {sol.solicitante_nome && (
+                      <span className="text-muted-foreground ml-auto text-[10px]">por {sol.solicitante_nome}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
