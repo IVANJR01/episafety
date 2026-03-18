@@ -113,6 +113,10 @@ export default function Filiais() {
   const getContratosForFilial = (id: string) => contratos.filter(c => c.unidade_id === id);
   const getUsersForFilial = (id: string) => profiles.filter(p => p.empresa_id === id);
   const getUsersForContrato = (id: string) => usuariosContratos.filter(u => u.contrato_id === id);
+  const getUsersForFilial = (filialId: string) => {
+    // Users linked to this filial's empresa_id without a contract
+    return usuariosContratos.filter(u => u.empresa_id === filialId && !u.contrato_id);
+  };
 
   // Unit CRUD
   const openNew = () => { setEditing(null); setForm({ nome: "", cnpj: "", email: "", telefone: "", endereco: "", tipo: "filial" }); setDialogOpen(true); };
