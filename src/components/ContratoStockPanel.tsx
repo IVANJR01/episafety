@@ -584,6 +584,7 @@ export default function ContratoStockPanel() {
       if (error) throw error;
       toast({ title: novoStatus === "aprovada" ? "Solicitação aprovada!" : "Solicitação rejeitada" });
       setRespostaObs("");
+      setGlobalPendingCount(prev => Math.max(0, prev - 1));
       if (solicitacoesContratoId) {
         const contrato = contratos.find(c => c.id === solicitacoesContratoId);
         if (contrato) await loadContratoDetails(solicitacoesContratoId, contrato.empresa_id);
