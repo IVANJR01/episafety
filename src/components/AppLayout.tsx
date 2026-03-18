@@ -36,7 +36,6 @@ const afterCadastroItems: NavItem[] = [
 
 const cadastroItems: NavItem[] = [
   { path: "/cadastro", label: "Dashboard", icon: LayoutDashboard, moduleKey: "cadastro_funcionarios" },
-  { path: "/cadastro/empresas", label: "Empresas", icon: Building2, moduleKey: "cadastro_empresas" },
   { path: "/cadastro/empresas", label: "Empresas / Unidades", icon: Building2, moduleKey: "cadastro_empresas" },
   { path: "/cadastro/funcionarios", label: "Funcionários", icon: Users, moduleKey: "cadastro_funcionarios" },
   { path: "/cadastro/usuarios", label: "Usuários Liberados", icon: Shield, moduleKey: "cadastro_usuarios" },
