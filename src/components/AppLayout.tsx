@@ -4,6 +4,7 @@ import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
+import { APP_VERSION } from "@/lib/version";
 
 interface NavItem {
   path: string;
