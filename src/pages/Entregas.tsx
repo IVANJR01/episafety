@@ -306,8 +306,9 @@ export default function Entregas() {
       return;
     }
     setSaving(true);
+    const normalizedTipo = normalizeEntregaTipo(form.tipo);
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
-    const status = statusMap[form.tipo] || "ativo";
+    const status = statusMap[normalizedTipo] || "ativo";
 
     if (!isOnline()) {
       const insertedIds: string[] = [];
@@ -321,7 +322,7 @@ export default function Entregas() {
           epi_id: item.epi.id,
           quantidade: item.quantidade,
           data: form.data,
-          tipo: form.tipo.toLowerCase(),
+          tipo: normalizedTipo,
           status,
           observacao: form.observacao || null,
           empresa_id: empresaId,
@@ -344,7 +345,7 @@ export default function Entregas() {
           epi_id: item.epi.id,
           quantidade: item.quantidade,
           data: form.data,
-          tipo: form.tipo,
+          tipo: normalizedTipo,
           status,
           observacao: form.observacao || null,
           created_at: new Date().toISOString(),
