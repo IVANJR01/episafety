@@ -566,24 +566,35 @@ export default function ContratoStockPanel() {
                               ) : (
                                 <div className="space-y-4">
                                   {/* Summary cards */}
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    <div className="rounded-md border p-2 bg-background">
-                                      <p className="text-[10px] text-muted-foreground">EPIs no Contrato</p>
-                                      <p className="font-bold text-sm">{epis.length}</p>
-                                    </div>
-                                    <div className="rounded-md border p-2 bg-background">
-                                      <p className="text-[10px] text-muted-foreground">Estoque Total</p>
-                                      <p className="font-bold text-sm">{totalEstoque} un.</p>
-                                    </div>
-                                    <div className="rounded-md border p-2 bg-background">
-                                      <p className="text-[10px] text-muted-foreground">Valor Total</p>
-                                      <p className="font-bold text-sm">R$ {totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                                    </div>
-                                    <div className="rounded-md border p-2 bg-background">
-                                      <p className="text-[10px] text-muted-foreground">Sem Estoque</p>
-                                      <p className={`font-bold text-sm ${itensBaixos > 0 ? "text-destructive" : ""}`}>{itensBaixos}</p>
-                                    </div>
-                                  </div>
+                                  {(() => {
+                                    const mesesComDados = consumo.filter(c => c.entrega > 0 || c.troca > 0 || c.substituicao > 0 || c.perda > 0 || c.dano > 0).length;
+                                    const totalGasto = consumo.reduce((s, c) => s + c.custo, 0);
+                                    const mediaMensal = mesesComDados > 0 ? totalGasto / mesesComDados : 0;
+                                    return (
+                                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">EPIs no Contrato</p>
+                                          <p className="font-bold text-sm">{epis.length}</p>
+                                        </div>
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">Estoque Total</p>
+                                          <p className="font-bold text-sm">{totalEstoque} un.</p>
+                                        </div>
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">Valor em Estoque</p>
+                                          <p className="font-bold text-sm">R$ {totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">Gasto Mensal (Média)</p>
+                                          <p className="font-bold text-sm">R$ {mediaMensal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">Sem Estoque</p>
+                                          <p className={`font-bold text-sm ${itensBaixos > 0 ? "text-destructive" : ""}`}>{itensBaixos}</p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                   {/* EPI Table */}
                                   {epis.length > 0 ? (
