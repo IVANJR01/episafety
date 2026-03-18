@@ -334,11 +334,11 @@ export default function Filiais() {
                             })}
 
                             {usersWithoutContract.length > 0 && (
-                              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2 space-y-1.5">
-                                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Sem contrato vinculado</p>
+                              <div className="bg-destructive/5 border border-destructive/20 rounded-md px-3 py-2 space-y-1.5">
+                                <p className="text-xs font-medium text-destructive">Sem contrato vinculado</p>
                                 <div className="flex flex-wrap gap-1.5">
                                   {usersWithoutContract.map(u => (
-                                    <Badge key={u.id} variant="outline" className="text-[10px] py-0.5 px-2 border-amber-300 text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                    <Badge key={u.id} variant="outline" className="text-[10px] py-0.5 px-2 border-destructive/30 text-destructive flex items-center gap-1">
                                       <Users className="w-2.5 h-2.5" />
                                       {u.nome || u.email || "—"}
                                     </Badge>
