@@ -148,6 +148,13 @@ export default function Entregas() {
   };
   const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
 
+  useEffect(() => {
+    const normalizedTipo = normalizeEntregaTipo(form.tipo);
+    if (form.tipo !== normalizedTipo) {
+      setForm(prev => ({ ...prev, tipo: normalizedTipo }));
+    }
+  }, [form.tipo, setForm]);
+
   const [epiCaSearch, setEpiCaSearch] = useState("");
   const [epiSearching, setEpiSearching] = useState(false);
   const [epiDropdownResults, setEpiDropdownResults] = useState<EPI[]>([]);
