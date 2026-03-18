@@ -17,7 +17,7 @@ const mainNavItems: NavItem[] = [];
 
 const epiItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
-  { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis", description: "Gerenciar equipamentos de proteção" },
+  { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
   { path: "/epis/controle-contrato", label: "Estoque por Unidade", icon: Boxes, moduleKey: "estoque_contrato" },
   { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
@@ -186,12 +186,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
-                        <div className="truncate">
-                          <span>{item.label}</span>
-                          {item.description && (
-                            <p className="text-[10px] font-normal text-sidebar-foreground/50 truncate">{item.description}</p>
-                          )}
-                        </div>
+                        <span className="truncate">{item.label}</span>
                       </Link>
                     );
                   })}
