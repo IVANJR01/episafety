@@ -608,11 +608,11 @@ export default function Dashboard() {
               {mediaMensalEPI.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-20 bg-card">
                       <TableRow>
-                        <TableHead className="sticky left-0 bg-card z-10 font-bold">EPI</TableHead>
+                        <TableHead className="sticky left-0 bg-card z-30 font-bold">EPI</TableHead>
                         {mesesOrdenados.map(m => (
                           <TableHead key={m} className="text-center whitespace-nowrap">
                             {m.split("-").reverse().join("/")}
