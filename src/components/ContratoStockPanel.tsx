@@ -175,6 +175,18 @@ export default function ContratoStockPanel() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Load global pending solicitations count for gestão users
+  useEffect(() => {
+    if (!hasGestaoEstoque) return;
+    const loadPending = async () => {
+      const { count } = await (supabase.from as any)("solicitacoes_epi")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pendente");
+      setGlobalPendingCount(count || 0);
+    };
+    loadPending();
+  }, [hasGestaoEstoque]);
+
   // Auto-expand for contract-bound users
   const [autoExpanded, setAutoExpanded] = useState(false);
   useEffect(() => {
