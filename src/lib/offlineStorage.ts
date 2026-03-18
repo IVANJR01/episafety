@@ -1,5 +1,7 @@
 // Offline cache and sync queue for Supabase data
 
+import { supabase } from "@/integrations/supabase/client";
+
 const CACHE_PREFIX = "offline_cache_";
 const SYNC_QUEUE_KEY = "offline_sync_queue";
 
@@ -27,13 +29,13 @@ const persistQueue = (queue: SyncOperation[]): boolean => {
 };
 
 // --- Cache ---
-export function getCachedData<T>(table: string): T[] | null {
+export function getCachedData<T>(key: string): T[] | null {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + table);
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
     if (!raw) return null;
     const { data, expiry } = JSON.parse(raw);
     if (expiry && Date.now() > expiry) {
-      localStorage.removeItem(CACHE_PREFIX + table);
+      localStorage.removeItem(CACHE_PREFIX + key);
       return null;
     }
     return data as T[];
@@ -42,12 +44,154 @@ export function getCachedData<T>(table: string): T[] | null {
   }
 }
 
-export function setCachedData<T>(table: string, data: T[], ttlMs = 7 * 24 * 60 * 60 * 1000) {
+export function setCachedData<T>(key: string, data: T[], ttlMs = 7 * 24 * 60 * 60 * 1000) {
   try {
-    localStorage.setItem(CACHE_PREFIX + table, JSON.stringify({ data, expiry: Date.now() + ttlMs }));
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, expiry: Date.now() + ttlMs }));
   } catch {
     // storage full – silently fail
   }
+}
+
+// --- Cached Query Helper ---
+// Wraps any supabase query with automatic caching and offline fallback
+export async function cachedQuery<T = any>(
+  cacheKey: string,
+  queryFn: () => Promise<{ data: T[] | null; error: any }>,
+): Promise<{ data: T[]; error: any; offline: boolean }> {
+  if (!isOnline()) {
+    const cached = getCachedData<T>(cacheKey);
+    return { data: cached || [], error: null, offline: true };
+  }
+
+  try {
+    const result = await queryFn();
+    if (result.error) {
+      // Network/server error — use cache
+      const cached = getCachedData<T>(cacheKey);
+      if (cached) {
+        return { data: cached, error: result.error, offline: true };
+      }
+      return { data: [], error: result.error, offline: false };
+    }
+    const data = (result.data as T[]) || [];
+    setCachedData(cacheKey, data);
+    return { data, error: null, offline: false };
+  } catch (err) {
+    const cached = getCachedData<T>(cacheKey);
+    return { data: cached || [], error: err, offline: true };
+  }
+}
+
+// --- Cached RPC Helper ---
+export async function cachedRpc<T = any>(
+  cacheKey: string,
+  fnName: string,
+  params?: Record<string, any>,
+): Promise<{ data: T | null; error: any; offline: boolean }> {
+  if (!isOnline()) {
+    try {
+      const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+      if (raw) {
+        const { data } = JSON.parse(raw);
+        return { data: data as T, error: null, offline: true };
+      }
+    } catch {}
+    return { data: null, error: null, offline: true };
+  }
+
+  try {
+    const result = await (supabase.rpc as any)(fnName, params || {});
+    if (result.error) {
+      try {
+        const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+        if (raw) {
+          const { data } = JSON.parse(raw);
+          return { data: data as T, error: result.error, offline: true };
+        }
+      } catch {}
+      return { data: null, error: result.error, offline: false };
+    }
+    // Cache the result
+    try {
+      localStorage.setItem(CACHE_PREFIX + cacheKey, JSON.stringify({ data: result.data, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
+    } catch {}
+    return { data: result.data as T, error: null, offline: false };
+  } catch (err) {
+    try {
+      const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+      if (raw) {
+        const { data } = JSON.parse(raw);
+        return { data: data as T, error: err, offline: true };
+      }
+    } catch {}
+    return { data: null, error: err, offline: true };
+  }
+}
+
+// --- Pre-cache all critical tables ---
+const CRITICAL_TABLES = [
+  "epis",
+  "funcionarios",
+  "entregas",
+  "empresa_config",
+  "contratos",
+  "contrato_epis",
+  "contrato_epis_movimentacoes",
+  "contrato_responsaveis",
+  "dds",
+  "dds_participantes",
+  "treinamentos",
+  "treinamento_participantes",
+  "controle_treinamentos",
+  "cursos_documentos",
+  "exames",
+  "medicos",
+  "inspecoes",
+  "inspecao_itens",
+  "inspecoes_subestacao",
+  "conformidades",
+  "ordens_servico",
+  "fichas_entrega",
+  "solicitacoes_epi",
+  "usuarios_liberados",
+  "profiles",
+];
+
+export async function preCacheAllData(): Promise<{ cached: number; failed: number }> {
+  if (!isOnline()) return { cached: 0, failed: 0 };
+
+  let cached = 0;
+  let failed = 0;
+
+  // Process in parallel batches of 5
+  for (let i = 0; i < CRITICAL_TABLES.length; i += 5) {
+    const batch = CRITICAL_TABLES.slice(i, i + 5);
+    const results = await Promise.allSettled(
+      batch.map(async (table) => {
+        const { data, error } = await (supabase.from as any)(table).select("*");
+        if (!error && data) {
+          setCachedData(table, data);
+          return true;
+        }
+        throw error;
+      })
+    );
+    results.forEach(r => {
+      if (r.status === "fulfilled") cached++;
+      else failed++;
+    });
+  }
+
+  // Also cache RPC results
+  try {
+    const { data } = await (supabase.rpc as any)("get_consolidated_epi_stock", {});
+    if (data) {
+      localStorage.setItem(CACHE_PREFIX + "rpc_consolidated_stock", JSON.stringify({ data, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
+    }
+  } catch {}
+
+  console.log(`[Offline] Pre-cached ${cached} tables, ${failed} failed`);
+  return { cached, failed };
 }
 
 // --- Sync Queue ---
