@@ -54,7 +54,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function fetchContractData() {
-      const [movResult, contResult] = await Promise.all([
+      const [movResult, contResult, profResult] = await Promise.all([
         cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
           (supabase.from as any)("contrato_epis_movimentacoes")
             .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
@@ -65,9 +65,13 @@ export default function Dashboard() {
         cachedQuery<Contrato>("dashboard_contratos", () =>
           (supabase.from as any)("contratos").select("id, nome")
         ),
+        cachedQuery<Profile>("dashboard_profiles", () =>
+          supabase.from("profiles").select("id, user_id, nome")
+        ),
       ]);
       setMovimentacoes(movResult.data);
       setContratos(contResult.data);
+      setProfiles(profResult.data);
     }
     fetchContractData();
   }, []);
