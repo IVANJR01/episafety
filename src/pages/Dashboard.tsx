@@ -869,7 +869,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {entregasPorResponsavel.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega com responsável registrado</p>
+                <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada</p>
               ) : (
                 <ResponsiveContainer width="100%" height={Math.max(250, entregasPorResponsavel.length * 40)}>
                   <BarChart data={entregasPorResponsavel} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
