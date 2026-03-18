@@ -375,6 +375,7 @@ export default function Entregas() {
             status,
             observacao: form.observacao || null,
             empresa_id: empresaId,
+            created_by: currentUserId,
           })
           .select("id")
           .single();
@@ -394,7 +395,7 @@ export default function Entregas() {
         insertedIds.push(r.value);
       } else {
         failedEpis.push(epiList[i].epi.nome);
-        console.error("Erro ao registrar entrega:", r.reason);
+        console.error("Erro ao registrar entrega:", JSON.stringify(r.reason));
       }
     });
 
