@@ -1,6 +1,7 @@
 import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
+import { motion } from "framer-motion";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,6 +10,22 @@ import { Progress } from "@/components/ui/progress";
 import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+const MotionCard = motion.create(Card);
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+  }),
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
 interface Funcionario { id: string; nome: string; }
@@ -230,12 +247,22 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <motion.div
+      className="space-y-6 sm:space-y-8"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+      <motion.div variants={fadeUp} custom={0} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-1.5 h-8 rounded-full bg-primary" />
+            <motion.div
+              className="w-1.5 h-8 rounded-full bg-primary"
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            />
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Gestão de EPIs
             </h1>
@@ -254,12 +281,17 @@ export default function Dashboard() {
             Conformidade: {complianceScore}%
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Hero Stats */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        {heroStats.map(s => (
-          <Card key={s.label} className={`bg-gradient-to-br ${s.gradient} border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative`}>
+        {heroStats.map((s, i) => (
+          <MotionCard
+            key={s.label}
+            variants={fadeUp}
+            custom={i + 1}
+            className={`bg-gradient-to-br ${s.gradient} border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative`}
+          >
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
             <CardContent className="relative flex items-center gap-3 p-4 sm:p-5">
               <div className={`${s.iconBg} p-2.5 sm:p-3 rounded-xl backdrop-blur-sm group-hover:scale-110 transition-transform duration-300`}>
@@ -270,12 +302,12 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs text-white/80 leading-tight font-medium">{s.label}</p>
               </div>
             </CardContent>
-          </Card>
+          </MotionCard>
         ))}
       </div>
 
       {/* Financial Overview — Two big cards */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <motion.div variants={fadeUp} custom={5} className="grid gap-4 lg:grid-cols-2">
         <Card className="shadow-md border-border/50 hover:shadow-lg transition-shadow">
           <CardContent className="p-5 sm:p-6">
             <div className="flex items-start justify-between mb-3">
@@ -323,9 +355,10 @@ export default function Dashboard() {
             <p className="text-[10px] text-muted-foreground mt-1.5">{entregas.length} entregas realizadas no período</p>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Cost Evolution Chart — Area chart */}
+      <motion.div variants={fadeUp} custom={6}>
       <Card className="shadow-md border-border/50">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -386,50 +419,54 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Contract consumption chart */}
       {contratoChartData.length > 0 && (
-        <Card className="shadow-md border-border/50">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
-                <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
+        <motion.div variants={fadeUp} custom={7}>
+          <Card className="shadow-md border-border/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
+                  <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold">Consumo por Contrato</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Quantidade de EPIs consumidos por contrato — últimos 12 meses
+                  </p>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-base font-bold">Consumo por Contrato</CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Quantidade de EPIs consumidos por contrato — últimos 12 meses
-                </p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={contratoChartData} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="mes" tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
-                <YAxis tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 15%, 88%)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '12px' }}
-                  formatter={(value: number, name: string) => [`${value} un.`, name]}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                {contratoNomes.map((nome, i) => (
-                  <Bar
-                    key={nome}
-                    dataKey={nome}
-                    stackId="contratos"
-                    fill={CHART_COLORS[i % CHART_COLORS.length]}
-                    radius={i === contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={contratoChartData} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="mes" tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
+                  <YAxis tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 15%, 88%)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '12px' }}
+                    formatter={(value: number, name: string) => [`${value} un.`, name]}
                   />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+                  <Legend wrapperStyle={{ fontSize: '12px' }} />
+                  {contratoNomes.map((nome, i) => (
+                    <Bar
+                      key={nome}
+                      dataKey={nome}
+                      stackId="contratos"
+                      fill={CHART_COLORS[i % CHART_COLORS.length]}
+                      radius={i === contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
 
       {/* Stock value chart */}
+      <motion.div variants={fadeUp} custom={8}>
       <Card className="shadow-md border-border/50">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -467,8 +504,10 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Mobile: Tabs | Desktop: stacked */}
+      <motion.div variants={fadeUp} custom={9}>
       {isMobile ? (
         <Tabs defaultValue="consumo" className="w-full">
           <TabsList className="w-full grid grid-cols-3 h-11">
@@ -716,6 +755,7 @@ export default function Dashboard() {
           </div>
         </>
       )}
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
