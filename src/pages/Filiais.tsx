@@ -212,12 +212,9 @@ export default function Filiais() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Unidades</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Unidades vinculadas a <strong>{empresaNome}</strong></p>
-        </div>
+        <p className="text-muted-foreground text-xs sm:text-sm">Unidades vinculadas a <strong>{empresaNome}</strong></p>
         {(canCreate || isAdmin) && (
           <Button onClick={openNew} className="text-xs sm:text-sm"><Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova Unidade</Button>
         )}
