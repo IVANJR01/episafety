@@ -686,6 +686,17 @@ export default function ContratoStockPanel() {
                                     onClick={() => { setHistoryContratoId(contrato.id); setHistoryOpen(true); }}>
                                     <History className="w-3 h-3" />Histórico
                                   </Button>
+                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                    onClick={() => openSolicitacao(contrato.id, unidade.id)}>
+                                    <Send className="w-3 h-3" />Solicitar
+                                    {solicitacoesPendentes > 0 && (
+                                      <Badge className="h-4 px-1 text-[9px] ml-0.5 bg-amber-500 text-white">{solicitacoesPendentes}</Badge>
+                                    )}
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                    onClick={() => { setSolicitacoesContratoId(contrato.id); setSolicitacoesOpen(true); }}>
+                                    <ClipboardList className="w-3 h-3" />Solicitações
+                                  </Button>
                                 </>
                               )}
                               <Button variant="ghost" size="sm" onClick={() => toggleContrato(contrato)} className="h-6 px-2 text-[10px]">
