@@ -57,7 +57,8 @@ export function useSupabaseCrud<T extends { id: string } = any>(table: string, o
   const { empresaId } = useAuth();
 
   const add = async (item: Partial<T>) => {
-    const payload = { ...item, empresa_id: empresaId } as any;
+    const { data: { user } } = await supabase.auth.getUser();
+    const payload = { ...item, empresa_id: empresaId, created_by: user?.id || null } as any;
 
     if (!isOnline()) {
       // Generate temp id and save locally
