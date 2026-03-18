@@ -147,6 +147,21 @@ export default function ContratoStockPanel() {
   const [transferring, setTransferring] = useState(false);
   const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; ca: string | null; estoque: number }[]>([]);
 
+  // Solicitation state
+  const [solicitacaoOpen, setSolicitacaoOpen] = useState(false);
+  const [solicitacaoContratoId, setSolicitacaoContratoId] = useState("");
+  const [solicitacaoEmpresaId, setSolicitacaoEmpresaId] = useState("");
+  const [solicitacaoEpiId, setSolicitacaoEpiId] = useState("");
+  const [solicitacaoQtd, setSolicitacaoQtd] = useState(1);
+  const [solicitacaoMotivo, setSolicitacaoMotivo] = useState("");
+  const [savingSolicitacao, setSavingSolicitacao] = useState(false);
+  const [solicitacaoEpis, setSolicitacaoEpis] = useState<{ id: string; nome: string; ca: string | null }[]>([]);
+  const [contratoSolicitacoes, setContratoSolicitacoes] = useState<Record<string, SolicitacaoEpi[]>>({});
+  const [solicitacoesOpen, setSolicitacoesOpen] = useState(false);
+  const [solicitacoesContratoId, setSolicitacoesContratoId] = useState("");
+  const [respondingSolicitacao, setRespondingSolicitacao] = useState<string | null>(null);
+  const [respostaObs, setRespostaObs] = useState("");
+
   const loadData = useCallback(async () => {
     setLoading(true);
     const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id");
