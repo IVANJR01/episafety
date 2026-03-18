@@ -180,10 +180,45 @@ export default function ContratoStockPanel() {
   useEffect(() => {
     if (!hasGestaoEstoque) return;
     const loadPending = async () => {
-      const { count } = await (supabase.from as any)("solicitacoes_epi")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pendente");
+      const { data, count } = await (supabase.from as any)("solicitacoes_epi")
+        .select("id, contrato_id, epi_id, quantidade, solicitante_nome, created_at, empresa_id", { count: "exact" })
+        .eq("status", "pendente")
+        .order("created_at", { ascending: false })
+        .limit(20);
       setGlobalPendingCount(count || 0);
+      if (data && data.length > 0) {
+        // Enrich with contrato, unidade, and epi names
+        const contratoIds = [...new Set(data.map((s: any) => s.contrato_id))] as string[];
+        const epiIds = [...new Set(data.map((s: any) => s.epi_id))] as string[];
+        const empresaIds = [...new Set(data.map((s: any) => s.empresa_id).filter(Boolean))] as string[];
+        const [contratosRes, episRes, empresasRes] = await Promise.all([
+          supabase.from("contratos").select("id, nome, unidade_id").in("id", contratoIds),
+          supabase.from("epis").select("id, nome").in("id", epiIds),
+          empresaIds.length > 0 ? supabase.from("empresa_config").select("id, nome").in("id", empresaIds) : { data: [] },
+        ]);
+        const contratosMap = new Map((contratosRes.data || []).map((c: any) => [c.id, c]));
+        const episMap = new Map((episRes.data || []).map((e: any) => [e.id, e]));
+        const empresasMap = new Map(((empresasRes as any).data || []).map((e: any) => [e.id, e]));
+        // Also get unidade names from contrato.unidade_id
+        const unidadeIds = [...new Set((contratosRes.data || []).map((c: any) => c.unidade_id).filter(Boolean))] as string[];
+        let unidadesMap = new Map<string, string>();
+        if (unidadeIds.length > 0) {
+          const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome").in("id", unidadeIds);
+          unidadesMap = new Map((unidadesData || []).map((u: any) => [u.id, u.nome]));
+        }
+        setGlobalPendingSolicitacoes(data.map((s: any) => {
+          const contrato = contratosMap.get(s.contrato_id);
+          return {
+            id: s.id,
+            contrato_nome: contrato?.nome || "—",
+            unidade_nome: contrato ? (unidadesMap.get(contrato.unidade_id) || empresasMap.get(s.empresa_id)?.nome || "—") : (empresasMap.get(s.empresa_id)?.nome || "—"),
+            epi_nome: episMap.get(s.epi_id)?.nome || "—",
+            quantidade: s.quantidade,
+            solicitante_nome: s.solicitante_nome,
+            created_at: s.created_at,
+          };
+        }));
+      }
     };
     loadPending();
   }, [hasGestaoEstoque]);
