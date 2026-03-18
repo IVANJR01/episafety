@@ -31,6 +31,19 @@ interface EpiItem { epi: EPI; quantidade: number; }
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
 
+const normalizeEntregaTipo = (value?: string | null): keyof typeof tipoLabels => {
+  const normalized = (value || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (normalized.includes("substit")) return "substituicao";
+  if (normalized.includes("perda")) return "perda";
+  if (normalized.includes("dano")) return "dano";
+  return "entrega";
+};
+
 export default function Entregas() {
   const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
@@ -134,6 +147,13 @@ export default function Entregas() {
     tipo: "entrega" as string, observacao: "",
   };
   const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
+
+  useEffect(() => {
+    const normalizedTipo = normalizeEntregaTipo(form.tipo);
+    if (form.tipo !== normalizedTipo) {
+      setForm(prev => ({ ...prev, tipo: normalizedTipo }));
+    }
+  }, [form.tipo, setForm]);
 
   const [epiCaSearch, setEpiCaSearch] = useState("");
   const [epiSearching, setEpiSearching] = useState(false);
@@ -286,8 +306,9 @@ export default function Entregas() {
       return;
     }
     setSaving(true);
+    const normalizedTipo = normalizeEntregaTipo(form.tipo);
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
-    const status = statusMap[form.tipo] || "ativo";
+    const status = statusMap[normalizedTipo] || "ativo";
 
     if (!isOnline()) {
       const insertedIds: string[] = [];
@@ -301,7 +322,7 @@ export default function Entregas() {
           epi_id: item.epi.id,
           quantidade: item.quantidade,
           data: form.data,
-          tipo: form.tipo.toLowerCase(),
+          tipo: normalizedTipo,
           status,
           observacao: form.observacao || null,
           empresa_id: empresaId,
@@ -324,7 +345,7 @@ export default function Entregas() {
           epi_id: item.epi.id,
           quantidade: item.quantidade,
           data: form.data,
-          tipo: form.tipo,
+          tipo: normalizedTipo,
           status,
           observacao: form.observacao || null,
           created_at: new Date().toISOString(),
@@ -375,7 +396,7 @@ export default function Entregas() {
             epi_id: item.epi.id,
             quantidade: item.quantidade,
             data: form.data,
-            tipo: form.tipo.toLowerCase(),
+            tipo: normalizedTipo,
             status,
             observacao: form.observacao || null,
             empresa_id: empresaId,
@@ -385,7 +406,7 @@ export default function Entregas() {
           .single();
 
         if (insertResult.error) {
-          console.error("Entrega insert error:", JSON.stringify(insertResult.error), "payload:", { funcionario_id: form.funcionario_id, epi_id: item.epi.id, empresa_id: empresaId, tipo: form.tipo });
+          console.error("Entrega insert error:", JSON.stringify(insertResult.error), "payload:", { funcionario_id: form.funcionario_id, epi_id: item.epi.id, empresa_id: empresaId, tipo: normalizedTipo, tipo_raw: form.tipo });
           throw insertResult.error;
         }
 
@@ -849,7 +870,7 @@ export default function Entregas() {
           <div className="grid gap-4 py-2">
             <div>
               <Label>Tipo</Label>
-              <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v})}>
+              <Select value={normalizeEntregaTipo(form.tipo)} onValueChange={v => setForm({ ...form, tipo: normalizeEntregaTipo(v) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                  <SelectContent>
                   <SelectItem value="entrega">📦 Entrega</SelectItem>
