@@ -92,9 +92,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
 
-  // Bottom nav items: first 4 main items + "Mais" button
-  const bottomNavItems = visibleMainItems.slice(0, 4);
-  const hasMore = visibleCadastroItems.length > 0 || isSuperAdmin || isPrincipal;
+  // Bottom nav items for mobile
+  const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
+  const bottomNavItems = visibleMobileBottomItems.slice(0, 4);
+  const hasMore = true; // Always show "Mais" for full sidebar access
 
   useEffect(() => {
     // Captura o evento beforeinstallprompt para usar no botão de instalação
