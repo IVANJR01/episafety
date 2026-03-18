@@ -186,6 +186,15 @@ export default function ContratoStockPanel() {
   useEffect(() => {
     if (!hasGestaoEstoque) return;
     const loadPending = async () => {
+      if (!isOnline()) {
+        // Use cached solicitations
+        const cached = getCachedData<any>("solicitacoes_epi_pending");
+        if (cached) {
+          setGlobalPendingCount(cached.length);
+          setGlobalPendingSolicitacoes(cached);
+        }
+        return;
+      }
       const { data, count } = await (supabase.from as any)("solicitacoes_epi")
         .select("id, contrato_id, epi_id, quantidade, solicitante_nome, created_at, empresa_id", { count: "exact" })
         .eq("status", "pendente")
@@ -212,7 +221,7 @@ export default function ContratoStockPanel() {
           const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome").in("id", unidadeIds);
           unidadesMap = new Map((unidadesData || []).map((u: any) => [u.id, u.nome]));
         }
-        setGlobalPendingSolicitacoes(data.map((s: any) => {
+        const enriched = data.map((s: any) => {
           const contrato = contratosMap.get(s.contrato_id);
           return {
             id: s.id,
@@ -223,7 +232,9 @@ export default function ContratoStockPanel() {
             solicitante_nome: s.solicitante_nome,
             created_at: s.created_at,
           };
-        }));
+        });
+        setGlobalPendingSolicitacoes(enriched);
+        setCachedData("solicitacoes_epi_pending", enriched);
       }
     };
     loadPending();
