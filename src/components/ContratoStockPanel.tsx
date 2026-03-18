@@ -162,6 +162,7 @@ export default function ContratoStockPanel() {
   const [respondingSolicitacao, setRespondingSolicitacao] = useState<string | null>(null);
   const [respostaObs, setRespostaObs] = useState("");
   const [globalPendingCount, setGlobalPendingCount] = useState(0);
+  const [globalPendingSolicitacoes, setGlobalPendingSolicitacoes] = useState<Array<{id: string; contrato_nome: string; unidade_nome: string; epi_nome: string; quantidade: number; solicitante_nome: string | null; created_at: string}>>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -179,10 +180,45 @@ export default function ContratoStockPanel() {
   useEffect(() => {
     if (!hasGestaoEstoque) return;
     const loadPending = async () => {
-      const { count } = await (supabase.from as any)("solicitacoes_epi")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pendente");
+      const { data, count } = await (supabase.from as any)("solicitacoes_epi")
+        .select("id, contrato_id, epi_id, quantidade, solicitante_nome, created_at, empresa_id", { count: "exact" })
+        .eq("status", "pendente")
+        .order("created_at", { ascending: false })
+        .limit(20);
       setGlobalPendingCount(count || 0);
+      if (data && data.length > 0) {
+        // Enrich with contrato, unidade, and epi names
+        const contratoIds = [...new Set(data.map((s: any) => s.contrato_id))] as string[];
+        const epiIds = [...new Set(data.map((s: any) => s.epi_id))] as string[];
+        const empresaIds = [...new Set(data.map((s: any) => s.empresa_id).filter(Boolean))] as string[];
+        const [contratosRes, episRes, empresasRes] = await Promise.all([
+          supabase.from("contratos").select("id, nome, unidade_id").in("id", contratoIds),
+          supabase.from("epis").select("id, nome").in("id", epiIds),
+          empresaIds.length > 0 ? supabase.from("empresa_config").select("id, nome").in("id", empresaIds) : { data: [] },
+        ]);
+        const contratosMap = new Map((contratosRes.data || []).map((c: any) => [c.id, c]));
+        const episMap = new Map((episRes.data || []).map((e: any) => [e.id, e]));
+        const empresasMap = new Map(((empresasRes as any).data || []).map((e: any) => [e.id, e]));
+        // Also get unidade names from contrato.unidade_id
+        const unidadeIds = [...new Set((contratosRes.data || []).map((c: any) => c.unidade_id).filter(Boolean))] as string[];
+        let unidadesMap = new Map<string, string>();
+        if (unidadeIds.length > 0) {
+          const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome").in("id", unidadeIds);
+          unidadesMap = new Map((unidadesData || []).map((u: any) => [u.id, u.nome]));
+        }
+        setGlobalPendingSolicitacoes(data.map((s: any) => {
+          const contrato = contratosMap.get(s.contrato_id);
+          return {
+            id: s.id,
+            contrato_nome: contrato?.nome || "—",
+            unidade_nome: contrato ? (unidadesMap.get(contrato.unidade_id) || (empresasMap.get(s.empresa_id) as any)?.nome || "—") : ((empresasMap.get(s.empresa_id) as any)?.nome || "—"),
+            epi_nome: episMap.get(s.epi_id)?.nome || "—",
+            quantidade: s.quantidade,
+            solicitante_nome: s.solicitante_nome,
+            created_at: s.created_at,
+          };
+        }));
+      }
     };
     loadPending();
   }, [hasGestaoEstoque]);
@@ -634,17 +670,37 @@ export default function ContratoStockPanel() {
 
       {hasGestaoEstoque && globalPendingCount > 0 && (
         <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
-              <ClipboardList className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20 shrink-0">
+                <ClipboardList className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">
+                  {globalPendingCount} solicitaç{globalPendingCount === 1 ? "ão" : "ões"} de EPI pendente{globalPendingCount === 1 ? "" : "s"}
+                </p>
+                <p className="text-xs text-muted-foreground">Expanda os contratos abaixo para aprovar ou rejeitar</p>
+              </div>
+              <Badge className="bg-amber-500 text-white">{globalPendingCount}</Badge>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">
-                {globalPendingCount} solicitaç{globalPendingCount === 1 ? "ão" : "ões"} de EPI pendente{globalPendingCount === 1 ? "" : "s"}
-              </p>
-              <p className="text-xs text-muted-foreground">Expanda os contratos para aprovar ou rejeitar</p>
-            </div>
-            <Badge className="bg-amber-500 text-white">{globalPendingCount}</Badge>
+            {globalPendingSolicitacoes.length > 0 && (
+              <div className="ml-11 space-y-1.5">
+                {globalPendingSolicitacoes.map(sol => (
+                  <div key={sol.id} className="flex items-center gap-2 text-xs bg-background/80 rounded-md px-3 py-1.5 border border-amber-200 dark:border-amber-800/40">
+                    <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="font-semibold text-amber-700 dark:text-amber-300">{sol.unidade_nome}</span>
+                    <span className="text-muted-foreground">›</span>
+                    <span className="font-medium">{sol.contrato_nome}</span>
+                    <span className="text-muted-foreground">—</span>
+                    <span>{sol.epi_nome}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">{sol.quantidade} un.</Badge>
+                    {sol.solicitante_nome && (
+                      <span className="text-muted-foreground ml-auto text-[10px]">por {sol.solicitante_nome}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
