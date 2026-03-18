@@ -34,7 +34,7 @@ const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructi
 export default function Entregas() {
   const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
-  const { data: epis } = useSupabaseQuery<EPI>("epis");
+  const { data: epis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { empresaId } = useAuth();
