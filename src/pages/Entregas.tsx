@@ -21,7 +21,7 @@ import SignatureCanvas, { type SignatureCanvasRef } from "@/components/Signature
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
-import { syncContractStockFromEntrega } from "@/lib/contractStock";
+
 
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
@@ -381,21 +381,7 @@ export default function Entregas() {
 
         if (insertResult.error) throw insertResult.error;
 
-        try {
-          const syncResult = await syncContractStockFromEntrega({
-            funcionarioId: form.funcionario_id,
-            epiId: item.epi.id,
-            quantidade: item.quantidade,
-            tipo: form.tipo,
-            empresaId,
-            observacao: form.observacao || null,
-            createdBy: currentUserId,
-            responsavelNome,
-          });
-          console.log("Contract stock sync result:", syncResult);
-        } catch (syncErr) {
-          console.error("Contract stock sync failed (non-blocking):", syncErr);
-        }
+        // Contract stock sync is now handled by DB trigger (trg_sync_contrato_stock)
 
         return insertResult.data.id as string;
       })
@@ -465,16 +451,7 @@ export default function Entregas() {
 
       if (devolucaoError) throw devolucaoError;
 
-      await syncContractStockFromEntrega({
-        funcionarioId: entrega.funcionario_id,
-        epiId: entrega.epi_id,
-        quantidade: entrega.quantidade,
-        tipo: "devolucao",
-        empresaId,
-        observacao: `Devolução ref. entrega de ${entrega.data}`,
-        createdBy: currentUserId,
-        responsavelNome,
-      });
+      // Contract stock sync is now handled by DB trigger (trg_sync_contrato_stock)
 
       toast({ title: "EPI devolvido ao estoque!", description: `${epiObj?.nome || "EPI"} devolvido por ${funcObj?.nome || "colaborador"}.` });
       refetch();
