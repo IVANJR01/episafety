@@ -821,18 +821,22 @@ export default function Dashboard() {
           </div>
 
           {/* Entregas por Responsável */}
-          {entregasPorResponsavel.length > 0 && (
-            <Card className="shadow-md border-border/50">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="w-4 h-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
-                  <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
+          <Card className="shadow-md border-border/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Users className="w-4 h-4 text-primary" />
                 </div>
-              </CardHeader>
-              <CardContent>
+                <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
+                {entregasPorResponsavel.length > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {entregasPorResponsavel.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega com responsável registrado</p>
+              ) : (
                 <ResponsiveContainer width="100%" height={Math.max(250, entregasPorResponsavel.length * 40)}>
                   <BarChart data={entregasPorResponsavel} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
@@ -849,9 +853,9 @@ export default function Dashboard() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
       </motion.div>
