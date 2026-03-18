@@ -656,6 +656,38 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="responsaveis">
+            <Card className="shadow-md border-border/50">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <Users className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <CardTitle className="text-sm font-bold">Entregas por Responsável</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {entregasPorResponsavel.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega com responsável registrado</p>
+                ) : (
+                  <div className="space-y-2">
+                    {entregasPorResponsavel.map((r, idx) => (
+                      <div key={r.nome} className="flex items-center justify-between text-sm p-3 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${idx < 3 ? "bg-primary" : "bg-primary/50"}`}>
+                            {idx + 1}
+                          </span>
+                          <span className="font-semibold truncate">{r.nome}</span>
+                        </div>
+                        <span className="font-mono text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">{r.quantidade} un.</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       ) : (
         <>
