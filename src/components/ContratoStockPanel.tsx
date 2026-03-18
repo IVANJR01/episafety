@@ -566,24 +566,35 @@ export default function ContratoStockPanel() {
                               ) : (
                                 <div className="space-y-4">
                                   {/* Summary cards */}
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    <div className="rounded-md border p-2 bg-background">
-                                      <p className="text-[10px] text-muted-foreground">EPIs no Contrato</p>
-                                      <p className="font-bold text-sm">{epis.length}</p>
-                                    </div>
-                                    <div className="rounded-md border p-2 bg-background">
-                                      <p className="text-[10px] text-muted-foreground">Estoque Total</p>
-                                      <p className="font-bold text-sm">{totalEstoque} un.</p>
-                                    </div>
-                                    <div className="rounded-md border p-2 bg-background">
-                                      <p className="text-[10px] text-muted-foreground">Valor Total</p>
-                                      <p className="font-bold text-sm">R$ {totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                                    </div>
-                                    <div className="rounded-md border p-2 bg-background">
-                                      <p className="text-[10px] text-muted-foreground">Sem Estoque</p>
-                                      <p className={`font-bold text-sm ${itensBaixos > 0 ? "text-destructive" : ""}`}>{itensBaixos}</p>
-                                    </div>
-                                  </div>
+                                  {(() => {
+                                    const mesesComDados = consumo.filter(c => c.entrega > 0 || c.troca > 0 || c.substituicao > 0 || c.perda > 0 || c.dano > 0).length;
+                                    const totalGasto = consumo.reduce((s, c) => s + c.custo, 0);
+                                    const mediaMensal = mesesComDados > 0 ? totalGasto / mesesComDados : 0;
+                                    return (
+                                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">EPIs no Contrato</p>
+                                          <p className="font-bold text-sm">{epis.length}</p>
+                                        </div>
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">Estoque Total</p>
+                                          <p className="font-bold text-sm">{totalEstoque} un.</p>
+                                        </div>
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">Valor em Estoque</p>
+                                          <p className="font-bold text-sm">R$ {totalValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">Gasto Mensal (Média)</p>
+                                          <p className="font-bold text-sm">R$ {mediaMensal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                        <div className="rounded-md border p-2 bg-background">
+                                          <p className="text-[10px] text-muted-foreground">Sem Estoque</p>
+                                          <p className={`font-bold text-sm ${itensBaixos > 0 ? "text-destructive" : ""}`}>{itensBaixos}</p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                   {/* EPI Table */}
                                   {epis.length > 0 ? (
@@ -596,11 +607,14 @@ export default function ContratoStockPanel() {
                                             <TableHead className="text-xs">Categoria</TableHead>
                                             <TableHead className="text-xs text-right">Estoque</TableHead>
                                             <TableHead className="text-xs text-right">Valor Unit.</TableHead>
+                                            <TableHead className="text-xs text-right">Valor Total</TableHead>
                                             <TableHead className="text-xs w-20"></TableHead>
                                           </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                          {epis.map(epi => (
+                                          {epis.map(epi => {
+                                            const valorTotal = epi.estoque * (epi.epi_valor || 0);
+                                            return (
                                             <TableRow key={epi.id}>
                                               <TableCell className="text-xs font-medium">{epi.epi_nome}</TableCell>
                                               <TableCell className="text-xs font-mono">{epi.epi_ca || "—"}</TableCell>
@@ -613,6 +627,9 @@ export default function ContratoStockPanel() {
                                               <TableCell className="text-xs text-right font-mono">
                                                 {epi.epi_valor ? `R$ ${Number(epi.epi_valor).toFixed(2)}` : "—"}
                                               </TableCell>
+                                              <TableCell className="text-xs text-right font-mono font-semibold">
+                                                {valorTotal > 0 ? `R$ ${valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                                              </TableCell>
                                               <TableCell className="text-xs">
                                                 <div className="flex gap-0.5 justify-end">
                                                   <Button variant="ghost" size="icon" className="h-6 w-6"
@@ -623,7 +640,8 @@ export default function ContratoStockPanel() {
                                                 </div>
                                               </TableCell>
                                             </TableRow>
-                                          ))}
+                                          );
+                                          })}
                                         </TableBody>
                                       </Table>
                                     </div>
