@@ -55,7 +55,7 @@ export default function Filiais() {
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
-  const [usuariosContratos, setUsuariosContratos] = useState<{ id: string; nome: string | null; contrato_id: string | null }[]>([]);
+  const [usuariosContratos, setUsuariosContratos] = useState<{ id: string; nome: string | null; contrato_id: string | null; empresa_id: string | null; email: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [empresaNome, setEmpresaNome] = useState("");
   const [expandedFiliais, setExpandedFiliais] = useState<Set<string>>(new Set());
