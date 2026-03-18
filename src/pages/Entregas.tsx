@@ -395,7 +395,7 @@ export default function Entregas() {
         insertedIds.push(r.value);
       } else {
         failedEpis.push(epiList[i].epi.nome);
-        console.error("Erro ao registrar entrega:", r.reason);
+        console.error("Erro ao registrar entrega:", JSON.stringify(r.reason));
       }
     });
 
