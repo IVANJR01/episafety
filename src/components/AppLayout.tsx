@@ -279,6 +279,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {visibleAfterCadastroItems.map((item) => {
             const active = location.pathname === item.path;
             return (
               <Link
