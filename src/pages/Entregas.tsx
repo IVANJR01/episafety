@@ -21,7 +21,7 @@ import SignatureCanvas, { type SignatureCanvasRef } from "@/components/Signature
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
-import { syncContractStockFromEntrega } from "@/lib/contractStock";
+
 
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
