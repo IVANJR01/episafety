@@ -256,6 +256,21 @@ export default function ContratoStockPanel() {
   const loadContratoDetails = useCallback(async (contratoId: string, empresaId: string | null) => {
     setLoadingContrato(prev => new Set(prev).add(contratoId));
 
+    // Check offline - use cached enriched data
+    if (!isOnline()) {
+      const cached = getCachedData<any>(`contrato_details_${contratoId}`);
+      if (cached && cached.length > 0) {
+        const c = cached[0];
+        setContratoEpis(prev => ({ ...prev, [contratoId]: c.epis || [] }));
+        setContratoResponsaveis(prev => ({ ...prev, [contratoId]: c.responsaveis || [] }));
+        setContratoMovimentacoes(prev => ({ ...prev, [contratoId]: c.movimentacoes || [] }));
+        setContratoConsumo(prev => ({ ...prev, [contratoId]: c.consumo || [] }));
+        setContratoSolicitacoes(prev => ({ ...prev, [contratoId]: c.solicitacoes || [] }));
+      }
+      setLoadingContrato(prev => { const n = new Set(prev); n.delete(contratoId); return n; });
+      return;
+    }
+
     // Load EPIs for this contract
     const { data: episData } = await supabase
       .from("contrato_epis")
@@ -387,6 +402,16 @@ export default function ContratoStockPanel() {
     setContratoMovimentacoes(prev => ({ ...prev, [contratoId]: enrichedMov }));
     setContratoConsumo(prev => ({ ...prev, [contratoId]: consumoData }));
     setContratoSolicitacoes(prev => ({ ...prev, [contratoId]: enrichedSol }));
+
+    // Cache the enriched data for offline use
+    setCachedData(`contrato_details_${contratoId}`, [{
+      epis: enrichedEpis,
+      responsaveis: enrichedResp,
+      movimentacoes: enrichedMov,
+      consumo: consumoData,
+      solicitacoes: enrichedSol,
+    }]);
+
     setLoadingContrato(prev => { const n = new Set(prev); n.delete(contratoId); return n; });
   }, []);
 
