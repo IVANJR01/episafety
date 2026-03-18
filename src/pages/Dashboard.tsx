@@ -209,20 +209,19 @@ export default function Dashboard() {
     }, 0);
   }, [entregas, epis]);
 
-  // Entregas por responsável (quem registrou)
+  // Entregas por funcionário (quem recebeu o EPI)
   const entregasPorResponsavel = useMemo(() => {
-    const profileMap = new Map(profiles.map(p => [p.user_id, p.nome]));
+    const funcMap = new Map(funcionarios.map(f => [f.id, f.nome]));
     const contagem: Record<string, number> = {};
     entregas.forEach(e => {
-      const userId = (e as any).created_by;
-      if (!userId) return;
-      const nome = profileMap.get(userId) || "Desconhecido";
+      if (e.tipo !== "entrega" && e.tipo !== "substituicao" && e.tipo !== "troca") return;
+      const nome = funcMap.get(e.funcionario_id) || "Desconhecido";
       contagem[nome] = (contagem[nome] || 0) + e.quantidade;
     });
     return Object.entries(contagem)
       .map(([nome, quantidade]) => ({ nome: nome.length > 20 ? nome.substring(0, 18) + "..." : nome, quantidade }))
       .sort((a, b) => b.quantidade - a.quantidade);
-  }, [entregas, profiles]);
+  }, [entregas, funcionarios]);
 
   const recentEntregas = entregas.slice(0, 20).map(e => ({
     ...e,
