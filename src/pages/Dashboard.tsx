@@ -284,12 +284,14 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Hero Stats */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+      <motion.div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4" variants={staggerContainer}>
         {heroStats.map((s, i) => (
           <MotionCard
             key={s.label}
             variants={fadeUp}
             custom={i + 1}
+            initial="hidden"
+            animate="visible"
             className={`bg-gradient-to-br ${s.gradient} border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative`}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
@@ -304,7 +306,7 @@ export default function Dashboard() {
             </CardContent>
           </MotionCard>
         ))}
-      </div>
+      </motion.div>
 
       {/* Financial Overview — Two big cards */}
       <motion.div variants={fadeUp} custom={5} className="grid gap-4 lg:grid-cols-2">
