@@ -653,6 +653,8 @@ export default function ContratoStockPanel() {
                     const responsaveis = contratoResponsaveis[contrato.id] || [];
                     const consumo = contratoConsumo[contrato.id] || [];
                     const movimentacoes = contratoMovimentacoes[contrato.id] || [];
+                    const solicitacoes = contratoSolicitacoes[contrato.id] || [];
+                    const solicitacoesPendentes = solicitacoes.filter(s => s.status === "pendente").length;
 
                     const totalEstoque = epis.reduce((s, e) => s + e.estoque, 0);
                     const totalValor = epis.reduce((s, e) => s + e.estoque * (e.epi_valor || 0), 0);
