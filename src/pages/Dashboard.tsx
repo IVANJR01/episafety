@@ -181,7 +181,7 @@ export default function Dashboard() {
     }, 0);
   }, [entregas, epis]);
 
-  const recentEntregas = entregas.slice(0, 5).map(e => ({
+  const recentEntregas = entregas.slice(0, 20).map(e => ({
     ...e,
     funcionarioNome: funcionarios.find(f => f.id === e.funcionario_id)?.nome || "—",
     epiNome: epis.find(ep => ep.id === e.epi_id)?.nome || "—",
@@ -571,14 +571,14 @@ export default function Dashboard() {
                 {recentEntregas.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma entrega registrada</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                     {recentEntregas.map(e => (
                       <div key={e.id} className="rounded-xl bg-muted/40 p-3 space-y-0.5 hover:bg-muted/60 transition-colors">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold text-sm">{e.funcionarioNome}</span>
                           <span className="text-[10px] text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded-full">{e.data}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{e.epiNome} ({e.quantidade}x)</p>
+                        <p className="text-xs text-muted-foreground truncate">{e.epiNome} ({e.quantidade}x)</p>
                       </div>
                     ))}
                   </div>
@@ -608,11 +608,11 @@ export default function Dashboard() {
               {mediaMensalEPI.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-20 bg-card">
                       <TableRow>
-                        <TableHead className="sticky left-0 bg-card z-10 font-bold">EPI</TableHead>
+                        <TableHead className="sticky left-0 bg-card z-30 font-bold">EPI</TableHead>
                         {mesesOrdenados.map(m => (
                           <TableHead key={m} className="text-center whitespace-nowrap">
                             {m.split("-").reverse().join("/")}
@@ -699,14 +699,14 @@ export default function Dashboard() {
                 {recentEntregas.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma entrega registrada</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
                     {recentEntregas.map(e => (
                       <div key={e.id} className="flex justify-between items-center text-sm p-3 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors">
-                        <div>
+                        <div className="min-w-0 flex-1 mr-2">
                           <span className="font-semibold">{e.funcionarioNome}</span>
-                          <span className="text-muted-foreground"> — {e.epiNome} ({e.quantidade}x)</span>
+                          <p className="text-xs text-muted-foreground truncate">{e.epiNome} ({e.quantidade}x)</p>
                         </div>
-                        <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded-full">{e.data}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">{e.data}</span>
                       </div>
                     ))}
                   </div>
