@@ -34,7 +34,7 @@ const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructi
 export default function Entregas() {
   const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
-  const { data: epis } = useSupabaseQuery<EPI>("epis");
+  const { data: epis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { empresaId } = useAuth();
@@ -281,6 +281,10 @@ export default function Entregas() {
       toast({ title: "Preencha funcionário e adicione ao menos um EPI", variant: "destructive" });
       return;
     }
+    if (!empresaId) {
+      toast({ title: "Erro de sessão", description: "Empresa não identificada. Faça logout e entre novamente.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[form.tipo] || "ativo";
@@ -380,7 +384,10 @@ export default function Entregas() {
           .select("id")
           .single();
 
-        if (insertResult.error) throw insertResult.error;
+        if (insertResult.error) {
+          console.error("Entrega insert error:", JSON.stringify(insertResult.error), "payload:", { funcionario_id: form.funcionario_id, epi_id: item.epi.id, empresa_id: empresaId, tipo: form.tipo });
+          throw insertResult.error;
+        }
 
         // Contract stock sync is now handled by DB trigger (trg_sync_contrato_stock)
 
@@ -687,7 +694,7 @@ export default function Entregas() {
             </Button>
           )}
           {canCreate && (
-            <Button onClick={() => setOpen(true)} className="flex-1 sm:flex-none text-xs sm:text-sm">
+            <Button onClick={() => { refetchEpis(); setOpen(true); }} className="flex-1 sm:flex-none text-xs sm:text-sm">
               <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
             </Button>
           )}
