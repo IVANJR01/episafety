@@ -15,7 +15,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [];
 
 const epiItems: NavItem[] = [
-  { path: "/", label: "Visão Geral", icon: LayoutDashboard, moduleKey: "dashboard" },
+  { path: "/", label: "Dashboard", icon: LayoutDashboard, moduleKey: "dashboard" },
   { path: "/epis", label: "EPIs", icon: Package, moduleKey: "epis" },
   { path: "/epis/controle-contrato", label: "Estoque por Unidade", icon: Boxes, moduleKey: "estoque_contrato" },
   { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
