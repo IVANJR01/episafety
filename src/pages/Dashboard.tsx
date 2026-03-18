@@ -507,6 +507,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Mobile: Tabs | Desktop: stacked */}
+      <motion.div variants={fadeUp} custom={9}>
       {isMobile ? (
         <Tabs defaultValue="consumo" className="w-full">
           <TabsList className="w-full grid grid-cols-3 h-11">
