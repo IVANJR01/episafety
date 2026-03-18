@@ -803,45 +803,45 @@ export default function ContratoStockPanel() {
                       <Card key={contrato.id} className="bg-muted/30">
                         <CardContent className="p-3 space-y-3">
                           {/* Contrato header */}
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <FileText className="w-3.5 h-3.5 text-primary" />
-                              <span className="font-medium text-sm">{contrato.nome}</span>
-                              {responsaveis.length > 0 && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                                  <Users className="w-3 h-3" />
-                                  {responsaveis.map(r => r.funcionario_nome).join(", ")}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {isContratoExpanded && (
-                                <>
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                    onClick={() => openAddEpi(contrato.id, unidade.id, unidade.id)}>
-                                    <Plus className="w-3 h-3" />EPI
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                    onClick={() => { setHistoryContratoId(contrato.id); setHistoryOpen(true); }}>
-                                    <History className="w-3 h-3" />Histórico
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                    onClick={() => openSolicitacao(contrato.id, unidade.id)}>
-                                    <Send className="w-3 h-3" />Solicitar
-                                    {solicitacoesPendentes > 0 && (
-                                      <Badge className="h-4 px-1 text-[9px] ml-0.5 bg-amber-500 text-white">{solicitacoesPendentes}</Badge>
-                                    )}
-                                  </Button>
-                                  <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                    onClick={() => { setSolicitacoesContratoId(contrato.id); setSolicitacoesOpen(true); }}>
-                                    <ClipboardList className="w-3 h-3" />Solicitações
-                                  </Button>
-                                </>
-                              )}
-                              <Button variant="ghost" size="sm" onClick={() => toggleContrato(contrato)} className="h-6 px-2 text-[10px]">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="font-medium text-sm truncate">{contrato.nome}</span>
+                                {responsaveis.length > 0 && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 hidden sm:inline-flex">
+                                    <Users className="w-3 h-3" />
+                                    {responsaveis.map(r => r.funcionario_nome).join(", ")}
+                                  </Badge>
+                                )}
+                              </div>
+                              <Button variant="ghost" size="sm" onClick={() => toggleContrato(contrato)} className="h-6 px-2 text-[10px] shrink-0">
                                 {isContratoExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                               </Button>
                             </div>
+                            {isContratoExpanded && (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => openAddEpi(contrato.id, unidade.id, unidade.id)}>
+                                  <Plus className="w-3 h-3" />EPI
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => { setHistoryContratoId(contrato.id); setHistoryOpen(true); }}>
+                                  <History className="w-3 h-3" />Histórico
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => openSolicitacao(contrato.id, unidade.id)}>
+                                  <Send className="w-3 h-3" />Solicitar
+                                  {solicitacoesPendentes > 0 && (
+                                    <Badge className="h-4 px-1 text-[9px] ml-0.5 bg-amber-500 text-white">{solicitacoesPendentes}</Badge>
+                                  )}
+                                </Button>
+                                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => { setSolicitacoesContratoId(contrato.id); setSolicitacoesOpen(true); }}>
+                                  <ClipboardList className="w-3 h-3" />Solicitações
+                                </Button>
+                              </div>
+                            )}
                           </div>
 
                           {isContratoExpanded && (
