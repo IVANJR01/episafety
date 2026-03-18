@@ -23,11 +23,14 @@ const epiItems: NavItem[] = [
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
 ];
 
+const gestaoDocItems: NavItem[] = [
+  { path: "/treinamentos", label: "Controle de Documentos", icon: GraduationCap, moduleKey: "treinamentos" },
+  { path: "/exames", label: "Controle de Exames", icon: Stethoscope, moduleKey: "exames" },
+];
+
 const afterCadastroItems: NavItem[] = [
   { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/inspecoes-se", label: "Inspeções", icon: HardHat, moduleKey: "inspecoes_se" },
-  { path: "/treinamentos", label: "Gestão e Controle", icon: GraduationCap, moduleKey: "treinamentos" },
-  { path: "/exames", label: "Exames", icon: Stethoscope, moduleKey: "exames" },
   { path: "/video-treinamentos", label: "Treinamentos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
@@ -70,11 +73,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleEpiItems = epiItems.filter((i) => canAccess(i.moduleKey));
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
   const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
+  const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
+  const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
+  const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
 
   // Bottom nav items: first 4 main items + "Mais" button
   const bottomNavItems = visibleMainItems.slice(0, 4);
@@ -212,6 +218,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {cadastroOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
                   {visibleCadastroItems.map((item) => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visibleGestaoDocItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setGestaoDocOpen(!gestaoDocOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isGestaoDocActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Gestão de Documentos</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
+              </button>
+              {gestaoDocOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleGestaoDocItems.map((item) => {
                     const active = location.pathname === item.path;
                     return (
                       <Link
