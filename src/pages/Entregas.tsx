@@ -396,7 +396,7 @@ export default function Entregas() {
             epi_id: item.epi.id,
             quantidade: item.quantidade,
             data: form.data,
-            tipo: form.tipo.toLowerCase(),
+            tipo: normalizedTipo,
             status,
             observacao: form.observacao || null,
             empresa_id: empresaId,
@@ -406,7 +406,7 @@ export default function Entregas() {
           .single();
 
         if (insertResult.error) {
-          console.error("Entrega insert error:", JSON.stringify(insertResult.error), "payload:", { funcionario_id: form.funcionario_id, epi_id: item.epi.id, empresa_id: empresaId, tipo: form.tipo });
+          console.error("Entrega insert error:", JSON.stringify(insertResult.error), "payload:", { funcionario_id: form.funcionario_id, epi_id: item.epi.id, empresa_id: empresaId, tipo: normalizedTipo, tipo_raw: form.tipo });
           throw insertResult.error;
         }
 
