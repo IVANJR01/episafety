@@ -668,6 +668,13 @@ export default function ContratoStockPanel() {
         )}
       </div>
 
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40">
+        <Users className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+        <p className="text-xs text-blue-700 dark:text-blue-300">
+          <span className="font-semibold">Observação:</span> Todas as métricas de consumo, entregas e movimentações são calculadas com base no cadastro do <span className="font-semibold">colaborador</span>, onde estão vinculados a <span className="font-semibold">Unidade</span> e o <span className="font-semibold">Contrato</span>. Isso garante a máxima precisão no rastreamento de origem e destino dos EPIs.
+        </p>
+      </div>
+
       {hasGestaoEstoque && globalPendingCount > 0 && (
         <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
           <CardContent className="p-3 space-y-2">

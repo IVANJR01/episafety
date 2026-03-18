@@ -141,6 +141,12 @@ export default function ConsolidatedEpiPanel() {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/40">
+        <Package className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+        <p className="text-xs text-blue-700 dark:text-blue-300">
+          <span className="font-semibold">Observação:</span> Os dados de consumo e médias são calculados a partir do cadastro dos <span className="font-semibold">colaboradores</span>, vinculados à sua respectiva <span className="font-semibold">Unidade</span> e <span className="font-semibold">Contrato</span>, garantindo rastreabilidade e precisão dos indicadores.
+        </p>
+      </div>
       {data.map((parent) => {
         if (!parent.filiais || parent.filiais.length === 0) return null;
 
