@@ -640,7 +640,8 @@ export default function ContratoStockPanel() {
                                                 </div>
                                               </TableCell>
                                             </TableRow>
-                                          ))}
+                                          );
+                                          })}
                                         </TableBody>
                                       </Table>
                                     </div>
