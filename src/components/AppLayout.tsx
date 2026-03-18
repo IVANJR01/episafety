@@ -53,6 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [faturasAlerta, setFaturasAlerta] = useState(0);
+  const [checking, setChecking] = useState(false);
 
   // Busca contagem de faturas pendentes/vencidas para o badge no sidebar
   useEffect(() => {
