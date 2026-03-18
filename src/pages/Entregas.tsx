@@ -21,6 +21,7 @@ import SignatureCanvas, { type SignatureCanvasRef } from "@/components/Signature
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
+import { syncContractStockFromEntrega } from "@/lib/contractStock";
 
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
@@ -38,7 +39,6 @@ export default function Entregas() {
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { empresaId } = useAuth();
 
-  // IDs de entregas pendentes de sincronização (salvas offline)
   const offlinePendingIds = useMemo(() => {
     const queue = getSyncQueue();
     return new Set(queue.filter(op => op.table === "entregas").map(op => op.payload?.id).filter(Boolean));
@@ -88,9 +88,7 @@ export default function Entregas() {
     if (dataUrl) setSavedSignatureDataUrl(dataUrl);
     setFullscreenSigOpen(false);
 
-    // If coming from "new" flow (after Registrar) and we have a dataUrl, save directly
     if (dataUrl && signMode === "new" && pendingEntrega) {
-      // Save signature immediately without opening signOpen dialog
       const saveDirectly = async () => {
         const ids = pendingEntrega?.entrega_ids || [];
         if (ids.length === 0) return;
@@ -125,7 +123,6 @@ export default function Entregas() {
       return;
     }
 
-    // For existing flow, reopen the dialog
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setSignOpen(true));
     });
@@ -159,7 +156,6 @@ export default function Entregas() {
     setEpiList(prev => prev.filter(e => e.epi.id !== epiId));
   };
 
-  // Auto-search locally as user types
   useEffect(() => {
     const term = epiCaSearch.trim().toLowerCase();
     if (!term || term.length < 2) {
@@ -176,13 +172,11 @@ export default function Entregas() {
 
   const handleSearchCA = async () => {
     if (!epiCaSearch.trim()) return;
-    // If there's a local exact CA match, add directly
     const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
     if (foundByCA) {
       addEpiToList(foundByCA);
       return;
     }
-    // If local results exist, don't call external API
     if (epiDropdownResults.length > 0) return;
 
     setEpiSearching(true);
@@ -273,7 +267,6 @@ export default function Entregas() {
 
   useEffect(() => {
     if (!shouldOpenSignatureAfterSave || !pendingEntrega) return;
-    // Wait for the "Nova Movimentação" dialog to fully close
     if (open || fullscreenSigOpen || signOpen) return;
 
     setShouldOpenSignatureAfterSave(false);
@@ -358,10 +351,21 @@ export default function Entregas() {
       return;
     }
 
-    // Parallel inserts for speed
+    const userResult = await supabase.auth.getUser();
+    const currentUserId = userResult.data.user?.id || null;
+    let responsavelNome: string | null = null;
+
+    if (currentUserId) {
+      const { data: profile } = await (supabase.from as any)("profiles")
+        .select("nome")
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+      responsavelNome = profile?.nome || null;
+    }
+
     const results = await Promise.allSettled(
-      epiList.map(item =>
-        (supabase.from as any)("entregas")
+      epiList.map(async (item) => {
+        const insertResult = await (supabase.from as any)("entregas")
           .insert({
             funcionario_id: form.funcionario_id,
             epi_id: item.epi.id,
@@ -373,17 +377,33 @@ export default function Entregas() {
             empresa_id: empresaId,
           })
           .select("id")
-          .single()
-      )
+          .single();
+
+        if (insertResult.error) throw insertResult.error;
+
+        await syncContractStockFromEntrega({
+          funcionarioId: form.funcionario_id,
+          epiId: item.epi.id,
+          quantidade: item.quantidade,
+          tipo: form.tipo,
+          empresaId,
+          observacao: form.observacao || null,
+          createdBy: currentUserId,
+          responsavelNome,
+        });
+
+        return insertResult.data.id as string;
+      })
     );
 
     const insertedIds: string[] = [];
     const failedEpis: string[] = [];
     results.forEach((r, i) => {
-      if (r.status === "fulfilled" && !r.value.error) {
-        insertedIds.push(r.value.data.id);
+      if (r.status === "fulfilled") {
+        insertedIds.push(r.value);
       } else {
         failedEpis.push(epiList[i].epi.nome);
+        console.error("Erro ao registrar entrega:", r.reason);
       }
     });
 
@@ -396,18 +416,13 @@ export default function Entregas() {
       return;
     }
 
-    setPendingEntrega({
-      funcionario_id: form.funcionario_id,
-      entrega_ids: insertedIds,
-    });
-
+    setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
     setOpen(false);
     resetForm();
     setFormFuncSearch("");
     setEpiCaSearch("");
     setEpiList([]);
     setEpiDropdownResults([]);
-
     setSaving(false);
     setShouldOpenSignatureAfterSave(true);
   };
@@ -416,13 +431,23 @@ export default function Entregas() {
     if (!canEdit) return;
     const epiObj = epis.find(ep => ep.id === entrega.epi_id);
     const funcObj = funcionarios.find(f => f.id === entrega.funcionario_id);
-    
+
     try {
-      // Update the original delivery status to "devolvido"
+      const userResult = await supabase.auth.getUser();
+      const currentUserId = userResult.data.user?.id || null;
+      let responsavelNome: string | null = null;
+
+      if (currentUserId) {
+        const { data: profile } = await (supabase.from as any)("profiles")
+          .select("nome")
+          .eq("user_id", currentUserId)
+          .maybeSingle();
+        responsavelNome = profile?.nome || null;
+      }
+
       await (supabase.from as any)("entregas").update({ status: "devolvido" }).eq("id", entrega.id);
-      
-      // Create a new "devolucao" record
-      await (supabase.from as any)("entregas").insert({
+
+      const { error: devolucaoError } = await (supabase.from as any)("entregas").insert({
         funcionario_id: entrega.funcionario_id,
         epi_id: entrega.epi_id,
         quantidade: entrega.quantidade,
@@ -431,6 +456,19 @@ export default function Entregas() {
         status: "devolvido",
         observacao: `Devolução ref. entrega de ${entrega.data}`,
         empresa_id: empresaId,
+      });
+
+      if (devolucaoError) throw devolucaoError;
+
+      await syncContractStockFromEntrega({
+        funcionarioId: entrega.funcionario_id,
+        epiId: entrega.epi_id,
+        quantidade: entrega.quantidade,
+        tipo: "devolucao",
+        empresaId,
+        observacao: `Devolução ref. entrega de ${entrega.data}`,
+        createdBy: currentUserId,
+        responsavelNome,
       });
 
       toast({ title: "EPI devolvido ao estoque!", description: `${epiObj?.nome || "EPI"} devolvido por ${funcObj?.nome || "colaborador"}.` });
