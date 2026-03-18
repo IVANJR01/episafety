@@ -24,8 +24,8 @@ const epiItems: NavItem[] = [
 ];
 
 const gestaoDocItems: NavItem[] = [
-  { path: "/treinamentos", label: "Controle de Documentos", icon: GraduationCap, moduleKey: "treinamentos" },
-  { path: "/exames", label: "Controle de Exames", icon: Stethoscope, moduleKey: "exames" },
+  { path: "/treinamentos", label: "Documentos", icon: GraduationCap, moduleKey: "treinamentos" },
+  { path: "/exames", label: "Exames", icon: Stethoscope, moduleKey: "exames" },
 ];
 
 const afterCadastroItems: NavItem[] = [
