@@ -21,267 +21,8 @@ import SignatureCanvas, { type SignatureCanvasRef } from "@/components/Signature
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
-
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; }
-interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
-interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; }
-interface EpiItem { epi: EPI; quantidade: number; }
-
-const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
-const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
-
-export default function Entregas() {
-  const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
-  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
-  const { data: epis } = useSupabaseQuery<EPI>("epis");
-  const { toast } = useToast();
-  const { canEdit, canCreate, canDelete } = usePermissions("entregas");
-  const { empresaId } = useAuth();
-
-  // IDs de entregas pendentes de sincronização (salvas offline)
-  const offlinePendingIds = useMemo(() => {
-    const queue = getSyncQueue();
-    return new Set(queue.filter(op => op.table === "entregas").map(op => op.payload?.id).filter(Boolean));
-  }, [entregas]);
-
-  const [open, setOpen] = useState(false);
-  const [fichaOpen, setFichaOpen] = useState(false);
-  const [signOpen, setSignOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [fichaSearch, setFichaSearch] = useState("");
-  const [fichaFuncId, setFichaFuncId] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [savingConfirmation, setSavingConfirmation] = useState(false);
-  const [selectedUnsigned, setSelectedUnsigned] = useState<string[]>([]);
-  const [signMode, setSignMode] = useState<"new" | "existing">("new");
-  const [signFuncId, setSignFuncId] = useState<string>("");
-
-  const [pendingEntrega, setPendingEntrega] = useState<any>(null);
-  const [shouldOpenSignatureAfterSave, setShouldOpenSignatureAfterSave] = useState(false);
-  const sigEntregaRef = useRef<SignatureCanvasRef>(null);
-  const [signInputType, setSignInputType] = useState<"assinatura" | "facial">("assinatura");
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
-  const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
-
-  const resetSignFlow = useCallback(() => {
-    setSignOpen(false);
-    setPendingEntrega(null);
-    setSelectedUnsigned([]);
-    setSignMode("new");
-    setSignFuncId("");
-    setSignInputType("assinatura");
-    setCapturedPhoto(null);
-    setSavedSignatureDataUrl(null);
-    setFullscreenSigOpen(false);
-  }, []);
-
-  const openFullscreenSignature = useCallback(() => {
-    setShouldOpenSignatureAfterSave(false);
-    setSignOpen(false);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setFullscreenSigOpen(true));
-    });
-  }, []);
-
-  const closeFullscreenSignature = useCallback((dataUrl?: string) => {
-    if (dataUrl) setSavedSignatureDataUrl(dataUrl);
-    setFullscreenSigOpen(false);
-
-    // If coming from "new" flow (after Registrar) and we have a dataUrl, save directly
-    if (dataUrl && signMode === "new" && pendingEntrega) {
-      // Save signature immediately without opening signOpen dialog
-      const saveDirectly = async () => {
-        const ids = pendingEntrega?.entrega_ids || [];
-        if (ids.length === 0) return;
-
-        setSavingConfirmation(true);
-        try {
-          const updatePayload = { assinatura_colaborador: dataUrl };
-
-          if (!isOnline()) {
-            for (const id of ids) {
-              addToSyncQueue({ table: "entregas", type: "update", payload: { id, ...updatePayload } });
-            }
-            const cached = getCachedData<Entrega>("entregas") || [];
-            setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
-            toast({ title: "Assinatura salva offline", description: `${ids.length} entrega(s) atualizada(s).` });
-          } else {
-            await Promise.all(
-              ids.map(id =>
-                (supabase.from as any)("entregas").update(updatePayload).eq("id", id)
-              )
-            );
-            toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
-          }
-          refetch();
-        } finally {
-          setSavingConfirmation(false);
-          setPendingEntrega(null);
-          setSavedSignatureDataUrl(null);
-        }
-      };
-      saveDirectly();
-      return;
-    }
-
-    // For existing flow, reopen the dialog
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setSignOpen(true));
-    });
-  }, [signMode, pendingEntrega, empresaId, refetch, toast]);
-
-  const entregaDefaults = {
-    funcionario_id: "", quantidade: 1,
-    data: new Date().toISOString().split("T")[0],
-    tipo: "entrega" as string, observacao: "",
-  };
-  const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
-
-  const [epiCaSearch, setEpiCaSearch] = useState("");
-  const [epiSearching, setEpiSearching] = useState(false);
-  const [epiDropdownResults, setEpiDropdownResults] = useState<EPI[]>([]);
-  const [epiList, setEpiList] = useState<EpiItem[]>([]);
-  const [epiQtd, setEpiQtd] = useState(1);
-
-  const addEpiToList = useCallback((epi: EPI) => {
-    setEpiList(prev => {
-      const existing = prev.find(e => e.epi.id === epi.id);
-      if (existing) return prev.map(e => e.epi.id === epi.id ? { ...e, quantidade: e.quantidade + epiQtd } : e);
-      return [...prev, { epi, quantidade: epiQtd }];
-    });
-    setEpiCaSearch("");
-    setEpiDropdownResults([]);
-    setEpiQtd(1);
-  }, [epiQtd]);
-
-  const removeEpiFromList = (epiId: string) => {
-    setEpiList(prev => prev.filter(e => e.epi.id !== epiId));
-  };
-
-  // Auto-search locally as user types
-  useEffect(() => {
-    const term = epiCaSearch.trim().toLowerCase();
-    if (!term || term.length < 2) {
-      setEpiDropdownResults([]);
-      return;
-    }
-    const matched = epis.filter(e =>
-      e.nome.toLowerCase().includes(term) ||
-      (e.descricao && e.descricao.toLowerCase().includes(term)) ||
-      (e.ca && e.ca.includes(term))
-    );
-    setEpiDropdownResults(matched);
-  }, [epiCaSearch, epis]);
-
-  const handleSearchCA = async () => {
-    if (!epiCaSearch.trim()) return;
-    // If there's a local exact CA match, add directly
-    const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
-    if (foundByCA) {
-      addEpiToList(foundByCA);
-      return;
-    }
-    // If local results exist, don't call external API
-    if (epiDropdownResults.length > 0) return;
-
-    setEpiSearching(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("consulta-ca", {
-        body: { ca: epiCaSearch.trim() },
-      });
-      if (error || !data?.nome) {
-        toast({ title: "C.A. não encontrado", description: "Verifique o número do C.A. e tente novamente.", variant: "destructive" });
-        setEpiSearching(false);
-        return;
-      }
-      const { data: newEpi, error: insertErr } = await (supabase.from as any)("epis").insert({
-        nome: data.nome,
-        ca: epiCaSearch.trim(),
-        categoria: data.categoria || null,
-        fabricante: data.fabricante || null,
-        descricao: data.descricao || null,
-        aprovado_para: data.aprovado_para || null,
-        validade: data.validade || null,
-        estoque: 0,
-        empresa_id: empresaId,
-      }).select().single();
-      if (insertErr) {
-        toast({ title: "Erro ao cadastrar EPI", variant: "destructive" });
-      } else {
-        addEpiToList(newEpi);
-        toast({ title: `EPI "${data.nome}" cadastrado automaticamente via C.A.` });
-      }
-    } catch {
-      toast({ title: "Erro na consulta do C.A.", variant: "destructive" });
-    }
-    setEpiSearching(false);
-  };
-
-  const matchFunc = (func: Funcionario, term: string) => {
-    if (!term) return true;
-    const t = term.toLowerCase();
-    return func.nome.toLowerCase().includes(t) || (func.cpf && func.cpf.includes(t)) || (func.matricula && func.matricula.toLowerCase().includes(t));
-  };
-
-  const filteredEntregas = useMemo(() => {
-    if (!searchTerm) return entregas;
-    return entregas.filter(e => {
-      const func = funcionarios.find(f => f.id === e.funcionario_id);
-      return func && matchFunc(func, searchTerm);
-    });
-  }, [entregas, funcionarios, searchTerm]);
-
-  const fichaFilteredFuncs = useMemo(() => {
-    if (!fichaSearch) return funcionarios;
-    return funcionarios.filter(f => matchFunc(f, fichaSearch));
-  }, [funcionarios, fichaSearch]);
-
-  const [formFuncSearch, setFormFuncSearch] = useState("");
-  const formFilteredFuncs = useMemo(() => {
-    if (!formFuncSearch) return funcionarios;
-    return funcionarios.filter(f => matchFunc(f, formFuncSearch));
-  }, [funcionarios, formFuncSearch]);
-
-  const optimizePhotoDataUrl = useCallback(async (dataUrl: string) => {
-    try {
-      return await new Promise<string>((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          const maxSide = 960;
-          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.round(img.width * scale));
-          canvas.height = Math.max(1, Math.round(img.height * scale));
-          const ctx = canvas.getContext("2d");
-
-          if (!ctx) {
-            resolve(dataUrl);
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL("image/jpeg", 0.72));
-        };
-        img.onerror = () => resolve(dataUrl);
-        img.src = dataUrl;
-      });
-    } catch {
-      return dataUrl;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!shouldOpenSignatureAfterSave || !pendingEntrega) return;
-    // Wait for the "Nova Movimentação" dialog to fully close
-    if (open || fullscreenSigOpen || signOpen) return;
-
-    setShouldOpenSignatureAfterSave(false);
-    setSignMode("new");
-    setSignInputType("assinatura");
-    setFullscreenSigOpen(true);
-  }, [shouldOpenSignatureAfterSave, open, pendingEntrega, fullscreenSigOpen, signOpen]);
-
+import { syncContractStockFromEntrega } from "@/lib/contractStock";
+...
   const handleSave = async () => {
     if (saving) return;
     if (!form.funcionario_id || epiList.length === 0) {
@@ -358,10 +99,21 @@ export default function Entregas() {
       return;
     }
 
-    // Parallel inserts for speed
+    const userResult = await supabase.auth.getUser();
+    const currentUserId = userResult.data.user?.id || null;
+
+    let responsavelNome: string | null = null;
+    if (currentUserId) {
+      const { data: profile } = await (supabase.from as any)("profiles")
+        .select("nome")
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+      responsavelNome = profile?.nome || null;
+    }
+
     const results = await Promise.allSettled(
-      epiList.map(item =>
-        (supabase.from as any)("entregas")
+      epiList.map(async (item) => {
+        const insertResult = await (supabase.from as any)("entregas")
           .insert({
             funcionario_id: form.funcionario_id,
             epi_id: item.epi.id,
@@ -373,17 +125,38 @@ export default function Entregas() {
             empresa_id: empresaId,
           })
           .select("id")
-          .single()
-      )
+          .single();
+
+        if (insertResult.error) {
+          throw insertResult.error;
+        }
+
+        await syncContractStockFromEntrega({
+          funcionarioId: form.funcionario_id,
+          epiId: item.epi.id,
+          quantidade: item.quantidade,
+          tipo: form.tipo,
+          empresaId,
+          observacao: form.observacao || null,
+          createdBy: currentUserId,
+          responsavelNome,
+        });
+
+        return {
+          id: insertResult.data.id as string,
+          nome: item.epi.nome,
+        };
+      })
     );
 
     const insertedIds: string[] = [];
     const failedEpis: string[] = [];
     results.forEach((r, i) => {
-      if (r.status === "fulfilled" && !r.value.error) {
-        insertedIds.push(r.value.data.id);
+      if (r.status === "fulfilled") {
+        insertedIds.push(r.value.id);
       } else {
         failedEpis.push(epiList[i].epi.nome);
+        console.error("Erro ao registrar entrega:", r.reason);
       }
     });
 
@@ -416,13 +189,23 @@ export default function Entregas() {
     if (!canEdit) return;
     const epiObj = epis.find(ep => ep.id === entrega.epi_id);
     const funcObj = funcionarios.find(f => f.id === entrega.funcionario_id);
-    
+
     try {
-      // Update the original delivery status to "devolvido"
+      const userResult = await supabase.auth.getUser();
+      const currentUserId = userResult.data.user?.id || null;
+      let responsavelNome: string | null = null;
+
+      if (currentUserId) {
+        const { data: profile } = await (supabase.from as any)("profiles")
+          .select("nome")
+          .eq("user_id", currentUserId)
+          .maybeSingle();
+        responsavelNome = profile?.nome || null;
+      }
+
       await (supabase.from as any)("entregas").update({ status: "devolvido" }).eq("id", entrega.id);
-      
-      // Create a new "devolucao" record
-      await (supabase.from as any)("entregas").insert({
+
+      const { error: devolucaoError } = await (supabase.from as any)("entregas").insert({
         funcionario_id: entrega.funcionario_id,
         epi_id: entrega.epi_id,
         quantidade: entrega.quantidade,
@@ -431,6 +214,19 @@ export default function Entregas() {
         status: "devolvido",
         observacao: `Devolução ref. entrega de ${entrega.data}`,
         empresa_id: empresaId,
+      });
+
+      if (devolucaoError) throw devolucaoError;
+
+      await syncContractStockFromEntrega({
+        funcionarioId: entrega.funcionario_id,
+        epiId: entrega.epi_id,
+        quantidade: entrega.quantidade,
+        tipo: "devolucao",
+        empresaId,
+        observacao: `Devolução ref. entrega de ${entrega.data}`,
+        createdBy: currentUserId,
+        responsavelNome,
       });
 
       toast({ title: "EPI devolvido ao estoque!", description: `${epiObj?.nome || "EPI"} devolvido por ${funcObj?.nome || "colaborador"}.` });
