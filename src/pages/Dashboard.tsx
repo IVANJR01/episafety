@@ -209,20 +209,19 @@ export default function Dashboard() {
     }, 0);
   }, [entregas, epis]);
 
-  // Entregas por responsável (quem registrou)
+  // Entregas por funcionário (quem recebeu o EPI)
   const entregasPorResponsavel = useMemo(() => {
-    const profileMap = new Map(profiles.map(p => [p.user_id, p.nome]));
+    const funcMap = new Map(funcionarios.map(f => [f.id, f.nome]));
     const contagem: Record<string, number> = {};
     entregas.forEach(e => {
-      const userId = (e as any).created_by;
-      if (!userId) return;
-      const nome = profileMap.get(userId) || "Desconhecido";
+      if (e.tipo !== "entrega" && e.tipo !== "substituicao" && e.tipo !== "troca") return;
+      const nome = funcMap.get(e.funcionario_id) || "Desconhecido";
       contagem[nome] = (contagem[nome] || 0) + e.quantidade;
     });
     return Object.entries(contagem)
       .map(([nome, quantidade]) => ({ nome: nome.length > 20 ? nome.substring(0, 18) + "..." : nome, quantidade }))
       .sort((a, b) => b.quantidade - a.quantidade);
-  }, [entregas, profiles]);
+  }, [entregas, funcionarios]);
 
   const recentEntregas = entregas.slice(0, 20).map(e => ({
     ...e,
@@ -664,12 +663,12 @@ export default function Dashboard() {
                   <div className="p-1.5 rounded-lg bg-primary/10">
                     <Users className="w-3.5 h-3.5 text-primary" />
                   </div>
-                  <CardTitle className="text-sm font-bold">Entregas por Responsável</CardTitle>
+                  <CardTitle className="text-sm font-bold">Entregas por Colaborador</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 {entregasPorResponsavel.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega com responsável registrado</p>
+                  <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada</p>
                 ) : (
                   <div className="space-y-2">
                     {entregasPorResponsavel.map((r, idx) => (
@@ -855,14 +854,14 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Entregas por Responsável */}
+          {/* Entregas por Colaborador */}
           <Card className="shadow-md border-border/50">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-primary/10">
                   <Users className="w-4 h-4 text-primary" />
                 </div>
-                <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
+                <CardTitle className="text-base font-bold">Entregas por Colaborador</CardTitle>
                 {entregasPorResponsavel.length > 0 && (
                   <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
                 )}
@@ -870,7 +869,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {entregasPorResponsavel.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega com responsável registrado</p>
+                <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada</p>
               ) : (
                 <ResponsiveContainer width="100%" height={Math.max(250, entregasPorResponsavel.length * 40)}>
                   <BarChart data={entregasPorResponsavel} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
