@@ -632,28 +632,34 @@ export default function ContratoStockPanel() {
                                   )}
 
                                   {/* Consumption chart */}
-                                  {consumo.length > 0 && consumo.some(c => c.quantidade > 0) && (
+                                  {consumo.length > 0 && consumo.some(c => c.entrega > 0 || c.troca > 0 || c.substituicao > 0 || c.devolucao > 0 || c.perda > 0 || c.dano > 0) && (
                                     <div className="space-y-2">
                                       <div className="flex items-center gap-1.5">
                                         <BarChart3 className="w-3.5 h-3.5 text-primary" />
-                                        <span className="text-xs font-semibold">Consumo Mensal</span>
+                                        <span className="text-xs font-semibold">Movimentações Mensais por Tipo</span>
                                       </div>
-                                      <div className="h-[180px] w-full">
+                                      <div className="h-[220px] w-full">
                                         <ResponsiveContainer width="100%" height="100%">
                                           <BarChart data={consumo} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                                             <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                                             <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
-                                            <YAxis tick={{ fontSize: 10 }} width={35} />
+                                            <YAxis yAxisId="qty" tick={{ fontSize: 10 }} width={30} />
+                                            <YAxis yAxisId="cost" orientation="right" tick={{ fontSize: 9 }} width={50} tickFormatter={v => `R$${v}`} />
                                             <Tooltip
                                               contentStyle={{ fontSize: 11, borderRadius: 8 }}
                                               formatter={(value: number, name: string) => [
-                                                name === "Quantidade" ? `${value} un.` : `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                                                name === "Quantidade" ? "Quantidade" : "Custo"
+                                                name === "Custo (R$)" ? `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : `${value} un.`,
+                                                name
                                               ]}
                                             />
                                             <Legend wrapperStyle={{ fontSize: 10 }} />
-                                            <Bar dataKey="quantidade" name="Quantidade" fill="hsl(var(--chart-1, var(--primary)))" radius={[4, 4, 0, 0]} />
-                                            <Bar dataKey="custo" name="Custo (R$)" fill="hsl(var(--chart-2, var(--secondary)))" radius={[4, 4, 0, 0]} />
+                                            {consumo.some(c => c.entrega > 0) && <Bar yAxisId="qty" dataKey="entrega" name="Entrega" stackId="tipo" fill="hsl(199, 89%, 48%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.troca > 0) && <Bar yAxisId="qty" dataKey="troca" name="Troca" stackId="tipo" fill="hsl(25, 95%, 53%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.substituicao > 0) && <Bar yAxisId="qty" dataKey="substituicao" name="Substituição" stackId="tipo" fill="hsl(262, 83%, 58%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.devolucao > 0) && <Bar yAxisId="qty" dataKey="devolucao" name="Devolução" stackId="tipo" fill="hsl(142, 71%, 45%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.perda > 0) && <Bar yAxisId="qty" dataKey="perda" name="Perda" stackId="tipo" fill="hsl(346, 77%, 50%)" radius={[0, 0, 0, 0]} />}
+                                            {consumo.some(c => c.dano > 0) && <Bar yAxisId="qty" dataKey="dano" name="Dano" stackId="tipo" fill="hsl(47, 95%, 53%)" radius={[0, 0, 0, 0]} />}
+                                            <Bar yAxisId="cost" dataKey="custo" name="Custo (R$)" fill="hsl(var(--chart-2, var(--secondary)))" radius={[4, 4, 0, 0]} />
                                           </BarChart>
                                         </ResponsiveContainer>
                                       </div>
