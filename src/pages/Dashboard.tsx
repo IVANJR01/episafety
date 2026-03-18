@@ -355,9 +355,10 @@ export default function Dashboard() {
             <p className="text-[10px] text-muted-foreground mt-1.5">{entregas.length} entregas realizadas no período</p>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Cost Evolution Chart — Area chart */}
+      <motion.div variants={fadeUp} custom={6}>
       <Card className="shadow-md border-border/50">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
