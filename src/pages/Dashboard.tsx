@@ -307,7 +307,7 @@ export default function Dashboard() {
       </div>
 
       {/* Financial Overview — Two big cards */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <motion.div variants={fadeUp} custom={5} className="grid gap-4 lg:grid-cols-2">
         <Card className="shadow-md border-border/50 hover:shadow-lg transition-shadow">
           <CardContent className="p-5 sm:p-6">
             <div className="flex items-start justify-between mb-3">
