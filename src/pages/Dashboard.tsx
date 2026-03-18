@@ -819,6 +819,39 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Entregas por Responsável */}
+          {entregasPorResponsavel.length > 0 && (
+            <Card className="shadow-md border-border/50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Users className="w-4 h-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-base font-bold">Entregas por Responsável</CardTitle>
+                  <span className="ml-auto text-xs text-muted-foreground font-medium">{entregasPorResponsavel.reduce((s, r) => s + r.quantidade, 0)} entregas</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={Math.max(250, entregasPorResponsavel.length * 40)}>
+                  <BarChart data={entregasPorResponsavel} layout="vertical" margin={{ left: 10, right: 40, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis dataKey="nome" type="category" width={130} tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                      formatter={(value: number) => [`${value} un.`, "Quantidade"]}
+                    />
+                    <Bar dataKey="quantidade" radius={[0, 6, 6, 0]} maxBarSize={28}>
+                      {entregasPorResponsavel.map((_, idx) => (
+                        <Cell key={idx} fill={idx < 3 ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.5)"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
       </motion.div>
