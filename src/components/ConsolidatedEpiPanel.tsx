@@ -24,6 +24,12 @@ interface FilialStock {
 interface ParentCompany {
   empresa_id: string;
   empresa_nome: string;
+  total_itens: number;
+  estoque_total: number;
+  valor_total: number;
+  itens_baixo_estoque: number;
+  consumo_medio_mensal: number;
+  custo_medio_mensal: number;
   filiais: FilialStock[];
 }
 
