@@ -504,6 +504,7 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Mobile: Tabs | Desktop: stacked */}
       {isMobile ? (
