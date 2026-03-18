@@ -306,7 +306,7 @@ export default function ContratoStockPanel() {
 
     let enrichedSol: SolicitacaoEpi[] = [];
     if (solData && solData.length > 0) {
-      const epiIds = [...new Set(solData.map((s: any) => s.epi_id))];
+      const epiIds = [...new Set(solData.map((s: any) => s.epi_id))] as string[];
       const { data: episInfo } = await supabase.from("epis").select("id, nome, ca").in("id", epiIds);
       const episMap = new Map((episInfo || []).map(e => [e.id, e]));
       enrichedSol = solData.map((s: any) => ({
