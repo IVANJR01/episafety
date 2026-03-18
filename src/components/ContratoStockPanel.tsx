@@ -607,11 +607,14 @@ export default function ContratoStockPanel() {
                                             <TableHead className="text-xs">Categoria</TableHead>
                                             <TableHead className="text-xs text-right">Estoque</TableHead>
                                             <TableHead className="text-xs text-right">Valor Unit.</TableHead>
+                                            <TableHead className="text-xs text-right">Valor Total</TableHead>
                                             <TableHead className="text-xs w-20"></TableHead>
                                           </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                          {epis.map(epi => (
+                                          {epis.map(epi => {
+                                            const valorTotal = epi.estoque * (epi.epi_valor || 0);
+                                            return (
                                             <TableRow key={epi.id}>
                                               <TableCell className="text-xs font-medium">{epi.epi_nome}</TableCell>
                                               <TableCell className="text-xs font-mono">{epi.epi_ca || "—"}</TableCell>
@@ -623,6 +626,9 @@ export default function ContratoStockPanel() {
                                               </TableCell>
                                               <TableCell className="text-xs text-right font-mono">
                                                 {epi.epi_valor ? `R$ ${Number(epi.epi_valor).toFixed(2)}` : "—"}
+                                              </TableCell>
+                                              <TableCell className="text-xs text-right font-mono font-semibold">
+                                                {valorTotal > 0 ? `R$ ${valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
                                               </TableCell>
                                               <TableCell className="text-xs">
                                                 <div className="flex gap-0.5 justify-end">
