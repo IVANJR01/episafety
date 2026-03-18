@@ -10,6 +10,7 @@ interface NavItem {
   label: string;
   icon: any;
   moduleKey: string;
+  description?: string;
 }
 
 const mainNavItems: NavItem[] = [];
