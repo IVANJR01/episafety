@@ -59,8 +59,8 @@ export default function ConsolidatedEpiPanel() {
   const { toast } = useToast();
 
   const loadData = useCallback(async () => {
-    const { data: result } = await supabase.rpc("get_consolidated_epi_stock");
-    if (result && Array.isArray(result)) setData(result as unknown as ParentCompany[]);
+    const { data: result } = await cachedRpc<ParentCompany[]>("rpc_consolidated_stock", "get_consolidated_epi_stock");
+    if (result && Array.isArray(result)) setData(result);
     setLoading(false);
   }, []);
 
