@@ -381,16 +381,21 @@ export default function Entregas() {
 
         if (insertResult.error) throw insertResult.error;
 
-        await syncContractStockFromEntrega({
-          funcionarioId: form.funcionario_id,
-          epiId: item.epi.id,
-          quantidade: item.quantidade,
-          tipo: form.tipo,
-          empresaId,
-          observacao: form.observacao || null,
-          createdBy: currentUserId,
-          responsavelNome,
-        });
+        try {
+          const syncResult = await syncContractStockFromEntrega({
+            funcionarioId: form.funcionario_id,
+            epiId: item.epi.id,
+            quantidade: item.quantidade,
+            tipo: form.tipo,
+            empresaId,
+            observacao: form.observacao || null,
+            createdBy: currentUserId,
+            responsavelNome,
+          });
+          console.log("Contract stock sync result:", syncResult);
+        } catch (syncErr) {
+          console.error("Contract stock sync failed (non-blocking):", syncErr);
+        }
 
         return insertResult.data.id as string;
       })
