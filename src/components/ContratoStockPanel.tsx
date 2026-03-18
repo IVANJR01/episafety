@@ -768,18 +768,18 @@ export default function ContratoStockPanel() {
         return (
           <Card key={unidade.id} className="border-secondary/30">
             <CardContent className="p-3 sm:p-4 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-secondary-foreground" />
-                  <span className="font-semibold text-sm">{unidade.nome}</span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{unidade.tipo}</Badge>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <Building2 className="w-4 h-4 text-secondary-foreground shrink-0" />
+                  <span className="font-semibold text-sm truncate">{unidade.nome}</span>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize shrink-0">{unidade.tipo}</Badge>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
                     {unitContratos.length} contrato{unitContratos.length > 1 ? "s" : ""}
                   </Badge>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => toggleUnidade(unidade.id)} className="h-7 px-2 text-xs">
+                <Button variant="ghost" size="sm" onClick={() => toggleUnidade(unidade.id)} className="h-7 px-2 text-xs shrink-0">
                   {isUnitExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  {isUnitExpanded ? "Recolher" : "Expandir"}
+                  <span className="hidden sm:inline">{isUnitExpanded ? "Recolher" : "Expandir"}</span>
                 </Button>
               </div>
 
