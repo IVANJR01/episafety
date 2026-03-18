@@ -79,8 +79,8 @@ export default function ConsolidatedEpiPanel() {
     (async () => {
       setLoadingEpis(true);
       setSelectedEpiId("");
-      const { data: result } = await supabase.rpc("get_filial_epis", { _filial_id: sourceEmpresaId });
-      if (result && Array.isArray(result)) setSourceEpis(result as unknown as FilialEpi[]);
+      const { data: result } = await cachedRpc<FilialEpi[]>(`rpc_filial_epis_${sourceEmpresaId}`, "get_filial_epis", { _filial_id: sourceEmpresaId });
+      if (result && Array.isArray(result)) setSourceEpis(result);
       else setSourceEpis([]);
       setLoadingEpis(false);
     })();
