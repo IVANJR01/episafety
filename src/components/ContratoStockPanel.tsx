@@ -167,11 +167,16 @@ export default function ContratoStockPanel() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data: unidadesData } = await supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id");
-    const { data: contratosData } = await supabase.from("contratos").select("id, nome, unidade_id, empresa_id");
-
-    if (unidadesData) setUnidades(unidadesData as Unidade[]);
-    if (contratosData) setContratos(contratosData as Contrato[]);
+    const [unidadesResult, contratosResult] = await Promise.all([
+      cachedQuery<Unidade>("empresa_config", () =>
+        supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id") as any
+      ),
+      cachedQuery<Contrato>("contratos", () =>
+        supabase.from("contratos").select("id, nome, unidade_id, empresa_id") as any
+      ),
+    ]);
+    setUnidades(unidadesResult.data as Unidade[]);
+    setContratos(contratosResult.data as Contrato[]);
     setLoading(false);
   }, []);
 
