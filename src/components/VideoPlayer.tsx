@@ -1,5 +1,4 @@
 import { Play } from "lucide-react";
-import { isYouTubeUrl, getYouTubeThumbnail, getEmbedUrl } from "@/lib/videoUtils";
 
 interface VideoPlayerProps {
   url: string;
@@ -20,22 +19,6 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ url, controls, className, videoRef, autoPlay, muted, playsInline, preload, onEnded, onPlay, onPause, onContextMenu, onLoadedMetadata, onTimeUpdate, tabIndex }: VideoPlayerProps) {
-  if (isYouTubeUrl(url)) {
-    const embedUrl = getEmbedUrl(url);
-    return (
-      <div className={`relative ${className || ''}`} style={{ aspectRatio: '16/9' }}>
-        <iframe
-          src={embedUrl || ""}
-          className="absolute inset-0 w-full h-full rounded-lg"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          frameBorder="0"
-          title="Vídeo"
-        />
-      </div>
-    );
-  }
-
   return (
     <video
       ref={videoRef}
@@ -65,15 +48,9 @@ interface VideoThumbnailProps {
 }
 
 export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize = "h-5 w-5", completed }: VideoThumbnailProps) {
-  const ytThumb = isYouTubeUrl(url) ? getYouTubeThumbnail(url) : null;
-
   return (
     <div className={`relative bg-muted rounded overflow-hidden flex-shrink-0 ${className}`}>
-      {ytThumb ? (
-        <img src={ytThumb} className="w-full h-full object-cover" alt="" />
-      ) : (
-        <video src={url} className="w-full h-full object-cover" preload="metadata" />
-      )}
+      <video src={url} className="w-full h-full object-cover" preload="metadata" />
       <div className="absolute inset-0 flex items-center justify-center bg-black/30">
         {completed ? (
           <svg className={`${iconSize} text-emerald-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { VideoThumbnail } from "@/components/VideoPlayer";
-import { isYouTubeUrl, getEmbedUrl } from "@/lib/videoUtils";
+// Video utilities removed - only .mp4 uploads supported
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -373,19 +373,6 @@ export default function PortalTreinamentos() {
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                {isYouTubeUrl(watchingVideo.video_url) ? (
-                  <div className={`relative ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
-                    <iframe
-                      src={getEmbedUrl(watchingVideo.video_url) || ""}
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      frameBorder="0"
-                      title={watchingVideo.titulo}
-                    />
-                  </div>
-                ) : (
-                  <>
                     <video
                       ref={videoRef}
                       src={watchingVideo.video_url}
@@ -486,8 +473,6 @@ export default function PortalTreinamentos() {
                         {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                       </Button>
                     </div>
-                  </>
-                )}
               </div>
             </CardContent>
           </Card>
