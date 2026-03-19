@@ -88,11 +88,6 @@ export default function Dashboard() {
     fetchContractData();
   }, []);
 
-  const alertasEstoque = epis.filter(e => {
-    const estoqueTotal = estoqueConsolidadoPorEpi[e.id] || e.estoque;
-    return estoqueTotal <= e.estoque_minimo;
-  });
-
   // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
   const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi } = useMemo(() => {
     // Sum contract stock per epi_id
@@ -113,6 +108,11 @@ export default function Dashboard() {
   }, [epis, contratoEpis]);
 
   const valorEstoqueAtual = valorEstoqueConsolidado;
+
+  const alertasEstoque = epis.filter(e => {
+    const estoqueTotal = estoqueConsolidadoPorEpi[e.id] || e.estoque;
+    return estoqueTotal <= e.estoque_minimo;
+  });
 
   // Stock breakdown by unit (filiais) and contracts
   const estoqueUnidades = useMemo(() => {
