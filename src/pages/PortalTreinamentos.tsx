@@ -295,7 +295,16 @@ export default function PortalTreinamentos() {
     setIsMuted(video.muted);
   };
 
-  const handleToggleFullscreen = async () => {
+  const SPEED_OPTIONS = [1, 1.25, 1.5, 1.75, 2];
+  const handleCycleSpeed = () => {
+    const video = videoRef.current;
+    const currentIdx = SPEED_OPTIONS.indexOf(playbackRate);
+    const nextIdx = (currentIdx + 1) % SPEED_OPTIONS.length;
+    const newRate = SPEED_OPTIONS[nextIdx];
+    setPlaybackRate(newRate);
+    if (video) video.playbackRate = newRate;
+  };
+
     const container = videoContainerRef.current;
     if (!container) return;
 
