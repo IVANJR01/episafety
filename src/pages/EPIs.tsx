@@ -20,7 +20,7 @@ interface EPI {
   id: string; nome: string; ca: string | null; validade: string | null;
   estoque: number; estoque_minimo: number; categoria: string | null;
   descricao: string | null; fabricante: string | null; aprovado_para: string | null;
-  valor: number | null;
+  valor: number | null; tamanho: string | null;
 }
 
 const emptyForm = {
