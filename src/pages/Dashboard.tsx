@@ -455,8 +455,8 @@ export default function Dashboard() {
                 Ativo
               </div>
             </div>
-            <Progress value={Math.min(100, (epis.filter(e => e.estoque > 0).length / Math.max(epis.length, 1)) * 100)} className="h-2" />
-            <p className="text-[10px] text-muted-foreground mt-1.5">{epis.filter(e => e.estoque > 0).length} de {epis.length} EPIs com estoque</p>
+            <Progress value={Math.min(100, (epis.filter(e => (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0).length / Math.max(epis.length, 1)) * 100)} className="h-2" />
+            <p className="text-[10px] text-muted-foreground mt-1.5">{epis.filter(e => (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0).length} de {epis.length} EPIs com estoque</p>
           </CardContent>
         </Card>
 
