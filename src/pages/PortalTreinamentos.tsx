@@ -466,6 +466,7 @@ export default function PortalTreinamentos() {
           iv_load_policy: 3,
           cc_load_policy: 0,
           fs: 0,
+          disablekb: 1,
         },
         events: {
           onReady: (event: any) => {
@@ -562,11 +563,14 @@ export default function PortalTreinamentos() {
                   <>
                     <div className={`w-full bg-muted ${isFullscreen ? 'flex-1' : 'aspect-video'} relative overflow-hidden`}>
                       {isYouTubeUrl(watchingVideo.video_url) ? (
-                        <div
-                          ref={youtubePlayerHostRef}
-                          className="absolute inset-0"
-                          style={{ transform: 'scale(1.01)' }}
-                        />
+                        <div className="absolute inset-0 overflow-hidden">
+                          <div
+                            ref={youtubePlayerHostRef}
+                            className="absolute -top-12 inset-x-0 bottom-0 h-[calc(100%+96px)]"
+                          />
+                          <div className="absolute inset-x-0 top-0 z-10 h-10 bg-background/0 pointer-events-none" />
+                          <div className="absolute inset-x-0 bottom-0 z-10 h-14 bg-background/0 pointer-events-none" />
+                        </div>
                       ) : (
                         <iframe
                           src={`${getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}&autoplay=1`}
