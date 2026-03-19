@@ -550,7 +550,7 @@ export default function ContratoStockPanel() {
 
   // Load EPIs when transfer unit changes
   useEffect(() => {
-    if (!transferUnidadeId) { setTransferEpis([]); return; }
+    if (!transferUnidadeId) { setTransferEpis([]); setTransferItens([]); return; }
     (async () => {
       const { data: epis } = await supabase
         .from("epis")
@@ -559,7 +559,7 @@ export default function ContratoStockPanel() {
         .gt("estoque", 0)
         .order("nome");
       setTransferEpis((epis || []) as { id: string; nome: string; ca: string | null; estoque: number }[]);
-      setTransferEpiId("");
+      setTransferItens([]);
     })();
   }, [transferUnidadeId]);
 
