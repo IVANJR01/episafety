@@ -876,7 +876,8 @@ export default function ExamesModule() {
                             ];
                           })}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
