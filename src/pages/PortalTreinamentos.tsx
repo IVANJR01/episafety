@@ -305,6 +305,7 @@ export default function PortalTreinamentos() {
     if (video) video.playbackRate = newRate;
   };
 
+  const handleToggleFullscreen = async () => {
     const container = videoContainerRef.current;
     if (!container) return;
 
