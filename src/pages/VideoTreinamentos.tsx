@@ -891,8 +891,9 @@ export default function VideoTreinamentos() {
                   <span className="text-sm text-muted-foreground">
                     {videoFile ? videoFile.name : "Clique para enviar um vídeo .mp4"}
                   </span>
-                  <input type="file" accept=".mp4,video/mp4" className="hidden" onChange={e => {
-                    const file = e.target.files?.[0] || null;
+                  <input type="file" accept="video/mp4,.mp4" className="hidden" onChange={async (e) => {
+                    const input = e.currentTarget;
+                    const file = input.files?.[0] || null;
                     if (!file) {
                       setVideoFile(null);
                       return;
@@ -904,7 +905,7 @@ export default function VideoTreinamentos() {
 
                     if (!isMp4) {
                       setVideoFile(null);
-                      e.currentTarget.value = "";
+                      input.value = "";
                       toast({
                         title: "Arquivo inválido",
                         description: "O arquivo enviado é áudio ou não é .mp4. Envie um vídeo .mp4 válido.",
@@ -913,7 +914,57 @@ export default function VideoTreinamentos() {
                       return;
                     }
 
-                    setVideoFile(file);
+                    try {
+                      const objectUrl = URL.createObjectURL(file);
+                      const metadata = await new Promise<{ width: number; height: number; duration: number }>((resolve, reject) => {
+                        const probe = document.createElement("video");
+
+                        const cleanup = () => {
+                          probe.onloadedmetadata = null;
+                          probe.onerror = null;
+                          probe.pause();
+                          probe.removeAttribute("src");
+                          probe.load();
+                          URL.revokeObjectURL(objectUrl);
+                        };
+
+                        probe.preload = "metadata";
+                        probe.muted = true;
+                        probe.playsInline = true;
+                        probe.onloadedmetadata = () => {
+                          const width = probe.videoWidth || 0;
+                          const height = probe.videoHeight || 0;
+                          const duration = Number.isFinite(probe.duration) ? probe.duration : 0;
+                          cleanup();
+
+                          if (width <= 0 || height <= 0 || duration <= 0) {
+                            reject(new Error("Arquivo sem faixa de vídeo visível"));
+                            return;
+                          }
+
+                          resolve({ width, height, duration });
+                        };
+                        probe.onerror = () => {
+                          cleanup();
+                          reject(new Error("Falha ao ler metadados do vídeo"));
+                        };
+                        probe.src = objectUrl;
+                      });
+
+                      if (metadata.width <= 0 || metadata.height <= 0) {
+                        throw new Error("Arquivo sem vídeo visível");
+                      }
+
+                      setVideoFile(file);
+                    } catch {
+                      setVideoFile(null);
+                      input.value = "";
+                      toast({
+                        title: "Vídeo inválido",
+                        description: "Esse arquivo não tem imagem de vídeo válida. Envie um .mp4 real, não áudio renomeado.",
+                        variant: "destructive",
+                      });
+                    }
                   }} />
                 </label>
                 <p className="text-xs text-muted-foreground mt-1">Envie apenas vídeo .mp4 para evitar tela em branco</p>
