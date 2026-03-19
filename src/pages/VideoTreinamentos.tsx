@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { VideoPlayer, VideoThumbnail } from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -243,11 +244,15 @@ export default function VideoTreinamentos() {
       }
 
       if (editingModulo) {
-        const { error } = await supabase.from("videos_treinamento").update({
+        const updatePayload: any = {
           titulo: moduloForm.titulo,
           descricao: moduloForm.descricao || null,
-          ...(videoFile ? { video_url: videoUrl } : {}),
-        }).eq("id", editingModulo.id);
+        };
+        // Save video_url if file uploaded OR if URL was changed manually
+        if (videoFile || (moduloForm.videoUrl.trim() && moduloForm.videoUrl.trim() !== editingModulo.video_url)) {
+          updatePayload.video_url = videoUrl;
+        }
+        const { error } = await supabase.from("videos_treinamento").update(updatePayload).eq("id", editingModulo.id);
         if (error) throw error;
         toast({ title: "Módulo atualizado!" });
       } else {
@@ -788,11 +793,8 @@ export default function VideoTreinamentos() {
                                 {String(idx + 1).padStart(2, "0")}
                               </span>
 
-                              <div className="hidden sm:block relative w-24 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
-                                <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                  <Play className="h-5 w-5 text-white" />
-                                </div>
+                              <div className="hidden sm:block">
+                                <VideoThumbnail url={modulo.video_url} />
                               </div>
 
                               <div className="flex-1 min-w-0">
@@ -989,7 +991,7 @@ export default function VideoTreinamentos() {
           {detailVideo && (
             <div className="space-y-4">
               <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <video src={detailVideo.video_url} controls className="w-full h-full" preload="metadata" />
+                <VideoPlayer url={detailVideo.video_url} controls className="w-full h-full" preload="metadata" />
               </div>
               {detailVideo.descricao && <p className="text-sm text-muted-foreground">{detailVideo.descricao}</p>}
               <div>

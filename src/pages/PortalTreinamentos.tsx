@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { isExternalVideoUrl, getEmbedUrl } from "@/lib/videoUtils";
+import { VideoThumbnail } from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -352,111 +354,144 @@ export default function PortalTreinamentos() {
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                <video
-                  ref={videoRef}
-                  src={watchingVideo.video_url}
-                  autoPlay
-                  muted
-                  playsInline
-                  // @ts-ignore - webkit attribute for iOS
-                  webkit-playsinline="true"
-                  preload="auto"
-                  tabIndex={-1}
-                  className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
-                  onEnded={handleVideoEnded}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                  onContextMenu={(e) => e.preventDefault()}
-                  onLoadedMetadata={(e) => {
-                    const vid = e.currentTarget;
-                    const dur = vid.duration || 0;
-                    setDuration(dur);
-
-                    // Unmute after autoplay starts (user initiated navigation)
-                    vid.muted = false;
-                    setIsMuted(false);
-
-                    // Restore saved position
-                    if (maxWatchedTimeRef.current === -1 && watchingVideo) {
-                      const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-                      if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
-                        const resumeTime = (viz.percentual_assistido / 100) * dur;
-                        vid.currentTime = resumeTime;
-                        maxWatchedTimeRef.current = resumeTime;
-                        setCurrentTime(resumeTime);
-                        return;
-                      }
-                    }
-                    maxWatchedTimeRef.current = 0;
-                    setCurrentTime(0);
-                  }}
-                  onTimeUpdate={(e) => {
-                    const vid = e.currentTarget;
-                    const nextTime = vid.currentTime;
-                    if (nextTime > maxWatchedTimeRef.current) {
-                      maxWatchedTimeRef.current = nextTime;
-                    }
-                    setCurrentTime(nextTime);
-                    setDuration(vid.duration || 0);
-                  }}
-                  onSeeking={(e) => {
-                    const vid = e.currentTarget;
-                    const allowedTime = maxWatchedTimeRef.current + 0.25;
-                    if (vid.currentTime > allowedTime) {
-                      vid.currentTime = maxWatchedTimeRef.current;
-                    }
-                  }}
-                  onError={(e) => {
-                    console.error("Video load error:", (e.currentTarget as any).error);
-                  }}
-                  controls={false}
-                  controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
-                  disablePictureInPicture
-                />
-
-                <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
-                  <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
-                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
-                    {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                  </Button>
-                  <div className="flex-1 space-y-2">
-                    <div
-                      className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
-                      onClick={(e) => {
-                        if (!videoRef.current || duration <= 0) return;
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const clickX = e.clientX - rect.left;
-                        const clickPercent = clickX / rect.width;
-                        const clickTime = clickPercent * duration;
-                        // Allow seeking backward only (up to maxWatched)
-                        if (clickTime <= maxWatchedTimeRef.current + 0.25) {
-                          videoRef.current.currentTime = clickTime;
-                          setCurrentTime(clickTime);
+                {isExternalVideoUrl(watchingVideo.video_url) ? (
+                  <>
+                    <div className={`w-full ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
+                      <iframe
+                        src={getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        style={{ border: 0 }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-3">
+                      <p className="text-sm text-muted-foreground">Assista o vídeo completo e clique para concluir</p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setVideoEnded(true);
+                          // Save 100% progress
+                          if (funcionarioId) {
+                            const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+                            if (viz) {
+                              supabase.from("videos_visualizacao").update({ percentual_assistido: 100 }).eq("id", viz.id).then(() => {});
+                            } else {
+                              supabase.from("videos_visualizacao").insert({
+                                video_id: watchingVideo.id,
+                                funcionario_id: funcionarioId,
+                                percentual_assistido: 100,
+                                empresa_id: null,
+                              }).then(() => {});
+                            }
+                          }
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" /> Concluir vídeo
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={watchingVideo.video_url}
+                      autoPlay
+                      muted
+                      playsInline
+                      // @ts-ignore - webkit attribute for iOS
+                      webkit-playsinline="true"
+                      preload="auto"
+                      tabIndex={-1}
+                      className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
+                      onEnded={handleVideoEnded}
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onLoadedMetadata={(e) => {
+                        const vid = e.currentTarget;
+                        const dur = vid.duration || 0;
+                        setDuration(dur);
+                        vid.muted = false;
+                        setIsMuted(false);
+                        if (maxWatchedTimeRef.current === -1 && watchingVideo) {
+                          const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+                          if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
+                            const resumeTime = (viz.percentual_assistido / 100) * dur;
+                            vid.currentTime = resumeTime;
+                            maxWatchedTimeRef.current = resumeTime;
+                            setCurrentTime(resumeTime);
+                            return;
+                          }
+                        }
+                        maxWatchedTimeRef.current = 0;
+                        setCurrentTime(0);
+                      }}
+                      onTimeUpdate={(e) => {
+                        const vid = e.currentTarget;
+                        const nextTime = vid.currentTime;
+                        if (nextTime > maxWatchedTimeRef.current) {
+                          maxWatchedTimeRef.current = nextTime;
+                        }
+                        setCurrentTime(nextTime);
+                        setDuration(vid.duration || 0);
+                      }}
+                      onSeeking={(e) => {
+                        const vid = e.currentTarget;
+                        const allowedTime = maxWatchedTimeRef.current + 0.25;
+                        if (vid.currentTime > allowedTime) {
+                          vid.currentTime = maxWatchedTimeRef.current;
                         }
                       }}
-                    >
-                      {/* Watched range indicator */}
-                      <div
-                        className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
-                        style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
-                      />
-                      {/* Current position */}
-                      <div
-                        className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
-                        style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                      />
+                      onError={(e) => {
+                        console.error("Video load error:", (e.currentTarget as any).error);
+                      }}
+                      controls={false}
+                      controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
+                      disablePictureInPicture
+                    />
+                    <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+                      <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
+                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </Button>
+                      <div className="flex-1 space-y-2">
+                        <div
+                          className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
+                          onClick={(e) => {
+                            if (!videoRef.current || duration <= 0) return;
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const clickX = e.clientX - rect.left;
+                            const clickPercent = clickX / rect.width;
+                            const clickTime = clickPercent * duration;
+                            if (clickTime <= maxWatchedTimeRef.current + 0.25) {
+                              videoRef.current.currentTime = clickTime;
+                              setCurrentTime(clickTime);
+                            }
+                          }}
+                        >
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
+                            style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
+                          />
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
+                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{formatTime(currentTime)}</span>
+                          <span>{formatTime(duration)}</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
+                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                      </Button>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
-                    </div>
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
-                    {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                  </Button>
-                </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -589,12 +624,12 @@ export default function PortalTreinamentos() {
                               <span className="bg-primary/10 text-primary font-bold text-[10px] sm:text-xs rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0">
                                 {String(idx + 1).padStart(2, "0")}
                               </span>
-                              <div className="relative w-12 sm:w-20 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
-                                <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                  {status === "concluido" ? <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-400" /> : <Play className="h-3 w-3 sm:h-4 sm:w-4 text-white" />}
-                                </div>
-                              </div>
+                              <VideoThumbnail
+                                url={modulo.video_url}
+                                className="w-12 sm:w-20 aspect-video"
+                                iconSize="h-3 w-3 sm:h-4 sm:w-4"
+                                completed={status === "concluido"}
+                              />
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-foreground text-xs sm:text-sm leading-tight truncate">{modulo.titulo}</h4>
                                 {modulo.descricao && <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 hidden sm:block">{modulo.descricao}</p>}
@@ -634,12 +669,12 @@ export default function PortalTreinamentos() {
                 <Card key={video.id} className={`transition-shadow hover:shadow-md ${status === "concluido" ? "opacity-75" : ""}`}>
                   <CardContent className="p-2.5 sm:p-4">
                     <div className="flex items-center gap-2.5 sm:gap-4">
-                      <div className="relative w-14 sm:w-24 aspect-video bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                        <video src={video.video_url} className="w-full h-full object-cover" preload="metadata" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          {status === "concluido" ? <CheckCircle className="h-4 w-4 sm:h-6 sm:w-6 text-emerald-400" /> : <Play className="h-4 w-4 sm:h-6 sm:w-6 text-white" />}
-                        </div>
-                      </div>
+                      <VideoThumbnail
+                        url={video.video_url}
+                        className="w-14 sm:w-24 aspect-video rounded-lg"
+                        iconSize="h-4 w-4 sm:h-6 sm:w-6"
+                        completed={status === "concluido"}
+                      />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-foreground text-xs sm:text-sm truncate">{video.titulo}</h3>
                         {video.descricao && <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 mt-0.5">{video.descricao}</p>}
