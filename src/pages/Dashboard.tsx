@@ -284,14 +284,15 @@ export default function Dashboard() {
         const mesesEpi = consumoPorEpi[epi.id] || {};
         const totalEntregue = Object.values(mesesEpi).reduce((s, v) => s + v, 0);
         const media = totalEntregue / totalMeses;
-        const mesesEstoque = media > 0 ? epi.estoque / media : null;
+        const estoqueTotal = estoqueConsolidadoPorEpi[epi.id] || epi.estoque;
+        const mesesEstoque = media > 0 ? estoqueTotal / media : null;
 
         return {
           id: epi.id,
           nome: epi.nome,
           totalEntregue,
           media: Number(media.toFixed(1)),
-          estoqueAtual: epi.estoque,
+          estoqueAtual: estoqueTotal,
           mesesEstoque: mesesEstoque !== null ? Number(mesesEstoque.toFixed(1)) : null,
           porMes: mesesEpi,
         };
