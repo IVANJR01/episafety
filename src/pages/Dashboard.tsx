@@ -301,7 +301,7 @@ export default function Dashboard() {
       .sort((a, b) => b.media - a.media);
 
     return { mediaMensalEPI: items, mesesOrdenados };
-  }, [entregas, epis]);
+  }, [entregas, epis, estoqueConsolidadoPorEpi]);
 
   const valorSaida = useMemo(() => {
     return entregas.reduce((sum, e) => {
