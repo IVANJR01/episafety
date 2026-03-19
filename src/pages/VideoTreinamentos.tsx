@@ -225,8 +225,8 @@ export default function VideoTreinamentos() {
       toast({ title: "Informe o título do módulo", variant: "destructive" });
       return;
     }
-    if (!videoFile && !moduloForm.videoUrl.trim() && !editingModulo) {
-      toast({ title: "Selecione um vídeo ou informe uma URL", variant: "destructive" });
+    if (!videoFile && !editingModulo) {
+      toast({ title: "Selecione um arquivo de vídeo", variant: "destructive" });
       return;
     }
     setUploading(true);
