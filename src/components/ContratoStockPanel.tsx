@@ -564,32 +564,39 @@ export default function ContratoStockPanel() {
   }, [transferUnidadeId]);
 
   const handleTransferToContract = async () => {
-    if (!transferUnidadeId || !transferContratoId || !transferEpiId || transferQtd <= 0) return;
+    const validItens = transferItens.filter(i => i.epiId && i.quantidade > 0);
+    if (!transferUnidadeId || !transferContratoId || validItens.length === 0) return;
     setTransferring(true);
     try {
-      const { data: result } = await supabase.rpc("transfer_epi_to_contract" as any, {
-        _source_empresa_id: transferUnidadeId,
-        _contrato_id: transferContratoId,
-        _epi_id: transferEpiId,
-        _quantidade: transferQtd,
-      });
-      const res = result as any;
-      if (res?.success) {
-        toast({ title: "Transferência realizada!", description: `${transferQtd} un. transferidas para o contrato.` });
-        setTransferOpen(false);
-        setTransferUnidadeId("");
-        setTransferContratoId("");
-        setTransferEpiId("");
-        setTransferQtd(1);
-        // Reload contract details if expanded
-        if (expandedContratos.has(transferContratoId)) {
-          const contrato = contratos.find(c => c.id === transferContratoId);
-          if (contrato) await loadContratoDetails(transferContratoId, contrato.empresa_id);
+      let totalTransferred = 0;
+      for (const item of validItens) {
+        const { data: result } = await supabase.rpc("transfer_epi_to_contract" as any, {
+          _source_empresa_id: transferUnidadeId,
+          _contrato_id: transferContratoId,
+          _epi_id: item.epiId,
+          _quantidade: item.quantidade,
+        });
+        const res = result as any;
+        if (res?.success) {
+          totalTransferred += item.quantidade;
+        } else {
+          const epiNome = transferEpis.find(e => e.id === item.epiId)?.nome || "EPI";
+          toast({ title: `Erro ao transferir ${epiNome}`, description: res?.error || "Erro desconhecido", variant: "destructive" });
         }
-        await loadData();
-      } else {
-        toast({ title: "Erro na transferência", description: res?.error || "Erro desconhecido", variant: "destructive" });
       }
+      if (totalTransferred > 0) {
+        toast({ title: "Transferência realizada!", description: `${validItens.length} EPI(s) transferido(s) para o contrato.` });
+      }
+      setTransferOpen(false);
+      setTransferUnidadeId("");
+      setTransferContratoId("");
+      setTransferItens([]);
+      // Reload contract details if expanded
+      if (expandedContratos.has(transferContratoId)) {
+        const contrato = contratos.find(c => c.id === transferContratoId);
+        if (contrato) await loadContratoDetails(transferContratoId, contrato.empresa_id);
+      }
+      await loadData();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     } finally {
