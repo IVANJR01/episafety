@@ -669,12 +669,12 @@ export default function PortalTreinamentos() {
                 <Card key={video.id} className={`transition-shadow hover:shadow-md ${status === "concluido" ? "opacity-75" : ""}`}>
                   <CardContent className="p-2.5 sm:p-4">
                     <div className="flex items-center gap-2.5 sm:gap-4">
-                      <div className="relative w-14 sm:w-24 aspect-video bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                        <video src={video.video_url} className="w-full h-full object-cover" preload="metadata" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                          {status === "concluido" ? <CheckCircle className="h-4 w-4 sm:h-6 sm:w-6 text-emerald-400" /> : <Play className="h-4 w-4 sm:h-6 sm:w-6 text-white" />}
-                        </div>
-                      </div>
+                      <VideoThumbnail
+                        url={video.video_url}
+                        className="w-14 sm:w-24 aspect-video rounded-lg"
+                        iconSize="h-4 w-4 sm:h-6 sm:w-6"
+                        completed={status === "concluido"}
+                      />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-foreground text-xs sm:text-sm truncate">{video.titulo}</h3>
                         {video.descricao && <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 mt-0.5">{video.descricao}</p>}
