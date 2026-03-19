@@ -109,6 +109,11 @@ export default function Dashboard() {
 
   const valorEstoqueAtual = valorEstoqueConsolidado;
 
+  const alertasEstoque = epis.filter(e => {
+    const estoqueTotal = estoqueConsolidadoPorEpi[e.id] || e.estoque;
+    return estoqueTotal <= e.estoque_minimo;
+  });
+
   // Stock breakdown by unit (filiais) and contracts
   const estoqueUnidades = useMemo(() => {
     // Find which unidades have contracts with stock
