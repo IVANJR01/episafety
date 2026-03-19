@@ -373,18 +373,7 @@ export default function PortalTreinamentos() {
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                {isYouTubeUrl(watchingVideo.video_url) ? (
-                  <div className={`relative ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
-                    <iframe
-                      src={getEmbedUrl(watchingVideo.video_url) || ""}
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      frameBorder="0"
-                      title={watchingVideo.titulo}
-                    />
-                  </div>
-                ) : (
+                {(
                   <>
                     <video
                       ref={videoRef}
