@@ -792,11 +792,8 @@ export default function VideoTreinamentos() {
                                 {String(idx + 1).padStart(2, "0")}
                               </span>
 
-                              <div className="hidden sm:block relative w-24 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
-                                <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                  <Play className="h-5 w-5 text-white" />
-                                </div>
+                              <div className="hidden sm:block">
+                                <VideoThumbnail url={modulo.video_url} />
                               </div>
 
                               <div className="flex-1 min-w-0">
