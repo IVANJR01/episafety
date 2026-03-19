@@ -1,5 +1,5 @@
 import { Play, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function isDirectVideoUrl(url: string): boolean {
   if (!url) return false;
@@ -88,23 +88,57 @@ interface VideoThumbnailProps {
 
 export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize = "h-5 w-5", completed }: VideoThumbnailProps) {
   const validVideo = isDirectVideoUrl(url);
+  const thumbnailRef = useRef<HTMLDivElement>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    if (!validVideo) return;
+
+    const element = thumbnailRef.current;
+    if (!element) return;
+
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
+      setShouldLoad(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [validVideo, url]);
 
   return (
-    <div className={`relative bg-muted rounded overflow-hidden flex-shrink-0 ${className}`}>
-      {validVideo ? (
-        <video src={url} className="w-full h-full object-cover" preload="metadata" />
+    <div ref={thumbnailRef} className={`relative bg-muted rounded overflow-hidden flex-shrink-0 ${className}`}>
+      {validVideo && shouldLoad ? (
+        <video
+          src={url}
+          className="w-full h-full object-cover"
+          preload="none"
+          muted
+          playsInline
+          aria-hidden="true"
+        />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-muted">
-          <AlertTriangle className="h-4 w-4 text-destructive" />
+          {!validVideo && <AlertTriangle className="h-4 w-4 text-destructive" />}
         </div>
       )}
-      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+      <div className="absolute inset-0 flex items-center justify-center bg-foreground/30">
         {completed ? (
-          <svg className={`${iconSize} text-emerald-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className={`${iconSize} text-primary`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         ) : (
-          <Play className={`${iconSize} text-white`} />
+          <Play className={`${iconSize} text-background`} />
         )}
       </div>
     </div>
