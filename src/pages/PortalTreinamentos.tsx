@@ -286,6 +286,11 @@ export default function PortalTreinamentos() {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
+
+    clearYouTubeProgressTimer();
+    youtubePlayerRef.current?.destroy?.();
+    youtubePlayerRef.current = null;
+
     setWatchingVideo(video);
     setVideoEnded(false);
     setShowSignature(false);
@@ -293,12 +298,12 @@ export default function PortalTreinamentos() {
     setIsMuted(false);
     setCurrentTime(0);
     setDuration(0);
+    setPlaybackRate(1);
 
     // Restore last watched position from visualizacoes
     const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
     if (viz && !viz.concluido && viz.percentual_assistido > 0 && viz.percentual_assistido < 100) {
-      // We'll set start time after metadata loads
-      maxWatchedTimeRef.current = -1; // flag to restore
+      maxWatchedTimeRef.current = -1;
     } else {
       maxWatchedTimeRef.current = 0;
     }
