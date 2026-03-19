@@ -61,6 +61,7 @@ export default function PortalTreinamentos() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
 
 
 
@@ -294,6 +295,16 @@ export default function PortalTreinamentos() {
     setIsMuted(video.muted);
   };
 
+  const SPEED_OPTIONS = [1, 1.25, 1.5, 1.75, 2];
+  const handleCycleSpeed = () => {
+    const video = videoRef.current;
+    const currentIdx = SPEED_OPTIONS.indexOf(playbackRate);
+    const nextIdx = (currentIdx + 1) % SPEED_OPTIONS.length;
+    const newRate = SPEED_OPTIONS[nextIdx];
+    setPlaybackRate(newRate);
+    if (video) video.playbackRate = newRate;
+  };
+
   const handleToggleFullscreen = async () => {
     const container = videoContainerRef.current;
     if (!container) return;
@@ -493,6 +504,9 @@ export default function PortalTreinamentos() {
                           <span>{formatTime(duration)}</span>
                         </div>
                       </div>
+                      <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
+                        {playbackRate}x
+                      </Button>
                       <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
                         {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                       </Button>
