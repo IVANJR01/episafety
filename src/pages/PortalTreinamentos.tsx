@@ -356,13 +356,18 @@ export default function PortalTreinamentos() {
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
                 {isExternalVideoUrl(watchingVideo.video_url) ? (
                   <>
-                    <div className={`w-full ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
+                    <div className={`w-full relative overflow-hidden ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
                       <iframe
                         src={getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}
-                        className="w-full h-full"
+                        style={{
+                          border: 0,
+                          position: 'absolute',
+                          top: '-60px',
+                          left: 0,
+                          width: '100%',
+                          height: 'calc(100% + 120px)',
+                        }}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        style={{ border: 0 }}
                       />
                     </div>
                     <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-3">

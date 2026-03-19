@@ -33,9 +33,7 @@ export function getYouTubeEmbedUrl(url: string): string | null {
 }
 
 function buildYouTubeEmbed(videoId: string): string {
-  // modestbranding=1 hides logo, rel=0 no related videos, disablekb=0 keeps keyboard
-  // showinfo=0 hides title, fs=1 allows fullscreen
-  return `https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&showinfo=0&iv_load_policy=3`;
+  return `https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&cc_load_policy=0&disablekb=0&fs=0&controls=1`;
 }
 
 export function getVimeoEmbedUrl(url: string): string | null {

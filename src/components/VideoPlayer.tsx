@@ -24,13 +24,20 @@ export function VideoPlayer({ url, controls, className, videoRef, autoPlay, mute
     const embedUrl = getEmbedUrl(url);
     if (embedUrl) {
       return (
-        <iframe
-          src={embedUrl + (autoPlay ? "&autoplay=1" : "")}
-          className={className}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          style={{ border: 0 }}
-        />
+        <div className={className} style={{ position: 'relative', overflow: 'hidden' }}>
+          <iframe
+            src={embedUrl + (autoPlay ? "&autoplay=1" : "")}
+            style={{
+              border: 0,
+              position: 'absolute',
+              top: '-60px',
+              left: 0,
+              width: '100%',
+              height: 'calc(100% + 120px)',
+            }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          />
+        </div>
       );
     }
   }
