@@ -1153,17 +1153,17 @@ export default function ContratoStockPanel() {
 
       {/* Transfer to Contract Dialog */}
       <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-sm flex items-center gap-2">
               <ArrowRightLeft className="w-4 h-4 text-primary" />
-              Transferir EPI para Contrato
+              Transferir EPIs para Contrato
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
             <div>
               <Label className="text-xs">Unidade (Origem)</Label>
-              <Select value={transferUnidadeId} onValueChange={v => { setTransferUnidadeId(v); setTransferContratoId(""); }}>
+              <Select value={transferUnidadeId} onValueChange={v => { setTransferUnidadeId(v); setTransferContratoId(""); setTransferItens([]); }}>
                 <SelectTrigger><SelectValue placeholder="Selecione a unidade" /></SelectTrigger>
                 <SelectContent>
                   {allUnits.filter(Boolean).map(u => (
@@ -1192,44 +1192,99 @@ export default function ContratoStockPanel() {
                 </Select>
               )}
             </div>
-            <div>
-              <Label className="text-xs">EPI</Label>
-              <Select value={transferEpiId} onValueChange={setTransferEpiId}>
-                <SelectTrigger><SelectValue placeholder={transferUnidadeId ? "Selecione o EPI" : "Selecione a unidade primeiro"} /></SelectTrigger>
-                <SelectContent>
-                  {transferEpis.map(e => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.nome} {e.ca ? `(CA: ${e.ca})` : ""} — Disp: {e.estoque}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {/* EPIs list */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">EPIs</Label>
+                {transferUnidadeId && transferEpis.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-[10px] gap-1"
+                    onClick={() => setTransferItens(prev => [...prev, { epiId: "", quantidade: 1 }])}
+                  >
+                    <Plus className="w-3 h-3" /> Adicionar EPI
+                  </Button>
+                )}
+              </div>
+
+              {!transferUnidadeId && (
+                <p className="text-xs text-muted-foreground border rounded-md p-2">Selecione a unidade primeiro</p>
+              )}
               {transferUnidadeId && transferEpis.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">Nenhum EPI com estoque disponível nesta unidade</p>
+                <p className="text-xs text-muted-foreground border rounded-md p-2">Nenhum EPI com estoque disponível nesta unidade</p>
               )}
-            </div>
-            <div>
-              <Label className="text-xs">Quantidade</Label>
-              <Input
-                type="number"
-                min={1}
-                max={transferEpis.find(e => e.id === transferEpiId)?.estoque || 999}
-                value={transferQtd}
-                onChange={e => setTransferQtd(Math.max(1, Number(e.target.value)))}
-              />
-              {transferEpiId && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Disponível: {transferEpis.find(e => e.id === transferEpiId)?.estoque || 0} un.
-                </p>
+              {transferUnidadeId && transferEpis.length > 0 && transferItens.length === 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs gap-1"
+                  onClick={() => setTransferItens([{ epiId: "", quantidade: 1 }])}
+                >
+                  <Plus className="w-3.5 h-3.5" /> Adicionar EPI
+                </Button>
               )}
+
+              {transferItens.map((item, idx) => {
+                const selectedEpi = transferEpis.find(e => e.id === item.epiId);
+                const usedIds = transferItens.filter((_, i) => i !== idx).map(i => i.epiId);
+                const availableForSelect = transferEpis.filter(e => !usedIds.includes(e.id));
+                return (
+                  <div key={idx} className="flex items-start gap-2 p-2 rounded-md border bg-muted/30">
+                    <div className="flex-1 space-y-1.5">
+                      <Select value={item.epiId} onValueChange={v => {
+                        setTransferItens(prev => prev.map((it, i) => i === idx ? { ...it, epiId: v } : it));
+                      }}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione o EPI" /></SelectTrigger>
+                        <SelectContent>
+                          {availableForSelect.map(e => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {e.nome} {e.ca ? `(CA: ${e.ca})` : ""} — Disp: {e.estoque}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={selectedEpi?.estoque || 999}
+                          value={item.quantidade}
+                          onChange={e => {
+                            const val = Math.max(1, Number(e.target.value));
+                            setTransferItens(prev => prev.map((it, i) => i === idx ? { ...it, quantidade: val } : it));
+                          }}
+                          className="h-8 text-xs w-20"
+                          placeholder="Qtd"
+                        />
+                        {selectedEpi && (
+                          <span className="text-[10px] text-muted-foreground">de {selectedEpi.estoque} disp.</span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-destructive"
+                      onClick={() => setTransferItens(prev => prev.filter((_, i) => i !== idx))}
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)}>Cancelar</Button>
             <Button size="sm" onClick={handleTransferToContract}
-              disabled={transferring || !transferUnidadeId || !transferContratoId || !transferEpiId || transferQtd <= 0}>
+              disabled={transferring || !transferUnidadeId || !transferContratoId || transferItens.filter(i => i.epiId && i.quantidade > 0).length === 0}>
               {transferring ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />}
-              Transferir
+              Transferir {transferItens.filter(i => i.epiId).length > 1 ? `(${transferItens.filter(i => i.epiId).length} EPIs)` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>
