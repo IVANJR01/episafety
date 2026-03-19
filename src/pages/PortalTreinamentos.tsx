@@ -358,7 +358,7 @@ export default function PortalTreinamentos() {
                   <>
                     <div className={`w-full relative overflow-hidden ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
                       <iframe
-                        src={getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}
+                        src={`${getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}&autoplay=1&controls=0&disablekb=1&loop=1`}
                         style={{
                           border: 0,
                           position: 'absolute',
@@ -366,9 +366,11 @@ export default function PortalTreinamentos() {
                           left: 0,
                           width: '100%',
                           height: 'calc(100% + 120px)',
+                          pointerEvents: 'none',
                         }}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       />
+                      <div className="absolute inset-0 z-10" aria-hidden="true" />
                     </div>
                     <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-3">
                       <p className="text-sm text-muted-foreground">Assista o vídeo completo e clique para concluir</p>
