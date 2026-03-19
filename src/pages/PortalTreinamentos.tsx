@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { isExternalVideoUrl, getEmbedUrl } from "@/lib/videoUtils";
+import { VideoThumbnail } from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
