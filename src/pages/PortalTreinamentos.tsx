@@ -195,38 +195,12 @@ export default function PortalTreinamentos() {
     });
   };
 
-  const clearYouTubeProgressTimer = useCallback(() => {
-    if (youtubeProgressTimerRef.current !== null) {
-      window.clearInterval(youtubeProgressTimerRef.current);
-      youtubeProgressTimerRef.current = null;
-    }
-  }, []);
-
   const getPlaybackMetrics = useCallback(() => {
-    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
-      return {
-        current: Number(youtubePlayerRef.current.getCurrentTime?.()) || 0,
-        total: Number(youtubePlayerRef.current.getDuration?.()) || 0,
-      };
-    }
-
     return {
       current: videoRef.current?.currentTime ?? 0,
       total: videoRef.current?.duration ?? 0,
     };
-  }, [watchingVideo]);
-
-  const syncYouTubeProgress = useCallback(() => {
-    if (!watchingVideo || !isYouTubeUrl(watchingVideo.video_url) || !youtubePlayerRef.current) return;
-
-    const { current, total } = getPlaybackMetrics();
-    if (current > maxWatchedTimeRef.current) {
-      maxWatchedTimeRef.current = current;
-    }
-
-    setCurrentTime(current);
-    setDuration(total);
-  }, [getPlaybackMetrics, watchingVideo]);
+  }, []);
 
   // Save progress when leaving a video
   const saveProgress = useCallback(async (videoId: string) => {
@@ -248,14 +222,9 @@ export default function PortalTreinamentos() {
   }, [funcionarioId, funcEmpresaId, getPlaybackMetrics]);
 
   const handleStartVideo = (video: VideoTreinamento) => {
-    // Save progress of current video before switching
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
-
-    clearYouTubeProgressTimer();
-    youtubePlayerRef.current?.destroy?.();
-    youtubePlayerRef.current = null;
 
     setWatchingVideo(video);
     setVideoEnded(false);
@@ -266,7 +235,6 @@ export default function PortalTreinamentos() {
     setDuration(0);
     setPlaybackRate(1);
 
-    // Restore last watched position from visualizacoes
     const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
     if (viz && !viz.concluido && viz.percentual_assistido > 0 && viz.percentual_assistido < 100) {
       maxWatchedTimeRef.current = -1;
@@ -279,11 +247,8 @@ export default function PortalTreinamentos() {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
-    clearYouTubeProgressTimer();
-    youtubePlayerRef.current?.destroy?.();
-    youtubePlayerRef.current = null;
     setWatchingVideo(null);
-    fetchData(); // refresh visualizacoes
+    fetchData();
   };
 
   const handleVideoEnded = async () => {
@@ -320,18 +285,6 @@ export default function PortalTreinamentos() {
   };
 
   const handleTogglePlay = () => {
-    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
-      const playerState = youtubePlayerRef.current.getPlayerState?.();
-      if (playerState === window.YT?.PlayerState?.PLAYING) {
-        youtubePlayerRef.current.pauseVideo?.();
-        setIsPlaying(false);
-      } else {
-        youtubePlayerRef.current.playVideo?.();
-        setIsPlaying(true);
-      }
-      return;
-    }
-
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -344,18 +297,6 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleMute = () => {
-    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
-      const muted = youtubePlayerRef.current.isMuted?.();
-      if (muted) {
-        youtubePlayerRef.current.unMute?.();
-        setIsMuted(false);
-      } else {
-        youtubePlayerRef.current.mute?.();
-        setIsMuted(true);
-      }
-      return;
-    }
-
     const video = videoRef.current;
     if (!video) return;
     video.muted = !video.muted;
@@ -369,11 +310,6 @@ export default function PortalTreinamentos() {
     const newRate = SPEED_OPTIONS[nextIdx];
     setPlaybackRate(newRate);
 
-    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
-      youtubePlayerRef.current.setPlaybackRate?.(newRate);
-      return;
-    }
-
     const video = videoRef.current;
     if (video) video.playbackRate = newRate;
   };
@@ -383,7 +319,6 @@ export default function PortalTreinamentos() {
     if (!container) return;
 
     if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-      // Try standard first, then webkit (Safari)
       if (container.requestFullscreen) {
         await container.requestFullscreen().catch(() => {});
       } else if ((container as any).webkitRequestFullscreen) {
@@ -405,97 +340,10 @@ export default function PortalTreinamentos() {
     document.addEventListener("fullscreenchange", handler);
     document.addEventListener("webkitfullscreenchange", handler);
     return () => {
-      clearYouTubeProgressTimer();
-      youtubePlayerRef.current?.destroy?.();
       document.removeEventListener("fullscreenchange", handler);
       document.removeEventListener("webkitfullscreenchange", handler);
     };
-  }, [clearYouTubeProgressTimer]);
-
-  useEffect(() => {
-    if (!watchingVideo || !isYouTubeUrl(watchingVideo.video_url) || !youtubePlayerHostRef.current) return;
-
-    let cancelled = false;
-
-    const initPlayer = () => {
-      if (cancelled || !window.YT?.Player || !youtubePlayerHostRef.current) return;
-
-      youtubePlayerRef.current?.destroy?.();
-      youtubePlayerRef.current = new window.YT.Player(youtubePlayerHostRef.current, {
-        videoId: getYouTubeVideoId(watchingVideo.video_url) || undefined,
-        playerVars: {
-          autoplay: 1,
-          controls: 0,
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 1,
-          iv_load_policy: 3,
-          cc_load_policy: 0,
-          fs: 0,
-          disablekb: 1,
-        },
-        events: {
-          onReady: (event: any) => {
-            const player = event.target as YouTubePlayer;
-            player.setPlaybackRate?.(playbackRate);
-            const total = Number(player.getDuration?.()) || 0;
-            setDuration(total);
-            setIsMuted(Boolean(player.isMuted?.()));
-
-            if (maxWatchedTimeRef.current === -1) {
-              const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-              if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && total > 0) {
-                const resumeTime = (viz.percentual_assistido / 100) * total;
-                player.seekTo?.(resumeTime, true);
-                maxWatchedTimeRef.current = resumeTime;
-                setCurrentTime(resumeTime);
-              } else {
-                maxWatchedTimeRef.current = 0;
-                setCurrentTime(0);
-              }
-            }
-
-            clearYouTubeProgressTimer();
-            youtubeProgressTimerRef.current = window.setInterval(syncYouTubeProgress, 500);
-          },
-          onStateChange: (event: any) => {
-            if (!window.YT?.PlayerState) return;
-            if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
-            if (event.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
-            if (event.data === window.YT.PlayerState.ENDED) {
-              clearYouTubeProgressTimer();
-              syncYouTubeProgress();
-              void handleVideoEnded();
-            }
-          },
-        },
-      });
-    };
-
-    if (window.YT?.Player) {
-      initPlayer();
-    } else {
-      const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
-      if (!existingScript) {
-        const script = document.createElement("script");
-        script.src = "https://www.youtube.com/iframe_api";
-        document.body.appendChild(script);
-      }
-
-      const previousHandler = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        previousHandler?.();
-        initPlayer();
-      };
-    }
-
-    return () => {
-      cancelled = true;
-      clearYouTubeProgressTimer();
-      youtubePlayerRef.current?.destroy?.();
-      youtubePlayerRef.current = null;
-    };
-  }, [watchingVideo, playbackRate, visualizacoes, funcionarioId, clearYouTubeProgressTimer, syncYouTubeProgress]);
+  }, []);
 
   const formatTime = (timeInSeconds: number) => {
     const safe = Number.isFinite(timeInSeconds) ? Math.max(0, Math.floor(timeInSeconds)) : 0;
