@@ -225,8 +225,8 @@ export default function VideoTreinamentos() {
       toast({ title: "Informe o título do módulo", variant: "destructive" });
       return;
     }
-    if (!videoFile && !moduloForm.videoUrl.trim() && !editingModulo) {
-      toast({ title: "Selecione um arquivo de vídeo ou cole uma URL", variant: "destructive" });
+    if (!videoFile && !editingModulo) {
+      toast({ title: "Selecione um arquivo de vídeo (.mp4)", variant: "destructive" });
       return;
     }
     setUploading(true);
@@ -239,8 +239,6 @@ export default function VideoTreinamentos() {
         if (uploadError) throw uploadError;
         const { data: urlData } = supabase.storage.from("videos-treinamento").getPublicUrl(fileName);
         videoUrl = urlData.publicUrl;
-      } else if (moduloForm.videoUrl.trim() && !editingModulo) {
-        videoUrl = moduloForm.videoUrl.trim();
       }
 
       if (editingModulo) {
