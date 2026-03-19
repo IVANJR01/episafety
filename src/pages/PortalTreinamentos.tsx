@@ -373,106 +373,121 @@ export default function PortalTreinamentos() {
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                  <video
-                    ref={videoRef}
-                    src={watchingVideo.video_url}
-                    autoPlay
-                    muted
-                    playsInline
-                    // @ts-ignore - webkit attribute for iOS
-                    webkit-playsinline="true"
-                    preload="auto"
-                    tabIndex={-1}
-                    className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
-                    onEnded={handleVideoEnded}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onContextMenu={(e) => e.preventDefault()}
-                    onLoadedMetadata={(e) => {
-                      const vid = e.currentTarget;
-                      const dur = vid.duration || 0;
-                      setDuration(dur);
-                      vid.muted = false;
-                      setIsMuted(false);
-                      if (maxWatchedTimeRef.current === -1 && watchingVideo) {
-                        const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-                        if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
-                          const resumeTime = (viz.percentual_assistido / 100) * dur;
-                          vid.currentTime = resumeTime;
-                          maxWatchedTimeRef.current = resumeTime;
-                          setCurrentTime(resumeTime);
-                          return;
-                        }
-                      }
-                      maxWatchedTimeRef.current = 0;
-                      setCurrentTime(0);
-                    }}
-                    onTimeUpdate={(e) => {
-                      const vid = e.currentTarget;
-                      const nextTime = vid.currentTime;
-                      if (nextTime > maxWatchedTimeRef.current) {
-                        maxWatchedTimeRef.current = nextTime;
-                      }
-                      setCurrentTime(nextTime);
-                      setDuration(vid.duration || 0);
-                    }}
-                    onSeeking={(e) => {
-                      const vid = e.currentTarget;
-                      const allowedTime = maxWatchedTimeRef.current + 0.25;
-                      if (vid.currentTime > allowedTime) {
-                        vid.currentTime = maxWatchedTimeRef.current;
-                      }
-                    }}
-                    onError={(e) => {
-                      console.error("Video load error:", (e.currentTarget as any).error);
-                    }}
-                    controls={false}
-                    controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
-                    disablePictureInPicture
-                  />
-                  <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
-                    <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
-                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
-                      {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    </Button>
-                    <div className="flex-1 space-y-2">
-                      <div
-                        className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
-                        onClick={(e) => {
-                          if (!videoRef.current || duration <= 0) return;
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const clickX = e.clientX - rect.left;
-                          const clickPercent = clickX / rect.width;
-                          const clickTime = clickPercent * duration;
-                          if (clickTime <= maxWatchedTimeRef.current + 0.25) {
-                            videoRef.current.currentTime = clickTime;
-                            setCurrentTime(clickTime);
-                          }
-                        }}
-                      >
-                        <div
-                          className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
-                          style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
-                        />
-                        <div
-                          className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
-                          style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(duration)}</span>
-                      </div>
-                    </div>
-                    <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
-                      {playbackRate}x
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
-                      {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                    </Button>
+                {isYouTubeUrl(watchingVideo.video_url) ? (
+                  <div className={`relative ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
+                    <iframe
+                      src={getEmbedUrl(watchingVideo.video_url) || ""}
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      frameBorder="0"
+                      title={watchingVideo.titulo}
+                    />
                   </div>
+                ) : (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={watchingVideo.video_url}
+                      autoPlay
+                      muted
+                      playsInline
+                      // @ts-ignore - webkit attribute for iOS
+                      webkit-playsinline="true"
+                      preload="auto"
+                      tabIndex={-1}
+                      className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
+                      onEnded={handleVideoEnded}
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onLoadedMetadata={(e) => {
+                        const vid = e.currentTarget;
+                        const dur = vid.duration || 0;
+                        setDuration(dur);
+                        vid.muted = false;
+                        setIsMuted(false);
+                        if (maxWatchedTimeRef.current === -1 && watchingVideo) {
+                          const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+                          if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
+                            const resumeTime = (viz.percentual_assistido / 100) * dur;
+                            vid.currentTime = resumeTime;
+                            maxWatchedTimeRef.current = resumeTime;
+                            setCurrentTime(resumeTime);
+                            return;
+                          }
+                        }
+                        maxWatchedTimeRef.current = 0;
+                        setCurrentTime(0);
+                      }}
+                      onTimeUpdate={(e) => {
+                        const vid = e.currentTarget;
+                        const nextTime = vid.currentTime;
+                        if (nextTime > maxWatchedTimeRef.current) {
+                          maxWatchedTimeRef.current = nextTime;
+                        }
+                        setCurrentTime(nextTime);
+                        setDuration(vid.duration || 0);
+                      }}
+                      onSeeking={(e) => {
+                        const vid = e.currentTarget;
+                        const allowedTime = maxWatchedTimeRef.current + 0.25;
+                        if (vid.currentTime > allowedTime) {
+                          vid.currentTime = maxWatchedTimeRef.current;
+                        }
+                      }}
+                      onError={(e) => {
+                        console.error("Video load error:", (e.currentTarget as any).error);
+                      }}
+                      controls={false}
+                      controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
+                      disablePictureInPicture
+                    />
+                    <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+                      <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
+                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </Button>
+                      <div className="flex-1 space-y-2">
+                        <div
+                          className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
+                          onClick={(e) => {
+                            if (!videoRef.current || duration <= 0) return;
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const clickX = e.clientX - rect.left;
+                            const clickPercent = clickX / rect.width;
+                            const clickTime = clickPercent * duration;
+                            if (clickTime <= maxWatchedTimeRef.current + 0.25) {
+                              videoRef.current.currentTime = clickTime;
+                              setCurrentTime(clickTime);
+                            }
+                          }}
+                        >
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
+                            style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
+                          />
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
+                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{formatTime(currentTime)}</span>
+                          <span>{formatTime(duration)}</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
+                        {playbackRate}x
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
+                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
