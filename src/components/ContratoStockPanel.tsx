@@ -143,10 +143,9 @@ export default function ContratoStockPanel() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferUnidadeId, setTransferUnidadeId] = useState("");
   const [transferContratoId, setTransferContratoId] = useState("");
-  const [transferEpiId, setTransferEpiId] = useState("");
-  const [transferQtd, setTransferQtd] = useState(1);
   const [transferring, setTransferring] = useState(false);
   const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; ca: string | null; estoque: number }[]>([]);
+  const [transferItens, setTransferItens] = useState<{ epiId: string; quantidade: number }[]>([]);
 
   // Solicitation state
   const [solicitacaoOpen, setSolicitacaoOpen] = useState(false);
