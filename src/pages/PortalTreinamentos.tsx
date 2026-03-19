@@ -313,6 +313,9 @@ export default function PortalTreinamentos() {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
+    clearYouTubeProgressTimer();
+    youtubePlayerRef.current?.destroy?.();
+    youtubePlayerRef.current = null;
     setWatchingVideo(null);
     fetchData(); // refresh visualizacoes
   };
