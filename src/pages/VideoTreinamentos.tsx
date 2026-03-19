@@ -235,7 +235,7 @@ export default function VideoTreinamentos() {
       if (videoFile) {
         const fileExt = videoFile.name.split(".").pop();
         const fileName = `${crypto.randomUUID()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from("videos-treinamento").upload(fileName, videoFile);
+        const { error: uploadError } = await supabase.storage.from("videos-treinamento").upload(fileName, videoFile, { cacheControl: "31536000", upsert: false });
         if (uploadError) throw uploadError;
         const { data: urlData } = supabase.storage.from("videos-treinamento").getPublicUrl(fileName);
         videoUrl = urlData.publicUrl;

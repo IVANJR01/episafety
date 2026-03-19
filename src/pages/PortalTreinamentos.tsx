@@ -62,7 +62,7 @@ export default function PortalTreinamentos() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
-  const [videoBuffering, setVideoBuffering] = useState(true);
+  
 
 
 
@@ -229,7 +229,6 @@ export default function PortalTreinamentos() {
 
     setWatchingVideo(video);
     setVideoEnded(false);
-    setVideoBuffering(true);
     setShowSignature(false);
     setIsPlaying(true);
     setIsMuted(false);
@@ -374,15 +373,7 @@ export default function PortalTreinamentos() {
 
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
-              <div ref={videoContainerRef} className={`bg-card relative ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                    {videoBuffering && (
-                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/60 pointer-events-none transition-opacity">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent" />
-                          <span className="text-sm text-muted-foreground">Carregando vídeo...</span>
-                        </div>
-                      </div>
-                    )}
+              <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
                     <video
                       ref={videoRef}
                       src={watchingVideo.video_url}
@@ -395,10 +386,8 @@ export default function PortalTreinamentos() {
                       tabIndex={-1}
                       className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
                       onEnded={handleVideoEnded}
-                      onPlay={() => { setIsPlaying(true); setVideoBuffering(false); }}
+                      onPlay={() => setIsPlaying(true)}
                       onPause={() => setIsPlaying(false)}
-                      onWaiting={() => setVideoBuffering(true)}
-                      onLoadedData={() => setVideoBuffering(false)}
                       onContextMenu={(e) => e.preventDefault()}
                       onLoadedMetadata={(e) => {
                         const vid = e.currentTarget;
@@ -437,7 +426,6 @@ export default function PortalTreinamentos() {
                       }}
                       onError={(e) => {
                         console.error("Video load error:", (e.currentTarget as any).error);
-                        setVideoBuffering(false);
                       }}
                       controls={false}
                       controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
