@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { getEmbedUrl, getYouTubeVideoId, isExternalVideoUrl, isYouTubeUrl } from "@/lib/videoUtils";
+import { getEmbedUrl, getYouTubeThumbnail, getYouTubeVideoId, isExternalVideoUrl, isYouTubeUrl } from "@/lib/videoUtils";
 import { VideoThumbnail } from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
