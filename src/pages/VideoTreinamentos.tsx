@@ -990,7 +990,7 @@ export default function VideoTreinamentos() {
           {detailVideo && (
             <div className="space-y-4">
               <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <video src={detailVideo.video_url} controls className="w-full h-full" preload="metadata" />
+                <VideoPlayer url={detailVideo.video_url} controls className="w-full h-full" preload="metadata" />
               </div>
               {detailVideo.descricao && <p className="text-sm text-muted-foreground">{detailVideo.descricao}</p>}
               <div>
