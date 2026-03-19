@@ -56,7 +56,7 @@ export default function EPIs() {
       estoque: e.estoque, estoque_minimo: e.estoque_minimo,
       categoria: e.categoria || "", descricao: e.descricao || "",
       fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || "",
-      valor: e.valor || 0,
+      valor: e.valor || 0, tamanho: e.tamanho || "",
       ajuste_tipo: "", ajuste_quantidade: 0, ajuste_motivo: ""
     });
     setOpen(true);
