@@ -889,13 +889,34 @@ export default function VideoTreinamentos() {
                 <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
                   <Upload className="h-5 w-5 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {videoFile ? videoFile.name : "Clique para enviar um arquivo (.mp4)"}
+                    {videoFile ? videoFile.name : "Clique para enviar um vídeo .mp4"}
                   </span>
-                  <input type="file" accept="video/mp4,video/*" className="hidden" onChange={e => {
-                    setVideoFile(e.target.files?.[0] || null);
+                  <input type="file" accept=".mp4,video/mp4" className="hidden" onChange={e => {
+                    const file = e.target.files?.[0] || null;
+                    if (!file) {
+                      setVideoFile(null);
+                      return;
+                    }
+
+                    const fileName = file.name.toLowerCase();
+                    const fileType = (file.type || "").toLowerCase();
+                    const isMp4 = fileName.endsWith(".mp4") && (!fileType || fileType === "video/mp4" || fileType === "application/mp4");
+
+                    if (!isMp4) {
+                      setVideoFile(null);
+                      e.currentTarget.value = "";
+                      toast({
+                        title: "Arquivo inválido",
+                        description: "O arquivo enviado é áudio ou não é .mp4. Envie um vídeo .mp4 válido.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    setVideoFile(file);
                   }} />
                 </label>
-                <p className="text-xs text-muted-foreground mt-1">Envie um arquivo de vídeo .mp4</p>
+                <p className="text-xs text-muted-foreground mt-1">Envie apenas vídeo .mp4 para evitar tela em branco</p>
               </div>
             </div>
           </div>

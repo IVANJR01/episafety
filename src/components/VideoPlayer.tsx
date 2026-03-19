@@ -3,11 +3,15 @@ import { useState } from "react";
 
 function isDirectVideoUrl(url: string): boolean {
   if (!url) return false;
+
   try {
     const u = new URL(url);
-    // Supabase storage or direct file URLs
-    if (u.pathname.match(/\.(mp4|webm|ogg|mov)$/i)) return true;
-    if (u.hostname.includes("supabase.co") && u.pathname.includes("/storage/")) return true;
+    const audioExtensionPattern = /\.(m4a|mp3|wav|aac|flac|oga|opus)$/i;
+    const videoExtensionPattern = /\.(mp4|webm|ogg|mov|m4v)$/i;
+
+    if (audioExtensionPattern.test(u.pathname)) return false;
+    if (videoExtensionPattern.test(u.pathname)) return true;
+    if (u.hostname.includes("supabase.co") && u.pathname.includes("/storage/")) return !audioExtensionPattern.test(u.pathname);
     return false;
   } catch {
     return false;
@@ -37,10 +41,10 @@ export function VideoPlayer({ url, controls, className, videoRef, autoPlay, mute
 
   if (!url || hasError || !isDirectVideoUrl(url)) {
     return (
-      <div className={`flex flex-col items-center justify-center gap-2 bg-muted rounded-lg p-8 ${className || ''}`}>
+      <div className={`flex flex-col items-center justify-center gap-2 bg-muted rounded-lg p-8 ${className || ""}`}>
         <AlertTriangle className="h-8 w-8 text-destructive" />
         <p className="text-sm text-muted-foreground text-center">
-          Vídeo indisponível. Faça upload de um arquivo .mp4 para este módulo.
+          Este arquivo não é um vídeo visível. Faça upload de um vídeo .mp4 válido para este módulo.
         </p>
       </div>
     );
@@ -60,7 +64,14 @@ export function VideoPlayer({ url, controls, className, videoRef, autoPlay, mute
       onPlay={onPlay}
       onPause={onPause}
       onContextMenu={onContextMenu}
-      onLoadedMetadata={onLoadedMetadata}
+      onLoadedMetadata={(e) => {
+        const video = e.currentTarget;
+        if (video.videoWidth <= 0 || video.videoHeight <= 0) {
+          setHasError(true);
+          return;
+        }
+        onLoadedMetadata?.(e);
+      }}
       onTimeUpdate={onTimeUpdate}
       tabIndex={tabIndex}
       onError={() => setHasError(true)}
