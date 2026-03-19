@@ -33,7 +33,8 @@ export function getYouTubeEmbedUrl(url: string): string | null {
 }
 
 function buildYouTubeEmbed(videoId: string): string {
-  return `https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&cc_load_policy=0&disablekb=0&fs=0&controls=1`;
+  // youtube-nocookie for privacy, playlist=videoId prevents "more videos" screen
+  return `https://www.youtube-nocookie.com/embed/${videoId}?modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&cc_load_policy=0&fs=0&controls=1&playlist=${videoId}`;
 }
 
 export function getVimeoEmbedUrl(url: string): string | null {
