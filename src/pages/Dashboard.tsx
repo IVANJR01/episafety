@@ -923,8 +923,9 @@ export default function Dashboard() {
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Alerts */}
             {(() => {
-              const semEstoque = alertasEstoque.filter(a => a.estoque === 0);
-              const baixoEstoque = alertasEstoque.filter(a => a.estoque > 0);
+               const alertItems = alertasEstoque.map(a => ({ ...a, estoque: estoqueConsolidadoPorEpi[a.id] || a.estoque }));
+               const semEstoque = alertItems.filter(a => a.estoque === 0);
+               const baixoEstoque = alertItems.filter(a => a.estoque > 0);
               return (
                 <Card className={`shadow-md border-border/50 ${alertasEstoque.length > 0 ? "border-destructive/30" : ""}`}>
                   <CardHeader className="pb-3">
