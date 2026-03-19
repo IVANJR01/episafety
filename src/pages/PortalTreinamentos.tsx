@@ -86,6 +86,9 @@ export default function PortalTreinamentos() {
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const youtubePlayerHostRef = useRef<HTMLDivElement>(null);
+  const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
+  const youtubeProgressTimerRef = useRef<number | null>(null);
   const maxWatchedTimeRef = useRef(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
