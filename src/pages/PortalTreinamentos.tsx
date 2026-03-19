@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { getEmbedUrl, getYouTubeThumbnail, getYouTubeVideoId, isExternalVideoUrl, isYouTubeUrl } from "@/lib/videoUtils";
 import { VideoThumbnail } from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,37 +13,6 @@ import {
   Video, Play, Pause, CheckCircle, Clock, LogOut, ChevronRight, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX, Maximize, Minimize
 } from "lucide-react";
 import logoImg from "@/assets/logo-episafety.png";
-
-type YouTubePlayer = {
-  destroy?: () => void;
-  playVideo?: () => void;
-  pauseVideo?: () => void;
-  mute?: () => void;
-  unMute?: () => void;
-  isMuted?: () => boolean;
-  getCurrentTime?: () => number;
-  getDuration?: () => number;
-  seekTo?: (seconds: number, allowSeekAhead?: boolean) => void;
-  setPlaybackRate?: (rate: number) => void;
-  getPlayerState?: () => number;
-};
-
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (element: HTMLElement, options: any) => YouTubePlayer;
-      PlayerState: {
-        UNSTARTED: number;
-        ENDED: number;
-        PLAYING: number;
-        PAUSED: number;
-        BUFFERING: number;
-        CUED: number;
-      };
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
 
 interface CursoVideo {
   id: string;
