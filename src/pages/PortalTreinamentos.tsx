@@ -229,12 +229,47 @@ export default function PortalTreinamentos() {
     });
   };
 
+  const clearYouTubeProgressTimer = useCallback(() => {
+    if (youtubeProgressTimerRef.current !== null) {
+      window.clearInterval(youtubeProgressTimerRef.current);
+      youtubeProgressTimerRef.current = null;
+    }
+  }, []);
+
+  const getPlaybackMetrics = useCallback(() => {
+    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
+      return {
+        current: Number(youtubePlayerRef.current.getCurrentTime?.()) || 0,
+        total: Number(youtubePlayerRef.current.getDuration?.()) || 0,
+      };
+    }
+
+    return {
+      current: videoRef.current?.currentTime ?? 0,
+      total: videoRef.current?.duration ?? 0,
+    };
+  }, [watchingVideo]);
+
+  const syncYouTubeProgress = useCallback(() => {
+    if (!watchingVideo || !isYouTubeUrl(watchingVideo.video_url) || !youtubePlayerRef.current) return;
+
+    const { current, total } = getPlaybackMetrics();
+    if (current > maxWatchedTimeRef.current) {
+      maxWatchedTimeRef.current = current;
+    }
+
+    setCurrentTime(current);
+    setDuration(total);
+  }, [getPlaybackMetrics, watchingVideo]);
+
   // Save progress when leaving a video
   const saveProgress = useCallback(async (videoId: string) => {
-    if (!funcionarioId || !videoRef.current) return;
-    const vid = videoRef.current;
-    const percentual = vid.duration > 0 ? Math.round((maxWatchedTimeRef.current / vid.duration) * 100) : 0;
+    if (!funcionarioId) return;
+
+    const { total } = getPlaybackMetrics();
+    const percentual = total > 0 ? Math.round((maxWatchedTimeRef.current / total) * 100) : 0;
     if (percentual <= 0) return;
+
     try {
       await supabase.from("videos_visualizacao").upsert({
         video_id: videoId,
@@ -244,7 +279,7 @@ export default function PortalTreinamentos() {
         empresa_id: funcEmpresaId,
       }, { onConflict: "video_id,funcionario_id" });
     } catch {}
-  }, [funcionarioId, funcEmpresaId]);
+  }, [funcionarioId, funcEmpresaId, getPlaybackMetrics]);
 
   const handleStartVideo = (video: VideoTreinamento) => {
     // Save progress of current video before switching
