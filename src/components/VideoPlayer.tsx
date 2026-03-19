@@ -1,5 +1,5 @@
 import { Play } from "lucide-react";
-import { isYouTubeUrl, getYouTubeThumbnail } from "@/lib/videoUtils";
+import { isYouTubeUrl, getYouTubeThumbnail, getEmbedUrl } from "@/lib/videoUtils";
 
 interface VideoPlayerProps {
   url: string;
@@ -20,6 +20,22 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ url, controls, className, videoRef, autoPlay, muted, playsInline, preload, onEnded, onPlay, onPause, onContextMenu, onLoadedMetadata, onTimeUpdate, tabIndex }: VideoPlayerProps) {
+  if (isYouTubeUrl(url)) {
+    const embedUrl = getEmbedUrl(url);
+    return (
+      <div className={`relative ${className || ''}`} style={{ aspectRatio: '16/9' }}>
+        <iframe
+          src={embedUrl || ""}
+          className="absolute inset-0 w-full h-full rounded-lg"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          frameBorder="0"
+          title="Vídeo"
+        />
+      </div>
+    );
+  }
+
   return (
     <video
       ref={videoRef}
