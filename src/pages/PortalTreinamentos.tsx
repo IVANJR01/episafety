@@ -466,6 +466,7 @@ export default function PortalTreinamentos() {
           iv_load_policy: 3,
           cc_load_policy: 0,
           fs: 0,
+          disablekb: 1,
         },
         events: {
           onReady: (event: any) => {
