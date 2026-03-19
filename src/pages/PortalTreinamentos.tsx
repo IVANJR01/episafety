@@ -560,43 +560,50 @@ export default function PortalTreinamentos() {
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
                 {isExternalVideoUrl(watchingVideo.video_url) ? (
                   <>
-                    <div className={`w-full relative overflow-hidden ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
-                      <iframe
-                        src={`${getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}&autoplay=1&loop=1`}
-                        style={{
-                          border: 0,
-                          position: 'absolute',
-                          top: '-50px',
-                          left: 0,
-                          width: '100%',
-                          height: 'calc(100% + 100px)',
-                        }}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      />
+                    <div className={`w-full bg-muted ${isFullscreen ? 'flex-1' : 'aspect-video'} relative overflow-hidden`}>
+                      {isYouTubeUrl(watchingVideo.video_url) ? (
+                        <div
+                          ref={youtubePlayerHostRef}
+                          className="absolute inset-0"
+                          style={{ transform: 'scale(1.01)' }}
+                        />
+                      ) : (
+                        <iframe
+                          src={`${getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}&autoplay=1`}
+                          className="absolute inset-0 h-full w-full"
+                          style={{ border: 0 }}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        />
+                      )}
                     </div>
-                    <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-3">
-                      <p className="text-sm text-muted-foreground">Assista o vídeo completo e clique para concluir</p>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setVideoEnded(true);
-                          // Save 100% progress
-                          if (funcionarioId) {
-                            const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-                            if (viz) {
-                              supabase.from("videos_visualizacao").update({ percentual_assistido: 100 }).eq("id", viz.id).then(() => {});
-                            } else {
-                              supabase.from("videos_visualizacao").insert({
-                                video_id: watchingVideo.id,
-                                funcionario_id: funcionarioId,
-                                percentual_assistido: 100,
-                                empresa_id: null,
-                              }).then(() => {});
-                            }
-                          }
-                        }}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" /> Concluir vídeo
+                    <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+                      <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
+                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </Button>
+                      <div className="flex-1 space-y-2">
+                        <div className="relative h-3 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
+                            style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
+                          />
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
+                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{formatTime(currentTime)}</span>
+                          <span>{formatTime(duration)}</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
+                        {playbackRate}x
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
+                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                       </Button>
                     </div>
                   </>
