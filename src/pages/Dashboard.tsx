@@ -1,4 +1,4 @@
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes, Building2, MapPin } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { cachedQuery } from "@/lib/offlineStorage";
@@ -28,7 +28,7 @@ const staggerContainer = {
   visible: { transition: { staggerChildren: 0.08 } },
 };
 
-interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
+interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; }
 interface Profile { id: string; user_id: string; nome: string; email: string | null; }
@@ -40,7 +40,9 @@ interface ContratoMovimentacao {
   quantidade: number;
   created_at: string;
 }
-interface Contrato { id: string; nome: string; }
+interface Contrato { id: string; nome: string; unidade_id: string; }
+interface ContratoEpi { id: string; contrato_id: string; epi_id: string; estoque: number; empresa_id: string | null; }
+interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: string | null; }
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
@@ -51,10 +53,12 @@ export default function Dashboard() {
   const [movimentacoes, setMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [contratoEpis, setContratoEpis] = useState<ContratoEpi[]>([]);
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
 
   useEffect(() => {
     async function fetchContractData() {
-      const [movResult, contResult, profResult] = await Promise.all([
+      const [movResult, contResult, profResult, ceResult, uniResult] = await Promise.all([
         cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
           (supabase.from as any)("contrato_epis_movimentacoes")
             .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
@@ -63,24 +67,120 @@ export default function Dashboard() {
             .order("created_at", { ascending: true })
         ),
         cachedQuery<Contrato>("dashboard_contratos", () =>
-          (supabase.from as any)("contratos").select("id, nome")
+          (supabase.from as any)("contratos").select("id, nome, unidade_id")
         ),
         cachedQuery<Profile>("dashboard_profiles", () =>
           supabase.from("profiles").select("id, user_id, nome, email") as any
+        ),
+        cachedQuery<ContratoEpi>("dashboard_contrato_epis", () =>
+          (supabase.from as any)("contrato_epis").select("id, contrato_id, epi_id, estoque, empresa_id")
+        ),
+        cachedQuery<Unidade>("dashboard_unidades", () =>
+          (supabase.from as any)("empresa_config").select("id, nome, tipo, empresa_pai_id")
         ),
       ]);
       setMovimentacoes(movResult.data);
       setContratos(contResult.data);
       setProfiles(profResult.data);
+      setContratoEpis(ceResult.data);
+      setUnidades(uniResult.data);
     }
     fetchContractData();
   }, []);
 
-  const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
+  const alertasEstoque = epis.filter(e => {
+    const estoqueTotal = estoqueConsolidadoPorEpi[e.id] || e.estoque;
+    return estoqueTotal <= e.estoque_minimo;
+  });
 
-  const valorEstoqueAtual = useMemo(() => {
-    return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
-  }, [epis]);
+  // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
+  const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi } = useMemo(() => {
+    // Sum contract stock per epi_id
+    const contratoStockByEpi: Record<string, number> = {};
+    contratoEpis.forEach(ce => {
+      contratoStockByEpi[ce.epi_id] = (contratoStockByEpi[ce.epi_id] || 0) + ce.estoque;
+    });
+
+    let total = 0;
+    const porEpi: Record<string, number> = {};
+    epis.forEach(e => {
+      const estoqueTotal = e.estoque + (contratoStockByEpi[e.id] || 0);
+      const valor = (e.valor || 0) * estoqueTotal;
+      total += valor;
+      porEpi[e.id] = estoqueTotal;
+    });
+    return { valorEstoqueConsolidado: total, estoqueConsolidadoPorEpi: porEpi };
+  }, [epis, contratoEpis]);
+
+  const valorEstoqueAtual = valorEstoqueConsolidado;
+
+  // Stock breakdown by unit (filiais) and contracts
+  const estoqueUnidades = useMemo(() => {
+    // Find which unidades have contracts with stock
+    const contratoToUnidade = new Map(contratos.map(c => [c.id, c.unidade_id]));
+    
+    // Group contract stock by unidade
+    const porUnidade: Record<string, { nome: string; tipo: string; estoqueGeral: number; valorGeral: number; contratos: Record<string, { nome: string; estoque: number; valor: number }> }> = {};
+    
+    // Add filial-level EPI stock (epis table)
+    const filiais = unidades.filter(u => u.empresa_pai_id);
+    filiais.forEach(f => {
+      const episFilial = epis.filter(e => e.empresa_id === f.id);
+      const estoqueGeral = episFilial.reduce((s, e) => s + e.estoque, 0);
+      const valorGeral = episFilial.reduce((s, e) => s + (e.valor || 0) * e.estoque, 0);
+      if (estoqueGeral > 0 || contratoEpis.some(ce => {
+        const unidadeId = contratoToUnidade.get(ce.contrato_id);
+        return unidadeId === f.id && ce.estoque > 0;
+      })) {
+        porUnidade[f.id] = { nome: f.nome, tipo: f.tipo, estoqueGeral, valorGeral, contratos: {} };
+      }
+    });
+
+    // Also check matriz-level
+    const matrizes = unidades.filter(u => !u.empresa_pai_id);
+    matrizes.forEach(m => {
+      const episMatriz = epis.filter(e => e.empresa_id === m.id);
+      const estoqueGeral = episMatriz.reduce((s, e) => s + e.estoque, 0);
+      const valorGeral = episMatriz.reduce((s, e) => s + (e.valor || 0) * e.estoque, 0);
+      // Check if any contracts belong to this entity
+      const hasContratoStock = contratoEpis.some(ce => {
+        const unidadeId = contratoToUnidade.get(ce.contrato_id);
+        return unidadeId === m.id && ce.estoque > 0;
+      });
+      if (estoqueGeral > 0 || hasContratoStock) {
+        porUnidade[m.id] = { nome: m.nome, tipo: m.tipo, estoqueGeral, valorGeral, contratos: {} };
+      }
+    });
+
+    // Add contract-level stock
+    contratoEpis.forEach(ce => {
+      if (ce.estoque <= 0) return;
+      const contrato = contratos.find(c => c.id === ce.contrato_id);
+      if (!contrato) return;
+      const unidadeId = contrato.unidade_id;
+      if (!porUnidade[unidadeId]) {
+        const uni = unidades.find(u => u.id === unidadeId);
+        porUnidade[unidadeId] = { nome: uni?.nome || "Sem unidade", tipo: uni?.tipo || "filial", estoqueGeral: 0, valorGeral: 0, contratos: {} };
+      }
+      const epi = epis.find(e => e.id === ce.epi_id);
+      const valorItem = (epi?.valor || 0) * ce.estoque;
+      if (!porUnidade[unidadeId].contratos[contrato.id]) {
+        porUnidade[unidadeId].contratos[contrato.id] = { nome: contrato.nome, estoque: 0, valor: 0 };
+      }
+      porUnidade[unidadeId].contratos[contrato.id].estoque += ce.estoque;
+      porUnidade[unidadeId].contratos[contrato.id].valor += valorItem;
+    });
+
+    return Object.entries(porUnidade)
+      .map(([id, data]) => ({
+        id,
+        ...data,
+        estoqueTotal: data.estoqueGeral + Object.values(data.contratos).reduce((s, c) => s + c.estoque, 0),
+        valorTotal: data.valorGeral + Object.values(data.contratos).reduce((s, c) => s + c.valor, 0),
+      }))
+      .filter(u => u.estoqueTotal > 0)
+      .sort((a, b) => b.valorTotal - a.valorTotal);
+  }, [epis, contratoEpis, contratos, unidades]);
 
   const custoMensalData = useMemo(() => {
     const mesesSaida: Record<string, number> = {};
@@ -102,10 +202,10 @@ export default function Dashboard() {
 
   const estoqueChartData = useMemo(() => {
     const items = epis
-      .filter(e => (e.valor || 0) * e.estoque > 0)
+      .filter(e => (e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0)
       .map(e => ({
         nome: e.nome.length > 25 ? e.nome.substring(0, 22) + "..." : e.nome,
-        valor: Number(((e.valor || 0) * e.estoque).toFixed(2)),
+        valor: Number(((e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque)).toFixed(2)),
       }))
       .sort((a, b) => b.valor - a.valor);
 
@@ -115,7 +215,7 @@ export default function Dashboard() {
       top.push({ nome: "Outros", valor: Number(rest.reduce((s, d) => s + d.valor, 0).toFixed(2)) });
     }
     return top;
-  }, [epis]);
+  }, [epis, estoqueConsolidadoPorEpi]);
 
   const CHART_COLORS = [
     "hsl(24, 95%, 53%)",
@@ -184,14 +284,15 @@ export default function Dashboard() {
         const mesesEpi = consumoPorEpi[epi.id] || {};
         const totalEntregue = Object.values(mesesEpi).reduce((s, v) => s + v, 0);
         const media = totalEntregue / totalMeses;
-        const mesesEstoque = media > 0 ? epi.estoque / media : null;
+        const estoqueTotal = estoqueConsolidadoPorEpi[epi.id] || epi.estoque;
+        const mesesEstoque = media > 0 ? estoqueTotal / media : null;
 
         return {
           id: epi.id,
           nome: epi.nome,
           totalEntregue,
           media: Number(media.toFixed(1)),
-          estoqueAtual: epi.estoque,
+          estoqueAtual: estoqueTotal,
           mesesEstoque: mesesEstoque !== null ? Number(mesesEstoque.toFixed(1)) : null,
           porMes: mesesEpi,
         };
@@ -200,7 +301,7 @@ export default function Dashboard() {
       .sort((a, b) => b.media - a.media);
 
     return { mediaMensalEPI: items, mesesOrdenados };
-  }, [entregas, epis]);
+  }, [entregas, epis, estoqueConsolidadoPorEpi]);
 
   const valorSaida = useMemo(() => {
     return entregas.reduce((sum, e) => {
@@ -355,8 +456,8 @@ export default function Dashboard() {
                 Ativo
               </div>
             </div>
-            <Progress value={Math.min(100, (epis.filter(e => e.estoque > 0).length / Math.max(epis.length, 1)) * 100)} className="h-2" />
-            <p className="text-[10px] text-muted-foreground mt-1.5">{epis.filter(e => e.estoque > 0).length} de {epis.length} EPIs com estoque</p>
+            <Progress value={Math.min(100, (epis.filter(e => (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0).length / Math.max(epis.length, 1)) * 100)} className="h-2" />
+            <p className="text-[10px] text-muted-foreground mt-1.5">{epis.filter(e => (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0).length} de {epis.length} EPIs com estoque</p>
           </CardContent>
         </Card>
 
@@ -384,6 +485,69 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Stock breakdown by unit */}
+      {estoqueUnidades.length > 0 && (
+        <motion.div variants={fadeUp} custom={5.5}>
+          <Card className="shadow-md border-border/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
+                  <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold">Estoque por Unidade / Contrato</CardTitle>
+                  <p className="text-xs text-muted-foreground">Distribuição do estoque consolidado</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {estoqueUnidades.map(u => (
+                  <div key={u.id} className="rounded-xl border border-border/60 p-4 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-semibold text-sm">{u.nome}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">{u.tipo}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold font-mono">R$ {u.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-[10px] text-muted-foreground">{u.estoqueTotal} un.</p>
+                      </div>
+                    </div>
+                    {/* Contracts within the unit */}
+                    {Object.entries(u.contratos).length > 0 && (
+                      <div className="ml-6 space-y-1.5 mt-2 border-l-2 border-border/40 pl-3">
+                        {Object.entries(u.contratos).map(([cId, c]) => (
+                          <div key={cId} className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{c.nome}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono">{c.estoque} un.</span>
+                              <span className="font-mono font-semibold">R$ {c.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {u.estoqueGeral > 0 && (
+                      <div className="ml-6 mt-1.5 border-l-2 border-border/40 pl-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground italic">Estoque geral (sem contrato)</span>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono">{u.estoqueGeral} un.</span>
+                            <span className="font-mono font-semibold">R$ {u.valorGeral.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Cost Evolution Chart — Area chart */}
       <motion.div variants={fadeUp} custom={6}>
@@ -759,8 +923,9 @@ export default function Dashboard() {
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Alerts */}
             {(() => {
-              const semEstoque = alertasEstoque.filter(a => a.estoque === 0);
-              const baixoEstoque = alertasEstoque.filter(a => a.estoque > 0);
+               const alertItems = alertasEstoque.map(a => ({ ...a, estoque: estoqueConsolidadoPorEpi[a.id] || a.estoque }));
+               const semEstoque = alertItems.filter(a => a.estoque === 0);
+               const baixoEstoque = alertItems.filter(a => a.estoque > 0);
               return (
                 <Card className={`shadow-md border-border/50 ${alertasEstoque.length > 0 ? "border-destructive/30" : ""}`}>
                   <CardHeader className="pb-3">
