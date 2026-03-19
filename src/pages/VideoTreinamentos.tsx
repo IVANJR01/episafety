@@ -243,11 +243,15 @@ export default function VideoTreinamentos() {
       }
 
       if (editingModulo) {
-        const { error } = await supabase.from("videos_treinamento").update({
+        const updatePayload: any = {
           titulo: moduloForm.titulo,
           descricao: moduloForm.descricao || null,
-          ...(videoFile ? { video_url: videoUrl } : {}),
-        }).eq("id", editingModulo.id);
+        };
+        // Save video_url if file uploaded OR if URL was changed manually
+        if (videoFile || (moduloForm.videoUrl.trim() && moduloForm.videoUrl.trim() !== editingModulo.video_url)) {
+          updatePayload.video_url = videoUrl;
+        }
+        const { error } = await supabase.from("videos_treinamento").update(updatePayload).eq("id", editingModulo.id);
         if (error) throw error;
         toast({ title: "Módulo atualizado!" });
       } else {
