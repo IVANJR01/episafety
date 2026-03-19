@@ -840,10 +840,12 @@ export default function ExamesModule() {
                       </tr>
                     </thead>
                     <tbody>
-                      {matrixData.rows.map((row, idx) => (
-                        <tr key={row.func.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/30"}>
-                          <td className="border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 bg-inherit z-10">{idx + 1}</td>
-                          <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">{row.func.nome}</td>
+                      {matrixData.rows.map((row, idx) => {
+                        const rowBg = idx % 2 === 0 ? "bg-background" : "bg-muted";
+                        return (
+                        <tr key={row.func.id} className={rowBg}>
+                          <td className={`border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 ${rowBg} z-10`}>{idx + 1}</td>
+                          <td className={`border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] ${rowBg} z-10 whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]`}>{row.func.nome}</td>
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
@@ -874,7 +876,8 @@ export default function ExamesModule() {
                             ];
                           })}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
