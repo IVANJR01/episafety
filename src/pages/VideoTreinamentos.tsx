@@ -239,6 +239,8 @@ export default function VideoTreinamentos() {
         if (uploadError) throw uploadError;
         const { data: urlData } = supabase.storage.from("videos-treinamento").getPublicUrl(fileName);
         videoUrl = urlData.publicUrl;
+      } else if (moduloForm.videoUrl.trim() && !editingModulo) {
+        videoUrl = moduloForm.videoUrl.trim();
       }
 
       if (editingModulo) {
