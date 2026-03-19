@@ -246,8 +246,7 @@ export default function VideoTreinamentos() {
           titulo: moduloForm.titulo,
           descricao: moduloForm.descricao || null,
         };
-        // Save video_url if file uploaded OR if URL was changed manually
-        if (videoFile || (moduloForm.videoUrl.trim() && moduloForm.videoUrl.trim() !== editingModulo.video_url)) {
+        if (videoFile) {
           updatePayload.video_url = videoUrl;
         }
         const { error } = await supabase.from("videos_treinamento").update(updatePayload).eq("id", editingModulo.id);
