@@ -485,6 +485,69 @@ export default function Dashboard() {
         </Card>
       </motion.div>
 
+      {/* Stock breakdown by unit */}
+      {estoqueUnidades.length > 0 && (
+        <motion.div variants={fadeUp} custom={5.5}>
+          <Card className="shadow-md border-border/50">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
+                  <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold">Estoque por Unidade / Contrato</CardTitle>
+                  <p className="text-xs text-muted-foreground">Distribuição do estoque consolidado</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {estoqueUnidades.map(u => (
+                  <div key={u.id} className="rounded-xl border border-border/60 p-4 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-semibold text-sm">{u.nome}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">{u.tipo}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold font-mono">R$ {u.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-[10px] text-muted-foreground">{u.estoqueTotal} un.</p>
+                      </div>
+                    </div>
+                    {/* Contracts within the unit */}
+                    {Object.entries(u.contratos).length > 0 && (
+                      <div className="ml-6 space-y-1.5 mt-2 border-l-2 border-border/40 pl-3">
+                        {Object.entries(u.contratos).map(([cId, c]) => (
+                          <div key={cId} className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{c.nome}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono">{c.estoque} un.</span>
+                              <span className="font-mono font-semibold">R$ {c.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {u.estoqueGeral > 0 && (
+                      <div className="ml-6 mt-1.5 border-l-2 border-border/40 pl-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground italic">Estoque geral (sem contrato)</span>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono">{u.estoqueGeral} un.</span>
+                            <span className="font-mono font-semibold">R$ {u.valorGeral.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* Cost Evolution Chart — Area chart */}
       <motion.div variants={fadeUp} custom={6}>
       <Card className="shadow-md border-border/50">
