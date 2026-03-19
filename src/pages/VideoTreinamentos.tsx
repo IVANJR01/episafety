@@ -886,16 +886,32 @@ export default function VideoTreinamentos() {
               <Textarea value={moduloForm.descricao} onChange={e => setModuloForm({ ...moduloForm, descricao: e.target.value })} placeholder="Descrição do módulo..." rows={2} />
             </div>
             <div>
-              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Upload de Vídeo *"}</Label>
-              <div className="mt-1">
+              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Vídeo *"}</Label>
+              <div className="mt-1 space-y-3">
                 <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
                   <Upload className="h-5 w-5 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {videoFile ? videoFile.name : "Clique para selecionar o vídeo (.mp4)"}
+                    {videoFile ? videoFile.name : "Clique para enviar um arquivo (.mp4)"}
                   </span>
-                  <input type="file" accept="video/mp4,video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
+                  <input type="file" accept="video/mp4,video/*" className="hidden" onChange={e => {
+                    setVideoFile(e.target.files?.[0] || null);
+                    if (e.target.files?.[0]) setModuloForm(f => ({ ...f, videoUrl: "" }));
+                  }} />
                 </label>
-                <p className="text-xs text-muted-foreground mt-1">O vídeo será hospedado internamente no seu ambiente</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs text-muted-foreground">OU</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                <Input
+                  placeholder="Cole o link do YouTube aqui"
+                  value={moduloForm.videoUrl}
+                  onChange={e => {
+                    setModuloForm({ ...moduloForm, videoUrl: e.target.value });
+                    if (e.target.value.trim()) setVideoFile(null);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">Envie um arquivo .mp4 ou cole um link do YouTube</p>
               </div>
             </div>
           </div>
