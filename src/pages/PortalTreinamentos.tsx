@@ -624,12 +624,12 @@ export default function PortalTreinamentos() {
                               <span className="bg-primary/10 text-primary font-bold text-[10px] sm:text-xs rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0">
                                 {String(idx + 1).padStart(2, "0")}
                               </span>
-                              <div className="relative w-12 sm:w-20 aspect-video bg-muted rounded overflow-hidden flex-shrink-0">
-                                <video src={modulo.video_url} className="w-full h-full object-cover" preload="metadata" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                  {status === "concluido" ? <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-400" /> : <Play className="h-3 w-3 sm:h-4 sm:w-4 text-white" />}
-                                </div>
-                              </div>
+                              <VideoThumbnail
+                                url={modulo.video_url}
+                                className="w-12 sm:w-20 aspect-video"
+                                iconSize="h-3 w-3 sm:h-4 sm:w-4"
+                                completed={status === "concluido"}
+                              />
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-foreground text-xs sm:text-sm leading-tight truncate">{modulo.titulo}</h4>
                                 {modulo.descricao && <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 hidden sm:block">{modulo.descricao}</p>}
