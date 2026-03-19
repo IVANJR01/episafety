@@ -225,8 +225,8 @@ export default function VideoTreinamentos() {
       toast({ title: "Informe o título do módulo", variant: "destructive" });
       return;
     }
-    if (!videoFile && !moduloForm.videoUrl.trim() && !editingModulo) {
-      toast({ title: "Selecione um vídeo ou informe uma URL", variant: "destructive" });
+    if (!videoFile && !editingModulo) {
+      toast({ title: "Selecione um arquivo de vídeo", variant: "destructive" });
       return;
     }
     setUploading(true);
@@ -239,8 +239,6 @@ export default function VideoTreinamentos() {
         if (uploadError) throw uploadError;
         const { data: urlData } = supabase.storage.from("videos-treinamento").getPublicUrl(fileName);
         videoUrl = urlData.publicUrl;
-      } else if (moduloForm.videoUrl.trim()) {
-        videoUrl = moduloForm.videoUrl.trim();
       }
 
       if (editingModulo) {
@@ -248,8 +246,7 @@ export default function VideoTreinamentos() {
           titulo: moduloForm.titulo,
           descricao: moduloForm.descricao || null,
         };
-        // Save video_url if file uploaded OR if URL was changed manually
-        if (videoFile || (moduloForm.videoUrl.trim() && moduloForm.videoUrl.trim() !== editingModulo.video_url)) {
+        if (videoFile) {
           updatePayload.video_url = videoUrl;
         }
         const { error } = await supabase.from("videos_treinamento").update(updatePayload).eq("id", editingModulo.id);
@@ -887,24 +884,16 @@ export default function VideoTreinamentos() {
               <Textarea value={moduloForm.descricao} onChange={e => setModuloForm({ ...moduloForm, descricao: e.target.value })} placeholder="Descrição do módulo..." rows={2} />
             </div>
             <div>
-              <Label>URL do Vídeo</Label>
-              <Input
-                value={moduloForm.videoUrl}
-                onChange={e => setModuloForm({ ...moduloForm, videoUrl: e.target.value })}
-                placeholder="https://exemplo.com/video.mp4"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Cole a URL do vídeo ou faça upload abaixo</p>
-            </div>
-            <div>
-              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Upload de Vídeo"}</Label>
+              <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Upload de Vídeo *"}</Label>
               <div className="mt-1">
                 <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
                   <Upload className="h-5 w-5 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {videoFile ? videoFile.name : "Clique para selecionar o vídeo"}
+                    {videoFile ? videoFile.name : "Clique para selecionar o vídeo (.mp4)"}
                   </span>
-                  <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
+                  <input type="file" accept="video/mp4,video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
                 </label>
+                <p className="text-xs text-muted-foreground mt-1">O vídeo será hospedado internamente no seu ambiente</p>
               </div>
             </div>
           </div>

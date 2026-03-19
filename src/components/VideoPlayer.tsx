@@ -1,4 +1,3 @@
-import { isExternalVideoUrl, getEmbedUrl, getYouTubeThumbnail } from "@/lib/videoUtils";
 import { Play } from "lucide-react";
 
 interface VideoPlayerProps {
@@ -20,28 +19,6 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ url, controls, className, videoRef, autoPlay, muted, playsInline, preload, onEnded, onPlay, onPause, onContextMenu, onLoadedMetadata, onTimeUpdate, tabIndex }: VideoPlayerProps) {
-  if (isExternalVideoUrl(url)) {
-    const embedUrl = getEmbedUrl(url);
-    if (embedUrl) {
-      return (
-        <div className={className} style={{ position: 'relative', overflow: 'hidden' }}>
-          <iframe
-            src={embedUrl + (autoPlay ? "&autoplay=1" : "")}
-            style={{
-              border: 0,
-              position: 'absolute',
-              top: '-60px',
-              left: 0,
-              width: '100%',
-              height: 'calc(100% + 120px)',
-            }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          />
-        </div>
-      );
-    }
-  }
-
   return (
     <video
       ref={videoRef}
@@ -71,20 +48,9 @@ interface VideoThumbnailProps {
 }
 
 export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize = "h-5 w-5", completed }: VideoThumbnailProps) {
-  const isExternal = isExternalVideoUrl(url);
-  const thumbnail = getYouTubeThumbnail(url);
-
   return (
     <div className={`relative bg-muted rounded overflow-hidden flex-shrink-0 ${className}`}>
-      {isExternal && thumbnail ? (
-        <img src={thumbnail} className="w-full h-full object-cover" alt="" />
-      ) : isExternal ? (
-        <div className="w-full h-full bg-muted flex items-center justify-center">
-          <Play className={`${iconSize} text-muted-foreground`} />
-        </div>
-      ) : (
-        <video src={url} className="w-full h-full object-cover" preload="metadata" />
-      )}
+      <video src={url} className="w-full h-full object-cover" preload="metadata" />
       <div className="absolute inset-0 flex items-center justify-center bg-black/30">
         {completed ? (
           <svg className={`${iconSize} text-emerald-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

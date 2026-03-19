@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { getEmbedUrl, getYouTubeThumbnail, getYouTubeVideoId, isExternalVideoUrl, isYouTubeUrl } from "@/lib/videoUtils";
 import { VideoThumbnail } from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,37 +13,6 @@ import {
   Video, Play, Pause, CheckCircle, Clock, LogOut, ChevronRight, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX, Maximize, Minimize
 } from "lucide-react";
 import logoImg from "@/assets/logo-episafety.png";
-
-type YouTubePlayer = {
-  destroy?: () => void;
-  playVideo?: () => void;
-  pauseVideo?: () => void;
-  mute?: () => void;
-  unMute?: () => void;
-  isMuted?: () => boolean;
-  getCurrentTime?: () => number;
-  getDuration?: () => number;
-  seekTo?: (seconds: number, allowSeekAhead?: boolean) => void;
-  setPlaybackRate?: (rate: number) => void;
-  getPlayerState?: () => number;
-};
-
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (element: HTMLElement, options: any) => YouTubePlayer;
-      PlayerState: {
-        UNSTARTED: number;
-        ENDED: number;
-        PLAYING: number;
-        PAUSED: number;
-        BUFFERING: number;
-        CUED: number;
-      };
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
 
 interface CursoVideo {
   id: string;
@@ -86,9 +54,6 @@ export default function PortalTreinamentos() {
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const youtubePlayerHostRef = useRef<HTMLDivElement>(null);
-  const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
-  const youtubeProgressTimerRef = useRef<number | null>(null);
   const maxWatchedTimeRef = useRef(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
@@ -229,38 +194,12 @@ export default function PortalTreinamentos() {
     });
   };
 
-  const clearYouTubeProgressTimer = useCallback(() => {
-    if (youtubeProgressTimerRef.current !== null) {
-      window.clearInterval(youtubeProgressTimerRef.current);
-      youtubeProgressTimerRef.current = null;
-    }
-  }, []);
-
   const getPlaybackMetrics = useCallback(() => {
-    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
-      return {
-        current: Number(youtubePlayerRef.current.getCurrentTime?.()) || 0,
-        total: Number(youtubePlayerRef.current.getDuration?.()) || 0,
-      };
-    }
-
     return {
       current: videoRef.current?.currentTime ?? 0,
       total: videoRef.current?.duration ?? 0,
     };
-  }, [watchingVideo]);
-
-  const syncYouTubeProgress = useCallback(() => {
-    if (!watchingVideo || !isYouTubeUrl(watchingVideo.video_url) || !youtubePlayerRef.current) return;
-
-    const { current, total } = getPlaybackMetrics();
-    if (current > maxWatchedTimeRef.current) {
-      maxWatchedTimeRef.current = current;
-    }
-
-    setCurrentTime(current);
-    setDuration(total);
-  }, [getPlaybackMetrics, watchingVideo]);
+  }, []);
 
   // Save progress when leaving a video
   const saveProgress = useCallback(async (videoId: string) => {
@@ -282,14 +221,9 @@ export default function PortalTreinamentos() {
   }, [funcionarioId, funcEmpresaId, getPlaybackMetrics]);
 
   const handleStartVideo = (video: VideoTreinamento) => {
-    // Save progress of current video before switching
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
-
-    clearYouTubeProgressTimer();
-    youtubePlayerRef.current?.destroy?.();
-    youtubePlayerRef.current = null;
 
     setWatchingVideo(video);
     setVideoEnded(false);
@@ -300,7 +234,6 @@ export default function PortalTreinamentos() {
     setDuration(0);
     setPlaybackRate(1);
 
-    // Restore last watched position from visualizacoes
     const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
     if (viz && !viz.concluido && viz.percentual_assistido > 0 && viz.percentual_assistido < 100) {
       maxWatchedTimeRef.current = -1;
@@ -313,11 +246,8 @@ export default function PortalTreinamentos() {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
-    clearYouTubeProgressTimer();
-    youtubePlayerRef.current?.destroy?.();
-    youtubePlayerRef.current = null;
     setWatchingVideo(null);
-    fetchData(); // refresh visualizacoes
+    fetchData();
   };
 
   const handleVideoEnded = async () => {
@@ -354,18 +284,6 @@ export default function PortalTreinamentos() {
   };
 
   const handleTogglePlay = () => {
-    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
-      const playerState = youtubePlayerRef.current.getPlayerState?.();
-      if (playerState === window.YT?.PlayerState?.PLAYING) {
-        youtubePlayerRef.current.pauseVideo?.();
-        setIsPlaying(false);
-      } else {
-        youtubePlayerRef.current.playVideo?.();
-        setIsPlaying(true);
-      }
-      return;
-    }
-
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -378,18 +296,6 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleMute = () => {
-    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
-      const muted = youtubePlayerRef.current.isMuted?.();
-      if (muted) {
-        youtubePlayerRef.current.unMute?.();
-        setIsMuted(false);
-      } else {
-        youtubePlayerRef.current.mute?.();
-        setIsMuted(true);
-      }
-      return;
-    }
-
     const video = videoRef.current;
     if (!video) return;
     video.muted = !video.muted;
@@ -403,11 +309,6 @@ export default function PortalTreinamentos() {
     const newRate = SPEED_OPTIONS[nextIdx];
     setPlaybackRate(newRate);
 
-    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
-      youtubePlayerRef.current.setPlaybackRate?.(newRate);
-      return;
-    }
-
     const video = videoRef.current;
     if (video) video.playbackRate = newRate;
   };
@@ -417,7 +318,6 @@ export default function PortalTreinamentos() {
     if (!container) return;
 
     if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-      // Try standard first, then webkit (Safari)
       if (container.requestFullscreen) {
         await container.requestFullscreen().catch(() => {});
       } else if ((container as any).webkitRequestFullscreen) {
@@ -439,97 +339,10 @@ export default function PortalTreinamentos() {
     document.addEventListener("fullscreenchange", handler);
     document.addEventListener("webkitfullscreenchange", handler);
     return () => {
-      clearYouTubeProgressTimer();
-      youtubePlayerRef.current?.destroy?.();
       document.removeEventListener("fullscreenchange", handler);
       document.removeEventListener("webkitfullscreenchange", handler);
     };
-  }, [clearYouTubeProgressTimer]);
-
-  useEffect(() => {
-    if (!watchingVideo || !isYouTubeUrl(watchingVideo.video_url) || !youtubePlayerHostRef.current) return;
-
-    let cancelled = false;
-
-    const initPlayer = () => {
-      if (cancelled || !window.YT?.Player || !youtubePlayerHostRef.current) return;
-
-      youtubePlayerRef.current?.destroy?.();
-      youtubePlayerRef.current = new window.YT.Player(youtubePlayerHostRef.current, {
-        videoId: getYouTubeVideoId(watchingVideo.video_url) || undefined,
-        playerVars: {
-          autoplay: 1,
-          controls: 0,
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 1,
-          iv_load_policy: 3,
-          cc_load_policy: 0,
-          fs: 0,
-          disablekb: 1,
-        },
-        events: {
-          onReady: (event: any) => {
-            const player = event.target as YouTubePlayer;
-            player.setPlaybackRate?.(playbackRate);
-            const total = Number(player.getDuration?.()) || 0;
-            setDuration(total);
-            setIsMuted(Boolean(player.isMuted?.()));
-
-            if (maxWatchedTimeRef.current === -1) {
-              const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-              if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && total > 0) {
-                const resumeTime = (viz.percentual_assistido / 100) * total;
-                player.seekTo?.(resumeTime, true);
-                maxWatchedTimeRef.current = resumeTime;
-                setCurrentTime(resumeTime);
-              } else {
-                maxWatchedTimeRef.current = 0;
-                setCurrentTime(0);
-              }
-            }
-
-            clearYouTubeProgressTimer();
-            youtubeProgressTimerRef.current = window.setInterval(syncYouTubeProgress, 500);
-          },
-          onStateChange: (event: any) => {
-            if (!window.YT?.PlayerState) return;
-            if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
-            if (event.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
-            if (event.data === window.YT.PlayerState.ENDED) {
-              clearYouTubeProgressTimer();
-              syncYouTubeProgress();
-              void handleVideoEnded();
-            }
-          },
-        },
-      });
-    };
-
-    if (window.YT?.Player) {
-      initPlayer();
-    } else {
-      const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
-      if (!existingScript) {
-        const script = document.createElement("script");
-        script.src = "https://www.youtube.com/iframe_api";
-        document.body.appendChild(script);
-      }
-
-      const previousHandler = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        previousHandler?.();
-        initPlayer();
-      };
-    }
-
-    return () => {
-      cancelled = true;
-      clearYouTubeProgressTimer();
-      youtubePlayerRef.current?.destroy?.();
-      youtubePlayerRef.current = null;
-    };
-  }, [watchingVideo, playbackRate, visualizacoes, funcionarioId, clearYouTubeProgressTimer, syncYouTubeProgress]);
+  }, []);
 
   const formatTime = (timeInSeconds: number) => {
     const safe = Number.isFinite(timeInSeconds) ? Math.max(0, Math.floor(timeInSeconds)) : 0;
@@ -559,174 +372,106 @@ export default function PortalTreinamentos() {
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                {isExternalVideoUrl(watchingVideo.video_url) ? (
-                  <>
-                    <div className={`w-full bg-muted ${isFullscreen ? 'flex-1' : 'aspect-video'} relative overflow-hidden`}>
-                      {isYouTubeUrl(watchingVideo.video_url) ? (
-                        <div className="absolute inset-0 overflow-hidden">
-                          <div
-                            ref={youtubePlayerHostRef}
-                            className="absolute -top-12 inset-x-0 bottom-0 h-[calc(100%+96px)]"
-                          />
-                          {(!isPlaying || videoEnded) && (
-                            <div className="absolute inset-0 z-20 bg-background">
-                              {getYouTubeThumbnail(watchingVideo.video_url) ? (
-                                <img
-                                  src={getYouTubeThumbnail(watchingVideo.video_url) || ""}
-                                  alt={watchingVideo.titulo}
-                                  className="h-full w-full object-cover"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="h-full w-full bg-muted" />
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <iframe
-                          src={`${getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}&autoplay=1`}
-                          className="absolute inset-0 h-full w-full"
-                          style={{ border: 0 }}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
-                      <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
-                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                      </Button>
-                      <div className="flex-1 space-y-2">
-                        <div className="relative h-3 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
-                            style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
-                          />
-                          <div
-                            className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
-                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{formatTime(currentTime)}</span>
-                          <span>{formatTime(duration)}</span>
-                        </div>
-                      </div>
-                      <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
-                        {playbackRate}x
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
-                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <video
-                      ref={videoRef}
-                      src={watchingVideo.video_url}
-                      autoPlay
-                      muted
-                      playsInline
-                      // @ts-ignore - webkit attribute for iOS
-                      webkit-playsinline="true"
-                      preload="auto"
-                      tabIndex={-1}
-                      className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
-                      onEnded={handleVideoEnded}
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                      onContextMenu={(e) => e.preventDefault()}
-                      onLoadedMetadata={(e) => {
-                        const vid = e.currentTarget;
-                        const dur = vid.duration || 0;
-                        setDuration(dur);
-                        vid.muted = false;
-                        setIsMuted(false);
-                        if (maxWatchedTimeRef.current === -1 && watchingVideo) {
-                          const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-                          if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
-                            const resumeTime = (viz.percentual_assistido / 100) * dur;
-                            vid.currentTime = resumeTime;
-                            maxWatchedTimeRef.current = resumeTime;
-                            setCurrentTime(resumeTime);
-                            return;
+                  <video
+                    ref={videoRef}
+                    src={watchingVideo.video_url}
+                    autoPlay
+                    muted
+                    playsInline
+                    // @ts-ignore - webkit attribute for iOS
+                    webkit-playsinline="true"
+                    preload="auto"
+                    tabIndex={-1}
+                    className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
+                    onEnded={handleVideoEnded}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onLoadedMetadata={(e) => {
+                      const vid = e.currentTarget;
+                      const dur = vid.duration || 0;
+                      setDuration(dur);
+                      vid.muted = false;
+                      setIsMuted(false);
+                      if (maxWatchedTimeRef.current === -1 && watchingVideo) {
+                        const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+                        if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
+                          const resumeTime = (viz.percentual_assistido / 100) * dur;
+                          vid.currentTime = resumeTime;
+                          maxWatchedTimeRef.current = resumeTime;
+                          setCurrentTime(resumeTime);
+                          return;
+                        }
+                      }
+                      maxWatchedTimeRef.current = 0;
+                      setCurrentTime(0);
+                    }}
+                    onTimeUpdate={(e) => {
+                      const vid = e.currentTarget;
+                      const nextTime = vid.currentTime;
+                      if (nextTime > maxWatchedTimeRef.current) {
+                        maxWatchedTimeRef.current = nextTime;
+                      }
+                      setCurrentTime(nextTime);
+                      setDuration(vid.duration || 0);
+                    }}
+                    onSeeking={(e) => {
+                      const vid = e.currentTarget;
+                      const allowedTime = maxWatchedTimeRef.current + 0.25;
+                      if (vid.currentTime > allowedTime) {
+                        vid.currentTime = maxWatchedTimeRef.current;
+                      }
+                    }}
+                    onError={(e) => {
+                      console.error("Video load error:", (e.currentTarget as any).error);
+                    }}
+                    controls={false}
+                    controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
+                    disablePictureInPicture
+                  />
+                  <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+                    <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
+                      {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
+                      {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    </Button>
+                    <div className="flex-1 space-y-2">
+                      <div
+                        className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
+                        onClick={(e) => {
+                          if (!videoRef.current || duration <= 0) return;
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const clickX = e.clientX - rect.left;
+                          const clickPercent = clickX / rect.width;
+                          const clickTime = clickPercent * duration;
+                          if (clickTime <= maxWatchedTimeRef.current + 0.25) {
+                            videoRef.current.currentTime = clickTime;
+                            setCurrentTime(clickTime);
                           }
-                        }
-                        maxWatchedTimeRef.current = 0;
-                        setCurrentTime(0);
-                      }}
-                      onTimeUpdate={(e) => {
-                        const vid = e.currentTarget;
-                        const nextTime = vid.currentTime;
-                        if (nextTime > maxWatchedTimeRef.current) {
-                          maxWatchedTimeRef.current = nextTime;
-                        }
-                        setCurrentTime(nextTime);
-                        setDuration(vid.duration || 0);
-                      }}
-                      onSeeking={(e) => {
-                        const vid = e.currentTarget;
-                        const allowedTime = maxWatchedTimeRef.current + 0.25;
-                        if (vid.currentTime > allowedTime) {
-                          vid.currentTime = maxWatchedTimeRef.current;
-                        }
-                      }}
-                      onError={(e) => {
-                        console.error("Video load error:", (e.currentTarget as any).error);
-                      }}
-                      controls={false}
-                      controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
-                      disablePictureInPicture
-                    />
-                    <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
-                      <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
-                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                      </Button>
-                      <div className="flex-1 space-y-2">
+                        }}
+                      >
                         <div
-                          className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
-                          onClick={(e) => {
-                            if (!videoRef.current || duration <= 0) return;
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const clickX = e.clientX - rect.left;
-                            const clickPercent = clickX / rect.width;
-                            const clickTime = clickPercent * duration;
-                            if (clickTime <= maxWatchedTimeRef.current + 0.25) {
-                              videoRef.current.currentTime = clickTime;
-                              setCurrentTime(clickTime);
-                            }
-                          }}
-                        >
-                          <div
-                            className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
-                            style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
-                          />
-                          <div
-                            className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
-                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{formatTime(currentTime)}</span>
-                          <span>{formatTime(duration)}</span>
-                        </div>
+                          className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
+                          style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
+                        />
+                        <div
+                          className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
+                          style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                        />
                       </div>
-                      <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
-                        {playbackRate}x
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
-                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                      </Button>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(duration)}</span>
+                      </div>
                     </div>
-                  </>
-                )}
+                    <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
+                      {playbackRate}x
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
+                      {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                    </Button>
+                  </div>
               </div>
             </CardContent>
           </Card>
