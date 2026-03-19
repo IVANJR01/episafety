@@ -113,7 +113,7 @@ export default function EPIs() {
       estoque: estoqueAjustado, estoque_minimo: form.estoque_minimo,
       categoria: form.categoria || null, descricao: form.descricao || null,
       fabricante: form.fabricante || null, aprovado_para: form.aprovado_para || null,
-      valor: form.valor || 0
+      valor: form.valor || 0, tamanho: form.tamanho || null
     };
     if (editing) {
       await update(editing.id, data);
