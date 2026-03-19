@@ -426,7 +426,6 @@ export default function PortalTreinamentos() {
                       }}
                       onError={(e) => {
                         console.error("Video load error:", (e.currentTarget as any).error);
-                        setVideoBuffering(false);
                       }}
                       controls={false}
                       controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
