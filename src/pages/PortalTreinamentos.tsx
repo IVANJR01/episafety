@@ -354,6 +354,18 @@ export default function PortalTreinamentos() {
   };
 
   const handleTogglePlay = () => {
+    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
+      const playerState = youtubePlayerRef.current.getPlayerState?.();
+      if (playerState === window.YT?.PlayerState?.PLAYING) {
+        youtubePlayerRef.current.pauseVideo?.();
+        setIsPlaying(false);
+      } else {
+        youtubePlayerRef.current.playVideo?.();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -366,6 +378,18 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleMute = () => {
+    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
+      const muted = youtubePlayerRef.current.isMuted?.();
+      if (muted) {
+        youtubePlayerRef.current.unMute?.();
+        setIsMuted(false);
+      } else {
+        youtubePlayerRef.current.mute?.();
+        setIsMuted(true);
+      }
+      return;
+    }
+
     const video = videoRef.current;
     if (!video) return;
     video.muted = !video.muted;
@@ -374,11 +398,17 @@ export default function PortalTreinamentos() {
 
   const SPEED_OPTIONS = [1, 1.25, 1.5, 1.75, 2];
   const handleCycleSpeed = () => {
-    const video = videoRef.current;
     const currentIdx = SPEED_OPTIONS.indexOf(playbackRate);
     const nextIdx = (currentIdx + 1) % SPEED_OPTIONS.length;
     const newRate = SPEED_OPTIONS[nextIdx];
     setPlaybackRate(newRate);
+
+    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
+      youtubePlayerRef.current.setPlaybackRate?.(newRate);
+      return;
+    }
+
+    const video = videoRef.current;
     if (video) video.playbackRate = newRate;
   };
 
