@@ -373,7 +373,6 @@ export default function PortalTreinamentos() {
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                {(
                   <>
                     <video
                       ref={videoRef}
