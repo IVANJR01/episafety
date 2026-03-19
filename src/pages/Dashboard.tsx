@@ -90,9 +90,94 @@ export default function Dashboard() {
 
   const alertasEstoque = epis.filter(e => e.estoque <= e.estoque_minimo);
 
-  const valorEstoqueAtual = useMemo(() => {
-    return epis.reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
-  }, [epis]);
+  // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
+  const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi } = useMemo(() => {
+    // Sum contract stock per epi_id
+    const contratoStockByEpi: Record<string, number> = {};
+    contratoEpis.forEach(ce => {
+      contratoStockByEpi[ce.epi_id] = (contratoStockByEpi[ce.epi_id] || 0) + ce.estoque;
+    });
+
+    let total = 0;
+    const porEpi: Record<string, number> = {};
+    epis.forEach(e => {
+      const estoqueTotal = e.estoque + (contratoStockByEpi[e.id] || 0);
+      const valor = (e.valor || 0) * estoqueTotal;
+      total += valor;
+      porEpi[e.id] = estoqueTotal;
+    });
+    return { valorEstoqueConsolidado: total, estoqueConsolidadoPorEpi: porEpi };
+  }, [epis, contratoEpis]);
+
+  const valorEstoqueAtual = valorEstoqueConsolidado;
+
+  // Stock breakdown by unit (filiais) and contracts
+  const estoqueUnidades = useMemo(() => {
+    // Find which unidades have contracts with stock
+    const contratoToUnidade = new Map(contratos.map(c => [c.id, c.unidade_id]));
+    
+    // Group contract stock by unidade
+    const porUnidade: Record<string, { nome: string; tipo: string; estoqueGeral: number; valorGeral: number; contratos: Record<string, { nome: string; estoque: number; valor: number }> }> = {};
+    
+    // Add filial-level EPI stock (epis table)
+    const filiais = unidades.filter(u => u.empresa_pai_id);
+    filiais.forEach(f => {
+      const episFilial = epis.filter(e => e.empresa_id === f.id);
+      const estoqueGeral = episFilial.reduce((s, e) => s + e.estoque, 0);
+      const valorGeral = episFilial.reduce((s, e) => s + (e.valor || 0) * e.estoque, 0);
+      if (estoqueGeral > 0 || contratoEpis.some(ce => {
+        const unidadeId = contratoToUnidade.get(ce.contrato_id);
+        return unidadeId === f.id && ce.estoque > 0;
+      })) {
+        porUnidade[f.id] = { nome: f.nome, tipo: f.tipo, estoqueGeral, valorGeral, contratos: {} };
+      }
+    });
+
+    // Also check matriz-level
+    const matrizes = unidades.filter(u => !u.empresa_pai_id);
+    matrizes.forEach(m => {
+      const episMatriz = epis.filter(e => e.empresa_id === m.id);
+      const estoqueGeral = episMatriz.reduce((s, e) => s + e.estoque, 0);
+      const valorGeral = episMatriz.reduce((s, e) => s + (e.valor || 0) * e.estoque, 0);
+      // Check if any contracts belong to this entity
+      const hasContratoStock = contratoEpis.some(ce => {
+        const unidadeId = contratoToUnidade.get(ce.contrato_id);
+        return unidadeId === m.id && ce.estoque > 0;
+      });
+      if (estoqueGeral > 0 || hasContratoStock) {
+        porUnidade[m.id] = { nome: m.nome, tipo: m.tipo, estoqueGeral, valorGeral, contratos: {} };
+      }
+    });
+
+    // Add contract-level stock
+    contratoEpis.forEach(ce => {
+      if (ce.estoque <= 0) return;
+      const contrato = contratos.find(c => c.id === ce.contrato_id);
+      if (!contrato) return;
+      const unidadeId = contrato.unidade_id;
+      if (!porUnidade[unidadeId]) {
+        const uni = unidades.find(u => u.id === unidadeId);
+        porUnidade[unidadeId] = { nome: uni?.nome || "Sem unidade", tipo: uni?.tipo || "filial", estoqueGeral: 0, valorGeral: 0, contratos: {} };
+      }
+      const epi = epis.find(e => e.id === ce.epi_id);
+      const valorItem = (epi?.valor || 0) * ce.estoque;
+      if (!porUnidade[unidadeId].contratos[contrato.id]) {
+        porUnidade[unidadeId].contratos[contrato.id] = { nome: contrato.nome, estoque: 0, valor: 0 };
+      }
+      porUnidade[unidadeId].contratos[contrato.id].estoque += ce.estoque;
+      porUnidade[unidadeId].contratos[contrato.id].valor += valorItem;
+    });
+
+    return Object.entries(porUnidade)
+      .map(([id, data]) => ({
+        id,
+        ...data,
+        estoqueTotal: data.estoqueGeral + Object.values(data.contratos).reduce((s, c) => s + c.estoque, 0),
+        valorTotal: data.valorGeral + Object.values(data.contratos).reduce((s, c) => s + c.valor, 0),
+      }))
+      .filter(u => u.estoqueTotal > 0)
+      .sort((a, b) => b.valorTotal - a.valorTotal);
+  }, [epis, contratoEpis, contratos, unidades]);
 
   const custoMensalData = useMemo(() => {
     const mesesSaida: Record<string, number> = {};
