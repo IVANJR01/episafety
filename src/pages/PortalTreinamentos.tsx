@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { isExternalVideoUrl, getEmbedUrl } from "@/lib/videoUtils";
+import { getEmbedUrl, getYouTubeVideoId, isExternalVideoUrl, isYouTubeUrl } from "@/lib/videoUtils";
 import { VideoThumbnail } from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,37 @@ import {
   Video, Play, Pause, CheckCircle, Clock, LogOut, ChevronRight, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX, Maximize, Minimize
 } from "lucide-react";
 import logoImg from "@/assets/logo-episafety.png";
+
+type YouTubePlayer = {
+  destroy?: () => void;
+  playVideo?: () => void;
+  pauseVideo?: () => void;
+  mute?: () => void;
+  unMute?: () => void;
+  isMuted?: () => boolean;
+  getCurrentTime?: () => number;
+  getDuration?: () => number;
+  seekTo?: (seconds: number, allowSeekAhead?: boolean) => void;
+  setPlaybackRate?: (rate: number) => void;
+  getPlayerState?: () => number;
+};
+
+declare global {
+  interface Window {
+    YT?: {
+      Player: new (element: HTMLElement, options: any) => YouTubePlayer;
+      PlayerState: {
+        UNSTARTED: number;
+        ENDED: number;
+        PLAYING: number;
+        PAUSED: number;
+        BUFFERING: number;
+        CUED: number;
+      };
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
 
 interface CursoVideo {
   id: string;
@@ -55,6 +86,9 @@ export default function PortalTreinamentos() {
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const youtubePlayerHostRef = useRef<HTMLDivElement>(null);
+  const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
+  const youtubeProgressTimerRef = useRef<number | null>(null);
   const maxWatchedTimeRef = useRef(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
@@ -195,12 +229,47 @@ export default function PortalTreinamentos() {
     });
   };
 
+  const clearYouTubeProgressTimer = useCallback(() => {
+    if (youtubeProgressTimerRef.current !== null) {
+      window.clearInterval(youtubeProgressTimerRef.current);
+      youtubeProgressTimerRef.current = null;
+    }
+  }, []);
+
+  const getPlaybackMetrics = useCallback(() => {
+    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
+      return {
+        current: Number(youtubePlayerRef.current.getCurrentTime?.()) || 0,
+        total: Number(youtubePlayerRef.current.getDuration?.()) || 0,
+      };
+    }
+
+    return {
+      current: videoRef.current?.currentTime ?? 0,
+      total: videoRef.current?.duration ?? 0,
+    };
+  }, [watchingVideo]);
+
+  const syncYouTubeProgress = useCallback(() => {
+    if (!watchingVideo || !isYouTubeUrl(watchingVideo.video_url) || !youtubePlayerRef.current) return;
+
+    const { current, total } = getPlaybackMetrics();
+    if (current > maxWatchedTimeRef.current) {
+      maxWatchedTimeRef.current = current;
+    }
+
+    setCurrentTime(current);
+    setDuration(total);
+  }, [getPlaybackMetrics, watchingVideo]);
+
   // Save progress when leaving a video
   const saveProgress = useCallback(async (videoId: string) => {
-    if (!funcionarioId || !videoRef.current) return;
-    const vid = videoRef.current;
-    const percentual = vid.duration > 0 ? Math.round((maxWatchedTimeRef.current / vid.duration) * 100) : 0;
+    if (!funcionarioId) return;
+
+    const { total } = getPlaybackMetrics();
+    const percentual = total > 0 ? Math.round((maxWatchedTimeRef.current / total) * 100) : 0;
     if (percentual <= 0) return;
+
     try {
       await supabase.from("videos_visualizacao").upsert({
         video_id: videoId,
@@ -210,13 +279,18 @@ export default function PortalTreinamentos() {
         empresa_id: funcEmpresaId,
       }, { onConflict: "video_id,funcionario_id" });
     } catch {}
-  }, [funcionarioId, funcEmpresaId]);
+  }, [funcionarioId, funcEmpresaId, getPlaybackMetrics]);
 
   const handleStartVideo = (video: VideoTreinamento) => {
     // Save progress of current video before switching
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
+
+    clearYouTubeProgressTimer();
+    youtubePlayerRef.current?.destroy?.();
+    youtubePlayerRef.current = null;
+
     setWatchingVideo(video);
     setVideoEnded(false);
     setShowSignature(false);
@@ -224,12 +298,12 @@ export default function PortalTreinamentos() {
     setIsMuted(false);
     setCurrentTime(0);
     setDuration(0);
+    setPlaybackRate(1);
 
     // Restore last watched position from visualizacoes
     const viz = visualizacoes.find(v => v.video_id === video.id && v.funcionario_id === funcionarioId);
     if (viz && !viz.concluido && viz.percentual_assistido > 0 && viz.percentual_assistido < 100) {
-      // We'll set start time after metadata loads
-      maxWatchedTimeRef.current = -1; // flag to restore
+      maxWatchedTimeRef.current = -1;
     } else {
       maxWatchedTimeRef.current = 0;
     }
@@ -239,6 +313,9 @@ export default function PortalTreinamentos() {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
+    clearYouTubeProgressTimer();
+    youtubePlayerRef.current?.destroy?.();
+    youtubePlayerRef.current = null;
     setWatchingVideo(null);
     fetchData(); // refresh visualizacoes
   };
@@ -277,6 +354,18 @@ export default function PortalTreinamentos() {
   };
 
   const handleTogglePlay = () => {
+    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
+      const playerState = youtubePlayerRef.current.getPlayerState?.();
+      if (playerState === window.YT?.PlayerState?.PLAYING) {
+        youtubePlayerRef.current.pauseVideo?.();
+        setIsPlaying(false);
+      } else {
+        youtubePlayerRef.current.playVideo?.();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -289,6 +378,18 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleMute = () => {
+    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
+      const muted = youtubePlayerRef.current.isMuted?.();
+      if (muted) {
+        youtubePlayerRef.current.unMute?.();
+        setIsMuted(false);
+      } else {
+        youtubePlayerRef.current.mute?.();
+        setIsMuted(true);
+      }
+      return;
+    }
+
     const video = videoRef.current;
     if (!video) return;
     video.muted = !video.muted;
@@ -297,11 +398,17 @@ export default function PortalTreinamentos() {
 
   const SPEED_OPTIONS = [1, 1.25, 1.5, 1.75, 2];
   const handleCycleSpeed = () => {
-    const video = videoRef.current;
     const currentIdx = SPEED_OPTIONS.indexOf(playbackRate);
     const nextIdx = (currentIdx + 1) % SPEED_OPTIONS.length;
     const newRate = SPEED_OPTIONS[nextIdx];
     setPlaybackRate(newRate);
+
+    if (watchingVideo && isYouTubeUrl(watchingVideo.video_url) && youtubePlayerRef.current) {
+      youtubePlayerRef.current.setPlaybackRate?.(newRate);
+      return;
+    }
+
+    const video = videoRef.current;
     if (video) video.playbackRate = newRate;
   };
 
@@ -332,10 +439,96 @@ export default function PortalTreinamentos() {
     document.addEventListener("fullscreenchange", handler);
     document.addEventListener("webkitfullscreenchange", handler);
     return () => {
+      clearYouTubeProgressTimer();
+      youtubePlayerRef.current?.destroy?.();
       document.removeEventListener("fullscreenchange", handler);
       document.removeEventListener("webkitfullscreenchange", handler);
     };
-  }, []);
+  }, [clearYouTubeProgressTimer]);
+
+  useEffect(() => {
+    if (!watchingVideo || !isYouTubeUrl(watchingVideo.video_url) || !youtubePlayerHostRef.current) return;
+
+    let cancelled = false;
+
+    const initPlayer = () => {
+      if (cancelled || !window.YT?.Player || !youtubePlayerHostRef.current) return;
+
+      youtubePlayerRef.current?.destroy?.();
+      youtubePlayerRef.current = new window.YT.Player(youtubePlayerHostRef.current, {
+        videoId: getYouTubeVideoId(watchingVideo.video_url) || undefined,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0,
+          fs: 0,
+        },
+        events: {
+          onReady: (event: any) => {
+            const player = event.target as YouTubePlayer;
+            player.setPlaybackRate?.(playbackRate);
+            const total = Number(player.getDuration?.()) || 0;
+            setDuration(total);
+            setIsMuted(Boolean(player.isMuted?.()));
+
+            if (maxWatchedTimeRef.current === -1) {
+              const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+              if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && total > 0) {
+                const resumeTime = (viz.percentual_assistido / 100) * total;
+                player.seekTo?.(resumeTime, true);
+                maxWatchedTimeRef.current = resumeTime;
+                setCurrentTime(resumeTime);
+              } else {
+                maxWatchedTimeRef.current = 0;
+                setCurrentTime(0);
+              }
+            }
+
+            clearYouTubeProgressTimer();
+            youtubeProgressTimerRef.current = window.setInterval(syncYouTubeProgress, 500);
+          },
+          onStateChange: (event: any) => {
+            if (!window.YT?.PlayerState) return;
+            if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
+            if (event.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
+            if (event.data === window.YT.PlayerState.ENDED) {
+              clearYouTubeProgressTimer();
+              syncYouTubeProgress();
+              void handleVideoEnded();
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+      if (!existingScript) {
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(script);
+      }
+
+      const previousHandler = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        previousHandler?.();
+        initPlayer();
+      };
+    }
+
+    return () => {
+      cancelled = true;
+      clearYouTubeProgressTimer();
+      youtubePlayerRef.current?.destroy?.();
+      youtubePlayerRef.current = null;
+    };
+  }, [watchingVideo, playbackRate, visualizacoes, funcionarioId, clearYouTubeProgressTimer, syncYouTubeProgress]);
 
   const formatTime = (timeInSeconds: number) => {
     const safe = Number.isFinite(timeInSeconds) ? Math.max(0, Math.floor(timeInSeconds)) : 0;
@@ -367,43 +560,50 @@ export default function PortalTreinamentos() {
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
                 {isExternalVideoUrl(watchingVideo.video_url) ? (
                   <>
-                    <div className={`w-full relative overflow-hidden ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
-                      <iframe
-                        src={`${getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}&autoplay=1&loop=1`}
-                        style={{
-                          border: 0,
-                          position: 'absolute',
-                          top: '-50px',
-                          left: 0,
-                          width: '100%',
-                          height: 'calc(100% + 100px)',
-                        }}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      />
+                    <div className={`w-full bg-muted ${isFullscreen ? 'flex-1' : 'aspect-video'} relative overflow-hidden`}>
+                      {isYouTubeUrl(watchingVideo.video_url) ? (
+                        <div
+                          ref={youtubePlayerHostRef}
+                          className="absolute inset-0"
+                          style={{ transform: 'scale(1.01)' }}
+                        />
+                      ) : (
+                        <iframe
+                          src={`${getEmbedUrl(watchingVideo.video_url) || watchingVideo.video_url}&autoplay=1`}
+                          className="absolute inset-0 h-full w-full"
+                          style={{ border: 0 }}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        />
+                      )}
                     </div>
-                    <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-3">
-                      <p className="text-sm text-muted-foreground">Assista o vídeo completo e clique para concluir</p>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setVideoEnded(true);
-                          // Save 100% progress
-                          if (funcionarioId) {
-                            const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-                            if (viz) {
-                              supabase.from("videos_visualizacao").update({ percentual_assistido: 100 }).eq("id", viz.id).then(() => {});
-                            } else {
-                              supabase.from("videos_visualizacao").insert({
-                                video_id: watchingVideo.id,
-                                funcionario_id: funcionarioId,
-                                percentual_assistido: 100,
-                                empresa_id: null,
-                              }).then(() => {});
-                            }
-                          }
-                        }}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" /> Concluir vídeo
+                    <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
+                      <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
+                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </Button>
+                      <div className="flex-1 space-y-2">
+                        <div className="relative h-3 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
+                            style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
+                          />
+                          <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
+                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{formatTime(currentTime)}</span>
+                          <span>{formatTime(duration)}</span>
+                        </div>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
+                        {playbackRate}x
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
+                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                       </Button>
                     </div>
                   </>
