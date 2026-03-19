@@ -25,7 +25,7 @@ export function VideoPlayer({ url, controls, className, videoRef, autoPlay, mute
     if (embedUrl) {
       return (
         <iframe
-          src={embedUrl + (autoPlay ? "?autoplay=1" : "")}
+          src={embedUrl + (autoPlay ? "&autoplay=1" : "")}
           className={className}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
