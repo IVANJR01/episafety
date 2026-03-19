@@ -229,7 +229,6 @@ export default function PortalTreinamentos() {
 
     setWatchingVideo(video);
     setVideoEnded(false);
-    setVideoBuffering(true);
     setShowSignature(false);
     setIsPlaying(true);
     setIsMuted(false);
