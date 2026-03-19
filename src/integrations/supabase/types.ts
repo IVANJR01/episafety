@@ -723,6 +723,7 @@ export type Database = {
           fabricante: string | null
           id: string
           nome: string
+          tamanho: string | null
           updated_at: string
           validade: string | null
           valor: number | null
@@ -740,6 +741,7 @@ export type Database = {
           fabricante?: string | null
           id?: string
           nome: string
+          tamanho?: string | null
           updated_at?: string
           validade?: string | null
           valor?: number | null
@@ -757,6 +759,7 @@ export type Database = {
           fabricante?: string | null
           id?: string
           nome?: string
+          tamanho?: string | null
           updated_at?: string
           validade?: string | null
           valor?: number | null

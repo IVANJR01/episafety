@@ -1,0 +1,1 @@
+ALTER TABLE public.epis ADD COLUMN tamanho text DEFAULT NULL;
