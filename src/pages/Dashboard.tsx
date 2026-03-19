@@ -202,10 +202,10 @@ export default function Dashboard() {
 
   const estoqueChartData = useMemo(() => {
     const items = epis
-      .filter(e => (e.valor || 0) * e.estoque > 0)
+      .filter(e => (e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0)
       .map(e => ({
         nome: e.nome.length > 25 ? e.nome.substring(0, 22) + "..." : e.nome,
-        valor: Number(((e.valor || 0) * e.estoque).toFixed(2)),
+        valor: Number(((e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque)).toFixed(2)),
       }))
       .sort((a, b) => b.valor - a.valor);
 
@@ -215,7 +215,7 @@ export default function Dashboard() {
       top.push({ nome: "Outros", valor: Number(rest.reduce((s, d) => s + d.valor, 0).toFixed(2)) });
     }
     return top;
-  }, [epis]);
+  }, [epis, estoqueConsolidadoPorEpi]);
 
   const CHART_COLORS = [
     "hsl(24, 95%, 53%)",
