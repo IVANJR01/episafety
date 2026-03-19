@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { VideoThumbnail } from "@/components/VideoPlayer";
-import { isYouTubeUrl } from "@/lib/videoUtils";
+// Video utilities removed - only .mp4 uploads supported
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
