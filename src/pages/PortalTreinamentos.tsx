@@ -62,6 +62,7 @@ export default function PortalTreinamentos() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [videoBuffering, setVideoBuffering] = useState(true);
 
 
 
