@@ -1,4 +1,18 @@
-import { Play } from "lucide-react";
+import { Play, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+
+function isDirectVideoUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    // Supabase storage or direct file URLs
+    if (u.pathname.match(/\.(mp4|webm|ogg|mov)$/i)) return true;
+    if (u.hostname.includes("supabase.co") && u.pathname.includes("/storage/")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 interface VideoPlayerProps {
   url: string;
@@ -19,6 +33,19 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ url, controls, className, videoRef, autoPlay, muted, playsInline, preload, onEnded, onPlay, onPause, onContextMenu, onLoadedMetadata, onTimeUpdate, tabIndex }: VideoPlayerProps) {
+  const [hasError, setHasError] = useState(false);
+
+  if (!url || hasError || !isDirectVideoUrl(url)) {
+    return (
+      <div className={`flex flex-col items-center justify-center gap-2 bg-muted rounded-lg p-8 ${className || ''}`}>
+        <AlertTriangle className="h-8 w-8 text-destructive" />
+        <p className="text-sm text-muted-foreground text-center">
+          Vídeo indisponível. Faça upload de um arquivo .mp4 para este módulo.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <video
       ref={videoRef}
@@ -36,6 +63,7 @@ export function VideoPlayer({ url, controls, className, videoRef, autoPlay, mute
       onLoadedMetadata={onLoadedMetadata}
       onTimeUpdate={onTimeUpdate}
       tabIndex={tabIndex}
+      onError={() => setHasError(true)}
     />
   );
 }
@@ -48,9 +76,17 @@ interface VideoThumbnailProps {
 }
 
 export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize = "h-5 w-5", completed }: VideoThumbnailProps) {
+  const validVideo = isDirectVideoUrl(url);
+
   return (
     <div className={`relative bg-muted rounded overflow-hidden flex-shrink-0 ${className}`}>
-      <video src={url} className="w-full h-full object-cover" preload="metadata" />
+      {validVideo ? (
+        <video src={url} className="w-full h-full object-cover" preload="metadata" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-muted">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+        </div>
+      )}
       <div className="absolute inset-0 flex items-center justify-center bg-black/30">
         {completed ? (
           <svg className={`${iconSize} text-emerald-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
