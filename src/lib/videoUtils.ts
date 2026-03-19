@@ -24,7 +24,22 @@ export function getYouTubeVideoId(url: string): string | null {
 export function getEmbedUrl(url: string): string | null {
   const id = getYouTubeVideoId(url);
   if (!id) return null;
-  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&showinfo=0&iv_load_policy=3&disablekb=1&fs=0&controls=1&cc_load_policy=0`;
+
+  const params = new URLSearchParams({
+    autoplay: "0",
+    controls: "0",
+    rel: "0",
+    modestbranding: "1",
+    iv_load_policy: "3",
+    cc_load_policy: "0",
+    disablekb: "1",
+    fs: "0",
+    playsinline: "1",
+    loop: "1",
+    playlist: id,
+  });
+
+  return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`;
 }
 
 export function getYouTubeThumbnail(url: string): string | null {
