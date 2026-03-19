@@ -439,10 +439,96 @@ export default function PortalTreinamentos() {
     document.addEventListener("fullscreenchange", handler);
     document.addEventListener("webkitfullscreenchange", handler);
     return () => {
+      clearYouTubeProgressTimer();
+      youtubePlayerRef.current?.destroy?.();
       document.removeEventListener("fullscreenchange", handler);
       document.removeEventListener("webkitfullscreenchange", handler);
     };
-  }, []);
+  }, [clearYouTubeProgressTimer]);
+
+  useEffect(() => {
+    if (!watchingVideo || !isYouTubeUrl(watchingVideo.video_url) || !youtubePlayerHostRef.current) return;
+
+    let cancelled = false;
+
+    const initPlayer = () => {
+      if (cancelled || !window.YT?.Player || !youtubePlayerHostRef.current) return;
+
+      youtubePlayerRef.current?.destroy?.();
+      youtubePlayerRef.current = new window.YT.Player(youtubePlayerHostRef.current, {
+        videoId: getYouTubeVideoId(watchingVideo.video_url) || undefined,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0,
+          fs: 0,
+        },
+        events: {
+          onReady: (event: any) => {
+            const player = event.target as YouTubePlayer;
+            player.setPlaybackRate?.(playbackRate);
+            const total = Number(player.getDuration?.()) || 0;
+            setDuration(total);
+            setIsMuted(Boolean(player.isMuted?.()));
+
+            if (maxWatchedTimeRef.current === -1) {
+              const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+              if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && total > 0) {
+                const resumeTime = (viz.percentual_assistido / 100) * total;
+                player.seekTo?.(resumeTime, true);
+                maxWatchedTimeRef.current = resumeTime;
+                setCurrentTime(resumeTime);
+              } else {
+                maxWatchedTimeRef.current = 0;
+                setCurrentTime(0);
+              }
+            }
+
+            clearYouTubeProgressTimer();
+            youtubeProgressTimerRef.current = window.setInterval(syncYouTubeProgress, 500);
+          },
+          onStateChange: (event: any) => {
+            if (!window.YT?.PlayerState) return;
+            if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
+            if (event.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
+            if (event.data === window.YT.PlayerState.ENDED) {
+              clearYouTubeProgressTimer();
+              syncYouTubeProgress();
+              void handleVideoEnded();
+            }
+          },
+        },
+      });
+    };
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+      if (!existingScript) {
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(script);
+      }
+
+      const previousHandler = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        previousHandler?.();
+        initPlayer();
+      };
+    }
+
+    return () => {
+      cancelled = true;
+      clearYouTubeProgressTimer();
+      youtubePlayerRef.current?.destroy?.();
+      youtubePlayerRef.current = null;
+    };
+  }, [watchingVideo, playbackRate, visualizacoes, funcionarioId, clearYouTubeProgressTimer, syncYouTubeProgress]);
 
   const formatTime = (timeInSeconds: number) => {
     const safe = Number.isFinite(timeInSeconds) ? Math.max(0, Math.floor(timeInSeconds)) : 0;
