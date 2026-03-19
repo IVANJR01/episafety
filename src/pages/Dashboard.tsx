@@ -28,7 +28,7 @@ const staggerContainer = {
   visible: { transition: { staggerChildren: 0.08 } },
 };
 
-interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; }
+interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; }
 interface Profile { id: string; user_id: string; nome: string; email: string | null; }
@@ -40,7 +40,9 @@ interface ContratoMovimentacao {
   quantidade: number;
   created_at: string;
 }
-interface Contrato { id: string; nome: string; }
+interface Contrato { id: string; nome: string; unidade_id: string; }
+interface ContratoEpi { id: string; contrato_id: string; epi_id: string; estoque: number; empresa_id: string | null; }
+interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: string | null; }
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
