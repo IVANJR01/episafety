@@ -1,4 +1,5 @@
 import { Play } from "lucide-react";
+import { isYouTubeUrl, getYouTubeThumbnail } from "@/lib/videoUtils";
 
 interface VideoPlayerProps {
   url: string;
@@ -48,9 +49,15 @@ interface VideoThumbnailProps {
 }
 
 export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize = "h-5 w-5", completed }: VideoThumbnailProps) {
+  const ytThumb = isYouTubeUrl(url) ? getYouTubeThumbnail(url) : null;
+
   return (
     <div className={`relative bg-muted rounded overflow-hidden flex-shrink-0 ${className}`}>
-      <video src={url} className="w-full h-full object-cover" preload="metadata" />
+      {ytThumb ? (
+        <img src={ytThumb} className="w-full h-full object-cover" alt="" />
+      ) : (
+        <video src={url} className="w-full h-full object-cover" preload="metadata" />
+      )}
       <div className="absolute inset-0 flex items-center justify-center bg-black/30">
         {completed ? (
           <svg className={`${iconSize} text-emerald-400`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
