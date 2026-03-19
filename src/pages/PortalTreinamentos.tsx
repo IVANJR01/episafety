@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { getEmbedUrl, getYouTubeVideoId, isExternalVideoUrl, isYouTubeUrl } from "@/lib/videoUtils";
+import { getEmbedUrl, getYouTubeThumbnail, getYouTubeVideoId, isExternalVideoUrl, isYouTubeUrl } from "@/lib/videoUtils";
 import { VideoThumbnail } from "@/components/VideoPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -568,8 +568,20 @@ export default function PortalTreinamentos() {
                             ref={youtubePlayerHostRef}
                             className="absolute -top-12 inset-x-0 bottom-0 h-[calc(100%+96px)]"
                           />
-                          <div className="absolute inset-x-0 top-0 z-10 h-10 bg-background/0 pointer-events-none" />
-                          <div className="absolute inset-x-0 bottom-0 z-10 h-14 bg-background/0 pointer-events-none" />
+                          {(!isPlaying || videoEnded) && (
+                            <div className="absolute inset-0 z-20 bg-background">
+                              {getYouTubeThumbnail(watchingVideo.video_url) ? (
+                                <img
+                                  src={getYouTubeThumbnail(watchingVideo.video_url) || ""}
+                                  alt={watchingVideo.titulo}
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="h-full w-full bg-muted" />
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <iframe
