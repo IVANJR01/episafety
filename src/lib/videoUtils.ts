@@ -19,17 +19,23 @@ export function isVimeoUrl(url: string): boolean {
 export function getYouTubeEmbedUrl(url: string): string | null {
   // Handle youtu.be/VIDEO_ID
   const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
+  if (shortMatch) return buildYouTubeEmbed(shortMatch[1]);
 
   // Handle youtube.com/watch?v=VIDEO_ID
   const longMatch = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
-  if (longMatch) return `https://www.youtube.com/embed/${longMatch[1]}`;
+  if (longMatch) return buildYouTubeEmbed(longMatch[1]);
 
   // Handle youtube.com/embed/VIDEO_ID (already embed)
   const embedMatch = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
-  if (embedMatch) return `https://www.youtube.com/embed/${embedMatch[1]}`;
+  if (embedMatch) return buildYouTubeEmbed(embedMatch[1]);
 
   return null;
+}
+
+function buildYouTubeEmbed(videoId: string): string {
+  // modestbranding=1 hides logo, rel=0 no related videos, disablekb=0 keeps keyboard
+  // showinfo=0 hides title, fs=1 allows fullscreen
+  return `https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&showinfo=0&iv_load_policy=3`;
 }
 
 export function getVimeoEmbedUrl(url: string): string | null {
