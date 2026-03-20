@@ -70,6 +70,8 @@ export default function PortalTreinamentos() {
   const [useNativeControls, setUseNativeControls] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [shouldAutoplayOnOpen, setShouldAutoplayOnOpen] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const bufferingTimeoutRef = useRef<number | null>(null);
 
   const [showSignature, setShowSignature] = useState(false);
   const signatureRef = useRef<SignatureCanvasRef>(null);
