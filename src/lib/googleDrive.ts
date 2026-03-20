@@ -57,6 +57,7 @@ export function getGDriveProxyUrl(url: string): string | null {
   const fileId = extractGDriveFileId(url);
   if (!fileId) return null;
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (!supabaseUrl) return null;
-  return `${supabaseUrl}/functions/v1/gdrive-proxy/treinamento.mp4?id=${fileId}`;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseUrl || !anonKey) return null;
+  return `${supabaseUrl}/functions/v1/gdrive-proxy/treinamento.mp4?id=${fileId}&apikey=${anonKey}`;
 }
