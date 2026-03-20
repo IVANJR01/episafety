@@ -89,6 +89,40 @@ export default function PortalTreinamentos() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
   }, []);
 
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !isMobileDevice ||
+      !("serviceWorker" in navigator) ||
+      !("caches" in window)
+    ) {
+      return;
+    }
+
+    const resetKey = "portal-video-cache-reset-v1";
+    if (window.sessionStorage.getItem(resetKey) === "done") return;
+    if (!navigator.serviceWorker.controller) return;
+
+    window.sessionStorage.setItem(resetKey, "running");
+
+    void navigator.serviceWorker
+      .getRegistrations()
+      .then(async (registrations) => {
+        await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)));
+        const cacheKeys = await caches.keys();
+        await Promise.all(
+          cacheKeys
+            .filter((key) => key.includes("supabase-storage-cache") || key.includes("workbox"))
+            .map((key) => caches.delete(key))
+        );
+        window.sessionStorage.setItem(resetKey, "done");
+        window.location.reload();
+      })
+      .catch(() => {
+        window.sessionStorage.removeItem(resetKey);
+      });
+  }, [isMobileDevice]);
+
   const shouldUseImmersiveMode = !!watchingVideo && (isFullscreen || isImmersiveMode || (isSmallViewport && isLandscapeViewport));
 
   const normalize = (value?: string | null) =>
