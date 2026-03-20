@@ -818,13 +818,28 @@ export default function PortalTreinamentos() {
                         <p className="text-sm text-foreground font-medium">{videoError}</p>
                         <Button
                           size="sm"
-                          onClick={() => {
+                          onClick={async () => {
                             setVideoError(null);
                             setIsBuffering(true);
-                            const vid = videoRef.current;
-                            if (vid) {
-                              vid.load();
-                              vid.play().catch(() => {});
+                            if (watchingVideo && isGDriveUrl(watchingVideo.video_url)) {
+                              try {
+                                const resolved = await resolveGDriveVideoUrl(watchingVideo.video_url);
+                                if (resolved) {
+                                  setResolvedVideoUrl(resolved + "&t=" + Date.now());
+                                } else {
+                                  setVideoError("Não foi possível resolver a URL do vídeo.");
+                                  setIsBuffering(false);
+                                }
+                              } catch {
+                                setVideoError("Erro ao resolver URL do vídeo.");
+                                setIsBuffering(false);
+                              }
+                            } else {
+                              const vid = videoRef.current;
+                              if (vid) {
+                                vid.load();
+                                vid.play().catch(() => {});
+                              }
                             }
                           }}
                         >
