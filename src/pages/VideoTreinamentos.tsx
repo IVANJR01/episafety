@@ -750,6 +750,8 @@ export default function VideoTreinamentos() {
                             setModuloCursoId(curso.id);
                             setModuloForm({ titulo: `Módulo ${modulos.length + 1}`, descricao: "", videoUrl: "" });
                             setVideoFile(null);
+                            setGoogleDriveUrl("");
+                            setVideoSource("upload");
                             setOpenModuloForm(true);
                           }}>
                             <Plus className="h-3.5 w-3.5" />
