@@ -448,7 +448,7 @@ export default function PortalTreinamentos() {
     } catch {}
   }, [funcionarioId, funcEmpresaId, getPlaybackMetrics]);
 
-  const handleStartVideo = (video: VideoTreinamento) => {
+  const handleStartVideo = async (video: VideoTreinamento) => {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
@@ -457,6 +457,7 @@ export default function PortalTreinamentos() {
 
     autoplayAttemptedRef.current = false;
     setWatchingVideo(video);
+    setResolvedVideoUrl(null);
     setVideoEnded(false);
     setShowSignature(false);
     setIsPlaying(false);
@@ -466,7 +467,7 @@ export default function PortalTreinamentos() {
     setUseNativeControls(isMobileDevice);
     setShowPlayOverlay(!isMobileDevice);
     setShouldAutoplayOnOpen(isMobileDevice);
-    setIsBuffering(isMobileDevice);
+    setIsBuffering(true);
     setVideoError(null);
     setCurrentTime(0);
     setDuration(0);
@@ -477,6 +478,24 @@ export default function PortalTreinamentos() {
       maxWatchedTimeRef.current = -1;
     } else {
       maxWatchedTimeRef.current = 0;
+    }
+
+    // Resolve the direct video URL for Google Drive videos
+    if (isDriveVideo) {
+      try {
+        const resolved = await resolveGDriveVideoUrl(video.video_url);
+        if (resolved) {
+          setResolvedVideoUrl(resolved);
+        } else {
+          setVideoError("Não foi possível resolver a URL do vídeo. O arquivo pode estar privado ou com cota excedida.");
+          setIsBuffering(false);
+        }
+      } catch {
+        setVideoError("Erro ao resolver URL do vídeo do Google Drive.");
+        setIsBuffering(false);
+      }
+    } else {
+      setResolvedVideoUrl(video.video_url);
     }
   };
 
