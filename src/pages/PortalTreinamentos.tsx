@@ -256,17 +256,23 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return false;
 
+    video.pause();
     video.playsInline = true;
     video.setAttribute("playsinline", "true");
     video.setAttribute("webkit-playsinline", "true");
+    video.preload = "auto";
     video.defaultMuted = startMuted;
     video.muted = startMuted;
+    video.controls = isAppleMobile;
+    video.setAttribute("x-webkit-airplay", "allow");
 
     if (startMuted) {
       video.setAttribute("muted", "true");
     } else {
       video.removeAttribute("muted");
     }
+
+    video.load();
 
     try {
       await video.play();
@@ -277,7 +283,7 @@ export default function PortalTreinamentos() {
     } catch {
       return false;
     }
-  }, []);
+  }, [isAppleMobile]);
 
   const enterBestFullscreen = useCallback(async () => {
     const video = videoRef.current as (HTMLVideoElement & {
@@ -432,7 +438,7 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void playCurrentVideo(isMuted);
+      void playCurrentVideo(video.muted);
     } else {
       video.pause();
       setIsPlaying(false);
@@ -441,20 +447,23 @@ export default function PortalTreinamentos() {
   };
 
   const handleTapToPlay = async () => {
-    const playedWithSound = await playCurrentVideo(false);
-
-    if (playedWithSound) {
-      return;
-    }
-
     const playedMuted = await playCurrentVideo(true);
 
     if (!playedMuted) {
-      toast({ title: "Não foi possível iniciar o vídeo", description: "Toque novamente para tentar reproduzir no iPhone.", variant: "destructive" });
+      toast({ title: "Não foi possível iniciar o vídeo", description: "O iPhone bloqueou a reprodução. Tente novamente após tocar no vídeo ou no botão play.", variant: "destructive" });
       return;
     }
 
-    toast({ title: "Vídeo iniciado sem som", description: "Se o iPhone bloquear o áudio no primeiro toque, use o botão de volume para ativar o som." });
+    if (!isAppleMobile) {
+      const video = videoRef.current;
+      if (video) {
+        video.muted = false;
+        video.removeAttribute("muted");
+        setIsMuted(false);
+      }
+    } else {
+      setIsMuted(true);
+    }
   };
 
   const handleToggleMute = () => {
@@ -544,11 +553,14 @@ export default function PortalTreinamentos() {
                 <div className="relative flex-1 bg-muted">
                   <video
                     ref={videoRef}
+                    key={watchingVideo.id}
                     src={watchingVideo.video_url}
                     playsInline
+                    muted={isAppleMobile ? true : isMuted}
+                    controls={isAppleMobile}
                     // @ts-ignore - webkit attribute for iOS
                     webkit-playsinline="true"
-                    preload="auto"
+                    preload="metadata"
                     tabIndex={-1}
                     className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
                     onEnded={() => { void handleVideoEnded(); }}
@@ -563,6 +575,7 @@ export default function PortalTreinamentos() {
                     onContextMenu={(e) => e.preventDefault()}
                     onLoadedMetadata={(e) => {
                       const vid = e.currentTarget;
+                      vid.controls = isAppleMobile;
                       const dur = vid.duration || 0;
                       setDuration(dur);
                       if (maxWatchedTimeRef.current === -1 && watchingVideo) {
@@ -598,7 +611,6 @@ export default function PortalTreinamentos() {
                       console.error("Video load error:", (e.currentTarget as any).error);
                       setShowPlayOverlay(true);
                     }}
-                    controls={false}
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
