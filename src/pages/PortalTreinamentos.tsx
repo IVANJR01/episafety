@@ -802,6 +802,7 @@ export default function PortalTreinamentos() {
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
+                  )}
                   {isBuffering && !videoError && (
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/50">
                       <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-4 py-3 shadow-lg">
