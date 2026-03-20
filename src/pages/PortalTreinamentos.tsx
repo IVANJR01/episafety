@@ -466,6 +466,7 @@ export default function PortalTreinamentos() {
     setShowPlayOverlay(!isMobileDevice);
     setShouldAutoplayOnOpen(isMobileDevice);
     setIsBuffering(isMobileDevice);
+    setVideoError(null);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
