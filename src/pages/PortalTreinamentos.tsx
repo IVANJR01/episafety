@@ -794,7 +794,7 @@ export default function PortalTreinamentos() {
                   )}
                 </div>
 
-                {!isGDriveUrl(watchingVideo.video_url) && (
+                {(
                 <div className={`flex items-center gap-3 border-t border-border bg-card px-4 py-3 ${shouldUseImmersiveMode ? "pb-[max(0.75rem,env(safe-area-inset-bottom))]" : ""}`}>
                   <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
                     {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
