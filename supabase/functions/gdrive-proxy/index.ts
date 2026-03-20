@@ -23,38 +23,59 @@ serve(async (req) => {
   }
 
   try {
-    // Google Drive direct download URL
-    const gdriveUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-
-    // Forward Range header if present for streaming
-    const headers: Record<string, string> = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    const baseHeaders: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     };
 
     const rangeHeader = req.headers.get("range");
+
+    // Use the direct download URL with confirm=t to bypass virus scan
+    const downloadUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+
+    const fetchHeaders: Record<string, string> = { ...baseHeaders };
     if (rangeHeader) {
-      headers["Range"] = rangeHeader;
+      fetchHeaders["Range"] = rangeHeader;
     }
 
-    // First request - may get redirect or confirm page for large files
-    let response = await fetch(gdriveUrl, { headers, redirect: "follow" });
+    const response = await fetch(downloadUrl, {
+      headers: fetchHeaders,
+      redirect: "follow",
+    });
 
-    // Handle Google's virus scan confirmation page for large files
-    if (response.ok && response.headers.get("content-type")?.includes("text/html")) {
-      const html = await response.text();
+    // If we still got HTML, try another approach
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("text/html")) {
+      // Consume the body to free the connection
+      await response.text();
 
-      // Extract confirm token
-      const confirmMatch = html.match(/confirm=([a-zA-Z0-9_-]+)/);
-      const uuidMatch = html.match(/uuid=([a-zA-Z0-9_-]+)/);
+      // Try with cookies from the first response
+      const setCookies = response.headers.getSetCookie?.() || [];
+      const cookieStr = setCookies.map(c => c.split(";")[0]).join("; ");
 
-      if (confirmMatch) {
-        const confirmUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=${confirmMatch[1]}${uuidMatch ? `&uuid=${uuidMatch[1]}` : ""}`;
-        response = await fetch(confirmUrl, { headers, redirect: "follow" });
-      } else {
-        // Try the download anyway with confirm=t
-        const directUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
-        response = await fetch(directUrl, { headers, redirect: "follow" });
+      const retryHeaders: Record<string, string> = {
+        ...baseHeaders,
+        ...(cookieStr ? { Cookie: cookieStr } : {}),
+      };
+      if (rangeHeader) {
+        retryHeaders["Range"] = rangeHeader;
       }
+
+      const retryUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+      const retryResponse = await fetch(retryUrl, {
+        headers: retryHeaders,
+        redirect: "follow",
+      });
+
+      const retryContentType = retryResponse.headers.get("content-type") || "";
+      if (retryContentType.includes("text/html")) {
+        await retryResponse.text();
+        return new Response(JSON.stringify({ error: "Could not bypass Google Drive download gate. Make sure the file is publicly shared." }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return buildProxyResponse(retryResponse, rangeHeader);
     }
 
     if (!response.ok && response.status !== 206) {
@@ -64,25 +85,7 @@ serve(async (req) => {
       });
     }
 
-    const responseHeaders: Record<string, string> = { ...corsHeaders };
-
-    // Forward relevant headers
-    const contentType = response.headers.get("content-type");
-    if (contentType) responseHeaders["Content-Type"] = contentType;
-
-    const contentLength = response.headers.get("content-length");
-    if (contentLength) responseHeaders["Content-Length"] = contentLength;
-
-    const contentRange = response.headers.get("content-range");
-    if (contentRange) responseHeaders["Content-Range"] = contentRange;
-
-    responseHeaders["Accept-Ranges"] = "bytes";
-    responseHeaders["Cache-Control"] = "public, max-age=86400";
-
-    return new Response(response.body, {
-      status: response.status,
-      headers: responseHeaders,
-    });
+    return buildProxyResponse(response, rangeHeader);
   } catch (err) {
     return new Response(JSON.stringify({ error: "Proxy error", message: String(err) }), {
       status: 500,
@@ -90,3 +93,24 @@ serve(async (req) => {
     });
   }
 });
+
+function buildProxyResponse(response: Response, _rangeHeader: string | null): Response {
+  const responseHeaders: Record<string, string> = { ...corsHeaders };
+
+  const ct = response.headers.get("content-type");
+  if (ct) responseHeaders["Content-Type"] = ct;
+
+  const cl = response.headers.get("content-length");
+  if (cl) responseHeaders["Content-Length"] = cl;
+
+  const cr = response.headers.get("content-range");
+  if (cr) responseHeaders["Content-Range"] = cr;
+
+  responseHeaders["Accept-Ranges"] = "bytes";
+  responseHeaders["Cache-Control"] = "public, max-age=86400";
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: responseHeaders,
+  });
+}
