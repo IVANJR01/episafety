@@ -840,14 +840,6 @@ export default function PortalTreinamentos() {
                 </div>
                 )}
 
-                {isGDriveUrl(watchingVideo.video_url) && !videoEnded && (
-                  <div className="border-t border-border bg-card px-4 py-3 text-center">
-                    <p className="text-xs text-muted-foreground mb-2">Assista o vídeo completo e depois clique abaixo</p>
-                    <Button onClick={() => void handleVideoEnded()} className="bg-primary">
-                      <CheckCircle className="h-4 w-4 mr-2" /> Concluí o vídeo
-                    </Button>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
