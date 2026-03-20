@@ -56,12 +56,13 @@ export default function PortalTreinamentos() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const maxWatchedTimeRef = useRef(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   
 
 
@@ -232,8 +233,9 @@ export default function PortalTreinamentos() {
     setWatchingVideo(video);
     setVideoEnded(false);
     setShowSignature(false);
-    setIsPlaying(true);
+    setIsPlaying(false);
     setIsMuted(false);
+    setShowPlayOverlay(true);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
@@ -291,12 +293,33 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void video.play();
+      void video.play().catch(() => {});
       setIsPlaying(true);
+      setShowPlayOverlay(false);
     } else {
       video.pause();
       setIsPlaying(false);
     }
+  };
+
+  const handleTapToPlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = false;
+    setIsMuted(false);
+    void video.play().then(() => {
+      setIsPlaying(true);
+      setShowPlayOverlay(false);
+    }).catch(() => {
+      // Fallback: try muted first then unmute
+      video.muted = true;
+      void video.play().then(() => {
+        video.muted = false;
+        setIsMuted(false);
+        setIsPlaying(true);
+        setShowPlayOverlay(false);
+      }).catch(() => {});
+    });
   };
 
   const handleToggleMute = () => {
@@ -376,63 +399,73 @@ export default function PortalTreinamentos() {
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
               <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                    <video
-                      ref={videoRef}
-                      src={watchingVideo.video_url}
-                      autoPlay
-                      muted
-                      playsInline
-                      // @ts-ignore - webkit attribute for iOS
-                      webkit-playsinline="true"
-                      preload="auto"
-                      tabIndex={-1}
-                      className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
-                      onEnded={handleVideoEnded}
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                      onContextMenu={(e) => e.preventDefault()}
-                      onLoadedMetadata={(e) => {
-                        const vid = e.currentTarget;
-                        const dur = vid.duration || 0;
-                        setDuration(dur);
-                        vid.muted = false;
-                        setIsMuted(false);
-                        if (maxWatchedTimeRef.current === -1 && watchingVideo) {
-                          const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-                          if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
-                            const resumeTime = (viz.percentual_assistido / 100) * dur;
-                            vid.currentTime = resumeTime;
-                            maxWatchedTimeRef.current = resumeTime;
-                            setCurrentTime(resumeTime);
-                            return;
+                    <div className="relative">
+                      <video
+                        ref={videoRef}
+                        src={watchingVideo.video_url}
+                        playsInline
+                        // @ts-ignore - webkit attribute for iOS
+                        webkit-playsinline="true"
+                        preload="auto"
+                        tabIndex={-1}
+                        className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
+                        onEnded={handleVideoEnded}
+                        onPlay={() => { setIsPlaying(true); setShowPlayOverlay(false); }}
+                        onPause={() => setIsPlaying(false)}
+                        onContextMenu={(e) => e.preventDefault()}
+                        onLoadedMetadata={(e) => {
+                          const vid = e.currentTarget;
+                          const dur = vid.duration || 0;
+                          setDuration(dur);
+                          if (maxWatchedTimeRef.current === -1 && watchingVideo) {
+                            const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+                            if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
+                              const resumeTime = (viz.percentual_assistido / 100) * dur;
+                              vid.currentTime = resumeTime;
+                              maxWatchedTimeRef.current = resumeTime;
+                              setCurrentTime(resumeTime);
+                              return;
+                            }
                           }
-                        }
-                        maxWatchedTimeRef.current = 0;
-                        setCurrentTime(0);
-                      }}
-                      onTimeUpdate={(e) => {
-                        const vid = e.currentTarget;
-                        const nextTime = vid.currentTime;
-                        if (nextTime > maxWatchedTimeRef.current) {
-                          maxWatchedTimeRef.current = nextTime;
-                        }
-                        setCurrentTime(nextTime);
-                        setDuration(vid.duration || 0);
-                      }}
-                      onSeeking={(e) => {
-                        const vid = e.currentTarget;
-                        const allowedTime = maxWatchedTimeRef.current + 0.25;
-                        if (vid.currentTime > allowedTime) {
-                          vid.currentTime = maxWatchedTimeRef.current;
-                        }
-                      }}
-                      onError={(e) => {
-                        console.error("Video load error:", (e.currentTarget as any).error);
-                      }}
-                      controls={false}
-                      controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
-                      disablePictureInPicture
-                    />
+                          maxWatchedTimeRef.current = 0;
+                          setCurrentTime(0);
+                        }}
+                        onTimeUpdate={(e) => {
+                          const vid = e.currentTarget;
+                          const nextTime = vid.currentTime;
+                          if (nextTime > maxWatchedTimeRef.current) {
+                            maxWatchedTimeRef.current = nextTime;
+                          }
+                          setCurrentTime(nextTime);
+                          setDuration(vid.duration || 0);
+                        }}
+                        onSeeking={(e) => {
+                          const vid = e.currentTarget;
+                          const allowedTime = maxWatchedTimeRef.current + 0.25;
+                          if (vid.currentTime > allowedTime) {
+                            vid.currentTime = maxWatchedTimeRef.current;
+                          }
+                        }}
+                        onError={(e) => {
+                          console.error("Video load error:", (e.currentTarget as any).error);
+                        }}
+                        controls={false}
+                        controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
+                        disablePictureInPicture
+                      />
+                      {showPlayOverlay && (
+                        <button
+                          type="button"
+                          onClick={handleTapToPlay}
+                          className="absolute inset-0 flex items-center justify-center bg-foreground/30 z-10 cursor-pointer"
+                          aria-label="Iniciar vídeo"
+                        >
+                          <div className="bg-primary rounded-full p-4 shadow-lg">
+                            <Play className="h-8 w-8 text-primary-foreground" fill="currentColor" />
+                          </div>
+                        </button>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
                       <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
                         {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
