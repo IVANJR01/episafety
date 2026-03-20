@@ -187,7 +187,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           saveAuthCache(currentUser.email, nextState);
 
           // Pre-cache all data for offline use (fire and forget)
-          preCacheAllData().catch(() => {});
+          // Skip for video-only users to speed up portal loading on mobile
+          const isVideoOnly = !nextState.isSuperAdmin && !nextState.isPrincipal &&
+            nextState.modulos.length > 0 && nextState.modulos.every(p => p.startsWith("video_treinamentos"));
+          if (!isVideoOnly) {
+            preCacheAllData().catch(() => {});
+          }
         }
       } catch {
         applyCachedState(loadAuthCache(currentUser.email));
