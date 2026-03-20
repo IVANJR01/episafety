@@ -40,6 +40,7 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ url, controls, className, videoRef, autoPlay, muted, playsInline, preload, onEnded, onPlay, onPause, onContextMenu, onLoadedMetadata, onTimeUpdate, tabIndex }: VideoPlayerProps) {
   const [hasError, setHasError] = useState(false);
+  const isDrive = isGDriveUrl(url);
 
   if (!url || hasError || !isDirectVideoUrl(url)) {
     return (
@@ -49,6 +50,19 @@ export function VideoPlayer({ url, controls, className, videoRef, autoPlay, mute
           Este arquivo não é um vídeo visível. Faça upload de um vídeo .mp4 válido para este módulo.
         </p>
       </div>
+    );
+  }
+
+  if (isDrive) {
+    return (
+      <iframe
+        src={getGDriveEmbedUrl(url) || ""}
+        className={className}
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        sandbox="allow-scripts allow-same-origin allow-popups"
+        title="Vídeo do Google Drive"
+      />
     );
   }
 
