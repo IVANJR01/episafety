@@ -52,6 +52,7 @@ export default function PortalTreinamentos() {
   const [expandedCursos, setExpandedCursos] = useState<Set<string>>(new Set());
 
   const [watchingVideo, setWatchingVideo] = useState<VideoTreinamento | null>(null);
+  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string | null>(null);
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
