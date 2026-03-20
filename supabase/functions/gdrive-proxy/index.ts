@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, range, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-  "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-  "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type, Content-Disposition, Location",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Expose-Headers": "Content-Type",
 };
 
 serve(async (req) => {
@@ -12,16 +12,8 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  if (!["GET", "HEAD"].includes(req.method)) {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   const url = new URL(req.url);
-  const fileId = url.searchParams.get("id");
-  const filename = sanitizeFilename(url.searchParams.get("filename") || "treinamento.mp4");
+  const fileId = url.searchParams.get("id") || (req.method === "POST" ? (await req.json().catch(() => ({})))?.id : null);
 
   if (!fileId || !/^[a-zA-Z0-9_-]+$/.test(fileId)) {
     return new Response(JSON.stringify({ error: "Missing or invalid file ID" }), {
@@ -31,51 +23,18 @@ serve(async (req) => {
   }
 
   try {
-    // Resolve the final direct download URL by following redirects with a tiny range request
     const directUrl = await resolveDirectUrl(fileId);
 
     if (!directUrl) {
-      return new Response(JSON.stringify({ error: "Could not resolve Google Drive download URL" }), {
+      return new Response(JSON.stringify({ error: "Could not resolve Google Drive download URL. The file may be private or quota exceeded." }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // For HEAD requests, fetch metadata and return it
-    if (req.method === "HEAD") {
-      const probeResponse = await fetch(directUrl, {
-        method: "GET",
-        headers: {
-          "Range": "bytes=0-0",
-          "User-Agent": UA,
-        },
-        redirect: "follow",
-      });
-
-      const totalSize = getTotalSize(probeResponse.headers.get("content-range"));
-      try { await probeResponse.body?.cancel(); } catch {}
-
-      const headers: Record<string, string> = {
-        ...corsHeaders,
-        "Content-Type": "video/mp4",
-        "Accept-Ranges": "bytes",
-        "Cache-Control": "public, max-age=86400",
-        "Content-Disposition": `inline; filename="${filename}"`,
-      };
-      if (totalSize) headers["Content-Length"] = totalSize;
-
-      return new Response(null, { status: 200, headers });
-    }
-
-    // For GET requests, redirect the browser directly to Google's CDN
-    // This avoids streaming 100MB+ through the edge function
-    return new Response(null, {
-      status: 302,
-      headers: {
-        ...corsHeaders,
-        "Location": directUrl,
-        "Cache-Control": "no-cache",
-      },
+    return new Response(JSON.stringify({ url: directUrl }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
     });
   } catch (err) {
     return new Response(JSON.stringify({ error: "Proxy error", message: String(err) }), {
@@ -87,10 +46,6 @@ serve(async (req) => {
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-/**
- * Resolve the final direct download URL for a Google Drive file.
- * This follows redirects and handles the virus-scan confirmation page.
- */
 async function resolveDirectUrl(fileId: string): Promise<string | null> {
   const baseHeaders: Record<string, string> = {
     "User-Agent": UA,
@@ -110,15 +65,12 @@ async function resolveDirectUrl(fileId: string): Promise<string | null> {
       redirect: "follow",
     });
 
-    // Check if we got actual binary content (not HTML)
     if (!looksLikeHtml(response) && (response.ok || response.status === 206)) {
-      // We got a valid response - return the final URL after redirects
-      // The response.url gives us the final URL after all redirects
+      const finalUrl = response.url || downloadUrl;
       try { await response.body?.cancel(); } catch {}
-      return response.url || downloadUrl;
+      return finalUrl;
     }
 
-    // Try to bypass the virus scan / large file confirmation page
     const body = await response.text();
     const confirmMatch = body.match(/confirm=([a-zA-Z0-9_-]+)/);
     const uuidMatch = body.match(/uuid=([a-zA-Z0-9_-]+)/);
@@ -148,8 +100,9 @@ async function resolveDirectUrl(fileId: string): Promise<string | null> {
     });
 
     if (!looksLikeHtml(retryResponse) && (retryResponse.ok || retryResponse.status === 206)) {
+      const finalUrl = retryResponse.url || retryUrl;
       try { await retryResponse.body?.cancel(); } catch {}
-      return retryResponse.url || retryUrl;
+      return finalUrl;
     }
 
     try { await retryResponse.body?.cancel(); } catch {}
@@ -161,15 +114,4 @@ async function resolveDirectUrl(fileId: string): Promise<string | null> {
 function looksLikeHtml(response: Response): boolean {
   const contentType = response.headers.get("content-type") || "";
   return contentType.includes("text/html");
-}
-
-function sanitizeFilename(filename: string): string {
-  const cleaned = filename.replace(/[^a-zA-Z0-9._-]/g, "-");
-  return cleaned.toLowerCase().endsWith(".mp4") ? cleaned : `${cleaned}.mp4`;
-}
-
-function getTotalSize(contentRange: string | null): string | null {
-  if (!contentRange) return null;
-  const match = contentRange.match(/\/(\d+)$/);
-  return match?.[1] || null;
 }
