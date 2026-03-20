@@ -684,7 +684,18 @@ export default function PortalTreinamentos() {
             <CardContent className={`p-0 ${shouldUseImmersiveMode ? "overflow-visible rounded-none" : "overflow-hidden rounded-lg"}`}>
               <div ref={videoContainerRef} className={`bg-card ${shouldUseImmersiveMode ? "fixed inset-0 z-50 flex flex-col bg-background" : ""}`}>
                 <div className="relative flex-1 bg-muted">
-                  {resolvedVideoUrl && (
+                  {resolvedVideoUrl && isGDriveUrl(watchingVideo.video_url) ? (
+                    <iframe
+                      key={watchingVideo.id + resolvedVideoUrl}
+                      src={resolvedVideoUrl}
+                      className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full" : "aspect-video"}`}
+                      allow="autoplay; fullscreen"
+                      allowFullScreen
+                      sandbox="allow-scripts allow-same-origin allow-popups"
+                      title="Vídeo do Google Drive"
+                      onLoad={() => setIsBuffering(false)}
+                    />
+                  ) : resolvedVideoUrl ? (
                   <video
                     ref={videoRef}
                     key={watchingVideo.id + resolvedVideoUrl}
@@ -798,7 +809,7 @@ export default function PortalTreinamentos() {
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
-                  )}
+                  ) : null}
                   {isBuffering && !videoError && (
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/50">
                       <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-4 py-3 shadow-lg">
