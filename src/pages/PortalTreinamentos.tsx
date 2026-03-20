@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { VideoThumbnail } from "@/components/VideoPlayer";
-import { isGDriveUrl, getGDriveProxyUrl } from "@/lib/googleDrive";
+import { isGDriveUrl, resolveGDriveVideoUrl } from "@/lib/googleDrive";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -52,6 +52,7 @@ export default function PortalTreinamentos() {
   const [expandedCursos, setExpandedCursos] = useState<Set<string>>(new Set());
 
   const [watchingVideo, setWatchingVideo] = useState<VideoTreinamento | null>(null);
+  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string | null>(null);
   const [videoEnded, setVideoEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
@@ -447,7 +448,7 @@ export default function PortalTreinamentos() {
     } catch {}
   }, [funcionarioId, funcEmpresaId, getPlaybackMetrics]);
 
-  const handleStartVideo = (video: VideoTreinamento) => {
+  const handleStartVideo = async (video: VideoTreinamento) => {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
@@ -456,6 +457,7 @@ export default function PortalTreinamentos() {
 
     autoplayAttemptedRef.current = false;
     setWatchingVideo(video);
+    setResolvedVideoUrl(null);
     setVideoEnded(false);
     setShowSignature(false);
     setIsPlaying(false);
@@ -465,7 +467,7 @@ export default function PortalTreinamentos() {
     setUseNativeControls(isMobileDevice);
     setShowPlayOverlay(!isMobileDevice);
     setShouldAutoplayOnOpen(isMobileDevice);
-    setIsBuffering(isMobileDevice);
+    setIsBuffering(true);
     setVideoError(null);
     setCurrentTime(0);
     setDuration(0);
@@ -476,6 +478,24 @@ export default function PortalTreinamentos() {
       maxWatchedTimeRef.current = -1;
     } else {
       maxWatchedTimeRef.current = 0;
+    }
+
+    // Resolve the direct video URL for Google Drive videos
+    if (isDriveVideo) {
+      try {
+        const resolved = await resolveGDriveVideoUrl(video.video_url);
+        if (resolved) {
+          setResolvedVideoUrl(resolved);
+        } else {
+          setVideoError("Não foi possível resolver a URL do vídeo. O arquivo pode estar privado ou com cota excedida.");
+          setIsBuffering(false);
+        }
+      } catch {
+        setVideoError("Erro ao resolver URL do vídeo do Google Drive.");
+        setIsBuffering(false);
+      }
+    } else {
+      setResolvedVideoUrl(video.video_url);
     }
   };
 
@@ -668,13 +688,11 @@ export default function PortalTreinamentos() {
             <CardContent className={`p-0 ${shouldUseImmersiveMode ? "overflow-visible rounded-none" : "overflow-hidden rounded-lg"}`}>
               <div ref={videoContainerRef} className={`bg-card ${shouldUseImmersiveMode ? "fixed inset-0 z-50 flex flex-col bg-background" : ""}`}>
                 <div className="relative flex-1 bg-muted">
+                  {resolvedVideoUrl && (
                   <video
                     ref={videoRef}
-                    key={watchingVideo.id}
-                    src={isGDriveUrl(watchingVideo.video_url)
-                      ? (getGDriveProxyUrl(watchingVideo.video_url) || watchingVideo.video_url)
-                      : `${watchingVideo.video_url}${watchingVideo.video_url.includes("?") ? "&" : "?"}mobilePlayback=1`
-                    }
+                    key={watchingVideo.id + resolvedVideoUrl}
+                    src={resolvedVideoUrl}
                     playsInline
                     controls={useNativeControls}
                     // @ts-ignore - webkit attribute for iOS
@@ -784,6 +802,7 @@ export default function PortalTreinamentos() {
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
+                  )}
                   {isBuffering && !videoError && (
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/50">
                       <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-4 py-3 shadow-lg">
@@ -799,13 +818,28 @@ export default function PortalTreinamentos() {
                         <p className="text-sm text-foreground font-medium">{videoError}</p>
                         <Button
                           size="sm"
-                          onClick={() => {
+                          onClick={async () => {
                             setVideoError(null);
                             setIsBuffering(true);
-                            const vid = videoRef.current;
-                            if (vid) {
-                              vid.load();
-                              vid.play().catch(() => {});
+                            if (watchingVideo && isGDriveUrl(watchingVideo.video_url)) {
+                              try {
+                                const resolved = await resolveGDriveVideoUrl(watchingVideo.video_url);
+                                if (resolved) {
+                                  setResolvedVideoUrl(resolved + "&t=" + Date.now());
+                                } else {
+                                  setVideoError("Não foi possível resolver a URL do vídeo.");
+                                  setIsBuffering(false);
+                                }
+                              } catch {
+                                setVideoError("Erro ao resolver URL do vídeo.");
+                                setIsBuffering(false);
+                              }
+                            } else {
+                              const vid = videoRef.current;
+                              if (vid) {
+                                vid.load();
+                                vid.play().catch(() => {});
+                              }
                             }
                           }}
                         >

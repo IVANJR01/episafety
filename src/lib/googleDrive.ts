@@ -50,8 +50,38 @@ export function getGDriveDirectUrl(url: string): string | null {
 }
 
 /**
+ * Resolve a Google Drive video URL through the edge function proxy.
+ * Returns a direct CDN URL that can be used in <video src="...">.
+ * This avoids streaming through the edge function (which causes timeout on large files).
+ */
+export async function resolveGDriveVideoUrl(url: string): Promise<string | null> {
+  const fileId = extractGDriveFileId(url);
+  if (!fileId) return null;
+  
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseUrl || !anonKey) return null;
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/gdrive-proxy?id=${fileId}`, {
+      headers: {
+        "Authorization": `Bearer ${anonKey}`,
+        "apikey": anonKey,
+      },
+    });
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data?.url || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get a proxy URL that streams the Google Drive video through our edge function.
- * The .mp4 suffix in the path improves compatibility with Safari/iPhone.
+ * @deprecated Use resolveGDriveVideoUrl instead for large files.
  */
 export function getGDriveProxyUrl(url: string): string | null {
   const fileId = extractGDriveFileId(url);
