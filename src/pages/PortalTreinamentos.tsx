@@ -787,7 +787,7 @@ export default function PortalTreinamentos() {
                     </button>
                   )}
                     </>
-                  )}
+                </div>
                 </div>
 
                 {(
