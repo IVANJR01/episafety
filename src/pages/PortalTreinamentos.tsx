@@ -688,13 +688,11 @@ export default function PortalTreinamentos() {
             <CardContent className={`p-0 ${shouldUseImmersiveMode ? "overflow-visible rounded-none" : "overflow-hidden rounded-lg"}`}>
               <div ref={videoContainerRef} className={`bg-card ${shouldUseImmersiveMode ? "fixed inset-0 z-50 flex flex-col bg-background" : ""}`}>
                 <div className="relative flex-1 bg-muted">
+                  {resolvedVideoUrl && (
                   <video
                     ref={videoRef}
-                    key={watchingVideo.id}
-                    src={isGDriveUrl(watchingVideo.video_url)
-                      ? (getGDriveProxyUrl(watchingVideo.video_url) || watchingVideo.video_url)
-                      : `${watchingVideo.video_url}${watchingVideo.video_url.includes("?") ? "&" : "?"}mobilePlayback=1`
-                    }
+                    key={watchingVideo.id + resolvedVideoUrl}
+                    src={resolvedVideoUrl}
                     playsInline
                     controls={useNativeControls}
                     // @ts-ignore - webkit attribute for iOS
