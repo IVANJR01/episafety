@@ -56,6 +56,7 @@ export default function PortalTreinamentos() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const maxWatchedTimeRef = useRef(0);
+  const autoplayAttemptedRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -67,6 +68,8 @@ export default function PortalTreinamentos() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const [useNativeControls, setUseNativeControls] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [shouldAutoplayOnOpen, setShouldAutoplayOnOpen] = useState(false);
 
   const [showSignature, setShowSignature] = useState(false);
   const signatureRef = useRef<SignatureCanvasRef>(null);
@@ -257,6 +260,7 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return Promise.resolve(false);
 
+    video.playsInline = true;
     video.muted = startMuted;
     if (startMuted) {
       video.setAttribute("muted", "true");
@@ -264,14 +268,17 @@ export default function PortalTreinamentos() {
       video.removeAttribute("muted");
     }
 
+    setIsBuffering(true);
     const playPromise = video.play();
 
-    return playPromise.then(() => {
+    return Promise.resolve(playPromise).then(() => {
+      setIsBuffering(false);
       setIsMuted(video.muted);
       setIsPlaying(true);
       setShowPlayOverlay(false);
       return true;
     }).catch(() => {
+      setIsBuffering(false);
       if (isMobileDevice) {
         setUseNativeControls(true);
         video.controls = true;
@@ -280,6 +287,49 @@ export default function PortalTreinamentos() {
       return false;
     });
   }, [isMobileDevice]);
+
+  const attemptMobileStart = useCallback((enterFullscreen = false) => {
+    const video = videoRef.current as (HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+    }) | null;
+
+    if (!video || !isMobileDevice || !video.paused || autoplayAttemptedRef.current) return;
+
+    autoplayAttemptedRef.current = true;
+    setUseNativeControls(true);
+    video.controls = true;
+    setShowPlayOverlay(false);
+    setIsBuffering(true);
+
+    if (enterFullscreen && isAppleMobile && typeof video.webkitEnterFullscreen === "function") {
+      try {
+        video.webkitEnterFullscreen();
+      } catch {}
+    }
+
+    void playCurrentVideo(true).then((started) => {
+      if (!started) autoplayAttemptedRef.current = false;
+    });
+  }, [isAppleMobile, isMobileDevice, playCurrentVideo]);
+
+  useEffect(() => {
+    if (!watchingVideo) {
+      autoplayAttemptedRef.current = false;
+      setIsBuffering(false);
+      setShouldAutoplayOnOpen(false);
+      return;
+    }
+
+    autoplayAttemptedRef.current = false;
+
+    if (!isMobileDevice || !shouldAutoplayOnOpen) return;
+
+    const timer = window.setTimeout(() => {
+      attemptMobileStart(isAppleMobile);
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [attemptMobileStart, isAppleMobile, isMobileDevice, shouldAutoplayOnOpen, watchingVideo]);
 
   const enterBestFullscreen = useCallback(async () => {
     const video = videoRef.current as (HTMLVideoElement & {
@@ -366,6 +416,7 @@ export default function PortalTreinamentos() {
       saveProgress(watchingVideo.id);
     }
 
+    autoplayAttemptedRef.current = false;
     setWatchingVideo(video);
     setVideoEnded(false);
     setShowSignature(false);
@@ -375,6 +426,8 @@ export default function PortalTreinamentos() {
     setIsImmersiveMode(false);
     setUseNativeControls(isMobileDevice);
     setShowPlayOverlay(!isMobileDevice);
+    setShouldAutoplayOnOpen(isMobileDevice);
+    setIsBuffering(isMobileDevice);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
@@ -391,6 +444,9 @@ export default function PortalTreinamentos() {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
+    autoplayAttemptedRef.current = false;
+    setIsBuffering(false);
+    setShouldAutoplayOnOpen(false);
     void exitBestFullscreen();
     setUseNativeControls(false);
     setWatchingVideo(null);
@@ -399,6 +455,8 @@ export default function PortalTreinamentos() {
 
   const handleVideoEnded = async () => {
     setVideoEnded(true);
+    setIsBuffering(false);
+    setShouldAutoplayOnOpen(false);
     await exitBestFullscreen();
     if (!watchingVideo || !funcionarioId) return;
     setShowSignature(true);
@@ -423,7 +481,10 @@ export default function PortalTreinamentos() {
       }, { onConflict: "video_id,funcionario_id" });
       if (error) throw error;
       toast({ title: "Módulo concluído!", description: "Sua participação foi registrada com sucesso." });
+      autoplayAttemptedRef.current = false;
       setUseNativeControls(false);
+      setIsBuffering(false);
+      setShouldAutoplayOnOpen(false);
       setWatchingVideo(null);
       fetchData();
     } catch (err: any) {
@@ -438,12 +499,15 @@ export default function PortalTreinamentos() {
 
     if (video.paused) {
       if (isMobileDevice) {
+        autoplayAttemptedRef.current = false;
         setUseNativeControls(true);
         video.controls = true;
       }
+      setIsBuffering(true);
       void playCurrentVideo(isMobileDevice ? true : isMuted);
     } else {
       video.pause();
+      setIsBuffering(false);
       setIsPlaying(false);
       if (!isMobileDevice) setShowPlayOverlay(true);
     }
@@ -456,18 +520,11 @@ export default function PortalTreinamentos() {
     if (!video) return;
 
     if (isMobileDevice) {
-      setUseNativeControls(true);
-      video.controls = true;
-      setShowPlayOverlay(false);
-      void playCurrentVideo(true);
-      if (isAppleMobile && typeof video.webkitEnterFullscreen === "function") {
-        try {
-          video.webkitEnterFullscreen();
-        } catch {}
-      }
+      attemptMobileStart(isAppleMobile);
       return;
     }
 
+    setIsBuffering(true);
     void playCurrentVideo(true).then((started) => {
       if (started) {
         try {
