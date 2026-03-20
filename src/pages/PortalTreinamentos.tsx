@@ -460,10 +460,10 @@ export default function PortalTreinamentos() {
     setIsMuted(isMobileDevice);
     setIsFullscreen(false);
     setIsImmersiveMode(false);
-    setUseNativeControls(isMobileDevice || isDriveVideo);
-    setShowPlayOverlay(!(isMobileDevice || isDriveVideo));
-    setShouldAutoplayOnOpen(isMobileDevice && !isDriveVideo);
-    setIsBuffering(!isDriveVideo && isMobileDevice);
+    setUseNativeControls(isMobileDevice);
+    setShowPlayOverlay(!isMobileDevice);
+    setShouldAutoplayOnOpen(isMobileDevice);
+    setIsBuffering(isMobileDevice);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
