@@ -909,90 +909,128 @@ export default function VideoTreinamentos() {
             </div>
             <div>
               <Label>{editingModulo ? "Substituir vídeo (opcional)" : "Vídeo *"}</Label>
-              <div className="mt-1">
-                <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
-                  <Upload className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {videoFile ? videoFile.name : "Clique para enviar um vídeo .mp4"}
-                  </span>
-                  <input type="file" accept="video/mp4,.mp4" className="hidden" onChange={async (e) => {
-                    const input = e.currentTarget;
-                    const file = input.files?.[0] || null;
-                    if (!file) {
-                      setVideoFile(null);
-                      return;
-                    }
+              <div className="flex gap-2 mt-1 mb-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={videoSource === "upload" ? "default" : "outline"}
+                  onClick={() => { setVideoSource("upload"); setGoogleDriveUrl(""); }}
+                >
+                  <Upload className="h-4 w-4 mr-1" /> Upload .mp4
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={videoSource === "drive" ? "default" : "outline"}
+                  onClick={() => { setVideoSource("drive"); setVideoFile(null); }}
+                >
+                  🔗 Link Google Drive
+                </Button>
+              </div>
 
-                    const fileName = file.name.toLowerCase();
-                    const fileType = (file.type || "").toLowerCase();
-                    const isMp4 = fileName.endsWith(".mp4") && (!fileType || fileType === "video/mp4" || fileType === "application/mp4");
-
-                    if (!isMp4) {
-                      setVideoFile(null);
-                      input.value = "";
-                      toast({
-                        title: "Arquivo inválido",
-                        description: "O arquivo enviado é áudio ou não é .mp4. Envie um vídeo .mp4 válido.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-
-                    try {
-                      const objectUrl = URL.createObjectURL(file);
-                      const metadata = await new Promise<{ width: number; height: number; duration: number }>((resolve, reject) => {
-                        const probe = document.createElement("video");
-
-                        const cleanup = () => {
-                          probe.onloadedmetadata = null;
-                          probe.onerror = null;
-                          probe.pause();
-                          probe.removeAttribute("src");
-                          probe.load();
-                          URL.revokeObjectURL(objectUrl);
-                        };
-
-                        probe.preload = "metadata";
-                        probe.muted = true;
-                        probe.playsInline = true;
-                        probe.onloadedmetadata = () => {
-                          const width = probe.videoWidth || 0;
-                          const height = probe.videoHeight || 0;
-                          const duration = Number.isFinite(probe.duration) ? probe.duration : 0;
-                          cleanup();
-
-                          if (width <= 0 || height <= 0 || duration <= 0) {
-                            reject(new Error("Arquivo sem faixa de vídeo visível"));
-                            return;
-                          }
-
-                          resolve({ width, height, duration });
-                        };
-                        probe.onerror = () => {
-                          cleanup();
-                          reject(new Error("Falha ao ler metadados do vídeo"));
-                        };
-                        probe.src = objectUrl;
-                      });
-
-                      if (metadata.width <= 0 || metadata.height <= 0) {
-                        throw new Error("Arquivo sem vídeo visível");
+              {videoSource === "upload" ? (
+                <div>
+                  <label className="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {videoFile ? videoFile.name : "Clique para enviar um vídeo .mp4"}
+                    </span>
+                    <input type="file" accept="video/mp4,.mp4" className="hidden" onChange={async (e) => {
+                      const input = e.currentTarget;
+                      const file = input.files?.[0] || null;
+                      if (!file) {
+                        setVideoFile(null);
+                        return;
                       }
 
-                      setVideoFile(file);
-                    } catch {
-                      setVideoFile(null);
-                      input.value = "";
-                      toast({
-                        title: "Vídeo inválido",
-                        description: "Esse arquivo não tem imagem de vídeo válida. Envie um .mp4 real, não áudio renomeado.",
-                        variant: "destructive",
-                      });
-                    }
-                  }} />
-                </label>
-                <p className="text-xs text-muted-foreground mt-1">Envie apenas vídeo .mp4 para evitar tela em branco</p>
-              </div>
+                      const fileName = file.name.toLowerCase();
+                      const fileType = (file.type || "").toLowerCase();
+                      const isMp4 = fileName.endsWith(".mp4") && (!fileType || fileType === "video/mp4" || fileType === "application/mp4");
+
+                      if (!isMp4) {
+                        setVideoFile(null);
+                        input.value = "";
+                        toast({
+                          title: "Arquivo inválido",
+                          description: "O arquivo enviado é áudio ou não é .mp4. Envie um vídeo .mp4 válido.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
+                      try {
+                        const objectUrl = URL.createObjectURL(file);
+                        const metadata = await new Promise<{ width: number; height: number; duration: number }>((resolve, reject) => {
+                          const probe = document.createElement("video");
+
+                          const cleanup = () => {
+                            probe.onloadedmetadata = null;
+                            probe.onerror = null;
+                            probe.pause();
+                            probe.removeAttribute("src");
+                            probe.load();
+                            URL.revokeObjectURL(objectUrl);
+                          };
+
+                          probe.preload = "metadata";
+                          probe.muted = true;
+                          probe.playsInline = true;
+                          probe.onloadedmetadata = () => {
+                            const width = probe.videoWidth || 0;
+                            const height = probe.videoHeight || 0;
+                            const duration = Number.isFinite(probe.duration) ? probe.duration : 0;
+                            cleanup();
+
+                            if (width <= 0 || height <= 0 || duration <= 0) {
+                              reject(new Error("Arquivo sem faixa de vídeo visível"));
+                              return;
+                            }
+
+                            resolve({ width, height, duration });
+                          };
+                          probe.onerror = () => {
+                            cleanup();
+                            reject(new Error("Falha ao ler metadados do vídeo"));
+                          };
+                          probe.src = objectUrl;
+                        });
+
+                        if (metadata.width <= 0 || metadata.height <= 0) {
+                          throw new Error("Arquivo sem vídeo visível");
+                        }
+
+                        setVideoFile(file);
+                      } catch {
+                        setVideoFile(null);
+                        input.value = "";
+                        toast({
+                          title: "Vídeo inválido",
+                          description: "Esse arquivo não tem imagem de vídeo válida. Envie um .mp4 real, não áudio renomeado.",
+                          variant: "destructive",
+                        });
+                      }
+                    }} />
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-1">Envie apenas vídeo .mp4 para evitar tela em branco</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    value={googleDriveUrl}
+                    onChange={e => setGoogleDriveUrl(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Cole o link de compartilhamento do Google Drive. O vídeo deve estar com acesso "Qualquer pessoa com o link".
+                  </p>
+                  {googleDriveUrl && !isGDriveUrl(googleDriveUrl) && (
+                    <p className="text-xs text-destructive">Link inválido. Use o formato: drive.google.com/file/d/...</p>
+                  )}
+                  {googleDriveUrl && isGDriveUrl(googleDriveUrl) && (
+                    <p className="text-xs text-green-600">✓ Link válido do Google Drive</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
