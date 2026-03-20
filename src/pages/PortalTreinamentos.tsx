@@ -66,6 +66,7 @@ export default function PortalTreinamentos() {
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
+  const [useNativeControls, setUseNativeControls] = useState(false);
 
   const [showSignature, setShowSignature] = useState(false);
   const signatureRef = useRef<SignatureCanvasRef>(null);
@@ -88,7 +89,6 @@ export default function PortalTreinamentos() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Step 1: Fetch profile + static data in parallel
       const [{ data: profile }, { data: cursosData }, { data: vids }] = await Promise.all([
         supabase.from("profiles").select("nome, empresa_id").eq("user_id", user?.id || "").maybeSingle(),
         supabase.from("cursos_video").select("id, titulo, descricao").order("created_at", { ascending: false }),
@@ -119,7 +119,6 @@ export default function PortalTreinamentos() {
       }
       setFuncionarioId(foundFuncId);
 
-      // Step 2: Fetch assignments + visualizations in parallel
       let cursoIds: string[] = [];
       let legacyVideoIds: string[] = [];
 
@@ -131,7 +130,6 @@ export default function PortalTreinamentos() {
         cursoIds = (cursoAssign || []).map((a: any) => a.curso_id);
         if (vizs) setVisualizacoes(vizs as any);
 
-        // Fallback: legacy assignments
         if (cursoIds.length === 0) {
           const { data: videoAssign } = await supabase.from("videos_atribuicao")
             .select("video_id").eq("funcionario_id", foundFuncId);
@@ -167,7 +165,6 @@ export default function PortalTreinamentos() {
     return "em_andamento";
   };
 
-  // Get courses assigned to this employee
   const myCursos = useMemo(() => {
     if (assignedCursoIds.length > 0) {
       return cursos.filter(c => assignedCursoIds.includes(c.id));
@@ -177,7 +174,6 @@ export default function PortalTreinamentos() {
 
   const getModulos = (cursoId: string) => videos.filter(v => v.curso_id === cursoId).sort((a, b) => a.ordem - b.ordem);
 
-  // Legacy: videos without curso assignment
   const legacyVideos = useMemo(() => {
     if (assignedCursoIds.length > 0) return [];
     return videos.filter(v => !v.curso_id);
@@ -252,8 +248,6 @@ export default function PortalTreinamentos() {
     };
   }, [shouldUseImmersiveMode]);
 
-  // IMPORTANT: Do NOT call video.load() here — it breaks the user-gesture chain on iOS Safari
-  // and causes play() to be rejected. The video element must already have its src set via JSX.
   const playCurrentVideo = useCallback((startMuted: boolean): Promise<boolean> => {
     const video = videoRef.current;
     if (!video) return Promise.resolve(false);
@@ -265,7 +259,6 @@ export default function PortalTreinamentos() {
       video.removeAttribute("muted");
     }
 
-    // play() must be called synchronously within the user-gesture call stack
     const playPromise = video.play();
 
     return playPromise.then(() => {
@@ -274,9 +267,14 @@ export default function PortalTreinamentos() {
       setShowPlayOverlay(false);
       return true;
     }).catch(() => {
+      if (isAppleMobile) {
+        setUseNativeControls(true);
+        video.controls = true;
+        setShowPlayOverlay(false);
+      }
       return false;
     });
-  }, []);
+  }, [isAppleMobile]);
 
   const enterBestFullscreen = useCallback(async () => {
     const video = videoRef.current as (HTMLVideoElement & {
@@ -340,7 +338,6 @@ export default function PortalTreinamentos() {
     setIsImmersiveMode(false);
   }, []);
 
-  // Save progress when leaving a video
   const saveProgress = useCallback(async (videoId: string) => {
     if (!funcionarioId) return;
 
@@ -368,10 +365,11 @@ export default function PortalTreinamentos() {
     setVideoEnded(false);
     setShowSignature(false);
     setIsPlaying(false);
-    setIsMuted(false);
+    setIsMuted(isAppleMobile);
     setIsFullscreen(false);
     setIsImmersiveMode(false);
-    setShowPlayOverlay(true);
+    setUseNativeControls(isAppleMobile);
+    setShowPlayOverlay(!isAppleMobile);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
@@ -389,6 +387,7 @@ export default function PortalTreinamentos() {
       saveProgress(watchingVideo.id);
     }
     void exitBestFullscreen();
+    setUseNativeControls(false);
     setWatchingVideo(null);
     fetchData();
   };
@@ -419,6 +418,7 @@ export default function PortalTreinamentos() {
       }, { onConflict: "video_id,funcionario_id" });
       if (error) throw error;
       toast({ title: "Módulo concluído!", description: "Sua participação foi registrada com sucesso." });
+      setUseNativeControls(false);
       setWatchingVideo(null);
       fetchData();
     } catch (err: any) {
@@ -430,47 +430,51 @@ export default function PortalTreinamentos() {
   const handleTogglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
+
     if (video.paused) {
-      // Call play() synchronously on user gesture
-      video.muted = isMuted;
-      video.play().then(() => {
-        setIsPlaying(true);
-        setShowPlayOverlay(false);
-      }).catch(() => {});
+      if (isAppleMobile) {
+        setUseNativeControls(true);
+        video.controls = true;
+      }
+      void playCurrentVideo(isAppleMobile ? true : isMuted);
     } else {
       video.pause();
       setIsPlaying(false);
-      setShowPlayOverlay(true);
+      if (!isAppleMobile) setShowPlayOverlay(true);
     }
   };
 
-  // This handler MUST call video.play() synchronously in the tap event stack.
-  // Any async work (load, await, setTimeout) before play() will cause Safari to reject it.
   const handleTapToPlay = () => {
-    const video = videoRef.current;
+    const video = videoRef.current as (HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+    }) | null;
     if (!video) return;
 
-    // Start muted for Safari autoplay policy compliance
-    video.muted = true;
-    setIsMuted(true);
-
-    const playPromise = video.play();
-
-    playPromise.then(() => {
-      setIsPlaying(true);
+    if (isAppleMobile) {
+      setUseNativeControls(true);
+      video.controls = true;
       setShowPlayOverlay(false);
+      void playCurrentVideo(true);
+      if (typeof video.webkitEnterFullscreen === "function") {
+        try {
+          video.webkitEnterFullscreen();
+        } catch {}
+      }
+      return;
+    }
 
-      // After playback starts, try to unmute on non-Apple devices
-      if (!isAppleMobile) {
+    void playCurrentVideo(true).then((started) => {
+      if (started) {
         try {
           video.muted = false;
           setIsMuted(false);
         } catch {}
+        return;
       }
-    }).catch((err) => {
-      console.warn("Play rejected:", err);
-      // Last resort: show native controls so user can tap the native play button
+
+      console.warn("Play rejected");
       video.controls = true;
+      setUseNativeControls(true);
       setShowPlayOverlay(false);
       toast({ title: "Toque no botão ▶ do player para iniciar", description: "Use o controle nativo do vídeo abaixo." });
     });
