@@ -782,7 +782,7 @@ export default function PortalTreinamentos() {
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
-                  {isBuffering && (
+                  {isBuffering && !videoError && (
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/50">
                       <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-4 py-3 shadow-lg">
                         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
@@ -790,7 +790,29 @@ export default function PortalTreinamentos() {
                       </div>
                     </div>
                   )}
-                  {showPlayOverlay && !useNativeControls && (
+                  {videoError && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80">
+                      <div className="flex flex-col items-center gap-3 rounded-xl bg-background px-6 py-5 shadow-lg max-w-sm text-center">
+                        <Video className="h-8 w-8 text-destructive" />
+                        <p className="text-sm text-foreground font-medium">{videoError}</p>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setVideoError(null);
+                            setIsBuffering(true);
+                            const vid = videoRef.current;
+                            if (vid) {
+                              vid.load();
+                              vid.play().catch(() => {});
+                            }
+                          }}
+                        >
+                          Tentar novamente
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {showPlayOverlay && !useNativeControls && !videoError && (
                     <button
                       type="button"
                       onClick={handleTapToPlay}
