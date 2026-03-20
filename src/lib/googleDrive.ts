@@ -40,24 +40,19 @@ export function getGDriveEmbedUrl(url: string): string | null {
 }
 
 /**
- * Get a direct-ish download URL for the file.
- * NOTE: For files > 100 MB Google may show a virus-scan interstitial.
- * For streaming in <video> tags this may not work reliably.
+ * Get a Google Drive stream URL compatible with native HTML5 <video> playback.
+ * The usercontent endpoint supports byte-range requests and works better on mobile.
  */
 export function getGDriveDirectUrl(url: string): string | null {
   const fileId = extractGDriveFileId(url);
   if (!fileId) return null;
-  return `https://drive.google.com/uc?export=download&id=${fileId}`;
+  return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
 }
 
 /**
- * Get a proxy URL that streams the Google Drive video through our edge function.
- * This allows using native HTML5 <video> element with full playback control.
+ * Keep the existing proxy helper name for compatibility in the app.
+ * We now prefer the direct streaming URL because it is more reliable on Android/iPhone.
  */
 export function getGDriveProxyUrl(url: string): string | null {
-  const fileId = extractGDriveFileId(url);
-  if (!fileId) return null;
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (!supabaseUrl) return null;
-  return `${supabaseUrl}/functions/v1/gdrive-proxy?id=${fileId}`;
+  return getGDriveDirectUrl(url);
 }
