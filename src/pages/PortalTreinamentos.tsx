@@ -661,10 +661,6 @@ export default function PortalTreinamentos() {
             <CardContent className={`p-0 ${shouldUseImmersiveMode ? "overflow-visible rounded-none" : "overflow-hidden rounded-lg"}`}>
               <div ref={videoContainerRef} className={`bg-card ${shouldUseImmersiveMode ? "fixed inset-0 z-50 flex flex-col bg-background" : ""}`}>
                 <div className="relative flex-1 bg-muted">
-                  {false && isGDriveUrl(watchingVideo.video_url) ? (
-                    /* iframe fallback - disabled, using native player via proxy */
-                    <div />
-                  ) : (
                     <>
                   <video
                     ref={videoRef}
