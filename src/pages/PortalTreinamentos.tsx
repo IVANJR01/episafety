@@ -661,6 +661,19 @@ export default function PortalTreinamentos() {
             <CardContent className={`p-0 ${shouldUseImmersiveMode ? "overflow-visible rounded-none" : "overflow-hidden rounded-lg"}`}>
               <div ref={videoContainerRef} className={`bg-card ${shouldUseImmersiveMode ? "fixed inset-0 z-50 flex flex-col bg-background" : ""}`}>
                 <div className="relative flex-1 bg-muted">
+                  {isGDriveUrl(watchingVideo.video_url) ? (
+                    <div className="relative w-full aspect-video bg-muted">
+                      <iframe
+                        key={watchingVideo.id}
+                        src={getGDriveEmbedUrl(watchingVideo.video_url) || ""}
+                        className="w-full h-full border-0"
+                        allow="autoplay; fullscreen"
+                        allowFullScreen
+                        sandbox="allow-scripts allow-same-origin allow-popups"
+                      />
+                    </div>
+                  ) : (
+                    <>
                   <video
                     ref={videoRef}
                     key={watchingVideo.id}
@@ -736,7 +749,6 @@ export default function PortalTreinamentos() {
                     }}
                     onWaiting={() => {
                       setIsBuffering(true);
-                      console.log("Video buffering at", videoRef.current?.currentTime);
                     }}
                     onError={(e) => {
                       setIsBuffering(false);
@@ -782,7 +794,11 @@ export default function PortalTreinamentos() {
                       </div>
                     </button>
                   )}
+                    </>
+                  )}
                 </div>
+
+                {!isGDriveUrl(watchingVideo.video_url) && (
                 <div className={`flex items-center gap-3 border-t border-border bg-card px-4 py-3 ${shouldUseImmersiveMode ? "pb-[max(0.75rem,env(safe-area-inset-bottom))]" : ""}`}>
                   <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
                     {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -826,6 +842,16 @@ export default function PortalTreinamentos() {
                     {shouldUseImmersiveMode ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                   </Button>
                 </div>
+                )}
+
+                {isGDriveUrl(watchingVideo.video_url) && !videoEnded && (
+                  <div className="border-t border-border bg-card px-4 py-3 text-center">
+                    <p className="text-xs text-muted-foreground mb-2">Assista o vídeo completo e depois clique abaixo</p>
+                    <Button onClick={() => void handleVideoEnded()} className="bg-primary">
+                      <CheckCircle className="h-4 w-4 mr-2" /> Concluí o vídeo
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
