@@ -480,18 +480,14 @@ export default function PortalTreinamentos() {
       maxWatchedTimeRef.current = 0;
     }
 
-    // Resolve the direct video URL for Google Drive videos
+    // For Google Drive videos, use the embed URL (iframe); for others use native video
     if (isDriveVideo) {
-      try {
-        const resolved = await resolveGDriveVideoUrl(video.video_url);
-        if (resolved) {
-          setResolvedVideoUrl(resolved);
-        } else {
-          setVideoError("Não foi possível resolver a URL do vídeo. O arquivo pode estar privado ou com cota excedida.");
-          setIsBuffering(false);
-        }
-      } catch {
-        setVideoError("Erro ao resolver URL do vídeo do Google Drive.");
+      const embedUrl = getGDriveEmbedUrl(video.video_url);
+      if (embedUrl) {
+        setResolvedVideoUrl(embedUrl);
+        setIsBuffering(false);
+      } else {
+        setVideoError("Link do Google Drive inválido.");
         setIsBuffering(false);
       }
     } else {
