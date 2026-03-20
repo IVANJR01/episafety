@@ -50,9 +50,13 @@ export function getGDriveDirectUrl(url: string): string | null {
 }
 
 /**
- * Keep the existing proxy helper name for compatibility in the app.
- * We now prefer the direct streaming URL because it is more reliable on Android/iPhone.
+ * Get a proxy URL that streams the Google Drive video through our edge function.
+ * The .mp4 suffix in the path improves compatibility with Safari/iPhone.
  */
 export function getGDriveProxyUrl(url: string): string | null {
-  return getGDriveDirectUrl(url);
+  const fileId = extractGDriveFileId(url);
+  if (!fileId) return null;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) return null;
+  return `${supabaseUrl}/functions/v1/gdrive-proxy/treinamento.mp4?id=${fileId}`;
 }
