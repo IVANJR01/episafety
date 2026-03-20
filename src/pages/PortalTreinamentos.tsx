@@ -252,38 +252,31 @@ export default function PortalTreinamentos() {
     };
   }, [shouldUseImmersiveMode]);
 
-  const playCurrentVideo = useCallback(async (startMuted: boolean) => {
+  // IMPORTANT: Do NOT call video.load() here — it breaks the user-gesture chain on iOS Safari
+  // and causes play() to be rejected. The video element must already have its src set via JSX.
+  const playCurrentVideo = useCallback((startMuted: boolean): Promise<boolean> => {
     const video = videoRef.current;
-    if (!video) return false;
+    if (!video) return Promise.resolve(false);
 
-    video.pause();
-    video.playsInline = true;
-    video.setAttribute("playsinline", "true");
-    video.setAttribute("webkit-playsinline", "true");
-    video.preload = "auto";
-    video.defaultMuted = startMuted;
     video.muted = startMuted;
-    video.controls = isAppleMobile;
-    video.setAttribute("x-webkit-airplay", "allow");
-
     if (startMuted) {
       video.setAttribute("muted", "true");
     } else {
       video.removeAttribute("muted");
     }
 
-    video.load();
+    // play() must be called synchronously within the user-gesture call stack
+    const playPromise = video.play();
 
-    try {
-      await video.play();
+    return playPromise.then(() => {
       setIsMuted(video.muted);
       setIsPlaying(true);
       setShowPlayOverlay(false);
       return true;
-    } catch {
+    }).catch(() => {
       return false;
-    }
-  }, [isAppleMobile]);
+    });
+  }, []);
 
   const enterBestFullscreen = useCallback(async () => {
     const video = videoRef.current as (HTMLVideoElement & {
@@ -438,7 +431,12 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void playCurrentVideo(video.muted);
+      // Call play() synchronously on user gesture
+      video.muted = isMuted;
+      video.play().then(() => {
+        setIsPlaying(true);
+        setShowPlayOverlay(false);
+      }).catch(() => {});
     } else {
       video.pause();
       setIsPlaying(false);
@@ -446,24 +444,35 @@ export default function PortalTreinamentos() {
     }
   };
 
-  const handleTapToPlay = async () => {
-    const playedMuted = await playCurrentVideo(true);
+  // This handler MUST call video.play() synchronously in the tap event stack.
+  // Any async work (load, await, setTimeout) before play() will cause Safari to reject it.
+  const handleTapToPlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
 
-    if (!playedMuted) {
-      toast({ title: "Não foi possível iniciar o vídeo", description: "O iPhone bloqueou a reprodução. Tente novamente após tocar no vídeo ou no botão play.", variant: "destructive" });
-      return;
-    }
+    // Always start muted on first tap — Safari guarantees muted playback
+    video.muted = true;
+    video.setAttribute("muted", "true");
 
-    if (!isAppleMobile) {
-      const video = videoRef.current;
-      if (video) {
+    const playPromise = video.play();
+
+    playPromise.then(() => {
+      setIsPlaying(true);
+      setShowPlayOverlay(false);
+      setIsMuted(true);
+
+      // After playback starts, try to unmute (works if gesture is still active)
+      if (!isAppleMobile) {
         video.muted = false;
         video.removeAttribute("muted");
         setIsMuted(false);
       }
-    } else {
-      setIsMuted(true);
-    }
+    }).catch(() => {
+      // Last resort: show native controls so user can tap the native play button
+      video.controls = true;
+      setShowPlayOverlay(false);
+      toast({ title: "Toque no botão ▶ do player para iniciar", description: "Use o controle nativo do vídeo abaixo." });
+    });
   };
 
   const handleToggleMute = () => {
@@ -556,11 +565,10 @@ export default function PortalTreinamentos() {
                     key={watchingVideo.id}
                     src={watchingVideo.video_url}
                     playsInline
-                    muted={isAppleMobile ? true : isMuted}
-                    controls={isAppleMobile}
+                    muted
                     // @ts-ignore - webkit attribute for iOS
                     webkit-playsinline="true"
-                    preload="metadata"
+                    preload="auto"
                     tabIndex={-1}
                     className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
                     onEnded={() => { void handleVideoEnded(); }}
@@ -575,7 +583,6 @@ export default function PortalTreinamentos() {
                     onContextMenu={(e) => e.preventDefault()}
                     onLoadedMetadata={(e) => {
                       const vid = e.currentTarget;
-                      vid.controls = isAppleMobile;
                       const dur = vid.duration || 0;
                       setDuration(dur);
                       if (maxWatchedTimeRef.current === -1 && watchingVideo) {
