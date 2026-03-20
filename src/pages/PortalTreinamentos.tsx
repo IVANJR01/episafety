@@ -486,6 +486,8 @@ export default function PortalTreinamentos() {
     autoplayAttemptedRef.current = false;
     setIsBuffering(false);
     setShouldAutoplayOnOpen(false);
+    setVideoError(null);
+    if (bufferingTimeoutRef.current) { clearTimeout(bufferingTimeoutRef.current); bufferingTimeoutRef.current = null; }
     void exitBestFullscreen();
     setUseNativeControls(false);
     setWatchingVideo(null);
