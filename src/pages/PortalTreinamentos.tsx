@@ -70,6 +70,8 @@ export default function PortalTreinamentos() {
   const [useNativeControls, setUseNativeControls] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [shouldAutoplayOnOpen, setShouldAutoplayOnOpen] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const bufferingTimeoutRef = useRef<number | null>(null);
 
   const [showSignature, setShowSignature] = useState(false);
   const signatureRef = useRef<SignatureCanvasRef>(null);
@@ -464,6 +466,7 @@ export default function PortalTreinamentos() {
     setShowPlayOverlay(!isMobileDevice);
     setShouldAutoplayOnOpen(isMobileDevice);
     setIsBuffering(isMobileDevice);
+    setVideoError(null);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
@@ -483,6 +486,8 @@ export default function PortalTreinamentos() {
     autoplayAttemptedRef.current = false;
     setIsBuffering(false);
     setShouldAutoplayOnOpen(false);
+    setVideoError(null);
+    if (bufferingTimeoutRef.current) { clearTimeout(bufferingTimeoutRef.current); bufferingTimeoutRef.current = null; }
     void exitBestFullscreen();
     setUseNativeControls(false);
     setWatchingVideo(null);
@@ -677,9 +682,23 @@ export default function PortalTreinamentos() {
                     preload={isMobileDevice ? "metadata" : "auto"}
                     tabIndex={-1}
                     className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
-                    onLoadStart={() => setIsBuffering(true)}
+                    onLoadStart={() => {
+                      setIsBuffering(true);
+                      setVideoError(null);
+                      if (bufferingTimeoutRef.current) clearTimeout(bufferingTimeoutRef.current);
+                      bufferingTimeoutRef.current = window.setTimeout(() => {
+                        const vid = videoRef.current;
+                        if (vid && vid.readyState < 2 && !vid.error) {
+                          setIsBuffering(false);
+                          setVideoError("Tempo limite atingido ao carregar o vídeo. O arquivo pode estar temporariamente indisponível.");
+                        }
+                      }, 30000);
+                    }}
                     onLoadedData={() => setIsBuffering(false)}
-                    onCanPlay={() => setIsBuffering(false)}
+                    onCanPlay={() => {
+                      setIsBuffering(false);
+                      if (bufferingTimeoutRef.current) { clearTimeout(bufferingTimeoutRef.current); bufferingTimeoutRef.current = null; }
+                    }}
                     onEnded={() => { void handleVideoEnded(); }}
                     onPlay={() => {
                       setIsBuffering(false);
@@ -744,6 +763,7 @@ export default function PortalTreinamentos() {
                     }}
                     onError={(e) => {
                       setIsBuffering(false);
+                      if (bufferingTimeoutRef.current) { clearTimeout(bufferingTimeoutRef.current); bufferingTimeoutRef.current = null; }
                       const vid = e.currentTarget;
                       const err = (vid as any).error;
                       console.error("Video error:", err?.code, err?.message);
@@ -755,18 +775,16 @@ export default function PortalTreinamentos() {
                           vid.play().catch(() => {});
                         }, 1000);
                       } else {
-                        if (isAppleMobile) {
-                          setUseNativeControls(true);
-                          vid.controls = true;
-                        } else {
-                          setShowPlayOverlay(true);
-                        }
+                        const errorMsg = err?.message
+                          ? `Erro ao carregar vídeo: ${err.message}`
+                          : "Não foi possível carregar o vídeo. Verifique sua conexão e tente novamente.";
+                        setVideoError(errorMsg);
                       }
                     }}
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
-                  {isBuffering && (
+                  {isBuffering && !videoError && (
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/50">
                       <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-4 py-3 shadow-lg">
                         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
@@ -774,7 +792,29 @@ export default function PortalTreinamentos() {
                       </div>
                     </div>
                   )}
-                  {showPlayOverlay && !useNativeControls && (
+                  {videoError && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80">
+                      <div className="flex flex-col items-center gap-3 rounded-xl bg-background px-6 py-5 shadow-lg max-w-sm text-center">
+                        <Video className="h-8 w-8 text-destructive" />
+                        <p className="text-sm text-foreground font-medium">{videoError}</p>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setVideoError(null);
+                            setIsBuffering(true);
+                            const vid = videoRef.current;
+                            if (vid) {
+                              vid.load();
+                              vid.play().catch(() => {});
+                            }
+                          }}
+                        >
+                          Tentar novamente
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  {showPlayOverlay && !useNativeControls && !videoError && (
                     <button
                       type="button"
                       onClick={handleTapToPlay}
