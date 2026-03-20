@@ -293,12 +293,33 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void video.play();
+      void video.play().catch(() => {});
       setIsPlaying(true);
+      setShowPlayOverlay(false);
     } else {
       video.pause();
       setIsPlaying(false);
     }
+  };
+
+  const handleTapToPlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = false;
+    setIsMuted(false);
+    void video.play().then(() => {
+      setIsPlaying(true);
+      setShowPlayOverlay(false);
+    }).catch(() => {
+      // Fallback: try muted first then unmute
+      video.muted = true;
+      void video.play().then(() => {
+        video.muted = false;
+        setIsMuted(false);
+        setIsPlaying(true);
+        setShowPlayOverlay(false);
+      }).catch(() => {});
+    });
   };
 
   const handleToggleMute = () => {
