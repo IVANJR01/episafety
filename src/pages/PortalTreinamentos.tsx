@@ -438,7 +438,7 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void playCurrentVideo(isMuted);
+      void playCurrentVideo(video.muted);
     } else {
       video.pause();
       setIsPlaying(false);
@@ -447,20 +447,23 @@ export default function PortalTreinamentos() {
   };
 
   const handleTapToPlay = async () => {
-    const playedWithSound = await playCurrentVideo(false);
-
-    if (playedWithSound) {
-      return;
-    }
-
     const playedMuted = await playCurrentVideo(true);
 
     if (!playedMuted) {
-      toast({ title: "Não foi possível iniciar o vídeo", description: "Toque novamente para tentar reproduzir no iPhone.", variant: "destructive" });
+      toast({ title: "Não foi possível iniciar o vídeo", description: "O iPhone bloqueou a reprodução. Tente novamente após tocar no vídeo ou no botão play.", variant: "destructive" });
       return;
     }
 
-    toast({ title: "Vídeo iniciado sem som", description: "Se o iPhone bloquear o áudio no primeiro toque, use o botão de volume para ativar o som." });
+    if (!isAppleMobile) {
+      const video = videoRef.current;
+      if (video) {
+        video.muted = false;
+        video.removeAttribute("muted");
+        setIsMuted(false);
+      }
+    } else {
+      setIsMuted(true);
+    }
   };
 
   const handleToggleMute = () => {
