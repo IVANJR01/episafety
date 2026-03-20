@@ -450,6 +450,8 @@ export default function PortalTreinamentos() {
       saveProgress(watchingVideo.id);
     }
 
+    const isDriveVideo = isGDriveUrl(video.video_url);
+
     autoplayAttemptedRef.current = false;
     setWatchingVideo(video);
     setVideoEnded(false);
@@ -458,10 +460,10 @@ export default function PortalTreinamentos() {
     setIsMuted(isMobileDevice);
     setIsFullscreen(false);
     setIsImmersiveMode(false);
-    setUseNativeControls(isMobileDevice);
-    setShowPlayOverlay(!isMobileDevice);
-    setShouldAutoplayOnOpen(isMobileDevice);
-    setIsBuffering(isMobileDevice);
+    setUseNativeControls(isMobileDevice || isDriveVideo);
+    setShowPlayOverlay(!(isMobileDevice || isDriveVideo));
+    setShouldAutoplayOnOpen(isMobileDevice && !isDriveVideo);
+    setIsBuffering(!isDriveVideo && isMobileDevice);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
@@ -668,7 +670,6 @@ export default function PortalTreinamentos() {
                       ? (getGDriveProxyUrl(watchingVideo.video_url) || watchingVideo.video_url)
                       : `${watchingVideo.video_url}${watchingVideo.video_url.includes("?") ? "&" : "?"}mobilePlayback=1`
                     }
-                    crossOrigin={isGDriveUrl(watchingVideo.video_url) ? "anonymous" : undefined}
                     playsInline
                     controls={useNativeControls}
                     // @ts-ignore - webkit attribute for iOS
