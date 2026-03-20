@@ -836,6 +836,9 @@ export default function VideoTreinamentos() {
                                     setModuloCursoId(modulo.curso_id || "");
                                     setModuloForm({ titulo: modulo.titulo, descricao: modulo.descricao || "", videoUrl: modulo.video_url || "" });
                                     setVideoFile(null);
+                                    const isDrive = isGDriveUrl(modulo.video_url || "");
+                                    setVideoSource(isDrive ? "drive" : "upload");
+                                    setGoogleDriveUrl(isDrive ? modulo.video_url : "");
                                     setOpenModuloForm(true);
                                   }} title="Editar" className="h-7 w-7 sm:h-8 sm:w-8">
                                     <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
