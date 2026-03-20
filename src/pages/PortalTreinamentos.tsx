@@ -661,7 +661,6 @@ export default function PortalTreinamentos() {
             <CardContent className={`p-0 ${shouldUseImmersiveMode ? "overflow-visible rounded-none" : "overflow-hidden rounded-lg"}`}>
               <div ref={videoContainerRef} className={`bg-card ${shouldUseImmersiveMode ? "fixed inset-0 z-50 flex flex-col bg-background" : ""}`}>
                 <div className="relative flex-1 bg-muted">
-                    <>
                   <video
                     ref={videoRef}
                     key={watchingVideo.id}
@@ -786,11 +785,8 @@ export default function PortalTreinamentos() {
                       </div>
                     </button>
                   )}
-                    </>
-                </div>
                 </div>
 
-                {(
                 <div className={`flex items-center gap-3 border-t border-border bg-card px-4 py-3 ${shouldUseImmersiveMode ? "pb-[max(0.75rem,env(safe-area-inset-bottom))]" : ""}`}>
                   <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
                     {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -834,7 +830,6 @@ export default function PortalTreinamentos() {
                     {shouldUseImmersiveMode ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                   </Button>
                 </div>
-                )}
 
               </div>
             </CardContent>
