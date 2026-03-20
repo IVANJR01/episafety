@@ -228,14 +228,26 @@ export default function VideoTreinamentos() {
       toast({ title: "Informe o título do módulo", variant: "destructive" });
       return;
     }
-    if (!videoFile && !editingModulo) {
+    if (!videoFile && !editingModulo && videoSource === "upload") {
       toast({ title: "Selecione um arquivo de vídeo (.mp4)", variant: "destructive" });
+      return;
+    }
+    if (videoSource === "drive" && !editingModulo && !googleDriveUrl.trim()) {
+      toast({ title: "Cole o link do Google Drive", variant: "destructive" });
+      return;
+    }
+    if (videoSource === "drive" && googleDriveUrl.trim() && !isGDriveUrl(googleDriveUrl)) {
+      toast({ title: "Link inválido", description: "Cole um link válido do Google Drive (drive.google.com/file/d/...)", variant: "destructive" });
       return;
     }
     setUploading(true);
     try {
       let videoUrl = editingModulo?.video_url || "";
-      if (videoFile) {
+
+      if (videoSource === "drive" && googleDriveUrl.trim()) {
+        // Use the Google Drive share URL directly — the player will handle conversion
+        videoUrl = googleDriveUrl.trim();
+      } else if (videoFile) {
         const fileExt = videoFile.name.split(".").pop();
         const fileName = `${crypto.randomUUID()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage.from("videos-treinamento").upload(fileName, videoFile, { cacheControl: "31536000", upsert: false });
