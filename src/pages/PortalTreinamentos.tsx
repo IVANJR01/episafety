@@ -565,7 +565,6 @@ export default function PortalTreinamentos() {
                     key={watchingVideo.id}
                     src={watchingVideo.video_url}
                     playsInline
-                    muted
                     // @ts-ignore - webkit attribute for iOS
                     webkit-playsinline="true"
                     preload="auto"
@@ -609,14 +608,38 @@ export default function PortalTreinamentos() {
                     }}
                     onSeeking={(e) => {
                       const vid = e.currentTarget;
-                      const allowedTime = maxWatchedTimeRef.current + 0.25;
+                      const allowedTime = maxWatchedTimeRef.current + 2;
                       if (vid.currentTime > allowedTime) {
                         vid.currentTime = maxWatchedTimeRef.current;
                       }
                     }}
+                    onStalled={() => {
+                      // iOS Safari may stall; nudge playback
+                      const vid = videoRef.current;
+                      if (vid && !vid.paused && vid.readyState < 3) {
+                        const t = vid.currentTime;
+                        vid.currentTime = t + 0.01;
+                      }
+                    }}
+                    onWaiting={() => {
+                      // Show that the video is buffering
+                      console.log("Video buffering at", videoRef.current?.currentTime);
+                    }}
                     onError={(e) => {
-                      console.error("Video load error:", (e.currentTarget as any).error);
-                      setShowPlayOverlay(true);
+                      const vid = e.currentTarget;
+                      const err = (vid as any).error;
+                      console.error("Video error:", err?.code, err?.message);
+                      // If it's a network error, try to resume
+                      if (err?.code === 2 && vid.currentTime > 0) {
+                        const savedTime = vid.currentTime;
+                        setTimeout(() => {
+                          vid.load();
+                          vid.currentTime = savedTime;
+                          vid.play().catch(() => {});
+                        }, 1000);
+                      } else {
+                        setShowPlayOverlay(true);
+                      }
                     }}
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
