@@ -431,7 +431,12 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void playCurrentVideo(video.muted);
+      // Call play() synchronously on user gesture
+      video.muted = isMuted;
+      video.play().then(() => {
+        setIsPlaying(true);
+        setShowPlayOverlay(false);
+      }).catch(() => {});
     } else {
       video.pause();
       setIsPlaying(false);
@@ -439,24 +444,35 @@ export default function PortalTreinamentos() {
     }
   };
 
-  const handleTapToPlay = async () => {
-    const playedMuted = await playCurrentVideo(true);
+  // This handler MUST call video.play() synchronously in the tap event stack.
+  // Any async work (load, await, setTimeout) before play() will cause Safari to reject it.
+  const handleTapToPlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
 
-    if (!playedMuted) {
-      toast({ title: "Não foi possível iniciar o vídeo", description: "O iPhone bloqueou a reprodução. Tente novamente após tocar no vídeo ou no botão play.", variant: "destructive" });
-      return;
-    }
+    // Always start muted on first tap — Safari guarantees muted playback
+    video.muted = true;
+    video.setAttribute("muted", "true");
 
-    if (!isAppleMobile) {
-      const video = videoRef.current;
-      if (video) {
+    const playPromise = video.play();
+
+    playPromise.then(() => {
+      setIsPlaying(true);
+      setShowPlayOverlay(false);
+      setIsMuted(true);
+
+      // After playback starts, try to unmute (works if gesture is still active)
+      if (!isAppleMobile) {
         video.muted = false;
         video.removeAttribute("muted");
         setIsMuted(false);
       }
-    } else {
-      setIsMuted(true);
-    }
+    }).catch(() => {
+      // Last resort: show native controls so user can tap the native play button
+      video.controls = true;
+      setShowPlayOverlay(false);
+      toast({ title: "Toque no botão ▶ do player para iniciar", description: "Use o controle nativo do vídeo abaixo." });
+    });
   };
 
   const handleToggleMute = () => {
