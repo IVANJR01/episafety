@@ -256,17 +256,23 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return false;
 
+    video.pause();
     video.playsInline = true;
     video.setAttribute("playsinline", "true");
     video.setAttribute("webkit-playsinline", "true");
+    video.preload = "auto";
     video.defaultMuted = startMuted;
     video.muted = startMuted;
+    video.controls = isAppleMobile;
+    video.setAttribute("x-webkit-airplay", "allow");
 
     if (startMuted) {
       video.setAttribute("muted", "true");
     } else {
       video.removeAttribute("muted");
     }
+
+    video.load();
 
     try {
       await video.play();
@@ -277,7 +283,7 @@ export default function PortalTreinamentos() {
     } catch {
       return false;
     }
-  }, []);
+  }, [isAppleMobile]);
 
   const enterBestFullscreen = useCallback(async () => {
     const video = videoRef.current as (HTMLVideoElement & {
