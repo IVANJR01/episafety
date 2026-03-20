@@ -750,6 +750,7 @@ export default function PortalTreinamentos() {
                     }}
                     onError={(e) => {
                       setIsBuffering(false);
+                      if (bufferingTimeoutRef.current) { clearTimeout(bufferingTimeoutRef.current); bufferingTimeoutRef.current = null; }
                       const vid = e.currentTarget;
                       const err = (vid as any).error;
                       console.error("Video error:", err?.code, err?.message);
@@ -761,12 +762,10 @@ export default function PortalTreinamentos() {
                           vid.play().catch(() => {});
                         }, 1000);
                       } else {
-                        if (isAppleMobile) {
-                          setUseNativeControls(true);
-                          vid.controls = true;
-                        } else {
-                          setShowPlayOverlay(true);
-                        }
+                        const errorMsg = err?.message
+                          ? `Erro ao carregar vídeo: ${err.message}`
+                          : "Não foi possível carregar o vídeo. Verifique sua conexão e tente novamente.";
+                        setVideoError(errorMsg);
                       }
                     }}
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
