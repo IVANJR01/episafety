@@ -450,6 +450,8 @@ export default function PortalTreinamentos() {
       saveProgress(watchingVideo.id);
     }
 
+    const isDriveVideo = isGDriveUrl(video.video_url);
+
     autoplayAttemptedRef.current = false;
     setWatchingVideo(video);
     setVideoEnded(false);
@@ -458,10 +460,10 @@ export default function PortalTreinamentos() {
     setIsMuted(isMobileDevice);
     setIsFullscreen(false);
     setIsImmersiveMode(false);
-    setUseNativeControls(isMobileDevice);
-    setShowPlayOverlay(!isMobileDevice);
-    setShouldAutoplayOnOpen(isMobileDevice);
-    setIsBuffering(isMobileDevice);
+    setUseNativeControls(isMobileDevice || isDriveVideo);
+    setShowPlayOverlay(!(isMobileDevice || isDriveVideo));
+    setShouldAutoplayOnOpen(isMobileDevice && !isDriveVideo);
+    setIsBuffering(!isDriveVideo && isMobileDevice);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
