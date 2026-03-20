@@ -59,14 +59,13 @@ export default function PortalTreinamentos() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isImmersiveMode, setIsImmersiveMode] = useState(false);
+  const [isLandscapeViewport, setIsLandscapeViewport] = useState(false);
+  const [isSmallViewport, setIsSmallViewport] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
-  
-
-
-
 
   const [showSignature, setShowSignature] = useState(false);
   const signatureRef = useRef<SignatureCanvasRef>(null);
@@ -75,6 +74,13 @@ export default function PortalTreinamentos() {
   const [funcionarioId, setFuncionarioId] = useState<string | null>(null);
   const [funcEmpresaId, setFuncEmpresaId] = useState<string | null>(null);
   const [assignedCursoIds, setAssignedCursoIds] = useState<string[]>([]);
+
+  const isAppleMobile = useMemo(() => {
+    if (typeof navigator === "undefined") return false;
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }, []);
+
+  const shouldUseImmersiveMode = !!watchingVideo && (isFullscreen || isImmersiveMode || (isSmallViewport && isLandscapeViewport));
 
   const normalize = (value?: string | null) =>
     (value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
@@ -206,6 +212,135 @@ export default function PortalTreinamentos() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateViewportState = () => {
+      setIsLandscapeViewport(window.innerWidth > window.innerHeight);
+      setIsSmallViewport(Math.min(window.innerWidth, window.innerHeight) < 768);
+    };
+
+    updateViewportState();
+    window.addEventListener("resize", updateViewportState);
+    window.addEventListener("orientationchange", updateViewportState);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportState);
+      window.removeEventListener("orientationchange", updateViewportState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!watchingVideo || isFullscreen) return;
+
+    if (isSmallViewport && isLandscapeViewport) {
+      setIsImmersiveMode(true);
+      return;
+    }
+
+    setIsImmersiveMode(false);
+  }, [watchingVideo, isFullscreen, isLandscapeViewport, isSmallViewport]);
+
+  useEffect(() => {
+    if (!shouldUseImmersiveMode || typeof document === "undefined") return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [shouldUseImmersiveMode]);
+
+  const playCurrentVideo = useCallback(async (startMuted: boolean) => {
+    const video = videoRef.current;
+    if (!video) return false;
+
+    video.playsInline = true;
+    video.setAttribute("playsinline", "true");
+    video.setAttribute("webkit-playsinline", "true");
+    video.defaultMuted = startMuted;
+    video.muted = startMuted;
+
+    if (startMuted) {
+      video.setAttribute("muted", "true");
+    } else {
+      video.removeAttribute("muted");
+    }
+
+    try {
+      await video.play();
+      setIsMuted(video.muted);
+      setIsPlaying(true);
+      setShowPlayOverlay(false);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const enterBestFullscreen = useCallback(async () => {
+    const video = videoRef.current as (HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+    }) | null;
+    const container = videoContainerRef.current as (HTMLDivElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    }) | null;
+
+    if (!video || !container) return false;
+
+    if (isAppleMobile && typeof video.webkitEnterFullscreen === "function") {
+      try {
+        video.webkitEnterFullscreen();
+        setIsFullscreen(true);
+        return true;
+      } catch {}
+    }
+
+    if (container.requestFullscreen) {
+      try {
+        await container.requestFullscreen();
+        setIsFullscreen(true);
+        return true;
+      } catch {}
+    }
+
+    if (typeof container.webkitRequestFullscreen === "function") {
+      try {
+        await container.webkitRequestFullscreen();
+        setIsFullscreen(true);
+        return true;
+      } catch {}
+    }
+
+    setIsImmersiveMode(true);
+    return true;
+  }, [isAppleMobile]);
+
+  const exitBestFullscreen = useCallback(async () => {
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
+    const video = videoRef.current as (HTMLVideoElement & {
+      webkitDisplayingFullscreen?: boolean;
+      webkitExitFullscreen?: () => void;
+    }) | null;
+
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if (doc.webkitFullscreenElement && typeof doc.webkitExitFullscreen === "function") {
+        await doc.webkitExitFullscreen();
+      } else if (video?.webkitDisplayingFullscreen && typeof video.webkitExitFullscreen === "function") {
+        video.webkitExitFullscreen();
+      }
+    } catch {}
+
+    setIsFullscreen(false);
+    setIsImmersiveMode(false);
+  }, []);
+
   // Save progress when leaving a video
   const saveProgress = useCallback(async (videoId: string) => {
     if (!funcionarioId) return;
@@ -235,6 +370,8 @@ export default function PortalTreinamentos() {
     setShowSignature(false);
     setIsPlaying(false);
     setIsMuted(false);
+    setIsFullscreen(false);
+    setIsImmersiveMode(false);
     setShowPlayOverlay(true);
     setCurrentTime(0);
     setDuration(0);
@@ -252,12 +389,14 @@ export default function PortalTreinamentos() {
     if (watchingVideo && !videoEnded) {
       saveProgress(watchingVideo.id);
     }
+    void exitBestFullscreen();
     setWatchingVideo(null);
     fetchData();
   };
 
   const handleVideoEnded = async () => {
     setVideoEnded(true);
+    await exitBestFullscreen();
     if (!watchingVideo || !funcionarioId) return;
     setShowSignature(true);
   };
@@ -293,33 +432,29 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void video.play().catch(() => {});
-      setIsPlaying(true);
-      setShowPlayOverlay(false);
+      void playCurrentVideo(isMuted);
     } else {
       video.pause();
       setIsPlaying(false);
+      setShowPlayOverlay(true);
     }
   };
 
-  const handleTapToPlay = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = false;
-    setIsMuted(false);
-    void video.play().then(() => {
-      setIsPlaying(true);
-      setShowPlayOverlay(false);
-    }).catch(() => {
-      // Fallback: try muted first then unmute
-      video.muted = true;
-      void video.play().then(() => {
-        video.muted = false;
-        setIsMuted(false);
-        setIsPlaying(true);
-        setShowPlayOverlay(false);
-      }).catch(() => {});
-    });
+  const handleTapToPlay = async () => {
+    const playedWithSound = await playCurrentVideo(false);
+
+    if (playedWithSound) {
+      return;
+    }
+
+    const playedMuted = await playCurrentVideo(true);
+
+    if (!playedMuted) {
+      toast({ title: "Não foi possível iniciar o vídeo", description: "Toque novamente para tentar reproduzir no iPhone.", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Vídeo iniciado sem som", description: "Se o iPhone bloquear o áudio no primeiro toque, use o botão de volume para ativar o som." });
   };
 
   const handleToggleMute = () => {
@@ -341,35 +476,40 @@ export default function PortalTreinamentos() {
   };
 
   const handleToggleFullscreen = async () => {
-    const container = videoContainerRef.current;
-    if (!container) return;
-
-    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-      if (container.requestFullscreen) {
-        await container.requestFullscreen().catch(() => {});
-      } else if ((container as any).webkitRequestFullscreen) {
-        (container as any).webkitRequestFullscreen();
-      }
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        await document.exitFullscreen().catch(() => {});
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      }
-      setIsFullscreen(false);
+    if (shouldUseImmersiveMode) {
+      await exitBestFullscreen();
+      return;
     }
+
+    await enterBestFullscreen();
   };
 
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement || !!(document as any).webkitFullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    document.addEventListener("webkitfullscreenchange", handler);
-    return () => {
-      document.removeEventListener("fullscreenchange", handler);
-      document.removeEventListener("webkitfullscreenchange", handler);
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
     };
-  }, []);
+
+    const handleDocumentFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement || !!doc.webkitFullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleDocumentFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleDocumentFullscreenChange);
+
+    const video = videoRef.current;
+    const handleIOSFullscreenStart = () => setIsFullscreen(true);
+    const handleIOSFullscreenEnd = () => setIsFullscreen(false);
+
+    video?.addEventListener("webkitbeginfullscreen", handleIOSFullscreenStart as EventListener);
+    video?.addEventListener("webkitendfullscreen", handleIOSFullscreenEnd as EventListener);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleDocumentFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleDocumentFullscreenChange);
+      video?.removeEventListener("webkitbeginfullscreen", handleIOSFullscreenStart as EventListener);
+      video?.removeEventListener("webkitendfullscreen", handleIOSFullscreenEnd as EventListener);
+    };
+  }, [watchingVideo]);
 
   const formatTime = (timeInSeconds: number) => {
     const safe = Number.isFinite(timeInSeconds) ? Math.max(0, Math.floor(timeInSeconds)) : 0;
@@ -389,126 +529,135 @@ export default function PortalTreinamentos() {
   // Watching a video
   if (watchingVideo) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-4xl mx-auto p-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={handleGoBack} className="text-sm">← Voltar</Button>
-            <Badge variant="outline">{watchingVideo.titulo}</Badge>
-          </div>
+      <div className={`min-h-screen bg-background ${shouldUseImmersiveMode ? "overflow-hidden" : ""}`}>
+        <div className={`mx-auto ${shouldUseImmersiveMode ? "max-w-none p-0" : "max-w-4xl p-4 space-y-4"}`}>
+          {!shouldUseImmersiveMode && (
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" onClick={handleGoBack} className="text-sm">← Voltar</Button>
+              <Badge variant="outline">{watchingVideo.titulo}</Badge>
+            </div>
+          )}
 
-          <Card>
-            <CardContent className="p-0 overflow-hidden rounded-lg">
-              <div ref={videoContainerRef} className={`bg-card ${isFullscreen ? 'flex flex-col h-screen w-screen' : ''}`}>
-                    <div className="relative">
-                      <video
-                        ref={videoRef}
-                        src={watchingVideo.video_url}
-                        playsInline
-                        // @ts-ignore - webkit attribute for iOS
-                        webkit-playsinline="true"
-                        preload="auto"
-                        tabIndex={-1}
-                        className={`w-full bg-muted ${isFullscreen ? 'flex-1 object-contain' : 'aspect-video'}`}
-                        onEnded={handleVideoEnded}
-                        onPlay={() => { setIsPlaying(true); setShowPlayOverlay(false); }}
-                        onPause={() => setIsPlaying(false)}
-                        onContextMenu={(e) => e.preventDefault()}
-                        onLoadedMetadata={(e) => {
-                          const vid = e.currentTarget;
-                          const dur = vid.duration || 0;
-                          setDuration(dur);
-                          if (maxWatchedTimeRef.current === -1 && watchingVideo) {
-                            const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
-                            if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
-                              const resumeTime = (viz.percentual_assistido / 100) * dur;
-                              vid.currentTime = resumeTime;
-                              maxWatchedTimeRef.current = resumeTime;
-                              setCurrentTime(resumeTime);
-                              return;
-                            }
-                          }
-                          maxWatchedTimeRef.current = 0;
-                          setCurrentTime(0);
-                        }}
-                        onTimeUpdate={(e) => {
-                          const vid = e.currentTarget;
-                          const nextTime = vid.currentTime;
-                          if (nextTime > maxWatchedTimeRef.current) {
-                            maxWatchedTimeRef.current = nextTime;
-                          }
-                          setCurrentTime(nextTime);
-                          setDuration(vid.duration || 0);
-                        }}
-                        onSeeking={(e) => {
-                          const vid = e.currentTarget;
-                          const allowedTime = maxWatchedTimeRef.current + 0.25;
-                          if (vid.currentTime > allowedTime) {
-                            vid.currentTime = maxWatchedTimeRef.current;
-                          }
-                        }}
-                        onError={(e) => {
-                          console.error("Video load error:", (e.currentTarget as any).error);
-                        }}
-                        controls={false}
-                        controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
-                        disablePictureInPicture
-                      />
-                      {showPlayOverlay && (
-                        <button
-                          type="button"
-                          onClick={handleTapToPlay}
-                          className="absolute inset-0 flex items-center justify-center bg-foreground/30 z-10 cursor-pointer"
-                          aria-label="Iniciar vídeo"
-                        >
-                          <div className="bg-primary rounded-full p-4 shadow-lg">
-                            <Play className="h-8 w-8 text-primary-foreground" fill="currentColor" />
-                          </div>
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 border-t border-border bg-card px-4 py-3">
-                      <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
-                        {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                      </Button>
-                      <div className="flex-1 space-y-2">
-                        <div
-                          className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
-                          onClick={(e) => {
-                            if (!videoRef.current || duration <= 0) return;
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const clickX = e.clientX - rect.left;
-                            const clickPercent = clickX / rect.width;
-                            const clickTime = clickPercent * duration;
-                            if (clickTime <= maxWatchedTimeRef.current + 0.25) {
-                              videoRef.current.currentTime = clickTime;
-                              setCurrentTime(clickTime);
-                            }
-                          }}
-                        >
-                          <div
-                            className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
-                            style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
-                          />
-                          <div
-                            className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
-                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{formatTime(currentTime)}</span>
-                          <span>{formatTime(duration)}</span>
-                        </div>
+          <Card className={shouldUseImmersiveMode ? "rounded-none border-0 shadow-none" : undefined}>
+            <CardContent className={`p-0 ${shouldUseImmersiveMode ? "overflow-visible rounded-none" : "overflow-hidden rounded-lg"}`}>
+              <div ref={videoContainerRef} className={`bg-card ${shouldUseImmersiveMode ? "fixed inset-0 z-50 flex flex-col bg-background" : ""}`}>
+                <div className="relative flex-1 bg-muted">
+                  <video
+                    ref={videoRef}
+                    src={watchingVideo.video_url}
+                    playsInline
+                    // @ts-ignore - webkit attribute for iOS
+                    webkit-playsinline="true"
+                    preload="auto"
+                    tabIndex={-1}
+                    className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
+                    onEnded={() => { void handleVideoEnded(); }}
+                    onPlay={() => {
+                      setIsPlaying(true);
+                      setShowPlayOverlay(false);
+                    }}
+                    onPause={() => {
+                      setIsPlaying(false);
+                      if (!videoEnded) setShowPlayOverlay(true);
+                    }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onLoadedMetadata={(e) => {
+                      const vid = e.currentTarget;
+                      const dur = vid.duration || 0;
+                      setDuration(dur);
+                      if (maxWatchedTimeRef.current === -1 && watchingVideo) {
+                        const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
+                        if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
+                          const resumeTime = (viz.percentual_assistido / 100) * dur;
+                          vid.currentTime = resumeTime;
+                          maxWatchedTimeRef.current = resumeTime;
+                          setCurrentTime(resumeTime);
+                          return;
+                        }
+                      }
+                      maxWatchedTimeRef.current = 0;
+                      setCurrentTime(0);
+                    }}
+                    onTimeUpdate={(e) => {
+                      const vid = e.currentTarget;
+                      const nextTime = vid.currentTime;
+                      if (nextTime > maxWatchedTimeRef.current) {
+                        maxWatchedTimeRef.current = nextTime;
+                      }
+                      setCurrentTime(nextTime);
+                      setDuration(vid.duration || 0);
+                    }}
+                    onSeeking={(e) => {
+                      const vid = e.currentTarget;
+                      const allowedTime = maxWatchedTimeRef.current + 0.25;
+                      if (vid.currentTime > allowedTime) {
+                        vid.currentTime = maxWatchedTimeRef.current;
+                      }
+                    }}
+                    onError={(e) => {
+                      console.error("Video load error:", (e.currentTarget as any).error);
+                      setShowPlayOverlay(true);
+                    }}
+                    controls={false}
+                    controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
+                    disablePictureInPicture
+                  />
+                  {showPlayOverlay && (
+                    <button
+                      type="button"
+                      onClick={handleTapToPlay}
+                      className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/30 cursor-pointer"
+                      aria-label="Iniciar vídeo"
+                    >
+                      <div className="bg-primary rounded-full p-4 shadow-lg">
+                        <Play className="h-8 w-8 text-primary-foreground" fill="currentColor" />
                       </div>
-                      <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
-                        {playbackRate}x
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
-                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                      </Button>
+                    </button>
+                  )}
+                </div>
+                <div className={`flex items-center gap-3 border-t border-border bg-card px-4 py-3 ${shouldUseImmersiveMode ? "pb-[max(0.75rem,env(safe-area-inset-bottom))]" : ""}`}>
+                  <Button type="button" variant="outline" size="sm" onClick={handleTogglePlay}>
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleToggleMute}>
+                    {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </Button>
+                  <div className="flex-1 space-y-2">
+                    <div
+                      className="relative h-3 overflow-hidden rounded-full bg-muted cursor-pointer group"
+                      onClick={(e) => {
+                        if (!videoRef.current || duration <= 0) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const clickX = e.clientX - rect.left;
+                        const clickPercent = clickX / rect.width;
+                        const clickTime = clickPercent * duration;
+                        if (clickTime <= maxWatchedTimeRef.current + 0.25) {
+                          videoRef.current.currentTime = clickTime;
+                          setCurrentTime(clickTime);
+                        }
+                      }}
+                    >
+                      <div
+                        className="absolute top-0 left-0 h-full rounded-full bg-muted-foreground/20"
+                        style={{ width: `${duration > 0 ? (maxWatchedTimeRef.current / duration) * 100 : 0}%` }}
+                      />
+                      <div
+                        className="absolute top-0 left-0 h-full rounded-full bg-primary transition-[width] duration-200"
+                        style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                      />
                     </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={handleCycleSpeed} className="text-xs font-semibold min-w-[3rem]">
+                    {playbackRate}x
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleToggleFullscreen}>
+                    {shouldUseImmersiveMode ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
