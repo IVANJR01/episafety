@@ -680,7 +680,18 @@ export default function PortalTreinamentos() {
                     preload={isMobileDevice ? "metadata" : "auto"}
                     tabIndex={-1}
                     className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
-                    onLoadStart={() => setIsBuffering(true)}
+                    onLoadStart={() => {
+                      setIsBuffering(true);
+                      setVideoError(null);
+                      if (bufferingTimeoutRef.current) clearTimeout(bufferingTimeoutRef.current);
+                      bufferingTimeoutRef.current = window.setTimeout(() => {
+                        const vid = videoRef.current;
+                        if (vid && vid.readyState < 2 && !vid.error) {
+                          setIsBuffering(false);
+                          setVideoError("Tempo limite atingido ao carregar o vídeo. O arquivo pode estar temporariamente indisponível.");
+                        }
+                      }, 30000);
+                    }}
                     onLoadedData={() => setIsBuffering(false)}
                     onCanPlay={() => {
                       setIsBuffering(false);
