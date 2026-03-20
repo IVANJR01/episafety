@@ -252,38 +252,31 @@ export default function PortalTreinamentos() {
     };
   }, [shouldUseImmersiveMode]);
 
-  const playCurrentVideo = useCallback(async (startMuted: boolean) => {
+  // IMPORTANT: Do NOT call video.load() here — it breaks the user-gesture chain on iOS Safari
+  // and causes play() to be rejected. The video element must already have its src set via JSX.
+  const playCurrentVideo = useCallback((startMuted: boolean): Promise<boolean> => {
     const video = videoRef.current;
-    if (!video) return false;
+    if (!video) return Promise.resolve(false);
 
-    video.pause();
-    video.playsInline = true;
-    video.setAttribute("playsinline", "true");
-    video.setAttribute("webkit-playsinline", "true");
-    video.preload = "auto";
-    video.defaultMuted = startMuted;
     video.muted = startMuted;
-    video.controls = isAppleMobile;
-    video.setAttribute("x-webkit-airplay", "allow");
-
     if (startMuted) {
       video.setAttribute("muted", "true");
     } else {
       video.removeAttribute("muted");
     }
 
-    video.load();
+    // play() must be called synchronously within the user-gesture call stack
+    const playPromise = video.play();
 
-    try {
-      await video.play();
+    return playPromise.then(() => {
       setIsMuted(video.muted);
       setIsPlaying(true);
       setShowPlayOverlay(false);
       return true;
-    } catch {
+    }).catch(() => {
       return false;
-    }
-  }, [isAppleMobile]);
+    });
+  }, []);
 
   const enterBestFullscreen = useCallback(async () => {
     const video = videoRef.current as (HTMLVideoElement & {
