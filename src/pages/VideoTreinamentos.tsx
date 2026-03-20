@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { VideoPlayer, VideoThumbnail } from "@/components/VideoPlayer";
-import { isGDriveUrl, extractGDriveFileId } from "@/lib/googleDrive";
+import { isGDriveUrl } from "@/lib/googleDrive";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -1027,7 +1027,7 @@ export default function VideoTreinamentos() {
                     <p className="text-xs text-destructive">Link inválido. Use o formato: drive.google.com/file/d/...</p>
                   )}
                   {googleDriveUrl && isGDriveUrl(googleDriveUrl) && (
-                    <p className="text-xs text-green-600">✓ Link válido do Google Drive</p>
+                    <p className="text-xs text-primary">✓ Link válido do Google Drive</p>
                   )}
                 </div>
               )}

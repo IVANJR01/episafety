@@ -1,8 +1,10 @@
 import { Play, AlertTriangle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { getGDriveEmbedUrl, isGDriveUrl } from "@/lib/googleDrive";
 
 function isDirectVideoUrl(url: string): boolean {
   if (!url) return false;
+  if (isGDriveUrl(url)) return true;
 
   try {
     const u = new URL(url);
@@ -38,6 +40,7 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ url, controls, className, videoRef, autoPlay, muted, playsInline, preload, onEnded, onPlay, onPause, onContextMenu, onLoadedMetadata, onTimeUpdate, tabIndex }: VideoPlayerProps) {
   const [hasError, setHasError] = useState(false);
+  const isDrive = isGDriveUrl(url);
 
   if (!url || hasError || !isDirectVideoUrl(url)) {
     return (
@@ -47,6 +50,19 @@ export function VideoPlayer({ url, controls, className, videoRef, autoPlay, mute
           Este arquivo não é um vídeo visível. Faça upload de um vídeo .mp4 válido para este módulo.
         </p>
       </div>
+    );
+  }
+
+  if (isDrive) {
+    return (
+      <iframe
+        src={getGDriveEmbedUrl(url) || ""}
+        className={className}
+        allow="autoplay; fullscreen"
+        allowFullScreen
+        sandbox="allow-scripts allow-same-origin allow-popups"
+        title="Vídeo do Google Drive"
+      />
     );
   }
 
@@ -88,11 +104,12 @@ interface VideoThumbnailProps {
 
 export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize = "h-5 w-5", completed }: VideoThumbnailProps) {
   const validVideo = isDirectVideoUrl(url);
+  const isDrive = isGDriveUrl(url);
   const thumbnailRef = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
-    if (!validVideo) return;
+    if (!validVideo || isDrive) return;
 
     const element = thumbnailRef.current;
     if (!element) return;
@@ -114,11 +131,11 @@ export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize 
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [validVideo, url]);
+  }, [validVideo, isDrive, url]);
 
   return (
     <div ref={thumbnailRef} className={`relative bg-muted rounded overflow-hidden flex-shrink-0 ${className}`}>
-      {validVideo && shouldLoad ? (
+      {validVideo && shouldLoad && !isDrive ? (
         <video
           src={url}
           className="w-full h-full object-cover"
@@ -129,7 +146,11 @@ export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize 
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-muted">
-          {!validVideo && <AlertTriangle className="h-4 w-4 text-destructive" />}
+          {!validVideo ? (
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          ) : isDrive ? (
+            <span className="text-[10px] font-medium text-muted-foreground">Google Drive</span>
+          ) : null}
         </div>
       )}
       <div className="absolute inset-0 flex items-center justify-center bg-foreground/30">
