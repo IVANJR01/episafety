@@ -670,7 +670,6 @@ export default function PortalTreinamentos() {
                       ? (getGDriveProxyUrl(watchingVideo.video_url) || watchingVideo.video_url)
                       : `${watchingVideo.video_url}${watchingVideo.video_url.includes("?") ? "&" : "?"}mobilePlayback=1`
                     }
-                    crossOrigin={isGDriveUrl(watchingVideo.video_url) ? "anonymous" : undefined}
                     playsInline
                     controls={useNativeControls}
                     // @ts-ignore - webkit attribute for iOS
