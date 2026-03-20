@@ -583,7 +583,6 @@ export default function PortalTreinamentos() {
                     onContextMenu={(e) => e.preventDefault()}
                     onLoadedMetadata={(e) => {
                       const vid = e.currentTarget;
-                      vid.controls = isAppleMobile;
                       const dur = vid.duration || 0;
                       setDuration(dur);
                       if (maxWatchedTimeRef.current === -1 && watchingVideo) {
