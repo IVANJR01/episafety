@@ -570,6 +570,7 @@ export default function PortalTreinamentos() {
                     key={watchingVideo.id}
                     src={watchingVideo.video_url}
                     playsInline
+                    controls={useNativeControls}
                     // @ts-ignore - webkit attribute for iOS
                     webkit-playsinline="true"
                     preload="auto"
@@ -582,13 +583,14 @@ export default function PortalTreinamentos() {
                     }}
                     onPause={() => {
                       setIsPlaying(false);
-                      if (!videoEnded) setShowPlayOverlay(true);
+                      if (!videoEnded && !isAppleMobile) setShowPlayOverlay(true);
                     }}
                     onContextMenu={(e) => e.preventDefault()}
                     onLoadedMetadata={(e) => {
                       const vid = e.currentTarget;
                       const dur = vid.duration || 0;
                       setDuration(dur);
+                      vid.controls = useNativeControls;
                       if (maxWatchedTimeRef.current === -1 && watchingVideo) {
                         const viz = visualizacoes.find(v => v.video_id === watchingVideo.id && v.funcionario_id === funcionarioId);
                         if (viz && viz.percentual_assistido > 0 && viz.percentual_assistido < 100 && dur > 0) {
@@ -601,6 +603,11 @@ export default function PortalTreinamentos() {
                       }
                       maxWatchedTimeRef.current = 0;
                       setCurrentTime(0);
+                      if (isAppleMobile) {
+                        requestAnimationFrame(() => {
+                          vid.controls = true;
+                        });
+                      }
                     }}
                     onTimeUpdate={(e) => {
                       const vid = e.currentTarget;
@@ -619,7 +626,6 @@ export default function PortalTreinamentos() {
                       }
                     }}
                     onStalled={() => {
-                      // iOS Safari may stall; nudge playback
                       const vid = videoRef.current;
                       if (vid && !vid.paused && vid.readyState < 3) {
                         const t = vid.currentTime;
@@ -627,14 +633,12 @@ export default function PortalTreinamentos() {
                       }
                     }}
                     onWaiting={() => {
-                      // Show that the video is buffering
                       console.log("Video buffering at", videoRef.current?.currentTime);
                     }}
                     onError={(e) => {
                       const vid = e.currentTarget;
                       const err = (vid as any).error;
                       console.error("Video error:", err?.code, err?.message);
-                      // If it's a network error, try to resume
                       if (err?.code === 2 && vid.currentTime > 0) {
                         const savedTime = vid.currentTime;
                         setTimeout(() => {
@@ -643,13 +647,18 @@ export default function PortalTreinamentos() {
                           vid.play().catch(() => {});
                         }, 1000);
                       } else {
-                        setShowPlayOverlay(true);
+                        if (isAppleMobile) {
+                          setUseNativeControls(true);
+                          vid.controls = true;
+                        } else {
+                          setShowPlayOverlay(true);
+                        }
                       }
                     }}
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
-                  {showPlayOverlay && (
+                  {showPlayOverlay && !useNativeControls && (
                     <button
                       type="button"
                       onClick={handleTapToPlay}
@@ -678,7 +687,7 @@ export default function PortalTreinamentos() {
                         const clickX = e.clientX - rect.left;
                         const clickPercent = clickX / rect.width;
                         const clickTime = clickPercent * duration;
-                        if (clickTime <= maxWatchedTimeRef.current + 0.25) {
+                        if (clickTime <= maxWatchedTimeRef.current + 2) {
                           videoRef.current.currentTime = clickTime;
                           setCurrentTime(clickTime);
                         }
