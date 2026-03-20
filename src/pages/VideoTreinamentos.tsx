@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { VideoPlayer, VideoThumbnail } from "@/components/VideoPlayer";
+import { isGDriveUrl, extractGDriveFileId } from "@/lib/googleDrive";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
