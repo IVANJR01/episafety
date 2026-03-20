@@ -565,11 +565,10 @@ export default function PortalTreinamentos() {
                     key={watchingVideo.id}
                     src={watchingVideo.video_url}
                     playsInline
-                    muted={isAppleMobile ? true : isMuted}
-                    controls={isAppleMobile}
+                    muted
                     // @ts-ignore - webkit attribute for iOS
                     webkit-playsinline="true"
-                    preload="metadata"
+                    preload="auto"
                     tabIndex={-1}
                     className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
                     onEnded={() => { void handleVideoEnded(); }}
