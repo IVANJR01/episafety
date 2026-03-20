@@ -1,8 +1,10 @@
 import { Play, AlertTriangle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { getGDriveEmbedUrl, isGDriveUrl } from "@/lib/googleDrive";
 
 function isDirectVideoUrl(url: string): boolean {
   if (!url) return false;
+  if (isGDriveUrl(url)) return true;
 
   try {
     const u = new URL(url);
