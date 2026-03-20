@@ -450,24 +450,25 @@ export default function PortalTreinamentos() {
     const video = videoRef.current;
     if (!video) return;
 
-    // Always start muted on first tap — Safari guarantees muted playback
+    // Start muted for Safari autoplay policy compliance
     video.muted = true;
-    video.setAttribute("muted", "true");
+    setIsMuted(true);
 
     const playPromise = video.play();
 
     playPromise.then(() => {
       setIsPlaying(true);
       setShowPlayOverlay(false);
-      setIsMuted(true);
 
-      // After playback starts, try to unmute (works if gesture is still active)
+      // After playback starts, try to unmute on non-Apple devices
       if (!isAppleMobile) {
-        video.muted = false;
-        video.removeAttribute("muted");
-        setIsMuted(false);
+        try {
+          video.muted = false;
+          setIsMuted(false);
+        } catch {}
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.warn("Play rejected:", err);
       // Last resort: show native controls so user can tap the native play button
       video.controls = true;
       setShowPlayOverlay(false);
