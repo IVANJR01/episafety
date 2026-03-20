@@ -553,11 +553,14 @@ export default function PortalTreinamentos() {
                 <div className="relative flex-1 bg-muted">
                   <video
                     ref={videoRef}
+                    key={watchingVideo.id}
                     src={watchingVideo.video_url}
                     playsInline
+                    muted={isAppleMobile ? true : isMuted}
+                    controls={isAppleMobile}
                     // @ts-ignore - webkit attribute for iOS
                     webkit-playsinline="true"
-                    preload="auto"
+                    preload="metadata"
                     tabIndex={-1}
                     className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
                     onEnded={() => { void handleVideoEnded(); }}
@@ -572,6 +575,7 @@ export default function PortalTreinamentos() {
                     onContextMenu={(e) => e.preventDefault()}
                     onLoadedMetadata={(e) => {
                       const vid = e.currentTarget;
+                      vid.controls = isAppleMobile;
                       const dur = vid.duration || 0;
                       setDuration(dur);
                       if (maxWatchedTimeRef.current === -1 && watchingVideo) {
@@ -607,7 +611,6 @@ export default function PortalTreinamentos() {
                       console.error("Video load error:", (e.currentTarget as any).error);
                       setShowPlayOverlay(true);
                     }}
-                    controls={false}
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
