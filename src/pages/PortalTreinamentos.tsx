@@ -630,20 +630,25 @@ export default function PortalTreinamentos() {
                   <video
                     ref={videoRef}
                     key={watchingVideo.id}
-                    src={watchingVideo.video_url}
+                    src={`${watchingVideo.video_url}${watchingVideo.video_url.includes("?") ? "&" : "?"}mobilePlayback=1`}
                     playsInline
                     controls={useNativeControls}
                     // @ts-ignore - webkit attribute for iOS
                     webkit-playsinline="true"
-                    preload="auto"
+                    preload={isMobileDevice ? "metadata" : "auto"}
                     tabIndex={-1}
                     className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
+                    onLoadStart={() => setIsBuffering(true)}
+                    onLoadedData={() => setIsBuffering(false)}
+                    onCanPlay={() => setIsBuffering(false)}
                     onEnded={() => { void handleVideoEnded(); }}
                     onPlay={() => {
+                      setIsBuffering(false);
                       setIsPlaying(true);
                       setShowPlayOverlay(false);
                     }}
                     onPause={() => {
+                      setIsBuffering(false);
                       setIsPlaying(false);
                       if (!videoEnded && !isAppleMobile) setShowPlayOverlay(true);
                     }}
@@ -688,6 +693,7 @@ export default function PortalTreinamentos() {
                       }
                     }}
                     onStalled={() => {
+                      setIsBuffering(true);
                       const vid = videoRef.current;
                       if (vid && !vid.paused && vid.readyState < 3) {
                         const t = vid.currentTime;
@@ -695,9 +701,11 @@ export default function PortalTreinamentos() {
                       }
                     }}
                     onWaiting={() => {
+                      setIsBuffering(true);
                       console.log("Video buffering at", videoRef.current?.currentTime);
                     }}
                     onError={(e) => {
+                      setIsBuffering(false);
                       const vid = e.currentTarget;
                       const err = (vid as any).error;
                       console.error("Video error:", err?.code, err?.message);
@@ -720,11 +728,19 @@ export default function PortalTreinamentos() {
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
+                  {isBuffering && (
+                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/50">
+                      <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-4 py-3 shadow-lg">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                        <span className="text-xs font-medium text-foreground">Carregando vídeo...</span>
+                      </div>
+                    </div>
+                  )}
                   {showPlayOverlay && !useNativeControls && (
                     <button
                       type="button"
                       onClick={handleTapToPlay}
-                      className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/30 cursor-pointer"
+                      className="absolute inset-0 z-20 flex items-center justify-center bg-foreground/30 cursor-pointer"
                       aria-label="Iniciar vídeo"
                     >
                       <div className="bg-primary rounded-full p-4 shadow-lg">
