@@ -791,6 +791,8 @@ export default function VideoTreinamentos() {
                           
                           setModuloForm({ titulo: "Módulo 1", descricao: "", videoUrl: "" });
                           setVideoFile(null);
+                          setGoogleDriveUrl("");
+                          setVideoSource("upload");
                           setOpenModuloForm(true);
                         }}>
                           <Plus className="h-4 w-4 mr-1" /> Adicionar Módulo
