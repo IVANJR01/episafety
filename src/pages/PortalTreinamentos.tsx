@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { VideoThumbnail } from "@/components/VideoPlayer";
-import { isGDriveUrl, resolveGDriveVideoUrl } from "@/lib/googleDrive";
+import { isGDriveUrl, getGDriveEmbedUrl } from "@/lib/googleDrive";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -480,18 +480,14 @@ export default function PortalTreinamentos() {
       maxWatchedTimeRef.current = 0;
     }
 
-    // Resolve the direct video URL for Google Drive videos
+    // For Google Drive videos, use the embed URL (iframe); for others use native video
     if (isDriveVideo) {
-      try {
-        const resolved = await resolveGDriveVideoUrl(video.video_url);
-        if (resolved) {
-          setResolvedVideoUrl(resolved);
-        } else {
-          setVideoError("Não foi possível resolver a URL do vídeo. O arquivo pode estar privado ou com cota excedida.");
-          setIsBuffering(false);
-        }
-      } catch {
-        setVideoError("Erro ao resolver URL do vídeo do Google Drive.");
+      const embedUrl = getGDriveEmbedUrl(video.video_url);
+      if (embedUrl) {
+        setResolvedVideoUrl(embedUrl);
+        setIsBuffering(false);
+      } else {
+        setVideoError("Link do Google Drive inválido.");
         setIsBuffering(false);
       }
     } else {
@@ -688,7 +684,18 @@ export default function PortalTreinamentos() {
             <CardContent className={`p-0 ${shouldUseImmersiveMode ? "overflow-visible rounded-none" : "overflow-hidden rounded-lg"}`}>
               <div ref={videoContainerRef} className={`bg-card ${shouldUseImmersiveMode ? "fixed inset-0 z-50 flex flex-col bg-background" : ""}`}>
                 <div className="relative flex-1 bg-muted">
-                  {resolvedVideoUrl && (
+                  {resolvedVideoUrl && isGDriveUrl(watchingVideo.video_url) ? (
+                    <iframe
+                      key={watchingVideo.id + resolvedVideoUrl}
+                      src={resolvedVideoUrl}
+                      className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full" : "aspect-video"}`}
+                      allow="autoplay; fullscreen"
+                      allowFullScreen
+                      sandbox="allow-scripts allow-same-origin allow-popups"
+                      title="Vídeo do Google Drive"
+                      onLoad={() => setIsBuffering(false)}
+                    />
+                  ) : resolvedVideoUrl ? (
                   <video
                     ref={videoRef}
                     key={watchingVideo.id + resolvedVideoUrl}
@@ -802,7 +809,7 @@ export default function PortalTreinamentos() {
                     controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                     disablePictureInPicture
                   />
-                  )}
+                  ) : null}
                   {isBuffering && !videoError && (
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/50">
                       <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-4 py-3 shadow-lg">
@@ -818,20 +825,16 @@ export default function PortalTreinamentos() {
                         <p className="text-sm text-foreground font-medium">{videoError}</p>
                         <Button
                           size="sm"
-                          onClick={async () => {
+                          onClick={() => {
                             setVideoError(null);
                             setIsBuffering(true);
                             if (watchingVideo && isGDriveUrl(watchingVideo.video_url)) {
-                              try {
-                                const resolved = await resolveGDriveVideoUrl(watchingVideo.video_url);
-                                if (resolved) {
-                                  setResolvedVideoUrl(resolved + "&t=" + Date.now());
-                                } else {
-                                  setVideoError("Não foi possível resolver a URL do vídeo.");
-                                  setIsBuffering(false);
-                                }
-                              } catch {
-                                setVideoError("Erro ao resolver URL do vídeo.");
+                              const embedUrl = getGDriveEmbedUrl(watchingVideo.video_url);
+                              if (embedUrl) {
+                                setResolvedVideoUrl(embedUrl + "?t=" + Date.now());
+                                setIsBuffering(false);
+                              } else {
+                                setVideoError("Link do Google Drive inválido.");
                                 setIsBuffering(false);
                               }
                             } else {
