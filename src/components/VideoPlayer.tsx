@@ -104,11 +104,12 @@ interface VideoThumbnailProps {
 
 export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize = "h-5 w-5", completed }: VideoThumbnailProps) {
   const validVideo = isDirectVideoUrl(url);
+  const isDrive = isGDriveUrl(url);
   const thumbnailRef = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
-    if (!validVideo) return;
+    if (!validVideo || isDrive) return;
 
     const element = thumbnailRef.current;
     if (!element) return;
@@ -130,11 +131,11 @@ export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize 
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [validVideo, url]);
+  }, [validVideo, isDrive, url]);
 
   return (
     <div ref={thumbnailRef} className={`relative bg-muted rounded overflow-hidden flex-shrink-0 ${className}`}>
-      {validVideo && shouldLoad ? (
+      {validVideo && shouldLoad && !isDrive ? (
         <video
           src={url}
           className="w-full h-full object-cover"
@@ -145,7 +146,11 @@ export function VideoThumbnail({ url, className = "w-24 aspect-video", iconSize 
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-muted">
-          {!validVideo && <AlertTriangle className="h-4 w-4 text-destructive" />}
+          {!validVideo ? (
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          ) : isDrive ? (
+            <span className="text-[10px] font-medium text-muted-foreground">Google Drive</span>
+          ) : null}
         </div>
       )}
       <div className="absolute inset-0 flex items-center justify-center bg-foreground/30">
