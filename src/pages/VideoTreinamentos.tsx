@@ -97,6 +97,8 @@ export default function VideoTreinamentos() {
   const [moduloCursoId, setModuloCursoId] = useState("");
   const [moduloForm, setModuloForm] = useState({ titulo: "", descricao: "", videoUrl: "" });
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoSource, setVideoSource] = useState<"upload" | "drive">("upload");
+  const [googleDriveUrl, setGoogleDriveUrl] = useState("");
   const [uploading, setUploading] = useState(false);
 
   // Quiz dialog
