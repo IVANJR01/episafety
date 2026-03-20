@@ -285,6 +285,8 @@ export default function VideoTreinamentos() {
       }
       setOpenModuloForm(false);
       setVideoFile(null);
+      setGoogleDriveUrl("");
+      setVideoSource("upload");
       fetchData();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
