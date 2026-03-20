@@ -81,6 +81,11 @@ export default function PortalTreinamentos() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   }, []);
 
+  const isMobileDevice = useMemo(() => {
+    if (typeof navigator === "undefined") return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+  }, []);
+
   const shouldUseImmersiveMode = !!watchingVideo && (isFullscreen || isImmersiveMode || (isSmallViewport && isLandscapeViewport));
 
   const normalize = (value?: string | null) =>
@@ -267,14 +272,14 @@ export default function PortalTreinamentos() {
       setShowPlayOverlay(false);
       return true;
     }).catch(() => {
-      if (isAppleMobile) {
+      if (isMobileDevice) {
         setUseNativeControls(true);
         video.controls = true;
         setShowPlayOverlay(false);
       }
       return false;
     });
-  }, [isAppleMobile]);
+  }, [isMobileDevice]);
 
   const enterBestFullscreen = useCallback(async () => {
     const video = videoRef.current as (HTMLVideoElement & {
@@ -365,11 +370,11 @@ export default function PortalTreinamentos() {
     setVideoEnded(false);
     setShowSignature(false);
     setIsPlaying(false);
-    setIsMuted(isAppleMobile);
+    setIsMuted(isMobileDevice);
     setIsFullscreen(false);
     setIsImmersiveMode(false);
-    setUseNativeControls(isAppleMobile);
-    setShowPlayOverlay(!isAppleMobile);
+    setUseNativeControls(isMobileDevice);
+    setShowPlayOverlay(!isMobileDevice);
     setCurrentTime(0);
     setDuration(0);
     setPlaybackRate(1);
@@ -432,15 +437,15 @@ export default function PortalTreinamentos() {
     if (!video) return;
 
     if (video.paused) {
-      if (isAppleMobile) {
+      if (isMobileDevice) {
         setUseNativeControls(true);
         video.controls = true;
       }
-      void playCurrentVideo(isAppleMobile ? true : isMuted);
+      void playCurrentVideo(isMobileDevice ? true : isMuted);
     } else {
       video.pause();
       setIsPlaying(false);
-      if (!isAppleMobile) setShowPlayOverlay(true);
+      if (!isMobileDevice) setShowPlayOverlay(true);
     }
   };
 
@@ -450,12 +455,12 @@ export default function PortalTreinamentos() {
     }) | null;
     if (!video) return;
 
-    if (isAppleMobile) {
+    if (isMobileDevice) {
       setUseNativeControls(true);
       video.controls = true;
       setShowPlayOverlay(false);
       void playCurrentVideo(true);
-      if (typeof video.webkitEnterFullscreen === "function") {
+      if (isAppleMobile && typeof video.webkitEnterFullscreen === "function") {
         try {
           video.webkitEnterFullscreen();
         } catch {}
