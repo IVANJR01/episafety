@@ -81,18 +81,24 @@ export default function PortalTreinamentos() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: profile } = await supabase
-        .from("profiles").select("nome, empresa_id").eq("user_id", user?.id || "").maybeSingle();
+      // Step 1: Fetch profile + static data in parallel
+      const [{ data: profile }, { data: cursosData }, { data: vids }] = await Promise.all([
+        supabase.from("profiles").select("nome, empresa_id").eq("user_id", user?.id || "").maybeSingle(),
+        supabase.from("cursos_video").select("id, titulo, descricao").order("created_at", { ascending: false }),
+        supabase.from("videos_treinamento").select("id, titulo, descricao, video_url, duracao_segundos, created_at, curso_id, ordem").order("ordem", { ascending: true }),
+      ]);
 
       if (profile) setUserName(profile.nome || user?.email || "");
+      if (cursosData) setCursos(cursosData as any);
 
       const normalizedProfileName = normalize(profile?.nome);
       let foundFuncId: string | null = null;
+      let empId = profile?.empresa_id || null;
 
-      if (profile?.empresa_id && normalizedProfileName) {
-        setFuncEmpresaId(profile.empresa_id);
+      if (empId && normalizedProfileName) {
+        setFuncEmpresaId(empId);
         const { data: funcs } = await supabase.from("funcionarios").select("id, nome, empresa_id")
-          .eq("empresa_id", profile.empresa_id).is("data_demissao", null);
+          .eq("empresa_id", empId).is("data_demissao", null);
         const matched = funcs?.find(f => normalize(f.nome) === normalizedProfileName);
         if (matched) {
           foundFuncId = matched.id;
@@ -106,41 +112,37 @@ export default function PortalTreinamentos() {
       }
       setFuncionarioId(foundFuncId);
 
-      // Fetch curso assignments
+      // Step 2: Fetch assignments + visualizations in parallel
       let cursoIds: string[] = [];
+      let legacyVideoIds: string[] = [];
+
       if (foundFuncId) {
-        const { data: cursoAssign } = await supabase.from("cursos_atribuicao")
-          .select("curso_id").eq("funcionario_id", foundFuncId);
+        const [{ data: cursoAssign }, { data: vizs }] = await Promise.all([
+          supabase.from("cursos_atribuicao").select("curso_id").eq("funcionario_id", foundFuncId),
+          supabase.from("videos_visualizacao").select("id, video_id, funcionario_id, percentual_assistido, concluido, assinatura").eq("funcionario_id", foundFuncId),
+        ]);
         cursoIds = (cursoAssign || []).map((a: any) => a.curso_id);
+        if (vizs) setVisualizacoes(vizs as any);
+
+        // Fallback: legacy assignments
+        if (cursoIds.length === 0) {
+          const { data: videoAssign } = await supabase.from("videos_atribuicao")
+            .select("video_id").eq("funcionario_id", foundFuncId);
+          legacyVideoIds = (videoAssign || []).map((a: any) => a.video_id);
+        }
+      } else {
+        setVisualizacoes([]);
       }
       setAssignedCursoIds(cursoIds);
 
-      // Fallback: also check videos_atribuicao for legacy assignments
-      let legacyVideoIds: string[] = [];
-      if (foundFuncId && cursoIds.length === 0) {
-        const { data: videoAssign } = await supabase.from("videos_atribuicao")
-          .select("video_id").eq("funcionario_id", foundFuncId);
-        legacyVideoIds = (videoAssign || []).map((a: any) => a.video_id);
-      }
-
-      const [{ data: cursosData }, { data: vids }, { data: vizs }] = await Promise.all([
-        supabase.from("cursos_video").select("*").order("created_at", { ascending: false }),
-        supabase.from("videos_treinamento").select("*").order("ordem", { ascending: true }),
-        supabase.from("videos_visualizacao").select("*"),
-      ]);
-
-      if (cursosData) setCursos(cursosData as any);
       if (vids) {
         let filteredVids = vids as any as VideoTreinamento[];
-        // If legacy mode (no curso assignments), keep legacy video filtering
         if (cursoIds.length === 0 && legacyVideoIds.length > 0) {
           filteredVids = filteredVids.filter(v => legacyVideoIds.includes(v.id));
         }
         setVideos(filteredVids);
       }
-      if (vizs) setVisualizacoes(vizs as any);
 
-      // Auto-expand all assigned cursos
       if (cursoIds.length > 0) setExpandedCursos(new Set(cursoIds));
     } catch {
       toast({ title: "Erro ao carregar dados", variant: "destructive" });
