@@ -825,20 +825,16 @@ export default function PortalTreinamentos() {
                         <p className="text-sm text-foreground font-medium">{videoError}</p>
                         <Button
                           size="sm"
-                          onClick={async () => {
+                          onClick={() => {
                             setVideoError(null);
                             setIsBuffering(true);
                             if (watchingVideo && isGDriveUrl(watchingVideo.video_url)) {
-                              try {
-                                const resolved = await resolveGDriveVideoUrl(watchingVideo.video_url);
-                                if (resolved) {
-                                  setResolvedVideoUrl(resolved + "&t=" + Date.now());
-                                } else {
-                                  setVideoError("Não foi possível resolver a URL do vídeo.");
-                                  setIsBuffering(false);
-                                }
-                              } catch {
-                                setVideoError("Erro ao resolver URL do vídeo.");
+                              const embedUrl = getGDriveEmbedUrl(watchingVideo.video_url);
+                              if (embedUrl) {
+                                setResolvedVideoUrl(embedUrl + "?t=" + Date.now());
+                                setIsBuffering(false);
+                              } else {
+                                setVideoError("Link do Google Drive inválido.");
                                 setIsBuffering(false);
                               }
                             } else {
