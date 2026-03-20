@@ -77,51 +77,70 @@ serve(async (req) => {
 
 async function fetchDriveResponse(fileId: string, rangeHeader: string | null): Promise<Response> {
   const baseHeaders: Record<string, string> = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     Accept: "*/*",
   };
 
-  const downloadUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
-  const fetchHeaders: Record<string, string> = { ...baseHeaders };
+  // Try multiple Google Drive URL patterns
+  const urls = [
+    `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`,
+    `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t&authuser=0`,
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=AIzaSyC1qbk75NzWBvSaDh6KnUvTlGGJzutUOAA`,
+  ];
 
-  if (rangeHeader) {
-    fetchHeaders.Range = rangeHeader;
+  for (const downloadUrl of urls) {
+    const fetchHeaders: Record<string, string> = { ...baseHeaders };
+    if (rangeHeader) fetchHeaders.Range = rangeHeader;
+
+    const response = await fetch(downloadUrl, {
+      method: "GET",
+      headers: fetchHeaders,
+      redirect: "follow",
+    });
+
+    if (!looksLikeHtml(response) && response.ok || response.status === 206) {
+      return response;
+    }
+
+    // Try to bypass the virus scan / large file confirmation page
+    const body = await response.text();
+
+    // Extract any confirmation tokens from the HTML
+    const confirmMatch = body.match(/confirm=([a-zA-Z0-9_-]+)/);
+    const uuidMatch = body.match(/uuid=([a-zA-Z0-9_-]+)/);
+
+    const setCookies = response.headers.getSetCookie?.() || [];
+    const cookieStr = setCookies.map((cookie: string) => cookie.split(";")[0]).join("; ");
+
+    const retryParams = new URLSearchParams({
+      id: fileId,
+      export: "download",
+      confirm: confirmMatch?.[1] || "t",
+    });
+    if (uuidMatch?.[1]) retryParams.set("uuid", uuidMatch[1]);
+
+    const retryUrl = `https://drive.usercontent.google.com/download?${retryParams.toString()}`;
+    const retryHeaders: Record<string, string> = {
+      ...baseHeaders,
+      ...(cookieStr ? { Cookie: cookieStr } : {}),
+    };
+    if (rangeHeader) retryHeaders.Range = rangeHeader;
+
+    const retryResponse = await fetch(retryUrl, {
+      method: "GET",
+      headers: retryHeaders,
+      redirect: "follow",
+    });
+
+    if (!looksLikeHtml(retryResponse) && (retryResponse.ok || retryResponse.status === 206)) {
+      return retryResponse;
+    }
+
+    // Consume body before trying next URL
+    try { await retryResponse.text(); } catch {}
   }
 
-  const response = await fetch(downloadUrl, {
-    method: "GET",
-    headers: fetchHeaders,
-    redirect: "follow",
-  });
-
-  if (!looksLikeHtml(response)) {
-    return response;
-  }
-
-  await response.text();
-  const setCookies = response.headers.getSetCookie?.() || [];
-  const cookieStr = setCookies.map((cookie) => cookie.split(";")[0]).join("; ");
-  const retryHeaders: Record<string, string> = {
-    ...baseHeaders,
-    ...(cookieStr ? { Cookie: cookieStr } : {}),
-  };
-
-  if (rangeHeader) {
-    retryHeaders.Range = rangeHeader;
-  }
-
-  const retryResponse = await fetch(downloadUrl, {
-    method: "GET",
-    headers: retryHeaders,
-    redirect: "follow",
-  });
-
-  if (looksLikeHtml(retryResponse)) {
-    await retryResponse.text();
-    throw new Error("Could not bypass Google Drive download gate. Make sure the file is publicly shared.");
-  }
-
-  return retryResponse;
+  throw new Error("Could not bypass Google Drive download gate. Make sure the file is publicly shared and try re-sharing it.");
 }
 
 function looksLikeHtml(response: Response): boolean {
