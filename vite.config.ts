@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "supabase-api-cache",
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+                maxAgeSeconds: 60 * 60 * 24,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -42,13 +42,17 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
+            urlPattern: /^https:\/\/bccqjqimbjzskyexpjca\.supabase\.co\/storage\/v1\/object\/public\/videos-treinamento\/.*\.mp4(\?.*)?$/i,
+            handler: "NetworkOnly",
+          },
+          {
             urlPattern: /^https:\/\/bccqjqimbjzskyexpjca\.supabase\.co\/storage\/.*/i,
             handler: "CacheFirst",
             options: {
               cacheName: "supabase-storage-cache",
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+                maxAgeSeconds: 60 * 60 * 24 * 7,
               },
               cacheableResponse: {
                 statuses: [0, 200],
