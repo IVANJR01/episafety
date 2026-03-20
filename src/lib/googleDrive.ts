@@ -49,3 +49,15 @@ export function getGDriveDirectUrl(url: string): string | null {
   if (!fileId) return null;
   return `https://drive.google.com/uc?export=download&id=${fileId}`;
 }
+
+/**
+ * Get a proxy URL that streams the Google Drive video through our edge function.
+ * This allows using native HTML5 <video> element with full playback control.
+ */
+export function getGDriveProxyUrl(url: string): string | null {
+  const fileId = extractGDriveFileId(url);
+  if (!fileId) return null;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) return null;
+  return `${supabaseUrl}/functions/v1/gdrive-proxy?id=${fileId}`;
+}
