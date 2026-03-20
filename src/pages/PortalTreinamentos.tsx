@@ -682,7 +682,10 @@ export default function PortalTreinamentos() {
                     className={`w-full bg-muted ${shouldUseImmersiveMode ? "h-full object-contain" : "aspect-video"}`}
                     onLoadStart={() => setIsBuffering(true)}
                     onLoadedData={() => setIsBuffering(false)}
-                    onCanPlay={() => setIsBuffering(false)}
+                    onCanPlay={() => {
+                      setIsBuffering(false);
+                      if (bufferingTimeoutRef.current) { clearTimeout(bufferingTimeoutRef.current); bufferingTimeoutRef.current = null; }
+                    }}
                     onEnded={() => { void handleVideoEnded(); }}
                     onPlay={() => {
                       setIsBuffering(false);
