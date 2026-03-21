@@ -334,10 +334,14 @@ export default function Backups() {
             Backups salvos diretamente no Google Drive — sem uso de rede do servidor
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => { setDriveAccess(null); loadBackups(); }} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Atualizar
+          </Button>
+          <Button variant="outline" size="sm" onClick={cleanupSupabaseStorage} disabled={cleaningStorage} className="text-destructive border-destructive/30 hover:bg-destructive/10">
+            {cleaningStorage ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseZap className="w-4 h-4" />}
+            Limpar Storage Supabase
           </Button>
           <Button onClick={generateAndSendBackup} disabled={generating} size="sm">
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
