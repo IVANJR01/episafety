@@ -206,6 +206,10 @@ export default function Backups() {
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <HardDrive className="w-4 h-4" />}
             Gerar Backup Agora
           </Button>
+          <Button onClick={sendToDrive} disabled={sendingToDrive} size="sm" variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">
+            {sendingToDrive ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
+            Enviar ao Google Drive
+          </Button>
         </div>
       </div>
 
