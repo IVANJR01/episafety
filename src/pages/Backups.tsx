@@ -250,9 +250,16 @@ export default function Backups() {
       }, null, 2));
 
       setProgress(100);
+      setProgressLabel("Limpando storage antigo...");
+
+      // Step 7: Auto-cleanup Supabase storage after successful backup
+      try {
+        await supabase.functions.invoke("cleanup-storage");
+      } catch { /* non-critical */ }
+
       toast({
-        title: "✅ Backup enviado ao Google Drive!",
-        description: `${uploaded} módulos exportados para "${backupFolderName}". Nenhum dado passou pelo servidor.`,
+        title: "✅ Backup enviado e storage limpo!",
+        description: `${uploaded} módulos exportados para "${backupFolderName}". Storage do servidor zerado.`,
       });
 
       // Refresh list
