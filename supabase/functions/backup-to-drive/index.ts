@@ -134,9 +134,6 @@ function parseGoogleServiceAccount(raw: string): Record<string, string> {
   }
 
   throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format. First 50 chars: " + raw.slice(0, 50));
-  }
-
-  return current as Record<string, string>;
 }
 
 async function readJsonSafely(response: Response) {
