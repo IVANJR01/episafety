@@ -156,7 +156,7 @@ async function findOrCreateFolder(accessToken: string, parentId: string, name: s
   );
 
   const searchResponse = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`,
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 
@@ -169,7 +169,7 @@ async function findOrCreateFolder(accessToken: string, parentId: string, name: s
     return searchData.files[0].id;
   }
 
-  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
+  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -202,7 +202,7 @@ async function uploadFile(accessToken: string, folderId: string, fileName: strin
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${content}\r\n` +
     `--${boundary}--`;
 
-  const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+  const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
