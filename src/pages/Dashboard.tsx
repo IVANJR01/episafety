@@ -46,9 +46,9 @@ interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: stri
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
-  const { data: epis } = useSupabaseQuery<EPI>("epis");
-  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
-  const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at");
+  const { data: epis } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id");
+  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome");
+  const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by");
 
   const [movimentacoes, setMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);

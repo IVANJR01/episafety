@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData, addToSyncQueue, isOnline } from "@/lib/offlineStorage";
 
-export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean) {
+export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -25,7 +25,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
       return;
     }
 
-    let query = (supabase.from as any)(table).select("*");
+    let query = (supabase.from as any)(table).select(columns || "*");
     if (orderBy) query = query.order(orderBy, { ascending: ascending ?? false });
     const { data: rows, error } = await query;
     if (error) {
