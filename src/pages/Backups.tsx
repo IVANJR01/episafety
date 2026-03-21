@@ -140,6 +140,23 @@ export default function Backups() {
   const [progressLabel, setProgressLabel] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [driveAccess, setDriveAccess] = useState<{ accessToken: string; folderId: string } | null>(null);
+  const [cleaningStorage, setCleaningStorage] = useState(false);
+
+  const cleanupSupabaseStorage = async () => {
+    setCleaningStorage(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("cleanup-storage");
+      if (error) throw error;
+      toast({
+        title: "✅ Storage limpo!",
+        description: data?.message || "Todos os arquivos do storage foram removidos.",
+      });
+    } catch (err: any) {
+      toast({ title: "Erro ao limpar storage", description: err.message, variant: "destructive" });
+    } finally {
+      setCleaningStorage(false);
+    }
+  };
 
   const ensureDriveAccess = useCallback(async () => {
     if (driveAccess) return driveAccess;
