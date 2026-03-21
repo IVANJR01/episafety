@@ -248,12 +248,13 @@ export default function VideoTreinamentos() {
         // Use the Google Drive share URL directly — the player will handle conversion
         videoUrl = googleDriveUrl.trim();
       } else if (videoFile) {
-        const fileExt = videoFile.name.split(".").pop();
-        const fileName = `${crypto.randomUUID()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from("videos-treinamento").upload(fileName, videoFile, { cacheControl: "31536000", upsert: false });
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("videos-treinamento").getPublicUrl(fileName);
-        videoUrl = urlData.publicUrl;
+        const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+        const result = await uploadToDrive(
+          videoFile,
+          "videos-treinamento",
+          `${crypto.randomUUID()}.${videoFile.name.split(".").pop()}`
+        );
+        videoUrl = result.publicUrl;
       }
 
       if (editingModulo) {

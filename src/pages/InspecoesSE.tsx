@@ -183,12 +183,17 @@ export default function InspecoesSE() {
   }
 
   async function uploadPhoto(file: File): Promise<string | null> {
-    const ext = file.name.split(".").pop();
-    const path = `${empresaId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("conformidades").upload(path, file);
-    if (error) return null;
-    const { data } = supabase.storage.from("conformidades").getPublicUrl(path);
-    return data.publicUrl;
+    try {
+      const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+      const result = await uploadToDrive(
+        file,
+        "inspecoes",
+        `${Date.now()}_${Math.random().toString(36).slice(2)}.${file.name.split(".").pop()}`
+      );
+      return result.publicUrl;
+    } catch {
+      return null;
+    }
   }
 
   async function handleSave() {

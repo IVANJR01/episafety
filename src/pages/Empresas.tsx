@@ -64,20 +64,9 @@ export default function Empresas() {
 
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop();
-      const fileName = `logo-empresa-${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("logos")
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("logos")
-        .getPublicUrl(fileName);
-
-      const publicUrl = urlData.publicUrl;
+      const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+      const result = await uploadToDrive(file, "logos", `logo-empresa-${Date.now()}.${file.name.split(".").pop()}`);
+      const publicUrl = result.publicUrl;
       setLogoUrl(publicUrl);
 
       if (existingId) {

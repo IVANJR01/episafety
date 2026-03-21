@@ -518,15 +518,13 @@ export default function Entregas() {
         if (isOnline()) {
           try {
             const blob = await (await fetch(fotoFallbackDataUrl)).blob();
-            const fileName = `${empresaId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`;
-            const { error: uploadError } = await supabase.storage
-              .from("fotos-reconhecimento")
-              .upload(fileName, blob, { contentType: "image/jpeg" });
-
-            if (!uploadError) {
-              const { data: urlData } = supabase.storage.from("fotos-reconhecimento").getPublicUrl(fileName);
-              fotoUrl = urlData.publicUrl;
-            }
+            const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+            const result = await uploadToDrive(
+              blob,
+              "fotos-reconhecimento",
+              `${Date.now()}_${crypto.randomUUID().slice(0, 8)}.jpg`
+            );
+            fotoUrl = result.publicUrl;
           } catch (uploadErr) {
             console.error("Photo upload failed:", uploadErr);
           }
