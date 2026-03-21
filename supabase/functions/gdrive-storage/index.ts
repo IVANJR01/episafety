@@ -258,7 +258,7 @@ Deno.serve(async (req) => {
 
     // ── LIST ─────────────────────────────────────────────────
     if (action === "list") {
-      const folder = url.searchParams.get("folder") || "geral";
+      const folder = req.headers.get("x-folder") || "geral";
       const folderPath = `${empresaNome}/${folder}`;
       const folderId = await ensureFolderPath(token, folderPath);
       const files = await listFilesInFolder(token, folderId);
@@ -269,7 +269,11 @@ Deno.serve(async (req) => {
 
     // ── GET URL (generate view/download link) ────────────────
     if (action === "url") {
-      const fileId = url.searchParams.get("fileId");
+      let fileId: string | null = null;
+      try {
+        const body = await req.json();
+        fileId = body.fileId;
+      } catch { /* ignore */ }
       if (!fileId) throw new Error("No fileId provided");
       const publicUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
       const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
