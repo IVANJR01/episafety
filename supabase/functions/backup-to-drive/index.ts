@@ -64,7 +64,7 @@ async function createSignedJwt(email: string, key: CryptoKey): Promise<string> {
   return input + "." + base64url(sig);
 }
 
-async function getAccessToken(saJson: any): Promise<string> {
+async function getAccessToken(saJson: Record<string, string>): Promise<string> {
   const key = await importPrivateKey(saJson.private_key);
   const jwt = await createSignedJwt(saJson.client_email, key);
   const res = await fetch("https://oauth2.googleapis.com/token", {
@@ -75,6 +75,48 @@ async function getAccessToken(saJson: any): Promise<string> {
   const data = await res.json();
   if (!res.ok) throw new Error(`Google Auth error: ${JSON.stringify(data)}`);
   return data.access_token;
+}
+
+function parseGoogleServiceAccount(raw: string): Record<string, string> {
+  let current: unknown = raw.trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (typeof current !== "string") break;
+
+    const trimmed = current.trim();
+
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object") {
+        return parsed as Record<string, string>;
+      }
+    }
+
+    try {
+      current = JSON.parse(trimmed);
+      continue;
+    } catch {
+      if (
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))
+      ) {
+        current = trimmed.slice(1, -1)
+          .replace(/\\n/g, "\n")
+          .replace(/\\r/g, "\r")
+          .replace(/\\t/g, "\t")
+          .replace(/\\"/g, '"');
+        continue;
+      }
+    }
+  }
+
+  if (current && typeof current === "object") {
+    return current as Record<string, string>;
+  }
+
+  throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format");
 }
 
 // ---- Google Drive helpers ----
@@ -107,49 +149,7 @@ async function findOrCreateFolder(
   const folder = await create.json();
   return folder.id;
 }
-
-async function uploadFile(
-  accessToken: string, folderId: string, fileName: string, content: string
-) {
-  const metadata = { name: fileName, parents: [folderId] };
-  const boundary = "----BackupBoundary";
-  const body =
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
-    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
-
-  const res = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": `multipart/related; boundary=${boundary}`,
-      },
-      body,
-    }
-  );
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Upload failed for ${fileName}: ${err}`);
-  }
-  return await res.json();
-}
-
-// ---- Main handler ----
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+...
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const saJsonRaw = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
@@ -158,12 +158,12 @@ Deno.serve(async (req) => {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    // Handle cases where the secret may be double-quoted or escaped
-    let cleaned = saJsonRaw.trim();
-    if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
-      cleaned = JSON.parse(cleaned); // unwrap outer quotes
+    const saJson = parseGoogleServiceAccount(saJsonRaw);
+    if (!saJson.client_email || !saJson.private_key) {
+      return new Response(JSON.stringify({ error: "Google service account inválida" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-    const saJson = typeof cleaned === 'string' ? JSON.parse(cleaned) : cleaned;
 
     // Auth: verify user
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
