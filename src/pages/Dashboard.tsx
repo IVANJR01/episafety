@@ -40,6 +40,14 @@ interface ContratoMovimentacao {
   quantidade: number;
   created_at: string;
 }
+interface EstoqueMovimentacao {
+  id: string;
+  epi_id: string;
+  quantidade: number;
+  valor_unitario: number;
+  tipo: string;
+  created_at: string;
+}
 interface Contrato { id: string; nome: string; unidade_id: string; }
 interface ContratoEpi { id: string; contrato_id: string; epi_id: string; estoque: number; empresa_id: string | null; }
 interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: string | null; }
@@ -55,10 +63,11 @@ export default function Dashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [contratoEpis, setContratoEpis] = useState<ContratoEpi[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [estoqueMovimentacoes, setEstoqueMovimentacoes] = useState<EstoqueMovimentacao[]>([]);
 
   useEffect(() => {
     async function fetchContractData() {
-      const [movResult, contResult, profResult, ceResult, uniResult] = await Promise.all([
+      const [movResult, contResult, profResult, ceResult, uniResult, emResult] = await Promise.all([
         cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
           (supabase.from as any)("contrato_epis_movimentacoes")
             .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
@@ -78,12 +87,18 @@ export default function Dashboard() {
         cachedQuery<Unidade>("dashboard_unidades", () =>
           (supabase.from as any)("empresa_config").select("id, nome, tipo, empresa_pai_id")
         ),
+        cachedQuery<EstoqueMovimentacao>("dashboard_estoque_mov", () =>
+          (supabase.from as any)("estoque_movimentacoes")
+            .select("id, epi_id, quantidade, valor_unitario, tipo, created_at")
+            .order("created_at", { ascending: true })
+        ),
       ]);
       setMovimentacoes(movResult.data);
       setContratos(contResult.data);
       setProfiles(profResult.data);
       setContratoEpis(ceResult.data);
       setUnidades(uniResult.data);
+      setEstoqueMovimentacoes(emResult.data);
     }
     fetchContractData();
   }, []);
@@ -192,13 +207,20 @@ export default function Dashboard() {
         mesesSaida[mes] = (mesesSaida[mes] || 0) + valor * e.quantidade;
       }
     });
+    // Include transfers
+    estoqueMovimentacoes.forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (mes) {
+        mesesSaida[mes] = (mesesSaida[mes] || 0) + (m.valor_unitario || 0) * m.quantidade;
+      }
+    });
     const meses = Object.keys(mesesSaida).sort().slice(-6);
     return meses.map(mes => ({
       mes: mes.split("-").reverse().join("/"),
       saida: Number(mesesSaida[mes].toFixed(2)),
       estoque: Number(valorEstoqueAtual.toFixed(2)),
     }));
-  }, [entregas, epis, valorEstoqueAtual]);
+  }, [entregas, epis, valorEstoqueAtual, estoqueMovimentacoes]);
 
   const estoqueChartData = useMemo(() => {
     const items = epis
@@ -304,11 +326,17 @@ export default function Dashboard() {
   }, [entregas, epis, estoqueConsolidadoPorEpi]);
 
   const valorSaida = useMemo(() => {
-    return entregas.reduce((sum, e) => {
+    // Entregas para funcionários
+    const valorEntregas = entregas.reduce((sum, e) => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       return sum + (epi?.valor || 0) * e.quantidade;
     }, 0);
-  }, [entregas, epis]);
+    // Transferências internas (saída da matriz)
+    const valorTransferencias = estoqueMovimentacoes.reduce((sum, m) => {
+      return sum + (m.valor_unitario || 0) * m.quantidade;
+    }, 0);
+    return valorEntregas + valorTransferencias;
+  }, [entregas, epis, estoqueMovimentacoes]);
 
   // Entregas por responsável (usuário que registrou a entrega)
   const entregasPorResponsavel = useMemo(() => {
@@ -481,7 +509,7 @@ export default function Dashboard() {
               </div>
             </div>
             <Progress value={valorEstoqueAtual > 0 ? Math.min(100, (valorSaida / valorEstoqueAtual) * 100) : 0} className="h-2 [&>div]:bg-destructive" />
-            <p className="text-[10px] text-muted-foreground mt-1.5">{entregas.length} entregas realizadas no período</p>
+            <p className="text-[10px] text-muted-foreground mt-1.5">{entregas.length} entregas + {estoqueMovimentacoes.length} transferências no período</p>
           </CardContent>
         </Card>
       </motion.div>

@@ -774,6 +774,77 @@ export type Database = {
           },
         ]
       }
+      estoque_movimentacoes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_destino_id: string | null
+          empresa_id: string | null
+          empresa_origem_id: string | null
+          epi_id: string
+          id: string
+          motivo: string | null
+          quantidade: number
+          tipo: string
+          valor_unitario: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_destino_id?: string | null
+          empresa_id?: string | null
+          empresa_origem_id?: string | null
+          epi_id: string
+          id?: string
+          motivo?: string | null
+          quantidade?: number
+          tipo?: string
+          valor_unitario?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_destino_id?: string | null
+          empresa_id?: string | null
+          empresa_origem_id?: string | null
+          epi_id?: string
+          id?: string
+          motivo?: string | null
+          quantidade?: number
+          tipo?: string
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_movimentacoes_empresa_destino_id_fkey"
+            columns: ["empresa_destino_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_empresa_origem_id_fkey"
+            columns: ["empresa_origem_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_movimentacoes_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "epis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exames: {
         Row: {
           created_at: string
