@@ -110,6 +110,23 @@ export default function Backups() {
     }
   };
 
+  const sendToDrive = async () => {
+    setSendingToDrive(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backup-to-drive");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: "Backup enviado ao Google Drive!",
+        description: `${data.tables} módulos exportados para a pasta "${data.folder}".`,
+      });
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar para o Drive", description: err.message, variant: "destructive" });
+    } finally {
+      setSendingToDrive(false);
+    }
+  };
+
   const downloadAsJson = async (file: BackupFile) => {
     if (!empresaId) return;
     setDownloadingId(file.id);
