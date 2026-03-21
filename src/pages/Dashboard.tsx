@@ -40,6 +40,14 @@ interface ContratoMovimentacao {
   quantidade: number;
   created_at: string;
 }
+interface EstoqueMovimentacao {
+  id: string;
+  epi_id: string;
+  quantidade: number;
+  valor_unitario: number;
+  tipo: string;
+  created_at: string;
+}
 interface Contrato { id: string; nome: string; unidade_id: string; }
 interface ContratoEpi { id: string; contrato_id: string; epi_id: string; estoque: number; empresa_id: string | null; }
 interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: string | null; }
