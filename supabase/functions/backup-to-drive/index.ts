@@ -130,6 +130,17 @@ function parseGoogleServiceAccount(raw: string): Record<string, string> {
   return current as Record<string, string>;
 }
 
+async function readJsonSafely(response: Response) {
+  const text = await response.text();
+  if (!text.trim()) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text };
+  }
+}
+
 async function getAccessToken(serviceAccount: Record<string, string>): Promise<string> {
   const privateKey = await importPrivateKey(serviceAccount.private_key);
   const jwt = await createSignedJwt(serviceAccount.client_email, privateKey);
@@ -143,9 +154,13 @@ async function getAccessToken(serviceAccount: Record<string, string>): Promise<s
     }),
   });
 
-  const data = await response.json();
+  const data = await readJsonSafely(response);
   if (!response.ok) {
     throw new Error(`Google Auth error: ${JSON.stringify(data)}`);
+  }
+
+  if (!data?.access_token) {
+    throw new Error(`Google Auth missing access_token: ${JSON.stringify(data)}`);
   }
 
   return data.access_token;
@@ -161,12 +176,12 @@ async function findOrCreateFolder(accessToken: string, parentId: string, name: s
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 
-  const searchData = await searchResponse.json();
+  const searchData = await readJsonSafely(searchResponse);
   if (!searchResponse.ok) {
     throw new Error(`Drive search error: ${JSON.stringify(searchData)}`);
   }
 
-  if (searchData.files?.length) {
+  if (searchData?.files?.length) {
     return searchData.files[0].id;
   }
 
@@ -183,9 +198,13 @@ async function findOrCreateFolder(accessToken: string, parentId: string, name: s
     }),
   });
 
-  const createdFolder = await createResponse.json();
+  const createdFolder = await readJsonSafely(createResponse);
   if (!createResponse.ok) {
     throw new Error(`Drive folder create error: ${JSON.stringify(createdFolder)}`);
+  }
+
+  if (!createdFolder?.id) {
+    throw new Error(`Drive folder create missing id: ${JSON.stringify(createdFolder)}`);
   }
 
   return createdFolder.id;
@@ -208,12 +227,12 @@ async function uploadFile(accessToken: string, folderId: string, fileName: strin
     body,
   });
 
+  const responseData = await readJsonSafely(response);
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Upload failed for ${fileName}: ${errorText}`);
+    throw new Error(`Upload failed for ${fileName}: ${JSON.stringify(responseData)}`);
   }
 
-  return await response.json();
+  return responseData;
 }
 
 async function buildBackupForEmpresa(serviceClient: ReturnType<typeof createClient>, empresaId: string) {
