@@ -83,57 +83,35 @@ async function createSignedJwt(clientEmail: string, privateKey: CryptoKey): Prom
   return `${unsignedToken}.${base64url(new Uint8Array(signature))}`;
 }
 
-function parseGoogleServiceAccount(raw: string): Record<string, string> {
-  console.log("SA_JSON first 100 chars:", JSON.stringify(raw.slice(0, 100)));
-  console.log("SA_JSON length:", raw.length);
-  console.log("SA_JSON char codes [0..5]:", Array.from(raw.slice(0, 6)).map(c => c.charCodeAt(0)));
-
-  // Try direct parse first
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && parsed.client_email) {
-      return parsed as Record<string, string>;
-    }
-  } catch (e) {
-    console.log("Direct parse failed:", (e as Error).message);
-  }
-
-  // Try trimming
-  const trimmed = raw.replace(/^\uFEFF/, "").trim();
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && parsed.client_email) {
-      return parsed as Record<string, string>;
-    }
-  } catch (e) {
-    console.log("Trimmed parse failed:", (e as Error).message);
-  }
-
-  // Try unwrapping double-stringified
-  try {
-    const unwrapped = JSON.parse(trimmed);
-    if (typeof unwrapped === "string") {
-      const parsed = JSON.parse(unwrapped);
-      if (parsed && typeof parsed === "object" && parsed.client_email) {
+function parseGoogleServiceAccount(): Record<string, string> {
+  // Try base64-encoded secret first (most reliable)
+  const b64 = Deno.env.get("GOOGLE_SA_BASE64");
+  if (b64) {
+    try {
+      const decoded = atob(b64.trim());
+      const parsed = JSON.parse(decoded);
+      if (parsed?.client_email && parsed?.private_key) {
         return parsed as Record<string, string>;
       }
+    } catch (e) {
+      console.error("Base64 decode failed:", (e as Error).message);
     }
-  } catch (e) {
-    console.log("Double-unwrap parse failed:", (e as Error).message);
   }
 
-  // Try base64 decode
-  try {
-    const decoded = atob(trimmed);
-    const parsed = JSON.parse(decoded);
-    if (parsed && typeof parsed === "object" && parsed.client_email) {
-      return parsed as Record<string, string>;
+  // Fallback to raw JSON secret
+  const raw = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw.trim());
+      if (parsed?.client_email && parsed?.private_key) {
+        return parsed as Record<string, string>;
+      }
+    } catch (e) {
+      console.error("JSON parse failed:", (e as Error).message);
     }
-  } catch (e) {
-    console.log("Base64 decode failed:", (e as Error).message);
   }
 
-  throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format. First 50 chars: " + raw.slice(0, 50));
+  throw new Error("Google service account not configured. Set GOOGLE_SA_BASE64 with the base64-encoded JSON key.");
 }
 
 async function readJsonSafely(response: Response) {
@@ -178,7 +156,7 @@ async function findOrCreateFolder(accessToken: string, parentId: string, name: s
   );
 
   const searchResponse = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`,
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 
@@ -191,7 +169,7 @@ async function findOrCreateFolder(accessToken: string, parentId: string, name: s
     return searchData.files[0].id;
   }
 
-  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files", {
+  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -224,7 +202,7 @@ async function uploadFile(accessToken: string, folderId: string, fileName: strin
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${content}\r\n` +
     `--${boundary}--`;
 
-  const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+  const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -285,20 +263,13 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const serviceAccountRaw = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
+    
 
     if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       throw new Error("Supabase environment variables are missing");
     }
 
-    if (!serviceAccountRaw) {
-      throw new Error("Google service account not configured");
-    }
-
-    const serviceAccount = parseGoogleServiceAccount(serviceAccountRaw);
-    if (!serviceAccount.client_email || !serviceAccount.private_key) {
-      throw new Error("Google service account inválida");
-    }
+    const serviceAccount = parseGoogleServiceAccount();
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
