@@ -269,14 +269,7 @@ Deno.serve(async (req) => {
       throw new Error("Supabase environment variables are missing");
     }
 
-    if (!serviceAccountRaw) {
-      throw new Error("Google service account not configured");
-    }
-
-    const serviceAccount = parseGoogleServiceAccount(serviceAccountRaw);
-    if (!serviceAccount.client_email || !serviceAccount.private_key) {
-      throw new Error("Google service account inválida");
-    }
+    const serviceAccount = parseGoogleServiceAccount();
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
