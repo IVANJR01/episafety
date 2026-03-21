@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Download, RefreshCw, HardDrive, Trash2, FileJson, FileSpreadsheet, Clock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Download, RefreshCw, HardDrive, Trash2, FileJson, FileSpreadsheet, Clock, CheckCircle2, AlertCircle, Loader2, CloudUpload } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface BackupFile {
@@ -60,6 +60,7 @@ export default function Backups() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [sendingToDrive, setSendingToDrive] = useState(false);
 
   const loadBackups = useCallback(async () => {
     if (!empresaId) return;
@@ -106,6 +107,23 @@ export default function Backups() {
         setGenerating(false);
         setProgress(0);
       }, 600);
+    }
+  };
+
+  const sendToDrive = async () => {
+    setSendingToDrive(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backup-to-drive");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: "Backup enviado ao Google Drive!",
+        description: `${data.tables} módulos exportados para a pasta "${data.folder}".`,
+      });
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar para o Drive", description: err.message, variant: "destructive" });
+    } finally {
+      setSendingToDrive(false);
     }
   };
 
@@ -187,6 +205,10 @@ export default function Backups() {
           <Button onClick={generateBackup} disabled={generating} size="sm">
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <HardDrive className="w-4 h-4" />}
             Gerar Backup Agora
+          </Button>
+          <Button onClick={sendToDrive} disabled={sendingToDrive} size="sm" variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">
+            {sendingToDrive ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
+            Enviar ao Google Drive
           </Button>
         </div>
       </div>
