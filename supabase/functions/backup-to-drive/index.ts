@@ -83,57 +83,35 @@ async function createSignedJwt(clientEmail: string, privateKey: CryptoKey): Prom
   return `${unsignedToken}.${base64url(new Uint8Array(signature))}`;
 }
 
-function parseGoogleServiceAccount(raw: string): Record<string, string> {
-  console.log("SA_JSON first 100 chars:", JSON.stringify(raw.slice(0, 100)));
-  console.log("SA_JSON length:", raw.length);
-  console.log("SA_JSON char codes [0..5]:", Array.from(raw.slice(0, 6)).map(c => c.charCodeAt(0)));
-
-  // Try direct parse first
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && parsed.client_email) {
-      return parsed as Record<string, string>;
-    }
-  } catch (e) {
-    console.log("Direct parse failed:", (e as Error).message);
-  }
-
-  // Try trimming
-  const trimmed = raw.replace(/^\uFEFF/, "").trim();
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && parsed.client_email) {
-      return parsed as Record<string, string>;
-    }
-  } catch (e) {
-    console.log("Trimmed parse failed:", (e as Error).message);
-  }
-
-  // Try unwrapping double-stringified
-  try {
-    const unwrapped = JSON.parse(trimmed);
-    if (typeof unwrapped === "string") {
-      const parsed = JSON.parse(unwrapped);
-      if (parsed && typeof parsed === "object" && parsed.client_email) {
+function parseGoogleServiceAccount(): Record<string, string> {
+  // Try base64-encoded secret first (most reliable)
+  const b64 = Deno.env.get("GOOGLE_SA_BASE64");
+  if (b64) {
+    try {
+      const decoded = atob(b64.trim());
+      const parsed = JSON.parse(decoded);
+      if (parsed?.client_email && parsed?.private_key) {
         return parsed as Record<string, string>;
       }
+    } catch (e) {
+      console.error("Base64 decode failed:", (e as Error).message);
     }
-  } catch (e) {
-    console.log("Double-unwrap parse failed:", (e as Error).message);
   }
 
-  // Try base64 decode
-  try {
-    const decoded = atob(trimmed);
-    const parsed = JSON.parse(decoded);
-    if (parsed && typeof parsed === "object" && parsed.client_email) {
-      return parsed as Record<string, string>;
+  // Fallback to raw JSON secret
+  const raw = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw.trim());
+      if (parsed?.client_email && parsed?.private_key) {
+        return parsed as Record<string, string>;
+      }
+    } catch (e) {
+      console.error("JSON parse failed:", (e as Error).message);
     }
-  } catch (e) {
-    console.log("Base64 decode failed:", (e as Error).message);
   }
 
-  throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format. First 50 chars: " + raw.slice(0, 50));
+  throw new Error("Google service account not configured. Set GOOGLE_SA_BASE64 with the base64-encoded JSON key.");
 }
 
 async function readJsonSafely(response: Response) {
