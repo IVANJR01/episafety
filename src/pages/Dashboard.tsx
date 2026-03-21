@@ -342,18 +342,14 @@ export default function Dashboard() {
   }, [entregas, epis, estoqueConsolidadoPorEpi]);
 
   const valorSaida = useMemo(() => {
-    // Entregas para funcionários
-    const valorEntregas = entregas.reduce((sum, e) => {
-      const epi = epis.find(ep => ep.id === e.epi_id);
-      return sum + (epi?.valor || 0) * e.quantidade;
-    }, 0);
-    // Transferências registradas na tabela de movimentações
+    // Saídas = apenas transferências da Matriz para Unidades (estoque_movimentacoes)
     const valorTransferencias = estoqueMovimentacoes.reduce((sum, m) => {
       return sum + (m.valor_unitario || 0) * m.quantidade;
     }, 0);
-    // Valor distribuído para filiais e contratos (estoque atual nessas unidades)
-    return valorEntregas + valorTransferencias + valorDistribuido;
-  }, [entregas, epis, estoqueMovimentacoes, valorDistribuido]);
+    return valorTransferencias;
+  }, [estoqueMovimentacoes]);
+
+  const totalTransferencias = estoqueMovimentacoes.length;
 
   // Entregas por responsável (usuário que registrou a entrega)
   const entregasPorResponsavel = useMemo(() => {
