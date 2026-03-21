@@ -403,7 +403,7 @@ export default function Entregas() {
             tipo: normalizedTipo,
             status,
             observacao: form.observacao || null,
-            empresa_id: entregaEmpresaId,
+            empresa_id: empresaId,
             created_by: currentUserId,
           })
           .select("id")
