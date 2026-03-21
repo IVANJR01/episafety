@@ -63,6 +63,7 @@ export default function Dashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [contratoEpis, setContratoEpis] = useState<ContratoEpi[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [estoqueMovimentacoes, setEstoqueMovimentacoes] = useState<EstoqueMovimentacao[]>([]);
 
   useEffect(() => {
     async function fetchContractData() {
