@@ -310,9 +310,6 @@ export default function Entregas() {
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[normalizedTipo] || "ativo";
 
-    // Use the employee's empresa_id so the delivery is visible to the correct company tree
-    const selectedFunc = funcionarios.find(f => f.id === form.funcionario_id);
-    const entregaEmpresaId = (selectedFunc as any)?.empresa_id || empresaId;
 
     if (!isOnline()) {
       const insertedIds: string[] = [];
