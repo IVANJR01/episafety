@@ -150,13 +150,22 @@ async function getAccessToken(serviceAccount: Record<string, string>): Promise<s
   return data.access_token;
 }
 
+async function getSharedDriveId(accessToken: string, folderId: string): Promise<string | null> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${folderId}?fields=driveId&supportsAllDrives=true`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const data = await readJsonSafely(res);
+  return data?.driveId || null;
+}
+
 async function findOrCreateFolder(accessToken: string, parentId: string, name: string): Promise<string> {
   const query = encodeURIComponent(
     `'${parentId}' in parents and name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
   );
 
   const searchResponse = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true&corpora=allDrives`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 
@@ -199,7 +208,7 @@ async function uploadFile(accessToken: string, folderId: string, fileName: strin
   const metadata = { name: fileName, parents: [folderId] };
   const body =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${content}\r\n` +
+    `--${boundary}\r\nContent-Type: application/octet-stream\r\n\r\n${content}\r\n` +
     `--${boundary}--`;
 
   const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true", {
