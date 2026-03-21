@@ -341,15 +341,34 @@ export default function Dashboard() {
     return { mediaMensalEPI: items, mesesOrdenados };
   }, [entregas, epis, estoqueConsolidadoPorEpi]);
 
-  const valorSaida = useMemo(() => {
-    // Saídas = apenas transferências da Matriz para Unidades (estoque_movimentacoes)
+  const { valorSaida, totalTransferencias } = useMemo(() => {
+    // Saídas = transferências registradas (estoque_movimentacoes) + valor de EPIs distribuídos nos contratos
     const valorTransferencias = estoqueMovimentacoes.reduce((sum, m) => {
       return sum + (m.valor_unitario || 0) * m.quantidade;
     }, 0);
-    return valorTransferencias;
-  }, [estoqueMovimentacoes]);
 
-  const totalTransferencias = estoqueMovimentacoes.length;
+    // Valor de EPIs atualmente distribuídos nos contratos (saiu da matriz para contratos/unidades)
+    const valorContratos = contratoEpis.reduce((sum, ce) => {
+      const epi = epis.find(e => e.id === ce.epi_id);
+      return sum + (epi?.valor || 0) * ce.estoque;
+    }, 0);
+
+    // Valor de EPIs em filiais (não na matriz)
+    const filialIds = new Set(unidades.filter(u => u.empresa_pai_id).map(u => u.id));
+    const valorFiliais = epis
+      .filter(e => e.empresa_id && filialIds.has(e.empresa_id))
+      .reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
+
+    // Total entregas a funcionários (saída final)
+    const valorEntregas = entregas.reduce((sum, ent) => {
+      const epi = epis.find(e => e.id === ent.epi_id);
+      return sum + (epi?.valor || 0) * ent.quantidade;
+    }, 0);
+
+    const total = valorContratos + valorFiliais + valorEntregas;
+    const count = estoqueMovimentacoes.length + contratoEpis.filter(ce => ce.estoque > 0).length;
+    return { valorSaida: total, totalTransferencias: count };
+  }, [estoqueMovimentacoes, contratoEpis, epis, unidades, entregas]);
 
   // Entregas por responsável (usuário que registrou a entrega)
   const entregasPorResponsavel = useMemo(() => {
@@ -522,7 +541,7 @@ export default function Dashboard() {
               </div>
             </div>
             <Progress value={valorEstoqueAtual > 0 ? Math.min(100, (valorSaida / valorEstoqueAtual) * 100) : 0} className="h-2 [&>div]:bg-destructive" />
-            <p className="text-[10px] text-muted-foreground mt-1.5">{totalTransferencias} transferência(s) para unidades no período</p>
+            <p className="text-[10px] text-muted-foreground mt-1.5">Valor total distribuído para unidades e contratos</p>
           </CardContent>
         </Card>
       </motion.div>
