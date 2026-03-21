@@ -104,25 +104,41 @@ export default function Dashboard() {
   }, []);
 
   // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
-  const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi } = useMemo(() => {
+  const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi, valorEstoqueMatriz, valorDistribuido } = useMemo(() => {
     // Sum contract stock per epi_id
     const contratoStockByEpi: Record<string, number> = {};
     contratoEpis.forEach(ce => {
       contratoStockByEpi[ce.epi_id] = (contratoStockByEpi[ce.epi_id] || 0) + ce.estoque;
     });
 
+    // Identify which empresa_ids are filiais (have empresa_pai_id)
+    const filialIds = new Set(unidades.filter(u => u.empresa_pai_id).map(u => u.id));
+
     let total = 0;
+    let matrizTotal = 0;
+    let distribuidoTotal = 0;
     const porEpi: Record<string, number> = {};
     epis.forEach(e => {
-      const estoqueTotal = e.estoque + (contratoStockByEpi[e.id] || 0);
+      const contratoStock = contratoStockByEpi[e.id] || 0;
+      const estoqueTotal = e.estoque + contratoStock;
       const valor = (e.valor || 0) * estoqueTotal;
       total += valor;
       porEpi[e.id] = estoqueTotal;
-    });
-    return { valorEstoqueConsolidado: total, estoqueConsolidadoPorEpi: porEpi };
-  }, [epis, contratoEpis]);
 
-  const valorEstoqueAtual = valorEstoqueConsolidado;
+      // Separate: if EPI belongs to a filial or has contract stock, it's "distributed"
+      if (e.empresa_id && filialIds.has(e.empresa_id)) {
+        distribuidoTotal += (e.valor || 0) * e.estoque;
+      } else {
+        matrizTotal += (e.valor || 0) * e.estoque;
+      }
+      // Contract stock is always "distributed"
+      distribuidoTotal += (e.valor || 0) * contratoStock;
+    });
+    return { valorEstoqueConsolidado: total, estoqueConsolidadoPorEpi: porEpi, valorEstoqueMatriz: matrizTotal, valorDistribuido: distribuidoTotal };
+  }, [epis, contratoEpis, unidades]);
+
+  // "Valor em Estoque" shows only Matriz remaining stock
+  const valorEstoqueAtual = valorEstoqueMatriz;
 
   const alertasEstoque = epis.filter(e => {
     const estoqueTotal = estoqueConsolidadoPorEpi[e.id] || e.estoque;
