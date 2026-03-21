@@ -1,20 +1,433 @@
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package } from "lucide-react";
+import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
+import { MatrizKPICards, UnidadeKPICards, ContratoKPICards } from "@/components/stock/StockKPICards";
+import StockDistributionChart from "@/components/stock/StockDistributionChart";
+import StockMovementTable, { MovementRow } from "@/components/stock/StockMovementTable";
 import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
 import ContratoStockPanel from "@/components/ContratoStockPanel";
 
+interface UnidadeData {
+  id: string;
+  nome: string;
+  tipo: string;
+  empresa_pai_id: string | null;
+}
+
+interface ContratoData {
+  id: string;
+  nome: string;
+  unidade_id: string;
+}
+
 export default function ControleEstoqueContrato() {
-  const { isSuperAdmin, isPrincipal, modulosPermitidos, contratoId: userContratoId } = useAuth();
+  const { isSuperAdmin, isPrincipal, modulosPermitidos, contratoId: userContratoId, empresaId } = useAuth();
   const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
   const hasContratoAccess = !!userContratoId;
 
+  const [loading, setLoading] = useState(true);
+  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbLevel[]>([]);
+  const [unidades, setUnidades] = useState<UnidadeData[]>([]);
+  const [contratos, setContratos] = useState<ContratoData[]>([]);
+  const [matrizId, setMatrizId] = useState<string | null>(null);
+  const [matrizNome, setMatrizNome] = useState("Matriz");
+
+  // Matriz KPIs
+  const [matrizKPIs, setMatrizKPIs] = useState({ estoqueTotal: 0, valorTotal: 0, totalEntradas: 0, totalSaidas: 0, valorSaidas: 0, itensBaixoEstoque: 0, giroEstoque: 0 });
+  const [distribuicao, setDistribuicao] = useState<{ nome: string; valor: number; percentual: number }[]>([]);
+  const [movements, setMovements] = useState<MovementRow[]>([]);
+
+  // Unidade KPIs
+  const [unidadeKPIs, setUnidadeKPIs] = useState({ recebidoMatriz: 0, valorRecebido: 0, entregueContratos: 0, valorEntregue: 0, estoqueAtual: 0, itensBaixoEstoque: 0 });
+
+  // Contrato KPIs
+  const [contratoKPIs, setContratoKPIs] = useState({ consumoTotal: 0, valorConsumido: 0, custoColaborador: 0, totalColaboradores: 0, topMateriais: [] as { nome: string; qtd: number }[] });
+
+  const currentLevel = breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].type : "matriz";
+  const currentId = breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].id : matrizId;
+
+  const loadInitialData = useCallback(async () => {
+    setLoading(true);
+    const [unidadesRes, contratosRes] = await Promise.all([
+      supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id"),
+      supabase.from("contratos").select("id, nome, unidade_id"),
+    ]);
+
+    const allUnidades = (unidadesRes.data || []) as UnidadeData[];
+    const allContratos = (contratosRes.data || []) as ContratoData[];
+    setUnidades(allUnidades);
+    setContratos(allContratos);
+
+    // Find the parent company (matriz)
+    const matriz = allUnidades.find(u => u.empresa_pai_id === null);
+    if (matriz) {
+      setMatrizId(matriz.id);
+      setMatrizNome(matriz.nome);
+      setBreadcrumbs([{ id: matriz.id, nome: matriz.nome, type: "matriz" }]);
+    }
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadInitialData(); }, [loadInitialData]);
+
+  // Load KPIs based on current level
+  useEffect(() => {
+    if (!currentId) return;
+
+    if (currentLevel === "matriz") {
+      loadMatrizKPIs(currentId);
+    } else if (currentLevel === "unidade") {
+      loadUnidadeKPIs(currentId);
+    } else if (currentLevel === "contrato") {
+      loadContratoKPIs(currentId);
+    }
+  }, [currentLevel, currentId]);
+
+  const loadMatrizKPIs = async (matrizId: string) => {
+    const filiais = unidades.filter(u => u.empresa_pai_id === matrizId);
+    const filiaisIds = filiais.map(f => f.id);
+    const allIds = [matrizId, ...filiaisIds];
+
+    // Get EPIs for matriz
+    const { data: episMatriz } = await supabase.from("epis").select("id, estoque, estoque_minimo, valor").eq("empresa_id", matrizId);
+    const matrizEstoque = (episMatriz || []).reduce((s, e) => s + (e.estoque || 0), 0);
+    const matrizValor = (episMatriz || []).reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0);
+    const baixoEstoque = (episMatriz || []).filter(e => e.estoque <= e.estoque_minimo).length;
+
+    // Get movements (transfers out from matriz)
+    const { data: movs } = await supabase.from("estoque_movimentacoes")
+      .select("id, tipo, quantidade, valor_unitario, empresa_origem_id, empresa_destino_id, epi_id, created_at, created_by, motivo")
+      .or(`empresa_origem_id.eq.${matrizId},empresa_destino_id.eq.${matrizId}`)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    const saidas = (movs || []).filter(m => m.empresa_origem_id === matrizId);
+    const entradas = (movs || []).filter(m => m.empresa_destino_id === matrizId);
+
+    const totalSaidas = saidas.reduce((s, m) => s + (m.quantidade || 0), 0);
+    const valorSaidas = saidas.reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0);
+    const totalEntradas = entradas.reduce((s, m) => s + (m.quantidade || 0), 0);
+
+    // Giro de estoque (average days in stock)
+    let giro = 0;
+    if (saidas.length > 0 && matrizEstoque > 0) {
+      const firstMovDate = saidas[saidas.length - 1]?.created_at;
+      if (firstMovDate) {
+        const days = Math.ceil((Date.now() - new Date(firstMovDate).getTime()) / (1000 * 60 * 60 * 24));
+        giro = Math.round((matrizEstoque / Math.max(1, totalSaidas)) * days);
+      }
+    }
+
+    setMatrizKPIs({
+      estoqueTotal: matrizEstoque,
+      valorTotal: matrizValor,
+      totalEntradas,
+      totalSaidas,
+      valorSaidas,
+      itensBaixoEstoque: baixoEstoque,
+      giroEstoque: giro,
+    });
+
+    // Distribution by unit (pie chart)
+    const distribution: { nome: string; valor: number; percentual: number }[] = [];
+    let totalValorAll = matrizValor;
+
+    for (const filial of filiais) {
+      const { data: episFilial } = await supabase.from("epis").select("estoque, valor").eq("empresa_id", filial.id);
+      const valFilial = (episFilial || []).reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0);
+      totalValorAll += valFilial;
+      if (valFilial > 0) distribution.push({ nome: filial.nome, valor: valFilial, percentual: 0 });
+    }
+    if (matrizValor > 0) distribution.unshift({ nome: `${matrizNome} (Sede)`, valor: matrizValor, percentual: 0 });
+    distribution.forEach(d => { d.percentual = totalValorAll > 0 ? (d.valor / totalValorAll) * 100 : 0; });
+    setDistribuicao(distribution);
+
+    // Movement table
+    const epiIds = [...new Set((movs || []).map(m => m.epi_id))];
+    const { data: episNames } = epiIds.length > 0
+      ? await supabase.from("epis").select("id, nome").in("id", epiIds)
+      : { data: [] };
+    const epiMap = Object.fromEntries((episNames || []).map(e => [e.id, e.nome]));
+
+    const empresaIds = [...new Set((movs || []).flatMap(m => [m.empresa_origem_id, m.empresa_destino_id].filter(Boolean)))];
+    const empresaMap = Object.fromEntries(unidades.filter(u => empresaIds.includes(u.id)).map(u => [u.id, u.nome]));
+
+    // Get profile names for created_by
+    const userIds = [...new Set((movs || []).map(m => m.created_by).filter(Boolean))];
+    const { data: profiles } = userIds.length > 0
+      ? await supabase.from("profiles").select("user_id, nome").in("user_id", userIds)
+      : { data: [] };
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p.nome]));
+
+    setMovements((movs || []).map(m => ({
+      id: m.id,
+      data: m.created_at,
+      tipo: m.tipo || "transferencia",
+      epi_nome: epiMap[m.epi_id] || "—",
+      origem: empresaMap[m.empresa_origem_id] || "—",
+      destino: empresaMap[m.empresa_destino_id] || "—",
+      quantidade: m.quantidade || 0,
+      responsavel: profileMap[m.created_by] || "Sistema",
+      valor_unitario: m.valor_unitario,
+    })));
+  };
+
+  const loadUnidadeKPIs = async (unidadeId: string) => {
+    // Received from matriz (transfers where this unit is destination)
+    const { data: recebidos } = await supabase.from("estoque_movimentacoes")
+      .select("quantidade, valor_unitario, epi_id, created_at, created_by, empresa_origem_id, id, motivo, tipo")
+      .eq("empresa_destino_id", unidadeId)
+      .order("created_at", { ascending: false });
+
+    const recebidoMatriz = (recebidos || []).reduce((s, m) => s + (m.quantidade || 0), 0);
+    const valorRecebido = (recebidos || []).reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0);
+
+    // Current stock in this unit
+    const { data: episUnidade } = await supabase.from("epis").select("estoque, estoque_minimo, valor").eq("empresa_id", unidadeId);
+    const estoqueAtual = (episUnidade || []).reduce((s, e) => s + (e.estoque || 0), 0);
+    const baixo = (episUnidade || []).filter(e => e.estoque <= e.estoque_minimo).length;
+
+    // Delivered to contracts (contract movements)
+    const contratosUnidade = contratos.filter(c => c.unidade_id === unidadeId);
+    const contratoIds = contratosUnidade.map(c => c.id);
+
+    let entregueContratos = 0;
+    let valorEntregue = 0;
+    if (contratoIds.length > 0) {
+      const { data: movContratos } = await supabase.from("contrato_epis_movimentacoes")
+        .select("quantidade, tipo, epi_id")
+        .in("contrato_id", contratoIds)
+        .eq("tipo", "entrada");
+
+      entregueContratos = (movContratos || []).reduce((s, m) => s + (m.quantidade || 0), 0);
+      // Get values
+      const epiIds = [...new Set((movContratos || []).map(m => m.epi_id))];
+      if (epiIds.length > 0) {
+        const { data: episVals } = await supabase.from("epis").select("id, valor").in("id", epiIds);
+        const valMap = Object.fromEntries((episVals || []).map(e => [e.id, e.valor || 0]));
+        valorEntregue = (movContratos || []).reduce((s, m) => s + ((m.quantidade || 0) * (valMap[m.epi_id] || 0)), 0);
+      }
+    }
+
+    setUnidadeKPIs({ recebidoMatriz, valorRecebido, entregueContratos, valorEntregue, estoqueAtual, itensBaixoEstoque: baixo });
+
+    // Movements for table
+    const epiIds = [...new Set((recebidos || []).map(m => m.epi_id))];
+    const { data: episNames } = epiIds.length > 0
+      ? await supabase.from("epis").select("id, nome").in("id", epiIds)
+      : { data: [] };
+    const epiMap = Object.fromEntries((episNames || []).map(e => [e.id, e.nome]));
+    const empresaMap = Object.fromEntries(unidades.map(u => [u.id, u.nome]));
+
+    const userIds = [...new Set((recebidos || []).map(m => m.created_by).filter(Boolean))];
+    const { data: profiles } = userIds.length > 0
+      ? await supabase.from("profiles").select("user_id, nome").in("user_id", userIds)
+      : { data: [] };
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p.nome]));
+
+    setMovements((recebidos || []).map(m => ({
+      id: m.id,
+      data: m.created_at,
+      tipo: m.tipo || "transferencia",
+      epi_nome: epiMap[m.epi_id] || "—",
+      origem: empresaMap[m.empresa_origem_id] || "Matriz",
+      destino: empresaMap[unidadeId] || "—",
+      quantidade: m.quantidade || 0,
+      responsavel: profileMap[m.created_by] || "Sistema",
+    })));
+  };
+
+  const loadContratoKPIs = async (contratoId: string) => {
+    // Get movements for this contract (saidas = consumo)
+    const { data: movs } = await supabase.from("contrato_epis_movimentacoes")
+      .select("quantidade, tipo, epi_id, created_at, responsavel_nome, motivo, id")
+      .eq("contrato_id", contratoId)
+      .order("created_at", { ascending: false });
+
+    const saidas = (movs || []).filter(m => m.tipo === "saida");
+    const consumoTotal = saidas.reduce((s, m) => s + (m.quantidade || 0), 0);
+
+    // Get EPI values
+    const epiIds = [...new Set((movs || []).map(m => m.epi_id))];
+    const { data: episData } = epiIds.length > 0
+      ? await supabase.from("epis").select("id, nome, valor").in("id", epiIds)
+      : { data: [] };
+    const epiMap = Object.fromEntries((episData || []).map(e => [e.id, { nome: e.nome, valor: e.valor || 0 }]));
+
+    const valorConsumido = saidas.reduce((s, m) => s + ((m.quantidade || 0) * (epiMap[m.epi_id]?.valor || 0)), 0);
+
+    // Get employees in this contract
+    const { count: totalColaboradores } = await supabase.from("funcionarios")
+      .select("id", { count: "exact", head: true })
+      .eq("contrato_id", contratoId)
+      .is("data_demissao", null);
+
+    const nColab = totalColaboradores || 1;
+    const custoColaborador = valorConsumido / nColab;
+
+    // Top 5 materials
+    const materialCount: Record<string, { nome: string; qtd: number }> = {};
+    saidas.forEach(m => {
+      const info = epiMap[m.epi_id];
+      if (!info) return;
+      if (!materialCount[m.epi_id]) materialCount[m.epi_id] = { nome: info.nome, qtd: 0 };
+      materialCount[m.epi_id].qtd += m.quantidade || 0;
+    });
+    const topMateriais = Object.values(materialCount).sort((a, b) => b.qtd - a.qtd).slice(0, 5);
+
+    setContratoKPIs({ consumoTotal, valorConsumido, custoColaborador, totalColaboradores: nColab, topMateriais });
+
+    // Movement table
+    setMovements((movs || []).map(m => ({
+      id: m.id,
+      data: m.created_at,
+      tipo: m.tipo,
+      epi_nome: epiMap[m.epi_id]?.nome || "—",
+      origem: m.tipo === "entrada" ? "Unidade" : "Contrato",
+      destino: m.tipo === "saida" ? "Colaborador" : "Estoque",
+      quantidade: m.quantidade || 0,
+      responsavel: m.responsavel_nome || "Sistema",
+    })));
+  };
+
+  const navigateTo = (index: number) => {
+    setBreadcrumbs(prev => prev.slice(0, index + 1));
+  };
+
+  const drillDown = (id: string, nome: string, type: "unidade" | "contrato") => {
+    setBreadcrumbs(prev => [...prev, { id, nome, type }]);
+  };
+
+  const filiais = unidades.filter(u => u.empresa_pai_id === currentId);
+  const contratosCurrentUnit = contratos.filter(c => c.unidade_id === currentId);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Controle de Estoque por Unidade</h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerencie o estoque de EPIs vinculado a cada unidade</p>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Estoque Hierárquico</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+          Acompanhe o fluxo de movimentação e indicadores por nível organizacional
+        </p>
       </div>
-      {hasGestaoEstoque && <ConsolidatedEpiPanel />}
-      {(hasGestaoEstoque || hasContratoAccess) && <ContratoStockPanel />}
+
+      {/* Breadcrumb */}
+      {breadcrumbs.length > 0 && (
+        <StockBreadcrumb levels={breadcrumbs} onNavigate={navigateTo} />
+      )}
+
+      {/* Level-specific content */}
+      {currentLevel === "matriz" && (
+        <div className="space-y-4">
+          <MatrizKPICards {...matrizKPIs} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <StockDistributionChart data={distribuicao} title="Distribuição de Estoque por Unidade" />
+            <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
+          </div>
+
+          {/* Drill-down: Filiais */}
+          {filiais.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-primary" />
+                  Unidades
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="grid gap-2">
+                  {filiais.map(f => {
+                    const fContratos = contratos.filter(c => c.unidade_id === f.id);
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => drillDown(f.id, f.nome, "unidade")}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          <GitBranch className="w-4 h-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">{f.nome}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {f.tipo} · {fContratos.length} contrato(s)
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Existing panels */}
+          {hasGestaoEstoque && <ConsolidatedEpiPanel />}
+        </div>
+      )}
+
+      {currentLevel === "unidade" && (
+        <div className="space-y-4">
+          <UnidadeKPICards {...unidadeKPIs} />
+
+          <StockMovementTable movements={movements} title={`Movimentações — ${breadcrumbs[breadcrumbs.length - 1]?.nome}`} />
+
+          {/* Drill-down: Contratos */}
+          {contratosCurrentUnit.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  Contratos
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="grid gap-2">
+                  {contratosCurrentUnit.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => drillDown(c.id, c.nome, "contrato")}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">{c.nome}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {currentLevel === "contrato" && (
+        <div className="space-y-4">
+          <ContratoKPICards {...contratoKPIs} />
+          <StockMovementTable movements={movements} title={`Consumo — ${breadcrumbs[breadcrumbs.length - 1]?.nome}`} />
+        </div>
+      )}
+
+      {/* Contract stock panel always visible for authorized users */}
+      {(hasGestaoEstoque || hasContratoAccess) && currentLevel === "matriz" && <ContratoStockPanel />}
     </div>
   );
 }
