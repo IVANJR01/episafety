@@ -25,7 +25,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
       return;
     }
 
-    let query = (supabase.from as any)(table).select("*");
+    let query = (supabase.from as any)(table).select(columns || "*");
     if (orderBy) query = query.order(orderBy, { ascending: ascending ?? false });
     const { data: rows, error } = await query;
     if (error) {
