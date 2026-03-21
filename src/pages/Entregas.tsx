@@ -329,7 +329,7 @@ export default function Entregas() {
           tipo: normalizedTipo,
           status,
           observacao: form.observacao || null,
-          empresa_id: entregaEmpresaId,
+          empresa_id: empresaId,
         };
 
         const queued = addToSyncQueue({ table: "entregas", type: "insert", payload });
