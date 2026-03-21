@@ -342,12 +342,7 @@ export default function Dashboard() {
   }, [entregas, epis, estoqueConsolidadoPorEpi]);
 
   const { valorSaida, totalTransferencias } = useMemo(() => {
-    // Saídas = transferências registradas (estoque_movimentacoes) + valor de EPIs distribuídos nos contratos
-    const valorTransferencias = estoqueMovimentacoes.reduce((sum, m) => {
-      return sum + (m.valor_unitario || 0) * m.quantidade;
-    }, 0);
-
-    // Valor de EPIs atualmente distribuídos nos contratos (saiu da matriz para contratos/unidades)
+    // Valor de EPIs atualmente nos contratos
     const valorContratos = contratoEpis.reduce((sum, ce) => {
       const epi = epis.find(e => e.id === ce.epi_id);
       return sum + (epi?.valor || 0) * ce.estoque;
@@ -359,14 +354,15 @@ export default function Dashboard() {
       .filter(e => e.empresa_id && filialIds.has(e.empresa_id))
       .reduce((sum, e) => sum + (e.valor || 0) * e.estoque, 0);
 
-    // Total entregas a funcionários (saída final)
+    // Total entregas a funcionários (saída final - consumo real)
     const valorEntregas = entregas.reduce((sum, ent) => {
       const epi = epis.find(e => e.id === ent.epi_id);
       return sum + (epi?.valor || 0) * ent.quantidade;
     }, 0);
 
+    // Saída total = tudo que saiu da matriz (em filiais + em contratos + entregue a funcionários)
     const total = valorContratos + valorFiliais + valorEntregas;
-    const count = estoqueMovimentacoes.length + contratoEpis.filter(ce => ce.estoque > 0).length;
+    const count = estoqueMovimentacoes.length + contratoEpis.filter(ce => ce.estoque > 0).length + entregas.length;
     return { valorSaida: total, totalTransferencias: count };
   }, [estoqueMovimentacoes, contratoEpis, epis, unidades, entregas]);
 
