@@ -483,7 +483,7 @@ export default function Entregas() {
         tipo: "devolucao",
         status: "devolvido",
         observacao: `Devolução ref. entrega de ${entrega.data}`,
-        empresa_id: empresaId,
+        empresa_id: (entrega as any).empresa_id || empresaId,
       });
 
       if (devolucaoError) throw devolucaoError;
