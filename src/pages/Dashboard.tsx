@@ -207,13 +207,20 @@ export default function Dashboard() {
         mesesSaida[mes] = (mesesSaida[mes] || 0) + valor * e.quantidade;
       }
     });
+    // Include transfers
+    estoqueMovimentacoes.forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (mes) {
+        mesesSaida[mes] = (mesesSaida[mes] || 0) + (m.valor_unitario || 0) * m.quantidade;
+      }
+    });
     const meses = Object.keys(mesesSaida).sort().slice(-6);
     return meses.map(mes => ({
       mes: mes.split("-").reverse().join("/"),
       saida: Number(mesesSaida[mes].toFixed(2)),
       estoque: Number(valorEstoqueAtual.toFixed(2)),
     }));
-  }, [entregas, epis, valorEstoqueAtual]);
+  }, [entregas, epis, valorEstoqueAtual, estoqueMovimentacoes]);
 
   const estoqueChartData = useMemo(() => {
     const items = epis
