@@ -158,7 +158,12 @@ Deno.serve(async (req) => {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const saJson = JSON.parse(saJsonRaw);
+    // Handle cases where the secret may be double-quoted or escaped
+    let cleaned = saJsonRaw.trim();
+    if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+      cleaned = JSON.parse(cleaned); // unwrap outer quotes
+    }
+    const saJson = typeof cleaned === 'string' ? JSON.parse(cleaned) : cleaned;
 
     // Auth: verify user
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
