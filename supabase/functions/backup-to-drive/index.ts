@@ -173,6 +173,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("backup-to-drive: START");
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
