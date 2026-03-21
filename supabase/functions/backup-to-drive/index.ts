@@ -37,140 +37,57 @@ const TABLE_LABELS: Record<string, string> = {
 
 const DRIVE_FOLDER_ID = "1b0ct6P0v3bVdSC4fSIf9k-pj1owtzVE5";
 
-function base64url(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+// ── OAuth helpers (Gmail pessoal) ──────────────────────────────────
 
-async function importPrivateKey(pem: string): Promise<CryptoKey> {
-  const normalized = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/, "")
-    .replace(/-----END PRIVATE KEY-----/, "")
-    .replace(/\s/g, "");
+async function getAccessTokenViaOAuth(): Promise<string> {
+  const clientId = Deno.env.get("GOOGLE_OAUTH_CLIENT_ID");
+  const clientSecret = Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET");
+  const refreshToken = Deno.env.get("GOOGLE_OAUTH_REFRESH_TOKEN");
 
-  const binary = Uint8Array.from(atob(normalized), (char) => char.charCodeAt(0));
-
-  return await crypto.subtle.importKey(
-    "pkcs8",
-    binary,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-}
-
-async function createSignedJwt(clientEmail: string, privateKey: CryptoKey): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  const encoder = new TextEncoder();
-
-  const header = base64url(encoder.encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
-  const payload = base64url(encoder.encode(JSON.stringify({
-    iss: clientEmail,
-    scope: "https://www.googleapis.com/auth/drive",
-    aud: "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
-  })));
-
-  const unsignedToken = `${header}.${payload}`;
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    privateKey,
-    encoder.encode(unsignedToken),
-  );
-
-  return `${unsignedToken}.${base64url(new Uint8Array(signature))}`;
-}
-
-function parseGoogleServiceAccount(): Record<string, string> {
-  // Try base64-encoded secret first (most reliable)
-  const b64 = Deno.env.get("GOOGLE_SA_BASE64");
-  if (b64) {
-    try {
-      const decoded = atob(b64.trim());
-      const parsed = JSON.parse(decoded);
-      if (parsed?.client_email && parsed?.private_key) {
-        return parsed as Record<string, string>;
-      }
-    } catch (e) {
-      console.error("Base64 decode failed:", (e as Error).message);
-    }
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error(
+      "Google OAuth credentials missing. Set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, and GOOGLE_OAUTH_REFRESH_TOKEN.",
+    );
   }
-
-  // Fallback to raw JSON secret
-  const raw = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw.trim());
-      if (parsed?.client_email && parsed?.private_key) {
-        return parsed as Record<string, string>;
-      }
-    } catch (e) {
-      console.error("JSON parse failed:", (e as Error).message);
-    }
-  }
-
-  throw new Error("Google service account not configured. Set GOOGLE_SA_BASE64 with the base64-encoded JSON key.");
-}
-
-async function readJsonSafely(response: Response) {
-  const text = await response.text();
-  if (!text.trim()) return null;
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { raw: text };
-  }
-}
-
-async function getAccessToken(serviceAccount: Record<string, string>): Promise<string> {
-  const privateKey = await importPrivateKey(serviceAccount.private_key);
-  const jwt = await createSignedJwt(serviceAccount.client_email, privateKey);
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: jwt,
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
     }),
   });
 
-  const data = await readJsonSafely(response);
+  const data = await response.json();
+
   if (!response.ok) {
-    throw new Error(`Google Auth error: ${JSON.stringify(data)}`);
+    throw new Error(`Google OAuth token error: ${JSON.stringify(data)}`);
   }
 
-  if (!data?.access_token) {
-    throw new Error(`Google Auth missing access_token: ${JSON.stringify(data)}`);
+  if (!data.access_token) {
+    throw new Error(`Google OAuth missing access_token: ${JSON.stringify(data)}`);
   }
 
   return data.access_token;
 }
 
-async function getSharedDriveId(accessToken: string, folderId: string): Promise<string | null> {
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${folderId}?fields=driveId&supportsAllDrives=true`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
-  const data = await readJsonSafely(res);
-  return data?.driveId || null;
-}
+// ── Drive helpers ──────────────────────────────────────────────────
 
 async function findOrCreateFolder(accessToken: string, parentId: string, name: string): Promise<string> {
   const query = encodeURIComponent(
     `'${parentId}' in parents and name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
   );
 
-  const searchResponse = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true&corpora=allDrives`,
+  const searchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 
-  const searchData = await readJsonSafely(searchResponse);
-  if (!searchResponse.ok) {
+  const searchData = await searchRes.json();
+  if (!searchRes.ok) {
     throw new Error(`Drive search error: ${JSON.stringify(searchData)}`);
   }
 
@@ -178,7 +95,7 @@ async function findOrCreateFolder(accessToken: string, parentId: string, name: s
     return searchData.files[0].id;
   }
 
-  const createResponse = await fetch("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true", {
+  const createRes = await fetch("https://www.googleapis.com/drive/v3/files", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -191,16 +108,12 @@ async function findOrCreateFolder(accessToken: string, parentId: string, name: s
     }),
   });
 
-  const createdFolder = await readJsonSafely(createResponse);
-  if (!createResponse.ok) {
-    throw new Error(`Drive folder create error: ${JSON.stringify(createdFolder)}`);
+  const created = await createRes.json();
+  if (!createRes.ok || !created?.id) {
+    throw new Error(`Drive folder create error: ${JSON.stringify(created)}`);
   }
 
-  if (!createdFolder?.id) {
-    throw new Error(`Drive folder create missing id: ${JSON.stringify(createdFolder)}`);
-  }
-
-  return createdFolder.id;
+  return created.id;
 }
 
 async function uploadFile(accessToken: string, folderId: string, fileName: string, content: string) {
@@ -211,7 +124,7 @@ async function uploadFile(accessToken: string, folderId: string, fileName: strin
     `--${boundary}\r\nContent-Type: application/octet-stream\r\n\r\n${content}\r\n` +
     `--${boundary}--`;
 
-  const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true", {
+  const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -220,7 +133,7 @@ async function uploadFile(accessToken: string, folderId: string, fileName: strin
     body,
   });
 
-  const responseData = await readJsonSafely(response);
+  const responseData = await response.json();
   if (!response.ok) {
     throw new Error(`Upload failed for ${fileName}: ${JSON.stringify(responseData)}`);
   }
@@ -228,18 +141,15 @@ async function uploadFile(accessToken: string, folderId: string, fileName: strin
   return responseData;
 }
 
+// ── Backup builder ─────────────────────────────────────────────────
+
 async function buildBackupForEmpresa(serviceClient: ReturnType<typeof createClient>, empresaId: string) {
   const backup: Record<string, unknown[]> = {};
   const log: { table: string; rows: number; status: string }[] = [];
 
   for (const table of TABLES) {
     let query = serviceClient.from(table).select("*");
-
-    if (table === "empresa_config") {
-      query = query.eq("id", empresaId);
-    } else {
-      query = query.eq("empresa_id", empresaId);
-    }
+    query = table === "empresa_config" ? query.eq("id", empresaId) : query.eq("empresa_id", empresaId);
 
     const { data, error } = await query;
 
@@ -254,6 +164,8 @@ async function buildBackupForEmpresa(serviceClient: ReturnType<typeof createClie
 
   return { backup, log };
 }
+
+// ── Main handler ───────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -272,14 +184,12 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    
 
     if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       throw new Error("Supabase environment variables are missing");
     }
 
-    const serviceAccount = parseGoogleServiceAccount();
-
+    // Authenticate user
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -292,14 +202,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get empresa
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: profile, error: profileError } = await serviceClient
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("empresa_id")
       .eq("user_id", authData.user.id)
       .single();
 
-    if (profileError || !profile?.empresa_id) {
+    if (!profile?.empresa_id) {
       return new Response(JSON.stringify({ error: "Empresa não encontrada" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -313,9 +224,14 @@ Deno.serve(async (req) => {
       .single();
 
     const empresaNome = empresa?.nome || profile.empresa_id;
+
+    // Build backup data
     const { backup, log } = await buildBackupForEmpresa(serviceClient, profile.empresa_id);
 
-    const accessToken = await getAccessToken(serviceAccount);
+    // Get OAuth access token (Gmail pessoal)
+    const accessToken = await getAccessTokenViaOAuth();
+
+    // Create folder structure
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.toISOString().slice(11, 19).replace(/:/g, "-");
@@ -324,40 +240,32 @@ Deno.serve(async (req) => {
     const empresaFolderId = await findOrCreateFolder(accessToken, DRIVE_FOLDER_ID, empresaNome);
     const backupFolderId = await findOrCreateFolder(accessToken, empresaFolderId, backupFolderName);
 
+    // Upload individual tables
     let uploadedTables = 0;
-
     for (const [table, rows] of Object.entries(backup)) {
       const fileName = `${TABLE_LABELS[table] || table}.json`;
       await uploadFile(accessToken, backupFolderId, fileName, JSON.stringify(rows, null, 2));
       uploadedTables += 1;
     }
 
-    await uploadFile(
-      accessToken,
-      backupFolderId,
-      "backup_completo.json",
-      JSON.stringify({
-        generated_at: now.toISOString(),
-        empresa_id: profile.empresa_id,
-        empresa_nome: empresaNome,
-        tables: backup,
-        table_labels: TABLE_LABELS,
-      }, null, 2),
-    );
+    // Upload consolidated backup
+    await uploadFile(accessToken, backupFolderId, "backup_completo.json", JSON.stringify({
+      generated_at: now.toISOString(),
+      empresa_id: profile.empresa_id,
+      empresa_nome: empresaNome,
+      tables: backup,
+      table_labels: TABLE_LABELS,
+    }, null, 2));
 
-    await uploadFile(
-      accessToken,
-      backupFolderId,
-      "log_backup.json",
-      JSON.stringify({
-        generated_at: now.toISOString(),
-        empresa_id: profile.empresa_id,
-        empresa_nome: empresaNome,
-        total_tables: TABLES.length,
-        uploaded_tables: uploadedTables,
-        details: log,
-      }, null, 2),
-    );
+    // Upload log
+    await uploadFile(accessToken, backupFolderId, "log_backup.json", JSON.stringify({
+      generated_at: now.toISOString(),
+      empresa_id: profile.empresa_id,
+      empresa_nome: empresaNome,
+      total_tables: TABLES.length,
+      uploaded_tables: uploadedTables,
+      details: log,
+    }, null, 2));
 
     return new Response(JSON.stringify({
       success: true,
