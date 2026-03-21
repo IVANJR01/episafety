@@ -319,11 +319,17 @@ export default function Dashboard() {
   }, [entregas, epis, estoqueConsolidadoPorEpi]);
 
   const valorSaida = useMemo(() => {
-    return entregas.reduce((sum, e) => {
+    // Entregas para funcionários
+    const valorEntregas = entregas.reduce((sum, e) => {
       const epi = epis.find(ep => ep.id === e.epi_id);
       return sum + (epi?.valor || 0) * e.quantidade;
     }, 0);
-  }, [entregas, epis]);
+    // Transferências internas (saída da matriz)
+    const valorTransferencias = estoqueMovimentacoes.reduce((sum, m) => {
+      return sum + (m.valor_unitario || 0) * m.quantidade;
+    }, 0);
+    return valorEntregas + valorTransferencias;
+  }, [entregas, epis, estoqueMovimentacoes]);
 
   // Entregas por responsável (usuário que registrou a entrega)
   const entregasPorResponsavel = useMemo(() => {
