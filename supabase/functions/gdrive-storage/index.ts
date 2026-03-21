@@ -220,8 +220,7 @@ Deno.serve(async (req) => {
     const { empresaId, empresaNome } = await authenticateUser(req);
     const token = await getAccessToken();
 
-    const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    const action = req.headers.get("x-action") || new URL(req.url).searchParams.get("action");
 
     // ── UPLOAD ────────────────────────────────────────────────
     if (action === "upload" && req.method === "POST") {
