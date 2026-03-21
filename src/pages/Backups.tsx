@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Download, RefreshCw, HardDrive, Trash2, FileJson, FileSpreadsheet, Clock, CheckCircle2, AlertCircle, Loader2, CloudUpload } from "lucide-react";
+import { Download, RefreshCw, HardDrive, Trash2, FileJson, FileSpreadsheet, Clock, CheckCircle2, AlertCircle, Loader2, CloudUpload, DatabaseZap } from "lucide-react";
 import * as XLSX from "xlsx";
 
 const TABLES = [
@@ -140,6 +140,23 @@ export default function Backups() {
   const [progressLabel, setProgressLabel] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [driveAccess, setDriveAccess] = useState<{ accessToken: string; folderId: string } | null>(null);
+  const [cleaningStorage, setCleaningStorage] = useState(false);
+
+  const cleanupSupabaseStorage = async () => {
+    setCleaningStorage(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("cleanup-storage");
+      if (error) throw error;
+      toast({
+        title: "✅ Storage limpo!",
+        description: data?.message || "Todos os arquivos do storage foram removidos.",
+      });
+    } catch (err: any) {
+      toast({ title: "Erro ao limpar storage", description: err.message, variant: "destructive" });
+    } finally {
+      setCleaningStorage(false);
+    }
+  };
 
   const ensureDriveAccess = useCallback(async () => {
     if (driveAccess) return driveAccess;
@@ -233,9 +250,16 @@ export default function Backups() {
       }, null, 2));
 
       setProgress(100);
+      setProgressLabel("Limpando storage antigo...");
+
+      // Step 7: Auto-cleanup Supabase storage after successful backup
+      try {
+        await supabase.functions.invoke("cleanup-storage");
+      } catch { /* non-critical */ }
+
       toast({
-        title: "✅ Backup enviado ao Google Drive!",
-        description: `${uploaded} módulos exportados para "${backupFolderName}". Nenhum dado passou pelo servidor.`,
+        title: "✅ Backup enviado e storage limpo!",
+        description: `${uploaded} módulos exportados para "${backupFolderName}". Storage do servidor zerado.`,
       });
 
       // Refresh list
@@ -317,10 +341,14 @@ export default function Backups() {
             Backups salvos diretamente no Google Drive — sem uso de rede do servidor
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => { setDriveAccess(null); loadBackups(); }} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Atualizar
+          </Button>
+          <Button variant="outline" size="sm" onClick={cleanupSupabaseStorage} disabled={cleaningStorage} className="text-destructive border-destructive/30 hover:bg-destructive/10">
+            {cleaningStorage ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseZap className="w-4 h-4" />}
+            Limpar Storage Supabase
           </Button>
           <Button onClick={generateAndSendBackup} disabled={generating} size="sm">
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <CloudUpload className="w-4 h-4" />}
