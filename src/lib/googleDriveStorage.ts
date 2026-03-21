@@ -22,17 +22,27 @@ export async function uploadToDrive(
   if (file instanceof File) {
     formData.append("file", file);
   } else {
-    formData.append("file", file, fileName || `${Date.now()}.bin`);
+    formData.append("file", new File([file], fileName || `${Date.now()}.bin`, { type: file.type || "application/octet-stream" }));
   }
   formData.append("folder", folder);
 
-  const { data, error } = await supabase.functions.invoke("gdrive-storage", {
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  const url = `https://${projectId}.supabase.co/functions/v1/gdrive-storage?action=upload`;
+
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    },
     body: formData,
-    headers: { "x-action": "upload" },
   });
 
-  if (error) throw new Error(error.message || "Upload to Drive failed");
-  if (data?.error) throw new Error(data.error);
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || "Upload to Drive failed");
 
   return {
     fileId: data.fileId,
@@ -67,7 +77,7 @@ export async function listDriveFiles(folder: string) {
 }
 
 /**
- * Get a public/download URL for a Drive file
+ * Get a public view URL for a Drive file
  */
 export function getDrivePublicUrl(fileId: string): string {
   return `https://drive.google.com/uc?export=view&id=${fileId}`;
