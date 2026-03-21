@@ -173,6 +173,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("backup-to-drive: START");
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
@@ -225,11 +226,14 @@ Deno.serve(async (req) => {
 
     const empresaNome = empresa?.nome || profile.empresa_id;
 
-    // Build backup data
+    console.log("backup-to-drive: building backup data...");
     const { backup, log } = await buildBackupForEmpresa(serviceClient, profile.empresa_id);
+    console.log("backup-to-drive: backup data built, tables:", Object.keys(backup).length);
 
     // Get OAuth access token (Gmail pessoal)
+    console.log("backup-to-drive: getting OAuth token...");
     const accessToken = await getAccessTokenViaOAuth();
+    console.log("backup-to-drive: OAuth token obtained");
 
     // Create folder structure
     const now = new Date();
@@ -237,8 +241,10 @@ Deno.serve(async (req) => {
     const timeStr = now.toISOString().slice(11, 19).replace(/:/g, "-");
     const backupFolderName = `backup_${dateStr}_${timeStr}`;
 
+    console.log("backup-to-drive: creating folders...");
     const empresaFolderId = await findOrCreateFolder(accessToken, DRIVE_FOLDER_ID, empresaNome);
     const backupFolderId = await findOrCreateFolder(accessToken, empresaFolderId, backupFolderName);
+    console.log("backup-to-drive: folders created, uploading tables...");
 
     // Upload individual tables
     let uploadedTables = 0;
@@ -246,6 +252,7 @@ Deno.serve(async (req) => {
       const fileName = `${TABLE_LABELS[table] || table}.json`;
       await uploadFile(accessToken, backupFolderId, fileName, JSON.stringify(rows, null, 2));
       uploadedTables += 1;
+      console.log(`backup-to-drive: uploaded ${uploadedTables}/${Object.keys(backup).length} - ${fileName}`);
     }
 
     // Upload consolidated backup
