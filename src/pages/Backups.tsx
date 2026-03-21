@@ -189,81 +189,114 @@ export default function Backups() {
     setProgress(5);
     setProgressLabel("Conectando ao Google Drive...");
     try {
-      // Step 1: Get Drive access (tiny edge function call ~1KB)
       const access = await ensureDriveAccess();
       setProgress(10);
 
-      // Step 2: Create a timestamped subfolder directly from browser
+      // Step 1: Fetch all companies in user's tree
+      setProgressLabel("Identificando empresas...");
+      const { data: mainEmpresa } = await supabase
+        .from("empresa_config")
+        .select("id, nome")
+        .eq("id", empresaId)
+        .single();
+
+      const { data: filiais } = await supabase
+        .from("empresa_config")
+        .select("id, nome")
+        .eq("empresa_pai_id", empresaId);
+
+      const allEmpresas = [
+        ...(mainEmpresa ? [mainEmpresa] : []),
+        ...(filiais || []),
+      ];
+
+      if (allEmpresas.length === 0) {
+        throw new Error("Nenhuma empresa encontrada");
+      }
+
+      setProgress(15);
+
+      // Step 2: Create timestamped root folder
       const now = new Date();
       const dateStr = now.toISOString().slice(0, 10);
       const timeStr = now.toISOString().slice(11, 19).replace(/:/g, "-");
       const backupFolderName = `backup_${dateStr}_${timeStr}`;
-      const backupFolderId = await findOrCreateFolder(access.accessToken, access.folderId, backupFolderName);
-      setProgress(15);
+      const backupRootId = await findOrCreateFolder(access.accessToken, access.folderId, backupFolderName);
+      setProgress(20);
 
-      // Step 3: Fetch data from Supabase SDK (uses DB server, NOT network)
-      const backup: Record<string, unknown[]> = {};
-      let tablesDone = 0;
+      // Step 3: For each empresa, create folder and export data
+      const totalSteps = allEmpresas.length * TABLES.length;
+      let stepsDone = 0;
+      const summaryLog: Record<string, { tables: number; records: number }> = {};
 
-      for (const table of TABLES) {
-        setProgressLabel(`Exportando ${TABLE_LABELS[table] || table}...`);
-        let query = (supabase.from as any)(table).select("*");
-        if (table === "empresa_config") {
-          query = query.eq("id", empresaId);
-        } else {
-          query = query.eq("empresa_id", empresaId);
+      for (const empresa of allEmpresas) {
+        const empresaFolderName = empresa.nome || empresa.id;
+        setProgressLabel(`Criando pasta: ${empresaFolderName}...`);
+        const empresaFolderId = await findOrCreateFolder(access.accessToken, backupRootId, empresaFolderName);
+
+        const backup: Record<string, unknown[]> = {};
+        let totalRecords = 0;
+
+        for (const table of TABLES) {
+          setProgressLabel(`${empresaFolderName} → ${TABLE_LABELS[table] || table}...`);
+          let query = (supabase.from as any)(table).select("*");
+          if (table === "empresa_config") {
+            query = query.eq("id", empresa.id);
+          } else {
+            query = query.eq("empresa_id", empresa.id);
+          }
+          const { data } = await query;
+          backup[table] = data || [];
+          totalRecords += (data || []).length;
+          stepsDone++;
+          setProgress(20 + Math.round((stepsDone / totalSteps) * 50));
         }
-        const { data } = await query;
-        backup[table] = data || [];
-        tablesDone++;
-        setProgress(15 + Math.round((tablesDone / TABLES.length) * 40));
+
+        // Upload individual table JSONs
+        let uploaded = 0;
+        for (const [table, rows] of Object.entries(backup)) {
+          const fileName = `${TABLE_LABELS[table] || table}.json`;
+          await uploadJsonToDrive(access.accessToken, empresaFolderId, fileName, JSON.stringify(rows, null, 2));
+          uploaded++;
+          setProgressLabel(`${empresaFolderName} → Enviando ${uploaded}/${Object.keys(backup).length}...`);
+        }
+
+        // Upload consolidated per company
+        await uploadJsonToDrive(access.accessToken, empresaFolderId, "backup_completo.json", JSON.stringify({
+          generated_at: now.toISOString(),
+          empresa_id: empresa.id,
+          empresa_nome: empresa.nome,
+          tables: backup,
+          table_labels: TABLE_LABELS,
+        }, null, 2));
+
+        summaryLog[empresaFolderName] = { tables: uploaded, records: totalRecords };
       }
 
-      // Step 4: Upload individual table JSONs directly to Drive (browser → Drive)
-      setProgressLabel("Enviando tabelas ao Google Drive...");
-      let uploaded = 0;
-      for (const [table, rows] of Object.entries(backup)) {
-        const fileName = `${TABLE_LABELS[table] || table}.json`;
-        await uploadJsonToDrive(access.accessToken, backupFolderId, fileName, JSON.stringify(rows, null, 2));
-        uploaded++;
-        setProgress(55 + Math.round((uploaded / Object.keys(backup).length) * 30));
-        setProgressLabel(`Enviando ${uploaded}/${Object.keys(backup).length} tabelas...`);
-      }
+      setProgress(90);
 
-      // Step 5: Upload consolidated backup
-      setProgressLabel("Finalizando backup completo...");
-      await uploadJsonToDrive(access.accessToken, backupFolderId, "backup_completo.json", JSON.stringify({
+      // Step 4: Upload summary log at root level
+      setProgressLabel("Finalizando...");
+      await uploadJsonToDrive(access.accessToken, backupRootId, "log_backup.json", JSON.stringify({
         generated_at: now.toISOString(),
-        empresa_id: empresaId,
-        tables: backup,
-        table_labels: TABLE_LABELS,
+        empresas: summaryLog,
+        total_empresas: allEmpresas.length,
       }, null, 2));
 
       setProgress(95);
-
-      // Step 6: Upload log
-      await uploadJsonToDrive(access.accessToken, backupFolderId, "log_backup.json", JSON.stringify({
-        generated_at: now.toISOString(),
-        empresa_id: empresaId,
-        total_tables: TABLES.length,
-        uploaded_tables: uploaded,
-      }, null, 2));
-
-      setProgress(100);
       setProgressLabel("Limpando storage antigo...");
 
-      // Step 7: Auto-cleanup Supabase storage after successful backup
       try {
         await supabase.functions.invoke("cleanup-storage");
       } catch { /* non-critical */ }
 
+      setProgress(100);
       toast({
-        title: "✅ Backup enviado e storage limpo!",
-        description: `${uploaded} módulos exportados para "${backupFolderName}". Storage do servidor zerado.`,
+        title: "✅ Backup enviado!",
+        description: `${allEmpresas.length} empresa(s) exportadas em pastas separadas para "${backupFolderName}".`,
       });
 
-      // Refresh list
-      setDriveAccess(null); // Force re-fetch to refresh token
+      setDriveAccess(null);
       await loadBackups();
     } catch (err: any) {
       toast({ title: "Erro ao gerar backup", description: err.message, variant: "destructive" });
