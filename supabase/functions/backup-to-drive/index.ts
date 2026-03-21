@@ -84,50 +84,56 @@ async function createSignedJwt(clientEmail: string, privateKey: CryptoKey): Prom
 }
 
 function parseGoogleServiceAccount(raw: string): Record<string, string> {
-  let current: unknown = raw
-    .replace(/^\uFEFF/, "")
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "");
+  console.log("SA_JSON first 100 chars:", JSON.stringify(raw.slice(0, 100)));
+  console.log("SA_JSON length:", raw.length);
+  console.log("SA_JSON char codes [0..5]:", Array.from(raw.slice(0, 6)).map(c => c.charCodeAt(0)));
 
-  for (let attempt = 0; attempt < 5; attempt++) {
-    if (typeof current !== "string") break;
+  // Try direct parse first
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.client_email) {
+      return parsed as Record<string, string>;
+    }
+  } catch (e) {
+    console.log("Direct parse failed:", (e as Error).message);
+  }
 
-    const trimmed = current.trim();
-    if (!trimmed) break;
+  // Try trimming
+  const trimmed = raw.replace(/^\uFEFF/, "").trim();
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object" && parsed.client_email) {
+      return parsed as Record<string, string>;
+    }
+  } catch (e) {
+    console.log("Trimmed parse failed:", (e as Error).message);
+  }
 
-    try {
-      current = JSON.parse(trimmed);
-      continue;
-    } catch {
-      if (
-        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))
-      ) {
-        current = trimmed.slice(1, -1);
-        continue;
-      }
-
-      const unescaped = trimmed
-        .replace(/\\n/g, "\n")
-        .replace(/\\r/g, "\r")
-        .replace(/\\t/g, "\t")
-        .replace(/\\"/g, '"');
-
-      if (unescaped !== trimmed) {
-        current = unescaped;
-        continue;
+  // Try unwrapping double-stringified
+  try {
+    const unwrapped = JSON.parse(trimmed);
+    if (typeof unwrapped === "string") {
+      const parsed = JSON.parse(unwrapped);
+      if (parsed && typeof parsed === "object" && parsed.client_email) {
+        return parsed as Record<string, string>;
       }
     }
-
-    break;
+  } catch (e) {
+    console.log("Double-unwrap parse failed:", (e as Error).message);
   }
 
-  if (!current || typeof current !== "object") {
-    throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format");
+  // Try base64 decode
+  try {
+    const decoded = atob(trimmed);
+    const parsed = JSON.parse(decoded);
+    if (parsed && typeof parsed === "object" && parsed.client_email) {
+      return parsed as Record<string, string>;
+    }
+  } catch (e) {
+    console.log("Base64 decode failed:", (e as Error).message);
   }
 
-  return current as Record<string, string>;
+  throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format. First 50 chars: " + raw.slice(0, 50));
 }
 
 async function readJsonSafely(response: Response) {
