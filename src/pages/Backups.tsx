@@ -60,6 +60,7 @@ export default function Backups() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [sendingToDrive, setSendingToDrive] = useState(false);
 
   const loadBackups = useCallback(async () => {
     if (!empresaId) return;
