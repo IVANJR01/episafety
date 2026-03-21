@@ -23,8 +23,8 @@ import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
 
 
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; }
-interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; }
+interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; empresa_id?: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; }
 interface EpiItem { epi: EPI; quantidade: number; }
 
@@ -310,6 +310,7 @@ export default function Entregas() {
     const statusMap: Record<string, string> = { entrega: "ativo", substituicao: "ativo", perda: "perdido", dano: "danificado" };
     const status = statusMap[normalizedTipo] || "ativo";
 
+
     if (!isOnline()) {
       const insertedIds: string[] = [];
       const cached = getCachedData<Entrega>("entregas") || [];
@@ -479,7 +480,7 @@ export default function Entregas() {
         tipo: "devolucao",
         status: "devolvido",
         observacao: `Devolução ref. entrega de ${entrega.data}`,
-        empresa_id: empresaId,
+        empresa_id: (entrega as any).empresa_id || empresaId,
       });
 
       if (devolucaoError) throw devolucaoError;
