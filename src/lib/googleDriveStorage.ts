@@ -6,53 +6,87 @@ export interface DriveUploadResult {
   webViewLink: string;
 }
 
+interface TokenResponse {
+  accessToken: string;
+  folderId: string;
+  empresaNome: string;
+}
+
 /**
- * Upload a file to Google Drive via the gdrive-storage edge function.
- * @param file - File or Blob to upload
- * @param folder - Subfolder inside the company's root (e.g. "logos", "fotos-reconhecimento")
- * @param fileName - Optional custom file name
+ * Get a short-lived Google Drive access token and target folder ID
+ * from the lightweight edge function (no file binary transferred).
+ */
+async function getDriveToken(folder: string): Promise<TokenResponse> {
+  const { data, error } = await supabase.functions.invoke("gdrive-token", {
+    body: { folder },
+  });
+  if (error) throw new Error(error.message || "Failed to get Drive token");
+  if (data?.error) throw new Error(data.error);
+  return data as TokenResponse;
+}
+
+/**
+ * Upload a file DIRECTLY from the browser to Google Drive API.
+ * The file binary never passes through Edge Functions, saving network.
  */
 export async function uploadToDrive(
   file: File | Blob,
   folder: string,
   fileName?: string
 ): Promise<DriveUploadResult> {
+  // Step 1: Get token + folder ID from lightweight edge function (~1KB network)
+  const { accessToken, folderId } = await getDriveToken(folder);
+
+  // Step 2: Upload directly from browser to Google Drive API (0 edge function network)
+  const actualFile = file instanceof File
+    ? file
+    : new File([file], fileName || `${Date.now()}.bin`, { type: file.type || "application/octet-stream" });
+
+  const metadata = {
+    name: actualFile.name,
+    parents: [folderId],
+  };
+
   const formData = new FormData();
+  formData.append(
+    "metadata",
+    new Blob([JSON.stringify(metadata)], { type: "application/json" })
+  );
+  formData.append("file", actualFile);
 
-  if (file instanceof File) {
-    formData.append("file", file);
-  } else {
-    formData.append("file", new File([file], fileName || `${Date.now()}.bin`, { type: file.type || "application/octet-stream" }));
+  const uploadRes = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: formData,
+    }
+  );
+
+  const uploadData = await uploadRes.json();
+  if (!uploadRes.ok) {
+    throw new Error(`Drive upload failed: ${uploadData?.error?.message || JSON.stringify(uploadData)}`);
   }
-  formData.append("folder", folder);
 
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const url = `https://${projectId}.supabase.co/functions/v1/gdrive-storage?action=upload`;
-
-  const session = await supabase.auth.getSession();
-  const token = session.data.session?.access_token;
-
-  const res = await fetch(url, {
+  // Step 3: Set file as public (small request)
+  await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
     },
-    body: formData,
+    body: JSON.stringify({ role: "reader", type: "anyone" }),
   });
 
-  const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error || "Upload to Drive failed");
-
   return {
-    fileId: data.fileId,
-    publicUrl: data.publicUrl,
-    webViewLink: data.webViewLink,
+    fileId: uploadData.id,
+    publicUrl: `https://drive.google.com/uc?export=view&id=${uploadData.id}`,
+    webViewLink: uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`,
   };
 }
 
 /**
- * Delete a file from Google Drive
+ * Delete a file from Google Drive (still uses edge function - tiny payload)
  */
 export async function deleteFromDrive(fileId: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke("gdrive-storage", {
@@ -64,7 +98,7 @@ export async function deleteFromDrive(fileId: string): Promise<void> {
 }
 
 /**
- * List files in a Drive folder
+ * List files in a Drive folder (still uses edge function - tiny payload)
  */
 export async function listDriveFiles(folder: string) {
   const { data, error } = await supabase.functions.invoke("gdrive-storage", {
