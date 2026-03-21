@@ -522,7 +522,7 @@ export default function Dashboard() {
               </div>
             </div>
             <Progress value={valorEstoqueAtual > 0 ? Math.min(100, (valorSaida / valorEstoqueAtual) * 100) : 0} className="h-2 [&>div]:bg-destructive" />
-            <p className="text-[10px] text-muted-foreground mt-1.5">{entregas.length} entregas + {estoqueMovimentacoes.length} transferências no período</p>
+            <p className="text-[10px] text-muted-foreground mt-1.5">{totalTransferencias} transferência(s) para unidades no período</p>
           </CardContent>
         </Card>
       </motion.div>
