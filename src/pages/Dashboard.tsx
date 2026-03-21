@@ -347,12 +347,13 @@ export default function Dashboard() {
       const epi = epis.find(ep => ep.id === e.epi_id);
       return sum + (epi?.valor || 0) * e.quantidade;
     }, 0);
-    // Transferências internas (saída da matriz)
+    // Transferências registradas na tabela de movimentações
     const valorTransferencias = estoqueMovimentacoes.reduce((sum, m) => {
       return sum + (m.valor_unitario || 0) * m.quantidade;
     }, 0);
-    return valorEntregas + valorTransferencias;
-  }, [entregas, epis, estoqueMovimentacoes]);
+    // Valor distribuído para filiais e contratos (estoque atual nessas unidades)
+    return valorEntregas + valorTransferencias + valorDistribuido;
+  }, [entregas, epis, estoqueMovimentacoes, valorDistribuido]);
 
   // Entregas por responsável (usuário que registrou a entrega)
   const entregasPorResponsavel = useMemo(() => {
