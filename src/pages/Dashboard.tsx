@@ -735,6 +735,65 @@ export default function Dashboard() {
       </Card>
       </motion.div>
 
+      {/* Per-unit entry/exit charts */}
+      {perUnitChartData.size > 0 && (
+        <motion.div variants={fadeUp} custom={7} className="space-y-4">
+          {Array.from(perUnitChartData.entries()).map(([uid, unitData]) => (
+            <Card key={uid} className="shadow-md border-border/50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
+                    <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-bold">Entradas e Saídas — {unitData.nome}</CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Por contrato: {unitData.contratoNomes.join(", ")}
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={unitData.data} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v: number) => `R$${v}`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [
+                        `R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                        name
+                      ]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    {unitData.contratoNomes.map((c, i) => (
+                      <Bar
+                        key={`${c}-entrada`}
+                        dataKey={`${c} (Entrada)`}
+                        stackId="entrada"
+                        fill={CHART_COLORS_ENTRADA[i % CHART_COLORS_ENTRADA.length]}
+                        radius={i === unitData.contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                        maxBarSize={36}
+                      />
+                    ))}
+                    {unitData.contratoNomes.map((c, i) => (
+                      <Bar
+                        key={`${c}-saida`}
+                        dataKey={`${c} (Saída)`}
+                        stackId="saida"
+                        fill={CHART_COLORS_SAIDA[i % CHART_COLORS_SAIDA.length]}
+                        radius={i === unitData.contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                        maxBarSize={36}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          ))}
+        </motion.div>
+      )}
 
       {/* Stock value chart */}
       <motion.div variants={fadeUp} custom={8}>
