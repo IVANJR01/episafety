@@ -1161,9 +1161,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
           </CardContent>
-          </CollapsibleContent>
           </Card>
-          </Collapsible>
         </>
       )}
       </motion.div>
