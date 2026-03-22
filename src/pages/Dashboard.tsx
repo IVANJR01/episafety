@@ -668,7 +668,9 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
-      </motion.div>
+        </CollapsibleContent>
+      </Card>
+      </Collapsible>
 
       {/* Contract consumption chart */}
       {contratoChartData.length > 0 && (
