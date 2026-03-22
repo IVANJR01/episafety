@@ -78,7 +78,6 @@ export default function Dashboard() {
             .select("id, contrato_id, epi_id, tipo, quantidade, created_at, empresa_id")
             .order("created_at", { ascending: true })
         ),
-        ),
         cachedQuery<Contrato>("dashboard_contratos", () =>
           (supabase.from as any)("contratos").select("id, nome, unidade_id")
         ),
