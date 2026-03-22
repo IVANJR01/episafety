@@ -333,7 +333,7 @@ export default function ControleEstoqueContrato() {
       {/* Level-specific content */}
       {currentLevel === "matriz" && (
         <div className="space-y-4">
-          <MatrizKPICards {...matrizKPIs} />
+          
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <StockDistributionChart data={distribuicao} title="Distribuição de Estoque por Unidade" />
