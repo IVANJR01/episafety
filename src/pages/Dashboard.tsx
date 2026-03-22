@@ -667,7 +667,6 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </CardContent>
-      </Card>
         </CollapsibleContent>
       </Card>
       </Collapsible>
