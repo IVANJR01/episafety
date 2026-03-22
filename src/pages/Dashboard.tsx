@@ -601,20 +601,27 @@ export default function Dashboard() {
 
       {/* Cost Evolution Chart — Area chart */}
       <motion.div variants={fadeUp} custom={6}>
+      <Collapsible defaultOpen={false}>
       <Card className="shadow-md border-border/50">
-        <CardHeader className="pb-3">
+        <CollapsibleTrigger className="w-full">
+        <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-primary/10">
                 <TrendingUp className="w-4 h-4 text-primary" />
               </div>
-              <div>
+              <div className="text-left">
                 <CardTitle className="text-base font-bold">Evolução de Custos</CardTitle>
                 <p className="text-xs text-muted-foreground">Saída mensal vs Valor em estoque</p>
               </div>
             </div>
+            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           </div>
-          <div className="flex flex-wrap gap-3 mt-3">
+        </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardHeader className="pt-0 pb-3">
+          <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
               <div className="w-3 h-3 rounded-full bg-primary" />
               <span className="text-[10px] sm:text-xs text-muted-foreground">Saída:</span>
@@ -626,7 +633,7 @@ export default function Dashboard() {
               <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
-        </CardHeader>
+          </CardHeader>
         <CardContent>
           {custoMensalData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum dado de custo disponível</p>
