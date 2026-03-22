@@ -75,8 +75,9 @@ export default function Dashboard() {
       const [movResult, contResult, profResult, ceResult, uniResult, emResult] = await Promise.all([
         cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
           (supabase.from as any)("contrato_epis_movimentacoes")
-            .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
+            .select("id, contrato_id, epi_id, tipo, quantidade, created_at, empresa_id")
             .order("created_at", { ascending: true })
+        ),
         ),
         cachedQuery<Contrato>("dashboard_contratos", () =>
           (supabase.from as any)("contratos").select("id, nome, unidade_id")
