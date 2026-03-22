@@ -320,39 +320,43 @@ export default function Dashboard() {
     "hsl(25, 95%, 53%)",
   ];
 
-  const { contratoChartData, contratoNomes } = useMemo(() => {
-    if (movimentacoes.length === 0 || contratos.length === 0) {
-      return { contratoChartData: [], contratoNomes: [] as string[] };
-    }
+  // Per-unit monthly entry/exit chart data
+  const perUnitChartData = useMemo(() => {
+    if (movimentacoes.length === 0 || contratos.length === 0) return new Map<string, { nome: string; data: { mes: string; entrada: number; saida: number }[] }>();
 
-    const contratoMap = new Map(contratos.map(c => [c.id, c.nome]));
-    const mesesSet = new Set<string>();
-    const porMesContrato: Record<string, Record<string, number>> = {};
+    const contratoToUnidade = new Map(contratos.map(c => [c.id, c.unidade_id]));
+    const unidadeMap = new Map(unidades.map(u => [u.id, u.nome]));
 
-    movimentacoes.filter(m => m.tipo === "saida").forEach(m => {
+    // Group movements by unidade
+    const porUnidade: Record<string, Record<string, { entrada: number; saida: number }>> = {};
+    movimentacoes.forEach(m => {
+      const unidadeId = contratoToUnidade.get(m.contrato_id);
+      if (!unidadeId) return;
       const mes = m.created_at?.substring(0, 7);
       if (!mes) return;
-      mesesSet.add(mes);
-      const nomeContrato = contratoMap.get(m.contrato_id) || "Sem contrato";
-      if (!porMesContrato[mes]) porMesContrato[mes] = {};
-      porMesContrato[mes][nomeContrato] = (porMesContrato[mes][nomeContrato] || 0) + m.quantidade;
+      if (!porUnidade[unidadeId]) porUnidade[unidadeId] = {};
+      if (!porUnidade[unidadeId][mes]) porUnidade[unidadeId][mes] = { entrada: 0, saida: 0 };
+      const epi = epis.find(e => e.id === m.epi_id);
+      const valor = (epi?.valor || 0) * m.quantidade;
+      if (m.tipo === "entrada") porUnidade[unidadeId][mes].entrada += valor;
+      else if (m.tipo === "saida") porUnidade[unidadeId][mes].saida += valor;
     });
 
-    const meses = Array.from(mesesSet).sort().slice(-12);
-    const allContratos = Array.from(new Set(
-      movimentacoes.filter(m => m.tipo === "saida").map(m => contratoMap.get(m.contrato_id) || "Sem contrato")
-    )).sort();
-
-    const chartData = meses.map(mes => {
-      const row: Record<string, any> = { mes: mes.split("-").reverse().join("/") };
-      allContratos.forEach(c => {
-        row[c] = porMesContrato[mes]?.[c] || 0;
+    const result = new Map<string, { nome: string; data: { mes: string; entrada: number; saida: number }[] }>();
+    Object.entries(porUnidade).forEach(([uid, meses]) => {
+      const mesesSorted = Object.keys(meses).sort().slice(-12);
+      if (mesesSorted.length === 0) return;
+      result.set(uid, {
+        nome: unidadeMap.get(uid) || "Unidade",
+        data: mesesSorted.map(mes => ({
+          mes: mes.split("-").reverse().join("/"),
+          entrada: Number(meses[mes].entrada.toFixed(2)),
+          saida: Number(meses[mes].saida.toFixed(2)),
+        })),
       });
-      return row;
     });
-
-    return { contratoChartData: chartData, contratoNomes: allContratos };
-  }, [movimentacoes, contratos]);
+    return result;
+  }, [movimentacoes, contratos, unidades, epis]);
 
   const { mediaMensalEPI, mesesOrdenados } = useMemo(() => {
     if (entregas.length === 0) return { mediaMensalEPI: [], mesesOrdenados: [] as string[] };
