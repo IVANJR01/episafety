@@ -1,4 +1,4 @@
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes, Building2, MapPin, ChevronDown } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes, Building2, MapPin } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { cachedQuery } from "@/lib/offlineStorage";
@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -584,25 +584,18 @@ export default function Dashboard() {
       {/* Stock breakdown by unit */}
       {estoqueUnidades.length > 0 && (
         <motion.div variants={fadeUp} custom={5.5}>
-          <Collapsible defaultOpen={false}>
-            <Card className="shadow-md border-border/50">
-              <CollapsibleTrigger className="w-full">
-                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+           <Card className="shadow-md border-border/50">
+              <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
                       <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
                         <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
                       </div>
-                      <div className="text-left">
+                      <div>
                         <CardTitle className="text-base font-bold">Estoque por Unidade / Contrato</CardTitle>
                         <p className="text-xs text-muted-foreground">Distribuição do estoque consolidado</p>
                       </div>
-                    </div>
-                    <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </div>
                 </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
                 <CardContent>
                   <div className="space-y-3">
                     {estoqueUnidades.map(u => (
@@ -646,33 +639,24 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </CardContent>
-              </CollapsibleContent>
             </Card>
-          </Collapsible>
         </motion.div>
       )}
 
       {/* Cost Evolution Chart — Area chart */}
       <motion.div variants={fadeUp} custom={6}>
-      <Collapsible defaultOpen={false}>
       <Card className="shadow-md border-border/50">
-        <CollapsibleTrigger className="w-full">
-        <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-primary/10">
                 <TrendingUp className="w-4 h-4 text-primary" />
               </div>
-              <div className="text-left">
+              <div>
                 <CardTitle className="text-base font-bold">Evolução de Custos</CardTitle>
                 <p className="text-xs text-muted-foreground">Saída mensal vs Valor em estoque</p>
               </div>
-            </div>
-            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           </div>
         </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
           <CardHeader className="pt-0 pb-3">
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
@@ -720,33 +704,24 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </CardContent>
-        </CollapsibleContent>
       </Card>
-      </Collapsible>
       </motion.div>
 
       {/* Contract consumption chart */}
       {contratoChartData.length > 0 && (
         <motion.div variants={fadeUp} custom={7}>
-          <Collapsible defaultOpen={false}>
           <Card className="shadow-md border-border/50">
-            <CollapsibleTrigger className="w-full">
-            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
                     <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
                   </div>
-                  <div className="text-left">
+                  <div>
                     <CardTitle className="text-base font-bold">Consumo por Contrato</CardTitle>
                     <p className="text-xs text-muted-foreground">Últimos 12 meses</p>
                   </div>
-                </div>
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
               </div>
             </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
             <CardContent>
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={contratoChartData} barGap={2}>
@@ -770,35 +745,26 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
-            </CollapsibleContent>
           </Card>
-          </Collapsible>
         </motion.div>
       )}
 
       {/* Stock value chart */}
       <motion.div variants={fadeUp} custom={8}>
-      <Collapsible defaultOpen={false}>
       <Card className="shadow-md border-border/50">
-        <CollapsibleTrigger className="w-full">
-        <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-primary/10">
                 <Package className="w-4 h-4 text-primary" />
               </div>
-              <div className="text-left">
+              <div>
                 <CardTitle className="text-base font-bold">Valor do Estoque por EPI</CardTitle>
                 <p className="text-xs text-muted-foreground">
                   Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </p>
               </div>
-            </div>
-            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           </div>
         </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
         <CardContent>
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum EPI com valor em estoque</p>
@@ -821,9 +787,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </CardContent>
-        </CollapsibleContent>
       </Card>
-      </Collapsible>
       </motion.div>
 
       {/* Mobile: Tabs | Desktop: stacked */}
@@ -983,27 +947,20 @@ export default function Dashboard() {
         </Tabs>
       ) : (
         <>
-          <Collapsible defaultOpen={false}>
           <Card className="shadow-md border-border/50">
-            <CollapsibleTrigger className="w-full">
-              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <div className="p-2 rounded-lg bg-primary/10">
                       <TrendingUp className="w-4 h-4 text-primary" />
                     </div>
-                    <div className="text-left">
+                    <div>
                       <CardTitle className="text-base font-bold">Média Mensal de Consumo por EPI</CardTitle>
                       <p className="text-xs text-muted-foreground">
                         Base para planejamento de compras
                       </p>
                     </div>
                   </div>
-                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                </div>
               </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
             <CardContent className="p-0">
               {mediaMensalEPI.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
@@ -1052,29 +1009,20 @@ export default function Dashboard() {
                 </div>
               )}
             </CardContent>
-            </CollapsibleContent>
           </Card>
-          </Collapsible>
 
-          <Collapsible defaultOpen={false}>
           <Card className="shadow-md border-border/50">
-            <CollapsibleTrigger className="w-full">
-              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <div className="p-2 rounded-lg bg-muted">
                       <AlertTriangle className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <div className="text-left">
+                    <div>
                       <CardTitle className="text-base font-bold">Alertas, Entregas e Responsáveis</CardTitle>
                       <p className="text-xs text-muted-foreground">Detalhamento operacional</p>
                     </div>
                   </div>
-                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                </div>
               </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
             <CardContent>
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Alerts */}
@@ -1213,9 +1161,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
           </CardContent>
-          </CollapsibleContent>
           </Card>
-          </Collapsible>
         </>
       )}
       </motion.div>
