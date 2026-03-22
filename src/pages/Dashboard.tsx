@@ -3,6 +3,7 @@ import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { cachedQuery } from "@/lib/offlineStorage";
 import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -55,16 +56,17 @@ interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: stri
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
-  const { data: epis } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id");
+  const { empresaId } = useAuth();
+  const { data: allEpis } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome");
-  const { data: entregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by");
+  const { data: allEntregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by");
 
-  const [movimentacoes, setMovimentacoes] = useState<ContratoMovimentacao[]>([]);
-  const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [allMovimentacoes, setAllMovimentacoes] = useState<ContratoMovimentacao[]>([]);
+  const [allContratos, setAllContratos] = useState<Contrato[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [contratoEpis, setContratoEpis] = useState<ContratoEpi[]>([]);
-  const [unidades, setUnidades] = useState<Unidade[]>([]);
-  const [estoqueMovimentacoes, setEstoqueMovimentacoes] = useState<EstoqueMovimentacao[]>([]);
+  const [allContratoEpis, setAllContratoEpis] = useState<ContratoEpi[]>([]);
+  const [allUnidades, setAllUnidades] = useState<Unidade[]>([]);
+  const [allEstoqueMovimentacoes, setAllEstoqueMovimentacoes] = useState<EstoqueMovimentacao[]>([]);
 
   useEffect(() => {
     async function fetchContractData() {
@@ -92,15 +94,66 @@ export default function Dashboard() {
             .order("created_at", { ascending: true })
         ),
       ]);
-      setMovimentacoes(movResult.data);
-      setContratos(contResult.data);
+      setAllMovimentacoes(movResult.data);
+      setAllContratos(contResult.data);
       setProfiles(profResult.data);
-      setContratoEpis(ceResult.data);
-      setUnidades(uniResult.data);
-      setEstoqueMovimentacoes(emResult.data);
+      setAllContratoEpis(ceResult.data);
+      setAllUnidades(uniResult.data);
+      setAllEstoqueMovimentacoes(emResult.data);
     }
     fetchContractData();
   }, []);
+
+  // Build the set of empresa IDs in the user's company tree (empresa + filiais)
+  const companyTreeIds = useMemo(() => {
+    if (!empresaId) return new Set<string>();
+    const ids = new Set<string>([empresaId]);
+    allUnidades.forEach(u => {
+      if (u.empresa_pai_id === empresaId) ids.add(u.id);
+    });
+    return ids;
+  }, [empresaId, allUnidades]);
+
+  // Filter all data by the user's company tree
+  const epis = useMemo(() => {
+    if (!empresaId) return allEpis;
+    return allEpis.filter(e => !e.empresa_id || companyTreeIds.has(e.empresa_id));
+  }, [allEpis, empresaId, companyTreeIds]);
+
+  const unidades = useMemo(() => {
+    if (!empresaId) return allUnidades;
+    return allUnidades.filter(u => companyTreeIds.has(u.id));
+  }, [allUnidades, empresaId, companyTreeIds]);
+
+  const contratos = useMemo(() => {
+    if (!empresaId) return allContratos;
+    const unidadeIds = new Set(unidades.map(u => u.id));
+    return allContratos.filter(c => unidadeIds.has(c.unidade_id));
+  }, [allContratos, empresaId, unidades]);
+
+  const contratoEpis = useMemo(() => {
+    if (!empresaId) return allContratoEpis;
+    const contratoIds = new Set(contratos.map(c => c.id));
+    return allContratoEpis.filter(ce => contratoIds.has(ce.contrato_id));
+  }, [allContratoEpis, empresaId, contratos]);
+
+  const movimentacoes = useMemo(() => {
+    if (!empresaId) return allMovimentacoes;
+    const contratoIds = new Set(contratos.map(c => c.id));
+    return allMovimentacoes.filter(m => contratoIds.has(m.contrato_id));
+  }, [allMovimentacoes, empresaId, contratos]);
+
+  const entregas = useMemo(() => {
+    if (!empresaId) return allEntregas;
+    const epiIds = new Set(epis.map(e => e.id));
+    return allEntregas.filter(e => epiIds.has(e.epi_id));
+  }, [allEntregas, empresaId, epis]);
+
+  const estoqueMovimentacoes = useMemo(() => {
+    if (!empresaId) return allEstoqueMovimentacoes;
+    const epiIds = new Set(epis.map(e => e.id));
+    return allEstoqueMovimentacoes.filter(m => epiIds.has(m.epi_id));
+  }, [allEstoqueMovimentacoes, empresaId, epis]);
 
   // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
   const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi, valorEstoqueMatriz, valorDistribuido } = useMemo(() => {
