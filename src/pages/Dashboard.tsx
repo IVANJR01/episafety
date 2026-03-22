@@ -3,6 +3,7 @@ import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { cachedQuery } from "@/lib/offlineStorage";
 import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
