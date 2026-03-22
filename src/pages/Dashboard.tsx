@@ -32,7 +32,7 @@ const staggerContainer = {
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; }
 interface Funcionario { id: string; nome: string; }
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; empresa_id?: string | null; }
 interface Profile { id: string; user_id: string; nome: string; email: string | null; }
 interface ContratoMovimentacao {
   id: string;
@@ -41,6 +41,7 @@ interface ContratoMovimentacao {
   tipo: string;
   quantidade: number;
   created_at: string;
+  empresa_id?: string | null;
 }
 interface EstoqueMovimentacao {
   id: string;
@@ -49,6 +50,7 @@ interface EstoqueMovimentacao {
   valor_unitario: number;
   tipo: string;
   created_at: string;
+  empresa_id?: string | null;
 }
 interface Contrato { id: string; nome: string; unidade_id: string; }
 interface ContratoEpi { id: string; contrato_id: string; epi_id: string; estoque: number; empresa_id: string | null; }
@@ -59,7 +61,7 @@ export default function Dashboard() {
   const { empresaId } = useAuth();
   const { data: allEpis } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome");
-  const { data: allEntregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by");
+  const { data: allEntregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
 
   const [allMovimentacoes, setAllMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [allContratos, setAllContratos] = useState<Contrato[]>([]);
@@ -73,7 +75,7 @@ export default function Dashboard() {
       const [movResult, contResult, profResult, ceResult, uniResult, emResult] = await Promise.all([
         cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
           (supabase.from as any)("contrato_epis_movimentacoes")
-            .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
+            .select("id, contrato_id, epi_id, tipo, quantidade, created_at, empresa_id")
             .order("created_at", { ascending: true })
         ),
         cachedQuery<Contrato>("dashboard_contratos", () =>
@@ -90,7 +92,7 @@ export default function Dashboard() {
         ),
         cachedQuery<EstoqueMovimentacao>("dashboard_estoque_mov", () =>
           (supabase.from as any)("estoque_movimentacoes")
-            .select("id, epi_id, quantidade, valor_unitario, tipo, created_at")
+            .select("id, epi_id, quantidade, valor_unitario, tipo, created_at, empresa_id")
             .order("created_at", { ascending: true })
         ),
       ]);
@@ -140,20 +142,20 @@ export default function Dashboard() {
   const movimentacoes = useMemo(() => {
     if (!empresaId) return allMovimentacoes;
     const contratoIds = new Set(contratos.map(c => c.id));
-    return allMovimentacoes.filter(m => contratoIds.has(m.contrato_id));
-  }, [allMovimentacoes, empresaId, contratos]);
+    return allMovimentacoes.filter(m => 
+      contratoIds.has(m.contrato_id) || (m.empresa_id && companyTreeIds.has(m.empresa_id))
+    );
+  }, [allMovimentacoes, empresaId, contratos, companyTreeIds]);
 
   const entregas = useMemo(() => {
     if (!empresaId) return allEntregas;
-    const epiIds = new Set(epis.map(e => e.id));
-    return allEntregas.filter(e => epiIds.has(e.epi_id));
-  }, [allEntregas, empresaId, epis]);
+    return allEntregas.filter(e => e.empresa_id && companyTreeIds.has(e.empresa_id));
+  }, [allEntregas, empresaId, companyTreeIds]);
 
   const estoqueMovimentacoes = useMemo(() => {
     if (!empresaId) return allEstoqueMovimentacoes;
-    const epiIds = new Set(epis.map(e => e.id));
-    return allEstoqueMovimentacoes.filter(m => epiIds.has(m.epi_id));
-  }, [allEstoqueMovimentacoes, empresaId, epis]);
+    return allEstoqueMovimentacoes.filter(m => m.empresa_id && companyTreeIds.has(m.empresa_id));
+  }, [allEstoqueMovimentacoes, empresaId, companyTreeIds]);
 
   // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
   const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi, valorEstoqueMatriz, valorDistribuido } = useMemo(() => {
