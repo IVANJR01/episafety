@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package } from "lucide-react";
+import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package, TrendingUp } from "lucide-react";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
 import { MatrizKPICards, UnidadeKPICards, ContratoKPICards } from "@/components/stock/StockKPICards";
 import StockDistributionChart from "@/components/stock/StockDistributionChart";
 import StockMovementTable, { MovementRow } from "@/components/stock/StockMovementTable";
 import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
 import ContratoStockPanel from "@/components/ContratoStockPanel";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from "recharts";
 
 interface UnidadeData {
   id: string;
