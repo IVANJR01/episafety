@@ -41,6 +41,7 @@ interface ContratoMovimentacao {
   tipo: string;
   quantidade: number;
   created_at: string;
+  empresa_id?: string | null;
 }
 interface EstoqueMovimentacao {
   id: string;
