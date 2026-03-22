@@ -1,10 +1,11 @@
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes, Building2, MapPin } from "lucide-react";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes, Building2, MapPin, ChevronDown } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { cachedQuery } from "@/lib/offlineStorage";
 import { motion } from "framer-motion";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -530,82 +531,97 @@ export default function Dashboard() {
       {/* Stock breakdown by unit */}
       {estoqueUnidades.length > 0 && (
         <motion.div variants={fadeUp} custom={5.5}>
-          <Card className="shadow-md border-border/50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
-                  <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
-                </div>
-                <div>
-                  <CardTitle className="text-base font-bold">Estoque por Unidade / Contrato</CardTitle>
-                  <p className="text-xs text-muted-foreground">Distribuição do estoque consolidado</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {estoqueUnidades.map(u => (
-                  <div key={u.id} className="rounded-xl border border-border/60 p-4 hover:bg-muted/30 transition-colors">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-semibold text-sm">{u.nome}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">{u.tipo}</span>
+          <Collapsible defaultOpen={false}>
+            <Card className="shadow-md border-border/50">
+              <CollapsibleTrigger className="w-full">
+                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
+                        <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold font-mono">R$ {u.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                        <p className="text-[10px] text-muted-foreground">{u.estoqueTotal} un.</p>
+                      <div className="text-left">
+                        <CardTitle className="text-base font-bold">Estoque por Unidade / Contrato</CardTitle>
+                        <p className="text-xs text-muted-foreground">Distribuição do estoque consolidado</p>
                       </div>
                     </div>
-                    {/* Contracts within the unit */}
-                    {Object.entries(u.contratos).length > 0 && (
-                      <div className="ml-6 space-y-1.5 mt-2 border-l-2 border-border/40 pl-3">
-                        {Object.entries(u.contratos).map(([cId, c]) => (
-                          <div key={cId} className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">{c.nome}</span>
-                            <div className="flex items-center gap-3">
-                              <span className="font-mono">{c.estoque} un.</span>
-                              <span className="font-mono font-semibold">R$ {c.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                            </div>
+                    <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent>
+                  <div className="space-y-3">
+                    {estoqueUnidades.map(u => (
+                      <div key={u.id} className="rounded-xl border border-border/60 p-4 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-semibold text-sm">{u.nome}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium capitalize">{u.tipo}</span>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                    {u.estoqueGeral > 0 && (
-                      <div className="ml-6 mt-1.5 border-l-2 border-border/40 pl-3">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground italic">Estoque geral (sem contrato)</span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono">{u.estoqueGeral} un.</span>
-                            <span className="font-mono font-semibold">R$ {u.valorGeral.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          <div className="text-right">
+                            <p className="text-sm font-bold font-mono">R$ {u.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                            <p className="text-[10px] text-muted-foreground">{u.estoqueTotal} un.</p>
                           </div>
                         </div>
+                        {Object.entries(u.contratos).length > 0 && (
+                          <div className="ml-6 space-y-1.5 mt-2 border-l-2 border-border/40 pl-3">
+                            {Object.entries(u.contratos).map(([cId, c]) => (
+                              <div key={cId} className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">{c.nome}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="font-mono">{c.estoque} un.</span>
+                                  <span className="font-mono font-semibold">R$ {c.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {u.estoqueGeral > 0 && (
+                          <div className="ml-6 mt-1.5 border-l-2 border-border/40 pl-3">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground italic">Estoque geral (sem contrato)</span>
+                              <div className="flex items-center gap-3">
+                                <span className="font-mono">{u.estoqueGeral} un.</span>
+                                <span className="font-mono font-semibold">R$ {u.valorGeral.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         </motion.div>
       )}
 
       {/* Cost Evolution Chart — Area chart */}
       <motion.div variants={fadeUp} custom={6}>
+      <Collapsible defaultOpen={false}>
       <Card className="shadow-md border-border/50">
-        <CardHeader className="pb-3">
+        <CollapsibleTrigger className="w-full">
+        <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-primary/10">
                 <TrendingUp className="w-4 h-4 text-primary" />
               </div>
-              <div>
+              <div className="text-left">
                 <CardTitle className="text-base font-bold">Evolução de Custos</CardTitle>
                 <p className="text-xs text-muted-foreground">Saída mensal vs Valor em estoque</p>
               </div>
             </div>
+            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           </div>
-          <div className="flex flex-wrap gap-3 mt-3">
+        </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardHeader className="pt-0 pb-3">
+          <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
               <div className="w-3 h-3 rounded-full bg-primary" />
               <span className="text-[10px] sm:text-xs text-muted-foreground">Saída:</span>
@@ -617,7 +633,7 @@ export default function Dashboard() {
               <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
-        </CardHeader>
+          </CardHeader>
         <CardContent>
           {custoMensalData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum dado de custo disponível</p>
@@ -651,26 +667,33 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
       </motion.div>
 
       {/* Contract consumption chart */}
       {contratoChartData.length > 0 && (
         <motion.div variants={fadeUp} custom={7}>
+          <Collapsible defaultOpen={false}>
           <Card className="shadow-md border-border/50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
-                  <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
+            <CollapsibleTrigger className="w-full">
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
+                    <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
+                  </div>
+                  <div className="text-left">
+                    <CardTitle className="text-base font-bold">Consumo por Contrato</CardTitle>
+                    <p className="text-xs text-muted-foreground">Últimos 12 meses</p>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-base font-bold">Consumo por Contrato</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Quantidade de EPIs consumidos por contrato — últimos 12 meses
-                  </p>
-                </div>
+                <ChevronDown className="w-5 h-5 text-muted-foreground" />
               </div>
             </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             <CardContent>
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={contratoChartData} barGap={2}>
@@ -694,26 +717,35 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
+            </CollapsibleContent>
           </Card>
+          </Collapsible>
         </motion.div>
       )}
 
       {/* Stock value chart */}
       <motion.div variants={fadeUp} custom={8}>
+      <Collapsible defaultOpen={false}>
       <Card className="shadow-md border-border/50">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Package className="w-4 h-4 text-primary" />
+        <CollapsibleTrigger className="w-full">
+        <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Package className="w-4 h-4 text-primary" />
+              </div>
+              <div className="text-left">
+                <CardTitle className="text-base font-bold">Valor do Estoque por EPI</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </p>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-base font-bold">Valor do Estoque por EPI</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-              </p>
-            </div>
+            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           </div>
         </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
         <CardContent>
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum EPI com valor em estoque</p>
@@ -736,7 +768,9 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </CardContent>
+        </CollapsibleContent>
       </Card>
+      </Collapsible>
       </motion.div>
 
       {/* Mobile: Tabs | Desktop: stacked */}
@@ -896,21 +930,27 @@ export default function Dashboard() {
         </Tabs>
       ) : (
         <>
-          {/* Desktop: Consumption table */}
+          <Collapsible defaultOpen={false}>
           <Card className="shadow-md border-border/50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <TrendingUp className="w-4 h-4 text-primary" />
+            <CollapsibleTrigger className="w-full">
+              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <TrendingUp className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <CardTitle className="text-base font-bold">Média Mensal de Consumo por EPI</CardTitle>
+                      <p className="text-xs text-muted-foreground">
+                        Base para planejamento de compras
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
                 </div>
-                <div>
-                  <CardTitle className="text-base font-bold">Média Mensal de Consumo por EPI</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Base para planejamento de compras — quanto maior o consumo, mais atenção ao reabastecimento
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
             <CardContent className="p-0">
               {mediaMensalEPI.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
@@ -959,8 +999,30 @@ export default function Dashboard() {
                 </div>
               )}
             </CardContent>
+            </CollapsibleContent>
           </Card>
+          </Collapsible>
 
+          <Collapsible defaultOpen={false}>
+          <Card className="shadow-md border-border/50">
+            <CollapsibleTrigger className="w-full">
+              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <AlertTriangle className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="text-left">
+                      <CardTitle className="text-base font-bold">Alertas, Entregas e Responsáveis</CardTitle>
+                      <p className="text-xs text-muted-foreground">Detalhamento operacional</p>
+                    </div>
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+            <CardContent>
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Alerts */}
             {(() => {
@@ -1062,7 +1124,7 @@ export default function Dashboard() {
           </div>
 
           {/* Entregas por Colaborador */}
-          <Card className="shadow-md border-border/50">
+          <Card className="shadow-md border-border/50 mt-4">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -1097,6 +1159,10 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+          </CardContent>
+          </CollapsibleContent>
+          </Card>
+          </Collapsible>
         </>
       )}
       </motion.div>
