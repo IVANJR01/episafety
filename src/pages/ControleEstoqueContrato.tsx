@@ -178,6 +178,26 @@ export default function ControleEstoqueContrato() {
       responsavel: profileMap[m.created_by] || "Sistema",
       valor_unitario: m.valor_unitario,
     })));
+
+    // Build monthly entry/exit chart
+    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
+    (movs || []).forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (!mes) return;
+      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
+      if (m.empresa_destino_id === matrizId) {
+        mesesMap[mes].entrada += (m.quantidade || 0) * (m.valor_unitario || 0);
+      }
+      if (m.empresa_origem_id === matrizId) {
+        mesesMap[mes].saida += (m.quantidade || 0) * (m.valor_unitario || 0);
+      }
+    });
+    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
+    setMonthlyChartData(mesesSorted.map(mes => ({
+      mes: mes.split("-").reverse().join("/"),
+      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
+      saida: Number(mesesMap[mes].saida.toFixed(2)),
+    })));
   };
 
   const loadUnidadeKPIs = async (unidadeId: string) => {
