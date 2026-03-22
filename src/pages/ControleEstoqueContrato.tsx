@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package, TrendingUp } from "lucide-react";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
 import { MatrizKPICards, UnidadeKPICards, ContratoKPICards } from "@/components/stock/StockKPICards";
-import StockDistributionChart from "@/components/stock/StockDistributionChart";
+
 import StockMovementTable, { MovementRow } from "@/components/stock/StockMovementTable";
 import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
 import ContratoStockPanel from "@/components/ContratoStockPanel";
@@ -40,7 +40,6 @@ export default function ControleEstoqueContrato() {
 
   // Matriz KPIs
   const [matrizKPIs, setMatrizKPIs] = useState({ estoqueTotal: 0, valorTotal: 0, totalEntradas: 0, totalSaidas: 0, valorSaidas: 0, itensBaixoEstoque: 0, giroEstoque: 0 });
-  const [distribuicao, setDistribuicao] = useState<{ nome: string; valor: number; percentual: number }[]>([]);
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [monthlyChartData, setMonthlyChartData] = useState<{ mes: string; entrada: number; saida: number }[]>([]);
 
@@ -136,19 +135,6 @@ export default function ControleEstoqueContrato() {
       giroEstoque: giro,
     });
 
-    // Distribution by unit (pie chart)
-    const distribution: { nome: string; valor: number; percentual: number }[] = [];
-    let totalValorAll = matrizValor;
-
-    for (const filial of filiais) {
-      const { data: episFilial } = await supabase.from("epis").select("estoque, valor").eq("empresa_id", filial.id);
-      const valFilial = (episFilial || []).reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0);
-      totalValorAll += valFilial;
-      if (valFilial > 0) distribution.push({ nome: filial.nome, valor: valFilial, percentual: 0 });
-    }
-    if (matrizValor > 0) distribution.unshift({ nome: `${matrizNome} (Sede)`, valor: matrizValor, percentual: 0 });
-    distribution.forEach(d => { d.percentual = totalValorAll > 0 ? (d.valor / totalValorAll) * 100 : 0; });
-    setDistribuicao(distribution);
 
     // Movement table
     const epiIds = [...new Set((movs || []).map(m => m.epi_id))];
@@ -435,10 +421,7 @@ export default function ControleEstoqueContrato() {
             </Card>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <StockDistributionChart data={distribuicao} title="Distribuição de Estoque por Unidade" />
-            <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
-          </div>
+          <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
 
           {/* Drill-down: Filiais */}
           {filiais.length > 0 && (
