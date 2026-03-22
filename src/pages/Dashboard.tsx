@@ -71,8 +71,6 @@ export default function Dashboard() {
         cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
           (supabase.from as any)("contrato_epis_movimentacoes")
             .select("id, contrato_id, epi_id, tipo, quantidade, created_at")
-            .eq("tipo", "saida")
-            .gte("created_at", new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
             .order("created_at", { ascending: true })
         ),
         cachedQuery<Contrato>("dashboard_contratos", () =>
