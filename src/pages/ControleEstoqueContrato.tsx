@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package } from "lucide-react";
+import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package, TrendingUp } from "lucide-react";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
 import { MatrizKPICards, UnidadeKPICards, ContratoKPICards } from "@/components/stock/StockKPICards";
 import StockDistributionChart from "@/components/stock/StockDistributionChart";
 import StockMovementTable, { MovementRow } from "@/components/stock/StockMovementTable";
 import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
 import ContratoStockPanel from "@/components/ContratoStockPanel";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from "recharts";
 
 interface UnidadeData {
   id: string;
@@ -41,6 +42,7 @@ export default function ControleEstoqueContrato() {
   const [matrizKPIs, setMatrizKPIs] = useState({ estoqueTotal: 0, valorTotal: 0, totalEntradas: 0, totalSaidas: 0, valorSaidas: 0, itensBaixoEstoque: 0, giroEstoque: 0 });
   const [distribuicao, setDistribuicao] = useState<{ nome: string; valor: number; percentual: number }[]>([]);
   const [movements, setMovements] = useState<MovementRow[]>([]);
+  const [monthlyChartData, setMonthlyChartData] = useState<{ mes: string; entrada: number; saida: number }[]>([]);
 
   // Unidade KPIs
   const [unidadeKPIs, setUnidadeKPIs] = useState({ recebidoMatriz: 0, valorRecebido: 0, entregueContratos: 0, valorEntregue: 0, estoqueAtual: 0, itensBaixoEstoque: 0 });
@@ -176,6 +178,26 @@ export default function ControleEstoqueContrato() {
       responsavel: profileMap[m.created_by] || "Sistema",
       valor_unitario: m.valor_unitario,
     })));
+
+    // Build monthly entry/exit chart
+    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
+    (movs || []).forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (!mes) return;
+      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
+      if (m.empresa_destino_id === matrizId) {
+        mesesMap[mes].entrada += (m.quantidade || 0) * (m.valor_unitario || 0);
+      }
+      if (m.empresa_origem_id === matrizId) {
+        mesesMap[mes].saida += (m.quantidade || 0) * (m.valor_unitario || 0);
+      }
+    });
+    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
+    setMonthlyChartData(mesesSorted.map(mes => ({
+      mes: mes.split("-").reverse().join("/"),
+      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
+      saida: Number(mesesMap[mes].saida.toFixed(2)),
+    })));
   };
 
   const loadUnidadeKPIs = async (unidadeId: string) => {
@@ -241,6 +263,38 @@ export default function ControleEstoqueContrato() {
       quantidade: m.quantidade || 0,
       responsavel: profileMap[m.created_by] || "Sistema",
     })));
+
+    // Monthly chart: entradas (from matriz) and saídas (to contracts)
+    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
+    (recebidos || []).forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (!mes) return;
+      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
+      mesesMap[mes].entrada += (m.quantidade || 0) * (m.valor_unitario || 0);
+    });
+    if (contratoIds.length > 0) {
+      const { data: movContratosFull } = await supabase.from("contrato_epis_movimentacoes")
+        .select("quantidade, tipo, epi_id, created_at")
+        .in("contrato_id", contratoIds)
+        .eq("tipo", "entrada");
+      const epiIdsC = [...new Set((movContratosFull || []).map(m => m.epi_id))];
+      const { data: episValsC } = epiIdsC.length > 0
+        ? await supabase.from("epis").select("id, valor").in("id", epiIdsC)
+        : { data: [] };
+      const valMapC = Object.fromEntries((episValsC || []).map(e => [e.id, e.valor || 0]));
+      (movContratosFull || []).forEach(m => {
+        const mes = m.created_at?.substring(0, 7);
+        if (!mes) return;
+        if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
+        mesesMap[mes].saida += (m.quantidade || 0) * (valMapC[m.epi_id] || 0);
+      });
+    }
+    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
+    setMonthlyChartData(mesesSorted.map(mes => ({
+      mes: mes.split("-").reverse().join("/"),
+      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
+      saida: Number(mesesMap[mes].saida.toFixed(2)),
+    })));
   };
 
   const loadContratoKPIs = async (contratoId: string) => {
@@ -294,6 +348,23 @@ export default function ControleEstoqueContrato() {
       quantidade: m.quantidade || 0,
       responsavel: m.responsavel_nome || "Sistema",
     })));
+
+    // Monthly chart: entradas and saídas for this contract
+    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
+    (movs || []).forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (!mes) return;
+      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
+      const val = (m.quantidade || 0) * (epiMap[m.epi_id]?.valor || 0);
+      if (m.tipo === "entrada") mesesMap[mes].entrada += val;
+      else if (m.tipo === "saida") mesesMap[mes].saida += val;
+    });
+    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
+    setMonthlyChartData(mesesSorted.map(mes => ({
+      mes: mes.split("-").reverse().join("/"),
+      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
+      saida: Number(mesesMap[mes].saida.toFixed(2)),
+    })));
   };
 
   const navigateTo = (index: number) => {
@@ -334,6 +405,35 @@ export default function ControleEstoqueContrato() {
       {currentLevel === "matriz" && (
         <div className="space-y-4">
           
+
+          {monthlyChartData.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais (Matriz)</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={monthlyChartData} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entrada" : "Saída"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada" : "Saída"} wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <StockDistributionChart data={distribuicao} title="Distribuição de Estoque por Unidade" />
@@ -386,6 +486,35 @@ export default function ControleEstoqueContrato() {
         <div className="space-y-4">
           <UnidadeKPICards {...unidadeKPIs} />
 
+          {monthlyChartData.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais — {breadcrumbs[breadcrumbs.length - 1]?.nome}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={monthlyChartData} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Recebido da Matriz" : "Enviado p/ Contratos"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Legend formatter={(v: string) => v === "entrada" ? "Recebido da Matriz" : "Enviado p/ Contratos"} wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="saida" fill="hsl(24, 95%, 53%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
           <StockMovementTable movements={movements} title={`Movimentações — ${breadcrumbs[breadcrumbs.length - 1]?.nome}`} />
 
           {/* Drill-down: Contratos */}
@@ -422,6 +551,36 @@ export default function ControleEstoqueContrato() {
       {currentLevel === "contrato" && (
         <div className="space-y-4">
           <ContratoKPICards {...contratoKPIs} />
+
+          {monthlyChartData.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais — {breadcrumbs[breadcrumbs.length - 1]?.nome}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={monthlyChartData} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entrada no Contrato" : "Consumo (Colaboradores)"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada no Contrato" : "Consumo (Colaboradores)"} wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
           <StockMovementTable movements={movements} title={`Consumo — ${breadcrumbs[breadcrumbs.length - 1]?.nome}`} />
         </div>
       )}
