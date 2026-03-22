@@ -396,16 +396,25 @@ export default function Dashboard() {
   }, [entregas, epis, estoqueConsolidadoPorEpi]);
 
   const { valorSaida, totalTransferencias } = useMemo(() => {
-    // Total de Saídas = tudo que ENTROU nos contratos (entrada em contrato = saída da matriz)
-    // Soma de contrato_epis_movimentacoes com tipo "entrada"
+    // 1) Contract-based exits: entries into contracts = exits from matriz
     const entradasContratos = movimentacoes.filter(m => m.tipo === "entrada");
-    const valorTotal = entradasContratos.reduce((sum, m) => {
+    let valorTotal = entradasContratos.reduce((sum, m) => {
       const epi = epis.find(e => e.id === m.epi_id);
       return sum + (epi?.valor || 0) * m.quantidade;
     }, 0);
 
-    return { valorSaida: valorTotal, totalTransferencias: entradasContratos.length };
-  }, [movimentacoes, epis]);
+    // 2) Direct deliveries for EPIs NOT managed through contracts (e.g. G91)
+    const epiIdsInContracts = new Set(contratoEpis.map(ce => ce.epi_id));
+    const saidaTypes = new Set(["entrega", "troca", "substituicao", "perda", "dano"]);
+    let directCount = 0;
+    entregas.filter(e => saidaTypes.has(e.tipo) && !epiIdsInContracts.has(e.epi_id)).forEach(e => {
+      const epi = epis.find(ep => ep.id === e.epi_id);
+      valorTotal += (epi?.valor || 0) * e.quantidade;
+      directCount++;
+    });
+
+    return { valorSaida: valorTotal, totalTransferencias: entradasContratos.length + directCount };
+  }, [movimentacoes, epis, entregas, contratoEpis]);
 
   // Entregas por responsável (usuário que registrou a entrega)
   const entregasPorResponsavel = useMemo(() => {
