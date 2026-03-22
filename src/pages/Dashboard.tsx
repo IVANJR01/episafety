@@ -284,7 +284,7 @@ export default function Dashboard() {
 
     const meses = Array.from(mesesSet).sort().slice(-12);
     const allContratos = Array.from(new Set(
-      movimentacoes.map(m => contratoMap.get(m.contrato_id) || "Sem contrato")
+      movimentacoes.filter(m => m.tipo === "saida").map(m => contratoMap.get(m.contrato_id) || "Sem contrato")
     )).sort();
 
     const chartData = meses.map(mes => {
