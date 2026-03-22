@@ -718,47 +718,7 @@ export default function Dashboard() {
       </Card>
       </motion.div>
 
-      {/* Contract consumption chart */}
-      {contratoChartData.length > 0 && (
-        <motion.div variants={fadeUp} custom={7}>
-          <Card className="shadow-md border-border/50">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
-                    <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base font-bold">Consumo por Contrato</CardTitle>
-                    <p className="text-xs text-muted-foreground">Últimos 12 meses</p>
-                  </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={contratoChartData} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="mes" tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
-                  <YAxis tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 15%, 88%)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '12px' }}
-                    formatter={(value: number, name: string) => [`${value} un.`, name]}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  {contratoNomes.map((nome, i) => (
-                    <Bar
-                      key={nome}
-                      dataKey={nome}
-                      stackId="contratos"
-                      fill={CHART_COLORS[i % CHART_COLORS.length]}
-                      radius={i === contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+      {/* Contract consumption chart moved to Estoque por Unidade/Contrato module */}
 
       {/* Stock value chart */}
       <motion.div variants={fadeUp} custom={8}>
