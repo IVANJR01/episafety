@@ -348,6 +348,23 @@ export default function ControleEstoqueContrato() {
       quantidade: m.quantidade || 0,
       responsavel: m.responsavel_nome || "Sistema",
     })));
+
+    // Monthly chart: entradas and saídas for this contract
+    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
+    (movs || []).forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (!mes) return;
+      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
+      const val = (m.quantidade || 0) * (epiMap[m.epi_id]?.valor || 0);
+      if (m.tipo === "entrada") mesesMap[mes].entrada += val;
+      else if (m.tipo === "saida") mesesMap[mes].saida += val;
+    });
+    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
+    setMonthlyChartData(mesesSorted.map(mes => ({
+      mes: mes.split("-").reverse().join("/"),
+      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
+      saida: Number(mesesMap[mes].saida.toFixed(2)),
+    })));
   };
 
   const navigateTo = (index: number) => {
