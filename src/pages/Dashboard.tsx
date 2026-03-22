@@ -320,39 +320,43 @@ export default function Dashboard() {
     "hsl(25, 95%, 53%)",
   ];
 
-  const { contratoChartData, contratoNomes } = useMemo(() => {
-    if (movimentacoes.length === 0 || contratos.length === 0) {
-      return { contratoChartData: [], contratoNomes: [] as string[] };
-    }
+  // Per-unit monthly entry/exit chart data
+  const perUnitChartData = useMemo(() => {
+    if (movimentacoes.length === 0 || contratos.length === 0) return new Map<string, { nome: string; data: { mes: string; entrada: number; saida: number }[] }>();
 
-    const contratoMap = new Map(contratos.map(c => [c.id, c.nome]));
-    const mesesSet = new Set<string>();
-    const porMesContrato: Record<string, Record<string, number>> = {};
+    const contratoToUnidade = new Map(contratos.map(c => [c.id, c.unidade_id]));
+    const unidadeMap = new Map(unidades.map(u => [u.id, u.nome]));
 
-    movimentacoes.filter(m => m.tipo === "saida").forEach(m => {
+    // Group movements by unidade
+    const porUnidade: Record<string, Record<string, { entrada: number; saida: number }>> = {};
+    movimentacoes.forEach(m => {
+      const unidadeId = contratoToUnidade.get(m.contrato_id);
+      if (!unidadeId) return;
       const mes = m.created_at?.substring(0, 7);
       if (!mes) return;
-      mesesSet.add(mes);
-      const nomeContrato = contratoMap.get(m.contrato_id) || "Sem contrato";
-      if (!porMesContrato[mes]) porMesContrato[mes] = {};
-      porMesContrato[mes][nomeContrato] = (porMesContrato[mes][nomeContrato] || 0) + m.quantidade;
+      if (!porUnidade[unidadeId]) porUnidade[unidadeId] = {};
+      if (!porUnidade[unidadeId][mes]) porUnidade[unidadeId][mes] = { entrada: 0, saida: 0 };
+      const epi = epis.find(e => e.id === m.epi_id);
+      const valor = (epi?.valor || 0) * m.quantidade;
+      if (m.tipo === "entrada") porUnidade[unidadeId][mes].entrada += valor;
+      else if (m.tipo === "saida") porUnidade[unidadeId][mes].saida += valor;
     });
 
-    const meses = Array.from(mesesSet).sort().slice(-12);
-    const allContratos = Array.from(new Set(
-      movimentacoes.filter(m => m.tipo === "saida").map(m => contratoMap.get(m.contrato_id) || "Sem contrato")
-    )).sort();
-
-    const chartData = meses.map(mes => {
-      const row: Record<string, any> = { mes: mes.split("-").reverse().join("/") };
-      allContratos.forEach(c => {
-        row[c] = porMesContrato[mes]?.[c] || 0;
+    const result = new Map<string, { nome: string; data: { mes: string; entrada: number; saida: number }[] }>();
+    Object.entries(porUnidade).forEach(([uid, meses]) => {
+      const mesesSorted = Object.keys(meses).sort().slice(-12);
+      if (mesesSorted.length === 0) return;
+      result.set(uid, {
+        nome: unidadeMap.get(uid) || "Unidade",
+        data: mesesSorted.map(mes => ({
+          mes: mes.split("-").reverse().join("/"),
+          entrada: Number(meses[mes].entrada.toFixed(2)),
+          saida: Number(meses[mes].saida.toFixed(2)),
+        })),
       });
-      return row;
     });
-
-    return { contratoChartData: chartData, contratoNomes: allContratos };
-  }, [movimentacoes, contratos]);
+    return result;
+  }, [movimentacoes, contratos, unidades, epis]);
 
   const { mediaMensalEPI, mesesOrdenados } = useMemo(() => {
     if (entregas.length === 0) return { mediaMensalEPI: [], mesesOrdenados: [] as string[] };
@@ -718,7 +722,45 @@ export default function Dashboard() {
       </Card>
       </motion.div>
 
-      {/* Contract consumption chart moved to Estoque por Unidade/Contrato module */}
+      {/* Per-unit entry/exit charts */}
+      {perUnitChartData.size > 0 && (
+        <motion.div variants={fadeUp} custom={7} className="space-y-4">
+          {Array.from(perUnitChartData.entries()).map(([uid, unitData]) => (
+            <Card key={uid} className="shadow-md border-border/50">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
+                    <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-bold">Entradas e Saídas — {unitData.nome}</CardTitle>
+                    <p className="text-xs text-muted-foreground">Movimentações mensais (R$)</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={unitData.data} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v: number) => `R$${v}`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [
+                        `R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                        name === "entrada" ? "Entrada (Recebido)" : "Saída (Consumo)"
+                      ]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada (Recebido)" : "Saída (Consumo)"} wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          ))}
+        </motion.div>
+      )}
 
       {/* Stock value chart */}
       <motion.div variants={fadeUp} custom={8}>
