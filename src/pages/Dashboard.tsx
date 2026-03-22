@@ -645,25 +645,18 @@ export default function Dashboard() {
 
       {/* Cost Evolution Chart — Area chart */}
       <motion.div variants={fadeUp} custom={6}>
-      <Collapsible defaultOpen={false}>
       <Card className="shadow-md border-border/50">
-        <CollapsibleTrigger className="w-full">
-        <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-primary/10">
                 <TrendingUp className="w-4 h-4 text-primary" />
               </div>
-              <div className="text-left">
+              <div>
                 <CardTitle className="text-base font-bold">Evolução de Custos</CardTitle>
                 <p className="text-xs text-muted-foreground">Saída mensal vs Valor em estoque</p>
               </div>
-            </div>
-            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           </div>
         </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
           <CardHeader className="pt-0 pb-3">
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
@@ -711,9 +704,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </CardContent>
-        </CollapsibleContent>
       </Card>
-      </Collapsible>
       </motion.div>
 
       {/* Contract consumption chart */}
