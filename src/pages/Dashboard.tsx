@@ -747,26 +747,46 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <CardTitle className="text-base font-bold">Entradas e Saídas — {unitData.nome}</CardTitle>
-                    <p className="text-xs text-muted-foreground">Movimentações mensais (R$)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Por contrato: {unitData.contratoNomes.join(", ")}
+                    </p>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={unitData.data} barGap={4}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={unitData.data} barGap={2}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                     <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v: number) => `R$${v}`} />
                     <Tooltip
                       formatter={(value: number, name: string) => [
                         `R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                        name === "entrada" ? "Entrada (Recebido)" : "Saída (Consumo)"
+                        name
                       ]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11 }}
                     />
-                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada (Recebido)" : "Saída (Consumo)"} wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    {unitData.contratoNomes.map((c, i) => (
+                      <Bar
+                        key={`${c}-entrada`}
+                        dataKey={`${c} (Entrada)`}
+                        stackId="entrada"
+                        fill={CHART_COLORS_ENTRADA[i % CHART_COLORS_ENTRADA.length]}
+                        radius={i === unitData.contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                        maxBarSize={36}
+                      />
+                    ))}
+                    {unitData.contratoNomes.map((c, i) => (
+                      <Bar
+                        key={`${c}-saida`}
+                        dataKey={`${c} (Saída)`}
+                        stackId="saida"
+                        fill={CHART_COLORS_SAIDA[i % CHART_COLORS_SAIDA.length]}
+                        radius={i === unitData.contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                        maxBarSize={36}
+                      />
+                    ))}
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
