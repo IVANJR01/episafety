@@ -32,7 +32,7 @@ const staggerContainer = {
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; }
 interface Funcionario { id: string; nome: string; }
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; empresa_id?: string | null; }
 interface Profile { id: string; user_id: string; nome: string; email: string | null; }
 interface ContratoMovimentacao {
   id: string;
