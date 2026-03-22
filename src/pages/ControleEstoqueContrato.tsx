@@ -136,19 +136,6 @@ export default function ControleEstoqueContrato() {
       giroEstoque: giro,
     });
 
-    // Distribution by unit (pie chart)
-    const distribution: { nome: string; valor: number; percentual: number }[] = [];
-    let totalValorAll = matrizValor;
-
-    for (const filial of filiais) {
-      const { data: episFilial } = await supabase.from("epis").select("estoque, valor").eq("empresa_id", filial.id);
-      const valFilial = (episFilial || []).reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0);
-      totalValorAll += valFilial;
-      if (valFilial > 0) distribution.push({ nome: filial.nome, valor: valFilial, percentual: 0 });
-    }
-    if (matrizValor > 0) distribution.unshift({ nome: `${matrizNome} (Sede)`, valor: matrizValor, percentual: 0 });
-    distribution.forEach(d => { d.percentual = totalValorAll > 0 ? (d.valor / totalValorAll) * 100 : 0; });
-    setDistribuicao(distribution);
 
     // Movement table
     const epiIds = [...new Set((movs || []).map(m => m.epi_id))];
