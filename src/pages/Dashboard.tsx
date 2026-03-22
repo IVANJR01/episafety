@@ -751,27 +751,20 @@ export default function Dashboard() {
 
       {/* Stock value chart */}
       <motion.div variants={fadeUp} custom={8}>
-      <Collapsible defaultOpen={false}>
       <Card className="shadow-md border-border/50">
-        <CollapsibleTrigger className="w-full">
-        <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-primary/10">
                 <Package className="w-4 h-4 text-primary" />
               </div>
-              <div className="text-left">
+              <div>
                 <CardTitle className="text-base font-bold">Valor do Estoque por EPI</CardTitle>
                 <p className="text-xs text-muted-foreground">
                   Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                 </p>
               </div>
-            </div>
-            <ChevronDown className="w-5 h-5 text-muted-foreground" />
           </div>
         </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
         <CardContent>
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum EPI com valor em estoque</p>
@@ -794,9 +787,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </CardContent>
-        </CollapsibleContent>
       </Card>
-      </Collapsible>
       </motion.div>
 
       {/* Mobile: Tabs | Desktop: stacked */}
