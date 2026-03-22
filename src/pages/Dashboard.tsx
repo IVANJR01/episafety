@@ -710,25 +710,18 @@ export default function Dashboard() {
       {/* Contract consumption chart */}
       {contratoChartData.length > 0 && (
         <motion.div variants={fadeUp} custom={7}>
-          <Collapsible defaultOpen={false}>
           <Card className="shadow-md border-border/50">
-            <CollapsibleTrigger className="w-full">
-            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-[hsl(262,83%,58%)]/10">
                     <FileBarChart className="w-4 h-4 text-[hsl(262,83%,58%)]" />
                   </div>
-                  <div className="text-left">
+                  <div>
                     <CardTitle className="text-base font-bold">Consumo por Contrato</CardTitle>
                     <p className="text-xs text-muted-foreground">Últimos 12 meses</p>
                   </div>
-                </div>
-                <ChevronDown className="w-5 h-5 text-muted-foreground" />
               </div>
             </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
             <CardContent>
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={contratoChartData} barGap={2}>
@@ -752,9 +745,7 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
-            </CollapsibleContent>
           </Card>
-          </Collapsible>
         </motion.div>
       )}
 
