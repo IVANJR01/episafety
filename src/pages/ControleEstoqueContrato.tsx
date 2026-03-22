@@ -435,10 +435,7 @@ export default function ControleEstoqueContrato() {
             </Card>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <StockDistributionChart data={distribuicao} title="Distribuição de Estoque por Unidade" />
-            <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
-          </div>
+          <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
 
           {/* Drill-down: Filiais */}
           {filiais.length > 0 && (
