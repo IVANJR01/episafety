@@ -263,7 +263,38 @@ export default function ControleEstoqueContrato() {
       quantidade: m.quantidade || 0,
       responsavel: profileMap[m.created_by] || "Sistema",
     })));
-  };
+
+    // Monthly chart: entradas (from matriz) and saídas (to contracts)
+    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
+    (recebidos || []).forEach(m => {
+      const mes = m.created_at?.substring(0, 7);
+      if (!mes) return;
+      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
+      mesesMap[mes].entrada += (m.quantidade || 0) * (m.valor_unitario || 0);
+    });
+    if (contratoIds.length > 0) {
+      const { data: movContratosFull } = await supabase.from("contrato_epis_movimentacoes")
+        .select("quantidade, tipo, epi_id, created_at")
+        .in("contrato_id", contratoIds)
+        .eq("tipo", "entrada");
+      const epiIdsC = [...new Set((movContratosFull || []).map(m => m.epi_id))];
+      const { data: episValsC } = epiIdsC.length > 0
+        ? await supabase.from("epis").select("id, valor").in("id", epiIdsC)
+        : { data: [] };
+      const valMapC = Object.fromEntries((episValsC || []).map(e => [e.id, e.valor || 0]));
+      (movContratosFull || []).forEach(m => {
+        const mes = m.created_at?.substring(0, 7);
+        if (!mes) return;
+        if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
+        mesesMap[mes].saida += (m.quantidade || 0) * (valMapC[m.epi_id] || 0);
+      });
+    }
+    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
+    setMonthlyChartData(mesesSorted.map(mes => ({
+      mes: mes.split("-").reverse().join("/"),
+      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
+      saida: Number(mesesMap[mes].saida.toFixed(2)),
+    })));
 
   const loadContratoKPIs = async (contratoId: string) => {
     // Get movements for this contract (saidas = consumo)
