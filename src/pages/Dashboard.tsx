@@ -584,25 +584,18 @@ export default function Dashboard() {
       {/* Stock breakdown by unit */}
       {estoqueUnidades.length > 0 && (
         <motion.div variants={fadeUp} custom={5.5}>
-          <Collapsible defaultOpen={false}>
-            <Card className="shadow-md border-border/50">
-              <CollapsibleTrigger className="w-full">
-                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+           <Card className="shadow-md border-border/50">
+              <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
                       <div className="p-2 rounded-lg bg-[hsl(199,89%,48%)]/10">
                         <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
                       </div>
-                      <div className="text-left">
+                      <div>
                         <CardTitle className="text-base font-bold">Estoque por Unidade / Contrato</CardTitle>
                         <p className="text-xs text-muted-foreground">Distribuição do estoque consolidado</p>
                       </div>
-                    </div>
-                    <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </div>
                 </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
                 <CardContent>
                   <div className="space-y-3">
                     {estoqueUnidades.map(u => (
@@ -646,9 +639,7 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </CardContent>
-              </CollapsibleContent>
             </Card>
-          </Collapsible>
         </motion.div>
       )}
 
