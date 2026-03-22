@@ -1099,7 +1099,7 @@ export default function Dashboard() {
           </div>
 
           {/* Entregas por Colaborador */}
-          <Card className="shadow-md border-border/50">
+          <Card className="shadow-md border-border/50 mt-4">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -1134,9 +1134,8 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
-          </div>
-            </CardContent>
-            </CollapsibleContent>
+          </CardContent>
+          </CollapsibleContent>
           </Card>
           </Collapsible>
         </>
