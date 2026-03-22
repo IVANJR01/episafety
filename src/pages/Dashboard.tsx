@@ -947,27 +947,20 @@ export default function Dashboard() {
         </Tabs>
       ) : (
         <>
-          <Collapsible defaultOpen={false}>
           <Card className="shadow-md border-border/50">
-            <CollapsibleTrigger className="w-full">
-              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-xl">
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <div className="p-2 rounded-lg bg-primary/10">
                       <TrendingUp className="w-4 h-4 text-primary" />
                     </div>
-                    <div className="text-left">
+                    <div>
                       <CardTitle className="text-base font-bold">Média Mensal de Consumo por EPI</CardTitle>
                       <p className="text-xs text-muted-foreground">
                         Base para planejamento de compras
                       </p>
                     </div>
                   </div>
-                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                </div>
               </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
             <CardContent className="p-0">
               {mediaMensalEPI.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma entrega registrada para calcular média</p>
@@ -1016,9 +1009,7 @@ export default function Dashboard() {
                 </div>
               )}
             </CardContent>
-            </CollapsibleContent>
           </Card>
-          </Collapsible>
 
           <Collapsible defaultOpen={false}>
           <Card className="shadow-md border-border/50">
