@@ -295,6 +295,7 @@ export default function ControleEstoqueContrato() {
       entrada: Number(mesesMap[mes].entrada.toFixed(2)),
       saida: Number(mesesMap[mes].saida.toFixed(2)),
     })));
+  };
 
   const loadContratoKPIs = async (contratoId: string) => {
     // Get movements for this contract (saidas = consumo)
