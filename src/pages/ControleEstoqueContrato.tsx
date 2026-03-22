@@ -40,7 +40,7 @@ export default function ControleEstoqueContrato() {
 
   // Matriz KPIs
   const [matrizKPIs, setMatrizKPIs] = useState({ estoqueTotal: 0, valorTotal: 0, totalEntradas: 0, totalSaidas: 0, valorSaidas: 0, itensBaixoEstoque: 0, giroEstoque: 0 });
-  const [distribuicao, setDistribuicao] = useState<{ nome: string; valor: number; percentual: number }[]>([]);
+  const [movements, setMovements] = useState<MovementRow[]>([]);
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [monthlyChartData, setMonthlyChartData] = useState<{ mes: string; entrada: number; saida: number }[]>([]);
 
