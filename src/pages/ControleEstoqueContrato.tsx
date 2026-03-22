@@ -486,6 +486,35 @@ export default function ControleEstoqueContrato() {
         <div className="space-y-4">
           <UnidadeKPICards {...unidadeKPIs} />
 
+          {monthlyChartData.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais — {breadcrumbs[breadcrumbs.length - 1]?.nome}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={monthlyChartData} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Recebido da Matriz" : "Enviado p/ Contratos"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Legend formatter={(v: string) => v === "entrada" ? "Recebido da Matriz" : "Enviado p/ Contratos"} wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="saida" fill="hsl(24, 95%, 53%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
           <StockMovementTable movements={movements} title={`Movimentações — ${breadcrumbs[breadcrumbs.length - 1]?.nome}`} />
 
           {/* Drill-down: Contratos */}
