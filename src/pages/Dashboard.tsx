@@ -143,20 +143,20 @@ export default function Dashboard() {
   const movimentacoes = useMemo(() => {
     if (!empresaId) return allMovimentacoes;
     const contratoIds = new Set(contratos.map(c => c.id));
-    return allMovimentacoes.filter(m => contratoIds.has(m.contrato_id));
-  }, [allMovimentacoes, empresaId, contratos]);
+    return allMovimentacoes.filter(m => 
+      contratoIds.has(m.contrato_id) || (m.empresa_id && companyTreeIds.has(m.empresa_id))
+    );
+  }, [allMovimentacoes, empresaId, contratos, companyTreeIds]);
 
   const entregas = useMemo(() => {
     if (!empresaId) return allEntregas;
-    const epiIds = new Set(epis.map(e => e.id));
-    return allEntregas.filter(e => epiIds.has(e.epi_id));
-  }, [allEntregas, empresaId, epis]);
+    return allEntregas.filter(e => e.empresa_id && companyTreeIds.has(e.empresa_id));
+  }, [allEntregas, empresaId, companyTreeIds]);
 
   const estoqueMovimentacoes = useMemo(() => {
     if (!empresaId) return allEstoqueMovimentacoes;
-    const epiIds = new Set(epis.map(e => e.id));
-    return allEstoqueMovimentacoes.filter(m => epiIds.has(m.epi_id));
-  }, [allEstoqueMovimentacoes, empresaId, epis]);
+    return allEstoqueMovimentacoes.filter(m => m.empresa_id && companyTreeIds.has(m.empresa_id));
+  }, [allEstoqueMovimentacoes, empresaId, companyTreeIds]);
 
   // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
   const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi, valorEstoqueMatriz, valorDistribuido } = useMemo(() => {
