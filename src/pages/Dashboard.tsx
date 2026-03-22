@@ -93,7 +93,7 @@ export default function Dashboard() {
         ),
         cachedQuery<EstoqueMovimentacao>("dashboard_estoque_mov", () =>
           (supabase.from as any)("estoque_movimentacoes")
-            .select("id, epi_id, quantidade, valor_unitario, tipo, created_at")
+            .select("id, epi_id, quantidade, valor_unitario, tipo, created_at, empresa_id")
             .order("created_at", { ascending: true })
         ),
       ]);
