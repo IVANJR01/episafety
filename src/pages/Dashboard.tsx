@@ -320,43 +320,56 @@ export default function Dashboard() {
     "hsl(25, 95%, 53%)",
   ];
 
-  // Per-unit monthly entry/exit chart data
+  // Per-unit monthly entry/exit chart data, broken down by contract
   const perUnitChartData = useMemo(() => {
-    if (movimentacoes.length === 0 || contratos.length === 0) return new Map<string, { nome: string; data: { mes: string; entrada: number; saida: number }[] }>();
+    if (movimentacoes.length === 0 || contratos.length === 0) return new Map<string, { nome: string; contratoNomes: string[]; data: Record<string, any>[] }>();
 
     const contratoToUnidade = new Map(contratos.map(c => [c.id, c.unidade_id]));
+    const contratoMap = new Map(contratos.map(c => [c.id, c.nome]));
     const unidadeMap = new Map(unidades.map(u => [u.id, u.nome]));
 
-    // Group movements by unidade
-    const porUnidade: Record<string, Record<string, { entrada: number; saida: number }>> = {};
+    // Group by unidade > mes > contrato > tipo
+    const porUnidade: Record<string, Record<string, Record<string, { entrada: number; saida: number }>>> = {};
     movimentacoes.forEach(m => {
       const unidadeId = contratoToUnidade.get(m.contrato_id);
       if (!unidadeId) return;
       const mes = m.created_at?.substring(0, 7);
       if (!mes) return;
+      const contratoNome = contratoMap.get(m.contrato_id) || "Sem contrato";
       if (!porUnidade[unidadeId]) porUnidade[unidadeId] = {};
-      if (!porUnidade[unidadeId][mes]) porUnidade[unidadeId][mes] = { entrada: 0, saida: 0 };
+      if (!porUnidade[unidadeId][mes]) porUnidade[unidadeId][mes] = {};
+      if (!porUnidade[unidadeId][mes][contratoNome]) porUnidade[unidadeId][mes][contratoNome] = { entrada: 0, saida: 0 };
       const epi = epis.find(e => e.id === m.epi_id);
       const valor = (epi?.valor || 0) * m.quantidade;
-      if (m.tipo === "entrada") porUnidade[unidadeId][mes].entrada += valor;
-      else if (m.tipo === "saida") porUnidade[unidadeId][mes].saida += valor;
+      if (m.tipo === "entrada") porUnidade[unidadeId][mes][contratoNome].entrada += valor;
+      else if (m.tipo === "saida") porUnidade[unidadeId][mes][contratoNome].saida += valor;
     });
 
-    const result = new Map<string, { nome: string; data: { mes: string; entrada: number; saida: number }[] }>();
+    const result = new Map<string, { nome: string; contratoNomes: string[]; data: Record<string, any>[] }>();
     Object.entries(porUnidade).forEach(([uid, meses]) => {
       const mesesSorted = Object.keys(meses).sort().slice(-12);
       if (mesesSorted.length === 0) return;
-      result.set(uid, {
-        nome: unidadeMap.get(uid) || "Unidade",
-        data: mesesSorted.map(mes => ({
-          mes: mes.split("-").reverse().join("/"),
-          entrada: Number(meses[mes].entrada.toFixed(2)),
-          saida: Number(meses[mes].saida.toFixed(2)),
-        })),
+      // Collect all contract names for this unit
+      const allContratos = new Set<string>();
+      Object.values(meses).forEach(mesData => Object.keys(mesData).forEach(c => allContratos.add(c)));
+      const contratoNomes = Array.from(allContratos).sort();
+
+      const data = mesesSorted.map(mes => {
+        const row: Record<string, any> = { mes: mes.split("-").reverse().join("/") };
+        contratoNomes.forEach(c => {
+          row[`${c} (Entrada)`] = Number((meses[mes]?.[c]?.entrada || 0).toFixed(2));
+          row[`${c} (Saída)`] = Number((meses[mes]?.[c]?.saida || 0).toFixed(2));
+        });
+        return row;
       });
+
+      result.set(uid, { nome: unidadeMap.get(uid) || "Unidade", contratoNomes, data });
     });
     return result;
   }, [movimentacoes, contratos, unidades, epis]);
+
+  const CHART_COLORS_ENTRADA = ["hsl(142, 71%, 45%)", "hsl(142, 71%, 60%)", "hsl(142, 71%, 35%)", "hsl(173, 80%, 40%)"];
+  const CHART_COLORS_SAIDA = ["hsl(0, 72%, 51%)", "hsl(24, 95%, 53%)", "hsl(346, 77%, 50%)", "hsl(0, 72%, 65%)"];
 
   const { mediaMensalEPI, mesesOrdenados } = useMemo(() => {
     if (entregas.length === 0) return { mediaMensalEPI: [], mesesOrdenados: [] as string[] };
@@ -734,26 +747,46 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <CardTitle className="text-base font-bold">Entradas e Saídas — {unitData.nome}</CardTitle>
-                    <p className="text-xs text-muted-foreground">Movimentações mensais (R$)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Por contrato: {unitData.contratoNomes.join(", ")}
+                    </p>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={unitData.data} barGap={4}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={unitData.data} barGap={2}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                     <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v: number) => `R$${v}`} />
                     <Tooltip
                       formatter={(value: number, name: string) => [
                         `R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                        name === "entrada" ? "Entrada (Recebido)" : "Saída (Consumo)"
+                        name
                       ]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11 }}
                     />
-                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada (Recebido)" : "Saída (Consumo)"} wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    {unitData.contratoNomes.map((c, i) => (
+                      <Bar
+                        key={`${c}-entrada`}
+                        dataKey={`${c} (Entrada)`}
+                        stackId="entrada"
+                        fill={CHART_COLORS_ENTRADA[i % CHART_COLORS_ENTRADA.length]}
+                        radius={i === unitData.contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                        maxBarSize={36}
+                      />
+                    ))}
+                    {unitData.contratoNomes.map((c, i) => (
+                      <Bar
+                        key={`${c}-saida`}
+                        dataKey={`${c} (Saída)`}
+                        stackId="saida"
+                        fill={CHART_COLORS_SAIDA[i % CHART_COLORS_SAIDA.length]}
+                        radius={i === unitData.contratoNomes.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                        maxBarSize={36}
+                      />
+                    ))}
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
