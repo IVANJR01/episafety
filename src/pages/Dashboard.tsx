@@ -273,7 +273,7 @@ export default function Dashboard() {
     const mesesSet = new Set<string>();
     const porMesContrato: Record<string, Record<string, number>> = {};
 
-    movimentacoes.forEach(m => {
+    movimentacoes.filter(m => m.tipo === "saida").forEach(m => {
       const mes = m.created_at?.substring(0, 7);
       if (!mes) return;
       mesesSet.add(mes);
