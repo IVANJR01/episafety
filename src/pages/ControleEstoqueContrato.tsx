@@ -71,9 +71,17 @@ export default function ControleEstoqueContrato() {
     if (matriz) {
       setMatrizId(matriz.id);
       setMatrizNome(matriz.nome);
-      setBreadcrumbs([{ id: matriz.id, nome: matriz.nome, type: "matriz" }]);
+      // Auto-drill into first filial if only one exists
+      const filiais = allUnidades.filter(u => u.empresa_pai_id === matriz.id);
+      if (filiais.length === 1) {
+        setBreadcrumbs([
+          { id: matriz.id, nome: matriz.nome, type: "matriz" },
+          { id: filiais[0].id, nome: filiais[0].nome, type: "unidade" },
+        ]);
+      } else {
+        setBreadcrumbs([{ id: matriz.id, nome: matriz.nome, type: "matriz" }]);
+      }
     }
-
     setLoading(false);
   }, []);
 
