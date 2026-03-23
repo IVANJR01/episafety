@@ -169,10 +169,14 @@ export default function Entregas() {
         return;
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("contrato_epis")
         .select("epi_id, estoque, empresa_id, epis!inner(id, nome, ca, descricao, validade, empresa_id)")
         .eq("contrato_id", contratoId);
+
+      if (error) {
+        console.error("Erro ao carregar EPIs do contrato:", error);
+      }
 
       const mapped = ((data || []) as any[]).map((item) => ({
         id: item.epi_id,
@@ -189,7 +193,7 @@ export default function Entregas() {
     };
 
     loadContractEpis();
-  }, [contratoId, open]);
+  }, [contratoId, open, empresaId]);
 
   const availableEpis = useMemo(() => {
     if (contratoId) return contractEpis;
