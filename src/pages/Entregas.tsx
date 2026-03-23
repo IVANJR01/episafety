@@ -178,6 +178,8 @@ export default function Entregas() {
         console.error("Erro ao carregar EPIs do contrato:", error);
       }
 
+      console.log("[Entregas] contractEpis loaded:", (data || []).length, "items for contrato:", contratoId);
+
       const mapped = ((data || []) as any[]).map((item) => ({
         id: item.epi_id,
         source_epi_id: item.epi_id,
