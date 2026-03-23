@@ -512,6 +512,7 @@ export default function ControleEstoqueContrato() {
               </CardHeader>
               <CollapsibleContent>
                 <CardContent className="space-y-4 pt-0">
+                  <MatrizKPICards {...matrizKPIs} />
                   {monthlyChartData.length > 0 && (
                     <Card className="border-border/60">
                       <CardHeader className="pb-2 pt-4 px-4">
