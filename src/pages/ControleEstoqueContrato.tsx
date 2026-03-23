@@ -454,7 +454,6 @@ export default function ControleEstoqueContrato() {
       {/* Level-specific content */}
       {currentLevel === "matriz" && (
         <div className="space-y-4">
-          <MatrizKPICards {...matrizKPIs} />
 
           {/* Drill-down: Filiais */}
           {filiais.length > 0 && (
