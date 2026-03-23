@@ -56,6 +56,7 @@ export default function Entregas() {
     console.log("[Entregas] Auth context - empresaId:", empresaId, "contratoId:", contratoId);
   }, [empresaId, contratoId]);
 
+
   const offlinePendingIds = useMemo(() => {
     const queue = getSyncQueue();
     return new Set(queue.filter(op => op.table === "entregas").map(op => op.payload?.id).filter(Boolean));
@@ -180,6 +181,39 @@ export default function Entregas() {
 
       if (error) {
         console.error("Erro ao carregar EPIs do contrato:", error);
+        // Fallback: if RLS blocks the inner join, try without inner join
+        const { data: fallbackData } = await supabase
+          .from("contrato_epis")
+          .select("epi_id, estoque, empresa_id")
+          .eq("contrato_id", contratoId);
+
+        if (fallbackData && fallbackData.length > 0) {
+          // Load EPI details separately
+          const epiIds = fallbackData.map((d: any) => d.epi_id);
+          const { data: episData } = await supabase
+            .from("epis")
+            .select("id, nome, ca, descricao, validade, empresa_id")
+            .in("id", epiIds);
+
+          const episMap = new Map((episData || []).map((e: any) => [e.id, e]));
+          const mapped = fallbackData
+            .filter((item: any) => episMap.has(item.epi_id))
+            .map((item: any) => {
+              const ep = episMap.get(item.epi_id)!;
+              return {
+                id: item.epi_id,
+                source_epi_id: item.epi_id,
+                nome: ep.nome,
+                ca: ep.ca,
+                descricao: ep.descricao,
+                validade: ep.validade,
+                empresa_id: item.empresa_id ?? ep.empresa_id,
+                estoque: item.estoque || 0,
+              };
+            });
+          setContractEpis(mapped);
+          return;
+        }
       }
 
       console.log("[Entregas] contractEpis loaded:", (data || []).length, "items for contrato:", contratoId);
