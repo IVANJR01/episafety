@@ -52,6 +52,7 @@ export default function Entregas() {
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { empresaId, contratoId } = useAuth();
 
+
   const offlinePendingIds = useMemo(() => {
     const queue = getSyncQueue();
     return new Set(queue.filter(op => op.table === "entregas").map(op => op.payload?.id).filter(Boolean));
@@ -169,10 +170,47 @@ export default function Entregas() {
         return;
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("contrato_epis")
         .select("epi_id, estoque, empresa_id, epis!inner(id, nome, ca, descricao, validade, empresa_id)")
         .eq("contrato_id", contratoId);
+
+      if (error) {
+        console.error("Erro ao carregar EPIs do contrato:", error);
+        // Fallback: if RLS blocks the inner join, try without inner join
+        const { data: fallbackData } = await supabase
+          .from("contrato_epis")
+          .select("epi_id, estoque, empresa_id")
+          .eq("contrato_id", contratoId);
+
+        if (fallbackData && fallbackData.length > 0) {
+          // Load EPI details separately
+          const epiIds = fallbackData.map((d: any) => d.epi_id);
+          const { data: episData } = await supabase
+            .from("epis")
+            .select("id, nome, ca, descricao, validade, empresa_id")
+            .in("id", epiIds);
+
+          const episMap = new Map((episData || []).map((e: any) => [e.id, e]));
+          const mapped = fallbackData
+            .filter((item: any) => episMap.has(item.epi_id))
+            .map((item: any) => {
+              const ep = episMap.get(item.epi_id)!;
+              return {
+                id: item.epi_id,
+                source_epi_id: item.epi_id,
+                nome: ep.nome,
+                ca: ep.ca,
+                descricao: ep.descricao,
+                validade: ep.validade,
+                empresa_id: item.empresa_id ?? ep.empresa_id,
+                estoque: item.estoque || 0,
+              };
+            });
+          setContractEpis(mapped);
+          return;
+        }
+      }
 
       const mapped = ((data || []) as any[]).map((item) => ({
         id: item.epi_id,
@@ -189,7 +227,7 @@ export default function Entregas() {
     };
 
     loadContractEpis();
-  }, [contratoId, open]);
+  }, [contratoId, open, empresaId]);
 
   const availableEpis = useMemo(() => {
     if (contratoId) return contractEpis;
@@ -904,7 +942,12 @@ export default function Entregas() {
 
       <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nova Movimentação</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Nova Movimentação</DialogTitle>
+            {contratoId && contractEpis.length > 0 && (
+              <p className="text-xs text-muted-foreground">Usando estoque do contrato ({contractEpis.length} EPIs disponíveis)</p>
+            )}
+          </DialogHeader>
           <div className="grid gap-4 py-2">
             <div>
               <Label>Tipo</Label>
