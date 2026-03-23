@@ -454,38 +454,7 @@ export default function ControleEstoqueContrato() {
       {/* Level-specific content */}
       {currentLevel === "matriz" && (
         <div className="space-y-4">
-          
-
-          {monthlyChartData.length > 0 && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-primary/10">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais (Matriz)</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={monthlyChartData} barGap={4}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entrada" : "Saída"]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                    />
-                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada" : "Saída"} wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-
-          <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
+          <MatrizKPICards {...matrizKPIs} />
 
           {/* Drill-down: Filiais */}
           {filiais.length > 0 && (
@@ -524,8 +493,62 @@ export default function ControleEstoqueContrato() {
             </Card>
           )}
 
-          {/* Existing panels */}
-          {hasGestaoEstoque && <ConsolidatedEpiPanel />}
+          <Collapsible open={showMatrizDetails} onOpenChange={setShowMatrizDetails}>
+            <Card className="border-border/60">
+              <CardHeader className="pb-3 pt-4 px-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Detalhes da Matriz</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Histórico, gráfico mensal e painel consolidado
+                    </p>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      {showMatrizDetails ? "Ocultar detalhes" : "Mostrar detalhes"}
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showMatrizDetails ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="space-y-4 pt-0">
+                  {monthlyChartData.length > 0 && (
+                    <Card className="border-border/60">
+                      <CardHeader className="pb-2 pt-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg bg-primary/10">
+                            <TrendingUp className="w-4 h-4 text-primary" />
+                          </div>
+                          <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais (Matriz)</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={280}>
+                          <BarChart data={monthlyChartData} barGap={4}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                            <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                            <Tooltip
+                              formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entrada" : "Saída"]}
+                              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                            />
+                            <Legend formatter={(v: string) => v === "entrada" ? "Entrada" : "Saída"} wrapperStyle={{ fontSize: 12 }} />
+                            <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                            <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
+
+                  {hasGestaoEstoque && <ConsolidatedEpiPanel />}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         </div>
       )}
 
