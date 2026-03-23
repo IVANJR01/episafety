@@ -454,7 +454,6 @@ export default function ControleEstoqueContrato() {
       {/* Level-specific content */}
       {currentLevel === "matriz" && (
         <div className="space-y-4">
-          <MatrizKPICards {...matrizKPIs} />
 
           {/* Drill-down: Filiais */}
           {filiais.length > 0 && (
@@ -513,6 +512,7 @@ export default function ControleEstoqueContrato() {
               </CardHeader>
               <CollapsibleContent>
                 <CardContent className="space-y-4 pt-0">
+                  <MatrizKPICards {...matrizKPIs} />
                   {monthlyChartData.length > 0 && (
                     <Card className="border-border/60">
                       <CardHeader className="pb-2 pt-4 px-4">
