@@ -52,10 +52,6 @@ export default function Entregas() {
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { empresaId, contratoId } = useAuth();
 
-  useEffect(() => {
-    console.log("[Entregas] Auth context - empresaId:", empresaId, "contratoId:", contratoId);
-  }, [empresaId, contratoId]);
-
 
   const offlinePendingIds = useMemo(() => {
     const queue = getSyncQueue();
@@ -215,8 +211,6 @@ export default function Entregas() {
           return;
         }
       }
-
-      console.log("[Entregas] contractEpis loaded:", (data || []).length, "items for contrato:", contratoId);
 
       const mapped = ((data || []) as any[]).map((item) => ({
         id: item.epi_id,
