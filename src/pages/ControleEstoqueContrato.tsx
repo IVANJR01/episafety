@@ -71,14 +71,14 @@ export default function ControleEstoqueContrato() {
     if (matriz) {
       setMatrizId(matriz.id);
       setMatrizNome(matriz.nome);
-      // Auto-drill into first filial if only one exists
+      // Skip matriz level entirely — start at first filial
       const filiais = allUnidades.filter(u => u.empresa_pai_id === matriz.id);
-      if (filiais.length === 1) {
+      if (filiais.length >= 1) {
         setBreadcrumbs([
-          { id: matriz.id, nome: matriz.nome, type: "matriz" },
           { id: filiais[0].id, nome: filiais[0].nome, type: "unidade" },
         ]);
       } else {
+        // No filiais, show matriz as fallback
         setBreadcrumbs([{ id: matriz.id, nome: matriz.nome, type: "matriz" }]);
       }
     }
@@ -460,49 +460,6 @@ export default function ControleEstoqueContrato() {
       )}
 
       {/* Level-specific content */}
-      {currentLevel === "matriz" && (
-        <div className="space-y-4">
-
-          {/* Drill-down: Filiais */}
-          {filiais.length > 0 && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-primary" />
-                  Unidades
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="grid gap-2">
-                  {filiais.map(f => {
-                    const fContratos = contratos.filter(c => c.unidade_id === f.id);
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => drillDown(f.id, f.nome, "unidade")}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
-                      >
-                        <div className="flex items-center gap-2">
-                          <GitBranch className="w-4 h-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{f.nome}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {f.tipo} · {fContratos.length} contrato(s)
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-        </div>
-      )}
-
       {currentLevel === "unidade" && (
         <div className="space-y-4">
           <UnidadeKPICards {...unidadeKPIs} />
