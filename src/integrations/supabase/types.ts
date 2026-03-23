@@ -1866,6 +1866,19 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      resolve_contrato_target_for_entrega: {
+        Args: {
+          _funcionario_id: string
+          _selected_epi_id: string
+          _unidade_id: string
+        }
+        Returns: {
+          contrato_epi_id: string
+          contrato_id: string
+          resolved_empresa_id: string
+          resolved_epi_id: string
+        }[]
+      }
       transfer_epi_stock: {
         Args: {
           _dest_empresa_id: string
