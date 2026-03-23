@@ -25,7 +25,7 @@ import CameraCapture from "@/components/CameraCapture";
 
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; empresa_id?: string | null; }
-interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; }
+interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; empresa_id?: string | null; source_epi_id?: string; }
 interface EpiItem { epi: EPI; quantidade: number; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
@@ -50,7 +50,7 @@ export default function Entregas() {
   const { data: epis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
-  const { empresaId } = useAuth();
+  const { empresaId, contratoId } = useAuth();
 
   const offlinePendingIds = useMemo(() => {
     const queue = getSyncQueue();
@@ -160,6 +160,41 @@ export default function Entregas() {
   const [epiDropdownResults, setEpiDropdownResults] = useState<EPI[]>([]);
   const [epiList, setEpiList] = useState<EpiItem[]>([]);
   const [epiQtd, setEpiQtd] = useState(1);
+  const [contractEpis, setContractEpis] = useState<EPI[]>([]);
+
+  useEffect(() => {
+    const loadContractEpis = async () => {
+      if (!contratoId) {
+        setContractEpis([]);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("contrato_epis")
+        .select("epi_id, estoque, empresa_id, epis!inner(id, nome, ca, descricao, validade, empresa_id)")
+        .eq("contrato_id", contratoId);
+
+      const mapped = ((data || []) as any[]).map((item) => ({
+        id: item.epi_id,
+        source_epi_id: item.epi_id,
+        nome: item.epis.nome,
+        ca: item.epis.ca,
+        descricao: item.epis.descricao,
+        validade: item.epis.validade,
+        empresa_id: item.empresa_id ?? item.epis.empresa_id,
+        estoque: item.estoque || 0,
+      }));
+
+      setContractEpis(mapped);
+    };
+
+    loadContractEpis();
+  }, [contratoId, open]);
+
+  const availableEpis = useMemo(() => {
+    if (contratoId) return contractEpis;
+    return epis;
+  }, [contratoId, contractEpis, epis]);
 
   const addEpiToList = useCallback((epi: EPI) => {
     setEpiList(prev => {
@@ -182,17 +217,17 @@ export default function Entregas() {
       setEpiDropdownResults([]);
       return;
     }
-    const matched = epis.filter(e =>
+    const matched = availableEpis.filter(e =>
       e.nome.toLowerCase().includes(term) ||
       (e.descricao && e.descricao.toLowerCase().includes(term)) ||
       (e.ca && e.ca.includes(term))
     );
     setEpiDropdownResults(matched);
-  }, [epiCaSearch, epis]);
+  }, [epiCaSearch, availableEpis]);
 
   const handleSearchCA = async () => {
     if (!epiCaSearch.trim()) return;
-    const foundByCA = epis.find(e => e.ca === epiCaSearch.trim());
+    const foundByCA = availableEpis.find(e => e.ca === epiCaSearch.trim());
     if (foundByCA) {
       addEpiToList(foundByCA);
       return;
@@ -223,7 +258,11 @@ export default function Entregas() {
       if (insertErr) {
         toast({ title: "Erro ao cadastrar EPI", variant: "destructive" });
       } else {
-        addEpiToList(newEpi);
+        if (!contratoId) {
+          addEpiToList(newEpi);
+        } else {
+          toast({ title: "C.A. encontrado", description: "Esse item precisa ser primeiro vinculado ao estoque do contrato para aparecer na entrega.", variant: "destructive" });
+        }
         toast({ title: `EPI "${data.nome}" cadastrado automaticamente via C.A.` });
       }
     } catch {
@@ -320,7 +359,7 @@ export default function Entregas() {
         const payload = {
           id: tempId,
           funcionario_id: form.funcionario_id,
-          epi_id: item.epi.id,
+          epi_id: item.epi.source_epi_id || item.epi.id,
           quantidade: item.quantidade,
           data: form.data,
           tipo: normalizedTipo,
@@ -394,7 +433,7 @@ export default function Entregas() {
         const insertResult = await (supabase.from as any)("entregas")
           .insert({
             funcionario_id: form.funcionario_id,
-            epi_id: item.epi.id,
+            epi_id: item.epi.source_epi_id || item.epi.id,
             quantidade: item.quantidade,
             data: form.data,
             tipo: normalizedTipo,
@@ -947,7 +986,7 @@ export default function Entregas() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium truncate">{item.epi.nome}</p>
                         <p className="text-xs text-muted-foreground">
-                          {item.epi.ca && <>C.A.: {item.epi.ca} — </>}Qtd: {item.quantidade}
+                          {item.epi.ca && <>C.A.: {item.epi.ca} — </>}Estoque: {item.epi.estoque} — Qtd: {item.quantidade}
                         </p>
                       </div>
                       <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => removeEpiFromList(item.epi.id)}>
