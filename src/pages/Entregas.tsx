@@ -948,7 +948,12 @@ export default function Entregas() {
 
       <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nova Movimentação</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Nova Movimentação</DialogTitle>
+            {contratoId && contractEpis.length > 0 && (
+              <p className="text-xs text-muted-foreground">Usando estoque do contrato ({contractEpis.length} EPIs disponíveis)</p>
+            )}
+          </DialogHeader>
           <div className="grid gap-4 py-2">
             <div>
               <Label>Tipo</Label>
