@@ -327,54 +327,58 @@ export default function ContratoStockPanel() {
       }));
     }
 
-    // Load consumption data (entregas for employees in this contract)
-    const { data: funcContratoData } = await supabase
-      .from("funcionarios")
-      .select("id")
-      .eq("contrato_id", contratoId);
+    // Load consumption data from contrato_epis_movimentacoes (already synced via triggers)
+    const sixMonthsAgo = format(subMonths(new Date(), 6), "yyyy-MM-dd");
+    const { data: movConsumoData } = await supabase
+      .from("contrato_epis_movimentacoes")
+      .select("created_at, quantidade, epi_id, tipo, motivo")
+      .eq("contrato_id", contratoId)
+      .gte("created_at", sixMonthsAgo)
+      .order("created_at");
 
     let consumoData: ConsumoMensal[] = [];
-    if (funcContratoData && funcContratoData.length > 0) {
-      const funcIds = funcContratoData.map(f => f.id);
-      const sixMonthsAgo = format(subMonths(new Date(), 6), "yyyy-MM-dd");
-      const { data: entregasData } = await supabase
-        .from("entregas")
-        .select("data, quantidade, epi_id, tipo")
-        .in("funcionario_id", funcIds)
-        .gte("data", sixMonthsAgo)
-        .order("data");
+    if (movConsumoData && movConsumoData.length > 0) {
+      const epiIds = [...new Set(movConsumoData.map(e => e.epi_id))];
+      const { data: episInfo } = await supabase.from("epis").select("id, valor").in("id", epiIds);
+      const valMap = new Map((episInfo || []).map(e => [e.id, e.valor || 0]));
 
-      if (entregasData && entregasData.length > 0) {
-        const epiIds = [...new Set(entregasData.map(e => e.epi_id))];
-        const { data: episInfo } = await supabase.from("epis").select("id, valor").in("id", epiIds);
-        const valMap = new Map((episInfo || []).map(e => [e.id, e.valor || 0]));
+      const detectTipo = (m: { tipo: string; motivo: string | null }): string => {
+        if (m.tipo === "entrada") return "entrada_contrato";
+        const mot = (m.motivo || "").toLowerCase();
+        if (mot.includes("substituição") || mot.includes("substituicao")) return "substituicao";
+        if (mot.includes("troca")) return "troca";
+        if (mot.includes("devolução") || mot.includes("devolucao")) return "devolucao";
+        if (mot.includes("perda")) return "perda";
+        if (mot.includes("dano")) return "dano";
+        return "entrega";
+      };
 
-        const emptyMonth = () => ({ entrega: 0, troca: 0, substituicao: 0, devolucao: 0, perda: 0, dano: 0, custo: 0 });
-        const monthMap = new Map<string, ReturnType<typeof emptyMonth>>();
-        for (let i = 5; i >= 0; i--) {
-          const d = subMonths(new Date(), i);
-          const key = format(startOfMonth(d), "yyyy-MM");
-          monthMap.set(key, emptyMonth());
-        }
-
-        entregasData.forEach(e => {
-          const key = e.data.substring(0, 7);
-          const existing = monthMap.get(key);
-          if (existing) {
-            const tipo = e.tipo as keyof typeof existing;
-            if (tipo in existing && tipo !== "custo") {
-              (existing as any)[tipo] += e.quantidade;
-            }
-            existing.custo += e.quantidade * (valMap.get(e.epi_id) || 0);
-          }
-        });
-
-        consumoData = Array.from(monthMap.entries()).map(([key, val]) => ({
-          mes: format(new Date(key + "-01"), "MMM/yy", { locale: ptBR }),
-          ...val,
-          custo: Number(val.custo.toFixed(2)),
-        }));
+      const emptyMonth = () => ({ entrega: 0, troca: 0, substituicao: 0, devolucao: 0, perda: 0, dano: 0, custo: 0 });
+      const monthMap = new Map<string, ReturnType<typeof emptyMonth>>();
+      for (let i = 5; i >= 0; i--) {
+        const d = subMonths(new Date(), i);
+        const key = format(startOfMonth(d), "yyyy-MM");
+        monthMap.set(key, emptyMonth());
       }
+
+      movConsumoData.forEach(e => {
+        const key = e.created_at.substring(0, 7);
+        const existing = monthMap.get(key);
+        if (!existing) return;
+        const tipo = detectTipo(e);
+        if (tipo !== "entrada_contrato" && tipo in existing && tipo !== "custo") {
+          (existing as any)[tipo] += e.quantidade;
+        }
+        if (e.tipo === "saida") {
+          existing.custo += e.quantidade * (valMap.get(e.epi_id) || 0);
+        }
+      });
+
+      consumoData = Array.from(monthMap.entries()).map(([key, val]) => ({
+        mes: format(new Date(key + "-01"), "MMM/yy", { locale: ptBR }),
+        ...val,
+        custo: Number(val.custo.toFixed(2)),
+      }));
     }
 
     // Load solicitações
