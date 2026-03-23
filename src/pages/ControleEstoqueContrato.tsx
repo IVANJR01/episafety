@@ -225,21 +225,52 @@ export default function ControleEstoqueContrato() {
 
     setUnidadeKPIs({ recebidoMatriz, valorRecebido, entregueContratos, valorEntregue, estoqueAtual, itensBaixoEstoque: baixo });
 
-    // Movements for table
-    const epiIds = [...new Set((recebidos || []).map(m => m.epi_id))];
-    const { data: episNames } = epiIds.length > 0
-      ? await supabase.from("epis").select("id, nome").in("id", epiIds)
+    // Also fetch entregas (deliveries to employees) for this unit
+    const { data: entregas } = await supabase.from("entregas")
+      .select("id, data, tipo, quantidade, epi_id, funcionario_id, created_by, observacao, empresa_id")
+      .eq("empresa_id", unidadeId)
+      .order("data", { ascending: false })
+      .limit(50);
+
+    // Collect all EPI ids from both sources
+    const allEpiIds = [...new Set([
+      ...(recebidos || []).map(m => m.epi_id),
+      ...(entregas || []).map(m => m.epi_id),
+    ])];
+    const { data: episNames } = allEpiIds.length > 0
+      ? await supabase.from("epis").select("id, nome").in("id", allEpiIds)
       : { data: [] };
     const epiMap = Object.fromEntries((episNames || []).map(e => [e.id, e.nome]));
     const empresaMap = Object.fromEntries(unidades.map(u => [u.id, u.nome]));
 
-    const userIds = [...new Set((recebidos || []).map(m => m.created_by).filter(Boolean))];
-    const { data: profiles } = userIds.length > 0
-      ? await supabase.from("profiles").select("user_id, nome").in("user_id", userIds)
+    // Collect all user ids from both sources
+    const allUserIds = [...new Set([
+      ...(recebidos || []).map(m => m.created_by).filter(Boolean),
+      ...(entregas || []).map(m => m.created_by).filter(Boolean),
+    ])];
+    const { data: profiles } = allUserIds.length > 0
+      ? await supabase.from("profiles").select("user_id, nome").in("user_id", allUserIds)
       : { data: [] };
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p.nome]));
 
-    setMovements((recebidos || []).map(m => ({
+    // Get funcionario names for entregas
+    const funcIds = [...new Set((entregas || []).map(m => m.funcionario_id).filter(Boolean))];
+    const { data: funcsData } = funcIds.length > 0
+      ? await supabase.from("funcionarios").select("id, nome").in("id", funcIds)
+      : { data: [] };
+    const funcMap = Object.fromEntries((funcsData || []).map(f => [f.id, f.nome]));
+
+    const tipoEntregaLabel: Record<string, string> = {
+      entrega: "Entrega",
+      troca: "Troca",
+      substituicao: "Substituição",
+      devolucao: "Devolução",
+      perda: "Perda",
+      dano: "Dano",
+    };
+
+    // Merge both movement sources
+    const transferMovs: MovementRow[] = (recebidos || []).map(m => ({
       id: m.id,
       data: m.created_at,
       tipo: m.tipo || "transferencia",
@@ -248,7 +279,25 @@ export default function ControleEstoqueContrato() {
       destino: empresaMap[unidadeId] || "—",
       quantidade: m.quantidade || 0,
       responsavel: profileMap[m.created_by] || "Sistema",
-    })));
+    }));
+
+    const entregaMovs: MovementRow[] = (entregas || []).map(m => ({
+      id: m.id,
+      data: m.data,
+      tipo: m.tipo === "devolucao" ? "devolucao" : "entrega",
+      epi_nome: epiMap[m.epi_id] || "—",
+      origem: empresaMap[unidadeId] || "Unidade",
+      destino: funcMap[m.funcionario_id] || "Colaborador",
+      quantidade: m.quantidade || 0,
+      responsavel: profileMap[m.created_by] || "Sistema",
+    }));
+
+    // Combine and sort by date descending
+    const allMovements = [...transferMovs, ...entregaMovs]
+      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+      .slice(0, 50);
+
+    setMovements(allMovements);
 
     // Monthly chart: entradas (from matriz) and saídas (to contracts)
     const mesesMap: Record<string, { entrada: number; saida: number }> = {};
