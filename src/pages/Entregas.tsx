@@ -52,6 +52,10 @@ export default function Entregas() {
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { empresaId, contratoId } = useAuth();
 
+  useEffect(() => {
+    console.log("[Entregas] Auth context - empresaId:", empresaId, "contratoId:", contratoId);
+  }, [empresaId, contratoId]);
+
   const offlinePendingIds = useMemo(() => {
     const queue = getSyncQueue();
     return new Set(queue.filter(op => op.table === "entregas").map(op => op.payload?.id).filter(Boolean));
