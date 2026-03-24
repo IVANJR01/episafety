@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
@@ -52,6 +52,8 @@ export default function UsuariosLiberados() {
   const [novoNome, setNovoNome] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [novoEmpresaId, setNovoEmpresaId] = useState<string>("");
+  const [novoContratoId, setNovoContratoId] = useState<string>("");
+  const [allContratos, setAllContratos] = useState<{ id: string; nome: string; unidade_id: string }[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
   const [savingPerms, setSavingPerms] = useState<string | null>(null);
@@ -86,8 +88,12 @@ export default function UsuariosLiberados() {
       setEmpresas(getCachedData<Empresa>("empresa_config_list") || []);
       return;
     }
-    const { data } = await supabase.from("empresa_config").select("id, nome, empresa_pai_id").order("nome");
-    if (data) { setEmpresas(data); setCachedData("empresa_config_list", data); }
+    const [empRes, contRes] = await Promise.all([
+      supabase.from("empresa_config").select("id, nome, empresa_pai_id").order("nome"),
+      supabase.from("contratos").select("id, nome, unidade_id").order("nome"),
+    ]);
+    if (empRes.data) { setEmpresas(empRes.data); setCachedData("empresa_config_list", empRes.data); }
+    if (contRes.data) { setAllContratos(contRes.data as any); }
   };
 
   const loadUsuarios = async () => {
@@ -166,12 +172,14 @@ export default function UsuariosLiberados() {
       }
 
       const targetEmpresaId = novoEmpresaId || empresaId;
-      const { error } = await (supabase.from as any)("usuarios_liberados").insert({
+      const insertPayload: any = {
         email: novoEmail.trim().toLowerCase(),
         nome: novoNome.trim(),
         modulos_permitidos: [],
         empresa_id: targetEmpresaId,
-      });
+      };
+      if (novoContratoId) insertPayload.contrato_id = novoContratoId;
+      const { error } = await (supabase.from as any)("usuarios_liberados").insert(insertPayload);
 
       if (error) {
         toast({ title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar", description: error.message, variant: "destructive" });
@@ -180,7 +188,7 @@ export default function UsuariosLiberados() {
           await (supabase.from as any)("profiles").update({ empresa_id: targetEmpresaId }).eq("user_id", fnData.user_id);
         }
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado com sucesso!" });
-        setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId("");
+        setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId(""); setNovoContratoId("");
         setNewOpen(false);
         await loadUsuarios();
       }
@@ -531,7 +539,7 @@ export default function UsuariosLiberados() {
             {unidadesDisponiveis.length > 1 && (
               <div>
                 <Label>Vincular à unidade</Label>
-                <Select value={novoEmpresaId} onValueChange={setNovoEmpresaId}>
+                <Select value={novoEmpresaId} onValueChange={(v) => { setNovoEmpresaId(v); setNovoContratoId(""); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Empresa atual" />
                   </SelectTrigger>
@@ -548,6 +556,31 @@ export default function UsuariosLiberados() {
                 </Select>
               </div>
             )}
+            {(() => {
+              const selectedUnit = novoEmpresaId || empresaId;
+              const contratosFiltered = allContratos.filter(c => c.unidade_id === selectedUnit);
+              if (contratosFiltered.length === 0) return null;
+              return (
+                <div>
+                  <Label>Vincular ao contrato</Label>
+                  <Select value={novoContratoId} onValueChange={setNovoContratoId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o contrato (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contratosFiltered.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <span className="flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                            {c.nome}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })()}
             <div>
               <Label>Senha</Label>
               <div className="relative">
