@@ -190,7 +190,7 @@ export default function ControleEstoqueContrato() {
     const contratosUnidade = contratos.filter(c => c.unidade_id === unidadeId);
     const contratoIds = contratosUnidade.map(c => c.id);
 
-    const [recebidosRes, episUnidadeRes, entregasRes, movContratosRes] = await Promise.all([
+    const [recebidosRes, episUnidadeRes, entregasRes, movContratosRes, contratoEpisRes] = await Promise.all([
       supabase.from("estoque_movimentacoes")
         .select("quantidade, valor_unitario, epi_id, created_at, created_by, empresa_origem_id, id, motivo, tipo")
         .eq("empresa_destino_id", unidadeId)
@@ -208,18 +208,29 @@ export default function ControleEstoqueContrato() {
           .eq("tipo", "entrada")
           .order("created_at", { ascending: false })
         : Promise.resolve({ data: [] as any[], error: null }),
+      contratoIds.length > 0
+        ? supabase.from("contrato_epis")
+          .select("estoque, epi_id")
+          .in("contrato_id", contratoIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
     ]);
 
     const recebidos = recebidosRes.data || [];
     const episUnidade = episUnidadeRes.data || [];
     const entregas = entregasRes.data || [];
     const movContratos = movContratosRes.data || [];
+    const contratoEpisData = contratoEpisRes.data || [];
 
     const recebidoMatriz = (recebidos || []).reduce((s, m) => s + (m.quantidade || 0), 0);
     const valorRecebido = (recebidos || []).reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0);
 
-    const estoqueAtual = (episUnidade || []).reduce((s, e) => s + (e.estoque || 0), 0);
-    const baixo = (episUnidade || []).filter(e => e.estoque <= e.estoque_minimo).length;
+    // Stock = unit own stock + all contract stock under this unit
+    const estoqueUnidade = (episUnidade || []).reduce((s, e) => s + (e.estoque || 0), 0);
+    const estoqueContratos = (contratoEpisData || []).reduce((s: number, e: any) => s + (e.estoque || 0), 0);
+    const estoqueAtual = estoqueUnidade + estoqueContratos;
+    const baixoUnidade = (episUnidade || []).filter(e => e.estoque <= e.estoque_minimo).length;
+    const baixoContratos = (contratoEpisData || []).filter((e: any) => (e.estoque || 0) <= 0).length;
+    const baixo = baixoUnidade + baixoContratos;
 
     let entregueContratos = 0;
     let valorEntregue = 0;
