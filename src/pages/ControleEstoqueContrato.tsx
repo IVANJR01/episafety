@@ -451,32 +451,69 @@ export default function ControleEstoqueContrato() {
       )}
 
       {/* Level-specific content */}
-      {currentLevel === "matriz" && filiais.length > 0 && (
-        <Card className="border-border/60">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-primary" />
-              Unidades
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="grid gap-2">
-              {filiais.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => drillDown(f.id, f.nome, "unidade")}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <GitBranch className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-sm font-medium">{f.nome}</p>
+      {currentLevel === "matriz" && (
+        <div className="space-y-4">
+          <MatrizKPICards {...matrizKPIs} />
+
+          {filiais.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-primary" />
+                  Unidades
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="grid gap-2">
+                  {filiais.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => drillDown(f.id, f.nome, "unidade")}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <GitBranch className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">{f.nome}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {monthlyChartData.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-4 h-4 text-primary" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais — {matrizNome}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={monthlyChartData} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entradas" : "Saídas"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Legend formatter={(v: string) => v === "entrada" ? "Entradas" : "Saídas"} wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          <StockMovementTable movements={movements} title={`Histórico de Movimentações — ${matrizNome}`} />
+        </div>
       )}
 
       {currentLevel === "unidade" && (
