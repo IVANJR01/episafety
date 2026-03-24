@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package, TrendingUp, ChevronDown } from "lucide-react";
+import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package, TrendingUp } from "lucide-react";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
 import { MatrizKPICards, UnidadeKPICards, ContratoKPICards } from "@/components/stock/StockKPICards";
 
@@ -12,7 +12,6 @@ import StockMovementTable, { MovementRow } from "@/components/stock/StockMovemen
 import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
 import ContratoStockPanel from "@/components/ContratoStockPanel";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from "recharts";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface UnidadeData {
   id: string;
@@ -38,7 +37,6 @@ export default function ControleEstoqueContrato() {
   const [contratos, setContratos] = useState<ContratoData[]>([]);
   const [matrizId, setMatrizId] = useState<string | null>(null);
   const [matrizNome, setMatrizNome] = useState("Matriz");
-  const [showMatrizDetails, setShowMatrizDetails] = useState(false);
 
   // Matriz KPIs
   const [matrizKPIs, setMatrizKPIs] = useState({ estoqueTotal: 0, valorTotal: 0, totalEntradas: 0, totalSaidas: 0, valorSaidas: 0, itensBaixoEstoque: 0, giroEstoque: 0 });
@@ -46,7 +44,7 @@ export default function ControleEstoqueContrato() {
   const [monthlyChartData, setMonthlyChartData] = useState<{ mes: string; entrada: number; saida: number }[]>([]);
 
   // Unidade KPIs
-  const [unidadeKPIs, setUnidadeKPIs] = useState({ recebidoMatriz: 0, valorRecebido: 0, entregueContratos: 0, valorEntregue: 0, estoqueAtual: 0, itensBaixoEstoque: 0, });
+  const [unidadeKPIs, setUnidadeKPIs] = useState({ recebidoMatriz: 0, valorRecebido: 0, entregueContratos: 0, valorEntregue: 0, estoqueAtual: 0, itensBaixoEstoque: 0 });
 
   // Contrato KPIs
   const [contratoKPIs, setContratoKPIs] = useState({ consumoTotal: 0, valorConsumido: 0, custoColaborador: 0, totalColaboradores: 0, topMateriais: [] as { nome: string; qtd: number }[] });
@@ -73,6 +71,7 @@ export default function ControleEstoqueContrato() {
       setMatrizNome(matriz.nome);
       setBreadcrumbs([{ id: matriz.id, nome: matriz.nome, type: "matriz" }]);
     }
+
     setLoading(false);
   }, []);
 
@@ -453,35 +452,7 @@ export default function ControleEstoqueContrato() {
       {/* Level-specific content */}
       {currentLevel === "matriz" && (
         <div className="space-y-4">
-          <MatrizKPICards {...matrizKPIs} />
-
-          {filiais.length > 0 && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-primary" />
-                  Unidades
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="grid gap-2">
-                  {filiais.map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => drillDown(f.id, f.nome, "unidade")}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-2">
-                        <GitBranch className="w-4 h-4 text-muted-foreground" />
-                        <p className="text-sm font-medium">{f.nome}</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          
 
           {monthlyChartData.length > 0 && (
             <Card className="border-border/60">
@@ -490,7 +461,7 @@ export default function ControleEstoqueContrato() {
                   <div className="p-1.5 rounded-lg bg-primary/10">
                     <TrendingUp className="w-4 h-4 text-primary" />
                   </div>
-                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais — {matrizNome}</CardTitle>
+                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais (Matriz)</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
@@ -500,10 +471,10 @@ export default function ControleEstoqueContrato() {
                     <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
                     <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
                     <Tooltip
-                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entradas" : "Saídas"]}
+                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entrada" : "Saída"]}
                       contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
                     />
-                    <Legend formatter={(v: string) => v === "entrada" ? "Entradas" : "Saídas"} wrapperStyle={{ fontSize: 12 }} />
+                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada" : "Saída"} wrapperStyle={{ fontSize: 12 }} />
                     <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
                     <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
                   </BarChart>
@@ -512,13 +483,84 @@ export default function ControleEstoqueContrato() {
             </Card>
           )}
 
-          <StockMovementTable movements={movements} title={`Histórico de Movimentações — ${matrizNome}`} />
+          <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
+
+          {/* Drill-down: Filiais */}
+          {filiais.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-primary" />
+                  Unidades
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <div className="grid gap-2">
+                  {filiais.map(f => {
+                    const fContratos = contratos.filter(c => c.unidade_id === f.id);
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => drillDown(f.id, f.nome, "unidade")}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          <GitBranch className="w-4 h-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">{f.nome}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {f.tipo} · {fContratos.length} contrato(s)
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Existing panels */}
+          {hasGestaoEstoque && <ConsolidatedEpiPanel />}
         </div>
       )}
 
       {currentLevel === "unidade" && (
         <div className="space-y-4">
           <UnidadeKPICards {...unidadeKPIs} />
+
+          {monthlyChartData.length > 0 && (
+            <Card className="border-border/60">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <TrendingUp className="w-4 h-4 text-primary" />
+                  </div>
+                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais — {breadcrumbs[breadcrumbs.length - 1]?.nome}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={monthlyChartData} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Recebido da Matriz" : "Enviado p/ Contratos"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Legend formatter={(v: string) => v === "entrada" ? "Recebido da Matriz" : "Enviado p/ Contratos"} wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="saida" fill="hsl(24, 95%, 53%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          <StockMovementTable movements={movements} title={`Movimentações — ${breadcrumbs[breadcrumbs.length - 1]?.nome}`} />
 
           {/* Drill-down: Contratos */}
           {contratosCurrentUnit.length > 0 && (

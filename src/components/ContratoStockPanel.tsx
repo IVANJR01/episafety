@@ -893,34 +893,6 @@ export default function ContratoStockPanel() {
                                     );
                                   })()}
 
-                                  {/* Top 5 Materiais mais consumidos */}
-                                  {(() => {
-                                    const saidasByEpi: Record<string, { nome: string; qtd: number }> = {};
-                                    movimentacoes.filter(m => m.tipo === "saida").forEach(m => {
-                                      const nome = m.epi_nome || "—";
-                                      if (!saidasByEpi[nome]) saidasByEpi[nome] = { nome, qtd: 0 };
-                                      saidasByEpi[nome].qtd += m.quantidade;
-                                    });
-                                    const top5 = Object.values(saidasByEpi).sort((a, b) => b.qtd - a.qtd).slice(0, 5);
-                                    if (top5.length === 0) return null;
-                                    return (
-                                      <div className="rounded-md border p-3 bg-background">
-                                        <p className="text-xs font-semibold text-muted-foreground mb-2">Top 5 Materiais mais consumidos</p>
-                                        <div className="space-y-1.5">
-                                          {top5.map((m, i) => (
-                                            <div key={i} className="flex items-center justify-between text-xs">
-                                              <span className="flex items-center gap-2">
-                                                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">{i + 1}</span>
-                                                <span className="truncate max-w-[200px]">{m.nome}</span>
-                                              </span>
-                                              <span className="font-semibold">{m.qtd} un.</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
-
                                   {/* EPI Table */}
                                   {epis.length > 0 ? (
                                     <div className="rounded-md border overflow-auto bg-background">
