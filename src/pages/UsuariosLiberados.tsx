@@ -172,12 +172,14 @@ export default function UsuariosLiberados() {
       }
 
       const targetEmpresaId = novoEmpresaId || empresaId;
-      const { error } = await (supabase.from as any)("usuarios_liberados").insert({
+      const insertPayload: any = {
         email: novoEmail.trim().toLowerCase(),
         nome: novoNome.trim(),
         modulos_permitidos: [],
         empresa_id: targetEmpresaId,
-      });
+      };
+      if (novoContratoId) insertPayload.contrato_id = novoContratoId;
+      const { error } = await (supabase.from as any)("usuarios_liberados").insert(insertPayload);
 
       if (error) {
         toast({ title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar", description: error.message, variant: "destructive" });
