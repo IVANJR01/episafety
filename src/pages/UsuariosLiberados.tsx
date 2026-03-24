@@ -539,7 +539,7 @@ export default function UsuariosLiberados() {
             {unidadesDisponiveis.length > 1 && (
               <div>
                 <Label>Vincular à unidade</Label>
-                <Select value={novoEmpresaId} onValueChange={setNovoEmpresaId}>
+                <Select value={novoEmpresaId} onValueChange={(v) => { setNovoEmpresaId(v); setNovoContratoId(""); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Empresa atual" />
                   </SelectTrigger>
@@ -556,6 +556,31 @@ export default function UsuariosLiberados() {
                 </Select>
               </div>
             )}
+            {(() => {
+              const selectedUnit = novoEmpresaId || empresaId;
+              const contratosFiltered = allContratos.filter(c => c.unidade_id === selectedUnit);
+              if (contratosFiltered.length === 0) return null;
+              return (
+                <div>
+                  <Label>Vincular ao contrato</Label>
+                  <Select value={novoContratoId} onValueChange={setNovoContratoId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o contrato (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contratosFiltered.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <span className="flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                            {c.nome}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })()}
             <div>
               <Label>Senha</Label>
               <div className="relative">
