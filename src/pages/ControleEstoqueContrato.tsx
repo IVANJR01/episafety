@@ -71,9 +71,9 @@ export default function ControleEstoqueContrato() {
     if (matriz) {
       setMatrizId(matriz.id);
       setMatrizNome(matriz.nome);
-      // Auto-drill into first filial if only one exists
+      // Auto-drill into first filial (always skip matriz level)
       const filiais = allUnidades.filter(u => u.empresa_pai_id === matriz.id);
-      if (filiais.length === 1) {
+      if (filiais.length >= 1) {
         setBreadcrumbs([
           { id: matriz.id, nome: matriz.nome, type: "matriz" },
           { id: filiais[0].id, nome: filiais[0].nome, type: "unidade" },
