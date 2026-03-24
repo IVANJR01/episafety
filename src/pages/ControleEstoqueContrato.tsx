@@ -451,7 +451,33 @@ export default function ControleEstoqueContrato() {
       )}
 
       {/* Level-specific content */}
-      {currentLevel === "matriz" && null}
+      {currentLevel === "matriz" && filiais.length > 0 && (
+        <Card className="border-border/60">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-primary" />
+              Unidades
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <div className="grid gap-2">
+              {filiais.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => drillDown(f.id, f.nome, "unidade")}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <GitBranch className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm font-medium">{f.nome}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {currentLevel === "unidade" && (
         <div className="space-y-4">
