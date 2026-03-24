@@ -92,7 +92,7 @@ interface SolicitacaoEpi {
 }
 
 export default function ContratoStockPanel() {
-  const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
+  const { empresaId, contratoId: userContratoId, isSuperAdmin, isPrincipal, modulosPermitidos, loading: authLoading } = useAuth();
   // Global stock management (Rafaela-type: sees ALL units/contracts)
   const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque");
   // Per-contract stock permission (technician-type: sees only their unit/contract)
@@ -164,22 +164,32 @@ export default function ContratoStockPanel() {
   const [globalPendingCount, setGlobalPendingCount] = useState(0);
   const [globalPendingSolicitacoes, setGlobalPendingSolicitacoes] = useState<Array<{id: string; contrato_nome: string; unidade_nome: string; epi_nome: string; quantidade: number; solicitante_nome: string | null; created_at: string}>>([]);
 
+  const cacheScope = `${empresaId || "sem-empresa"}:${userContratoId || "sem-contrato"}:${hasGestaoEstoque ? "gestao" : hasEstoqueContrato ? "contrato" : "sem-acesso"}`;
+
   const loadData = useCallback(async () => {
+    if (authLoading) return;
+    if (!canAccessPanel) {
+      setUnidades([]);
+      setContratos([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const [unidadesResult, contratosResult] = await Promise.all([
-      cachedQuery<Unidade>("empresa_config", () =>
+      cachedQuery<Unidade>(`empresa_config_${cacheScope}`, () =>
         supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id") as any
       ),
-      cachedQuery<Contrato>("contratos", () =>
+      cachedQuery<Contrato>(`contratos_${cacheScope}`, () =>
         supabase.from("contratos").select("id, nome, unidade_id, empresa_id") as any
       ),
     ]);
     setUnidades(unidadesResult.data as Unidade[]);
     setContratos(contratosResult.data as Contrato[]);
     setLoading(false);
-  }, []);
+  }, [authLoading, cacheScope, canAccessPanel]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   // Load global pending solicitations count for gestão users
   useEffect(() => {
@@ -691,7 +701,7 @@ export default function ContratoStockPanel() {
     entregue: { label: "Entregue", icon: <Package className="w-3 h-3" />, className: "bg-primary/10 text-primary" },
   };
 
-  if (loading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+  if (loading || authLoading) return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   // Build hierarchy: group contratos by unidade
   const filiais = unidades.filter(u => u.empresa_pai_id);
