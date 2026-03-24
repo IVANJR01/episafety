@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power } from "lucide-react";
+import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
