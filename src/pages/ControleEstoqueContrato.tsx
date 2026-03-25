@@ -191,7 +191,7 @@ export default function ControleEstoqueContrato() {
         .select("quantidade, tipo, epi_id, created_at, responsavel_nome, motivo")
         .eq("contrato_id", contratoId)
         .order("created_at", { ascending: false })
-        .limit(5),
+        .limit(20),
     ]);
 
     const cepis = cepisRes.data || [];
