@@ -64,8 +64,35 @@ export default function ControleEstoqueContrato() {
     setUnidades(allUnidades);
     setContratos(allContratos);
 
-    // Find the parent company (matriz)
-    const matriz = allUnidades.find(u => u.empresa_pai_id === null);
+    // Find the correct parent company (matriz)
+    // For Principal/regular users, use their empresaId from auth context
+    // For super_admin, if empresaId exists use it, otherwise find the root that owns the most data
+    const matrizes = allUnidades.filter(u => u.empresa_pai_id === null);
+    let matriz: UnidadeData | undefined;
+
+    if (empresaId) {
+      // Check if empresaId IS a matriz
+      matriz = matrizes.find(m => m.id === empresaId);
+      if (!matriz) {
+        // empresaId might be a filial — find its parent
+        const userUnit = allUnidades.find(u => u.id === empresaId);
+        if (userUnit?.empresa_pai_id) {
+          matriz = matrizes.find(m => m.id === userUnit.empresa_pai_id);
+        }
+      }
+    }
+
+    // Fallback: if only one matriz, use it
+    if (!matriz && matrizes.length === 1) {
+      matriz = matrizes[0];
+    }
+
+    // Super admin with multiple matrizes and no empresaId: show all as selectable
+    if (!matriz && matrizes.length > 1) {
+      // Default to first but show selector
+      matriz = matrizes[0];
+    }
+
     if (matriz) {
       setMatrizId(matriz.id);
       setMatrizNome(matriz.nome);
@@ -73,7 +100,7 @@ export default function ControleEstoqueContrato() {
     }
 
     setLoading(false);
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
 
