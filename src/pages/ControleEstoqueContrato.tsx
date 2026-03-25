@@ -175,8 +175,8 @@ export default function ControleEstoqueContrato() {
       ...prev,
       [unidadeId]: {
         id: unidadeId,
-        nome: unidades.find(u => u.id === unidadeId)?.nome || "",
-        tipo: unidades.find(u => u.id === unidadeId)?.tipo || "",
+        nome: currentUnidades.find(u => u.id === unidadeId)?.nome || "",
+        tipo: currentUnidades.find(u => u.id === unidadeId)?.tipo || "",
         recebidoMatriz: recebidos.reduce((s, m) => s + (m.quantidade || 0), 0),
         valorRecebido: recebidos.reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0),
         estoqueAtual: estoqueUnidade + estoqueContratos,
