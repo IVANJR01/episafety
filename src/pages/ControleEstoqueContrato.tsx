@@ -132,8 +132,10 @@ export default function ControleEstoqueContrato() {
     if (unidadeSummariesRef.current[unidadeId]?.loaded) return;
     setLoadingUnidade(unidadeId);
 
-    const unidadeContratos = contratos.filter(c => c.unidade_id === unidadeId);
+    const unidadeContratos = contratosRef.current.filter(c => c.unidade_id === unidadeId);
     const contratoIds = unidadeContratos.map(c => c.id);
+
+    const currentUnidades = unidadesRef.current;
 
     const [recebidosRes, episRes, contratoEpisRes] = await Promise.all([
       supabase.from("estoque_movimentacoes")
