@@ -65,6 +65,9 @@ export default function ControleEstoqueContrato() {
 
   // Unidade summaries (lazy loaded)
   const [unidadeSummaries, setUnidadeSummaries] = useState<Record<string, UnidadeSummary>>({});
+  const unidadeSummariesRef = useRef<Record<string, UnidadeSummary>>({});
+  // Keep ref in sync
+  useEffect(() => { unidadeSummariesRef.current = unidadeSummaries; }, [unidadeSummaries]);
   const [loadingUnidade, setLoadingUnidade] = useState<string | null>(null);
   const [loadingContrato, setLoadingContrato] = useState<string | null>(null);
 
