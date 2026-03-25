@@ -461,6 +461,18 @@ export default function ControleEstoqueContrato() {
     setBreadcrumbs(prev => [...prev, { id, nome, type }]);
   };
 
+  const matrizes = unidades.filter(u => u.empresa_pai_id === null);
+  const showMatrizSelector = isSuperAdmin && matrizes.length > 1;
+
+  const switchMatriz = (newMatrizId: string) => {
+    const m = matrizes.find(u => u.id === newMatrizId);
+    if (m) {
+      setMatrizId(m.id);
+      setMatrizNome(m.nome);
+      setBreadcrumbs([{ id: m.id, nome: m.nome, type: "matriz" }]);
+    }
+  };
+
   const filiais = unidades.filter(u => u.empresa_pai_id === currentId);
   const contratosCurrentUnit = contratos.filter(c => c.unidade_id === currentId);
 
