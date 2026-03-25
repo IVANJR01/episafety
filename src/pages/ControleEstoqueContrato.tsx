@@ -182,7 +182,7 @@ export default function ControleEstoqueContrato() {
 
   // Lazy load contract details (stock table + movements)
   const loadContratoDetails = async (contratoId: string, unidadeId: string) => {
-    const summary = unidadeSummaries[unidadeId];
+    const summary = unidadeSummariesRef.current[unidadeId];
     if (!summary) return;
     const contrato = summary.contratos.find(c => c.contratoId === contratoId);
     if (contrato?.loadedDetails) return;
