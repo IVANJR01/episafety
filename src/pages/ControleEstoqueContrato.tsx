@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +65,9 @@ export default function ControleEstoqueContrato() {
 
   // Unidade summaries (lazy loaded)
   const [unidadeSummaries, setUnidadeSummaries] = useState<Record<string, UnidadeSummary>>({});
+  const unidadeSummariesRef = useRef<Record<string, UnidadeSummary>>({});
+  // Keep ref in sync
+  useEffect(() => { unidadeSummariesRef.current = unidadeSummaries; }, [unidadeSummaries]);
   const [loadingUnidade, setLoadingUnidade] = useState<string | null>(null);
   const [loadingContrato, setLoadingContrato] = useState<string | null>(null);
 
@@ -120,7 +123,7 @@ export default function ControleEstoqueContrato() {
 
   // Lazy load unidade data when accordion opens
   const loadUnidadeData = async (unidadeId: string) => {
-    if (unidadeSummaries[unidadeId]?.loaded) return;
+    if (unidadeSummariesRef.current[unidadeId]?.loaded) return;
     setLoadingUnidade(unidadeId);
 
     const unidadeContratos = contratos.filter(c => c.unidade_id === unidadeId);
@@ -179,7 +182,7 @@ export default function ControleEstoqueContrato() {
 
   // Lazy load contract details (stock table + movements)
   const loadContratoDetails = async (contratoId: string, unidadeId: string) => {
-    const summary = unidadeSummaries[unidadeId];
+    const summary = unidadeSummariesRef.current[unidadeId];
     if (!summary) return;
     const contrato = summary.contratos.find(c => c.contratoId === contratoId);
     if (contrato?.loadedDetails) return;
@@ -191,7 +194,7 @@ export default function ControleEstoqueContrato() {
         .select("quantidade, tipo, epi_id, created_at, responsavel_nome, motivo")
         .eq("contrato_id", contratoId)
         .order("created_at", { ascending: false })
-        .limit(5),
+        .limit(20),
     ]);
 
     const cepis = cepisRes.data || [];
