@@ -263,15 +263,17 @@ export default function ControleEstoqueContrato() {
     const baixoContratos = (contratoEpisData || []).filter((e: any) => (e.estoque || 0) <= 0).length;
     const baixo = baixoUnidade + baixoContratos;
 
+    const movEntradas = movContratos.filter(m => m.tipo === "entrada");
+    const movSaidas = movContratos.filter(m => m.tipo === "saida");
     let entregueContratos = 0;
     let valorEntregue = 0;
     if (movContratos.length > 0) {
-      entregueContratos = movContratos.reduce((s, m) => s + (m.quantidade || 0), 0);
+      entregueContratos = movEntradas.reduce((s, m) => s + (m.quantidade || 0), 0);
       const epiIds = [...new Set(movContratos.map(m => m.epi_id))];
       if (epiIds.length > 0) {
         const { data: episVals } = await supabase.from("epis").select("id, valor").in("id", epiIds);
         const valMap = Object.fromEntries((episVals || []).map(e => [e.id, e.valor || 0]));
-        valorEntregue = movContratos.reduce((s, m) => s + ((m.quantidade || 0) * (valMap[m.epi_id] || 0)), 0);
+        valorEntregue = movEntradas.reduce((s, m) => s + ((m.quantidade || 0) * (valMap[m.epi_id] || 0)), 0);
       }
     }
 
