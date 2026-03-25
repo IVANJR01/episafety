@@ -1,19 +1,20 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package, TrendingUp } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import {
+  Building2, GitBranch, FileText, Loader2, Package, TrendingUp, TrendingDown,
+  AlertTriangle, ChevronRight, History, Users, DollarSign, BarChart3
+} from "lucide-react";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
-import { MatrizKPICards, UnidadeKPICards, ContratoKPICards } from "@/components/stock/StockKPICards";
-
-import StockMovementTable, { MovementRow } from "@/components/stock/StockMovementTable";
-import ConsolidatedEpiPanel from "@/components/ConsolidatedEpiPanel";
-import ContratoStockPanel from "@/components/ContratoStockPanel";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from "recharts";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface UnidadeData {
   id: string;
@@ -28,31 +29,47 @@ interface ContratoData {
   unidade_id: string;
 }
 
+interface ContratoStockSummary {
+  contratoId: string;
+  contratoNome: string;
+  totalItens: number;
+  estoqueTotal: number;
+  valorTotal: number;
+  alertas: number;
+  itens: { epi_nome: string; estoque: number; estoque_minimo: number; valor: number }[];
+  movimentos: { data: string; tipo: string; epi_nome: string; destino: string; quantidade: number }[];
+  loadedDetails: boolean;
+}
+
+interface UnidadeSummary {
+  id: string;
+  nome: string;
+  tipo: string;
+  recebidoMatriz: number;
+  valorRecebido: number;
+  estoqueAtual: number;
+  alertas: number;
+  contratos: ContratoStockSummary[];
+  loaded: boolean;
+}
+
 export default function ControleEstoqueContrato() {
   const { isSuperAdmin, isPrincipal, modulosPermitidos, contratoId: userContratoId, empresaId } = useAuth();
   const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
-  const hasContratoAccess = !!userContratoId;
 
   const [loading, setLoading] = useState(true);
-  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbLevel[]>([]);
   const [unidades, setUnidades] = useState<UnidadeData[]>([]);
   const [contratos, setContratos] = useState<ContratoData[]>([]);
   const [matrizId, setMatrizId] = useState<string | null>(null);
   const [matrizNome, setMatrizNome] = useState("Matriz");
 
-  // Matriz KPIs
-  const [matrizKPIs, setMatrizKPIs] = useState({ estoqueTotal: 0, valorTotal: 0, totalEntradas: 0, totalSaidas: 0, valorSaidas: 0, itensBaixoEstoque: 0, giroEstoque: 0 });
-  const [movements, setMovements] = useState<MovementRow[]>([]);
-  const [monthlyChartData, setMonthlyChartData] = useState<{ mes: string; entrada: number; saida: number }[]>([]);
+  // Unidade summaries (lazy loaded)
+  const [unidadeSummaries, setUnidadeSummaries] = useState<Record<string, UnidadeSummary>>({});
+  const [loadingUnidade, setLoadingUnidade] = useState<string | null>(null);
+  const [loadingContrato, setLoadingContrato] = useState<string | null>(null);
 
-  // Unidade KPIs
-  const [unidadeKPIs, setUnidadeKPIs] = useState({ recebidoMatriz: 0, valorRecebido: 0, entregueContratos: 0, valorEntregue: 0, estoqueAtual: 0, itensBaixoEstoque: 0 });
-
-  // Contrato KPIs
-  const [contratoKPIs, setContratoKPIs] = useState({ consumoTotal: 0, valorConsumido: 0, custoColaborador: 0, totalColaboradores: 0, topMateriais: [] as { nome: string; qtd: number }[] });
-
-  const currentLevel = breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].type : "matriz";
-  const currentId = breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].id : matrizId;
+  // Matriz summary
+  const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
@@ -66,39 +83,34 @@ export default function ControleEstoqueContrato() {
     setUnidades(allUnidades);
     setContratos(allContratos);
 
-    // Find the correct parent company (matriz)
-    // For Principal/regular users, use their empresaId from auth context
-    // For super_admin, if empresaId exists use it, otherwise find the root that owns the most data
     const matrizes = allUnidades.filter(u => u.empresa_pai_id === null);
     let matriz: UnidadeData | undefined;
 
     if (empresaId) {
-      // Check if empresaId IS a matriz
       matriz = matrizes.find(m => m.id === empresaId);
       if (!matriz) {
-        // empresaId might be a filial — find its parent
         const userUnit = allUnidades.find(u => u.id === empresaId);
         if (userUnit?.empresa_pai_id) {
           matriz = matrizes.find(m => m.id === userUnit.empresa_pai_id);
         }
       }
     }
-
-    // Fallback: if only one matriz, use it
-    if (!matriz && matrizes.length === 1) {
-      matriz = matrizes[0];
-    }
-
-    // Super admin with multiple matrizes and no empresaId: show all as selectable
-    if (!matriz && matrizes.length > 1) {
-      // Default to first but show selector
-      matriz = matrizes[0];
-    }
+    if (!matriz && matrizes.length === 1) matriz = matrizes[0];
+    if (!matriz && matrizes.length > 1) matriz = matrizes[0];
 
     if (matriz) {
       setMatrizId(matriz.id);
       setMatrizNome(matriz.nome);
-      setBreadcrumbs([{ id: matriz.id, nome: matriz.nome, type: "matriz" }]);
+      // Load matriz summary
+      const { data: episMatriz } = await supabase.from("epis").select("estoque, estoque_minimo, valor").eq("empresa_id", matriz.id);
+      const epis = episMatriz || [];
+      setMatrizSummary({
+        estoqueTotal: epis.reduce((s, e) => s + (e.estoque || 0), 0),
+        valorTotal: epis.reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0),
+        totalSaidas: 0,
+        valorSaidas: 0,
+        baixoEstoque: epis.filter(e => e.estoque <= e.estoque_minimo).length,
+      });
     }
 
     setLoading(false);
@@ -106,390 +118,135 @@ export default function ControleEstoqueContrato() {
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
 
-  // Load KPIs based on current level — only after data is loaded
-  useEffect(() => {
-    if (!currentId || loading) return;
-    // Ensure unidades and contratos are populated before loading KPIs
-    if (unidades.length === 0 && contratos.length === 0) return;
+  // Lazy load unidade data when accordion opens
+  const loadUnidadeData = async (unidadeId: string) => {
+    if (unidadeSummaries[unidadeId]?.loaded) return;
+    setLoadingUnidade(unidadeId);
 
-    if (currentLevel === "matriz") {
-      loadMatrizKPIs(currentId);
-    } else if (currentLevel === "unidade") {
-      loadUnidadeKPIs(currentId);
-    } else if (currentLevel === "contrato") {
-      loadContratoKPIs(currentId);
-    }
-  }, [currentLevel, currentId, unidades.length, contratos.length]);
+    const unidadeContratos = contratos.filter(c => c.unidade_id === unidadeId);
+    const contratoIds = unidadeContratos.map(c => c.id);
 
-  const loadMatrizKPIs = async (matrizId: string) => {
-    const filiais = unidades.filter(u => u.empresa_pai_id === matrizId);
-    const filiaisIds = filiais.map(f => f.id);
-    const allIds = [matrizId, ...filiaisIds];
-
-    // Get EPIs for matriz
-    const { data: episMatriz } = await supabase.from("epis").select("id, estoque, estoque_minimo, valor").eq("empresa_id", matrizId);
-    const matrizEstoque = (episMatriz || []).reduce((s, e) => s + (e.estoque || 0), 0);
-    const matrizValor = (episMatriz || []).reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0);
-    const baixoEstoque = (episMatriz || []).filter(e => e.estoque <= e.estoque_minimo).length;
-
-    // Get movements (transfers out from matriz)
-    const { data: movs } = await supabase.from("estoque_movimentacoes")
-      .select("id, tipo, quantidade, valor_unitario, empresa_origem_id, empresa_destino_id, epi_id, created_at, created_by, motivo")
-      .or(`empresa_origem_id.eq.${matrizId},empresa_destino_id.eq.${matrizId}`)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    const saidas = (movs || []).filter(m => m.empresa_origem_id === matrizId);
-    const entradas = (movs || []).filter(m => m.empresa_destino_id === matrizId);
-
-    const totalSaidas = saidas.reduce((s, m) => s + (m.quantidade || 0), 0);
-    const valorSaidas = saidas.reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0);
-    const totalEntradas = entradas.reduce((s, m) => s + (m.quantidade || 0), 0);
-
-    // Giro de estoque (average days in stock)
-    let giro = 0;
-    if (saidas.length > 0 && matrizEstoque > 0) {
-      const firstMovDate = saidas[saidas.length - 1]?.created_at;
-      if (firstMovDate) {
-        const days = Math.ceil((Date.now() - new Date(firstMovDate).getTime()) / (1000 * 60 * 60 * 24));
-        giro = Math.round((matrizEstoque / Math.max(1, totalSaidas)) * days);
-      }
-    }
-
-    setMatrizKPIs({
-      estoqueTotal: matrizEstoque,
-      valorTotal: matrizValor,
-      totalEntradas,
-      totalSaidas,
-      valorSaidas,
-      itensBaixoEstoque: baixoEstoque,
-      giroEstoque: giro,
-    });
-
-
-    // Movement table
-    const epiIds = [...new Set((movs || []).map(m => m.epi_id))];
-    const { data: episNames } = epiIds.length > 0
-      ? await supabase.from("epis").select("id, nome").in("id", epiIds)
-      : { data: [] };
-    const epiMap = Object.fromEntries((episNames || []).map(e => [e.id, e.nome]));
-
-    const empresaIds = [...new Set((movs || []).flatMap(m => [m.empresa_origem_id, m.empresa_destino_id].filter(Boolean)))];
-    const empresaMap = Object.fromEntries(unidades.filter(u => empresaIds.includes(u.id)).map(u => [u.id, u.nome]));
-
-    // Get profile names for created_by
-    const userIds = [...new Set((movs || []).map(m => m.created_by).filter(Boolean))];
-    const { data: profiles } = userIds.length > 0
-      ? await supabase.from("profiles").select("user_id, nome").in("user_id", userIds)
-      : { data: [] };
-    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p.nome]));
-
-    setMovements((movs || []).map(m => ({
-      id: m.id,
-      data: m.created_at,
-      tipo: m.tipo || "transferencia",
-      epi_nome: epiMap[m.epi_id] || "—",
-      origem: empresaMap[m.empresa_origem_id] || "—",
-      destino: empresaMap[m.empresa_destino_id] || "—",
-      quantidade: m.quantidade || 0,
-      responsavel: profileMap[m.created_by] || "Sistema",
-      valor_unitario: m.valor_unitario,
-    })));
-
-    // Build monthly entry/exit chart
-    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
-    (movs || []).forEach(m => {
-      const mes = m.created_at?.substring(0, 7);
-      if (!mes) return;
-      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
-      if (m.empresa_destino_id === matrizId) {
-        mesesMap[mes].entrada += (m.quantidade || 0) * (m.valor_unitario || 0);
-      }
-      if (m.empresa_origem_id === matrizId) {
-        mesesMap[mes].saida += (m.quantidade || 0) * (m.valor_unitario || 0);
-      }
-    });
-    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
-    setMonthlyChartData(mesesSorted.map(mes => ({
-      mes: mes.split("-").reverse().join("/"),
-      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
-      saida: Number(mesesMap[mes].saida.toFixed(2)),
-    })));
-  };
-
-  const loadUnidadeKPIs = async (unidadeId: string) => {
-    const contratosUnidade = contratos.filter(c => c.unidade_id === unidadeId);
-    const contratoIds = contratosUnidade.map(c => c.id);
-
-    const [recebidosRes, episUnidadeRes, entregasRes, movContratosRes, contratoEpisRes] = await Promise.all([
+    const [recebidosRes, episRes, contratoEpisRes] = await Promise.all([
       supabase.from("estoque_movimentacoes")
-        .select("quantidade, valor_unitario, epi_id, created_at, created_by, empresa_origem_id, id, motivo, tipo")
-        .eq("empresa_destino_id", unidadeId)
-        .order("created_at", { ascending: false }),
-      supabase.from("epis").select("estoque, estoque_minimo, valor").eq("empresa_id", unidadeId),
-      supabase.from("entregas")
-        .select("id, data, tipo, quantidade, epi_id, funcionario_id, created_by, observacao, empresa_id")
-        .eq("empresa_id", unidadeId)
-        .order("data", { ascending: false })
-        .limit(50),
+        .select("quantidade, valor_unitario")
+        .eq("empresa_destino_id", unidadeId),
+      supabase.from("epis").select("estoque, estoque_minimo").eq("empresa_id", unidadeId),
       contratoIds.length > 0
-        ? supabase.from("contrato_epis_movimentacoes")
-          .select("id, quantidade, tipo, epi_id, created_at, created_by, contrato_id, motivo, responsavel_nome")
-          .in("contrato_id", contratoIds)
-          .order("created_at", { ascending: false })
-          .limit(100)
-        : Promise.resolve({ data: [] as any[], error: null }),
-      contratoIds.length > 0
-        ? supabase.from("contrato_epis")
-          .select("estoque, epi_id")
-          .in("contrato_id", contratoIds)
-        : Promise.resolve({ data: [] as any[], error: null }),
+        ? supabase.from("contrato_epis").select("estoque, contrato_id, epi_id").in("contrato_id", contratoIds)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
 
     const recebidos = recebidosRes.data || [];
-    const episUnidade = episUnidadeRes.data || [];
-    const entregas = entregasRes.data || [];
-    const movContratos = movContratosRes.data || [];
-    const contratoEpisData = contratoEpisRes.data || [];
+    const episUnidade = episRes.data || [];
+    const contratoEpis = contratoEpisRes.data || [];
 
-    const recebidoMatriz = (recebidos || []).reduce((s, m) => s + (m.quantidade || 0), 0);
-    const valorRecebido = (recebidos || []).reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0);
+    const estoqueUnidade = episUnidade.reduce((s, e) => s + (e.estoque || 0), 0);
+    const estoqueContratos = contratoEpis.reduce((s: number, e: any) => s + (e.estoque || 0), 0);
+    const baixoUnidade = episUnidade.filter(e => e.estoque <= e.estoque_minimo).length;
 
-    // Stock = unit own stock + all contract stock under this unit
-    const estoqueUnidade = (episUnidade || []).reduce((s, e) => s + (e.estoque || 0), 0);
-    const estoqueContratos = (contratoEpisData || []).reduce((s: number, e: any) => s + (e.estoque || 0), 0);
-    const estoqueAtual = estoqueUnidade + estoqueContratos;
-    const baixoUnidade = (episUnidade || []).filter(e => e.estoque <= e.estoque_minimo).length;
-    const baixoContratos = (contratoEpisData || []).filter((e: any) => (e.estoque || 0) <= 0).length;
-    const baixo = baixoUnidade + baixoContratos;
-
-    const movEntradas = movContratos.filter(m => m.tipo === "entrada");
-    const movSaidas = movContratos.filter(m => m.tipo === "saida");
-    let entregueContratos = 0;
-    let valorEntregue = 0;
-    if (movContratos.length > 0) {
-      entregueContratos = movEntradas.reduce((s, m) => s + (m.quantidade || 0), 0);
-      const epiIds = [...new Set(movContratos.map(m => m.epi_id))];
-      if (epiIds.length > 0) {
-        const { data: episVals } = await supabase.from("epis").select("id, valor").in("id", epiIds);
-        const valMap = Object.fromEntries((episVals || []).map(e => [e.id, e.valor || 0]));
-        valorEntregue = movEntradas.reduce((s, m) => s + ((m.quantidade || 0) * (valMap[m.epi_id] || 0)), 0);
-      }
-    }
-
-    setUnidadeKPIs({ recebidoMatriz, valorRecebido, entregueContratos, valorEntregue, estoqueAtual, itensBaixoEstoque: baixo });
-
-    // Collect all EPI ids from both sources
-    const allEpiIds = [...new Set([
-      ...recebidos.map(m => m.epi_id),
-      ...entregas.map(m => m.epi_id),
-      ...movContratos.map(m => m.epi_id),
-    ])];
-    const { data: episNames } = allEpiIds.length > 0
-      ? await supabase.from("epis").select("id, nome").in("id", allEpiIds)
-      : { data: [] };
-    const epiMap = Object.fromEntries((episNames || []).map(e => [e.id, e.nome]));
-    const empresaMap = Object.fromEntries(unidades.map(u => [u.id, u.nome]));
-
-    // Collect all user ids from both sources
-    const allUserIds = [...new Set([
-      ...recebidos.map(m => m.created_by).filter(Boolean),
-      ...entregas.map(m => m.created_by).filter(Boolean),
-      ...movContratos.map(m => m.created_by).filter(Boolean),
-    ])];
-    const { data: profiles } = allUserIds.length > 0
-      ? await supabase.from("profiles").select("user_id, nome").in("user_id", allUserIds)
-      : { data: [] };
-    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p.nome]));
-    const contratoMap = Object.fromEntries(contratosUnidade.map(c => [c.id, c.nome]));
-
-    // Get funcionario names for entregas
-    const funcIds = [...new Set(entregas.map(m => m.funcionario_id).filter(Boolean))];
-    const { data: funcsData } = funcIds.length > 0
-      ? await supabase.from("funcionarios").select("id, nome").in("id", funcIds)
-      : { data: [] };
-    const funcMap = Object.fromEntries((funcsData || []).map(f => [f.id, f.nome]));
-
-    const tipoEntregaLabel: Record<string, string> = {
-      entrega: "Entrega",
-      troca: "Troca",
-      substituicao: "Substituição",
-      devolucao: "Devolução",
-      perda: "Perda",
-      dano: "Dano",
-    };
-
-    // Merge both movement sources
-    const transferMovs: MovementRow[] = (recebidos || []).map(m => ({
-      id: m.id,
-      data: m.created_at,
-      tipo: m.tipo || "transferencia",
-      epi_nome: epiMap[m.epi_id] || "—",
-      origem: empresaMap[m.empresa_origem_id] || "Matriz",
-      destino: empresaMap[unidadeId] || "—",
-      quantidade: m.quantidade || 0,
-      responsavel: profileMap[m.created_by] || "Sistema",
-    }));
-
-    const entregaMovs: MovementRow[] = (entregas || []).map(m => ({
-      id: m.id,
-      data: m.data,
-      tipo: m.tipo === "devolucao" ? "devolucao" : "entrega",
-      epi_nome: epiMap[m.epi_id] || "—",
-      origem: empresaMap[unidadeId] || "Unidade",
-      destino: funcMap[m.funcionario_id] || "Colaborador",
-      quantidade: m.quantidade || 0,
-      responsavel: profileMap[m.created_by] || "Sistema",
-    }));
-
-    const contratoMovRows: MovementRow[] = movContratos.map(m => {
-      const isEntrada = m.tipo === "entrada";
-      const label = isEntrada ? "transferencia" : (m.motivo?.includes("Substituição") ? "substituicao" : m.motivo?.includes("Troca") ? "troca" : m.motivo?.includes("Devolução") ? "devolucao" : "entrega");
+    // Build contract summaries (without details yet)
+    const contratoSummaries: ContratoStockSummary[] = unidadeContratos.map(c => {
+      const cEpis = contratoEpis.filter((e: any) => e.contrato_id === c.id);
       return {
-        id: m.id,
-        data: m.created_at,
-        tipo: isEntrada ? "transferencia" : label,
-        epi_nome: epiMap[m.epi_id] || "—",
-        origem: isEntrada ? (empresaMap[unidadeId] || "Unidade") : (contratoMap[m.contrato_id] || "Contrato"),
-        destino: isEntrada ? (contratoMap[m.contrato_id] || "Contrato") : (m.responsavel_nome || "Colaborador"),
-        quantidade: m.quantidade || 0,
-        responsavel: m.responsavel_nome || profileMap[m.created_by] || "Sistema",
+        contratoId: c.id,
+        contratoNome: c.nome,
+        totalItens: cEpis.length,
+        estoqueTotal: cEpis.reduce((s: number, e: any) => s + (e.estoque || 0), 0),
+        valorTotal: 0,
+        alertas: cEpis.filter((e: any) => (e.estoque || 0) === 0).length,
+        itens: [],
+        movimentos: [],
+        loadedDetails: false,
       };
     });
 
-    // Combine and sort by date descending
-    const allMovements = [...transferMovs, ...contratoMovRows, ...entregaMovs]
-      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-      .slice(0, 50);
-
-    setMovements(allMovements);
-
-    // Monthly chart: entradas (from matriz + contract entradas) and saídas (contract saidas)
-    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
-    (recebidos || []).forEach(m => {
-      const mes = m.created_at?.substring(0, 7);
-      if (!mes) return;
-      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
-      mesesMap[mes].entrada += (m.quantidade || 0) * (m.valor_unitario || 0);
-    });
-    if (movContratos.length > 0) {
-      const epiIdsC = [...new Set(movContratos.map(m => m.epi_id))];
-      const { data: episValsC } = epiIdsC.length > 0
-        ? await supabase.from("epis").select("id, valor").in("id", epiIdsC)
-        : { data: [] };
-      const valMapC = Object.fromEntries((episValsC || []).map(e => [e.id, e.valor || 0]));
-      movContratos.forEach(m => {
-        const mes = m.created_at?.substring(0, 7);
-        if (!mes) return;
-        if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
-        const val = (m.quantidade || 0) * (valMapC[m.epi_id] || 0);
-        if (m.tipo === "entrada") {
-          mesesMap[mes].entrada += val;
-        } else {
-          mesesMap[mes].saida += val;
-        }
-      });
-    }
-    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
-    setMonthlyChartData(mesesSorted.map(mes => ({
-      mes: mes.split("-").reverse().join("/"),
-      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
-      saida: Number(mesesMap[mes].saida.toFixed(2)),
-    })));
+    setUnidadeSummaries(prev => ({
+      ...prev,
+      [unidadeId]: {
+        id: unidadeId,
+        nome: unidades.find(u => u.id === unidadeId)?.nome || "",
+        tipo: unidades.find(u => u.id === unidadeId)?.tipo || "",
+        recebidoMatriz: recebidos.reduce((s, m) => s + (m.quantidade || 0), 0),
+        valorRecebido: recebidos.reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0),
+        estoqueAtual: estoqueUnidade + estoqueContratos,
+        alertas: baixoUnidade,
+        contratos: contratoSummaries,
+        loaded: true,
+      }
+    }));
+    setLoadingUnidade(null);
   };
 
-  const loadContratoKPIs = async (contratoId: string) => {
-    // Get movements for this contract (saidas = consumo)
-    const { data: movs } = await supabase.from("contrato_epis_movimentacoes")
-      .select("quantidade, tipo, epi_id, created_at, responsavel_nome, motivo, id")
-      .eq("contrato_id", contratoId)
-      .order("created_at", { ascending: false });
+  // Lazy load contract details (stock table + movements)
+  const loadContratoDetails = async (contratoId: string, unidadeId: string) => {
+    const summary = unidadeSummaries[unidadeId];
+    if (!summary) return;
+    const contrato = summary.contratos.find(c => c.contratoId === contratoId);
+    if (contrato?.loadedDetails) return;
+    setLoadingContrato(contratoId);
 
-    const saidas = (movs || []).filter(m => m.tipo === "saida");
-    const consumoTotal = saidas.reduce((s, m) => s + (m.quantidade || 0), 0);
+    const [cepisRes, movsRes] = await Promise.all([
+      supabase.from("contrato_epis").select("estoque, epi_id").eq("contrato_id", contratoId),
+      supabase.from("contrato_epis_movimentacoes")
+        .select("quantidade, tipo, epi_id, created_at, responsavel_nome, motivo")
+        .eq("contrato_id", contratoId)
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
 
-    // Get EPI values
-    const epiIds = [...new Set((movs || []).map(m => m.epi_id))];
+    const cepis = cepisRes.data || [];
+    const movs = movsRes.data || [];
+
+    // Fetch EPI names + values
+    const epiIds = [...new Set([...cepis.map(e => e.epi_id), ...movs.map(m => m.epi_id)])];
     const { data: episData } = epiIds.length > 0
-      ? await supabase.from("epis").select("id, nome, valor").in("id", epiIds)
+      ? await supabase.from("epis").select("id, nome, valor, estoque_minimo").in("id", epiIds)
       : { data: [] };
-    const epiMap = Object.fromEntries((episData || []).map(e => [e.id, { nome: e.nome, valor: e.valor || 0 }]));
+    const epiMap = Object.fromEntries((episData || []).map(e => [e.id, e]));
 
-    const valorConsumido = saidas.reduce((s, m) => s + ((m.quantidade || 0) * (epiMap[m.epi_id]?.valor || 0)), 0);
+    const itens = cepis.map(ce => ({
+      epi_nome: epiMap[ce.epi_id]?.nome || "—",
+      estoque: ce.estoque || 0,
+      estoque_minimo: epiMap[ce.epi_id]?.estoque_minimo || 0,
+      valor: (ce.estoque || 0) * (epiMap[ce.epi_id]?.valor || 0),
+    })).sort((a, b) => a.epi_nome.localeCompare(b.epi_nome));
 
-    // Get employees in this contract
-    const { count: totalColaboradores } = await supabase.from("funcionarios")
-      .select("id", { count: "exact", head: true })
-      .eq("contrato_id", contratoId)
-      .is("data_demissao", null);
-
-    const nColab = totalColaboradores || 1;
-    const custoColaborador = valorConsumido / nColab;
-
-    // Top 5 materials
-    const materialCount: Record<string, { nome: string; qtd: number }> = {};
-    saidas.forEach(m => {
-      const info = epiMap[m.epi_id];
-      if (!info) return;
-      if (!materialCount[m.epi_id]) materialCount[m.epi_id] = { nome: info.nome, qtd: 0 };
-      materialCount[m.epi_id].qtd += m.quantidade || 0;
-    });
-    const topMateriais = Object.values(materialCount).sort((a, b) => b.qtd - a.qtd).slice(0, 5);
-
-    setContratoKPIs({ consumoTotal, valorConsumido, custoColaborador, totalColaboradores: nColab, topMateriais });
-
-    // Movement table
-    setMovements((movs || []).map(m => ({
-      id: m.id,
+    const movimentos = movs.map(m => ({
       data: m.created_at,
-      tipo: m.tipo,
+      tipo: m.tipo === "entrada" ? "Entrada" : m.motivo || "Saída",
       epi_nome: epiMap[m.epi_id]?.nome || "—",
-      origem: m.tipo === "entrada" ? "Unidade" : "Contrato",
-      destino: m.tipo === "saida" ? "Colaborador" : "Estoque",
+      destino: m.responsavel_nome || "—",
       quantidade: m.quantidade || 0,
-      responsavel: m.responsavel_nome || "Sistema",
-    })));
+    }));
 
-    // Monthly chart: entradas and saídas for this contract
-    const mesesMap: Record<string, { entrada: number; saida: number }> = {};
-    (movs || []).forEach(m => {
-      const mes = m.created_at?.substring(0, 7);
-      if (!mes) return;
-      if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
-      const val = (m.quantidade || 0) * (epiMap[m.epi_id]?.valor || 0);
-      if (m.tipo === "entrada") mesesMap[mes].entrada += val;
-      else if (m.tipo === "saida") mesesMap[mes].saida += val;
+    const valorTotal = itens.reduce((s, i) => s + i.valor, 0);
+
+    setUnidadeSummaries(prev => {
+      const updated = { ...prev };
+      const uSummary = { ...updated[unidadeId] };
+      uSummary.contratos = uSummary.contratos.map(c =>
+        c.contratoId === contratoId
+          ? { ...c, itens, movimentos, valorTotal, loadedDetails: true }
+          : c
+      );
+      updated[unidadeId] = uSummary;
+      return updated;
     });
-    const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
-    setMonthlyChartData(mesesSorted.map(mes => ({
-      mes: mes.split("-").reverse().join("/"),
-      entrada: Number(mesesMap[mes].entrada.toFixed(2)),
-      saida: Number(mesesMap[mes].saida.toFixed(2)),
-    })));
-  };
-
-  const navigateTo = (index: number) => {
-    setBreadcrumbs(prev => prev.slice(0, index + 1));
-  };
-
-  const drillDown = (id: string, nome: string, type: "unidade" | "contrato") => {
-    setBreadcrumbs(prev => [...prev, { id, nome, type }]);
+    setLoadingContrato(null);
   };
 
   const matrizes = unidades.filter(u => u.empresa_pai_id === null);
   const showMatrizSelector = isSuperAdmin && matrizes.length > 1;
+  const filiais = unidades.filter(u => u.empresa_pai_id === matrizId);
 
   const switchMatriz = (newMatrizId: string) => {
     const m = matrizes.find(u => u.id === newMatrizId);
     if (m) {
       setMatrizId(m.id);
       setMatrizNome(m.nome);
-      setBreadcrumbs([{ id: m.id, nome: m.nome, type: "matriz" }]);
+      setUnidadeSummaries({});
     }
   };
-
-  const filiais = unidades.filter(u => u.empresa_pai_id === currentId);
-  const contratosCurrentUnit = contratos.filter(c => c.unidade_id === currentId);
 
   if (loading) {
     return (
@@ -526,194 +283,266 @@ export default function ControleEstoqueContrato() {
         )}
       </div>
 
-      {/* Breadcrumb */}
-      {breadcrumbs.length > 0 && (
-        <StockBreadcrumb levels={breadcrumbs} onNavigate={navigateTo} />
-      )}
+      {/* Matriz Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <SummaryCard
+          label="Estoque Matriz"
+          value={`${matrizSummary.estoqueTotal.toLocaleString("pt-BR")} un.`}
+          icon={<Package className="w-5 h-5" />}
+          subtitle={`R$ ${matrizSummary.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+        />
+        <SummaryCard
+          label="Unidades"
+          value={`${filiais.length}`}
+          icon={<GitBranch className="w-5 h-5" />}
+          color="text-blue-600"
+          subtitle={`${contratos.filter(c => filiais.some(f => f.id === c.unidade_id)).length} contratos`}
+        />
+        {matrizSummary.baixoEstoque > 0 && (
+          <SummaryCard
+            label="Alertas de Estoque"
+            value={`${matrizSummary.baixoEstoque} itens`}
+            icon={<AlertTriangle className="w-5 h-5" />}
+            color="text-amber-600"
+            subtitle="Abaixo do mínimo"
+          />
+        )}
+      </div>
 
-      {/* Level-specific content */}
-      {currentLevel === "matriz" && (
-        <div className="space-y-4">
-          
+      {/* Unidades Accordion */}
+      {filiais.length > 0 && (
+        <Card className="border-border/60">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <GitBranch className="w-4 h-4 text-primary" />
+              Unidades vinculadas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-2 pt-0">
+            <Accordion type="multiple" onValueChange={(values) => {
+              values.forEach(v => loadUnidadeData(v));
+            }}>
+              {filiais.map(filial => {
+                const fContratos = contratos.filter(c => c.unidade_id === filial.id);
+                const summary = unidadeSummaries[filial.id];
+                const isLoadingThis = loadingUnidade === filial.id;
 
-          {monthlyChartData.length > 0 && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-primary/10">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais (Matriz)</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={monthlyChartData} barGap={4}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entrada" : "Saída"]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                    />
-                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada" : "Saída"} wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-
-          <StockMovementTable movements={movements} title="Movimentações Recentes (Matriz)" />
-
-          {/* Drill-down: Filiais */}
-          {filiais.length > 0 && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-primary" />
-                  Unidades
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="grid gap-2">
-                  {filiais.map(f => {
-                    const fContratos = contratos.filter(c => c.unidade_id === f.id);
-                    return (
-                      <button
-                        key={f.id}
-                        onClick={() => drillDown(f.id, f.nome, "unidade")}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
-                      >
-                        <div className="flex items-center gap-2">
-                          <GitBranch className="w-4 h-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{f.nome}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {f.tipo} · {fContratos.length} contrato(s)
-                            </p>
-                          </div>
+                return (
+                  <AccordionItem key={filial.id} value={filial.id} className="border-b-0 mb-1">
+                    <AccordionTrigger className="hover:no-underline px-3 py-3 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3 text-left flex-1 mr-2">
+                        <div className="p-1.5 rounded-lg bg-primary/10">
+                          <Building2 className="w-4 h-4 text-primary" />
                         </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Existing panels */}
-          {hasGestaoEstoque && <ConsolidatedEpiPanel />}
-        </div>
-      )}
-
-      {currentLevel === "unidade" && (
-        <div className="space-y-4">
-          <UnidadeKPICards {...unidadeKPIs} />
-
-          {monthlyChartData.length > 0 && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-primary/10">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais — {breadcrumbs[breadcrumbs.length - 1]?.nome}</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={monthlyChartData} barGap={4}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Recebido da Matriz" : "Enviado p/ Contratos"]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                    />
-                    <Legend formatter={(v: string) => v === "entrada" ? "Recebido da Matriz" : "Enviado p/ Contratos"} wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                    <Bar dataKey="saida" fill="hsl(24, 95%, 53%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-
-          <StockMovementTable movements={movements} title={`Movimentações — ${breadcrumbs[breadcrumbs.length - 1]?.nome}`} />
-
-          {/* Drill-down: Contratos */}
-          {contratosCurrentUnit.length > 0 && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-primary" />
-                  Contratos
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="grid gap-2">
-                  {contratosCurrentUnit.map(c => (
-                    <button
-                      key={c.id}
-                      onClick={() => drillDown(c.id, c.nome, "contrato")}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-muted-foreground" />
-                        <p className="text-sm font-medium">{c.nome}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{filial.nome}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {filial.tipo} · {fContratos.length} contrato(s)
+                            {summary?.loaded && (
+                              <> · {summary.estoqueAtual} un. em estoque</>
+                            )}
+                          </p>
+                        </div>
+                        {summary?.alertas ? (
+                          <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px]">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            {summary.alertas}
+                          </Badge>
+                        ) : null}
                       </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-2 pb-3">
+                      {isLoadingThis ? (
+                        <div className="flex items-center justify-center py-6">
+                          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                        </div>
+                      ) : summary?.loaded ? (
+                        <div className="space-y-3">
+                          {/* Unidade summary row */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-1">
+                            <MiniKPI label="Recebido da Matriz" value={`${summary.recebidoMatriz} un.`} />
+                            <MiniKPI label="Valor Recebido" value={`R$ ${summary.valorRecebido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} />
+                            <MiniKPI label="Estoque Atual" value={`${summary.estoqueAtual} un.`} />
+                            <MiniKPI label="Alertas" value={`${summary.alertas}`} warn={summary.alertas > 0} />
+                          </div>
+
+                          {/* Contracts inside unit */}
+                          {summary.contratos.length === 0 ? (
+                            <p className="text-xs text-muted-foreground text-center py-4">Nenhum contrato vinculado</p>
+                          ) : (
+                            <Accordion type="multiple" onValueChange={(values) => {
+                              values.forEach(v => loadContratoDetails(v, filial.id));
+                            }}>
+                              {summary.contratos.map(contrato => (
+                                <AccordionItem key={contrato.contratoId} value={contrato.contratoId} className="border rounded-lg mb-2 border-border/60">
+                                  <AccordionTrigger className="hover:no-underline px-3 py-2.5">
+                                    <div className="flex items-center gap-2 text-left flex-1 mr-2">
+                                      <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-xs font-semibold">{contrato.contratoNome}</p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                          {contrato.totalItens} EPIs · {contrato.estoqueTotal} un.
+                                          {contrato.loadedDetails && contrato.valorTotal > 0 && (
+                                            <> · R$ {contrato.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</>
+                                          )}
+                                        </p>
+                                      </div>
+                                      {contrato.alertas > 0 && (
+                                        <Badge variant="outline" className="text-red-600 border-red-300 text-[10px]">
+                                          {contrato.alertas} zerados
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="px-3 pb-3">
+                                    {loadingContrato === contrato.contratoId ? (
+                                      <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                      </div>
+                                    ) : contrato.loadedDetails ? (
+                                      <div className="space-y-3">
+                                        {/* Stock Table */}
+                                        <div>
+                                          <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                                            <Package className="w-3.5 h-3.5" /> Estoque
+                                          </p>
+                                          <div className="overflow-auto max-h-[250px] rounded-md border border-border/60">
+                                            <Table>
+                                              <TableHeader>
+                                                <TableRow className="text-[10px]">
+                                                  <TableHead className="px-2 py-1.5">EPI</TableHead>
+                                                  <TableHead className="px-2 py-1.5 text-right">Estoque</TableHead>
+                                                  <TableHead className="px-2 py-1.5 text-right">Valor</TableHead>
+                                                  <TableHead className="px-2 py-1.5 text-center">Status</TableHead>
+                                                </TableRow>
+                                              </TableHeader>
+                                              <TableBody>
+                                                {contrato.itens.length === 0 ? (
+                                                  <TableRow>
+                                                    <TableCell colSpan={4} className="text-center text-muted-foreground text-xs py-4">
+                                                      Nenhum EPI cadastrado
+                                                    </TableCell>
+                                                  </TableRow>
+                                                ) : contrato.itens.map((item, idx) => (
+                                                  <TableRow key={idx} className="text-xs">
+                                                    <TableCell className="px-2 py-1.5 max-w-[180px] truncate">{item.epi_nome}</TableCell>
+                                                    <TableCell className="px-2 py-1.5 text-right font-semibold">{item.estoque}</TableCell>
+                                                    <TableCell className="px-2 py-1.5 text-right text-muted-foreground">
+                                                      R$ {item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                                    </TableCell>
+                                                    <TableCell className="px-2 py-1.5 text-center">
+                                                      {item.estoque === 0 ? (
+                                                        <Badge variant="destructive" className="text-[9px] px-1 py-0">Zerado</Badge>
+                                                      ) : item.estoque <= item.estoque_minimo ? (
+                                                        <Badge variant="outline" className="text-amber-600 border-amber-300 text-[9px] px-1 py-0">Baixo</Badge>
+                                                      ) : (
+                                                        <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-[9px] px-1 py-0">OK</Badge>
+                                                      )}
+                                                    </TableCell>
+                                                  </TableRow>
+                                                ))}
+                                              </TableBody>
+                                            </Table>
+                                          </div>
+                                        </div>
+
+                                        {/* Recent Movements */}
+                                        {contrato.movimentos.length > 0 && (
+                                          <div>
+                                            <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                                              <History className="w-3.5 h-3.5" /> Movimentações recentes
+                                            </p>
+                                            <div className="overflow-auto rounded-md border border-border/60">
+                                              <Table>
+                                                <TableHeader>
+                                                  <TableRow className="text-[10px]">
+                                                    <TableHead className="px-2 py-1.5">Data</TableHead>
+                                                    <TableHead className="px-2 py-1.5">Tipo</TableHead>
+                                                    <TableHead className="px-2 py-1.5">EPI</TableHead>
+                                                    <TableHead className="px-2 py-1.5">Colaborador</TableHead>
+                                                    <TableHead className="px-2 py-1.5 text-right">Qtd</TableHead>
+                                                  </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                  {contrato.movimentos.map((mov, idx) => (
+                                                    <TableRow key={idx} className="text-xs">
+                                                      <TableCell className="px-2 py-1.5 whitespace-nowrap">
+                                                        {format(new Date(mov.data), "dd/MM/yy", { locale: ptBR })}
+                                                      </TableCell>
+                                                      <TableCell className="px-2 py-1.5">
+                                                        <Badge variant="secondary" className={`text-[9px] px-1 py-0 ${
+                                                          mov.tipo === "Entrada" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                                                          "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                                        }`}>
+                                                          {mov.tipo}
+                                                        </Badge>
+                                                      </TableCell>
+                                                      <TableCell className="px-2 py-1.5 max-w-[140px] truncate">{mov.epi_nome}</TableCell>
+                                                      <TableCell className="px-2 py-1.5 max-w-[100px] truncate">{mov.destino}</TableCell>
+                                                      <TableCell className="px-2 py-1.5 text-right font-semibold">{mov.quantidade}</TableCell>
+                                                    </TableRow>
+                                                  ))}
+                                                </TableBody>
+                                              </Table>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>
+                                    )}
+                                  </AccordionContent>
+                                </AccordionItem>
+                              ))}
+                            </Accordion>
+                          )}
+                        </div>
+                      ) : null}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          </CardContent>
+        </Card>
       )}
 
-      {currentLevel === "contrato" && (
-        <div className="space-y-4">
-          <ContratoKPICards {...contratoKPIs} />
-
-          {monthlyChartData.length > 0 && (
-            <Card className="border-border/60">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-primary/10">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-sm font-semibold">Entradas e Saídas Mensais — {breadcrumbs[breadcrumbs.length - 1]?.nome}</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={monthlyChartData} barGap={4}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={v => `R$${v}`} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [`R$ ${Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, name === "entrada" ? "Entrada no Contrato" : "Consumo (Colaboradores)"]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                    />
-                    <Legend formatter={(v: string) => v === "entrada" ? "Entrada no Contrato" : "Consumo (Colaboradores)"} wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="entrada" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                    <Bar dataKey="saida" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-
-          <StockMovementTable movements={movements} title={`Consumo — ${breadcrumbs[breadcrumbs.length - 1]?.nome}`} />
-        </div>
+      {filiais.length === 0 && (
+        <Card className="border-border/60">
+          <CardContent className="py-12 text-center">
+            <Building2 className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhuma unidade vinculada a esta empresa</p>
+          </CardContent>
+        </Card>
       )}
+    </div>
+  );
+}
 
-      {/* Contract stock panel always visible for authorized users */}
-      {(hasGestaoEstoque || hasContratoAccess) && currentLevel === "matriz" && <ContratoStockPanel />}
+/* ── Tiny helper components ── */
+
+function SummaryCard({ label, value, icon, color = "text-primary", subtitle }: {
+  label: string; value: string; icon: React.ReactNode; color?: string; subtitle?: string;
+}) {
+  return (
+    <Card className="border-border/60">
+      <CardContent className="p-4 flex items-start gap-3">
+        <div className={`p-2 rounded-lg bg-primary/10 ${color}`}>{icon}</div>
+        <div className="min-w-0">
+          <p className="text-[11px] text-muted-foreground truncate">{label}</p>
+          <p className="font-bold text-lg leading-tight">{value}</p>
+          {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MiniKPI({ label, value, warn = false }: { label: string; value: string; warn?: boolean }) {
+  return (
+    <div className={`rounded-lg p-2.5 ${warn ? "bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800" : "bg-muted/50"}`}>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p className={`text-sm font-bold ${warn ? "text-amber-600" : ""}`}>{value}</p>
     </div>
   );
 }
