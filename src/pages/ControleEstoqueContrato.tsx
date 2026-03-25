@@ -234,10 +234,10 @@ export default function ControleEstoqueContrato() {
         .limit(50),
       contratoIds.length > 0
         ? supabase.from("contrato_epis_movimentacoes")
-          .select("id, quantidade, tipo, epi_id, created_at, created_by, contrato_id")
+          .select("id, quantidade, tipo, epi_id, created_at, created_by, contrato_id, motivo, responsavel_nome")
           .in("contrato_id", contratoIds)
-          .eq("tipo", "entrada")
           .order("created_at", { ascending: false })
+          .limit(100)
         : Promise.resolve({ data: [] as any[], error: null }),
       contratoIds.length > 0
         ? supabase.from("contrato_epis")
