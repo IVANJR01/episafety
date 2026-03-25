@@ -63,6 +63,12 @@ export default function ControleEstoqueContrato() {
   const [matrizId, setMatrizId] = useState<string | null>(null);
   const [matrizNome, setMatrizNome] = useState("Matriz");
 
+  // Refs to avoid stale closures in lazy-load functions
+  const unidadesRef = useRef<UnidadeData[]>([]);
+  const contratosRef = useRef<ContratoData[]>([]);
+  useEffect(() => { unidadesRef.current = unidades; }, [unidades]);
+  useEffect(() => { contratosRef.current = contratos; }, [contratos]);
+
   // Unidade summaries (lazy loaded)
   const [unidadeSummaries, setUnidadeSummaries] = useState<Record<string, UnidadeSummary>>({});
   const unidadeSummariesRef = useRef<Record<string, UnidadeSummary>>({});
