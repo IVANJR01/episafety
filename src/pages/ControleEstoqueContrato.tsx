@@ -123,7 +123,7 @@ export default function ControleEstoqueContrato() {
 
   // Lazy load unidade data when accordion opens
   const loadUnidadeData = async (unidadeId: string) => {
-    if (unidadeSummaries[unidadeId]?.loaded) return;
+    if (unidadeSummariesRef.current[unidadeId]?.loaded) return;
     setLoadingUnidade(unidadeId);
 
     const unidadeContratos = contratos.filter(c => c.unidade_id === unidadeId);
