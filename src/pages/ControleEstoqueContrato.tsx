@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRightLeft, Building2, GitBranch, FileText, ChevronRight, Loader2, Package, TrendingUp } from "lucide-react";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
 import { MatrizKPICards, UnidadeKPICards, ContratoKPICards } from "@/components/stock/StockKPICards";
@@ -64,8 +66,35 @@ export default function ControleEstoqueContrato() {
     setUnidades(allUnidades);
     setContratos(allContratos);
 
-    // Find the parent company (matriz)
-    const matriz = allUnidades.find(u => u.empresa_pai_id === null);
+    // Find the correct parent company (matriz)
+    // For Principal/regular users, use their empresaId from auth context
+    // For super_admin, if empresaId exists use it, otherwise find the root that owns the most data
+    const matrizes = allUnidades.filter(u => u.empresa_pai_id === null);
+    let matriz: UnidadeData | undefined;
+
+    if (empresaId) {
+      // Check if empresaId IS a matriz
+      matriz = matrizes.find(m => m.id === empresaId);
+      if (!matriz) {
+        // empresaId might be a filial — find its parent
+        const userUnit = allUnidades.find(u => u.id === empresaId);
+        if (userUnit?.empresa_pai_id) {
+          matriz = matrizes.find(m => m.id === userUnit.empresa_pai_id);
+        }
+      }
+    }
+
+    // Fallback: if only one matriz, use it
+    if (!matriz && matrizes.length === 1) {
+      matriz = matrizes[0];
+    }
+
+    // Super admin with multiple matrizes and no empresaId: show all as selectable
+    if (!matriz && matrizes.length > 1) {
+      // Default to first but show selector
+      matriz = matrizes[0];
+    }
+
     if (matriz) {
       setMatrizId(matriz.id);
       setMatrizNome(matriz.nome);
@@ -73,7 +102,7 @@ export default function ControleEstoqueContrato() {
     }
 
     setLoading(false);
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
 
@@ -434,6 +463,18 @@ export default function ControleEstoqueContrato() {
     setBreadcrumbs(prev => [...prev, { id, nome, type }]);
   };
 
+  const matrizes = unidades.filter(u => u.empresa_pai_id === null);
+  const showMatrizSelector = isSuperAdmin && matrizes.length > 1;
+
+  const switchMatriz = (newMatrizId: string) => {
+    const m = matrizes.find(u => u.id === newMatrizId);
+    if (m) {
+      setMatrizId(m.id);
+      setMatrizNome(m.nome);
+      setBreadcrumbs([{ id: m.id, nome: m.nome, type: "matriz" }]);
+    }
+  };
+
   const filiais = unidades.filter(u => u.empresa_pai_id === currentId);
   const contratosCurrentUnit = contratos.filter(c => c.unidade_id === currentId);
 
@@ -448,11 +489,28 @@ export default function ControleEstoqueContrato() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Estoque Hierárquico</h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-          Acompanhe o fluxo de movimentação e indicadores por nível organizacional
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Estoque Hierárquico</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+            Acompanhe o fluxo de movimentação e indicadores por nível organizacional
+          </p>
+        </div>
+        {showMatrizSelector && (
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">Empresa:</Label>
+            <Select value={matrizId || ""} onValueChange={switchMatriz}>
+              <SelectTrigger className="w-[220px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {matrizes.map(m => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">{m.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Breadcrumb */}
