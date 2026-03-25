@@ -48,7 +48,7 @@ const TIPO_LABELS: Record<string, { label: string; icon: any; color: string }> =
 };
 
 export default function Filiais() {
-  const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
+  const { empresaId, isSuperAdmin, isPrincipal, user } = useAuth();
   const isAdmin = isSuperAdmin || isPrincipal;
   const { canCreate, canEdit, canDelete } = usePermissions("cadastro_empresas");
   const { toast } = useToast();
@@ -87,13 +87,18 @@ export default function Filiais() {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: filData }, { data: profData }, { data: empData }, { data: contData }, { data: ulData }] = await Promise.all([
+    const [{ data: filData }, { data: profData }, { data: empData }, { data: ulData }] = await Promise.all([
       (supabase.from as any)("empresa_config").select("*").eq("empresa_pai_id", empresaId).order("nome"),
       isAdmin ? (supabase.from as any)("profiles").select("*") : { data: [] },
       (supabase.from as any)("empresa_config").select("nome").eq("id", empresaId).single(),
-      (supabase.from as any)("contratos").select("*").order("nome"),
       (supabase.from as any)("usuarios_liberados").select("id, nome, contrato_id, empresa_id, email"),
     ]);
+
+    const visibleUnitIds = [empresaId, ...(filData || []).map((filial: Filial) => filial.id)].filter(Boolean);
+    const { data: contData } = visibleUnitIds.length > 0
+      ? await (supabase.from as any)("contratos").select("*").in("unidade_id", visibleUnitIds).order("nome")
+      : { data: [] };
+
     setFiliais(filData || []);
     setProfiles(profData || []);
     setEmpresaNome(empData?.nome || "");
@@ -181,12 +186,22 @@ export default function Filiais() {
     if (!contratoForm.nome.trim() || !contratoFilialId) return;
     // Find the empresa_id (parent) for this filial
     const filial = filiais.find(f => f.id === contratoFilialId);
+    if (!filial && contratoFilialId !== empresaId) {
+      toast({ title: "Unidade não encontrada", variant: "destructive" });
+      return;
+    }
     const empId = filial?.empresa_pai_id || empresaId;
 
-    const payload = { nome: contratoForm.nome, descricao: contratoForm.descricao || null, unidade_id: contratoFilialId, empresa_id: empId, created_by: undefined as any };
+    const payload = {
+      nome: contratoForm.nome.trim(),
+      descricao: contratoForm.descricao.trim() || null,
+      unidade_id: contratoFilialId,
+      empresa_id: empId,
+      created_by: user?.id ?? null,
+    };
 
     if (editingContrato) {
-      const { error } = await (supabase.from as any)("contratos").update({ nome: payload.nome, descricao: payload.descricao }).eq("id", editingContrato.id);
+      const { error } = await (supabase.from as any)("contratos").update({ nome: payload.nome, descricao: payload.descricao, unidade_id: payload.unidade_id, empresa_id: payload.empresa_id }).eq("id", editingContrato.id);
       if (error) { toast({ title: "Erro ao salvar contrato", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Contrato atualizado!" });
     } else {
