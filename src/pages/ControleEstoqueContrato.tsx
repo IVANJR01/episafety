@@ -487,11 +487,28 @@ export default function ControleEstoqueContrato() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Estoque Hierárquico</h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-          Acompanhe o fluxo de movimentação e indicadores por nível organizacional
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Gestão de Estoque Hierárquico</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+            Acompanhe o fluxo de movimentação e indicadores por nível organizacional
+          </p>
+        </div>
+        {showMatrizSelector && (
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">Empresa:</Label>
+            <Select value={matrizId || ""} onValueChange={switchMatriz}>
+              <SelectTrigger className="w-[220px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {matrizes.map(m => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">{m.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Breadcrumb */}
