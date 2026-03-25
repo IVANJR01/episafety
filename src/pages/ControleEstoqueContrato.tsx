@@ -129,6 +129,16 @@ export default function ControleEstoqueContrato() {
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
 
+  useEffect(() => {
+    if (!userContratoId) return;
+    const contrato = contratos.find(c => c.id === userContratoId);
+    if (!contrato?.unidade_id) return;
+
+    loadUnidadeData(contrato.unidade_id).then(() => {
+      loadContratoDetails(userContratoId, contrato.unidade_id);
+    });
+  }, [userContratoId, contratos]);
+
   // Lazy load unidade data when accordion opens
   const loadUnidadeData = async (unidadeId: string) => {
     if (unidadeSummariesRef.current[unidadeId]?.loaded) return;
