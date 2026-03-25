@@ -106,9 +106,11 @@ export default function ControleEstoqueContrato() {
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
 
-  // Load KPIs based on current level
+  // Load KPIs based on current level — only after data is loaded
   useEffect(() => {
-    if (!currentId) return;
+    if (!currentId || loading) return;
+    // Ensure unidades and contratos are populated before loading KPIs
+    if (unidades.length === 0 && contratos.length === 0) return;
 
     if (currentLevel === "matriz") {
       loadMatrizKPIs(currentId);
@@ -117,7 +119,7 @@ export default function ControleEstoqueContrato() {
     } else if (currentLevel === "contrato") {
       loadContratoKPIs(currentId);
     }
-  }, [currentLevel, currentId]);
+  }, [currentLevel, currentId, unidades.length, contratos.length]);
 
   const loadMatrizKPIs = async (matrizId: string) => {
     const filiais = unidades.filter(u => u.empresa_pai_id === matrizId);
