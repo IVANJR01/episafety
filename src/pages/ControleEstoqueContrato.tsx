@@ -89,6 +89,8 @@ export default function ControleEstoqueContrato() {
 
     const allUnidades = (unidadesRes.data || []) as UnidadeData[];
     const allContratos = (contratosRes.data || []) as ContratoData[];
+    unidadesRef.current = allUnidades;
+    contratosRef.current = allContratos;
     setUnidades(allUnidades);
     setContratos(allContratos);
 
