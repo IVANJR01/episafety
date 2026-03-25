@@ -63,6 +63,12 @@ export default function ControleEstoqueContrato() {
   const [matrizId, setMatrizId] = useState<string | null>(null);
   const [matrizNome, setMatrizNome] = useState("Matriz");
 
+  // Refs to avoid stale closures in lazy-load functions
+  const unidadesRef = useRef<UnidadeData[]>([]);
+  const contratosRef = useRef<ContratoData[]>([]);
+  useEffect(() => { unidadesRef.current = unidades; }, [unidades]);
+  useEffect(() => { contratosRef.current = contratos; }, [contratos]);
+
   // Unidade summaries (lazy loaded)
   const [unidadeSummaries, setUnidadeSummaries] = useState<Record<string, UnidadeSummary>>({});
   const unidadeSummariesRef = useRef<Record<string, UnidadeSummary>>({});
@@ -126,8 +132,10 @@ export default function ControleEstoqueContrato() {
     if (unidadeSummariesRef.current[unidadeId]?.loaded) return;
     setLoadingUnidade(unidadeId);
 
-    const unidadeContratos = contratos.filter(c => c.unidade_id === unidadeId);
+    const unidadeContratos = contratosRef.current.filter(c => c.unidade_id === unidadeId);
     const contratoIds = unidadeContratos.map(c => c.id);
+
+    const currentUnidades = unidadesRef.current;
 
     const [recebidosRes, episRes, contratoEpisRes] = await Promise.all([
       supabase.from("estoque_movimentacoes")
@@ -167,8 +175,8 @@ export default function ControleEstoqueContrato() {
       ...prev,
       [unidadeId]: {
         id: unidadeId,
-        nome: unidades.find(u => u.id === unidadeId)?.nome || "",
-        tipo: unidades.find(u => u.id === unidadeId)?.tipo || "",
+        nome: currentUnidades.find(u => u.id === unidadeId)?.nome || "",
+        tipo: currentUnidades.find(u => u.id === unidadeId)?.tipo || "",
         recebidoMatriz: recebidos.reduce((s, m) => s + (m.quantidade || 0), 0),
         valorRecebido: recebidos.reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0),
         estoqueAtual: estoqueUnidade + estoqueContratos,
