@@ -106,9 +106,11 @@ export default function ControleEstoqueContrato() {
 
   useEffect(() => { loadInitialData(); }, [loadInitialData]);
 
-  // Load KPIs based on current level
+  // Load KPIs based on current level — only after data is loaded
   useEffect(() => {
-    if (!currentId) return;
+    if (!currentId || loading) return;
+    // Ensure unidades and contratos are populated before loading KPIs
+    if (unidades.length === 0 && contratos.length === 0) return;
 
     if (currentLevel === "matriz") {
       loadMatrizKPIs(currentId);
@@ -117,7 +119,7 @@ export default function ControleEstoqueContrato() {
     } else if (currentLevel === "contrato") {
       loadContratoKPIs(currentId);
     }
-  }, [currentLevel, currentId]);
+  }, [currentLevel, currentId, unidades.length, contratos.length]);
 
   const loadMatrizKPIs = async (matrizId: string) => {
     const filiais = unidades.filter(u => u.empresa_pai_id === matrizId);
@@ -232,10 +234,10 @@ export default function ControleEstoqueContrato() {
         .limit(50),
       contratoIds.length > 0
         ? supabase.from("contrato_epis_movimentacoes")
-          .select("id, quantidade, tipo, epi_id, created_at, created_by, contrato_id")
+          .select("id, quantidade, tipo, epi_id, created_at, created_by, contrato_id, motivo, responsavel_nome")
           .in("contrato_id", contratoIds)
-          .eq("tipo", "entrada")
           .order("created_at", { ascending: false })
+          .limit(100)
         : Promise.resolve({ data: [] as any[], error: null }),
       contratoIds.length > 0
         ? supabase.from("contrato_epis")
@@ -261,15 +263,17 @@ export default function ControleEstoqueContrato() {
     const baixoContratos = (contratoEpisData || []).filter((e: any) => (e.estoque || 0) <= 0).length;
     const baixo = baixoUnidade + baixoContratos;
 
+    const movEntradas = movContratos.filter(m => m.tipo === "entrada");
+    const movSaidas = movContratos.filter(m => m.tipo === "saida");
     let entregueContratos = 0;
     let valorEntregue = 0;
     if (movContratos.length > 0) {
-      entregueContratos = movContratos.reduce((s, m) => s + (m.quantidade || 0), 0);
+      entregueContratos = movEntradas.reduce((s, m) => s + (m.quantidade || 0), 0);
       const epiIds = [...new Set(movContratos.map(m => m.epi_id))];
       if (epiIds.length > 0) {
         const { data: episVals } = await supabase.from("epis").select("id, valor").in("id", epiIds);
         const valMap = Object.fromEntries((episVals || []).map(e => [e.id, e.valor || 0]));
-        valorEntregue = movContratos.reduce((s, m) => s + ((m.quantidade || 0) * (valMap[m.epi_id] || 0)), 0);
+        valorEntregue = movEntradas.reduce((s, m) => s + ((m.quantidade || 0) * (valMap[m.epi_id] || 0)), 0);
       }
     }
 
@@ -338,16 +342,20 @@ export default function ControleEstoqueContrato() {
       responsavel: profileMap[m.created_by] || "Sistema",
     }));
 
-    const contratoMovRows: MovementRow[] = movContratos.map(m => ({
-      id: m.id,
-      data: m.created_at,
-      tipo: "transferencia",
-      epi_nome: epiMap[m.epi_id] || "—",
-      origem: empresaMap[unidadeId] || "Unidade",
-      destino: contratoMap[m.contrato_id] || "Contrato",
-      quantidade: m.quantidade || 0,
-      responsavel: profileMap[m.created_by] || "Sistema",
-    }));
+    const contratoMovRows: MovementRow[] = movContratos.map(m => {
+      const isEntrada = m.tipo === "entrada";
+      const label = isEntrada ? "transferencia" : (m.motivo?.includes("Substituição") ? "substituicao" : m.motivo?.includes("Troca") ? "troca" : m.motivo?.includes("Devolução") ? "devolucao" : "entrega");
+      return {
+        id: m.id,
+        data: m.created_at,
+        tipo: isEntrada ? "transferencia" : label,
+        epi_nome: epiMap[m.epi_id] || "—",
+        origem: isEntrada ? (empresaMap[unidadeId] || "Unidade") : (contratoMap[m.contrato_id] || "Contrato"),
+        destino: isEntrada ? (contratoMap[m.contrato_id] || "Contrato") : (m.responsavel_nome || "Colaborador"),
+        quantidade: m.quantidade || 0,
+        responsavel: m.responsavel_nome || profileMap[m.created_by] || "Sistema",
+      };
+    });
 
     // Combine and sort by date descending
     const allMovements = [...transferMovs, ...contratoMovRows, ...entregaMovs]
@@ -356,7 +364,7 @@ export default function ControleEstoqueContrato() {
 
     setMovements(allMovements);
 
-    // Monthly chart: entradas (from matriz) and saídas (to contracts)
+    // Monthly chart: entradas (from matriz + contract entradas) and saídas (contract saidas)
     const mesesMap: Record<string, { entrada: number; saida: number }> = {};
     (recebidos || []).forEach(m => {
       const mes = m.created_at?.substring(0, 7);
@@ -374,7 +382,12 @@ export default function ControleEstoqueContrato() {
         const mes = m.created_at?.substring(0, 7);
         if (!mes) return;
         if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
-        mesesMap[mes].saida += (m.quantidade || 0) * (valMapC[m.epi_id] || 0);
+        const val = (m.quantidade || 0) * (valMapC[m.epi_id] || 0);
+        if (m.tipo === "entrada") {
+          mesesMap[mes].entrada += val;
+        } else {
+          mesesMap[mes].saida += val;
+        }
       });
     }
     const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
