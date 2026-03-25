@@ -364,7 +364,7 @@ export default function ControleEstoqueContrato() {
 
     setMovements(allMovements);
 
-    // Monthly chart: entradas (from matriz) and saídas (to contracts)
+    // Monthly chart: entradas (from matriz + contract entradas) and saídas (contract saidas)
     const mesesMap: Record<string, { entrada: number; saida: number }> = {};
     (recebidos || []).forEach(m => {
       const mes = m.created_at?.substring(0, 7);
@@ -382,7 +382,12 @@ export default function ControleEstoqueContrato() {
         const mes = m.created_at?.substring(0, 7);
         if (!mes) return;
         if (!mesesMap[mes]) mesesMap[mes] = { entrada: 0, saida: 0 };
-        mesesMap[mes].saida += (m.quantidade || 0) * (valMapC[m.epi_id] || 0);
+        const val = (m.quantidade || 0) * (valMapC[m.epi_id] || 0);
+        if (m.tipo === "entrada") {
+          mesesMap[mes].entrada += val;
+        } else {
+          mesesMap[mes].saida += val;
+        }
       });
     }
     const mesesSorted = Object.keys(mesesMap).sort().slice(-12);
