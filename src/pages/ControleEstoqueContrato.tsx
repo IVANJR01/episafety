@@ -342,16 +342,20 @@ export default function ControleEstoqueContrato() {
       responsavel: profileMap[m.created_by] || "Sistema",
     }));
 
-    const contratoMovRows: MovementRow[] = movContratos.map(m => ({
-      id: m.id,
-      data: m.created_at,
-      tipo: "transferencia",
-      epi_nome: epiMap[m.epi_id] || "—",
-      origem: empresaMap[unidadeId] || "Unidade",
-      destino: contratoMap[m.contrato_id] || "Contrato",
-      quantidade: m.quantidade || 0,
-      responsavel: profileMap[m.created_by] || "Sistema",
-    }));
+    const contratoMovRows: MovementRow[] = movContratos.map(m => {
+      const isEntrada = m.tipo === "entrada";
+      const label = isEntrada ? "transferencia" : (m.motivo?.includes("Substituição") ? "substituicao" : m.motivo?.includes("Troca") ? "troca" : m.motivo?.includes("Devolução") ? "devolucao" : "entrega");
+      return {
+        id: m.id,
+        data: m.created_at,
+        tipo: isEntrada ? "transferencia" : label,
+        epi_nome: epiMap[m.epi_id] || "—",
+        origem: isEntrada ? (empresaMap[unidadeId] || "Unidade") : (contratoMap[m.contrato_id] || "Contrato"),
+        destino: isEntrada ? (contratoMap[m.contrato_id] || "Contrato") : (m.responsavel_nome || "Colaborador"),
+        quantidade: m.quantidade || 0,
+        responsavel: m.responsavel_nome || profileMap[m.created_by] || "Sistema",
+      };
+    });
 
     // Combine and sort by date descending
     const allMovements = [...transferMovs, ...contratoMovRows, ...entregaMovs]
