@@ -14,6 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
+      conferencia_itens: {
+        Row: {
+          conferencia_id: string
+          contagem_fisica: number | null
+          contrato_epi_id: string
+          created_at: string
+          divergencia: number | null
+          epi_id: string
+          estoque_sistema: number
+          id: string
+          justificativa: string | null
+        }
+        Insert: {
+          conferencia_id: string
+          contagem_fisica?: number | null
+          contrato_epi_id: string
+          created_at?: string
+          divergencia?: number | null
+          epi_id: string
+          estoque_sistema?: number
+          id?: string
+          justificativa?: string | null
+        }
+        Update: {
+          conferencia_id?: string
+          contagem_fisica?: number | null
+          contrato_epi_id?: string
+          created_at?: string
+          divergencia?: number | null
+          epi_id?: string
+          estoque_sistema?: number
+          id?: string
+          justificativa?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencia_itens_conferencia_id_fkey"
+            columns: ["conferencia_id"]
+            isOneToOne: false
+            referencedRelation: "conferencias_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferencia_itens_contrato_epi_id_fkey"
+            columns: ["contrato_epi_id"]
+            isOneToOne: false
+            referencedRelation: "contrato_epis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferencia_itens_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "epis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conferencias_estoque: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          finalizado_em: string | null
+          finalizado_por: string | null
+          id: string
+          observacao_geral: string | null
+          status: string
+          tipo: string
+          unidade_id: string
+          updated_at: string
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          finalizado_em?: string | null
+          finalizado_por?: string | null
+          id?: string
+          observacao_geral?: string | null
+          status?: string
+          tipo?: string
+          unidade_id: string
+          updated_at?: string
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          finalizado_em?: string | null
+          finalizado_por?: string | null
+          id?: string
+          observacao_geral?: string | null
+          status?: string
+          tipo?: string
+          unidade_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conferencias_estoque_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferencias_estoque_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferencias_estoque_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conformidades: {
         Row: {
           acao_corretiva: string | null
