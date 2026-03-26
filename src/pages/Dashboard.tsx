@@ -405,7 +405,7 @@ export default function Dashboard() {
 
         return {
           id: epi.id,
-          nome: epi.nome,
+          nome: epi.tamanho ? `${epi.nome} (${epi.tamanho})` : epi.nome,
           totalEntregue,
           media: Number(media.toFixed(1)),
           estoqueAtual: estoqueTotal,
