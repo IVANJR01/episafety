@@ -79,6 +79,8 @@ export default function ControleEstoqueContrato() {
   useEffect(() => { unidadeSummariesRef.current = unidadeSummaries; }, [unidadeSummaries]);
   const [loadingUnidade, setLoadingUnidade] = useState<string | null>(null);
   const [loadingContrato, setLoadingContrato] = useState<string | null>(null);
+  const [movDateFrom, setMovDateFrom] = useState<Date | undefined>(undefined);
+  const [movDateTo, setMovDateTo] = useState<Date | undefined>(undefined);
 
   // Matriz summary
   const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
