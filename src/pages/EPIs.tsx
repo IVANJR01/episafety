@@ -234,7 +234,10 @@ export default function EPIs() {
                     <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</TableCell></TableRow>
                   ) : episFiltrados.map(e => (
                     <TableRow key={e.id}>
-                      <TableCell className="font-medium">{e.nome}</TableCell>
+                      <TableCell className="font-medium">
+                        {e.nome}
+                        {e.tamanho && <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">({e.tamanho})</span>}
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{e.ca || "—"}</TableCell>
                       <TableCell><Badge variant="secondary">{e.categoria || "—"}</Badge></TableCell>
                       <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{e.fabricante || "—"}</TableCell>
