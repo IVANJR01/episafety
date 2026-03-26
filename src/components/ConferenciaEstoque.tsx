@@ -486,15 +486,20 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
         setOpen(nextOpen);
         if (!nextOpen) resetState();
       }}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto sm:max-h-[90vh]">
+          <DialogHeader className="pb-1">
             <DialogTitle className="flex items-center gap-2 text-base">
               <ClipboardCheck className="h-4 w-4" />
-              Conferência de Estoque (Inventário)
+              Conferência de Estoque
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Selecione o contrato, registre a contagem física e ajuste as divergências.
+              Registre a contagem física e ajuste as divergências.
             </DialogDescription>
+            {hasDraftableChanges && (
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Save className="h-3 w-3" /> Rascunho salvo automaticamente
+              </div>
+            )}
           </DialogHeader>
 
           <div className="space-y-4">
