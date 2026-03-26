@@ -125,6 +125,12 @@ export default function UsuariosLiberados() {
     return map;
   }, [empresas]);
 
+  const contratoMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    allContratos.forEach(c => { map[c.id] = c.nome; });
+    return map;
+  }, [allContratos]);
+
   const unidadesDisponiveis = useMemo(() => {
     if (isSuperAdmin) return empresas;
     if (!empresaId) return [];
@@ -475,7 +481,15 @@ export default function UsuariosLiberados() {
                         )}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {u.empresa_id ? (empresaMap[u.empresa_id] || "—") : <span className="text-muted-foreground italic">Sem empresa</span>}
+                        <div>
+                          {u.empresa_id ? (empresaMap[u.empresa_id] || "—") : <span className="text-muted-foreground italic">Sem empresa</span>}
+                          {u.contrato_id && contratoMap[u.contrato_id] && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <GitBranch className="w-3 h-3" />
+                              {contratoMap[u.contrato_id]}
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         {u.ativo ? (
