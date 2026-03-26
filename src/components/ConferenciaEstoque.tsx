@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -8,8 +8,18 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ClipboardCheck, Loader2, AlertTriangle, CheckCircle2, TrendingDown, TrendingUp } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Loader2, TrendingDown, TrendingUp } from "lucide-react";
 
 interface ConferenciaItem {
   contrato_epi_id: string;
@@ -33,8 +43,28 @@ interface Props {
   onConferenciaFinalizada?: () => void;
 }
 
+interface ConferenciaDraft {
+  unidadeId: string;
+  contratoId: string;
+  tipoConferencia: "semanal" | "mensal";
+  observacaoGeral: string;
+  itens: Array<{
+    contrato_epi_id: string;
+    contagem_fisica: number | null;
+    justificativa: string;
+  }>;
+  updatedAt: string;
+}
+
+interface DraftPointer {
+  unidadeId: string;
+  contratoId: string;
+  tipoConferencia: "semanal" | "mensal";
+  updatedAt: string;
+}
+
 export default function ConferenciaEstoque({ unidades, contratos, matrizId, userContratoId, hasGestaoEstoque, onConferenciaFinalizada }: Props) {
-  const { empresaId, loading: authLoading } = useAuth();
+  const { empresaId, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [open, setOpen] = useState(false);
@@ -45,43 +75,179 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
   const [loadingItens, setLoadingItens] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
   const [observacaoGeral, setObservacaoGeral] = useState("");
+  const [pendingDraft, setPendingDraft] = useState<ConferenciaDraft | null>(null);
+  const [handledDraftKey, setHandledDraftKey] = useState<string | null>(null);
 
   const isContractBound = !!userContratoId && !hasGestaoEstoque;
+  const draftStorageKey = useMemo(
+    () => (user?.id && contratoId ? `conferencia_estoque_draft:${user.id}:${contratoId}` : null),
+    [contratoId, user?.id]
+  );
+  const draftPointerKey = useMemo(
+    () => (user?.id ? `conferencia_estoque_draft_last:${user.id}` : null),
+    [user?.id]
+  );
 
   const filiais = useMemo(() => {
-    const directChildren = unidades.filter(u => u.empresa_pai_id === matrizId);
+    const directChildren = unidades.filter((unidade) => unidade.empresa_pai_id === matrizId);
     if (directChildren.length > 0) return directChildren;
 
     if (isContractBound && userContratoId) {
-      const contrato = contratos.find(c => c.id === userContratoId);
+      const contrato = contratos.find((item) => item.id === userContratoId);
       if (!contrato) return [];
-      return unidades.filter(u => u.id === contrato.unidade_id);
+      return unidades.filter((unidade) => unidade.id === contrato.unidade_id);
     }
 
     return [];
   }, [contratos, isContractBound, matrizId, unidades, userContratoId]);
-  const contratosFiltered = useMemo(() => contratos.filter(c => c.unidade_id === unidadeId), [contratos, unidadeId]);
 
-  // Auto-select unit/contract for users with a linked contract
+  const contratosFiltered = useMemo(
+    () => contratos.filter((contrato) => contrato.unidade_id === unidadeId),
+    [contratos, unidadeId]
+  );
+
+  const hasDraftableChanges = useMemo(
+    () => !!contratoId && (
+      observacaoGeral.trim().length > 0 ||
+      itens.some((item) => item.contagem_fisica !== null || item.justificativa.trim().length > 0)
+    ),
+    [contratoId, itens, observacaoGeral]
+  );
+
+  const totalZerados = useMemo(
+    () => itens.filter((item) => getStockStatus(item.estoque_sistema, item.estoque_minimo) === "zerado").length,
+    [itens]
+  );
+
+  const totalBaixo = useMemo(
+    () => itens.filter((item) => getStockStatus(item.estoque_sistema, item.estoque_minimo) === "baixo").length,
+    [itens]
+  );
+
+  const totalDivergencias = useMemo(
+    () => itens.filter((item) => item.contagem_fisica !== null && item.divergencia !== 0).length,
+    [itens]
+  );
+
+  const allCounted = useMemo(
+    () => itens.length > 0 && itens.every((item) => item.contagem_fisica !== null),
+    [itens]
+  );
+
+  const hasMissingJustificativa = useMemo(
+    () => itens.some((item) => item.contagem_fisica !== null && item.divergencia !== 0 && !item.justificativa.trim()),
+    [itens]
+  );
+
   useEffect(() => {
-    if (authLoading) return;
-    if (!userContratoId || !open) return;
-    const contrato = contratos.find(c => c.id === userContratoId);
-    if (contrato) {
-      setUnidadeId(contrato.unidade_id);
-      setContratoId(contrato.id);
+    if (authLoading || !userContratoId || !open) return;
+    const contrato = contratos.find((item) => item.id === userContratoId);
+    if (!contrato) return;
+
+    setUnidadeId(contrato.unidade_id);
+    setContratoId(contrato.id);
+  }, [authLoading, contratos, open, userContratoId]);
+
+  useEffect(() => {
+    if (!open || !draftPointerKey || contratoId) return;
+
+    try {
+      const rawPointer = localStorage.getItem(draftPointerKey);
+      if (!rawPointer) return;
+
+      const pointer = JSON.parse(rawPointer) as DraftPointer;
+      const unidadeExiste = unidades.some((unidade) => unidade.id === pointer.unidadeId);
+      const contratoExiste = contratos.some(
+        (contrato) => contrato.id === pointer.contratoId && contrato.unidade_id === pointer.unidadeId
+      );
+
+      if (unidadeExiste && contratoExiste) {
+        setUnidadeId(pointer.unidadeId);
+        setContratoId(pointer.contratoId);
+        setTipoConferencia(pointer.tipoConferencia || "semanal");
+      }
+    } catch {
+      // ignore corrupted draft pointer
     }
-  }, [authLoading, userContratoId, contratos, open]);
+  }, [contratoId, contratos, draftPointerKey, open, unidades]);
 
-  // Load EPIs when contract is selected
   useEffect(() => {
-    if (!contratoId) { setItens([]); return; }
+    if (!contratoId) {
+      setItens([]);
+      return;
+    }
+
     loadContratoEpis();
   }, [contratoId]);
 
+  useEffect(() => {
+    if (!open || !draftStorageKey || itens.length === 0 || handledDraftKey === draftStorageKey) return;
+
+    try {
+      const rawDraft = localStorage.getItem(draftStorageKey);
+      if (!rawDraft) return;
+
+      const draft = JSON.parse(rawDraft) as ConferenciaDraft;
+      if (draft.contratoId !== contratoId) return;
+
+      setPendingDraft(draft);
+      setRestoreOpen(true);
+    } catch {
+      localStorage.removeItem(draftStorageKey);
+    }
+  }, [contratoId, draftStorageKey, handledDraftKey, itens.length, open]);
+
+  useEffect(() => {
+    if (!open || !draftStorageKey || !hasDraftableChanges || itens.length === 0) return;
+
+    const draft: ConferenciaDraft = {
+      unidadeId,
+      contratoId,
+      tipoConferencia,
+      observacaoGeral,
+      itens: itens.map((item) => ({
+        contrato_epi_id: item.contrato_epi_id,
+        contagem_fisica: item.contagem_fisica,
+        justificativa: item.justificativa,
+      })),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+
+      if (draftPointerKey) {
+        const pointer: DraftPointer = {
+          unidadeId,
+          contratoId,
+          tipoConferencia,
+          updatedAt: draft.updatedAt,
+        };
+        localStorage.setItem(draftPointerKey, JSON.stringify(pointer));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [contratoId, draftPointerKey, draftStorageKey, hasDraftableChanges, itens, observacaoGeral, open, tipoConferencia, unidadeId]);
+
+  useEffect(() => {
+    if (!open || !hasDraftableChanges || saving) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "Você tem alterações não salvas. Deseja realmente sair?";
+      return event.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasDraftableChanges, open, saving]);
+
   const loadContratoEpis = async () => {
     setLoadingItens(true);
+
     const { data: cepis, error: cepisError } = await supabase
       .from("contrato_epis")
       .select("id, epi_id, estoque")
@@ -102,7 +268,7 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
       return;
     }
 
-    const epiIds = cepis.map(c => c.epi_id);
+    const epiIds = cepis.map((item) => item.epi_id);
     const { data: episData, error: episError } = await supabase
       .from("epis")
       .select("id, nome, tamanho, ca, estoque_minimo")
@@ -117,26 +283,25 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
       return;
     }
 
-    const epiMap = Object.fromEntries((episData || []).map(e => [e.id, e]));
+    const epiMap = Object.fromEntries((episData || []).map((item) => [item.id, item]));
 
     const items: ConferenciaItem[] = cepis
-      .map(ce => ({
-        contrato_epi_id: ce.id,
-        epi_id: ce.epi_id,
-        epi_nome: epiMap[ce.epi_id]?.nome || "—",
-        ca: epiMap[ce.epi_id]?.ca || null,
-        tamanho: epiMap[ce.epi_id]?.tamanho || null,
-        estoque_sistema: ce.estoque || 0,
-        estoque_minimo: epiMap[ce.epi_id]?.estoque_minimo || 0,
+      .map((item) => ({
+        contrato_epi_id: item.id,
+        epi_id: item.epi_id,
+        epi_nome: epiMap[item.epi_id]?.nome || "—",
+        ca: epiMap[item.epi_id]?.ca || null,
+        tamanho: epiMap[item.epi_id]?.tamanho || null,
+        estoque_sistema: item.estoque || 0,
+        estoque_minimo: epiMap[item.epi_id]?.estoque_minimo || 0,
         contagem_fisica: null,
         divergencia: 0,
         justificativa: "",
       }))
       .sort((a, b) => {
-        // Prioritize zero/low stock items
-        const aStatus = a.estoque_sistema === 0 ? 0 : a.estoque_sistema <= a.estoque_minimo ? 1 : 2;
-        const bStatus = b.estoque_sistema === 0 ? 0 : b.estoque_sistema <= b.estoque_minimo ? 1 : 2;
-        if (aStatus !== bStatus) return aStatus - bStatus;
+        const statusA = a.estoque_sistema === 0 ? 0 : a.estoque_sistema <= a.estoque_minimo ? 1 : 2;
+        const statusB = b.estoque_sistema === 0 ? 0 : b.estoque_sistema <= b.estoque_minimo ? 1 : 2;
+        if (statusA !== statusB) return statusA - statusB;
         return a.epi_nome.localeCompare(b.epi_nome);
       });
 
@@ -144,10 +309,69 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
     setLoadingItens(false);
   };
 
+  const clearDraftStorage = () => {
+    if (draftStorageKey) {
+      localStorage.removeItem(draftStorageKey);
+    }
+
+    if (!draftPointerKey) return;
+
+    try {
+      const rawPointer = localStorage.getItem(draftPointerKey);
+      if (!rawPointer) return;
+
+      const pointer = JSON.parse(rawPointer) as DraftPointer;
+      if (!pointer.contratoId || pointer.contratoId === contratoId) {
+        localStorage.removeItem(draftPointerKey);
+      }
+    } catch {
+      localStorage.removeItem(draftPointerKey);
+    }
+  };
+
+  const applyDraft = (draft: ConferenciaDraft) => {
+    const draftItems = new Map(draft.itens.map((item) => [item.contrato_epi_id, item]));
+
+    setTipoConferencia(draft.tipoConferencia || "semanal");
+    setObservacaoGeral(draft.observacaoGeral || "");
+    setItens((current) => current.map((item) => {
+      const draftItem = draftItems.get(item.contrato_epi_id);
+      if (!draftItem) return item;
+
+      const contagem = typeof draftItem.contagem_fisica === "number" ? draftItem.contagem_fisica : null;
+      return {
+        ...item,
+        contagem_fisica: contagem,
+        divergencia: contagem !== null ? contagem - item.estoque_sistema : 0,
+        justificativa: draftItem.justificativa || "",
+      };
+    }));
+  };
+
+  const handleRestoreDraft = () => {
+    if (pendingDraft) {
+      applyDraft(pendingDraft);
+      toast({ title: "Rascunho restaurado", description: "A conferência anterior foi recuperada." });
+    }
+
+    setHandledDraftKey(draftStorageKey);
+    setPendingDraft(null);
+    setRestoreOpen(false);
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraftStorage();
+    setHandledDraftKey(draftStorageKey);
+    setPendingDraft(null);
+    setRestoreOpen(false);
+    setObservacaoGeral("");
+  };
+
   const updateContagem = (idx: number, value: string) => {
-    setItens(prev => prev.map((item, i) => {
-      if (i !== idx) return item;
-      const contagem = value === "" ? null : Math.max(0, parseInt(value) || 0);
+    setItens((current) => current.map((item, index) => {
+      if (index !== idx) return item;
+
+      const contagem = value === "" ? null : Math.max(0, parseInt(value, 10) || 0);
       return {
         ...item,
         contagem_fisica: contagem,
@@ -157,21 +381,19 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
   };
 
   const updateJustificativa = (idx: number, value: string) => {
-    setItens(prev => prev.map((item, i) => i === idx ? { ...item, justificativa: value } : item));
+    setItens((current) => current.map((item, index) => index === idx ? { ...item, justificativa: value } : item));
   };
 
-  const totalDivergencias = useMemo(() => itens.filter(i => i.contagem_fisica !== null && i.divergencia !== 0).length, [itens]);
-  const allCounted = useMemo(() => itens.length > 0 && itens.every(i => i.contagem_fisica !== null), [itens]);
-  const hasMissingJustificativa = useMemo(
-    () => itens.some(i => i.contagem_fisica !== null && i.divergencia !== 0 && !i.justificativa.trim()),
-    [itens]
-  );
-
-  const handleFinalize = async () => {
+  const handleFinalize = () => {
     if (hasMissingJustificativa) {
-      toast({ title: "Justificativas pendentes", description: "Preencha a justificativa para todos os itens com divergência.", variant: "destructive" });
+      toast({
+        title: "Justificativas pendentes",
+        description: "Preencha a justificativa para todos os itens com divergência.",
+        variant: "destructive",
+      });
       return;
     }
+
     setConfirmOpen(true);
   };
 
@@ -180,9 +402,8 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
     setConfirmOpen(false);
 
     try {
-      const unidade = unidades.find(u => u.id === unidadeId);
-
-      const payloadItens = itens.map(item => ({
+      const unidade = unidades.find((item) => item.id === unidadeId);
+      const payloadItens = itens.map((item) => ({
         contrato_epi_id: item.contrato_epi_id,
         epi_id: item.epi_id,
         estoque_sistema: item.estoque_sistema,
@@ -203,6 +424,7 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
 
       if (error) throw error;
 
+      clearDraftStorage();
       toast({ title: "Conferência finalizada", description: `${totalDivergencias} ajuste(s) aplicado(s) ao estoque.` });
       setOpen(false);
       resetState();
@@ -221,38 +443,51 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
     setItens([]);
     setTipoConferencia("semanal");
     setObservacaoGeral("");
+    setPendingDraft(null);
+    setRestoreOpen(false);
+    setHandledDraftKey(null);
   };
 
-  const getStockStatus = (estoque: number, minimo: number) => {
+  function getStockStatus(estoque: number, minimo: number) {
     if (estoque === 0) return "zerado";
     if (estoque <= minimo) return "baixo";
     return "ok";
-  };
+  }
 
-  const getRowHighlight = (item: ConferenciaItem) => {
+  function getRowHighlight(item: ConferenciaItem) {
     const status = getStockStatus(item.estoque_sistema, item.estoque_minimo);
-    if (status === "zerado") return "bg-red-50/60 dark:bg-red-950/20";
-    if (status === "baixo") return "bg-amber-50/60 dark:bg-amber-950/20";
+    if (status === "zerado") return "bg-destructive/5";
+    if (status === "baixo") return "bg-warning/5";
     return "";
-  };
+  }
+
+  function getStatusBadgeClass(status: ReturnType<typeof getStockStatus>) {
+    if (status === "zerado") return "border-destructive/30 bg-destructive/10 text-destructive";
+    if (status === "baixo") return "border-warning/30 bg-warning/10 text-warning";
+    return "border-success/30 bg-success/10 text-success";
+  }
+
+  function getDivergenceBadgeClass(divergencia: number) {
+    if (divergencia === 0) return "border-success/30 bg-success/10 text-success";
+    if (divergencia < 0) return "border-destructive/30 bg-destructive/10 text-destructive";
+    return "border-info/30 bg-info/10 text-info";
+  }
 
   return (
     <>
-      <Button
-        size="sm"
-        variant="outline"
-        className="gap-1.5 text-xs"
-        onClick={() => setOpen(true)}
-      >
-        <ClipboardCheck className="w-3.5 h-3.5" />
+      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setOpen(true)}>
+        <ClipboardCheck className="h-3.5 w-3.5" />
         Conferência de Estoque
       </Button>
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetState(); }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={open} onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) resetState();
+      }}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <ClipboardCheck className="w-4 h-4" />
+              <ClipboardCheck className="h-4 w-4" />
               Conferência de Estoque (Inventário)
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -261,46 +496,59 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Filters Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <Label className="text-xs">Unidade</Label>
                 <Select
                   value={unidadeId}
-                  onValueChange={(v) => { setUnidadeId(v); setContratoId(""); setItens([]); }}
+                  onValueChange={(value) => {
+                    setUnidadeId(value);
+                    setContratoId("");
+                    setItens([]);
+                    setHandledDraftKey(null);
+                  }}
                   disabled={isContractBound}
                 >
-                  <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectTrigger className="mt-1 h-8 text-xs">
                     <SelectValue placeholder="Selecione a unidade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {filiais.map(f => (
-                      <SelectItem key={f.id} value={f.id} className="text-xs">{f.nome}</SelectItem>
+                    {filiais.map((filial) => (
+                      <SelectItem key={filial.id} value={filial.id} className="text-xs">
+                        {filial.nome}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
                 <Label className="text-xs">Contrato</Label>
                 <Select
                   value={contratoId}
-                  onValueChange={setContratoId}
+                  onValueChange={(value) => {
+                    setContratoId(value);
+                    setHandledDraftKey(null);
+                  }}
                   disabled={!unidadeId || isContractBound}
                 >
-                  <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectTrigger className="mt-1 h-8 text-xs">
                     <SelectValue placeholder="Selecione o contrato" />
                   </SelectTrigger>
                   <SelectContent>
-                    {contratosFiltered.map(c => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
+                    {contratosFiltered.map((contrato) => (
+                      <SelectItem key={contrato.id} value={contrato.id} className="text-xs">
+                        {contrato.nome}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
                 <Label className="text-xs">Tipo de Conferência</Label>
-                <Select value={tipoConferencia} onValueChange={(v: "semanal" | "mensal") => setTipoConferencia(v)}>
-                  <SelectTrigger className="h-8 text-xs mt-1">
+                <Select value={tipoConferencia} onValueChange={(value: "semanal" | "mensal") => setTipoConferencia(value)}>
+                  <SelectTrigger className="mt-1 h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -311,40 +559,42 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
               </div>
             </div>
 
-            {/* Items Table */}
             {loadingItens ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
               </div>
             ) : itens.length > 0 ? (
               <div className="space-y-3">
-                {/* Summary badges */}
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs gap-1">
-                    <ClipboardCheck className="w-3 h-3" />
+                  <Badge variant="outline" className="gap-1 text-xs">
+                    <ClipboardCheck className="h-3 w-3" />
                     {itens.length} itens
                   </Badge>
-                  {itens.filter(i => getStockStatus(i.estoque_sistema, i.estoque_minimo) === "zerado").length > 0 && (
-                    <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-xs gap-1">
-                      <AlertTriangle className="w-3 h-3" />
-                      {itens.filter(i => getStockStatus(i.estoque_sistema, i.estoque_minimo) === "zerado").length} zerado(s)
+
+                  {totalZerados > 0 && (
+                    <Badge className="gap-1 border-destructive/30 bg-destructive/10 text-xs text-destructive">
+                      <AlertTriangle className="h-3 w-3" />
+                      {totalZerados} zerado(s)
                     </Badge>
                   )}
-                  {itens.filter(i => getStockStatus(i.estoque_sistema, i.estoque_minimo) === "baixo").length > 0 && (
-                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs gap-1">
-                      <AlertTriangle className="w-3 h-3" />
-                      {itens.filter(i => getStockStatus(i.estoque_sistema, i.estoque_minimo) === "baixo").length} estoque baixo
+
+                  {totalBaixo > 0 && (
+                    <Badge className="gap-1 border-warning/30 bg-warning/10 text-xs text-warning">
+                      <AlertTriangle className="h-3 w-3" />
+                      {totalBaixo} estoque baixo
                     </Badge>
                   )}
+
                   {allCounted && totalDivergencias === 0 && (
-                    <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 text-xs gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
+                    <Badge className="gap-1 border-success/30 bg-success/10 text-xs text-success">
+                      <CheckCircle2 className="h-3 w-3" />
                       Sem divergências
                     </Badge>
                   )}
+
                   {totalDivergencias > 0 && (
-                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs gap-1">
-                      <AlertTriangle className="w-3 h-3" />
+                    <Badge className="gap-1 border-warning/30 bg-warning/10 text-xs text-warning">
+                      <AlertTriangle className="h-3 w-3" />
                       {totalDivergencias} divergência(s)
                     </Badge>
                   )}
@@ -354,22 +604,22 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
                   <Label className="text-xs">Observação geral</Label>
                   <Input
                     value={observacaoGeral}
-                    onChange={(e) => setObservacaoGeral(e.target.value)}
+                    onChange={(event) => setObservacaoGeral(event.target.value)}
                     className="h-8 text-xs"
                     placeholder="Observações da conferência, avarias ou extravios..."
                   />
                 </div>
 
-                <div className="overflow-auto max-h-[400px] rounded-md border border-border/60">
+                <div className="max-h-[400px] overflow-auto rounded-md border border-border/60">
                   <Table>
                     <TableHeader>
                       <TableRow className="text-[10px]">
                         <TableHead className="px-2 py-1.5">EPI</TableHead>
-                        <TableHead className="px-2 py-1.5 text-center w-[60px]">Status</TableHead>
-                        <TableHead className="px-2 py-1.5 text-right w-[80px]">Sistema</TableHead>
-                        <TableHead className="px-2 py-1.5 text-center w-[100px]">Contagem Física</TableHead>
-                        <TableHead className="px-2 py-1.5 text-center w-[90px]">Divergência</TableHead>
-                        <TableHead className="px-2 py-1.5 w-[200px]">Justificativa</TableHead>
+                        <TableHead className="w-[60px] px-2 py-1.5 text-center">Status</TableHead>
+                        <TableHead className="w-[80px] px-2 py-1.5 text-right">Sistema</TableHead>
+                        <TableHead className="w-[100px] px-2 py-1.5 text-center">Contagem Física</TableHead>
+                        <TableHead className="w-[90px] px-2 py-1.5 text-center">Divergência</TableHead>
+                        <TableHead className="w-[200px] px-2 py-1.5">Justificativa</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -377,75 +627,65 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
                         const hasDivergencia = item.contagem_fisica !== null && item.divergencia !== 0;
                         const isCounted = item.contagem_fisica !== null;
                         const stockStatus = getStockStatus(item.estoque_sistema, item.estoque_minimo);
+
                         return (
                           <TableRow key={item.contrato_epi_id} className={`text-xs ${getRowHighlight(item)}`}>
-                            <TableCell className="px-2 py-1.5 max-w-[180px]">
-                              <span className="truncate block">{item.epi_nome}</span>
-                              <div className="flex gap-1 items-center">
-                                {item.tamanho && (
-                                  <span className="text-[10px] text-muted-foreground">({item.tamanho})</span>
-                                )}
-                                {item.ca && (
-                                  <span className="text-[10px] text-muted-foreground">C.A. {item.ca}</span>
-                                )}
+                            <TableCell className="max-w-[180px] px-2 py-1.5">
+                              <span className="block truncate">{item.epi_nome}</span>
+                              <div className="flex items-center gap-1">
+                                {item.tamanho && <span className="text-[10px] text-muted-foreground">({item.tamanho})</span>}
+                                {item.ca && <span className="text-[10px] text-muted-foreground">C.A. {item.ca}</span>}
                               </div>
                             </TableCell>
+
                             <TableCell className="px-2 py-1.5 text-center">
-                              <Badge
-                                variant="outline"
-                                className={`text-[9px] px-1 py-0 ${
-                                  stockStatus === "zerado"
-                                    ? "text-red-600 border-red-300 bg-red-50 dark:bg-red-950/20"
-                                    : stockStatus === "baixo"
-                                    ? "text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/20"
-                                    : "text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20"
-                                }`}
-                              >
+                              <Badge variant="outline" className={`px-1 py-0 text-[9px] ${getStatusBadgeClass(stockStatus)}`}>
                                 {stockStatus === "zerado" ? "Zerado" : stockStatus === "baixo" ? "Baixo" : "Ok"}
                               </Badge>
                             </TableCell>
+
                             <TableCell className="px-2 py-1.5 text-right font-semibold">
                               {item.estoque_sistema}
                             </TableCell>
+
                             <TableCell className="px-2 py-1.5 text-center">
                               <Input
                                 type="number"
                                 min={0}
                                 value={item.contagem_fisica ?? ""}
-                                onChange={(e) => updateContagem(idx, e.target.value)}
-                                className="h-7 text-xs text-center w-[70px] mx-auto"
+                                onChange={(event) => updateContagem(idx, event.target.value)}
+                                className="mx-auto h-7 w-[70px] text-center text-xs"
                                 placeholder="—"
                               />
                             </TableCell>
+
                             <TableCell className="px-2 py-1.5 text-center">
                               {isCounted ? (
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] px-1.5 py-0 gap-0.5 ${
-                                    item.divergencia === 0
-                                      ? "text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20"
-                                      : item.divergencia < 0
-                                      ? "text-red-600 border-red-300 bg-red-50 dark:bg-red-950/20"
-                                      : "text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/20"
-                                  }`}
-                                >
+                                <Badge variant="outline" className={`gap-0.5 px-1.5 py-0 text-[10px] ${getDivergenceBadgeClass(item.divergencia)}`}>
                                   {item.divergencia === 0 ? (
-                                    <><CheckCircle2 className="w-3 h-3" /> Bateu</>
+                                    <>
+                                      <CheckCircle2 className="h-3 w-3" /> Bateu
+                                    </>
                                   ) : item.divergencia < 0 ? (
-                                    <><TrendingDown className="w-3 h-3" /> {item.divergencia}</>
+                                    <>
+                                      <TrendingDown className="h-3 w-3" /> {item.divergencia}
+                                    </>
                                   ) : (
-                                    <><TrendingUp className="w-3 h-3" /> +{item.divergencia}</>
+                                    <>
+                                      <TrendingUp className="h-3 w-3" /> +{item.divergencia}
+                                    </>
                                   )}
                                 </Badge>
                               ) : (
-                                <span className="text-muted-foreground text-[10px]">—</span>
+                                <span className="text-[10px] text-muted-foreground">—</span>
                               )}
                             </TableCell>
+
                             <TableCell className="px-2 py-1.5">
                               {hasDivergencia ? (
                                 <Input
                                   value={item.justificativa}
-                                  onChange={(e) => updateJustificativa(idx, e.target.value)}
+                                  onChange={(event) => updateJustificativa(idx, event.target.value)}
                                   className="h-7 text-xs"
                                   placeholder="Motivo da divergência..."
                                 />
@@ -459,7 +699,7 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
                 </div>
               </div>
             ) : contratoId ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">
+              <div className="py-8 text-center text-sm text-muted-foreground">
                 Nenhum EPI cadastrado neste contrato.
               </div>
             ) : null}
@@ -470,13 +710,8 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
               <Button variant="outline" size="sm" onClick={() => { setOpen(false); resetState(); }} className="text-xs">
                 Cancelar
               </Button>
-              <Button
-                size="sm"
-                onClick={handleFinalize}
-                disabled={!allCounted || saving}
-                className="text-xs gap-1.5"
-              >
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <Button size="sm" onClick={handleFinalize} disabled={!allCounted || saving} className="gap-1.5 text-xs">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                 Finalizar e Ajustar Estoque
               </Button>
             </DialogFooter>
@@ -484,7 +719,6 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
         </DialogContent>
       </Dialog>
 
-      {/* Confirmation dialog */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -499,13 +733,28 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
             <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} className="text-xs">
               Cancelar
             </Button>
-            <Button size="sm" onClick={executeFinalize} disabled={saving} className="text-xs gap-1.5">
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+            <Button size="sm" onClick={executeFinalize} disabled={saving} className="gap-1.5 text-xs">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
               Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={restoreOpen} onOpenChange={setRestoreOpen}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base">Rascunho encontrado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja continuar a conferência anterior?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardDraft}>Não</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestoreDraft}>Sim</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
