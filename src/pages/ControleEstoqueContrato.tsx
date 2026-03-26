@@ -97,6 +97,16 @@ export default function ControleEstoqueContrato() {
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; tamanho: string | null; estoque: number }[]>([]);
 
+  // Matriz distribution modal state
+  const [distOpen, setDistOpen] = useState(false);
+  const [distDestType, setDistDestType] = useState<"unidade" | "contrato">("unidade");
+  const [distUnidadeId, setDistUnidadeId] = useState("");
+  const [distContratoId, setDistContratoId] = useState("");
+  const [distEpiId, setDistEpiId] = useState("");
+  const [distQtd, setDistQtd] = useState(1);
+  const [distLoading, setDistLoading] = useState(false);
+  const [distEpis, setDistEpis] = useState<{ id: string; nome: string; tamanho: string | null; estoque: number }[]>([]);
+
   // Matriz summary
   const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
 
@@ -357,8 +367,88 @@ export default function ControleEstoqueContrato() {
   };
 
   const selectedTransferEpi = transferEpis.find(e => e.id === transferEpiId);
-  // All contracts except source for destination picker
   const transferDestOptions = contratos.filter(c => c.id !== transferSource?.contratoId);
+
+  // Matriz distribution helpers
+  const openDistModal = async () => {
+    if (!matrizId) return;
+    setDistDestType("unidade");
+    setDistUnidadeId("");
+    setDistContratoId("");
+    setDistEpiId("");
+    setDistQtd(1);
+    // Load EPIs from Matriz with stock > 0
+    const { data } = await supabase.from("epis")
+      .select("id, nome, tamanho, estoque")
+      .eq("empresa_id", matrizId)
+      .gt("estoque", 0)
+      .order("nome");
+    setDistEpis((data || []).map(e => ({ id: e.id, nome: e.nome, tamanho: e.tamanho, estoque: e.estoque })));
+    setDistOpen(true);
+  };
+
+  const executeDistribution = async () => {
+    if (!matrizId || !distEpiId || distQtd <= 0) return;
+    setDistLoading(true);
+
+    if (distDestType === "unidade" && distUnidadeId) {
+      // Matriz → Unidade via transfer_epi_stock
+      const { data, error } = await supabase.rpc("transfer_epi_stock" as any, {
+        _source_empresa_id: matrizId,
+        _dest_empresa_id: distUnidadeId,
+        _source_epi_id: distEpiId,
+        _quantidade: distQtd,
+      });
+      setDistLoading(false);
+      const result = data as any;
+      if (error || !result?.success) {
+        toast({ title: "Erro na distribuição", description: result?.error || error?.message || "Erro desconhecido", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Distribuição realizada", description: `${distQtd} un. enviado(s) para unidade` });
+    } else if (distDestType === "contrato" && distContratoId) {
+      // Find which unidade owns the contract to use as source
+      const destContrato = contratosRef.current.find(c => c.id === distContratoId);
+      const unidadeId = destContrato?.unidade_id;
+      // First transfer to the unidade, then to the contract
+      // Or use transfer_epi_to_contract directly from matriz
+      const { data, error } = await supabase.rpc("transfer_epi_to_contract" as any, {
+        _source_empresa_id: matrizId,
+        _contrato_id: distContratoId,
+        _epi_id: distEpiId,
+        _quantidade: distQtd,
+      });
+      setDistLoading(false);
+      const result = data as any;
+      if (error || !result?.success) {
+        toast({ title: "Erro na distribuição", description: result?.error || error?.message || "Erro desconhecido", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Distribuição realizada", description: `${distQtd} un. enviado(s) para contrato` });
+    } else {
+      setDistLoading(false);
+      return;
+    }
+
+    setDistOpen(false);
+    // Reload matriz summary
+    loadInitialData();
+    // Reload affected unidade
+    const targetUnidadeId = distDestType === "unidade" ? distUnidadeId : contratosRef.current.find(c => c.id === distContratoId)?.unidade_id;
+    if (targetUnidadeId) {
+      setUnidadeSummaries(prev => {
+        const updated = { ...prev };
+        if (updated[targetUnidadeId]) updated[targetUnidadeId] = { ...updated[targetUnidadeId], loaded: false };
+        return updated;
+      });
+      setTimeout(() => loadUnidadeData(targetUnidadeId), 300);
+    }
+  };
+
+  const selectedDistEpi = distEpis.find(e => e.id === distEpiId);
+  const distContratoOptions = distDestType === "contrato"
+    ? contratos.filter(c => filiais.some(f => f.id === c.unidade_id))
+    : [];
 
   if (loading) {
     return (
@@ -421,7 +511,16 @@ export default function ControleEstoqueContrato() {
         )}
       </div>
 
-      {/* Unidades Accordion */}
+      {/* Distribute from Matriz button */}
+      {hasGestaoEstoque && matrizSummary.estoqueTotal > 0 && (
+        <div className="flex justify-end">
+          <Button size="sm" className="gap-1.5 text-xs" onClick={openDistModal}>
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            Distribuir da Matriz
+          </Button>
+        </div>
+      )}
+
       {filiais.length > 0 && (
         <Card className="border-border/60">
           <CardHeader className="pb-2 pt-4 px-4">
@@ -795,6 +894,126 @@ export default function ControleEstoqueContrato() {
             >
               {transferLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
               Transferir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Matriz Distribution Modal */}
+      <Dialog open={distOpen} onOpenChange={setDistOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <ArrowRightLeft className="w-4 h-4" />
+              Distribuir da Matriz
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Envie EPIs do estoque da Matriz para uma Unidade ou Contrato.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {/* Destination type */}
+            <div>
+              <Label className="text-xs">Tipo de destino</Label>
+              <Select value={distDestType} onValueChange={(v: "unidade" | "contrato") => { setDistDestType(v); setDistUnidadeId(""); setDistContratoId(""); }}>
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unidade" className="text-xs">Unidade</SelectItem>
+                  <SelectItem value="contrato" className="text-xs">Contrato</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Destination selector */}
+            {distDestType === "unidade" ? (
+              <div>
+                <Label className="text-xs">Unidade destino</Label>
+                <Select value={distUnidadeId} onValueChange={setDistUnidadeId}>
+                  <SelectTrigger className="h-8 text-xs mt-1">
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filiais.map(f => (
+                      <SelectItem key={f.id} value={f.id} className="text-xs">{f.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div>
+                <Label className="text-xs">Contrato destino</Label>
+                <Select value={distContratoId} onValueChange={setDistContratoId}>
+                  <SelectTrigger className="h-8 text-xs mt-1">
+                    <SelectValue placeholder="Selecione o contrato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {distContratoOptions.map(c => {
+                      const unidade = unidades.find(u => u.id === c.unidade_id);
+                      return (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          {c.nome}{unidade ? ` (${unidade.nome})` : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* EPI */}
+            <div>
+              <Label className="text-xs">EPI</Label>
+              <Select value={distEpiId} onValueChange={(v) => { setDistEpiId(v); setDistQtd(1); }}>
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue placeholder="Selecione o EPI" />
+                </SelectTrigger>
+                <SelectContent>
+                  {distEpis.map(e => (
+                    <SelectItem key={e.id} value={e.id} className="text-xs">
+                      {e.nome}{e.tamanho ? ` (${e.tamanho})` : ""} — {e.estoque} un.
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <Label className="text-xs">Quantidade</Label>
+              <Input
+                type="number"
+                min={1}
+                max={selectedDistEpi?.estoque || 1}
+                value={distQtd}
+                onChange={e => setDistQtd(Math.max(1, Math.min(Number(e.target.value), selectedDistEpi?.estoque || 1)))}
+                className="h-8 text-xs mt-1"
+              />
+              {selectedDistEpi && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Disponível na Matriz: {selectedDistEpi.estoque} un.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setDistOpen(false)} className="text-xs">
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={executeDistribution}
+              disabled={
+                distLoading || !distEpiId || distQtd <= 0 ||
+                (distDestType === "unidade" ? !distUnidadeId : !distContratoId)
+              }
+              className="text-xs gap-1.5"
+            >
+              {distLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
+              Distribuir
             </Button>
           </DialogFooter>
         </DialogContent>
