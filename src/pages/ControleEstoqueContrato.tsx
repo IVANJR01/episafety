@@ -778,39 +778,75 @@ export default function ControleEstoqueContrato() {
               </div>
             )}
 
-            {/* EPI */}
+            {/* EPIs list */}
             <div>
-              <Label className="text-xs">EPI</Label>
-              <Select value={distEpiId} onValueChange={(v) => { setDistEpiId(v); setDistQtd(1); }}>
-                <SelectTrigger className="h-8 text-xs mt-1">
-                  <SelectValue placeholder="Selecione o EPI" />
-                </SelectTrigger>
-                <SelectContent>
-                  {distEpis.map(e => (
-                    <SelectItem key={e.id} value={e.id} className="text-xs">
-                      {e.nome}{e.tamanho ? ` (${e.tamanho})` : ""} — {e.estoque} un.
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Quantity */}
-            <div>
-              <Label className="text-xs">Quantidade</Label>
-              <Input
-                type="number"
-                min={1}
-                max={selectedDistEpi?.estoque || 1}
-                value={distQtd}
-                onChange={e => setDistQtd(Math.max(1, Math.min(Number(e.target.value), selectedDistEpi?.estoque || 1)))}
-                className="h-8 text-xs mt-1"
-              />
-              {selectedDistEpi && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  Disponível na Matriz: {selectedDistEpi.estoque} un.
-                </p>
-              )}
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs">EPIs</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] px-2"
+                  disabled={distItems.length >= distEpis.length}
+                  onClick={() => setDistItems(prev => [...prev, { epiId: "", qtd: 1 }])}
+                >
+                  + Adicionar item
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-[220px] overflow-auto">
+                {distItems.map((item, idx) => {
+                  const epiData = distEpis.find(e => e.id === item.epiId);
+                  const availableEpis = distEpis.filter(e => e.id === item.epiId || !distSelectedEpiIds.has(e.id));
+                  return (
+                    <div key={idx} className="flex items-start gap-1.5">
+                      <div className="flex-1 min-w-0">
+                        <Select
+                          value={item.epiId}
+                          onValueChange={(v) => {
+                            setDistItems(prev => prev.map((it, i) => i === idx ? { ...it, epiId: v, qtd: 1 } : it));
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Selecione o EPI" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableEpis.map(e => (
+                              <SelectItem key={e.id} value={e.id} className="text-xs">
+                                {e.nome}{e.tamanho ? ` (${e.tamanho})` : ""} — {e.estoque} un.
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-20">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={epiData?.estoque || 1}
+                          value={item.qtd}
+                          onChange={e => {
+                            const max = epiData?.estoque || 1;
+                            setDistItems(prev => prev.map((it, i) => i === idx ? { ...it, qtd: Math.max(1, Math.min(Number(e.target.value), max)) } : it));
+                          }}
+                          className="h-8 text-xs"
+                          disabled={!item.epiId}
+                        />
+                      </div>
+                      {distItems.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => setDistItems(prev => prev.filter((_, i) => i !== idx))}
+                        >
+                          ✕
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -822,13 +858,13 @@ export default function ControleEstoqueContrato() {
               size="sm"
               onClick={executeDistribution}
               disabled={
-                distLoading || !distEpiId || distQtd <= 0 ||
+                distLoading || !distHasValidItems ||
                 (distDestType === "unidade" ? !distUnidadeId : !distContratoId)
               }
               className="text-xs gap-1.5"
             >
               {distLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
-              Distribuir
+              Distribuir {distItems.filter(i => i.epiId && i.qtd > 0).length > 1 ? `(${distItems.filter(i => i.epiId && i.qtd > 0).length} itens)` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>
