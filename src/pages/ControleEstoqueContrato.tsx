@@ -898,6 +898,126 @@ export default function ControleEstoqueContrato() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Matriz Distribution Modal */}
+      <Dialog open={distOpen} onOpenChange={setDistOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <ArrowRightLeft className="w-4 h-4" />
+              Distribuir da Matriz
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Envie EPIs do estoque da Matriz para uma Unidade ou Contrato.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {/* Destination type */}
+            <div>
+              <Label className="text-xs">Tipo de destino</Label>
+              <Select value={distDestType} onValueChange={(v: "unidade" | "contrato") => { setDistDestType(v); setDistUnidadeId(""); setDistContratoId(""); }}>
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unidade" className="text-xs">Unidade</SelectItem>
+                  <SelectItem value="contrato" className="text-xs">Contrato</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Destination selector */}
+            {distDestType === "unidade" ? (
+              <div>
+                <Label className="text-xs">Unidade destino</Label>
+                <Select value={distUnidadeId} onValueChange={setDistUnidadeId}>
+                  <SelectTrigger className="h-8 text-xs mt-1">
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filiais.map(f => (
+                      <SelectItem key={f.id} value={f.id} className="text-xs">{f.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div>
+                <Label className="text-xs">Contrato destino</Label>
+                <Select value={distContratoId} onValueChange={setDistContratoId}>
+                  <SelectTrigger className="h-8 text-xs mt-1">
+                    <SelectValue placeholder="Selecione o contrato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {distContratoOptions.map(c => {
+                      const unidade = unidades.find(u => u.id === c.unidade_id);
+                      return (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          {c.nome}{unidade ? ` (${unidade.nome})` : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* EPI */}
+            <div>
+              <Label className="text-xs">EPI</Label>
+              <Select value={distEpiId} onValueChange={(v) => { setDistEpiId(v); setDistQtd(1); }}>
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue placeholder="Selecione o EPI" />
+                </SelectTrigger>
+                <SelectContent>
+                  {distEpis.map(e => (
+                    <SelectItem key={e.id} value={e.id} className="text-xs">
+                      {e.nome}{e.tamanho ? ` (${e.tamanho})` : ""} — {e.estoque} un.
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <Label className="text-xs">Quantidade</Label>
+              <Input
+                type="number"
+                min={1}
+                max={selectedDistEpi?.estoque || 1}
+                value={distQtd}
+                onChange={e => setDistQtd(Math.max(1, Math.min(Number(e.target.value), selectedDistEpi?.estoque || 1)))}
+                className="h-8 text-xs mt-1"
+              />
+              {selectedDistEpi && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Disponível na Matriz: {selectedDistEpi.estoque} un.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setDistOpen(false)} className="text-xs">
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={executeDistribution}
+              disabled={
+                distLoading || !distEpiId || distQtd <= 0 ||
+                (distDestType === "unidade" ? !distUnidadeId : !distContratoId)
+              }
+              className="text-xs gap-1.5"
+            >
+              {distLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
+              Distribuir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
