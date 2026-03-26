@@ -39,7 +39,7 @@ interface ContratoStockSummary {
   estoqueTotal: number;
   valorTotal: number;
   alertas: number;
-  itens: { epi_nome: string; estoque: number; estoque_minimo: number; valor: number }[];
+  itens: { epi_nome: string; tamanho: string | null; estoque: number; estoque_minimo: number; valor: number }[];
   movimentos: { data: string; tipo: string; epi_nome: string; destino: string; quantidade: number }[];
   loadedDetails: boolean;
 }
@@ -228,12 +228,13 @@ export default function ControleEstoqueContrato() {
     // Fetch EPI names + values
     const epiIds = [...new Set([...cepis.map(e => e.epi_id), ...movs.map(m => m.epi_id)])];
     const { data: episData } = epiIds.length > 0
-      ? await supabase.from("epis").select("id, nome, valor, estoque_minimo").in("id", epiIds)
+      ? await supabase.from("epis").select("id, nome, valor, estoque_minimo, tamanho").in("id", epiIds)
       : { data: [] };
     const epiMap = Object.fromEntries((episData || []).map(e => [e.id, e]));
 
     const itens = cepis.map(ce => ({
       epi_nome: epiMap[ce.epi_id]?.nome || "—",
+      tamanho: epiMap[ce.epi_id]?.tamanho || null,
       estoque: ce.estoque || 0,
       estoque_minimo: epiMap[ce.epi_id]?.estoque_minimo || 0,
       valor: (ce.estoque || 0) * (epiMap[ce.epi_id]?.valor || 0),
@@ -453,7 +454,10 @@ export default function ControleEstoqueContrato() {
                                                   </TableRow>
                                                 ) : contrato.itens.map((item, idx) => (
                                                   <TableRow key={idx} className="text-xs">
-                                                    <TableCell className="px-2 py-1.5 max-w-[180px] truncate">{item.epi_nome}</TableCell>
+                                                    <TableCell className="px-2 py-1.5 max-w-[180px] truncate">
+                                                      {item.epi_nome}
+                                                      {item.tamanho && <span className="ml-1 text-[10px] text-muted-foreground">({item.tamanho})</span>}
+                                                    </TableCell>
                                                     <TableCell className="px-2 py-1.5 text-right font-semibold">{item.estoque}</TableCell>
                                                     <TableCell className="px-2 py-1.5 text-right text-muted-foreground">
                                                       R$ {item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
