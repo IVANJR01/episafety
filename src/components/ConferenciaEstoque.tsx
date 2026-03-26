@@ -2,11 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,8 +15,10 @@ interface ConferenciaItem {
   contrato_epi_id: string;
   epi_id: string;
   epi_nome: string;
+  ca: string | null;
   tamanho: string | null;
   estoque_sistema: number;
+  estoque_minimo: number;
   contagem_fisica: number | null;
   divergencia: number;
   justificativa: string;
@@ -28,10 +28,12 @@ interface Props {
   unidades: { id: string; nome: string; empresa_pai_id: string | null }[];
   contratos: { id: string; nome: string; unidade_id: string }[];
   matrizId: string | null;
+  userContratoId?: string | null;
+  hasGestaoEstoque?: boolean;
   onConferenciaFinalizada?: () => void;
 }
 
-export default function ConferenciaEstoque({ unidades, contratos, matrizId, onConferenciaFinalizada }: Props) {
+export default function ConferenciaEstoque({ unidades, contratos, matrizId, userContratoId, hasGestaoEstoque, onConferenciaFinalizada }: Props) {
   const { empresaId } = useAuth();
   const { toast } = useToast();
 
@@ -44,8 +46,20 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  const isContractBound = !!userContratoId && !hasGestaoEstoque;
+
   const filiais = useMemo(() => unidades.filter(u => u.empresa_pai_id === matrizId), [unidades, matrizId]);
   const contratosFiltered = useMemo(() => contratos.filter(c => c.unidade_id === unidadeId), [contratos, unidadeId]);
+
+  // Auto-select unit/contract for contract-bound users
+  useEffect(() => {
+    if (!isContractBound || !userContratoId || !open) return;
+    const contrato = contratos.find(c => c.id === userContratoId);
+    if (contrato) {
+      setUnidadeId(contrato.unidade_id);
+      setContratoId(contrato.id);
+    }
+  }, [isContractBound, userContratoId, contratos, open]);
 
   // Load EPIs when contract is selected
   useEffect(() => {
@@ -69,7 +83,7 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
     const epiIds = cepis.map(c => c.epi_id);
     const { data: episData } = await supabase
       .from("epis")
-      .select("id, nome, tamanho")
+      .select("id, nome, tamanho, ca, estoque_minimo")
       .in("id", epiIds);
 
     const epiMap = Object.fromEntries((episData || []).map(e => [e.id, e]));
@@ -79,13 +93,21 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
         contrato_epi_id: ce.id,
         epi_id: ce.epi_id,
         epi_nome: epiMap[ce.epi_id]?.nome || "—",
+        ca: epiMap[ce.epi_id]?.ca || null,
         tamanho: epiMap[ce.epi_id]?.tamanho || null,
         estoque_sistema: ce.estoque || 0,
+        estoque_minimo: epiMap[ce.epi_id]?.estoque_minimo || 0,
         contagem_fisica: null,
         divergencia: 0,
         justificativa: "",
       }))
-      .sort((a, b) => a.epi_nome.localeCompare(b.epi_nome));
+      .sort((a, b) => {
+        // Prioritize zero/low stock items
+        const aStatus = a.estoque_sistema === 0 ? 0 : a.estoque_sistema <= a.estoque_minimo ? 1 : 2;
+        const bStatus = b.estoque_sistema === 0 ? 0 : b.estoque_sistema <= b.estoque_minimo ? 1 : 2;
+        if (aStatus !== bStatus) return aStatus - bStatus;
+        return a.epi_nome.localeCompare(b.epi_nome);
+      });
 
     setItens(items);
     setLoadingItens(false);
@@ -130,7 +152,6 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
       const { data: { user } } = await supabase.auth.getUser();
       const unidade = unidades.find(u => u.id === unidadeId);
 
-      // 1. Create conference record
       const { data: conf, error: confError } = await (supabase.from as any)("conferencias_estoque").insert({
         contrato_id: contratoId,
         unidade_id: unidadeId,
@@ -144,7 +165,6 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
 
       if (confError) throw confError;
 
-      // 2. Insert conference items
       const confItens = itens.map(item => ({
         conferencia_id: conf.id,
         contrato_epi_id: item.contrato_epi_id,
@@ -157,18 +177,15 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
       const { error: itensError } = await (supabase.from as any)("conferencia_itens").insert(confItens);
       if (itensError) throw itensError;
 
-      // 3. Adjust stock and record movements for items with divergence
       const { data: profile } = await supabase.from("profiles").select("nome").eq("user_id", user?.id || "").maybeSingle();
 
       for (const item of itens) {
         if (item.contagem_fisica === null || item.divergencia === 0) continue;
 
-        // Update contrato_epis stock
         await (supabase.from as any)("contrato_epis")
           .update({ estoque: item.contagem_fisica })
           .eq("id", item.contrato_epi_id);
 
-        // Record movement
         const tipoMov = item.divergencia > 0 ? "entrada" : "saida";
         const motivo = `Ajuste de Inventário (${tipoConferencia === "semanal" ? "Semanal" : "Mensal"}) — ${item.justificativa}`;
 
@@ -204,6 +221,19 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
     setTipoConferencia("semanal");
   };
 
+  const getStockStatus = (estoque: number, minimo: number) => {
+    if (estoque === 0) return "zerado";
+    if (estoque <= minimo) return "baixo";
+    return "ok";
+  };
+
+  const getRowHighlight = (item: ConferenciaItem) => {
+    const status = getStockStatus(item.estoque_sistema, item.estoque_minimo);
+    if (status === "zerado") return "bg-red-50/60 dark:bg-red-950/20";
+    if (status === "baixo") return "bg-amber-50/60 dark:bg-amber-950/20";
+    return "";
+  };
+
   return (
     <>
       <Button
@@ -233,7 +263,11 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs">Unidade</Label>
-                <Select value={unidadeId} onValueChange={(v) => { setUnidadeId(v); setContratoId(""); setItens([]); }}>
+                <Select
+                  value={unidadeId}
+                  onValueChange={(v) => { setUnidadeId(v); setContratoId(""); setItens([]); }}
+                  disabled={isContractBound}
+                >
                   <SelectTrigger className="h-8 text-xs mt-1">
                     <SelectValue placeholder="Selecione a unidade" />
                   </SelectTrigger>
@@ -246,7 +280,11 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
               </div>
               <div>
                 <Label className="text-xs">Contrato</Label>
-                <Select value={contratoId} onValueChange={setContratoId} disabled={!unidadeId}>
+                <Select
+                  value={contratoId}
+                  onValueChange={setContratoId}
+                  disabled={!unidadeId || isContractBound}
+                >
                   <SelectTrigger className="h-8 text-xs mt-1">
                     <SelectValue placeholder="Selecione o contrato" />
                   </SelectTrigger>
@@ -284,6 +322,18 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
                     <ClipboardCheck className="w-3 h-3" />
                     {itens.length} itens
                   </Badge>
+                  {itens.filter(i => getStockStatus(i.estoque_sistema, i.estoque_minimo) === "zerado").length > 0 && (
+                    <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 text-xs gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {itens.filter(i => getStockStatus(i.estoque_sistema, i.estoque_minimo) === "zerado").length} zerado(s)
+                    </Badge>
+                  )}
+                  {itens.filter(i => getStockStatus(i.estoque_sistema, i.estoque_minimo) === "baixo").length > 0 && (
+                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      {itens.filter(i => getStockStatus(i.estoque_sistema, i.estoque_minimo) === "baixo").length} estoque baixo
+                    </Badge>
+                  )}
                   {allCounted && totalDivergencias === 0 && (
                     <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 text-xs gap-1">
                       <CheckCircle2 className="w-3 h-3" />
@@ -303,6 +353,7 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
                     <TableHeader>
                       <TableRow className="text-[10px]">
                         <TableHead className="px-2 py-1.5">EPI</TableHead>
+                        <TableHead className="px-2 py-1.5 text-center w-[60px]">Status</TableHead>
                         <TableHead className="px-2 py-1.5 text-right w-[80px]">Sistema</TableHead>
                         <TableHead className="px-2 py-1.5 text-center w-[100px]">Contagem Física</TableHead>
                         <TableHead className="px-2 py-1.5 text-center w-[90px]">Divergência</TableHead>
@@ -313,13 +364,33 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, onCo
                       {itens.map((item, idx) => {
                         const hasDivergencia = item.contagem_fisica !== null && item.divergencia !== 0;
                         const isCounted = item.contagem_fisica !== null;
+                        const stockStatus = getStockStatus(item.estoque_sistema, item.estoque_minimo);
                         return (
-                          <TableRow key={item.contrato_epi_id} className="text-xs">
+                          <TableRow key={item.contrato_epi_id} className={`text-xs ${getRowHighlight(item)}`}>
                             <TableCell className="px-2 py-1.5 max-w-[180px]">
                               <span className="truncate block">{item.epi_nome}</span>
-                              {item.tamanho && (
-                                <span className="text-[10px] text-muted-foreground">({item.tamanho})</span>
-                              )}
+                              <div className="flex gap-1 items-center">
+                                {item.tamanho && (
+                                  <span className="text-[10px] text-muted-foreground">({item.tamanho})</span>
+                                )}
+                                {item.ca && (
+                                  <span className="text-[10px] text-muted-foreground">C.A. {item.ca}</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-2 py-1.5 text-center">
+                              <Badge
+                                variant="outline"
+                                className={`text-[9px] px-1 py-0 ${
+                                  stockStatus === "zerado"
+                                    ? "text-red-600 border-red-300 bg-red-50 dark:bg-red-950/20"
+                                    : stockStatus === "baixo"
+                                    ? "text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/20"
+                                    : "text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20"
+                                }`}
+                              >
+                                {stockStatus === "zerado" ? "Zerado" : stockStatus === "baixo" ? "Baixo" : "Ok"}
+                              </Badge>
                             </TableCell>
                             <TableCell className="px-2 py-1.5 text-right font-semibold">
                               {item.estoque_sistema}
