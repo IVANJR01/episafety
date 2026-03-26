@@ -30,7 +30,7 @@ const staggerContainer = {
   visible: { transition: { staggerChildren: 0.08 } },
 };
 
-interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; }
+interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; tamanho?: string | null; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; empresa_id?: string | null; }
 interface Profile { id: string; user_id: string; nome: string; email: string | null; }
@@ -59,7 +59,7 @@ interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: stri
 export default function Dashboard() {
   const isMobile = useIsMobile();
   const { empresaId } = useAuth();
-  const { data: allEpis } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id");
+  const { data: allEpis } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome");
   const { data: allEntregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
 
@@ -295,10 +295,13 @@ export default function Dashboard() {
   const estoqueChartData = useMemo(() => {
     const items = epis
       .filter(e => (e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0)
-      .map(e => ({
-        nome: e.nome.length > 25 ? e.nome.substring(0, 22) + "..." : e.nome,
-        valor: Number(((e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque)).toFixed(2)),
-      }))
+      .map(e => {
+        const label = e.tamanho ? `${e.nome} (${e.tamanho})` : e.nome;
+        return {
+          nome: label.length > 30 ? label.substring(0, 27) + "..." : label,
+          valor: Number(((e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque)).toFixed(2)),
+        };
+      })
       .sort((a, b) => b.valor - a.valor);
 
     // Calculate Pareto cumulative percentage
@@ -402,7 +405,7 @@ export default function Dashboard() {
 
         return {
           id: epi.id,
-          nome: epi.nome,
+          nome: epi.tamanho ? `${epi.nome} (${epi.tamanho})` : epi.nome,
           totalEntregue,
           media: Number(media.toFixed(1)),
           estoqueAtual: estoqueTotal,
