@@ -10,8 +10,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button";
 import {
   Building2, GitBranch, FileText, Loader2, Package, TrendingUp, TrendingDown,
-  AlertTriangle, ChevronRight, History, Users, DollarSign, BarChart3
+  AlertTriangle, ChevronRight, History, Users, DollarSign, BarChart3, CalendarIcon
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -76,6 +79,8 @@ export default function ControleEstoqueContrato() {
   useEffect(() => { unidadeSummariesRef.current = unidadeSummaries; }, [unidadeSummaries]);
   const [loadingUnidade, setLoadingUnidade] = useState<string | null>(null);
   const [loadingContrato, setLoadingContrato] = useState<string | null>(null);
+  const [movDateFrom, setMovDateFrom] = useState<Date | undefined>(undefined);
+  const [movDateTo, setMovDateTo] = useState<Date | undefined>(undefined);
 
   // Matriz summary
   const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
@@ -470,11 +475,53 @@ export default function ControleEstoqueContrato() {
                                         </div>
 
                                         {/* Recent Movements */}
-                                        {contrato.movimentos.length > 0 && (
+                                        {contrato.movimentos.length > 0 && (() => {
+                                          const filteredMovs = contrato.movimentos.filter(mov => {
+                                            const movDate = new Date(mov.data);
+                                            if (movDateFrom && movDate < movDateFrom) return false;
+                                            if (movDateTo) {
+                                              const endOfDay = new Date(movDateTo);
+                                              endOfDay.setHours(23, 59, 59, 999);
+                                              if (movDate > endOfDay) return false;
+                                            }
+                                            return true;
+                                          });
+                                          return (
                                           <div>
-                                            <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
-                                              <History className="w-3.5 h-3.5" /> Movimentações recentes
-                                            </p>
+                                            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                                              <p className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                                <History className="w-3.5 h-3.5" /> Movimentações recentes
+                                              </p>
+                                              <div className="flex items-center gap-1.5">
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Button variant="outline" size="sm" className={cn("h-7 text-[10px] px-2 gap-1", !movDateFrom && "text-muted-foreground")}>
+                                                      <CalendarIcon className="w-3 h-3" />
+                                                      {movDateFrom ? format(movDateFrom, "dd/MM/yy", { locale: ptBR }) : "De"}
+                                                    </Button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent className="w-auto p-0" align="end">
+                                                    <Calendar mode="single" selected={movDateFrom} onSelect={setMovDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+                                                  </PopoverContent>
+                                                </Popover>
+                                                <Popover>
+                                                  <PopoverTrigger asChild>
+                                                    <Button variant="outline" size="sm" className={cn("h-7 text-[10px] px-2 gap-1", !movDateTo && "text-muted-foreground")}>
+                                                      <CalendarIcon className="w-3 h-3" />
+                                                      {movDateTo ? format(movDateTo, "dd/MM/yy", { locale: ptBR }) : "Até"}
+                                                    </Button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent className="w-auto p-0" align="end">
+                                                    <Calendar mode="single" selected={movDateTo} onSelect={setMovDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+                                                  </PopoverContent>
+                                                </Popover>
+                                                {(movDateFrom || movDateTo) && (
+                                                  <Button variant="ghost" size="sm" className="h-7 text-[10px] px-1.5" onClick={() => { setMovDateFrom(undefined); setMovDateTo(undefined); }}>
+                                                    Limpar
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </div>
                                             <div className="overflow-auto rounded-md border border-border/60">
                                               <Table>
                                                 <TableHeader>
@@ -487,7 +534,13 @@ export default function ControleEstoqueContrato() {
                                                   </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                  {contrato.movimentos.map((mov, idx) => (
+                                                  {filteredMovs.length === 0 ? (
+                                                    <TableRow>
+                                                      <TableCell colSpan={5} className="text-center text-muted-foreground text-xs py-4">
+                                                        Nenhuma movimentação no período
+                                                      </TableCell>
+                                                    </TableRow>
+                                                  ) : filteredMovs.map((mov, idx) => (
                                                     <TableRow key={idx} className="text-xs">
                                                       <TableCell className="px-2 py-1.5 whitespace-nowrap">
                                                         {format(new Date(mov.data), "dd/MM/yy", { locale: ptBR })}
@@ -509,7 +562,8 @@ export default function ControleEstoqueContrato() {
                                               </Table>
                                             </div>
                                           </div>
-                                        )}
+                                          );
+                                        })()}
                                       </div>
                                     ) : (
                                       <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>
