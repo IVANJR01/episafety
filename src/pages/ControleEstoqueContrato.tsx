@@ -511,7 +511,16 @@ export default function ControleEstoqueContrato() {
         )}
       </div>
 
-      {/* Unidades Accordion */}
+      {/* Distribute from Matriz button */}
+      {hasGestaoEstoque && matrizSummary.estoqueTotal > 0 && (
+        <div className="flex justify-end">
+          <Button size="sm" className="gap-1.5 text-xs" onClick={openDistModal}>
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            Distribuir da Matriz
+          </Button>
+        </div>
+      )}
+
       {filiais.length > 0 && (
         <Card className="border-border/60">
           <CardHeader className="pb-2 pt-4 px-4">
