@@ -87,15 +87,8 @@ export default function ControleEstoqueContrato() {
   const [movDateFrom, setMovDateFrom] = useState<Date | undefined>(undefined);
   const [movDateTo, setMovDateTo] = useState<Date | undefined>(undefined);
 
-  // Transfer modal state
-  const [transferOpen, setTransferOpen] = useState(false);
-  const [transferSource, setTransferSource] = useState<{ contratoId: string; contratoNome: string; unidadeId: string } | null>(null);
-  const [transferDestId, setTransferDestId] = useState("");
-  const [transferEpiId, setTransferEpiId] = useState("");
-  const [transferQtd, setTransferQtd] = useState(1);
-  const [transferMotivo, setTransferMotivo] = useState("");
-  const [transferLoading, setTransferLoading] = useState(false);
-  const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; tamanho: string | null; estoque: number }[]>([]);
+
+
 
   // Matriz distribution modal state
   const [distOpen, setDistOpen] = useState(false);
@@ -302,72 +295,8 @@ export default function ControleEstoqueContrato() {
     }
   };
 
-  const openTransferModal = async (contratoId: string, contratoNome: string, unidadeId: string) => {
-    setTransferSource({ contratoId, contratoNome, unidadeId });
-    setTransferDestId("");
-    setTransferEpiId("");
-    setTransferQtd(1);
-    setTransferMotivo("");
-    // Load EPIs available in source contract
-    const { data } = await supabase.from("contrato_epis")
-      .select("epi_id, estoque")
-      .eq("contrato_id", contratoId)
-      .gt("estoque", 0);
-    const epiIds = (data || []).map(d => d.epi_id);
-    if (epiIds.length > 0) {
-      const { data: episInfo } = await supabase.from("epis").select("id, nome, tamanho").in("id", epiIds);
-      setTransferEpis((data || []).map(d => {
-        const epi = (episInfo || []).find(e => e.id === d.epi_id);
-        return { id: d.epi_id, nome: epi?.nome || "—", tamanho: epi?.tamanho || null, estoque: d.estoque || 0 };
-      }).sort((a, b) => a.nome.localeCompare(b.nome)));
-    } else {
-      setTransferEpis([]);
-    }
-    setTransferOpen(true);
-  };
 
-  const executeTransfer = async () => {
-    if (!transferSource || !transferDestId || !transferEpiId || transferQtd <= 0) return;
-    setTransferLoading(true);
-    const { data, error } = await supabase.rpc("transfer_epi_between_contracts" as any, {
-      _source_contrato_id: transferSource.contratoId,
-      _dest_contrato_id: transferDestId,
-      _epi_id: transferEpiId,
-      _quantidade: transferQtd,
-      _motivo: transferMotivo || null,
-    });
-    setTransferLoading(false);
-    const result = data as any;
-    if (error || !result?.success) {
-      toast({ title: "Erro na transferência", description: result?.error || error?.message || "Erro desconhecido", variant: "destructive" });
-      return;
-    }
-    toast({ title: "Transferência realizada", description: `${transferQtd} un. transferido(s) para ${result.dest_contrato}` });
-    setTransferOpen(false);
-    // Reload affected contracts
-    const srcUnidadeId = transferSource.unidadeId;
-    // Find dest unidade
-    const destContrato = contratosRef.current.find(c => c.id === transferDestId);
-    // Reset summaries to force reload
-    setUnidadeSummaries(prev => {
-      const updated = { ...prev };
-      if (updated[srcUnidadeId]) updated[srcUnidadeId] = { ...updated[srcUnidadeId], loaded: false };
-      if (destContrato && updated[destContrato.unidade_id]) {
-        updated[destContrato.unidade_id] = { ...updated[destContrato.unidade_id], loaded: false };
-      }
-      return updated;
-    });
-    // Reload
-    setTimeout(() => {
-      loadUnidadeData(srcUnidadeId);
-      if (destContrato && destContrato.unidade_id !== srcUnidadeId) {
-        loadUnidadeData(destContrato.unidade_id);
-      }
-    }, 200);
-  };
 
-  const selectedTransferEpi = transferEpis.find(e => e.id === transferEpiId);
-  const transferDestOptions = contratos.filter(c => c.id !== transferSource?.contratoId);
 
   // Matriz distribution helpers
   const openDistModal = async () => {
@@ -612,20 +541,8 @@ export default function ControleEstoqueContrato() {
                                       </div>
                                     ) : contrato.loadedDetails ? (
                                       <div className="space-y-3">
-                                        {/* Transfer button */}
-                                        {contrato.itens.length > 0 && (
-                                          <div className="flex justify-end">
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              className="h-7 text-[11px] gap-1.5"
-                                              onClick={() => openTransferModal(contrato.contratoId, contrato.contratoNome, filial.id)}
-                                            >
-                                              <ArrowRightLeft className="w-3.5 h-3.5" />
-                                              Transferir EPI
-                                            </Button>
-                                          </div>
-                                        )}
+
+
                                         <div>
                                           <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
                                             <Package className="w-3.5 h-3.5" /> Estoque
@@ -792,114 +709,8 @@ export default function ControleEstoqueContrato() {
         </Card>
       )}
 
-      {/* Transfer Modal */}
-      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <ArrowRightLeft className="w-4 h-4" />
-              Transferir EPI entre Contratos
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Mova EPIs do estoque de um contrato para outro.
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="space-y-3">
-            {/* Source (readonly) */}
-            <div>
-              <Label className="text-xs">Origem</Label>
-              <Input value={transferSource?.contratoNome || ""} disabled className="h-8 text-xs mt-1" />
-            </div>
 
-            {/* Destination */}
-            <div>
-              <Label className="text-xs">Destino</Label>
-              <Select value={transferDestId} onValueChange={setTransferDestId}>
-                <SelectTrigger className="h-8 text-xs mt-1">
-                  <SelectValue placeholder="Selecione o contrato destino" />
-                </SelectTrigger>
-                <SelectContent>
-                  {transferDestOptions.map(c => {
-                    const unidade = unidades.find(u => u.id === c.unidade_id);
-                    return (
-                      <SelectItem key={c.id} value={c.id} className="text-xs">
-                        {c.nome}{unidade ? ` (${unidade.nome})` : ""}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* EPI */}
-            <div>
-              <Label className="text-xs">EPI</Label>
-              <Select value={transferEpiId} onValueChange={(v) => { setTransferEpiId(v); setTransferQtd(1); }}>
-                <SelectTrigger className="h-8 text-xs mt-1">
-                  <SelectValue placeholder="Selecione o EPI" />
-                </SelectTrigger>
-                <SelectContent>
-                  {transferEpis.map(e => (
-                    <SelectItem key={e.id} value={e.id} className="text-xs">
-                      {e.nome}{e.tamanho ? ` (${e.tamanho})` : ""} — {e.estoque} un.
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {transferEpis.length === 0 && (
-                <p className="text-[10px] text-muted-foreground mt-1">Nenhum EPI com estoque disponível</p>
-              )}
-            </div>
-
-            {/* Quantity */}
-            <div>
-              <Label className="text-xs">Quantidade</Label>
-              <Input
-                type="number"
-                min={1}
-                max={selectedTransferEpi?.estoque || 1}
-                value={transferQtd}
-                onChange={e => setTransferQtd(Math.max(1, Math.min(Number(e.target.value), selectedTransferEpi?.estoque || 1)))}
-                className="h-8 text-xs mt-1"
-              />
-              {selectedTransferEpi && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  Disponível: {selectedTransferEpi.estoque} un.
-                </p>
-              )}
-            </div>
-
-            {/* Reason */}
-            <div>
-              <Label className="text-xs">Motivo (opcional)</Label>
-              <Textarea
-                value={transferMotivo}
-                onChange={e => setTransferMotivo(e.target.value)}
-                placeholder="Ex: Remanejamento de equipe"
-                className="text-xs mt-1 min-h-[60px]"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)} className="text-xs">
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              onClick={executeTransfer}
-              disabled={!transferDestId || !transferEpiId || transferQtd <= 0 || transferLoading}
-              className="text-xs gap-1.5"
-            >
-              {transferLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
-              Transferir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Matriz Distribution Modal */}
       <Dialog open={distOpen} onOpenChange={setDistOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
