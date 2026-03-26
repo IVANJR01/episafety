@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { useMemo, useState, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area, ComposedChart, Line, ReferenceLine } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const MotionCard = motion.create(Card);
@@ -301,12 +301,15 @@ export default function Dashboard() {
       }))
       .sort((a, b) => b.valor - a.valor);
 
-    const top = items.slice(0, 5);
-    const rest = items.slice(5);
-    if (rest.length > 0) {
-      top.push({ nome: "Outros", valor: Number(rest.reduce((s, d) => s + d.valor, 0).toFixed(2)) });
-    }
-    return top;
+    // Calculate Pareto cumulative percentage
+    const totalValor = items.reduce((s, d) => s + d.valor, 0);
+    let acumulado = 0;
+    return items.map(item => {
+      acumulado += item.valor;
+      const percentualIndividual = totalValor > 0 ? Number(((item.valor / totalValor) * 100).toFixed(1)) : 0;
+      const percentualAcumulado = totalValor > 0 ? Number(((acumulado / totalValor) * 100).toFixed(1)) : 0;
+      return { ...item, percentualIndividual, percentualAcumulado };
+    });
   }, [epis, estoqueConsolidadoPorEpi]);
 
   const CHART_COLORS = [
@@ -737,7 +740,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* Stock value chart */}
+      {/* Pareto Chart - Stock value by EPI */}
       <motion.div variants={fadeUp} custom={8}>
       <Card className="shadow-md border-border/50">
         <CardHeader className="pb-3">
@@ -746,9 +749,10 @@ export default function Dashboard() {
                 <Package className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-base font-bold">Valor do Estoque por EPI</CardTitle>
+                <CardTitle className="text-base font-bold">Pareto — Valor do Estoque por EPI</CardTitle>
                 <p className="text-xs text-muted-foreground">
                   Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  <span className="ml-2 text-muted-foreground/70">• Regra 80/20</span>
                 </p>
               </div>
           </div>
@@ -757,21 +761,73 @@ export default function Dashboard() {
           {estoqueChartData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum EPI com valor em estoque</p>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(250, estoqueChartData.length * 52)}>
-              <BarChart data={estoqueChartData} layout="vertical" margin={{ left: isMobile ? 8 : 8, right: 16, top: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                <XAxis type="number" tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }} tickFormatter={v => `R$${v}`} />
-                <YAxis type="category" dataKey="nome" width={isMobile ? 100 : 140} tick={{ fill: 'hsl(220, 25%, 10%)', fontSize: isMobile ? 11 : 12 }} />
-                <Tooltip
-                  formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Valor"]}
-                  contentStyle={{ background: 'hsl(0, 0%, 100%)', border: '1px solid hsl(220, 15%, 88%)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+            <ResponsiveContainer width="100%" height={Math.max(320, estoqueChartData.length * 44)}>
+              <ComposedChart data={estoqueChartData} margin={{ left: isMobile ? 8 : 8, right: 24, top: 20, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                <XAxis
+                  dataKey="nome"
+                  tick={{ fill: 'hsl(220, 25%, 10%)', fontSize: isMobile ? 10 : 11 }}
+                  interval={0}
+                  angle={isMobile ? -45 : -30}
+                  textAnchor="end"
+                  height={isMobile ? 80 : 70}
                 />
-                <Bar dataKey="valor" radius={[0, 6, 6, 0]} barSize={24}>
+                <YAxis
+                  yAxisId="valor"
+                  orientation="left"
+                  tick={{ fill: 'hsl(220, 10%, 45%)', fontSize: 11 }}
+                  tickFormatter={v => `R$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                />
+                <YAxis
+                  yAxisId="percent"
+                  orientation="right"
+                  domain={[0, 100]}
+                  tick={{ fill: 'hsl(24, 95%, 53%)', fontSize: 11 }}
+                  tickFormatter={v => `${v}%`}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const d = payload[0]?.payload;
+                    return (
+                      <div className="bg-background border border-border/50 rounded-xl px-3 py-2 shadow-xl text-xs space-y-1">
+                        <p className="font-semibold text-foreground">{d.nome}</p>
+                        <p className="text-muted-foreground">
+                          Valor: <span className="font-mono font-bold text-foreground">R$ {d.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          Individual: <span className="font-mono font-bold text-foreground">{d.percentualIndividual}%</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          Acumulado: <span className="font-mono font-bold" style={{ color: 'hsl(24, 95%, 53%)' }}>{d.percentualAcumulado}%</span>
+                        </p>
+                      </div>
+                    );
+                  }}
+                />
+                <ReferenceLine
+                  yAxisId="percent"
+                  y={80}
+                  stroke="hsl(0, 72%, 51%)"
+                  strokeDasharray="6 3"
+                  strokeWidth={2}
+                  label={{ value: "80%", position: "right", fill: "hsl(0, 72%, 51%)", fontSize: 12, fontWeight: 700 }}
+                />
+                <Bar yAxisId="valor" dataKey="valor" radius={[6, 6, 0, 0]} barSize={isMobile ? 20 : 32}>
                   {estoqueChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Bar>
-              </BarChart>
+                <Line
+                  yAxisId="percent"
+                  type="monotone"
+                  dataKey="percentualAcumulado"
+                  stroke="hsl(24, 95%, 53%)"
+                  strokeWidth={3}
+                  dot={{ r: 5, fill: "hsl(24, 95%, 53%)", stroke: "hsl(0, 0%, 100%)", strokeWidth: 2 }}
+                  activeDot={{ r: 7, fill: "hsl(24, 95%, 53%)", stroke: "hsl(0, 0%, 100%)", strokeWidth: 2 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </CardContent>
