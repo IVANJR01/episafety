@@ -513,7 +513,20 @@ export default function ControleEstoqueContrato() {
                                       </div>
                                     ) : contrato.loadedDetails ? (
                                       <div className="space-y-3">
-                                        {/* Stock Table */}
+                                        {/* Transfer button */}
+                                        {contrato.itens.length > 0 && (
+                                          <div className="flex justify-end">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-7 text-[11px] gap-1.5"
+                                              onClick={() => openTransferModal(contrato.contratoId, contrato.contratoNome, filial.id)}
+                                            >
+                                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                                              Transferir EPI
+                                            </Button>
+                                          </div>
+                                        )}
                                         <div>
                                           <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
                                             <Package className="w-3.5 h-3.5" /> Estoque
