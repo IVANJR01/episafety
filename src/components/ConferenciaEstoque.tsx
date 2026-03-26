@@ -34,7 +34,7 @@ interface Props {
 }
 
 export default function ConferenciaEstoque({ unidades, contratos, matrizId, userContratoId, hasGestaoEstoque, onConferenciaFinalizada }: Props) {
-  const { empresaId } = useAuth();
+  const { empresaId, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [open, setOpen] = useState(false);
@@ -45,21 +45,34 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
   const [loadingItens, setLoadingItens] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [observacaoGeral, setObservacaoGeral] = useState("");
 
   const isContractBound = !!userContratoId && !hasGestaoEstoque;
 
-  const filiais = useMemo(() => unidades.filter(u => u.empresa_pai_id === matrizId), [unidades, matrizId]);
+  const filiais = useMemo(() => {
+    const directChildren = unidades.filter(u => u.empresa_pai_id === matrizId);
+    if (directChildren.length > 0) return directChildren;
+
+    if (isContractBound && userContratoId) {
+      const contrato = contratos.find(c => c.id === userContratoId);
+      if (!contrato) return [];
+      return unidades.filter(u => u.id === contrato.unidade_id);
+    }
+
+    return [];
+  }, [contratos, isContractBound, matrizId, unidades, userContratoId]);
   const contratosFiltered = useMemo(() => contratos.filter(c => c.unidade_id === unidadeId), [contratos, unidadeId]);
 
   // Auto-select unit/contract for users with a linked contract
   useEffect(() => {
+    if (authLoading) return;
     if (!userContratoId || !open) return;
     const contrato = contratos.find(c => c.id === userContratoId);
     if (contrato) {
       setUnidadeId(contrato.unidade_id);
       setContratoId(contrato.id);
     }
-  }, [userContratoId, contratos, open]);
+  }, [authLoading, userContratoId, contratos, open]);
 
   // Load EPIs when contract is selected
   useEffect(() => {
@@ -69,10 +82,19 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
 
   const loadContratoEpis = async () => {
     setLoadingItens(true);
-    const { data: cepis } = await supabase
+    const { data: cepis, error: cepisError } = await supabase
       .from("contrato_epis")
       .select("id, epi_id, estoque")
       .eq("contrato_id", contratoId);
+
+    console.log("[ConferenciaEstoque] contrato_epis", { contratoId, cepis, cepisError });
+
+    if (cepisError) {
+      toast({ title: "Erro ao carregar EPIs", description: cepisError.message, variant: "destructive" });
+      setItens([]);
+      setLoadingItens(false);
+      return;
+    }
 
     if (!cepis || cepis.length === 0) {
       setItens([]);
@@ -81,10 +103,19 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
     }
 
     const epiIds = cepis.map(c => c.epi_id);
-    const { data: episData } = await supabase
+    const { data: episData, error: episError } = await supabase
       .from("epis")
       .select("id, nome, tamanho, ca, estoque_minimo")
       .in("id", epiIds);
+
+    console.log("[ConferenciaEstoque] epis", { epiIds, episData, episError });
+
+    if (episError) {
+      toast({ title: "Erro ao carregar detalhes dos EPIs", description: episError.message, variant: "destructive" });
+      setItens([]);
+      setLoadingItens(false);
+      return;
+    }
 
     const epiMap = Object.fromEntries((episData || []).map(e => [e.id, e]));
 
@@ -149,58 +180,28 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
     setConfirmOpen(false);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       const unidade = unidades.find(u => u.id === unidadeId);
 
-      const { data: conf, error: confError } = await (supabase.from as any)("conferencias_estoque").insert({
-        contrato_id: contratoId,
-        unidade_id: unidadeId,
-        empresa_id: unidade?.empresa_pai_id || empresaId,
-        tipo: tipoConferencia,
-        status: "finalizada",
-        created_by: user?.id,
-        finalizado_por: user?.id,
-        finalizado_em: new Date().toISOString(),
-      }).select("id").single();
-
-      if (confError) throw confError;
-
-      const confItens = itens.map(item => ({
-        conferencia_id: conf.id,
+      const payloadItens = itens.map(item => ({
         contrato_epi_id: item.contrato_epi_id,
         epi_id: item.epi_id,
         estoque_sistema: item.estoque_sistema,
-        contagem_fisica: item.contagem_fisica ?? 0,
-        justificativa: item.justificativa || null,
+        contagem_fisica: item.contagem_fisica,
+        justificativa: item.justificativa,
       }));
 
-      const { error: itensError } = await (supabase.from as any)("conferencia_itens").insert(confItens);
-      if (itensError) throw itensError;
+      const { data, error } = await supabase.rpc("finalizar_conferencia_estoque" as never, {
+        _contrato_id: contratoId,
+        _unidade_id: unidadeId,
+        _empresa_id: unidade?.empresa_pai_id || empresaId,
+        _tipo: tipoConferencia,
+        _itens: payloadItens,
+        _observacao_geral: observacaoGeral || null,
+      } as never);
 
-      const { data: profile } = await supabase.from("profiles").select("nome").eq("user_id", user?.id || "").maybeSingle();
+      console.log("[ConferenciaEstoque] finalizar_conferencia_estoque", { contratoId, unidadeId, payloadItens, data, error });
 
-      for (const item of itens) {
-        if (item.contagem_fisica === null || item.divergencia === 0) continue;
-
-        await (supabase.from as any)("contrato_epis")
-          .update({ estoque: item.contagem_fisica })
-          .eq("id", item.contrato_epi_id);
-
-        const tipoMov = item.divergencia > 0 ? "entrada" : "saida";
-        const motivo = `Ajuste de Inventário (${tipoConferencia === "semanal" ? "Semanal" : "Mensal"}) — ${item.justificativa}`;
-
-        await (supabase.from as any)("contrato_epis_movimentacoes").insert({
-          contrato_epi_id: item.contrato_epi_id,
-          contrato_id: contratoId,
-          epi_id: item.epi_id,
-          empresa_id: unidade?.empresa_pai_id || empresaId,
-          tipo: tipoMov,
-          quantidade: Math.abs(item.divergencia),
-          motivo,
-          responsavel_nome: profile?.nome || "Sistema",
-          created_by: user?.id,
-        });
-      }
+      if (error) throw error;
 
       toast({ title: "Conferência finalizada", description: `${totalDivergencias} ajuste(s) aplicado(s) ao estoque.` });
       setOpen(false);
@@ -219,6 +220,7 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
     setContratoId("");
     setItens([]);
     setTipoConferencia("semanal");
+    setObservacaoGeral("");
   };
 
   const getStockStatus = (estoque: number, minimo: number) => {
@@ -346,6 +348,16 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
                       {totalDivergencias} divergência(s)
                     </Badge>
                   )}
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Observação geral</Label>
+                  <Input
+                    value={observacaoGeral}
+                    onChange={(e) => setObservacaoGeral(e.target.value)}
+                    className="h-8 text-xs"
+                    placeholder="Observações da conferência, avarias ou extravios..."
+                  />
                 </div>
 
                 <div className="overflow-auto max-h-[400px] rounded-md border border-border/60">
