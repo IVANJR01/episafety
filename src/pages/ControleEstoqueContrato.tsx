@@ -15,6 +15,7 @@ import {
   Building2, GitBranch, FileText, Loader2, Package, TrendingUp, TrendingDown,
   AlertTriangle, ChevronRight, History, Users, DollarSign, BarChart3, CalendarIcon, ArrowRightLeft
 } from "lucide-react";
+import ConferenciaEstoque from "@/components/ConferenciaEstoque";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
