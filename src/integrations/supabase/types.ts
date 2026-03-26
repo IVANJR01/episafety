@@ -1879,6 +1879,16 @@ export type Database = {
           resolved_epi_id: string
         }[]
       }
+      transfer_epi_between_contracts: {
+        Args: {
+          _dest_contrato_id: string
+          _epi_id: string
+          _motivo?: string
+          _quantidade: number
+          _source_contrato_id: string
+        }
+        Returns: Json
+      }
       transfer_epi_stock: {
         Args: {
           _dest_empresa_id: string
