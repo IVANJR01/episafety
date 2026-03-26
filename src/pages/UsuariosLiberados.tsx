@@ -559,7 +559,7 @@ export default function UsuariosLiberados() {
             {unidadesDisponiveis.length > 1 && (
               <div>
                 <Label>Vincular à unidade</Label>
-                <Select value={novoEmpresaId} onValueChange={setNovoEmpresaId}>
+                <Select value={novoEmpresaId} onValueChange={(val) => { setNovoEmpresaId(val); setNovoContratoId(""); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Empresa atual" />
                   </SelectTrigger>
@@ -574,6 +574,29 @@ export default function UsuariosLiberados() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {contratosForNovoUnidade.length > 0 && (
+              <div>
+                <Label>Vincular ao contrato (opcional)</Label>
+                <Select value={novoContratoId} onValueChange={setNovoContratoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhum — acesso geral à unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contratosForNovoUnidade.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex items-center gap-2">
+                          <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
+                          {c.nome}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Restringe a visualização de estoque e movimentações apenas a este contrato.
+                </p>
               </div>
             )}
             <div>
@@ -636,7 +659,7 @@ export default function UsuariosLiberados() {
                     {unidadesDisponiveis.length > 0 && (
                       <div>
                         <Label>Unidade / Empresa</Label>
-                        <Select value={editEmpresaId} onValueChange={setEditEmpresaId}>
+                        <Select value={editEmpresaId} onValueChange={(val) => { setEditEmpresaId(val); setEditContratoId(""); }}>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione a unidade" />
                           </SelectTrigger>
@@ -651,6 +674,32 @@ export default function UsuariosLiberados() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+                    {contratosForEditUnidade.length > 0 && (
+                      <div>
+                        <Label>Contrato vinculado</Label>
+                        <Select value={editContratoId} onValueChange={setEditContratoId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Nenhum — acesso geral à unidade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              <span className="text-muted-foreground">Nenhum — acesso geral</span>
+                            </SelectItem>
+                            {contratosForEditUnidade.map(c => (
+                              <SelectItem key={c.id} value={c.id}>
+                                <span className="flex items-center gap-2">
+                                  <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
+                                  {c.nome}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Restringe o usuário a ver apenas o estoque e movimentações deste contrato.
+                        </p>
                       </div>
                     )}
 
