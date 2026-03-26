@@ -289,13 +289,14 @@ export default function UsuariosLiberados() {
         nome: editNome.trim(),
         email: editEmail.trim().toLowerCase(),
         empresa_id: editEmpresaId || null,
+        contrato_id: editContratoId || null,
       })
       .eq("id", userId);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message.includes("unique") ? "Este e-mail já está cadastrado" : error.message, variant: "destructive" });
     } else {
       toast({ title: "Dados atualizados!" });
-      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: editNome.trim(), email: editEmail.trim().toLowerCase(), empresa_id: editEmpresaId || null } : u));
+      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: editNome.trim(), email: editEmail.trim().toLowerCase(), empresa_id: editEmpresaId || null, contrato_id: editContratoId || null } : u));
     }
     setSavingData(false);
   };
@@ -366,6 +367,7 @@ export default function UsuariosLiberados() {
         setEditNome(user.nome || "");
         setEditEmail(user.email || "");
         setEditEmpresaId(user.empresa_id || "");
+        setEditContratoId(user.contrato_id || "");
       }
       setUsuarios(prev => prev.map(u => {
         if (u.id !== permsUserId) return u;
