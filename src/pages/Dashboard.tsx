@@ -395,6 +395,7 @@ export default function Dashboard() {
         const media = totalEntregue / totalMeses;
         const estoqueTotal = estoqueConsolidadoPorEpi[epi.id] || epi.estoque;
         const mesesEstoque = media > 0 ? estoqueTotal / media : null;
+        const diasEstoque = mesesEstoque !== null ? mesesEstoque * 30 : null;
 
         return {
           id: epi.id,
@@ -402,7 +403,7 @@ export default function Dashboard() {
           totalEntregue,
           media: Number(media.toFixed(1)),
           estoqueAtual: estoqueTotal,
-          mesesEstoque: mesesEstoque !== null ? Number(mesesEstoque.toFixed(1)) : null,
+          diasEstoque: diasEstoque !== null ? Math.round(diasEstoque) : null,
           porMes: mesesEpi,
         };
       })
@@ -821,13 +822,13 @@ export default function Dashboard() {
                       <div key={e.id} className="rounded-xl border border-border/60 p-3 space-y-2 hover:bg-muted/30 transition-colors">
                         <div className="flex justify-between items-start">
                           <span className="font-semibold text-sm leading-tight">{e.nome}</span>
-                          {e.mesesEstoque !== null && (
+                          {e.diasEstoque !== null && (
                             <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
-                              e.mesesEstoque <= 1 ? "bg-destructive/10 text-destructive animate-pulse" :
-                              e.mesesEstoque <= 3 ? "bg-warning/10 text-warning" :
+                              e.diasEstoque <= 30 ? "bg-destructive/10 text-destructive animate-pulse" :
+                              e.diasEstoque <= 90 ? "bg-warning/10 text-warning" :
                               "bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,32%)]"
                             }`}>
-                              {e.mesesEstoque}m
+                              {e.diasEstoque}d
                             </span>
                           )}
                         </div>
@@ -979,13 +980,13 @@ export default function Dashboard() {
                           <TableCell className="text-right font-mono text-sm font-bold text-primary">{e.media}</TableCell>
                           <TableCell className="text-right font-mono text-sm">{e.estoqueAtual}</TableCell>
                           <TableCell className="text-right">
-                            {e.mesesEstoque !== null ? (
+                            {e.diasEstoque !== null ? (
                               <span className={`font-mono text-sm font-bold px-2 py-0.5 rounded-full ${
-                                e.mesesEstoque <= 1 ? "bg-destructive/10 text-destructive" :
-                                e.mesesEstoque <= 3 ? "bg-warning/10 text-warning" :
+                                e.diasEstoque <= 30 ? "bg-destructive/10 text-destructive" :
+                                e.diasEstoque <= 90 ? "bg-warning/10 text-warning" :
                                 "bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,32%)]"
                               }`}>
-                                {e.mesesEstoque}m
+                                {e.diasEstoque}d
                               </span>
                             ) : "—"}
                           </TableCell>
