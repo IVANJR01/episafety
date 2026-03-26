@@ -10,8 +10,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button";
 import {
   Building2, GitBranch, FileText, Loader2, Package, TrendingUp, TrendingDown,
-  AlertTriangle, ChevronRight, History, Users, DollarSign, BarChart3
+  AlertTriangle, ChevronRight, History, Users, DollarSign, BarChart3, CalendarIcon
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
