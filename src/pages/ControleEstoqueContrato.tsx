@@ -303,9 +303,7 @@ export default function ControleEstoqueContrato() {
     setDistDestType("unidade");
     setDistUnidadeId("");
     setDistContratoId("");
-    setDistEpiId("");
-    setDistQtd(1);
-    // Load EPIs from Matriz with stock > 0
+    setDistItems([{ epiId: "", qtd: 1 }]);
     const { data } = await supabase.from("epis")
       .select("id, nome, tamanho, estoque")
       .eq("empresa_id", matrizId)
@@ -316,52 +314,57 @@ export default function ControleEstoqueContrato() {
   };
 
   const executeDistribution = async () => {
-    if (!matrizId || !distEpiId || distQtd <= 0) return;
+    if (!matrizId) return;
+    const validItems = distItems.filter(i => i.epiId && i.qtd > 0);
+    if (validItems.length === 0) return;
     setDistLoading(true);
 
-    if (distDestType === "unidade" && distUnidadeId) {
-      // Matriz → Unidade via transfer_epi_stock
-      const { data, error } = await supabase.rpc("transfer_epi_stock" as any, {
-        _source_empresa_id: matrizId,
-        _dest_empresa_id: distUnidadeId,
-        _source_epi_id: distEpiId,
-        _quantidade: distQtd,
-      });
-      setDistLoading(false);
-      const result = data as any;
-      if (error || !result?.success) {
-        toast({ title: "Erro na distribuição", description: result?.error || error?.message || "Erro desconhecido", variant: "destructive" });
-        return;
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (const item of validItems) {
+      let result: any;
+      let error: any;
+
+      if (distDestType === "unidade" && distUnidadeId) {
+        const res = await supabase.rpc("transfer_epi_stock" as any, {
+          _source_empresa_id: matrizId,
+          _dest_empresa_id: distUnidadeId,
+          _source_epi_id: item.epiId,
+          _quantidade: item.qtd,
+        });
+        result = res.data;
+        error = res.error;
+      } else if (distDestType === "contrato" && distContratoId) {
+        const res = await supabase.rpc("transfer_epi_to_contract" as any, {
+          _source_empresa_id: matrizId,
+          _contrato_id: distContratoId,
+          _epi_id: item.epiId,
+          _quantidade: item.qtd,
+        });
+        result = res.data;
+        error = res.error;
       }
-      toast({ title: "Distribuição realizada", description: `${distQtd} un. enviado(s) para unidade` });
-    } else if (distDestType === "contrato" && distContratoId) {
-      // Find which unidade owns the contract to use as source
-      const destContrato = contratosRef.current.find(c => c.id === distContratoId);
-      const unidadeId = destContrato?.unidade_id;
-      // First transfer to the unidade, then to the contract
-      // Or use transfer_epi_to_contract directly from matriz
-      const { data, error } = await supabase.rpc("transfer_epi_to_contract" as any, {
-        _source_empresa_id: matrizId,
-        _contrato_id: distContratoId,
-        _epi_id: distEpiId,
-        _quantidade: distQtd,
-      });
-      setDistLoading(false);
-      const result = data as any;
+
       if (error || !result?.success) {
-        toast({ title: "Erro na distribuição", description: result?.error || error?.message || "Erro desconhecido", variant: "destructive" });
-        return;
+        failedCount++;
+        console.error("Dist error:", result?.error || error?.message);
+      } else {
+        successCount++;
       }
-      toast({ title: "Distribuição realizada", description: `${distQtd} un. enviado(s) para contrato` });
-    } else {
-      setDistLoading(false);
-      return;
+    }
+
+    setDistLoading(false);
+
+    if (successCount > 0) {
+      toast({ title: "Distribuição realizada", description: `${successCount} item(ns) distribuído(s) com sucesso.` });
+    }
+    if (failedCount > 0) {
+      toast({ title: "Erro parcial", description: `${failedCount} item(ns) falharam.`, variant: "destructive" });
     }
 
     setDistOpen(false);
-    // Reload matriz summary
     loadInitialData();
-    // Reload affected unidade
     const targetUnidadeId = distDestType === "unidade" ? distUnidadeId : contratosRef.current.find(c => c.id === distContratoId)?.unidade_id;
     if (targetUnidadeId) {
       setUnidadeSummaries(prev => {
@@ -373,10 +376,12 @@ export default function ControleEstoqueContrato() {
     }
   };
 
-  const selectedDistEpi = distEpis.find(e => e.id === distEpiId);
   const distContratoOptions = distDestType === "contrato"
     ? contratos.filter(c => filiais.some(f => f.id === c.unidade_id))
     : [];
+  const distHasValidItems = distItems.some(i => i.epiId && i.qtd > 0);
+  // EPIs already selected (to filter from dropdowns)
+  const distSelectedEpiIds = new Set(distItems.map(i => i.epiId).filter(Boolean));
 
   if (loading) {
     return (
