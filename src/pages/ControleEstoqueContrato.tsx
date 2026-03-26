@@ -62,6 +62,7 @@ interface UnidadeSummary {
 
 export default function ControleEstoqueContrato() {
   const { isSuperAdmin, isPrincipal, modulosPermitidos, contratoId: userContratoId, empresaId } = useAuth();
+  const { toast } = useToast();
   const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
 
   const [loading, setLoading] = useState(true);
