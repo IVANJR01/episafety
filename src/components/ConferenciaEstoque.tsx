@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Loader2, Save, TrendingDown, TrendingUp } from "lucide-react";
 
 interface ConferenciaItem {
   contrato_epi_id: string;
