@@ -1210,6 +1210,80 @@ export type Database = {
           },
         ]
       }
+      historico_inventario: {
+        Row: {
+          colaborador_id: string | null
+          colaborador_nome: string | null
+          conferencia_id: string
+          contrato_id: string
+          created_at: string
+          empresa_id: string | null
+          id: string
+          observacao: string | null
+          tipo: string
+          total_divergencias: number
+          total_itens: number
+          unidade_id: string
+        }
+        Insert: {
+          colaborador_id?: string | null
+          colaborador_nome?: string | null
+          conferencia_id: string
+          contrato_id: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          observacao?: string | null
+          tipo: string
+          total_divergencias?: number
+          total_itens?: number
+          unidade_id: string
+        }
+        Update: {
+          colaborador_id?: string | null
+          colaborador_nome?: string | null
+          conferencia_id?: string
+          contrato_id?: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          observacao?: string | null
+          tipo?: string
+          total_divergencias?: number
+          total_itens?: number
+          unidade_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_inventario_conferencia_id_fkey"
+            columns: ["conferencia_id"]
+            isOneToOne: false
+            referencedRelation: "conferencias_estoque"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_inventario_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_inventario_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_inventario_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspecao_itens: {
         Row: {
           conforme: boolean | null
@@ -1970,10 +2044,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finalizar_conferencia_estoque: {
+        Args: {
+          _contrato_id: string
+          _empresa_id: string
+          _itens: Json
+          _observacao_geral?: string
+          _tipo: string
+          _unidade_id: string
+        }
+        Returns: Json
+      }
       get_consolidated_epi_stock: { Args: never; Returns: Json }
       get_filial_epis: { Args: { _filial_id: string }; Returns: Json }
       get_my_funcionario_ids: { Args: never; Returns: string[] }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
+      get_user_parent_empresa_id: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
