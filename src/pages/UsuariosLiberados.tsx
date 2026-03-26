@@ -52,9 +52,11 @@ export default function UsuariosLiberados() {
   const [novoNome, setNovoNome] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [novoEmpresaId, setNovoEmpresaId] = useState<string>("");
+  const [novoContratoId, setNovoContratoId] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
   const [savingPerms, setSavingPerms] = useState<string | null>(null);
+  const [allContratos, setAllContratos] = useState<{ id: string; nome: string; unidade_id: string }[]>([]);
 
   // Filters
   const [filterEmail, setFilterEmail] = useState("");
@@ -70,6 +72,7 @@ export default function UsuariosLiberados() {
   const [editNome, setEditNome] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editEmpresaId, setEditEmpresaId] = useState<string>("");
+  const [editContratoId, setEditContratoId] = useState<string>("");
   const [savingData, setSavingData] = useState(false);
 
   // Pagination
@@ -79,7 +82,17 @@ export default function UsuariosLiberados() {
   useEffect(() => {
     loadUsuarios();
     loadEmpresas();
+    loadContratos();
   }, []);
+
+  const loadContratos = async () => {
+    if (!isOnline()) {
+      setAllContratos(getCachedData<{ id: string; nome: string; unidade_id: string }>("contratos_list") || []);
+      return;
+    }
+    const { data } = await supabase.from("contratos").select("id, nome, unidade_id").order("nome");
+    if (data) { setAllContratos(data); setCachedData("contratos_list", data); }
+  };
 
   const loadEmpresas = async () => {
     if (!isOnline()) {
