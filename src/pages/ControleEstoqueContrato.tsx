@@ -62,9 +62,12 @@ interface UnidadeSummary {
 }
 
 export default function ControleEstoqueContrato() {
-  const { isSuperAdmin, isPrincipal, modulosPermitidos, contratoId: userContratoId, empresaId } = useAuth();
+  const { isSuperAdmin, isPrincipal, modulosPermitidos, contratoId: userContratoId, empresaId, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const hasGestaoEstoque = isSuperAdmin || isPrincipal || modulosPermitidos.includes("epis:gestao_estoque") || modulosPermitidos.includes("epis");
+  const hasEstoqueContrato = modulosPermitidos.includes("estoque_contrato") || modulosPermitidos.some(p => p.startsWith("estoque_contrato:"));
+  const isRestrictedStockUser = !hasGestaoEstoque && (hasEstoqueContrato || !!userContratoId);
+  const canAccessStock = hasGestaoEstoque || hasEstoqueContrato || !!userContratoId;
 
   const [loading, setLoading] = useState(true);
   const [unidades, setUnidades] = useState<UnidadeData[]>([]);
@@ -103,64 +106,187 @@ export default function ControleEstoqueContrato() {
   // Matriz summary
   const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
 
-  const loadInitialData = useCallback(async () => {
-    setLoading(true);
-    const [unidadesRes, contratosRes] = await Promise.all([
-      supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id"),
-      supabase.from("contratos").select("id, nome, unidade_id"),
-    ]);
+  const loadScopedHierarchy = useCallback(async () => {
+    let scopedContratos: ContratoData[] = [];
+    let scopedUnidades: UnidadeData[] = [];
+    let matriz: UnidadeData | null = null;
 
-    const allUnidades = (unidadesRes.data || []) as UnidadeData[];
-    const allContratos = (contratosRes.data || []) as ContratoData[];
-    unidadesRef.current = allUnidades;
-    contratosRef.current = allContratos;
-    setUnidades(allUnidades);
-    setContratos(allContratos);
+    if (userContratoId) {
+      const { data: contrato, error: contratoError } = await supabase
+        .from("contratos")
+        .select("id, nome, unidade_id")
+        .eq("id", userContratoId)
+        .maybeSingle();
 
-    const matrizes = allUnidades.filter(u => u.empresa_pai_id === null);
-    let matriz: UnidadeData | undefined;
+      if (contratoError) throw contratoError;
+      if (contrato) scopedContratos = [contrato as ContratoData];
+    }
 
-    if (empresaId) {
-      matriz = matrizes.find(m => m.id === empresaId);
-      if (!matriz) {
-        const userUnit = allUnidades.find(u => u.id === empresaId);
-        if (userUnit?.empresa_pai_id) {
-          matriz = matrizes.find(m => m.id === userUnit.empresa_pai_id);
+    const targetUnidadeId = scopedContratos[0]?.unidade_id || empresaId;
+
+    if (targetUnidadeId) {
+      const { data: unidade, error: unidadeError } = await supabase
+        .from("empresa_config")
+        .select("id, nome, tipo, empresa_pai_id")
+        .eq("id", targetUnidadeId)
+        .maybeSingle();
+
+      if (unidadeError) throw unidadeError;
+
+      if (unidade) {
+        scopedUnidades.push(unidade as UnidadeData);
+
+        if (unidade.empresa_pai_id) {
+          const { data: parentEmpresa, error: parentError } = await supabase
+            .from("empresa_config")
+            .select("id, nome, tipo, empresa_pai_id")
+            .eq("id", unidade.empresa_pai_id)
+            .maybeSingle();
+
+          if (parentError) throw parentError;
+          if (parentEmpresa) {
+            matriz = parentEmpresa as UnidadeData;
+            scopedUnidades.unshift(matriz);
+          }
+        } else {
+          matriz = unidade as UnidadeData;
+        }
+
+        if (scopedContratos.length === 0) {
+          const { data: contratosData, error: contratosError } = await supabase
+            .from("contratos")
+            .select("id, nome, unidade_id")
+            .eq("unidade_id", unidade.id)
+            .order("nome");
+
+          if (contratosError) throw contratosError;
+          scopedContratos = (contratosData || []) as ContratoData[];
         }
       }
     }
-    if (!matriz && matrizes.length === 1) matriz = matrizes[0];
-    if (!matriz && matrizes.length > 1) matriz = matrizes[0];
 
-    if (matriz) {
-      setMatrizId(matriz.id);
-      setMatrizNome(matriz.nome);
-      // Load matriz summary
-      const { data: episMatriz } = await supabase.from("epis").select("estoque, estoque_minimo, valor").eq("empresa_id", matriz.id);
-      const epis = episMatriz || [];
-      setMatrizSummary({
-        estoqueTotal: epis.reduce((s, e) => s + (e.estoque || 0), 0),
-        valorTotal: epis.reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0),
-        totalSaidas: 0,
-        valorSaidas: 0,
-        baixoEstoque: epis.filter(e => e.estoque <= e.estoque_minimo).length,
-      });
+    scopedUnidades = Array.from(new Map(scopedUnidades.map(item => [item.id, item])).values());
+
+    return { scopedUnidades, scopedContratos, matriz };
+  }, [empresaId, userContratoId]);
+
+  const loadInitialData = useCallback(async () => {
+    if (authLoading) return;
+
+    if (!canAccessStock) {
+      setUnidades([]);
+      setContratos([]);
+      setMatrizId(null);
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
-  }, [empresaId]);
+    setLoading(true);
 
-  useEffect(() => { loadInitialData(); }, [loadInitialData]);
+    try {
+      if (isRestrictedStockUser) {
+        const { scopedUnidades, scopedContratos, matriz } = await loadScopedHierarchy();
+
+        unidadesRef.current = scopedUnidades;
+        contratosRef.current = scopedContratos;
+        setUnidades(scopedUnidades);
+        setContratos(scopedContratos);
+        setMatrizId(matriz?.id || scopedUnidades[0]?.id || null);
+        setMatrizNome(matriz?.nome || scopedUnidades[0]?.nome || "Minha Unidade");
+        setMatrizSummary({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
+
+        console.log("[ControleEstoqueContrato] scoped hierarchy", {
+          empresaId,
+          userContratoId,
+          unidades: scopedUnidades,
+          contratos: scopedContratos,
+        });
+
+        return;
+      }
+
+      const [unidadesRes, contratosRes] = await Promise.all([
+        supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id"),
+        supabase.from("contratos").select("id, nome, unidade_id"),
+      ]);
+
+      if (unidadesRes.error) throw unidadesRes.error;
+      if (contratosRes.error) throw contratosRes.error;
+
+      const allUnidades = (unidadesRes.data || []) as UnidadeData[];
+      const allContratos = (contratosRes.data || []) as ContratoData[];
+      unidadesRef.current = allUnidades;
+      contratosRef.current = allContratos;
+      setUnidades(allUnidades);
+      setContratos(allContratos);
+
+      const matrizes = allUnidades.filter(u => u.empresa_pai_id === null);
+      let matriz: UnidadeData | undefined;
+
+      if (empresaId) {
+        matriz = matrizes.find(m => m.id === empresaId);
+        if (!matriz) {
+          const userUnit = allUnidades.find(u => u.id === empresaId);
+          if (userUnit?.empresa_pai_id) {
+            matriz = matrizes.find(m => m.id === userUnit.empresa_pai_id);
+          }
+        }
+      }
+      if (!matriz && matrizes.length === 1) matriz = matrizes[0];
+      if (!matriz && matrizes.length > 1) matriz = matrizes[0];
+
+      if (matriz) {
+        setMatrizId(matriz.id);
+        setMatrizNome(matriz.nome);
+
+        const { data: episMatriz, error: episMatrizError } = await supabase
+          .from("epis")
+          .select("estoque, estoque_minimo, valor")
+          .eq("empresa_id", matriz.id);
+
+        if (episMatrizError) throw episMatrizError;
+
+        const epis = episMatriz || [];
+        setMatrizSummary({
+          estoqueTotal: epis.reduce((s, e) => s + (e.estoque || 0), 0),
+          valorTotal: epis.reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0),
+          totalSaidas: 0,
+          valorSaidas: 0,
+          baixoEstoque: epis.filter(e => e.estoque <= e.estoque_minimo).length,
+        });
+      }
+
+      console.log("[ControleEstoqueContrato] full hierarchy", {
+        empresaId,
+        unidades: allUnidades,
+        contratos: allContratos,
+      });
+    } catch (error) {
+      console.error("[ControleEstoqueContrato] erro ao carregar hierarquia", error);
+      setUnidades([]);
+      setContratos([]);
+      setMatrizId(null);
+      toast({
+        title: "Erro ao carregar estoque",
+        description: "Não foi possível montar a hierarquia de unidade e contrato do usuário.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [authLoading, canAccessStock, empresaId, isRestrictedStockUser, loadScopedHierarchy, toast]);
+
+  useEffect(() => { void loadInitialData(); }, [loadInitialData]);
 
   useEffect(() => {
-    if (!userContratoId) return;
+    if (authLoading || !userContratoId) return;
     const contrato = contratos.find(c => c.id === userContratoId);
     if (!contrato?.unidade_id) return;
 
     loadUnidadeData(contrato.unidade_id).then(() => {
       loadContratoDetails(userContratoId, contrato.unidade_id);
     });
-  }, [userContratoId, contratos]);
+  }, [authLoading, userContratoId, contratos]);
 
   // Lazy load unidade data when accordion opens
   const loadUnidadeData = async (unidadeId: string) => {
@@ -284,7 +410,13 @@ export default function ControleEstoqueContrato() {
 
   const matrizes = unidades.filter(u => u.empresa_pai_id === null);
   const showMatrizSelector = isSuperAdmin && matrizes.length > 1;
-  const filiais = unidades.filter(u => u.empresa_pai_id === matrizId);
+  const contratosVisiveis = contratos;
+  const filiaisBase = unidades.filter(u => u.empresa_pai_id === matrizId);
+  const filiais = filiaisBase.length > 0
+    ? filiaisBase
+    : (isRestrictedStockUser
+      ? unidades.filter(u => contratosVisiveis.some(c => c.unidade_id === u.id))
+      : []);
 
   const switchMatriz = (newMatrizId: string) => {
     const m = matrizes.find(u => u.id === newMatrizId);
@@ -420,30 +552,53 @@ export default function ControleEstoqueContrato() {
       </div>
 
       {/* Matriz Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryCard
-          label="Estoque Matriz"
-          value={`${matrizSummary.estoqueTotal.toLocaleString("pt-BR")} un.`}
-          icon={<Package className="w-5 h-5" />}
-          subtitle={`R$ ${matrizSummary.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-        />
-        <SummaryCard
-          label="Unidades"
-          value={`${filiais.length}`}
-          icon={<GitBranch className="w-5 h-5" />}
-          color="text-blue-600"
-          subtitle={`${contratos.filter(c => filiais.some(f => f.id === c.unidade_id)).length} contratos`}
-        />
-        {matrizSummary.baixoEstoque > 0 && (
+      {hasGestaoEstoque ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <SummaryCard
-            label="Alertas de Estoque"
-            value={`${matrizSummary.baixoEstoque} itens`}
-            icon={<AlertTriangle className="w-5 h-5" />}
-            color="text-amber-600"
-            subtitle="Abaixo do mínimo"
+            label="Estoque Matriz"
+            value={`${matrizSummary.estoqueTotal.toLocaleString("pt-BR")} un.`}
+            icon={<Package className="w-5 h-5" />}
+            subtitle={`R$ ${matrizSummary.valorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
           />
-        )}
-      </div>
+          <SummaryCard
+            label="Unidades"
+            value={`${filiais.length}`}
+            icon={<GitBranch className="w-5 h-5" />}
+            color="text-blue-600"
+            subtitle={`${contratos.filter(c => filiais.some(f => f.id === c.unidade_id)).length} contratos`}
+          />
+          {matrizSummary.baixoEstoque > 0 && (
+            <SummaryCard
+              label="Alertas de Estoque"
+              value={`${matrizSummary.baixoEstoque} itens`}
+              icon={<AlertTriangle className="w-5 h-5" />}
+              color="text-amber-600"
+              subtitle="Abaixo do mínimo"
+            />
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <SummaryCard
+            label="Minha Unidade"
+            value={`${filiais.length}`}
+            icon={<Building2 className="w-5 h-5" />}
+            subtitle={filiais[0]?.nome || "Sem unidade carregada"}
+          />
+          <SummaryCard
+            label="Meu Contrato"
+            value={`${contratos.filter(c => filiais.some(f => f.id === c.unidade_id)).length}`}
+            icon={<FileText className="w-5 h-5" />}
+            subtitle={contratos.find(c => c.id === userContratoId)?.nome || "Escopo restrito"}
+          />
+          <SummaryCard
+            label="Escopo"
+            value="Restrito"
+            icon={<Users className="w-5 h-5" />}
+            subtitle="Visualização limitada ao vínculo do usuário"
+          />
+        </div>
+      )}
 
       {/* Distribute from Matriz / Conferência buttons */}
       <div className="flex justify-end gap-2">
@@ -720,7 +875,11 @@ export default function ControleEstoqueContrato() {
         <Card className="border-border/60">
           <CardContent className="py-12 text-center">
             <Building2 className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Nenhuma unidade vinculada a esta empresa</p>
+            <p className="text-sm text-muted-foreground">
+              {isRestrictedStockUser
+                ? "Nenhuma unidade ou contrato foi encontrado para o vínculo deste usuário."
+                : "Nenhuma unidade vinculada a esta empresa"}
+            </p>
           </CardContent>
         </Card>
       )}
