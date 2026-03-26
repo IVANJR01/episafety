@@ -617,93 +617,177 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
                   />
                 </div>
 
-                <div className="max-h-[400px] overflow-auto rounded-md border border-border/60">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="text-[10px]">
-                        <TableHead className="px-2 py-1.5">EPI</TableHead>
-                        <TableHead className="w-[60px] px-2 py-1.5 text-center">Status</TableHead>
-                        <TableHead className="w-[80px] px-2 py-1.5 text-right">Sistema</TableHead>
-                        <TableHead className="w-[100px] px-2 py-1.5 text-center">Contagem Física</TableHead>
-                        <TableHead className="w-[90px] px-2 py-1.5 text-center">Divergência</TableHead>
-                        <TableHead className="w-[200px] px-2 py-1.5">Justificativa</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {itens.map((item, idx) => {
-                        const hasDivergencia = item.contagem_fisica !== null && item.divergencia !== 0;
-                        const isCounted = item.contagem_fisica !== null;
-                        const stockStatus = getStockStatus(item.estoque_sistema, item.estoque_minimo);
+                {/* Mobile: Card Layout */}
+                {isMobile ? (
+                  <div className="space-y-3">
+                    {itens.map((item, idx) => {
+                      const hasDivergencia = item.contagem_fisica !== null && item.divergencia !== 0;
+                      const isCounted = item.contagem_fisica !== null;
+                      const stockStatus = getStockStatus(item.estoque_sistema, item.estoque_minimo);
 
-                        return (
-                          <TableRow key={item.contrato_epi_id} className={`text-xs ${getRowHighlight(item)}`}>
-                            <TableCell className="max-w-[180px] px-2 py-1.5">
-                              <span className="block truncate">{item.epi_nome}</span>
-                              <div className="flex items-center gap-1">
-                                {item.tamanho && <span className="text-[10px] text-muted-foreground">({item.tamanho})</span>}
-                                {item.ca && <span className="text-[10px] text-muted-foreground">C.A. {item.ca}</span>}
+                      return (
+                        <div
+                          key={item.contrato_epi_id}
+                          className={`rounded-lg border p-3 ${getRowHighlight(item)} space-y-2`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold leading-tight">{item.epi_nome}</p>
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                {item.tamanho && <span>({item.tamanho})</span>}
+                                {item.ca && <span>C.A. {item.ca}</span>}
                               </div>
-                            </TableCell>
+                            </div>
+                            <Badge variant="outline" className={`shrink-0 px-1.5 py-0.5 text-[10px] ${getStatusBadgeClass(stockStatus)}`}>
+                              {stockStatus === "zerado" ? "Zerado" : stockStatus === "baixo" ? "Baixo" : "Ok"}
+                            </Badge>
+                          </div>
 
-                            <TableCell className="px-2 py-1.5 text-center">
-                              <Badge variant="outline" className={`px-1 py-0 text-[9px] ${getStatusBadgeClass(stockStatus)}`}>
-                                {stockStatus === "zerado" ? "Zerado" : stockStatus === "baixo" ? "Baixo" : "Ok"}
-                              </Badge>
-                            </TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="text-center">
+                              <span className="block text-[10px] text-muted-foreground">Sistema</span>
+                              <span className="text-lg font-bold">{item.estoque_sistema}</span>
+                            </div>
 
-                            <TableCell className="px-2 py-1.5 text-right font-semibold">
-                              {item.estoque_sistema}
-                            </TableCell>
-
-                            <TableCell className="px-2 py-1.5 text-center">
+                            <div className="flex-1">
                               <Input
                                 type="number"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 min={0}
                                 value={item.contagem_fisica ?? ""}
                                 onChange={(event) => updateContagem(idx, event.target.value)}
-                                className="mx-auto h-7 w-[70px] text-center text-xs"
-                                placeholder="—"
+                                className="h-12 text-center text-lg font-semibold"
+                                placeholder="Contagem"
                               />
-                            </TableCell>
+                            </div>
 
-                            <TableCell className="px-2 py-1.5 text-center">
+                            <div className="w-20 text-center">
                               {isCounted ? (
-                                <Badge variant="outline" className={`gap-0.5 px-1.5 py-0 text-[10px] ${getDivergenceBadgeClass(item.divergencia)}`}>
+                                <Badge variant="outline" className={`gap-0.5 px-2 py-1 text-xs ${getDivergenceBadgeClass(item.divergencia)}`}>
                                   {item.divergencia === 0 ? (
                                     <>
-                                      <CheckCircle2 className="h-3 w-3" /> Bateu
+                                      <CheckCircle2 className="h-3.5 w-3.5" /> Bateu
                                     </>
                                   ) : item.divergencia < 0 ? (
                                     <>
-                                      <TrendingDown className="h-3 w-3" /> {item.divergencia}
+                                      <TrendingDown className="h-3.5 w-3.5" /> {item.divergencia}
                                     </>
                                   ) : (
                                     <>
-                                      <TrendingUp className="h-3 w-3" /> +{item.divergencia}
+                                      <TrendingUp className="h-3.5 w-3.5" /> +{item.divergencia}
                                     </>
                                   )}
                                 </Badge>
                               ) : (
-                                <span className="text-[10px] text-muted-foreground">—</span>
+                                <span className="text-xs text-muted-foreground">—</span>
                               )}
-                            </TableCell>
+                            </div>
+                          </div>
 
-                            <TableCell className="px-2 py-1.5">
-                              {hasDivergencia ? (
+                          {hasDivergencia && (
+                            <Input
+                              value={item.justificativa}
+                              onChange={(event) => updateJustificativa(idx, event.target.value)}
+                              className="h-10 text-sm"
+                              placeholder="Motivo da divergência..."
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Desktop: Table Layout */
+                  <div className="max-h-[400px] overflow-auto rounded-md border border-border/60">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="text-[10px]">
+                          <TableHead className="px-2 py-1.5">EPI</TableHead>
+                          <TableHead className="w-[60px] px-2 py-1.5 text-center">Status</TableHead>
+                          <TableHead className="w-[80px] px-2 py-1.5 text-right">Sistema</TableHead>
+                          <TableHead className="w-[100px] px-2 py-1.5 text-center">Contagem Física</TableHead>
+                          <TableHead className="w-[90px] px-2 py-1.5 text-center">Divergência</TableHead>
+                          <TableHead className="w-[200px] px-2 py-1.5">Justificativa</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {itens.map((item, idx) => {
+                          const hasDivergencia = item.contagem_fisica !== null && item.divergencia !== 0;
+                          const isCounted = item.contagem_fisica !== null;
+                          const stockStatus = getStockStatus(item.estoque_sistema, item.estoque_minimo);
+
+                          return (
+                            <TableRow key={item.contrato_epi_id} className={`text-xs ${getRowHighlight(item)}`}>
+                              <TableCell className="max-w-[180px] px-2 py-1.5">
+                                <span className="block truncate">{item.epi_nome}</span>
+                                <div className="flex items-center gap-1">
+                                  {item.tamanho && <span className="text-[10px] text-muted-foreground">({item.tamanho})</span>}
+                                  {item.ca && <span className="text-[10px] text-muted-foreground">C.A. {item.ca}</span>}
+                                </div>
+                              </TableCell>
+
+                              <TableCell className="px-2 py-1.5 text-center">
+                                <Badge variant="outline" className={`px-1 py-0 text-[9px] ${getStatusBadgeClass(stockStatus)}`}>
+                                  {stockStatus === "zerado" ? "Zerado" : stockStatus === "baixo" ? "Baixo" : "Ok"}
+                                </Badge>
+                              </TableCell>
+
+                              <TableCell className="px-2 py-1.5 text-right font-semibold">
+                                {item.estoque_sistema}
+                              </TableCell>
+
+                              <TableCell className="px-2 py-1.5 text-center">
                                 <Input
-                                  value={item.justificativa}
-                                  onChange={(event) => updateJustificativa(idx, event.target.value)}
-                                  className="h-7 text-xs"
-                                  placeholder="Motivo da divergência..."
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={item.contagem_fisica ?? ""}
+                                  onChange={(event) => updateContagem(idx, event.target.value)}
+                                  className="mx-auto h-7 w-[70px] text-center text-xs"
+                                  placeholder="—"
                                 />
-                              ) : null}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                              </TableCell>
+
+                              <TableCell className="px-2 py-1.5 text-center">
+                                {isCounted ? (
+                                  <Badge variant="outline" className={`gap-0.5 px-1.5 py-0 text-[10px] ${getDivergenceBadgeClass(item.divergencia)}`}>
+                                    {item.divergencia === 0 ? (
+                                      <>
+                                        <CheckCircle2 className="h-3 w-3" /> Bateu
+                                      </>
+                                    ) : item.divergencia < 0 ? (
+                                      <>
+                                        <TrendingDown className="h-3 w-3" /> {item.divergencia}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <TrendingUp className="h-3 w-3" /> +{item.divergencia}
+                                      </>
+                                    )}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+
+                              <TableCell className="px-2 py-1.5">
+                                {hasDivergencia ? (
+                                  <Input
+                                    value={item.justificativa}
+                                    onChange={(event) => updateJustificativa(idx, event.target.value)}
+                                    className="h-7 text-xs"
+                                    placeholder="Motivo da divergência..."
+                                  />
+                                ) : null}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
             ) : contratoId ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
