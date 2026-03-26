@@ -759,29 +759,29 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* Pareto Chart - Stock value by EPI */}
+      {/* Pareto Chart - Consumo por EPI */}
       <motion.div variants={fadeUp} custom={8}>
       <Card className="shadow-md border-border/50">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-primary/10">
-                <Package className="w-4 h-4 text-primary" />
+                <TrendingUp className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-base font-bold">Pareto — Valor do Estoque por EPI</CardTitle>
+                <CardTitle className="text-base font-bold">Análise de Gasto por EPI (Pareto)</CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Total: <span className="font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  Total consumido: <span className="font-bold font-mono text-foreground">R$ {totalConsumoValor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                   <span className="ml-2 text-muted-foreground/70">• Regra 80/20</span>
                 </p>
               </div>
           </div>
         </CardHeader>
         <CardContent>
-          {estoqueChartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Nenhum EPI com valor em estoque</p>
+          {consumoChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma entrega registrada com valor</p>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(320, estoqueChartData.length * 44)}>
-              <ComposedChart data={estoqueChartData} margin={{ left: isMobile ? 8 : 8, right: 24, top: 20, bottom: 4 }}>
+            <ResponsiveContainer width="100%" height={Math.max(320, consumoChartData.length * 44)}>
+              <ComposedChart data={consumoChartData} margin={{ left: isMobile ? 8 : 8, right: 24, top: 20, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                 <XAxis
                   dataKey="nome"
@@ -812,7 +812,10 @@ export default function Dashboard() {
                       <div className="bg-background border border-border/50 rounded-xl px-3 py-2 shadow-xl text-xs space-y-1">
                         <p className="font-semibold text-foreground">{d.nome}</p>
                         <p className="text-muted-foreground">
-                          Valor: <span className="font-mono font-bold text-foreground">R$ {d.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          Qtd consumida: <span className="font-mono font-bold text-foreground">{d.qtd}</span>
+                        </p>
+                        <p className="text-muted-foreground">
+                          Gasto: <span className="font-mono font-bold text-foreground">R$ {d.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                         </p>
                         <p className="text-muted-foreground">
                           Individual: <span className="font-mono font-bold text-foreground">{d.percentualIndividual}%</span>
@@ -833,7 +836,7 @@ export default function Dashboard() {
                   label={{ value: "80%", position: "right", fill: "hsl(0, 72%, 51%)", fontSize: 12, fontWeight: 700 }}
                 />
                 <Bar yAxisId="valor" dataKey="valor" radius={[6, 6, 0, 0]} barSize={isMobile ? 20 : 32}>
-                  {estoqueChartData.map((_, index) => (
+                  {consumoChartData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Bar>
