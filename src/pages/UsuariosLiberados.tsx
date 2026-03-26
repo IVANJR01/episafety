@@ -206,7 +206,7 @@ export default function UsuariosLiberados() {
           await (supabase.from as any)("profiles").update({ empresa_id: targetEmpresaId }).eq("user_id", fnData.user_id);
         }
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado com sucesso!" });
-        setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId("");
+        setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId(""); setNovoContratoId("");
         setNewOpen(false);
         await loadUsuarios();
       }
