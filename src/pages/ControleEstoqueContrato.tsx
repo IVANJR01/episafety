@@ -87,6 +87,16 @@ export default function ControleEstoqueContrato() {
   const [movDateFrom, setMovDateFrom] = useState<Date | undefined>(undefined);
   const [movDateTo, setMovDateTo] = useState<Date | undefined>(undefined);
 
+  // Transfer modal state
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferSource, setTransferSource] = useState<{ contratoId: string; contratoNome: string; unidadeId: string } | null>(null);
+  const [transferDestId, setTransferDestId] = useState("");
+  const [transferEpiId, setTransferEpiId] = useState("");
+  const [transferQtd, setTransferQtd] = useState(1);
+  const [transferMotivo, setTransferMotivo] = useState("");
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; tamanho: string | null; estoque: number }[]>([]);
+
   // Matriz summary
   const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
 
