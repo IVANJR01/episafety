@@ -292,28 +292,44 @@ export default function Dashboard() {
     }));
   }, [entregas, epis, valorEstoqueAtual, estoqueMovimentacoes]);
 
-  const estoqueChartData = useMemo(() => {
-    const items = epis
-      .filter(e => (e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0)
-      .map(e => {
-        const label = e.tamanho ? `${e.nome} (${e.tamanho})` : e.nome;
-        return {
-          nome: label.length > 30 ? label.substring(0, 27) + "..." : label,
-          valor: Number(((e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque)).toFixed(2)),
-        };
-      })
+  // Pareto de Consumo (baseado em entregas reais)
+  const { consumoChartData, totalConsumoValor } = useMemo(() => {
+    const epiMap = new Map(epis.map(e => [e.id, e]));
+    // Aggregate consumption by EPI from entregas (only outgoing types)
+    const consumoPorEpi: Record<string, { nome: string; qtd: number; valor: number }> = {};
+    entregas
+      .filter(ent => ["entrega", "substituicao", "troca"].includes(ent.tipo))
+      .forEach(ent => {
+        const epi = epiMap.get(ent.epi_id);
+        if (!epi) return;
+        const custoUnit = epi.valor || 0;
+        if (!consumoPorEpi[ent.epi_id]) {
+          const label = epi.tamanho ? `${epi.nome} (${epi.tamanho})` : epi.nome;
+          consumoPorEpi[ent.epi_id] = {
+            nome: label.length > 30 ? label.substring(0, 27) + "..." : label,
+            qtd: 0,
+            valor: 0,
+          };
+        }
+        consumoPorEpi[ent.epi_id].qtd += ent.quantidade;
+        consumoPorEpi[ent.epi_id].valor += custoUnit * ent.quantidade;
+      });
+
+    const items = Object.values(consumoPorEpi)
+      .filter(i => i.valor > 0)
+      .map(i => ({ ...i, valor: Number(i.valor.toFixed(2)) }))
       .sort((a, b) => b.valor - a.valor);
 
-    // Calculate Pareto cumulative percentage
     const totalValor = items.reduce((s, d) => s + d.valor, 0);
     let acumulado = 0;
-    return items.map(item => {
+    const data = items.map(item => {
       acumulado += item.valor;
       const percentualIndividual = totalValor > 0 ? Number(((item.valor / totalValor) * 100).toFixed(1)) : 0;
       const percentualAcumulado = totalValor > 0 ? Number(((acumulado / totalValor) * 100).toFixed(1)) : 0;
       return { ...item, percentualIndividual, percentualAcumulado };
     });
-  }, [epis, estoqueConsolidadoPorEpi]);
+    return { consumoChartData: data, totalConsumoValor: totalValor };
+  }, [epis, entregas]);
 
   const CHART_COLORS = [
     "hsl(24, 95%, 53%)",
