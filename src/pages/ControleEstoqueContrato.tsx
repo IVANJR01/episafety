@@ -692,6 +692,113 @@ export default function ControleEstoqueContrato() {
           </CardContent>
         </Card>
       )}
+
+      {/* Transfer Modal */}
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <ArrowRightLeft className="w-4 h-4" />
+              Transferir EPI entre Contratos
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Mova EPIs do estoque de um contrato para outro.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {/* Source (readonly) */}
+            <div>
+              <Label className="text-xs">Origem</Label>
+              <Input value={transferSource?.contratoNome || ""} disabled className="h-8 text-xs mt-1" />
+            </div>
+
+            {/* Destination */}
+            <div>
+              <Label className="text-xs">Destino</Label>
+              <Select value={transferDestId} onValueChange={setTransferDestId}>
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue placeholder="Selecione o contrato destino" />
+                </SelectTrigger>
+                <SelectContent>
+                  {transferDestOptions.map(c => {
+                    const unidade = unidades.find(u => u.id === c.unidade_id);
+                    return (
+                      <SelectItem key={c.id} value={c.id} className="text-xs">
+                        {c.nome}{unidade ? ` (${unidade.nome})` : ""}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* EPI */}
+            <div>
+              <Label className="text-xs">EPI</Label>
+              <Select value={transferEpiId} onValueChange={(v) => { setTransferEpiId(v); setTransferQtd(1); }}>
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue placeholder="Selecione o EPI" />
+                </SelectTrigger>
+                <SelectContent>
+                  {transferEpis.map(e => (
+                    <SelectItem key={e.id} value={e.id} className="text-xs">
+                      {e.nome}{e.tamanho ? ` (${e.tamanho})` : ""} — {e.estoque} un.
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {transferEpis.length === 0 && (
+                <p className="text-[10px] text-muted-foreground mt-1">Nenhum EPI com estoque disponível</p>
+              )}
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <Label className="text-xs">Quantidade</Label>
+              <Input
+                type="number"
+                min={1}
+                max={selectedTransferEpi?.estoque || 1}
+                value={transferQtd}
+                onChange={e => setTransferQtd(Math.max(1, Math.min(Number(e.target.value), selectedTransferEpi?.estoque || 1)))}
+                className="h-8 text-xs mt-1"
+              />
+              {selectedTransferEpi && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Disponível: {selectedTransferEpi.estoque} un.
+                </p>
+              )}
+            </div>
+
+            {/* Reason */}
+            <div>
+              <Label className="text-xs">Motivo (opcional)</Label>
+              <Textarea
+                value={transferMotivo}
+                onChange={e => setTransferMotivo(e.target.value)}
+                placeholder="Ex: Remanejamento de equipe"
+                className="text-xs mt-1 min-h-[60px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setTransferOpen(false)} className="text-xs">
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={executeTransfer}
+              disabled={!transferDestId || !transferEpiId || transferQtd <= 0 || transferLoading}
+              className="text-xs gap-1.5"
+            >
+              {transferLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />}
+              Transferir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
