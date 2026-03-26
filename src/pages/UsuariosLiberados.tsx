@@ -196,6 +196,7 @@ export default function UsuariosLiberados() {
         nome: novoNome.trim(),
         modulos_permitidos: [],
         empresa_id: targetEmpresaId,
+        contrato_id: novoContratoId || null,
       });
 
       if (error) {
