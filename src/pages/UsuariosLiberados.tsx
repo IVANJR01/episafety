@@ -44,7 +44,7 @@ const ACAO_ICONS: Record<string, string> = {
 
 export default function UsuariosLiberados() {
   const { toast } = useToast();
-  const { empresaId, isSuperAdmin, isPrincipal } = useAuth();
+  const { empresaId, isSuperAdmin, isPrincipal, user } = useAuth();
   const isAdmin = isSuperAdmin || isPrincipal;
   const [usuarios, setUsuarios] = useState<UsuarioLiberado[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -509,15 +509,28 @@ export default function UsuariosLiberados() {
                             <Pencil className="w-3 h-3" />
                             Alterar
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs text-destructive hover:text-destructive gap-1"
-                            onClick={() => handleRemoveUser(u.id)}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            Remover
-                          </Button>
+                          {u.is_principal || u.email.toLowerCase() === user?.email?.toLowerCase() ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-muted-foreground gap-1 opacity-40 cursor-not-allowed"
+                              disabled
+                              title={u.is_principal ? "O Administrador Principal não pode ser removido" : "Você não pode remover seu próprio acesso"}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Remover
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-destructive hover:text-destructive gap-1"
+                              onClick={() => handleRemoveUser(u.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Remover
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
