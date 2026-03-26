@@ -95,8 +95,7 @@ export default function ControleEstoqueContrato() {
   const [distDestType, setDistDestType] = useState<"unidade" | "contrato">("unidade");
   const [distUnidadeId, setDistUnidadeId] = useState("");
   const [distContratoId, setDistContratoId] = useState("");
-  const [distEpiId, setDistEpiId] = useState("");
-  const [distQtd, setDistQtd] = useState(1);
+  const [distItems, setDistItems] = useState<{ epiId: string; qtd: number }[]>([{ epiId: "", qtd: 1 }]);
   const [distLoading, setDistLoading] = useState(false);
   const [distEpis, setDistEpis] = useState<{ id: string; nome: string; tamanho: string | null; estoque: number }[]>([]);
 
