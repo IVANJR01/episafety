@@ -295,10 +295,13 @@ export default function Dashboard() {
   const estoqueChartData = useMemo(() => {
     const items = epis
       .filter(e => (e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque) > 0)
-      .map(e => ({
-        nome: e.nome.length > 25 ? e.nome.substring(0, 22) + "..." : e.nome,
-        valor: Number(((e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque)).toFixed(2)),
-      }))
+      .map(e => {
+        const label = e.tamanho ? `${e.nome} (${e.tamanho})` : e.nome;
+        return {
+          nome: label.length > 30 ? label.substring(0, 27) + "..." : label,
+          valor: Number(((e.valor || 0) * (estoqueConsolidadoPorEpi[e.id] || e.estoque)).toFixed(2)),
+        };
+      })
       .sort((a, b) => b.valor - a.valor);
 
     // Calculate Pareto cumulative percentage
