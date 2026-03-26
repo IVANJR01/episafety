@@ -67,6 +67,7 @@ interface DraftPointer {
 export default function ConferenciaEstoque({ unidades, contratos, matrizId, userContratoId, hasGestaoEstoque, onConferenciaFinalizada }: Props) {
   const { empresaId, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [open, setOpen] = useState(false);
   const [unidadeId, setUnidadeId] = useState("");
