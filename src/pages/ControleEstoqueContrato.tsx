@@ -292,6 +292,74 @@ export default function ControleEstoqueContrato() {
     }
   };
 
+  const openTransferModal = async (contratoId: string, contratoNome: string, unidadeId: string) => {
+    setTransferSource({ contratoId, contratoNome, unidadeId });
+    setTransferDestId("");
+    setTransferEpiId("");
+    setTransferQtd(1);
+    setTransferMotivo("");
+    // Load EPIs available in source contract
+    const { data } = await supabase.from("contrato_epis")
+      .select("epi_id, estoque")
+      .eq("contrato_id", contratoId)
+      .gt("estoque", 0);
+    const epiIds = (data || []).map(d => d.epi_id);
+    if (epiIds.length > 0) {
+      const { data: episInfo } = await supabase.from("epis").select("id, nome, tamanho").in("id", epiIds);
+      setTransferEpis((data || []).map(d => {
+        const epi = (episInfo || []).find(e => e.id === d.epi_id);
+        return { id: d.epi_id, nome: epi?.nome || "—", tamanho: epi?.tamanho || null, estoque: d.estoque || 0 };
+      }).sort((a, b) => a.nome.localeCompare(b.nome)));
+    } else {
+      setTransferEpis([]);
+    }
+    setTransferOpen(true);
+  };
+
+  const executeTransfer = async () => {
+    if (!transferSource || !transferDestId || !transferEpiId || transferQtd <= 0) return;
+    setTransferLoading(true);
+    const { data, error } = await supabase.rpc("transfer_epi_between_contracts" as any, {
+      _source_contrato_id: transferSource.contratoId,
+      _dest_contrato_id: transferDestId,
+      _epi_id: transferEpiId,
+      _quantidade: transferQtd,
+      _motivo: transferMotivo || null,
+    });
+    setTransferLoading(false);
+    const result = data as any;
+    if (error || !result?.success) {
+      toast({ title: "Erro na transferência", description: result?.error || error?.message || "Erro desconhecido", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Transferência realizada", description: `${transferQtd} un. transferido(s) para ${result.dest_contrato}` });
+    setTransferOpen(false);
+    // Reload affected contracts
+    const srcUnidadeId = transferSource.unidadeId;
+    // Find dest unidade
+    const destContrato = contratosRef.current.find(c => c.id === transferDestId);
+    // Reset summaries to force reload
+    setUnidadeSummaries(prev => {
+      const updated = { ...prev };
+      if (updated[srcUnidadeId]) updated[srcUnidadeId] = { ...updated[srcUnidadeId], loaded: false };
+      if (destContrato && updated[destContrato.unidade_id]) {
+        updated[destContrato.unidade_id] = { ...updated[destContrato.unidade_id], loaded: false };
+      }
+      return updated;
+    });
+    // Reload
+    setTimeout(() => {
+      loadUnidadeData(srcUnidadeId);
+      if (destContrato && destContrato.unidade_id !== srcUnidadeId) {
+        loadUnidadeData(destContrato.unidade_id);
+      }
+    }, 200);
+  };
+
+  const selectedTransferEpi = transferEpis.find(e => e.id === transferEpiId);
+  // All contracts except source for destination picker
+  const transferDestOptions = contratos.filter(c => c.id !== transferSource?.contratoId);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
