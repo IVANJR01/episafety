@@ -445,26 +445,26 @@ export default function ControleEstoqueContrato() {
         )}
       </div>
 
-      {/* Distribute from Matriz button */}
-      {hasGestaoEstoque && (
-        <div className="flex justify-end gap-2">
-          <ConferenciaEstoque
-            unidades={unidades}
-            contratos={contratos}
-            matrizId={matrizId}
-            onConferenciaFinalizada={() => {
-              loadInitialData();
-              setUnidadeSummaries({});
-            }}
-          />
-          {matrizSummary.estoqueTotal > 0 && (
-            <Button size="sm" className="gap-1.5 text-xs" onClick={openDistModal}>
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              Distribuir da Matriz
-            </Button>
-          )}
-        </div>
-      )}
+      {/* Distribute from Matriz / Conferência buttons */}
+      <div className="flex justify-end gap-2">
+        <ConferenciaEstoque
+          unidades={unidades}
+          contratos={contratos}
+          matrizId={matrizId}
+          userContratoId={userContratoId || null}
+          hasGestaoEstoque={hasGestaoEstoque}
+          onConferenciaFinalizada={() => {
+            loadInitialData();
+            setUnidadeSummaries({});
+          }}
+        />
+        {hasGestaoEstoque && matrizSummary.estoqueTotal > 0 && (
+          <Button size="sm" className="gap-1.5 text-xs" onClick={openDistModal}>
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            Distribuir da Matriz
+          </Button>
+        )}
+      </div>
 
       {filiais.length > 0 && (
         <Card className="border-border/60">
