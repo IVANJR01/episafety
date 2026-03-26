@@ -97,6 +97,16 @@ export default function ControleEstoqueContrato() {
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferEpis, setTransferEpis] = useState<{ id: string; nome: string; tamanho: string | null; estoque: number }[]>([]);
 
+  // Matriz distribution modal state
+  const [distOpen, setDistOpen] = useState(false);
+  const [distDestType, setDistDestType] = useState<"unidade" | "contrato">("unidade");
+  const [distUnidadeId, setDistUnidadeId] = useState("");
+  const [distContratoId, setDistContratoId] = useState("");
+  const [distEpiId, setDistEpiId] = useState("");
+  const [distQtd, setDistQtd] = useState(1);
+  const [distLoading, setDistLoading] = useState(false);
+  const [distEpis, setDistEpis] = useState<{ id: string; nome: string; tamanho: string | null; estoque: number }[]>([]);
+
   // Matriz summary
   const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
 
