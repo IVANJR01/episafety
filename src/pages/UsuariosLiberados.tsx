@@ -52,9 +52,11 @@ export default function UsuariosLiberados() {
   const [novoNome, setNovoNome] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [novoEmpresaId, setNovoEmpresaId] = useState<string>("");
+  const [novoContratoId, setNovoContratoId] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [addingUser, setAddingUser] = useState(false);
   const [savingPerms, setSavingPerms] = useState<string | null>(null);
+  const [allContratos, setAllContratos] = useState<{ id: string; nome: string; unidade_id: string }[]>([]);
 
   // Filters
   const [filterEmail, setFilterEmail] = useState("");
@@ -70,6 +72,7 @@ export default function UsuariosLiberados() {
   const [editNome, setEditNome] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editEmpresaId, setEditEmpresaId] = useState<string>("");
+  const [editContratoId, setEditContratoId] = useState<string>("");
   const [savingData, setSavingData] = useState(false);
 
   // Pagination
@@ -79,7 +82,17 @@ export default function UsuariosLiberados() {
   useEffect(() => {
     loadUsuarios();
     loadEmpresas();
+    loadContratos();
   }, []);
+
+  const loadContratos = async () => {
+    if (!isOnline()) {
+      setAllContratos(getCachedData<{ id: string; nome: string; unidade_id: string }>("contratos_list") || []);
+      return;
+    }
+    const { data } = await supabase.from("contratos").select("id, nome, unidade_id").order("nome");
+    if (data) { setAllContratos(data); setCachedData("contratos_list", data); }
+  };
 
   const loadEmpresas = async () => {
     if (!isOnline()) {
@@ -112,11 +125,29 @@ export default function UsuariosLiberados() {
     return map;
   }, [empresas]);
 
+  const contratoMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    allContratos.forEach(c => { map[c.id] = c.nome; });
+    return map;
+  }, [allContratos]);
+
   const unidadesDisponiveis = useMemo(() => {
     if (isSuperAdmin) return empresas;
     if (!empresaId) return [];
     return empresas.filter(e => e.id === empresaId || e.empresa_pai_id === empresaId);
   }, [empresas, empresaId, isSuperAdmin]);
+
+  // Filter contratos by selected unidade for edit dialog
+  const contratosForEditUnidade = useMemo(() => {
+    if (!editEmpresaId) return [];
+    return allContratos.filter(c => c.unidade_id === editEmpresaId);
+  }, [allContratos, editEmpresaId]);
+
+  // Filter contratos by selected unidade for new user dialog
+  const contratosForNovoUnidade = useMemo(() => {
+    if (!novoEmpresaId) return [];
+    return allContratos.filter(c => c.unidade_id === novoEmpresaId);
+  }, [allContratos, novoEmpresaId]);
 
   const filteredUsuarios = useMemo(() => {
     return usuarios.filter(u => {
@@ -171,6 +202,7 @@ export default function UsuariosLiberados() {
         nome: novoNome.trim(),
         modulos_permitidos: [],
         empresa_id: targetEmpresaId,
+        contrato_id: novoContratoId || null,
       });
 
       if (error) {
@@ -180,7 +212,7 @@ export default function UsuariosLiberados() {
           await (supabase.from as any)("profiles").update({ empresa_id: targetEmpresaId }).eq("user_id", fnData.user_id);
         }
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado com sucesso!" });
-        setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId("");
+        setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId(""); setNovoContratoId("");
         setNewOpen(false);
         await loadUsuarios();
       }
@@ -263,13 +295,14 @@ export default function UsuariosLiberados() {
         nome: editNome.trim(),
         email: editEmail.trim().toLowerCase(),
         empresa_id: editEmpresaId || null,
+        contrato_id: (editContratoId && editContratoId !== "none") ? editContratoId : null,
       })
       .eq("id", userId);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message.includes("unique") ? "Este e-mail já está cadastrado" : error.message, variant: "destructive" });
     } else {
       toast({ title: "Dados atualizados!" });
-      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: editNome.trim(), email: editEmail.trim().toLowerCase(), empresa_id: editEmpresaId || null } : u));
+      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: editNome.trim(), email: editEmail.trim().toLowerCase(), empresa_id: editEmpresaId || null, contrato_id: (editContratoId && editContratoId !== "none") ? editContratoId : null } : u));
     }
     setSavingData(false);
   };
@@ -340,6 +373,7 @@ export default function UsuariosLiberados() {
         setEditNome(user.nome || "");
         setEditEmail(user.email || "");
         setEditEmpresaId(user.empresa_id || "");
+        setEditContratoId(user.contrato_id || "");
       }
       setUsuarios(prev => prev.map(u => {
         if (u.id !== permsUserId) return u;
@@ -447,7 +481,15 @@ export default function UsuariosLiberados() {
                         )}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {u.empresa_id ? (empresaMap[u.empresa_id] || "—") : <span className="text-muted-foreground italic">Sem empresa</span>}
+                        <div>
+                          {u.empresa_id ? (empresaMap[u.empresa_id] || "—") : <span className="text-muted-foreground italic">Sem empresa</span>}
+                          {u.contrato_id && contratoMap[u.contrato_id] && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <GitBranch className="w-3 h-3" />
+                              {contratoMap[u.contrato_id]}
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         {u.ativo ? (
@@ -531,7 +573,7 @@ export default function UsuariosLiberados() {
             {unidadesDisponiveis.length > 1 && (
               <div>
                 <Label>Vincular à unidade</Label>
-                <Select value={novoEmpresaId} onValueChange={setNovoEmpresaId}>
+                <Select value={novoEmpresaId} onValueChange={(val) => { setNovoEmpresaId(val); setNovoContratoId(""); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Empresa atual" />
                   </SelectTrigger>
@@ -546,6 +588,29 @@ export default function UsuariosLiberados() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {contratosForNovoUnidade.length > 0 && (
+              <div>
+                <Label>Vincular ao contrato (opcional)</Label>
+                <Select value={novoContratoId} onValueChange={setNovoContratoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhum — acesso geral à unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contratosForNovoUnidade.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex items-center gap-2">
+                          <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
+                          {c.nome}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Restringe a visualização de estoque e movimentações apenas a este contrato.
+                </p>
               </div>
             )}
             <div>
@@ -608,7 +673,7 @@ export default function UsuariosLiberados() {
                     {unidadesDisponiveis.length > 0 && (
                       <div>
                         <Label>Unidade / Empresa</Label>
-                        <Select value={editEmpresaId} onValueChange={setEditEmpresaId}>
+                        <Select value={editEmpresaId} onValueChange={(val) => { setEditEmpresaId(val); setEditContratoId(""); }}>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione a unidade" />
                           </SelectTrigger>
@@ -623,6 +688,32 @@ export default function UsuariosLiberados() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+                    {contratosForEditUnidade.length > 0 && (
+                      <div>
+                        <Label>Contrato vinculado</Label>
+                        <Select value={editContratoId} onValueChange={setEditContratoId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Nenhum — acesso geral à unidade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              <span className="text-muted-foreground">Nenhum — acesso geral</span>
+                            </SelectItem>
+                            {contratosForEditUnidade.map(c => (
+                              <SelectItem key={c.id} value={c.id}>
+                                <span className="flex items-center gap-2">
+                                  <GitBranch className="w-3.5 h-3.5 text-muted-foreground" />
+                                  {c.nome}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Restringe o usuário a ver apenas o estoque e movimentações deste contrato.
+                        </p>
                       </div>
                     )}
 
