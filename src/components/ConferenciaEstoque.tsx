@@ -51,15 +51,15 @@ export default function ConferenciaEstoque({ unidades, contratos, matrizId, user
   const filiais = useMemo(() => unidades.filter(u => u.empresa_pai_id === matrizId), [unidades, matrizId]);
   const contratosFiltered = useMemo(() => contratos.filter(c => c.unidade_id === unidadeId), [contratos, unidadeId]);
 
-  // Auto-select unit/contract for contract-bound users
+  // Auto-select unit/contract for users with a linked contract
   useEffect(() => {
-    if (!isContractBound || !userContratoId || !open) return;
+    if (!userContratoId || !open) return;
     const contrato = contratos.find(c => c.id === userContratoId);
     if (contrato) {
       setUnidadeId(contrato.unidade_id);
       setContratoId(contrato.id);
     }
-  }, [isContractBound, userContratoId, contratos, open]);
+  }, [userContratoId, contratos, open]);
 
   // Load EPIs when contract is selected
   useEffect(() => {
