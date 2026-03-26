@@ -131,6 +131,18 @@ export default function UsuariosLiberados() {
     return empresas.filter(e => e.id === empresaId || e.empresa_pai_id === empresaId);
   }, [empresas, empresaId, isSuperAdmin]);
 
+  // Filter contratos by selected unidade for edit dialog
+  const contratosForEditUnidade = useMemo(() => {
+    if (!editEmpresaId) return [];
+    return allContratos.filter(c => c.unidade_id === editEmpresaId);
+  }, [allContratos, editEmpresaId]);
+
+  // Filter contratos by selected unidade for new user dialog
+  const contratosForNovoUnidade = useMemo(() => {
+    if (!novoEmpresaId) return [];
+    return allContratos.filter(c => c.unidade_id === novoEmpresaId);
+  }, [allContratos, novoEmpresaId]);
+
   const filteredUsuarios = useMemo(() => {
     return usuarios.filter(u => {
       if (filterEmail && !u.email.toLowerCase().includes(filterEmail.toLowerCase())) return false;
