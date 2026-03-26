@@ -25,7 +25,7 @@ import CameraCapture from "@/components/CameraCapture";
 
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; empresa_id?: string | null; }
-interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; empresa_id?: string | null; source_epi_id?: string; }
+interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; empresa_id?: string | null; source_epi_id?: string; tamanho?: string | null; }
 interface EpiItem { epi: EPI; quantidade: number; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
@@ -172,7 +172,7 @@ export default function Entregas() {
 
       const { data, error } = await supabase
         .from("contrato_epis")
-        .select("epi_id, estoque, empresa_id, epis!inner(id, nome, ca, descricao, validade, empresa_id)")
+        .select("epi_id, estoque, empresa_id, epis!inner(id, nome, ca, descricao, validade, empresa_id, tamanho)")
         .eq("contrato_id", contratoId);
 
       if (error) {
@@ -188,7 +188,7 @@ export default function Entregas() {
           const epiIds = fallbackData.map((d: any) => d.epi_id);
           const { data: episData } = await supabase
             .from("epis")
-            .select("id, nome, ca, descricao, validade, empresa_id")
+            .select("id, nome, ca, descricao, validade, empresa_id, tamanho")
             .in("id", epiIds);
 
           const episMap = new Map((episData || []).map((e: any) => [e.id, e]));
@@ -205,6 +205,7 @@ export default function Entregas() {
                 validade: ep.validade,
                 empresa_id: item.empresa_id ?? ep.empresa_id,
                 estoque: item.estoque || 0,
+                tamanho: ep.tamanho,
               };
             });
           setContractEpis(mapped);
@@ -221,6 +222,7 @@ export default function Entregas() {
         validade: item.epis.validade,
         empresa_id: item.empresa_id ?? item.epis.empresa_id,
         estoque: item.estoque || 0,
+        tamanho: item.epis.tamanho,
       }));
 
       setContractEpis(mapped);
@@ -1012,7 +1014,7 @@ export default function Entregas() {
                   {epiDropdownResults.map(epi => (
                     <button key={epi.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
                       onClick={() => addEpiToList(epi)}>
-                      <span className="font-medium">{epi.nome}</span>
+                      <span className="font-medium">{epi.nome}{epi.tamanho ? ` (${epi.tamanho})` : ""}</span>
                       {epi.ca && <span className="text-muted-foreground ml-2">C.A.: {epi.ca}</span>}
                       <span className="text-muted-foreground ml-2">Estoque: {epi.estoque}</span>
                     </button>
@@ -1027,7 +1029,7 @@ export default function Entregas() {
                   {epiList.map(item => (
                     <div key={item.epi.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{item.epi.nome}</p>
+                        <p className="font-medium truncate">{item.epi.nome}{item.epi.tamanho ? ` (${item.epi.tamanho})` : ""}</p>
                         <p className="text-xs text-muted-foreground">
                           {item.epi.ca && <>C.A.: {item.epi.ca} — </>}Estoque: {item.epi.estoque} — Qtd: {item.quantidade}
                         </p>
