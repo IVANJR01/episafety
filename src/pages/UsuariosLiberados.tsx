@@ -545,6 +545,17 @@ export default function UsuariosLiberados() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => { setCloneSourceId(u.id); setCloneTargetId(""); setCloneFilterText(""); }}
+                              title="Clonar permissões para outro usuário"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
