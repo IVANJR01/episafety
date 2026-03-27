@@ -33,9 +33,16 @@ serve(async (req) => {
       });
     }
 
-    // Convert PDF to base64
+    // Convert PDF to base64 in chunks to avoid stack overflow
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64 = btoa(binary);
 
     // Fetch requisitos_cliente for comparison
     let requisitos: any[] = [];
@@ -109,12 +116,9 @@ Responda EXCLUSIVAMENTE com um JSON válido (sem markdown, sem código) no segui
           {
             role: "user",
             content: [
-              { type: "text", text: "Analise este certificado/documento de treinamento e extraia todas as informações solicitadas." },
               {
-                type: "image_url",
-                image_url: {
-                  url: `data:application/pdf;base64,${base64}`,
-                },
+                type: "text",
+                text: `Analise este certificado/documento de treinamento e extraia todas as informações solicitadas.\n\nO conteúdo do documento em base64 (PDF) está abaixo:\n\n${base64}`,
               },
             ],
           },
