@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from "react";
-import { Upload, FileText, X, CheckCircle, AlertCircle, Loader2, Search, Brain, ScanLine, Shield, ShieldCheck, ShieldAlert, AlertTriangle } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { Upload, FileText, X, CheckCircle, AlertCircle, Loader2, Search, Brain, ScanLine, Shield, ShieldCheck, ShieldAlert, AlertTriangle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface Funcionario {
@@ -45,8 +45,10 @@ interface AIAnalysis {
 }
 
 interface AnalyzedFile {
-  file: File;
+  file?: File;
   id: string;
+  dbId?: string; // ID from analises_ia table
+  fileName: string;
   status: "pending" | "analyzing" | "analyzed" | "error";
   analysis?: AIAnalysis;
   errorMsg?: string;
@@ -79,6 +81,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
   const [funcSearch, setFuncSearch] = useState("");
   const [showScanModal, setShowScanModal] = useState(false);
   const [currentFile, setCurrentFile] = useState<string>("");
+  const [loadingPrevious, setLoadingPrevious] = useState(false);
 
   // Persist selected employee across navigation/refresh
   const [selectedFunc, setSelectedFuncState] = useState<Funcionario | null>(() => {
@@ -97,6 +100,51 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       localStorage.removeItem("ai_validator_selected_func");
     }
   }, []);
+
+  // Load previous analysis results from database when employee is selected
+  useEffect(() => {
+    if (!selectedFunc || !empresaId) {
+      setFiles([]);
+      return;
+    }
+
+    const loadPreviousAnalyses = async () => {
+      setLoadingPrevious(true);
+      try {
+        const { data, error } = await supabase
+          .from("analises_ia" as any)
+          .select("*")
+          .eq("empresa_id", empresaId)
+          .eq("funcionario_id", selectedFunc.id)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error loading previous analyses:", error);
+          setLoadingPrevious(false);
+          return;
+        }
+
+        if (data && (data as any[]).length > 0) {
+          const previousFiles: AnalyzedFile[] = (data as any[]).map((row: any) => ({
+            id: crypto.randomUUID(),
+            dbId: row.id,
+            fileName: row.arquivo_nome,
+            status: "analyzed" as const,
+            analysis: row.ia_metadata as AIAnalysis,
+            confirmed: false,
+          }));
+          setFiles(previousFiles);
+        } else {
+          setFiles([]);
+        }
+      } catch (err) {
+        console.error("Error loading analyses:", err);
+      }
+      setLoadingPrevious(false);
+    };
+
+    loadPreviousAnalyses();
+  }, [selectedFunc?.id, empresaId]);
 
   const filteredFuncs = (() => {
     if (!funcSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
@@ -124,6 +172,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
     setFiles(prev => [...prev, ...pdfs.map(f => ({
       file: f,
       id: crypto.randomUUID(),
+      fileName: f.name,
       status: "pending" as const,
       confirmed: false,
     }))]);
@@ -140,26 +189,24 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
   }, [addFiles]);
 
   const analyzeFiles = async () => {
-    if (files.length === 0) return;
+    const pendingFiles = files.filter(f => f.status === "pending" && f.file);
+    if (pendingFiles.length === 0) return;
     setAnalyzing(true);
     setShowScanModal(true);
     let completed = 0;
 
-    for (const af of files) {
-      if (af.status === "analyzed") { completed++; continue; }
-      setCurrentFile(af.file.name);
+    for (const af of pendingFiles) {
+      setCurrentFile(af.fileName);
       setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "analyzing" } : f));
-
       setCurrentStep(0);
 
-      // Animate steps during actual API call
       const stepInterval = setInterval(() => {
         setCurrentStep(prev => prev < ANALYSIS_STEPS.length - 1 ? prev + 1 : prev);
       }, 2000);
 
       try {
         const formData = new FormData();
-        formData.append("file", af.file);
+        formData.append("file", af.file!);
         if (empresaId) formData.append("empresa_id", empresaId);
         if (selectedFunc) {
           formData.append("funcionario_id", selectedFunc.id);
@@ -194,7 +241,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       }
 
       completed++;
-      setOverallProgress(Math.round((completed / files.length) * 100));
+      setOverallProgress(Math.round((completed / pendingFiles.length) * 100));
     }
 
     setAnalyzing(false);
@@ -223,10 +270,18 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
           };
           await (supabase.from as any)("controle_treinamentos").insert(record);
 
-          // Upload file to storage
-          const safeName = selectedFunc.nome.replace(/[^a-zA-Z0-9]/g, "_");
-          const path = `${empresaId}/${safeName}_${selectedFunc.id}/${af.analysis.curso}/${Date.now()}_${af.file.name}`;
-          await supabase.storage.from("documentos-treinamento").upload(path, af.file, { upsert: false });
+          // Upload file to storage if we have the file object
+          if (af.file) {
+            const safeName = selectedFunc.nome.replace(/[^a-zA-Z0-9]/g, "_");
+            const path = `${empresaId}/${safeName}_${selectedFunc.id}/${af.analysis.curso}/${Date.now()}_${af.fileName}`;
+            await supabase.storage.from("documentos-treinamento").upload(path, af.file, { upsert: false });
+          }
+
+          // Update the analysis status in analises_ia
+          if (af.dbId) {
+            await (supabase.from as any)("analises_ia").update({ status: "confirmado" }).eq("id", af.dbId);
+          }
+
           saved++;
         }
       } catch (err) {
@@ -236,6 +291,13 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
     toast({ title: "Documentos salvos!", description: `${saved} registro(s) criado(s) automaticamente.` });
     onComplete();
+  };
+
+  const deleteAnalysis = async (id: string, dbId?: string) => {
+    if (dbId) {
+      await (supabase.from as any)("analises_ia").delete().eq("id", dbId);
+    }
+    setFiles(prev => prev.filter(f => f.id !== id));
   };
 
   const toggleConfirm = (id: string) => {
@@ -323,18 +385,24 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
             </div>
           </div>
 
-          {files.length > 0 && (
+          {/* File list (pending + loading previous) */}
+          {loadingPrevious && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Carregando análises anteriores...
+            </div>
+          )}
+
+          {files.filter(f => f.status === "pending" || f.status === "analyzing").length > 0 && (
             <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-              {files.map(af => (
+              {files.filter(f => f.status === "pending" || f.status === "analyzing").map(af => (
                 <div key={af.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
                   <FileText className="w-5 h-5 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{af.file.name}</p>
-                    <p className="text-xs text-muted-foreground">{(af.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="text-sm font-medium truncate">{af.fileName}</p>
+                    {af.file && <p className="text-xs text-muted-foreground">{(af.file.size / 1024 / 1024).toFixed(2)} MB</p>}
                   </div>
                   {af.status === "analyzing" && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
-                  {af.status === "analyzed" && <CheckCircle className="w-4 h-4 text-green-600" />}
-                  {af.status === "error" && <AlertCircle className="w-4 h-4 text-destructive" />}
                   {af.status === "pending" && !analyzing && (
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== af.id)); }}>
                       <X className="w-3.5 h-3.5" />
@@ -348,12 +416,12 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       </Card>
 
       {/* Step 3: Analyze Button */}
-      {files.length > 0 && (
+      {files.some(f => f.status === "pending") && (
         <div className="flex justify-center">
           <Button
             size="lg"
             onClick={analyzeFiles}
-            disabled={analyzing || files.length === 0}
+            disabled={analyzing || !files.some(f => f.status === "pending")}
             className="gap-2 shadow-lg shadow-primary/25 bg-gradient-to-r from-primary to-primary/80"
           >
             {analyzing ? (
@@ -366,7 +434,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       )}
 
       {/* Analysis Results */}
-      {files.some(f => f.status === "analyzed") && (
+      {files.some(f => f.status === "analyzed" || f.status === "error") && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -388,15 +456,18 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                       <Checkbox checked={af.confirmed} onCheckedChange={() => toggleConfirm(af.id)} />
                     )}
                     <div>
-                      <p className="font-medium text-sm">{af.file.name}</p>
+                      <p className="font-medium text-sm">{af.fileName}</p>
                       {af.analysis?.confianca && (
                         <p className={`text-xs ${getConfiancaColor(af.analysis.confianca)}`}>
                           Confiança: {Math.round(af.analysis.confianca * 100)}%
                         </p>
                       )}
+                      {af.dbId && (
+                        <p className="text-xs text-muted-foreground">Análise salva no sistema</p>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex items-center gap-1.5">
                     {/* NR Badge */}
                     {af.analysis?.conforme_nr === true && (
                       <Badge className="gap-1 bg-green-600 hover:bg-green-700">
@@ -411,7 +482,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                     {/* Matriz Badge */}
                     {af.analysis?.conforme_matriz === true && (
                       <Badge className="gap-1 bg-blue-600 hover:bg-blue-700">
-                        <ShieldCheck className="w-3.5 h-3.5" /> Matriz Neoenergia ✅
+                        <ShieldCheck className="w-3.5 h-3.5" /> Matriz ✅
                       </Badge>
                     )}
                     {af.analysis?.conforme_matriz === false && (
@@ -419,6 +490,11 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                         <ShieldAlert className="w-3.5 h-3.5" /> Matriz ❌
                       </Badge>
                     )}
+                    {/* Delete button */}
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteAnalysis(af.id, af.dbId)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
 
