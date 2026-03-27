@@ -63,13 +63,9 @@ interface Props {
 const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 const ANALYSIS_STEPS = [
-  "Lendo dados do documento...",
-  "Identificando colaborador e instrutor...",
-  "Verificando carga horária e conteúdo programático...",
-  "Validando contra Norma Regulamentadora (NR)...",
-  "Consultando Matriz Neoenergia Rev.12...",
-  "Cruzando função do colaborador com requisitos...",
-  "Finalizando parecer técnico...",
+  "Enviando documento para análise...",
+  "IA processando certificado...",
+  "Validando conformidade NR e Matriz...",
 ];
 
 export default function AIDocumentValidator({ funcionarios, cursos, empresaId, onComplete }: Props) {
@@ -137,11 +133,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       setCurrentFile(af.file.name);
       setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "analyzing" } : f));
 
-      // Animate steps
-      for (let step = 0; step < ANALYSIS_STEPS.length; step++) {
-        setCurrentStep(step);
-        await new Promise(r => setTimeout(r, 600));
-      }
+      setCurrentStep(0);
 
       try {
         const formData = new FormData();
