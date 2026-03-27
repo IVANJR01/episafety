@@ -367,15 +367,24 @@ export default function Treinamentos() {
   };
 
   const filteredMultiFuncionarios = useMemo(() => {
-    if (!multiFuncSearch.trim()) return funcionarios;
+    if (!multiFuncSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
     const q = normalize(multiFuncSearch);
-    return funcionarios.filter(f =>
+    const matched = funcionarios.filter(f =>
       normalize(f.nome).includes(q) ||
       (f.matricula && normalize(f.matricula).includes(q)) ||
       (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, ""))) ||
       (f.cargo && normalize(f.cargo).includes(q)) ||
       (f.setor && normalize(f.setor).includes(q))
     );
+    // Sort: name starts with query first, then name contains, then other field matches
+    return matched.sort((a, b) => {
+      const aName = normalize(a.nome);
+      const bName = normalize(b.nome);
+      const aStarts = aName.startsWith(q) ? 0 : aName.includes(q) ? 1 : 2;
+      const bStarts = bName.startsWith(q) ? 0 : bName.includes(q) ? 1 : 2;
+      if (aStarts !== bStarts) return aStarts - bStarts;
+      return a.nome.localeCompare(b.nome);
+    });
   }, [funcionarios, multiFuncSearch]);
 
   const handleDelete = async (id: string) => {
