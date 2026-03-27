@@ -431,6 +431,17 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                       <p className="font-medium">{af.analysis.instituicao || "—"}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-muted/50">
+                      <Label className="text-xs text-muted-foreground">NR de Referência</Label>
+                      <p className="font-medium">{af.analysis.nr_referencia || "—"}</p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-muted/50">
+                      <Label className="text-xs text-muted-foreground">Instrutor</Label>
+                      <p className="font-medium">{af.analysis.instrutor_nome || "—"}</p>
+                      {af.analysis.instrutor_registro && (
+                        <p className="text-xs text-muted-foreground">{af.analysis.instrutor_registro}</p>
+                      )}
+                    </div>
+                    <div className="p-2 rounded-lg bg-muted/50">
                       <Label className="text-xs text-muted-foreground">Realização</Label>
                       <p className="font-medium">{af.analysis.data_realizacao || "—"}</p>
                     </div>
@@ -438,9 +449,17 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                       <Label className="text-xs text-muted-foreground">Validade</Label>
                       <p className="font-medium">{af.analysis.data_validade || "—"}</p>
                     </div>
+                    {af.analysis.motivo_nr && (
+                      <div className={`col-span-full p-2 rounded-lg border ${af.analysis.conforme_nr === false ? "bg-red-50 dark:bg-red-950/20 border-red-200" : "bg-green-50 dark:bg-green-950/20 border-green-200"}`}>
+                        <Label className={`text-xs ${af.analysis.conforme_nr === false ? "text-destructive" : "text-green-700 dark:text-green-400"}`}>
+                          Validação NR {af.analysis.nr_referencia || ""}
+                        </Label>
+                        <p className="text-sm">{af.analysis.motivo_nr}</p>
+                      </div>
+                    )}
                     {af.analysis.motivo_nao_conforme && (
                       <div className="col-span-full p-2 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200">
-                        <Label className="text-xs text-destructive">Motivo Não Conforme</Label>
+                        <Label className="text-xs text-destructive">Motivo Não Conforme (Matriz Neoenergia)</Label>
                         <p className="text-sm">{af.analysis.motivo_nao_conforme}</p>
                       </div>
                     )}
