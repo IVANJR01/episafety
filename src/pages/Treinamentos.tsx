@@ -809,7 +809,7 @@ export default function Treinamentos() {
         <TabsList className="mb-3">
           <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
-          <TabsTrigger value="upload" className="gap-1.5"><Upload className="w-4 h-4" />Upload em Lote</TabsTrigger>
+          
           <TabsTrigger value="ia" className="gap-1.5"><Brain className="w-4 h-4" />Validação IA</TabsTrigger>
           <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
         </TabsList>
@@ -976,19 +976,6 @@ export default function Treinamentos() {
           </Card>
         </TabsContent>
 
-        {/* === ABA UPLOAD EM LOTE === */}
-        <TabsContent value="upload">
-          <Card>
-            <CardContent className="p-6">
-              <BulkDocumentUpload
-                funcionarios={funcionarios}
-                cursos={CURSOS_SUGERIDOS}
-                empresaId={empresaId}
-                onComplete={fetchData}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* === ABA VALIDAÇÃO IA === */}
         <TabsContent value="ia">
