@@ -724,10 +724,18 @@ export default function Dashboard() {
                     <Building2 className="w-4 h-4 text-[hsl(199,89%,48%)]" />
                   </div>
                   <div>
-                    <CardTitle className="text-base font-bold">Entradas e Saídas — {unitData.nome}</CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      Por contrato: {unitData.contratoNomes.join(", ")}
-                    </p>
+                     <CardTitle className="text-base font-bold">Entradas e Saídas — {unitData.nome}</CardTitle>
+                     <p className="text-xs text-muted-foreground">
+                       Por contrato: {unitData.contratoNomes.join(", ")}
+                     </p>
+                     <div className="flex flex-wrap gap-3 mt-1.5">
+                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-[hsl(142,71%,45%)]/10 text-[hsl(142,71%,45%)] font-semibold">
+                         Maior Entrada: {unitData.maiorEntrada}
+                       </span>
+                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">
+                         Maior Saída: {unitData.maiorSaida}
+                       </span>
+                     </div>
                   </div>
                 </div>
               </CardHeader>
