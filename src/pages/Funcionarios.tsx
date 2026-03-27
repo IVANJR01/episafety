@@ -159,7 +159,6 @@ export default function Funcionarios() {
   // Demissão dialog
   const [demissaoOpen, setDemissaoOpen] = useState(false);
   const [demissaoTarget, setDemissaoTarget] = useState<Funcionario | null>(null);
-  const [demissaoDate, setDemissaoDate] = useState("");
 
   const openDemissao = (f: Funcionario) => {
     setDemissaoTarget(f);
@@ -666,23 +665,15 @@ export default function Funcionarios() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Demissão */}
-      <Dialog open={demissaoOpen} onOpenChange={setDemissaoOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><UserX className="w-5 h-5 text-destructive" />Registrar Demissão</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">Funcionário: <strong className="text-foreground">{demissaoTarget?.nome}</strong></p>
-            <div>
-              <Label>Data da Demissão</Label>
-              <Input type="date" value={demissaoDate} onChange={e => setDemissaoDate(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDemissaoOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDemissao} disabled={!demissaoDate}>Confirmar Demissão</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Baixa por Desligamento */}
+      <BaixaDesligamento
+        open={demissaoOpen}
+        onOpenChange={setDemissaoOpen}
+        funcionario={demissaoTarget}
+        empresaNome={empresaInfo.nome}
+        empresaCnpj={empresaInfo.cnpj}
+        onComplete={handleDemissaoComplete}
+      />
 
       {/* Dialog importação */}
       <Dialog open={importOpen} onOpenChange={(v) => { if (!importing) { setImportOpen(v); if (!v) { setImportRows([]); setImportResult(null); } } }}>
