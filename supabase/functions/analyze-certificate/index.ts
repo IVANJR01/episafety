@@ -26,6 +26,7 @@ serve(async (req) => {
     const empresaId = formData.get("empresa_id") as string | null;
     const funcionarioNome = formData.get("funcionario_nome") as string | null;
     const funcionarioCargo = formData.get("funcionario_cargo") as string | null;
+    const funcionarioCpf = formData.get("funcionario_cpf") as string | null;
 
     if (!file) {
       return new Response(JSON.stringify({ error: "Nenhum arquivo enviado" }), {
