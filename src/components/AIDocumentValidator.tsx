@@ -64,11 +64,12 @@ const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, 
 
 const ANALYSIS_STEPS = [
   "Lendo dados do documento...",
-  "Identificando colaborador...",
-  "Verificando carga horária...",
-  "Consultando Matriz Neoenergia...",
-  "Extraindo conteúdo programático...",
-  "Finalizando análise...",
+  "Identificando colaborador e instrutor...",
+  "Verificando carga horária e conteúdo programático...",
+  "Validando contra Norma Regulamentadora (NR)...",
+  "Consultando Matriz Neoenergia Rev.12...",
+  "Cruzando função do colaborador com requisitos...",
+  "Finalizando parecer técnico...",
 ];
 
 export default function AIDocumentValidator({ funcionarios, cursos, empresaId, onComplete }: Props) {
