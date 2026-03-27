@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      analises_ia: {
+        Row: {
+          arquivo_nome: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          funcionario_id: string
+          ia_metadata: Json
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          arquivo_nome: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          funcionario_id: string
+          ia_metadata?: Json
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          arquivo_nome?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          funcionario_id?: string
+          ia_metadata?: Json
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analises_ia_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analises_ia_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conferencia_itens: {
         Row: {
           conferencia_id: string
