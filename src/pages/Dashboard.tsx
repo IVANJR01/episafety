@@ -671,20 +671,6 @@ export default function Dashboard() {
               </div>
           </div>
         </CardHeader>
-          <CardHeader className="pt-0 pb-3">
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <span className="text-[10px] sm:text-xs text-muted-foreground">Saída:</span>
-              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorSaida.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex items-center gap-2 rounded-lg bg-[hsl(142,71%,45%)]/5 border border-[hsl(142,71%,45%)]/20 px-3 py-2">
-              <div className="w-3 h-3 rounded-full bg-[hsl(142,71%,45%)]" />
-              <span className="text-[10px] sm:text-xs text-muted-foreground">Estoque:</span>
-              <span className="text-xs sm:text-sm font-bold font-mono text-foreground">R$ {valorEstoqueAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-            </div>
-          </div>
-          </CardHeader>
         <CardContent>
           {custoMensalData.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nenhum dado de custo disponível</p>
