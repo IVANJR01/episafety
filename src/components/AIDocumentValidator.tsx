@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Upload, FileText, X, CheckCircle, AlertCircle, Loader2, Search, Brain, ScanLine, Shield, ShieldCheck, ShieldAlert, AlertTriangle, Trash2 } from "lucide-react";
+import { Upload, FileText, X, CheckCircle, AlertCircle, Loader2, Search, Brain, ScanLine, Shield, ShieldCheck, ShieldAlert, AlertTriangle, Trash2, CloudOff, RefreshCw, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface Funcionario {
@@ -47,7 +47,7 @@ interface AIAnalysis {
 interface AnalyzedFile {
   file?: File;
   id: string;
-  dbId?: string; // ID from analises_ia table
+  dbId?: string;
   fileName: string;
   status: "pending" | "analyzing" | "analyzed" | "error";
   analysis?: AIAnalysis;
@@ -82,6 +82,10 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
   const [showScanModal, setShowScanModal] = useState(false);
   const [currentFile, setCurrentFile] = useState<string>("");
   const [loadingPrevious, setLoadingPrevious] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [pendingRestoreData, setPendingRestoreData] = useState<any[] | null>(null);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Persist selected employee across navigation/refresh
   const [selectedFunc, setSelectedFuncState] = useState<Funcionario | null>(() => {
@@ -101,7 +105,14 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
     }
   }, []);
 
-  // Load previous analysis results from database when employee is selected
+  // Show sync status indicator
+  const showSyncSaved = useCallback(() => {
+    setSyncStatus("saved");
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(() => setSyncStatus("idle"), 3000);
+  }, []);
+
+  // Load previous analysis results - show restore dialog if pending drafts exist
   useEffect(() => {
     if (!selectedFunc || !empresaId) {
       setFiles([]);
@@ -125,15 +136,15 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
         }
 
         if (data && (data as any[]).length > 0) {
-          const previousFiles: AnalyzedFile[] = (data as any[]).map((row: any) => ({
-            id: crypto.randomUUID(),
-            dbId: row.id,
-            fileName: row.arquivo_nome,
-            status: "analyzed" as const,
-            analysis: row.ia_metadata as AIAnalysis,
-            confirmed: false,
-          }));
-          setFiles(previousFiles);
+          const rows = data as any[];
+          const hasPending = rows.some((r: any) => r.status === "analisado" || r.status === "pendente");
+
+          if (hasPending) {
+            setPendingRestoreData(rows);
+            setShowRestoreDialog(true);
+          } else {
+            loadFilesFromData(rows);
+          }
         } else {
           setFiles([]);
         }
@@ -145,6 +156,40 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
     loadPreviousAnalyses();
   }, [selectedFunc?.id, empresaId]);
+
+  const loadFilesFromData = (rows: any[]) => {
+    const previousFiles: AnalyzedFile[] = rows.map((row: any) => ({
+      id: crypto.randomUUID(),
+      dbId: row.id,
+      fileName: row.arquivo_nome,
+      status: "analyzed" as const,
+      analysis: row.ia_metadata as AIAnalysis,
+      confirmed: false,
+    }));
+    setFiles(previousFiles);
+  };
+
+  const handleRestore = () => {
+    if (pendingRestoreData) {
+      loadFilesFromData(pendingRestoreData);
+      toast({ title: "Análise restaurada", description: "Os dados da análise anterior foram recuperados." });
+    }
+    setPendingRestoreData(null);
+    setShowRestoreDialog(false);
+  };
+
+  const handleDiscardRestore = async () => {
+    if (pendingRestoreData && empresaId && selectedFunc) {
+      // Delete pending drafts from database
+      for (const row of pendingRestoreData.filter((r: any) => r.status === "analisado" || r.status === "pendente")) {
+        await (supabase.from as any)("analises_ia").delete().eq("id", row.id);
+      }
+    }
+    setPendingRestoreData(null);
+    setShowRestoreDialog(false);
+    setFiles([]);
+    toast({ title: "Rascunhos descartados", description: "Os rascunhos anteriores foram removidos." });
+  };
 
   const filteredFuncs = (() => {
     if (!funcSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
@@ -163,20 +208,53 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
     });
   })();
 
-  const addFiles = useCallback((newFiles: File[]) => {
+  // Duplicate detection: check if file was already analyzed for this employee
+  const checkDuplicate = useCallback(async (fileName: string): Promise<boolean> => {
+    if (!selectedFunc || !empresaId) return false;
+    const { data } = await supabase
+      .from("analises_ia" as any)
+      .select("id")
+      .eq("empresa_id", empresaId)
+      .eq("funcionario_id", selectedFunc.id)
+      .eq("arquivo_nome", fileName)
+      .limit(1);
+    return (data as any[] | null)?.length ? true : false;
+  }, [selectedFunc, empresaId]);
+
+  const addFiles = useCallback(async (newFiles: File[]) => {
     const pdfs = newFiles.filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
     if (pdfs.length === 0) {
       toast({ title: "Apenas PDFs", description: "Somente arquivos PDF são aceitos.", variant: "destructive" });
       return;
     }
-    setFiles(prev => [...prev, ...pdfs.map(f => ({
-      file: f,
-      id: crypto.randomUUID(),
-      fileName: f.name,
-      status: "pending" as const,
-      confirmed: false,
-    }))]);
-  }, [toast]);
+
+    const filesToAdd: File[] = [];
+    for (const pdf of pdfs) {
+      // Check local duplicates
+      const alreadyLocal = files.some(f => f.fileName === pdf.name);
+      if (alreadyLocal) {
+        toast({ title: "Arquivo duplicado", description: `"${pdf.name}" já está na lista.`, variant: "destructive" });
+        continue;
+      }
+      // Check DB duplicates
+      const alreadyInDb = await checkDuplicate(pdf.name);
+      if (alreadyInDb) {
+        toast({ title: "Documento já processado", description: `"${pdf.name}" já foi analisado para este colaborador.`, variant: "destructive" });
+        continue;
+      }
+      filesToAdd.push(pdf);
+    }
+
+    if (filesToAdd.length > 0) {
+      setFiles(prev => [...prev, ...filesToAdd.map(f => ({
+        file: f,
+        id: crypto.randomUUID(),
+        fileName: f.name,
+        status: "pending" as const,
+        confirmed: false,
+      }))]);
+    }
+  }, [toast, files, checkDuplicate]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); }, []);
   const handleDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); }, []);
@@ -199,6 +277,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       setCurrentFile(af.fileName);
       setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "analyzing" } : f));
       setCurrentStep(0);
+      setSyncStatus("saving");
 
       const stepInterval = setInterval(() => {
         setCurrentStep(prev => prev < ANALYSIS_STEPS.length - 1 ? prev + 1 : prev);
@@ -234,9 +313,16 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
         }
 
         const result = await response.json();
-        setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "analyzed", analysis: result.analysis } : f));
+        setFiles(prev => prev.map(f => f.id === af.id ? {
+          ...f,
+          status: "analyzed",
+          analysis: result.analysis,
+          dbId: result.analysisId || undefined,
+        } : f));
+        showSyncSaved();
       } catch (err: any) {
         clearInterval(stepInterval);
+        setSyncStatus("error");
         setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "error", errorMsg: err.message } : f));
       }
 
@@ -260,10 +346,34 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
     for (const af of toSave) {
       try {
         if (selectedFunc && af.analysis?.curso) {
+          // Duplicate prevention: check CPF + date + course
+          const cpf = af.analysis.cpf || selectedFunc.cpf;
+          const dataRealizacao = af.analysis.data_realizacao || new Date().toISOString().split("T")[0];
+
+          if (cpf && dataRealizacao) {
+            const { data: existing } = await supabase
+              .from("controle_treinamentos")
+              .select("id")
+              .eq("empresa_id", empresaId!)
+              .eq("funcionario_id", selectedFunc.id)
+              .eq("nome_curso", af.analysis.curso)
+              .eq("data_realizacao", dataRealizacao)
+              .limit(1);
+
+            if (existing && existing.length > 0) {
+              toast({
+                title: "Documento duplicado",
+                description: `"${af.analysis.curso}" com data ${dataRealizacao} já existe para este colaborador.`,
+                variant: "destructive",
+              });
+              continue;
+            }
+          }
+
           const record: any = {
             funcionario_id: selectedFunc.id,
             nome_curso: af.analysis.curso,
-            data_realizacao: af.analysis.data_realizacao || new Date().toISOString().split("T")[0],
+            data_realizacao: dataRealizacao,
             data_renovacao: af.analysis.data_validade || null,
             documento_pendente: af.analysis.descricao_completa || null,
             empresa_id: empresaId,
@@ -277,7 +387,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
             await supabase.storage.from("documentos-treinamento").upload(path, af.file, { upsert: false });
           }
 
-          // Update the analysis status in analises_ia
+          // Update the analysis status in analises_ia to "confirmado"
           if (af.dbId) {
             await (supabase.from as any)("analises_ia").update({ status: "confirmado" }).eq("id", af.dbId);
           }
@@ -298,6 +408,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       await (supabase.from as any)("analises_ia").delete().eq("id", dbId);
     }
     setFiles(prev => prev.filter(f => f.id !== id));
+    toast({ title: "Rascunho descartado", description: "A análise foi removida." });
   };
 
   const toggleConfirm = (id: string) => {
@@ -317,6 +428,19 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
   return (
     <div className="space-y-6">
+      {/* Sync Status Indicator */}
+      {syncStatus !== "idle" && (
+        <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg transition-all ${
+          syncStatus === "saving" ? "bg-yellow-50 dark:bg-yellow-950/20 text-yellow-700 dark:text-yellow-400" :
+          syncStatus === "saved" ? "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400" :
+          "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400"
+        }`}>
+          {syncStatus === "saving" && <><Loader2 className="w-3 h-3 animate-spin" /> Salvando rascunho da IA...</>}
+          {syncStatus === "saved" && <><Save className="w-3 h-3" /> ✓ Rascunho da IA salvo automaticamente</>}
+          {syncStatus === "error" && <><CloudOff className="w-3 h-3" /> Erro ao salvar rascunho</>}
+        </div>
+      )}
+
       {/* Step 1: Select Employee */}
       <Card>
         <CardHeader className="pb-3">
@@ -463,7 +587,9 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                         </p>
                       )}
                       {af.dbId && (
-                        <p className="text-xs text-muted-foreground">Análise salva no sistema</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Save className="w-3 h-3" /> Rascunho salvo no sistema
+                        </p>
                       )}
                     </div>
                   </div>
@@ -490,8 +616,9 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                         <ShieldAlert className="w-3.5 h-3.5" /> Matriz ❌
                       </Badge>
                     )}
-                    {/* Delete button */}
+                    {/* Delete/Discard button */}
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      title="Descartar análise"
                       onClick={() => deleteAnalysis(af.id, af.dbId)}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -603,6 +730,29 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
             <Progress value={overallProgress} className="h-2" />
             <p className="text-xs text-center text-muted-foreground">{overallProgress}% concluído</p>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restore Draft Dialog */}
+      <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-primary" />
+              Análise Pendente Encontrada
+            </DialogTitle>
+            <DialogDescription>
+              Encontramos {pendingRestoreData?.length || 0} análise(s) pendente(s) para este colaborador. Deseja restaurar os dados?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleDiscardRestore} className="gap-1">
+              <Trash2 className="w-4 h-4" /> Descartar
+            </Button>
+            <Button onClick={handleRestore} className="gap-1">
+              <RefreshCw className="w-4 h-4" /> Restaurar Dados
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
