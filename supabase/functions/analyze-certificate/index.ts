@@ -159,7 +159,18 @@ Se INVÁLIDO por Matriz Neoenergia:
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Analise este certificado/documento de treinamento. O conteúdo do PDF em base64 está abaixo:\n\n${base64}`,
+            content: [
+              {
+                type: "text",
+                text: "Analise este certificado/documento de treinamento em PDF. Extraia TODAS as informações de TODAS as páginas (frente e verso), incluindo o conteúdo programático, nome do instrutor e registro profissional.",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${base64}`,
+                },
+              },
+            ],
           },
         ],
         tools: [
