@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import pdf from "npm:pdf-parse@1.1.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,22 +34,24 @@ serve(async (req) => {
       });
     }
 
-    // Convert PDF to base64
+    // Extract text from PDF
     const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
+    const buffer = new Uint8Array(arrayBuffer);
+    console.log(`Processing file: ${file.name}, size: ${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
     
-    // Build base64 in chunks to avoid stack overflow
-    let binary = "";
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.subarray(i, i + chunkSize);
-      binary += String.fromCharCode(...chunk);
+    let pdfText = "";
+    try {
+      const pdfData = await pdf(Buffer.from(buffer));
+      pdfText = pdfData.text || "";
+      console.log(`Extracted ${pdfText.length} characters from ${pdfData.numpages} pages`);
+    } catch (pdfErr) {
+      console.error("PDF parse error:", pdfErr);
+      pdfText = "Não foi possível extrair texto do PDF.";
     }
-    const base64 = btoa(binary);
-    
-    // Check file size - if too large, warn
-    const fileSizeMB = bytes.length / (1024 * 1024);
-    console.log(`Processing file: ${file.name}, size: ${fileSizeMB.toFixed(2)}MB`);
+
+    if (pdfText.trim().length < 20) {
+      pdfText = "AVISO: Pouco texto extraído. O PDF pode ser uma imagem escaneada. Analise com base nas informações disponíveis.";
+    }
 
     // Fetch requisitos_cliente for Neoenergia matrix comparison
     let requisitos: any[] = [];
@@ -165,7 +168,7 @@ Se INVÁLIDO por Matriz Neoenergia:
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Analise este certificado/documento de treinamento em PDF (codificado em base64). Extraia TODAS as informações de TODAS as páginas (frente e verso), incluindo o conteúdo programático, nome do instrutor e registro profissional.\n\nPDF em Base64:\n${base64}`,
+            content: `Analise o texto extraído deste certificado de treinamento. Extraia TODAS as informações incluindo conteúdo programático, nome do instrutor e registro profissional.\n\n=== TEXTO DO CERTIFICADO ===\n${pdfText.substring(0, 15000)}\n=== FIM DO TEXTO ===`,
           },
         ],
         tools: [
