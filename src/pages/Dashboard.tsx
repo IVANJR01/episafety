@@ -269,28 +269,36 @@ export default function Dashboard() {
 
   const custoMensalData = useMemo(() => {
     const mesesSaida: Record<string, number> = {};
-    entregas.forEach(e => {
-      const epi = epis.find(ep => ep.id === e.epi_id);
-      const valor = epi?.valor || 0;
-      const mes = e.data?.substring(0, 7);
-      if (mes) {
-        mesesSaida[mes] = (mesesSaida[mes] || 0) + valor * e.quantidade;
-      }
-    });
-    // Include transfers
-    estoqueMovimentacoes.forEach(m => {
+    const epiIdsInContracts = new Set(contratoEpis.map(ce => ce.epi_id));
+    const saidaTypes = new Set(["entrega", "troca", "substituicao", "perda", "dano"]);
+
+    // 1) Contract-based exits: "entrada" into contracts = exits from matriz
+    movimentacoes.filter(m => m.tipo === "entrada").forEach(m => {
+      const epi = epis.find(e => e.id === m.epi_id);
+      const valor = (epi?.valor || 0) * m.quantidade;
       const mes = m.created_at?.substring(0, 7);
-      if (mes) {
-        mesesSaida[mes] = (mesesSaida[mes] || 0) + (m.valor_unitario || 0) * m.quantidade;
+      if (mes && valor > 0) {
+        mesesSaida[mes] = (mesesSaida[mes] || 0) + valor;
       }
     });
+
+    // 2) Direct deliveries for EPIs NOT managed through contracts
+    entregas.filter(e => saidaTypes.has(e.tipo) && !epiIdsInContracts.has(e.epi_id)).forEach(e => {
+      const epi = epis.find(ep => ep.id === e.epi_id);
+      const valor = (epi?.valor || 0) * e.quantidade;
+      const mes = e.data?.substring(0, 7);
+      if (mes && valor > 0) {
+        mesesSaida[mes] = (mesesSaida[mes] || 0) + valor;
+      }
+    });
+
     const meses = Object.keys(mesesSaida).sort().slice(-6);
     return meses.map(mes => ({
       mes: mes.split("-").reverse().join("/"),
       saida: Number(mesesSaida[mes].toFixed(2)),
       estoque: Number(valorEstoqueAtual.toFixed(2)),
     }));
-  }, [entregas, epis, valorEstoqueAtual, estoqueMovimentacoes]);
+  }, [entregas, epis, valorEstoqueAtual, movimentacoes, contratoEpis]);
 
   // Pareto de Consumo (baseado em entregas reais)
   const { consumoChartData, totalConsumoValor } = useMemo(() => {
