@@ -46,63 +46,69 @@ serve(async (req) => {
 
     // Fetch requisitos_cliente for comparison
     let requisitos: any[] = [];
-    if (empresaId) {
-      const { data } = await supabase
-        .from("requisitos_cliente")
-        .select("*")
-        .or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
-      if (data) requisitos = data;
-    }
+    const { data } = await supabase
+      .from("requisitos_cliente")
+      .select("*")
+      .order("curso_nome");
+    if (data) requisitos = data;
 
     const requisitosContext = requisitos.length > 0
-      ? `\n\nMATRIZ DE REQUISITOS DO CLIENTE:\n${requisitos.map(r =>
-          `- Curso: ${r.curso_nome} | Sinônimos: ${(r.sinonimos || []).join(", ")} | Carga Horária Mínima: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções Exigidas: ${(r.funcoes_exigidas || []).join(", ")}`
+      ? `\n\nMATRIZ DE REQUISITOS NEOENERGIA (Rev.12 - 24/09/2024 - Expansão AT, SE e LD):\nUse esta matriz como referência principal para validação. Cada curso possui carga horária mínima obrigatória e funções que o exigem.\n\n${requisitos.map(r =>
+          `CURSO: "${r.curso_nome}" | Sinônimos aceitos: [${(r.sinonimos || []).join(", ")}] | Carga Horária MÍNIMA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções que exigem: [${(r.funcoes_exigidas || []).join(", ")}]`
         ).join("\n")}`
       : "";
 
     const funcionarioContext = funcionarioNome
-      ? `\n\nDADOS DO COLABORADOR SELECIONADO:\nNome: ${funcionarioNome}\nFunção: ${funcionarioCargo || "Não informada"}`
+      ? `\n\nDADOS DO COLABORADOR SELECIONADO:\nNome: ${funcionarioNome}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\n\nIMPORTANTE: Compare o nome no certificado com "${funcionarioNome}". Se forem diferentes, ALERTE definindo alerta_nome=true.`
       : "";
 
-    const systemPrompt = `Você é um especialista em análise de certificados e documentos de treinamento de segurança do trabalho no Brasil.
+    const systemPrompt = `Você é um especialista em análise de certificados de treinamento de segurança do trabalho no Brasil, com conhecimento profundo das Normas Regulamentadoras (NRs) e da Matriz de Capacitação da Neoenergia.
 
-Analise o documento PDF enviado e extraia as seguintes informações:
-1. Nome completo do colaborador que aparece no certificado
+TAREFA: Analise o certificado/documento PDF enviado e extraia TODAS as informações possíveis.
+
+EXTRAÇÃO OBRIGATÓRIA:
+1. Nome completo do colaborador no certificado
 2. CPF (se visível)
-3. Nome do curso/treinamento
-4. Carga horária do curso
-5. Data de realização
-6. Data de validade (se informada)
-7. Instituição/entidade de ensino
-8. Resumo do conteúdo programático (se disponível no documento)
+3. Nome exato do curso/treinamento
+4. Carga horária (em horas)
+5. Data de realização (formato YYYY-MM-DD)
+6. Data de validade (se informada, formato YYYY-MM-DD)
+7. Nome da instituição/entidade de ensino
+8. Conteúdo programático completo (transcreva todos os tópicos encontrados no verso ou corpo do certificado)
 ${requisitosContext}
 ${funcionarioContext}
 
-INSTRUÇÕES DE VALIDAÇÃO:
-- Se houver Matriz de Requisitos, compare o certificado com os requisitos e informe se atende ou não.
-- Compare a carga horária do certificado com a carga horária mínima exigida.
-- Se o nome no certificado for diferente do colaborador selecionado, ALERTE.
-- Se a função do colaborador estiver nas funções exigidas de algum requisito, verifique se o certificado atende.
+REGRAS DE VALIDAÇÃO CONTRA A MATRIZ NEOENERGIA:
+1. Identifique qual curso da Matriz corresponde ao certificado (use os sinônimos para correspondência).
+2. Compare a CARGA HORÁRIA do certificado com a carga horária MÍNIMA exigida na Matriz.
+3. Se a função/cargo do colaborador estiver na lista de "funções que exigem" aquele curso, marque conforme_matriz=true APENAS se a carga horária for >= à mínima.
+4. Se a carga horária for INFERIOR à exigida, marque conforme_matriz=false e explique no motivo.
+5. Se o curso não for encontrado na Matriz, marque conforme_matriz=null.
+
+FORMATO DA DESCRIÇÃO (campo descricao_completa):
+Siga EXATAMENTE este padrão:
+"Análise Automática (Matriz Rev.12): [NOME DA INSTITUIÇÃO] - [CARGA HORÁRIA]h. Status: [APROVADO/REPROVADO] conforme Matriz Neoenergia. [Se APROVADO: Validado para atividades de Expansão AT, SE e LD.] [Se REPROVADO: ATENÇÃO - Carga horária insuficiente (Xh apresentadas vs Yh exigidas pela Matriz Rev.12).] Conteúdo: [RESUMO DO CONTEÚDO PROGRAMÁTICO]."
 
 Responda EXCLUSIVAMENTE com um JSON válido (sem markdown, sem código) no seguinte formato:
 {
   "nome_certificado": "Nome que aparece no certificado",
-  "cpf": "CPF encontrado ou null",
+  "cpf": "CPF ou null",
   "curso": "Nome do curso identificado",
   "carga_horaria": 40,
   "data_realizacao": "2024-01-15",
   "data_validade": "2026-01-15",
   "instituicao": "Nome da instituição",
-  "conteudo_programatico": "Resumo do conteúdo",
-  "descricao_completa": "[INSTITUIÇÃO] - [CARGA HORÁRIA]h. Status: [APROVADO/REPROVADO] conforme Matriz. Conteúdo: [RESUMO]",
+  "conteudo_programatico": "Lista completa dos tópicos do conteúdo programático",
+  "descricao_completa": "Descrição formatada conforme padrão acima",
   "alerta_nome": false,
   "alerta_nome_msg": "",
   "conforme_matriz": true,
   "motivo_nao_conforme": "",
-  "requisito_atendido": "Nome do requisito atendido ou null",
+  "requisito_atendido": "Nome do requisito da Matriz atendido ou null",
   "confianca": 0.95
 }`;
 
+    // Use tool calling for structured output
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -115,14 +121,40 @@ Responda EXCLUSIVAMENTE com um JSON válido (sem markdown, sem código) no segui
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Analise este certificado/documento de treinamento e extraia todas as informações solicitadas.\n\nO conteúdo do documento em base64 (PDF) está abaixo:\n\n${base64}`,
-              },
-            ],
+            content: `Analise este certificado/documento de treinamento. O conteúdo do PDF em base64 está abaixo:\n\n${base64}`,
           },
         ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "analyze_certificate",
+              description: "Retorna os dados extraídos e validados do certificado de treinamento",
+              parameters: {
+                type: "object",
+                properties: {
+                  nome_certificado: { type: "string", description: "Nome do colaborador no certificado" },
+                  cpf: { type: "string", description: "CPF encontrado ou string vazia" },
+                  curso: { type: "string", description: "Nome do curso identificado" },
+                  carga_horaria: { type: "number", description: "Carga horária em horas" },
+                  data_realizacao: { type: "string", description: "Data de realização YYYY-MM-DD" },
+                  data_validade: { type: "string", description: "Data de validade YYYY-MM-DD ou string vazia" },
+                  instituicao: { type: "string", description: "Nome da instituição" },
+                  conteudo_programatico: { type: "string", description: "Conteúdo programático completo" },
+                  descricao_completa: { type: "string", description: "Descrição formatada conforme padrão" },
+                  alerta_nome: { type: "boolean", description: "Se o nome diverge do colaborador selecionado" },
+                  alerta_nome_msg: { type: "string", description: "Mensagem de alerta sobre divergência de nome" },
+                  conforme_matriz: { type: "boolean", description: "Se atende à Matriz Neoenergia" },
+                  motivo_nao_conforme: { type: "string", description: "Motivo da não conformidade" },
+                  requisito_atendido: { type: "string", description: "Nome do requisito atendido" },
+                  confianca: { type: "number", description: "Nível de confiança 0-1" },
+                },
+                required: ["nome_certificado", "curso", "carga_horaria", "descricao_completa", "conforme_matriz", "confianca"],
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "analyze_certificate" } },
       }),
     });
 
@@ -148,23 +180,39 @@ Responda EXCLUSIVAMENTE com um JSON válido (sem markdown, sem código) no segui
     }
 
     const aiResult = await response.json();
-    const content = aiResult.choices?.[0]?.message?.content || "";
-
-    // Try to parse JSON from response
+    
+    // Extract from tool call response
     let parsed: any = null;
     try {
-      // Remove markdown code fences if present
-      const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-      parsed = JSON.parse(cleaned);
-    } catch {
-      console.error("Failed to parse AI response:", content);
-      parsed = {
-        curso: "Não identificado",
-        descricao_completa: content,
-        confianca: 0.3,
-        conforme_matriz: false,
-        motivo_nao_conforme: "IA não conseguiu estruturar a resposta",
-      };
+      const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall?.function?.arguments) {
+        const args = typeof toolCall.function.arguments === "string" 
+          ? JSON.parse(toolCall.function.arguments) 
+          : toolCall.function.arguments;
+        parsed = args;
+      }
+    } catch (e) {
+      console.error("Failed to parse tool call:", e);
+    }
+
+    // Fallback: try parsing content directly
+    if (!parsed) {
+      try {
+        const content = aiResult.choices?.[0]?.message?.content || "";
+        const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        parsed = JSON.parse(cleaned);
+      } catch {
+        const content = aiResult.choices?.[0]?.message?.content || "";
+        parsed = {
+          curso: "Não identificado",
+          descricao_completa: content || "IA não conseguiu analisar o documento",
+          confianca: 0.3,
+          conforme_matriz: false,
+          motivo_nao_conforme: "IA não conseguiu estruturar a resposta",
+          carga_horaria: 0,
+          nome_certificado: "",
+        };
+      }
     }
 
     return new Response(JSON.stringify({ success: true, analysis: parsed }), {
