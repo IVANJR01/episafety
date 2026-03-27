@@ -163,15 +163,15 @@ export default function Funcionarios() {
 
   const openDemissao = (f: Funcionario) => {
     setDemissaoTarget(f);
-    setDemissaoDate(new Date().toISOString().split("T")[0]);
     setDemissaoOpen(true);
   };
 
-  const handleDemissao = async () => {
-    if (!demissaoTarget || !demissaoDate) return;
-    await update(demissaoTarget.id, { data_demissao: demissaoDate } as any);
+  const handleDemissaoComplete = async (dataDemissao: string) => {
+    if (!demissaoTarget) return;
+    await update(demissaoTarget.id, { data_demissao: dataDemissao } as any);
     setDemissaoOpen(false);
-    toast({ title: "Demissão registrada", description: `${demissaoTarget.nome} foi marcado como demitido.` });
+    toast({ title: "Desligamento concluído", description: `${demissaoTarget.nome} foi desligado(a) com baixa de EPIs processada.` });
+    refetch();
   };
 
   const handleReativar = async (f: Funcionario) => {
