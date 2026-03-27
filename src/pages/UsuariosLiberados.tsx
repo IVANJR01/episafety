@@ -914,6 +914,80 @@ export default function UsuariosLiberados() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Clone Permissions Dialog */}
+      <Dialog open={!!cloneSourceId} onOpenChange={(open) => { if (!open) { setCloneSourceId(null); setCloneTargetId(""); setCloneFilterText(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="w-5 h-5" />
+              Clonar Permissões
+            </DialogTitle>
+          </DialogHeader>
+          {cloneSource && (
+            <div className="space-y-4 py-2">
+              <div className="p-3 rounded-lg border bg-muted/30">
+                <p className="text-xs text-muted-foreground mb-1">Copiar permissões de:</p>
+                <p className="font-medium text-sm">{cloneSource.nome || cloneSource.email}</p>
+                <p className="text-xs text-muted-foreground">{(cloneSource.modulos_permitidos || []).length} permissões configuradas</p>
+              </div>
+              <div>
+                <Label>Aplicar para:</Label>
+                <Input
+                  placeholder="Buscar por nome ou e-mail..."
+                  value={cloneFilterText}
+                  onChange={e => setCloneFilterText(e.target.value)}
+                  className="mb-2"
+                />
+                <Select value={cloneTargetId} onValueChange={setCloneTargetId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o usuário destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cloneTargetOptions.map(u => (
+                      <SelectItem key={u.id} value={u.id}>
+                        <span className="flex items-center gap-2">
+                          {u.nome || u.email}
+                          <span className="text-muted-foreground text-xs">({u.email})</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {cloneTargetOptions.length === 0 && (
+                      <SelectItem value="_empty" disabled>Nenhum usuário encontrado</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloneSourceId(null)}>Cancelar</Button>
+            <Button
+              disabled={!cloneTargetId || cloneTargetId === "_empty"}
+              onClick={() => setCloneConfirmOpen(true)}
+            >
+              <Copy className="w-3.5 h-3.5 mr-1.5" />
+              Clonar Permissões
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clone Confirmation */}
+      <AlertDialog open={cloneConfirmOpen} onOpenChange={setCloneConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar clonagem de permissões</AlertDialogTitle>
+            <AlertDialogDescription>
+              As permissões atuais de <strong>{usuarios.find(u => u.id === cloneTargetId)?.nome || usuarios.find(u => u.id === cloneTargetId)?.email}</strong> serão substituídas pelas de <strong>{cloneSource?.nome || cloneSource?.email}</strong>. Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClonePermissions}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
