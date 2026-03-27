@@ -1574,6 +1574,59 @@ export type Database = {
           },
         ]
       }
+      requisitos_cliente: {
+        Row: {
+          carga_horaria_minima: number
+          created_at: string | null
+          created_by: string | null
+          curso_nome: string
+          descricao: string | null
+          empresa_id: string | null
+          funcoes_exigidas: string[] | null
+          id: string
+          nome_cliente: string
+          sinonimos: string[] | null
+          updated_at: string | null
+          validade_meses: number
+        }
+        Insert: {
+          carga_horaria_minima?: number
+          created_at?: string | null
+          created_by?: string | null
+          curso_nome: string
+          descricao?: string | null
+          empresa_id?: string | null
+          funcoes_exigidas?: string[] | null
+          id?: string
+          nome_cliente?: string
+          sinonimos?: string[] | null
+          updated_at?: string | null
+          validade_meses?: number
+        }
+        Update: {
+          carga_horaria_minima?: number
+          created_at?: string | null
+          created_by?: string | null
+          curso_nome?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          funcoes_exigidas?: string[] | null
+          id?: string
+          nome_cliente?: string
+          sinonimos?: string[] | null
+          updated_at?: string | null
+          validade_meses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisitos_cliente_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       solicitacoes_epi: {
         Row: {
           aprovado_por: string | null
