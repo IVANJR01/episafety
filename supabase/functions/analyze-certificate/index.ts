@@ -396,22 +396,24 @@ ${pdfBase64.substring(0, 50000)}`,
     console.log(`Analysis complete: curso=${parsed.curso}, confianca=${parsed.confianca}`);
 
     // Persist analysis to analises_ia table
+    let analysisId: string | null = null;
     if (funcionarioId && empresaId) {
       try {
-        await supabase.from("analises_ia").insert({
+        const { data: insertedRow } = await supabase.from("analises_ia").insert({
           empresa_id: empresaId,
           funcionario_id: funcionarioId,
           arquivo_nome: file.name,
           ia_metadata: parsed,
           status: "analisado",
-        });
-        console.log("Analysis persisted to analises_ia table");
+        }).select("id").single();
+        analysisId = insertedRow?.id || null;
+        console.log("Analysis persisted to analises_ia table, id:", analysisId);
       } catch (e) {
         console.error("Failed to persist analysis:", e);
       }
     }
 
-    return new Response(JSON.stringify({ success: true, analysis: parsed }), {
+    return new Response(JSON.stringify({ success: true, analysis: parsed, analysisId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
