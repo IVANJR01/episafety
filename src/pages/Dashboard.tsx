@@ -344,7 +344,7 @@ export default function Dashboard() {
 
   // Per-unit monthly entry/exit chart data, broken down by contract
   const perUnitChartData = useMemo(() => {
-    if (movimentacoes.length === 0 || contratos.length === 0) return new Map<string, { nome: string; contratoNomes: string[]; data: Record<string, any>[] }>();
+    if (movimentacoes.length === 0 || contratos.length === 0) return new Map<string, { nome: string; contratoNomes: string[]; maiorEntrada: string; maiorSaida: string; data: Record<string, any>[] }>();
 
     const contratoToUnidade = new Map(contratos.map(c => [c.id, c.unidade_id]));
     const contratoMap = new Map(contratos.map(c => [c.id, c.nome]));
