@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power } from "lucide-react";
+import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power, Copy } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
 import { useAuth } from "@/contexts/AuthContext";
@@ -67,6 +68,12 @@ export default function UsuariosLiberados() {
   const [newOpen, setNewOpen] = useState(false);
   const [permsUserId, setPermsUserId] = useState<string | null>(null);
   const [editTab, setEditTab] = useState<string>("dados");
+
+  // Clone permissions states
+  const [cloneSourceId, setCloneSourceId] = useState<string | null>(null);
+  const [cloneTargetId, setCloneTargetId] = useState<string>("");
+  const [cloneConfirmOpen, setCloneConfirmOpen] = useState(false);
+  const [cloneFilterText, setCloneFilterText] = useState("");
 
   // Edit fields
   const [editNome, setEditNome] = useState("");
@@ -340,6 +347,44 @@ export default function UsuariosLiberados() {
     return ACOES.filter(a => perms.includes(`${moduleKey}:${a.key}`)).length;
   };
 
+  // Clone permissions logic
+  const cloneSource = cloneSourceId ? usuarios.find(u => u.id === cloneSourceId) : null;
+  const cloneTargetOptions = useMemo(() => {
+    if (!cloneSourceId) return [];
+    return usuarios.filter(u => u.id !== cloneSourceId && !u.is_principal).filter(u => {
+      if (!cloneFilterText) return true;
+      const q = cloneFilterText.toLowerCase();
+      return u.email.toLowerCase().includes(q) || (u.nome || "").toLowerCase().includes(q);
+    });
+  }, [usuarios, cloneSourceId, cloneFilterText]);
+
+  const handleClonePermissions = async () => {
+    if (!cloneSourceId || !cloneTargetId) return;
+    const source = usuarios.find(u => u.id === cloneSourceId);
+    if (!source) return;
+    const permsToClone = source.modulos_permitidos || [];
+
+    if (isOnline()) {
+      const { error } = await (supabase.from as any)("usuarios_liberados")
+        .update({ modulos_permitidos: permsToClone })
+        .eq("id", cloneTargetId);
+      if (error) {
+        toast({ title: "Erro ao clonar permissões", description: error.message, variant: "destructive" });
+        setCloneConfirmOpen(false);
+        return;
+      }
+    } else {
+      addToSyncQueue({ table: "usuarios_liberados", type: "update", payload: { id: cloneTargetId, modulos_permitidos: permsToClone } });
+    }
+
+    setUsuarios(prev => prev.map(u => u.id === cloneTargetId ? { ...u, modulos_permitidos: permsToClone } : u));
+    toast({ title: "Permissões replicadas com sucesso!" });
+    setCloneConfirmOpen(false);
+    setCloneSourceId(null);
+    setCloneTargetId("");
+    setCloneFilterText("");
+  };
+
   const hasModulePerm = (perms: string[], moduleKey: string, action: string): boolean => {
     if (perms.includes(moduleKey)) return true;
     return perms.includes(`${moduleKey}:${action}`);
@@ -500,6 +545,17 @@ export default function UsuariosLiberados() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => { setCloneSourceId(u.id); setCloneTargetId(""); setCloneFilterText(""); }}
+                              title="Clonar permissões para outro usuário"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -858,6 +914,80 @@ export default function UsuariosLiberados() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Clone Permissions Dialog */}
+      <Dialog open={!!cloneSourceId} onOpenChange={(open) => { if (!open) { setCloneSourceId(null); setCloneTargetId(""); setCloneFilterText(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="w-5 h-5" />
+              Clonar Permissões
+            </DialogTitle>
+          </DialogHeader>
+          {cloneSource && (
+            <div className="space-y-4 py-2">
+              <div className="p-3 rounded-lg border bg-muted/30">
+                <p className="text-xs text-muted-foreground mb-1">Copiar permissões de:</p>
+                <p className="font-medium text-sm">{cloneSource.nome || cloneSource.email}</p>
+                <p className="text-xs text-muted-foreground">{(cloneSource.modulos_permitidos || []).length} permissões configuradas</p>
+              </div>
+              <div>
+                <Label>Aplicar para:</Label>
+                <Input
+                  placeholder="Buscar por nome ou e-mail..."
+                  value={cloneFilterText}
+                  onChange={e => setCloneFilterText(e.target.value)}
+                  className="mb-2"
+                />
+                <Select value={cloneTargetId} onValueChange={setCloneTargetId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o usuário destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cloneTargetOptions.map(u => (
+                      <SelectItem key={u.id} value={u.id}>
+                        <span className="flex items-center gap-2">
+                          {u.nome || u.email}
+                          <span className="text-muted-foreground text-xs">({u.email})</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                    {cloneTargetOptions.length === 0 && (
+                      <SelectItem value="_empty" disabled>Nenhum usuário encontrado</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloneSourceId(null)}>Cancelar</Button>
+            <Button
+              disabled={!cloneTargetId || cloneTargetId === "_empty"}
+              onClick={() => setCloneConfirmOpen(true)}
+            >
+              <Copy className="w-3.5 h-3.5 mr-1.5" />
+              Clonar Permissões
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clone Confirmation */}
+      <AlertDialog open={cloneConfirmOpen} onOpenChange={setCloneConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar clonagem de permissões</AlertDialogTitle>
+            <AlertDialogDescription>
+              As permissões atuais de <strong>{usuarios.find(u => u.id === cloneTargetId)?.nome || usuarios.find(u => u.id === cloneTargetId)?.email}</strong> serão substituídas pelas de <strong>{cloneSource?.nome || cloneSource?.email}</strong>. Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClonePermissions}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
