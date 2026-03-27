@@ -117,6 +117,14 @@ export default function Funcionarios() {
   // Load unidades/contratos on mount for display in table
   useEffect(() => { fetchUnidadesContratos(); }, []);
 
+  // Load empresa info
+  useEffect(() => {
+    if (!empresaId) return;
+    supabase.from("empresa_config").select("nome, cnpj").eq("id", empresaId).single().then(({ data }) => {
+      if (data) setEmpresaInfo({ nome: data.nome, cnpj: data.cnpj });
+    });
+  }, [empresaId]);
+
   // Helper maps for display
   const unidadeMap = useMemo(() => new Map(unidades.map(u => [u.id, u.nome])), [unidades]);
   const contratoMap = useMemo(() => new Map(contratos.map(c => [c.id, c.nome])), [contratos]);
