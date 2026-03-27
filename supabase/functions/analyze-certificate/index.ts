@@ -34,24 +34,12 @@ serve(async (req) => {
       });
     }
 
-    // Extract text from PDF
+    // Convert PDF to base64 for AI model
     const arrayBuffer = await file.arrayBuffer();
     const buffer = new Uint8Array(arrayBuffer);
     console.log(`Processing file: ${file.name}, size: ${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
     
-    let pdfText = "";
-    try {
-      const pdfData = await pdf(Buffer.from(buffer));
-      pdfText = pdfData.text || "";
-      console.log(`Extracted ${pdfText.length} characters from ${pdfData.numpages} pages`);
-    } catch (pdfErr) {
-      console.error("PDF parse error:", pdfErr);
-      pdfText = "Não foi possível extrair texto do PDF.";
-    }
-
-    if (pdfText.trim().length < 20) {
-      pdfText = "AVISO: Pouco texto extraído. O PDF pode ser uma imagem escaneada. Analise com base nas informações disponíveis.";
-    }
+    const pdfBase64 = base64Encode(buffer);
 
     // Fetch requisitos_cliente for Neoenergia matrix comparison
     let requisitos: any[] = [];
