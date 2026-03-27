@@ -135,6 +135,11 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
       setCurrentStep(0);
 
+      // Animate steps during actual API call
+      const stepInterval = setInterval(() => {
+        setCurrentStep(prev => prev < ANALYSIS_STEPS.length - 1 ? prev + 1 : prev);
+      }, 2000);
+
       try {
         const formData = new FormData();
         formData.append("file", af.file);
@@ -155,6 +160,8 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
           }
         );
 
+        clearInterval(stepInterval);
+
         if (!response.ok) {
           const errData = await response.json().catch(() => ({ error: "Erro desconhecido" }));
           throw new Error(errData.error || `Erro ${response.status}`);
@@ -163,6 +170,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
         const result = await response.json();
         setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "analyzed", analysis: result.analysis } : f));
       } catch (err: any) {
+        clearInterval(stepInterval);
         setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "error", errorMsg: err.message } : f));
       }
 
