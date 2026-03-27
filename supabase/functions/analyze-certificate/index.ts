@@ -151,12 +151,23 @@ Se INVÁLIDO por Matriz Neoenergia:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Analise o texto extraído deste certificado de treinamento. Extraia TODAS as informações incluindo conteúdo programático, nome do instrutor e registro profissional.\n\n=== TEXTO DO CERTIFICADO ===\n${pdfText.substring(0, 15000)}\n=== FIM DO TEXTO ===`,
+            content: [
+              {
+                type: "text",
+                text: "Analise este certificado de treinamento em PDF. Extraia TODAS as informações de TODAS as páginas, incluindo conteúdo programático (geralmente no verso/página 2), nome do instrutor e registro profissional. Converta datas para formato YYYY-MM-DD.",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${pdfBase64}`,
+                },
+              },
+            ],
           },
         ],
         tools: [
