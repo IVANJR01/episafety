@@ -57,7 +57,7 @@ serve(async (req) => {
       : "";
 
     const funcionarioContext = funcionarioNome
-      ? `\nDADOS DO COLABORADOR:\nNome: ${funcionarioNome}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\nIMPORTANTE: Compare o nome no certificado com "${funcionarioNome}". Se forem diferentes, defina alerta_nome=true.`
+      ? `\nDADOS DO COLABORADOR:\nNome: ${funcionarioNome}\nCPF: ${funcionarioCpf || "Não informado"}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\nIMPORTANTE: Compare o nome no certificado com "${funcionarioNome}". Use o CPF "${funcionarioCpf || ""}" como chave primária de identificação — se o CPF coincidir, o colaborador é o mesmo mesmo que o nome tenha variações. Se nome e CPF divergirem, defina alerta_nome=true.`
       : "";
 
     const systemPrompt = `Você é um auditor técnico especialista em Segurança do Trabalho no Brasil, com domínio completo das Normas Regulamentadoras (NRs) do Ministério do Trabalho e Emprego (MTE) e da Matriz de Capacitação da Neoenergia.
