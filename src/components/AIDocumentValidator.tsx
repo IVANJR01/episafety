@@ -76,10 +76,27 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
   const [analyzing, setAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [overallProgress, setOverallProgress] = useState(0);
-  const [selectedFunc, setSelectedFunc] = useState<Funcionario | null>(null);
   const [funcSearch, setFuncSearch] = useState("");
   const [showScanModal, setShowScanModal] = useState(false);
   const [currentFile, setCurrentFile] = useState<string>("");
+
+  // Persist selected employee across navigation/refresh
+  const [selectedFunc, setSelectedFuncState] = useState<Funcionario | null>(() => {
+    try {
+      const saved = localStorage.getItem("ai_validator_selected_func");
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return null;
+  });
+
+  const setSelectedFunc = useCallback((func: Funcionario | null) => {
+    setSelectedFuncState(func);
+    if (func) {
+      localStorage.setItem("ai_validator_selected_func", JSON.stringify(func));
+    } else {
+      localStorage.removeItem("ai_validator_selected_func");
+    }
+  }, []);
 
   const filteredFuncs = (() => {
     if (!funcSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
