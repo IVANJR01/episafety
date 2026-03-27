@@ -974,6 +974,20 @@ export default function Treinamentos() {
           </Card>
         </TabsContent>
 
+        {/* === ABA UPLOAD EM LOTE === */}
+        <TabsContent value="upload">
+          <Card>
+            <CardContent className="p-6">
+              <BulkDocumentUpload
+                funcionarios={funcionarios}
+                cursos={CURSOS_SUGERIDOS}
+                empresaId={empresaId}
+                onComplete={fetchData}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* === ABA CADASTRO DE CURSOS === */}
         <TabsContent value="cadastro">
           <CadastroCursos onUpdate={fetchCursosDB} />
