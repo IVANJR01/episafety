@@ -347,6 +347,44 @@ export default function UsuariosLiberados() {
     return ACOES.filter(a => perms.includes(`${moduleKey}:${a.key}`)).length;
   };
 
+  // Clone permissions logic
+  const cloneSource = cloneSourceId ? usuarios.find(u => u.id === cloneSourceId) : null;
+  const cloneTargetOptions = useMemo(() => {
+    if (!cloneSourceId) return [];
+    return usuarios.filter(u => u.id !== cloneSourceId && !u.is_principal).filter(u => {
+      if (!cloneFilterText) return true;
+      const q = cloneFilterText.toLowerCase();
+      return u.email.toLowerCase().includes(q) || (u.nome || "").toLowerCase().includes(q);
+    });
+  }, [usuarios, cloneSourceId, cloneFilterText]);
+
+  const handleClonePermissions = async () => {
+    if (!cloneSourceId || !cloneTargetId) return;
+    const source = usuarios.find(u => u.id === cloneSourceId);
+    if (!source) return;
+    const permsToClone = source.modulos_permitidos || [];
+
+    if (isOnline()) {
+      const { error } = await (supabase.from as any)("usuarios_liberados")
+        .update({ modulos_permitidos: permsToClone })
+        .eq("id", cloneTargetId);
+      if (error) {
+        toast({ title: "Erro ao clonar permissões", description: error.message, variant: "destructive" });
+        setCloneConfirmOpen(false);
+        return;
+      }
+    } else {
+      addToSyncQueue({ table: "usuarios_liberados", type: "update", payload: { id: cloneTargetId, modulos_permitidos: permsToClone } });
+    }
+
+    setUsuarios(prev => prev.map(u => u.id === cloneTargetId ? { ...u, modulos_permitidos: permsToClone } : u));
+    toast({ title: "Permissões replicadas com sucesso!" });
+    setCloneConfirmOpen(false);
+    setCloneSourceId(null);
+    setCloneTargetId("");
+    setCloneFilterText("");
+  };
+
   const hasModulePerm = (perms: string[], moduleKey: string, action: string): boolean => {
     if (perms.includes(moduleKey)) return true;
     return perms.includes(`${moduleKey}:${action}`);
