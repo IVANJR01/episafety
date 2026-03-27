@@ -29,10 +29,15 @@ interface AIAnalysis {
   data_realizacao?: string;
   data_validade?: string;
   instituicao?: string;
+  instrutor_nome?: string;
+  instrutor_registro?: string;
   conteudo_programatico?: string;
   descricao_completa?: string;
   alerta_nome?: boolean;
   alerta_nome_msg?: string;
+  nr_referencia?: string;
+  conforme_nr?: boolean;
+  motivo_nr?: string;
   conforme_matriz?: boolean;
   motivo_nao_conforme?: string;
   requisito_atendido?: string;
