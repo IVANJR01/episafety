@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { differenceInDays, format, parseISO } from "date-fns";
 import * as XLSX from "xlsx-js-style";
 import CadastroCursos from "@/components/CadastroCursos";
+import BulkDocumentUpload from "@/components/BulkDocumentUpload";
 
 interface ControleTreinamento {
   id: string;
@@ -807,6 +808,7 @@ export default function Treinamentos() {
         <TabsList className="mb-3">
           <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
+          <TabsTrigger value="upload" className="gap-1.5"><Upload className="w-4 h-4" />Upload em Lote</TabsTrigger>
           <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
         </TabsList>
 
@@ -968,6 +970,20 @@ export default function Treinamentos() {
                   </table>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* === ABA UPLOAD EM LOTE === */}
+        <TabsContent value="upload">
+          <Card>
+            <CardContent className="p-6">
+              <BulkDocumentUpload
+                funcionarios={funcionarios}
+                cursos={CURSOS_SUGERIDOS}
+                empresaId={empresaId}
+                onComplete={fetchData}
+              />
             </CardContent>
           </Card>
         </TabsContent>
