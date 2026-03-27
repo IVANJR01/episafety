@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter, UserX, RotateCcw } from "lucide-react";
+import BaixaDesligamento from "@/components/BaixaDesligamento";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
@@ -98,6 +99,7 @@ export default function Funcionarios() {
   // Unidades and Contratos for selects
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj: string | null }>({ nome: "", cnpj: null });
 
   const fetchUnidadesContratos = async () => {
     const [uResult, cResult] = await Promise.all([
@@ -114,6 +116,14 @@ export default function Funcionarios() {
 
   // Load unidades/contratos on mount for display in table
   useEffect(() => { fetchUnidadesContratos(); }, []);
+
+  // Load empresa info
+  useEffect(() => {
+    if (!empresaId) return;
+    supabase.from("empresa_config").select("nome, cnpj").eq("id", empresaId).single().then(({ data }) => {
+      if (data) setEmpresaInfo({ nome: data.nome, cnpj: data.cnpj });
+    });
+  }, [empresaId]);
 
   // Helper maps for display
   const unidadeMap = useMemo(() => new Map(unidades.map(u => [u.id, u.nome])), [unidades]);
@@ -149,19 +159,18 @@ export default function Funcionarios() {
   // Demissão dialog
   const [demissaoOpen, setDemissaoOpen] = useState(false);
   const [demissaoTarget, setDemissaoTarget] = useState<Funcionario | null>(null);
-  const [demissaoDate, setDemissaoDate] = useState("");
 
   const openDemissao = (f: Funcionario) => {
     setDemissaoTarget(f);
-    setDemissaoDate(new Date().toISOString().split("T")[0]);
     setDemissaoOpen(true);
   };
 
-  const handleDemissao = async () => {
-    if (!demissaoTarget || !demissaoDate) return;
-    await update(demissaoTarget.id, { data_demissao: demissaoDate } as any);
+  const handleDemissaoComplete = async (dataDemissao: string) => {
+    if (!demissaoTarget) return;
+    await update(demissaoTarget.id, { data_demissao: dataDemissao } as any);
     setDemissaoOpen(false);
-    toast({ title: "Demissão registrada", description: `${demissaoTarget.nome} foi marcado como demitido.` });
+    toast({ title: "Desligamento concluído", description: `${demissaoTarget.nome} foi desligado(a) com baixa de EPIs processada.` });
+    refetch();
   };
 
   const handleReativar = async (f: Funcionario) => {
@@ -656,23 +665,15 @@ export default function Funcionarios() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Demissão */}
-      <Dialog open={demissaoOpen} onOpenChange={setDemissaoOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><UserX className="w-5 h-5 text-destructive" />Registrar Demissão</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">Funcionário: <strong className="text-foreground">{demissaoTarget?.nome}</strong></p>
-            <div>
-              <Label>Data da Demissão</Label>
-              <Input type="date" value={demissaoDate} onChange={e => setDemissaoDate(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDemissaoOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDemissao} disabled={!demissaoDate}>Confirmar Demissão</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Baixa por Desligamento */}
+      <BaixaDesligamento
+        open={demissaoOpen}
+        onOpenChange={setDemissaoOpen}
+        funcionario={demissaoTarget}
+        empresaNome={empresaInfo.nome}
+        empresaCnpj={empresaInfo.cnpj}
+        onComplete={handleDemissaoComplete}
+      />
 
       {/* Dialog importação */}
       <Dialog open={importOpen} onOpenChange={(v) => { if (!importing) { setImportOpen(v); if (!v) { setImportRows([]); setImportResult(null); } } }}>
