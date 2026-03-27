@@ -351,6 +351,7 @@ export default function Dashboard() {
     const unidadeMap = new Map(unidades.map(u => [u.id, u.nome]));
 
     // Group by unidade > mes > contrato > tipo
+    const saidaTypes = new Set(["entrega", "troca", "substituicao", "perda", "dano", "saida"]);
     const porUnidade: Record<string, Record<string, Record<string, { entrada: number; saida: number }>>> = {};
     movimentacoes.forEach(m => {
       const unidadeId = contratoToUnidade.get(m.contrato_id);
@@ -364,10 +365,10 @@ export default function Dashboard() {
       const epi = epis.find(e => e.id === m.epi_id);
       const valor = (epi?.valor || 0) * m.quantidade;
       if (m.tipo === "entrada") porUnidade[unidadeId][mes][contratoNome].entrada += valor;
-      else if (m.tipo === "saida") porUnidade[unidadeId][mes][contratoNome].saida += valor;
+      else if (saidaTypes.has(m.tipo)) porUnidade[unidadeId][mes][contratoNome].saida += valor;
     });
 
-    const result = new Map<string, { nome: string; contratoNomes: string[]; data: Record<string, any>[] }>();
+    const result = new Map<string, { nome: string; contratoNomes: string[]; maiorEntrada: string; maiorSaida: string; data: Record<string, any>[] }>();
     Object.entries(porUnidade).forEach(([uid, meses]) => {
       const mesesSorted = Object.keys(meses).sort().slice(-12);
       if (mesesSorted.length === 0) return;
@@ -375,6 +376,19 @@ export default function Dashboard() {
       const allContratos = new Set<string>();
       Object.values(meses).forEach(mesData => Object.keys(mesData).forEach(c => allContratos.add(c)));
       const contratoNomes = Array.from(allContratos).sort();
+
+      // Calculate totals per contract for ranking
+      const totalEntradaPorContrato: Record<string, number> = {};
+      const totalSaidaPorContrato: Record<string, number> = {};
+      Object.values(meses).forEach(mesData => {
+        Object.entries(mesData).forEach(([c, vals]) => {
+          totalEntradaPorContrato[c] = (totalEntradaPorContrato[c] || 0) + vals.entrada;
+          totalSaidaPorContrato[c] = (totalSaidaPorContrato[c] || 0) + vals.saida;
+        });
+      });
+
+      const maiorEntrada = contratoNomes.reduce((best, c) => (totalEntradaPorContrato[c] || 0) > (totalEntradaPorContrato[best] || 0) ? c : best, contratoNomes[0]);
+      const maiorSaida = contratoNomes.reduce((best, c) => (totalSaidaPorContrato[c] || 0) > (totalSaidaPorContrato[best] || 0) ? c : best, contratoNomes[0]);
 
       const data = mesesSorted.map(mes => {
         const row: Record<string, any> = { mes: mes.split("-").reverse().join("/") };
@@ -385,7 +399,7 @@ export default function Dashboard() {
         return row;
       });
 
-      result.set(uid, { nome: unidadeMap.get(uid) || "Unidade", contratoNomes, data });
+      result.set(uid, { nome: unidadeMap.get(uid) || "Unidade", contratoNomes, maiorEntrada, maiorSaida, data });
     });
     return result;
   }, [movimentacoes, contratos, unidades, epis]);
