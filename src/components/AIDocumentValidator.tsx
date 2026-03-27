@@ -63,13 +63,9 @@ interface Props {
 const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 const ANALYSIS_STEPS = [
-  "Lendo dados do documento...",
-  "Identificando colaborador e instrutor...",
-  "Verificando carga horária e conteúdo programático...",
-  "Validando contra Norma Regulamentadora (NR)...",
-  "Consultando Matriz Neoenergia Rev.12...",
-  "Cruzando função do colaborador com requisitos...",
-  "Finalizando parecer técnico...",
+  "Enviando documento para análise...",
+  "IA processando certificado...",
+  "Validando conformidade NR e Matriz...",
 ];
 
 export default function AIDocumentValidator({ funcionarios, cursos, empresaId, onComplete }: Props) {
@@ -137,11 +133,12 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       setCurrentFile(af.file.name);
       setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "analyzing" } : f));
 
-      // Animate steps
-      for (let step = 0; step < ANALYSIS_STEPS.length; step++) {
-        setCurrentStep(step);
-        await new Promise(r => setTimeout(r, 600));
-      }
+      setCurrentStep(0);
+
+      // Animate steps during actual API call
+      const stepInterval = setInterval(() => {
+        setCurrentStep(prev => prev < ANALYSIS_STEPS.length - 1 ? prev + 1 : prev);
+      }, 2000);
 
       try {
         const formData = new FormData();
@@ -163,6 +160,8 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
           }
         );
 
+        clearInterval(stepInterval);
+
         if (!response.ok) {
           const errData = await response.json().catch(() => ({ error: "Erro desconhecido" }));
           throw new Error(errData.error || `Erro ${response.status}`);
@@ -171,6 +170,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
         const result = await response.json();
         setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "analyzed", analysis: result.analysis } : f));
       } catch (err: any) {
+        clearInterval(stepInterval);
         setFiles(prev => prev.map(f => f.id === af.id ? { ...f, status: "error", errorMsg: err.message } : f));
       }
 
