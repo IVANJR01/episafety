@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import pdf from "npm:pdf-parse@1.1.1";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +26,7 @@ serve(async (req) => {
     const empresaId = formData.get("empresa_id") as string | null;
     const funcionarioNome = formData.get("funcionario_nome") as string | null;
     const funcionarioCargo = formData.get("funcionario_cargo") as string | null;
+    const funcionarioCpf = formData.get("funcionario_cpf") as string | null;
 
     if (!file) {
       return new Response(JSON.stringify({ error: "Nenhum arquivo enviado" }), {
@@ -34,24 +35,12 @@ serve(async (req) => {
       });
     }
 
-    // Extract text from PDF
+    // Convert PDF to base64 for AI model
     const arrayBuffer = await file.arrayBuffer();
     const buffer = new Uint8Array(arrayBuffer);
     console.log(`Processing file: ${file.name}, size: ${(buffer.length / 1024 / 1024).toFixed(2)}MB`);
     
-    let pdfText = "";
-    try {
-      const pdfData = await pdf(Buffer.from(buffer));
-      pdfText = pdfData.text || "";
-      console.log(`Extracted ${pdfText.length} characters from ${pdfData.numpages} pages`);
-    } catch (pdfErr) {
-      console.error("PDF parse error:", pdfErr);
-      pdfText = "Não foi possível extrair texto do PDF.";
-    }
-
-    if (pdfText.trim().length < 20) {
-      pdfText = "AVISO: Pouco texto extraído. O PDF pode ser uma imagem escaneada. Analise com base nas informações disponíveis.";
-    }
+    const pdfBase64 = base64Encode(buffer);
 
     // Fetch requisitos_cliente for Neoenergia matrix comparison
     let requisitos: any[] = [];
@@ -68,7 +57,7 @@ serve(async (req) => {
       : "";
 
     const funcionarioContext = funcionarioNome
-      ? `\nDADOS DO COLABORADOR:\nNome: ${funcionarioNome}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\nIMPORTANTE: Compare o nome no certificado com "${funcionarioNome}". Se forem diferentes, defina alerta_nome=true.`
+      ? `\nDADOS DO COLABORADOR:\nNome: ${funcionarioNome}\nCPF: ${funcionarioCpf || "Não informado"}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\nIMPORTANTE: Compare o nome no certificado com "${funcionarioNome}". Use o CPF "${funcionarioCpf || ""}" como chave primária de identificação — se o CPF coincidir, o colaborador é o mesmo mesmo que o nome tenha variações. Se nome e CPF divergirem, defina alerta_nome=true.`
       : "";
 
     const systemPrompt = `Você é um auditor técnico especialista em Segurança do Trabalho no Brasil, com domínio completo das Normas Regulamentadoras (NRs) do Ministério do Trabalho e Emprego (MTE) e da Matriz de Capacitação da Neoenergia.
@@ -163,12 +152,23 @@ Se INVÁLIDO por Matriz Neoenergia:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Analise o texto extraído deste certificado de treinamento. Extraia TODAS as informações incluindo conteúdo programático, nome do instrutor e registro profissional.\n\n=== TEXTO DO CERTIFICADO ===\n${pdfText.substring(0, 15000)}\n=== FIM DO TEXTO ===`,
+            content: [
+              {
+                type: "text",
+                text: "Analise este certificado de treinamento em PDF. Extraia TODAS as informações de TODAS as páginas, incluindo conteúdo programático (geralmente no verso/página 2), nome do instrutor e registro profissional. Converta datas para formato YYYY-MM-DD.",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${pdfBase64}`,
+                },
+              },
+            ],
           },
         ],
         tools: [

@@ -147,6 +147,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
         if (selectedFunc) {
           formData.append("funcionario_nome", selectedFunc.nome);
           formData.append("funcionario_cargo", selectedFunc.cargo || "");
+          if (selectedFunc.cpf) formData.append("funcionario_cpf", selectedFunc.cpf);
         }
 
         const response = await fetch(
