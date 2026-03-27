@@ -33,9 +33,11 @@ serve(async (req) => {
       });
     }
 
-    // Convert PDF to base64 in chunks to avoid stack overflow
+    // Convert PDF to base64
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
+    
+    // Build base64 in chunks to avoid stack overflow
     let binary = "";
     const chunkSize = 8192;
     for (let i = 0; i < bytes.length; i += chunkSize) {
@@ -43,6 +45,10 @@ serve(async (req) => {
       binary += String.fromCharCode(...chunk);
     }
     const base64 = btoa(binary);
+    
+    // Check file size - if too large, warn
+    const fileSizeMB = bytes.length / (1024 * 1024);
+    console.log(`Processing file: ${file.name}, size: ${fileSizeMB.toFixed(2)}MB`);
 
     // Fetch requisitos_cliente for Neoenergia matrix comparison
     let requisitos: any[] = [];
