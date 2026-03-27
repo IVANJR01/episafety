@@ -371,8 +371,10 @@ export default function Treinamentos() {
     const q = normalize(multiFuncSearch);
     return funcionarios.filter(f =>
       normalize(f.nome).includes(q) ||
-      (f.matricula && f.matricula.toLowerCase().includes(q)) ||
-      (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
+      (f.matricula && normalize(f.matricula).includes(q)) ||
+      (f.cpf && f.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, ""))) ||
+      (f.cargo && normalize(f.cargo).includes(q)) ||
+      (f.setor && normalize(f.setor).includes(q))
     );
   }, [funcionarios, multiFuncSearch]);
 
