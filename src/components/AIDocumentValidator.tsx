@@ -377,15 +377,30 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                       )}
                     </div>
                   </div>
-                  {af.analysis?.conforme_matriz ? (
-                    <Badge className="gap-1 bg-green-600 hover:bg-green-700">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Conforme Matriz
-                    </Badge>
-                  ) : af.analysis?.conforme_matriz === false ? (
-                    <Badge variant="destructive" className="gap-1">
-                      <ShieldAlert className="w-3.5 h-3.5" /> Não Conforme
-                    </Badge>
-                  ) : null}
+                  <div className="flex flex-wrap gap-1.5">
+                    {/* NR Badge */}
+                    {af.analysis?.conforme_nr === true && (
+                      <Badge className="gap-1 bg-green-600 hover:bg-green-700">
+                        <ShieldCheck className="w-3.5 h-3.5" /> {af.analysis.nr_referencia || "NR"} ✅
+                      </Badge>
+                    )}
+                    {af.analysis?.conforme_nr === false && (
+                      <Badge variant="destructive" className="gap-1">
+                        <ShieldAlert className="w-3.5 h-3.5" /> {af.analysis.nr_referencia || "NR"} ❌
+                      </Badge>
+                    )}
+                    {/* Matriz Badge */}
+                    {af.analysis?.conforme_matriz === true && (
+                      <Badge className="gap-1 bg-blue-600 hover:bg-blue-700">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Matriz Neoenergia ✅
+                      </Badge>
+                    )}
+                    {af.analysis?.conforme_matriz === false && (
+                      <Badge variant="destructive" className="gap-1">
+                        <ShieldAlert className="w-3.5 h-3.5" /> Matriz ❌
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 {af.status === "error" && (
