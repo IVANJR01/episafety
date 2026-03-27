@@ -24,6 +24,7 @@ serve(async (req) => {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const empresaId = formData.get("empresa_id") as string | null;
+    const funcionarioId = formData.get("funcionario_id") as string | null;
     const funcionarioNome = formData.get("funcionario_nome") as string | null;
     const funcionarioCargo = formData.get("funcionario_cargo") as string | null;
     const funcionarioCpf = formData.get("funcionario_cpf") as string | null;
@@ -52,11 +53,12 @@ serve(async (req) => {
 
     // Also fetch existing trainings for this employee (cross-validation)
     let treinamentosExistentes = "";
-    if (funcionarioNome && empresaId) {
+    if (funcionarioId && empresaId) {
       const { data: treinos } = await supabase
         .from("controle_treinamentos")
         .select("nome_curso, data_realizacao, data_renovacao")
-        .eq("empresa_id", empresaId);
+        .eq("empresa_id", empresaId)
+        .eq("funcionario_id", funcionarioId);
       if (treinos && treinos.length > 0) {
         treinamentosExistentes = `\n\nTREINAMENTOS JÁ CADASTRADOS NO SISTEMA PARA ESTE COLABORADOR:\n${treinos.map(t =>
           `- ${t.nome_curso} | Realização: ${t.data_realizacao} | Validade: ${t.data_renovacao || "Não informada"}`
@@ -95,24 +97,59 @@ VALIDAÇÃO DE ANUÊNCIA:
 - A validade da Anuência está atrelada à data de vencimento do treinamento mais antigo (Básico ou SEP). Se um dos cursos vencer, o status deve ser "⚠️ Anuência Suspensa por Treinamento Vencido".
 - Para Anuência VÁLIDA, use na descricao_completa: "✅ Anuência Formal validada conforme item 10.8.4 da NR-10. Colaborador capacitado e autorizado pelo Responsável Técnico [NOME] ([CREA]). [Detalhes adicionais]."
 
-=== BASE DE CONHECIMENTO NORMATIVA (NRs vigentes - MTE) ===
+=== BASE DE CONHECIMENTO NORMATIVA (NRs vigentes - MTE/Gov.br - Atualizado 2025) ===
+
+NR-01 (Disposições Gerais e Gerenciamento de Riscos Ocupacionais - GRO/PGR):
+- Treinamento de integração obrigatório ANTES do início das atividades
+- Capacitação e treinamento devem ser realizados por trabalhadores ou profissionais qualificados
+- Validade: conforme periodicidade estabelecida no PGR ou norma específica
+
+NR-05 (CIPA - Comissão Interna de Prevenção de Acidentes e de Assédio):
+- Carga horária mínima: 20h (distribuídas em no máximo 8h diárias)
+- Validade: mandato de 1 ano, treinamento no prazo de 30 dias contados da data da posse
+
+NR-06 (EPI - Equipamento de Proteção Individual):
+- Treinamento obrigatório sobre uso correto, guarda, higienização e conservação
+- Periodicidade: sempre que houver troca de EPI, mudança de função ou nova exposição
 
 NR-10 (Segurança em Instalações e Serviços em Eletricidade):
-- Curso Básico: mínimo 40h | Validade: 2 anos (reciclagem bienal, item 10.8.8.2)
-- Curso SEP (Sistema Elétrico de Potência): mínimo 40h | Validade: 2 anos
-- Conteúdo programático obrigatório: introdução à segurança com eletricidade, riscos em instalações e serviços com eletricidade, técnicas de análise de risco, medidas de controle do risco elétrico, normas técnicas brasileiras, regulamentações do MTE, equipamentos de proteção coletiva e individual, rotinas de trabalho e procedimentos, documentação de instalações elétricas, riscos adicionais, proteção e combate a incêndios, acidentes de origem elétrica, primeiros socorros, responsabilidades
+- Curso Básico (item 10.8.8): mínimo 40h | Validade: 2 anos (reciclagem bienal, item 10.8.8.2)
+- Curso SEP - Sistema Elétrico de Potência (item 10.8.8.1): mínimo 40h | Validade: 2 anos
+- PRÉ-REQUISITO: Curso SEP exige Curso Básico vigente
+- Autorização (item 10.8.4): trabalhadores qualificados, capacitados ou habilitados com ANUÊNCIA FORMAL da empresa
+- Item 10.8.1: Qualificado = formação na área | Habilitado = registro no conselho | Capacitado = treinado sob supervisão
+- REGRA CRÍTICA: Se o colaborador possuir NR-10 Básico + SEP vigentes, está APTO independente do cargo nominal
+- Conteúdo programático obrigatório (Anexo II): introdução à segurança com eletricidade, riscos, técnicas de análise de risco, medidas de controle, normas técnicas, equipamentos de proteção, rotinas de trabalho, documentação, riscos adicionais, proteção contra incêndios, acidentes de origem elétrica, primeiros socorros, responsabilidades
 - OBRIGATÓRIO: nome e registro profissional do instrutor (CREA/CFT)
 
-NR-01 (Disposições Gerais / GRO / PGR): Treinamento de integração obrigatório antes do início das atividades.
-NR-05 (CIPA): Carga horária mínima 20h.
-NR-06 (EPI): Treinamento sobre uso, higienização, guarda e conservação.
-NR-11 (Transporte/Movimentação): Treinamento específico por tipo de equipamento.
-NR-12 (Máquinas/Equipamentos): Carga compatível com complexidade.
-NR-18 (Construção): Admissional mínimo 6h.
-NR-20 (Inflamáveis): Básico 8h, Intermediário 16h, Avançado I 24h, Avançado II 32h. Validade: 3 anos.
-NR-23 (Incêndios): Treinamento obrigatório para toda a força de trabalho.
-NR-33 (Espaços Confinados): Autorizados/Vigias 16h, Supervisores 40h. Validade: anual.
-NR-35 (Trabalho em Altura): Mínimo 8h (teórico + prático). Validade: 2 anos.
+NR-11 (Transporte, Movimentação, Armazenagem e Manuseio de Materiais):
+- Treinamento específico por tipo de equipamento operado
+- Reciclagem: quando houver mudança de equipamento ou a critério do empregador
+
+NR-12 (Segurança no Trabalho em Máquinas e Equipamentos):
+- Carga horária compatível com a complexidade da máquina/equipamento
+- Reciclagem: quando houver modificação significativa nas condições
+
+NR-18 (Segurança e Saúde no Trabalho na Indústria da Construção):
+- Treinamento admissional: mínimo 6h (antes do início das atividades)
+- Treinamento periódico: a cada 12 meses
+
+NR-20 (Segurança e Saúde no Trabalho com Inflamáveis e Combustíveis):
+- Básico: 8h | Intermediário: 16h | Avançado I: 24h | Avançado II: 32h
+- Validade: 3 anos (reciclagem com carga horária igual ao curso original)
+
+NR-23 (Proteção Contra Incêndios):
+- Treinamento obrigatório para toda a força de trabalho
+- Periodicidade: anual ou conforme determinação do Corpo de Bombeiros
+
+NR-33 (Segurança e Saúde nos Trabalhos em Espaços Confinados):
+- Trabalhadores autorizados e Vigias: 16h | Supervisores de entrada: 40h
+- Validade: anual (reciclagem obrigatória a cada 12 meses)
+
+NR-35 (Trabalho em Altura):
+- Carga horária mínima: 8h (teórico e prático)
+- Validade: 2 anos (reciclagem bienal)
+- Conteúdo obrigatório: normas e regulamentos, análise de risco, EPIs, sistemas de ancoragem, acidentes típicos, condutas em emergência, primeiros socorros
 
 === REGRAS DE FUZZY MATCHING PARA CURSOS ===
 

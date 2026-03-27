@@ -162,6 +162,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
         formData.append("file", af.file);
         if (empresaId) formData.append("empresa_id", empresaId);
         if (selectedFunc) {
+          formData.append("funcionario_id", selectedFunc.id);
           formData.append("funcionario_nome", selectedFunc.nome);
           formData.append("funcionario_cargo", selectedFunc.cargo || "");
           if (selectedFunc.cpf) formData.append("funcionario_cpf", selectedFunc.cpf);
