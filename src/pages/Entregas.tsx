@@ -855,7 +855,6 @@ export default function Entregas() {
                             <PenLine className="w-3 h-3 text-amber-500" />
                           </Button>
                         )}
-                        {canEdit && <Button size="icon" variant="ghost" className="h-7 w-7" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3 h-3" /></Button>}
                         {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(e.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>}
                       </div>
                     </div>
@@ -929,7 +928,6 @@ export default function Entregas() {
                               <Undo2 className="w-3.5 h-3.5 text-primary" />
                             </Button>
                           )}
-                          {canEdit && <Button size="icon" variant="ghost" title="Gerar Ficha" onClick={() => openFicha(e.funcionario_id)}><FileText className="w-3.5 h-3.5" /></Button>}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>
                       </TableCell>
