@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { differenceInDays, format, parseISO } from "date-fns";
 import * as XLSX from "xlsx-js-style";
 import CadastroCursos from "@/components/CadastroCursos";
+import BulkDocumentUpload from "@/components/BulkDocumentUpload";
 
 interface ControleTreinamento {
   id: string;
@@ -807,6 +808,7 @@ export default function Treinamentos() {
         <TabsList className="mb-3">
           <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
+          <TabsTrigger value="upload" className="gap-1.5"><Upload className="w-4 h-4" />Upload em Lote</TabsTrigger>
           <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
         </TabsList>
 
