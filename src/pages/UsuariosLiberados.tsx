@@ -69,6 +69,12 @@ export default function UsuariosLiberados() {
   const [permsUserId, setPermsUserId] = useState<string | null>(null);
   const [editTab, setEditTab] = useState<string>("dados");
 
+  // Clone permissions states
+  const [cloneSourceId, setCloneSourceId] = useState<string | null>(null);
+  const [cloneTargetId, setCloneTargetId] = useState<string>("");
+  const [cloneConfirmOpen, setCloneConfirmOpen] = useState(false);
+  const [cloneFilterText, setCloneFilterText] = useState("");
+
   // Edit fields
   const [editNome, setEditNome] = useState("");
   const [editEmail, setEditEmail] = useState("");
