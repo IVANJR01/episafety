@@ -1008,7 +1008,7 @@ export default function Treinamentos() {
                   </div>
                 )}
                 {!multiFuncId && multiFuncSearch.trim() && (
-                  <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-background">
+                  <div className="border rounded-lg mt-1 max-h-48 overflow-y-auto bg-background">
                     {filteredMultiFuncionarios.length === 0 ? (
                       <p className="text-xs text-muted-foreground p-2 text-center">Nenhum funcionário encontrado</p>
                     ) : filteredMultiFuncionarios.map(f => (
