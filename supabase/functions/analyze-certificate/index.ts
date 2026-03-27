@@ -53,11 +53,12 @@ serve(async (req) => {
 
     // Also fetch existing trainings for this employee (cross-validation)
     let treinamentosExistentes = "";
-    if (funcionarioNome && empresaId) {
+    if (funcionarioId && empresaId) {
       const { data: treinos } = await supabase
         .from("controle_treinamentos")
         .select("nome_curso, data_realizacao, data_renovacao")
-        .eq("empresa_id", empresaId);
+        .eq("empresa_id", empresaId)
+        .eq("funcionario_id", funcionarioId);
       if (treinos && treinos.length > 0) {
         treinamentosExistentes = `\n\nTREINAMENTOS JÁ CADASTRADOS NO SISTEMA PARA ESTE COLABORADOR:\n${treinos.map(t =>
           `- ${t.nome_curso} | Realização: ${t.data_realizacao} | Validade: ${t.data_renovacao || "Não informada"}`
