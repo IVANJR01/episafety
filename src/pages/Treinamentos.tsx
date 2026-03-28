@@ -745,8 +745,14 @@ export default function Treinamentos() {
 
       requiredCourses.forEach(req => {
         const cd = cursoData[req.curso_nome];
-        // Se dispensado, ignorar completamente
+        // Se dispensado, ignorar completamente — prioridade sobre regra da função
         if (dispensadosSet.has(req.curso_nome)) return;
+        // Verificação fuzzy para dispensas (caso o nome tenha pequenas variações)
+        let isDispensadoFuzzy = false;
+        dispensadosSet.forEach(dName => {
+          if (dName.trim().toLowerCase() === req.curso_nome.trim().toLowerCase()) isDispensadoFuzzy = true;
+        });
+        if (isDispensadoFuzzy) return;
         // Se o documento foi protocolado, considerar como válido (não pendente)
         if (protocoladosSet.has(req.curso_nome)) return;
         if (!cd) {
