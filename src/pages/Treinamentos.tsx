@@ -22,6 +22,7 @@ import * as XLSX from "xlsx-js-style";
 import CadastroCursos from "@/components/CadastroCursos";
 import BulkDocumentUpload from "@/components/BulkDocumentUpload";
 import AIDocumentValidator from "@/components/AIDocumentValidator";
+import CadastroFuncaoRequisitos from "@/components/CadastroFuncaoRequisitos";
 
 interface ControleTreinamento {
   id: string;
@@ -907,6 +908,7 @@ export default function Treinamentos() {
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
           
           <TabsTrigger value="ia" className="gap-1.5"><Brain className="w-4 h-4" />Validação IA</TabsTrigger>
+          <TabsTrigger value="requisitos" className="gap-1.5"><Briefcase className="w-4 h-4" />Requisitos por Função</TabsTrigger>
           <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
         </TabsList>
 
