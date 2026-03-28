@@ -376,7 +376,7 @@ export default function Treinamentos() {
     setSavingMulti(true);
     const payloads = validCursos.map(c => ({
       funcionario_id: multiFuncId,
-      nome_curso: c.nome_curso.trim() || c.documento_pendente.split(" | ")[0] || "Documento",
+      nome_curso: c.nome_curso.trim() || "Documentação Pendente",
       data_realizacao: c.data_realizacao,
       data_renovacao: c.data_renovacao || null,
       documento_pendente: c.documento_pendente || null,
@@ -946,9 +946,13 @@ export default function Treinamentos() {
                           </TableCell>
                           <TableCell>
                             {t.documento_pendente ? (
-                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
-                                <FileWarning className="w-3 h-3 mr-1" />{t.documento_pendente}
-                              </Badge>
+                              <div className="flex flex-wrap gap-1">
+                                {t.documento_pendente.split(" | ").filter(Boolean).map(doc => (
+                                  <Badge key={doc} variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
+                                    <FileWarning className="w-3 h-3 mr-1" />{doc}
+                                  </Badge>
+                                ))}
+                              </div>
                             ) : (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
