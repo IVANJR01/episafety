@@ -680,6 +680,54 @@ startxref
         </CardContent>
       </Card>
 
+      {/* Scheduled Backup Panel */}
+      <Card className="border-accent/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Clock className="w-5 h-5 text-primary" />
+            Backup Automático Semanal (Disaster Recovery)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Cron job configurado para executar todo <strong>domingo às 03h</strong>. 
+            Exporta todas as tabelas de todas as empresas para a pasta <strong>EPISafety_SYSTEM_BACKUPS</strong> no Google Drive.
+            Mantém os 8 backups mais recentes automaticamente.
+          </p>
+          <Button variant="outline" size="sm" onClick={triggerScheduledBackup} disabled={runningScheduled}>
+            {runningScheduled ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseZap className="w-4 h-4" />}
+            Executar Backup Agora (Manual)
+          </Button>
+          {scheduledResult && (
+            <div className={`p-4 rounded-lg border text-sm ${scheduledResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-destructive/10 border-destructive/30"}`}>
+              {scheduledResult.success ? (
+                <div className="space-y-2">
+                  <p className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Backup concluído!
+                  </p>
+                  <p className="text-foreground">{scheduledResult.totalRecords} registros • {scheduledResult.empresas} empresa(s) • {scheduledResult.elapsed}</p>
+                  <p className="text-xs text-muted-foreground">Arquivo: {scheduledResult.fileName}</p>
+                  {scheduledResult.log?.length > 0 && (
+                    <details className="text-xs mt-2">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Ver log</summary>
+                      <div className="font-mono mt-2 space-y-0.5 bg-background/50 p-3 rounded border max-h-48 overflow-y-auto">
+                        {scheduledResult.log.map((line: string, i: number) => (
+                          <p key={i} className={line.startsWith("❌") ? "text-destructive" : line.startsWith("✅") ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ) : (
+                <p className="text-destructive font-medium">❌ Erro: {scheduledResult.error}</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {generating && (
         <Card>
           <CardContent className="pt-6">
