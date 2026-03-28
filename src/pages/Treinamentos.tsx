@@ -672,12 +672,18 @@ export default function Treinamentos() {
             } else if (val === "Atenção") {
               cell.s.fill = { fgColor: { rgb: "F59E0B" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
-            } else if (val === "Válido") {
+            } else if (val === "Válido" || val === "VÁLIDO") {
               cell.s.fill = { fgColor: { rgb: "16A34A" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
             } else if (val === "∞ Entregue") {
               cell.s.fill = { fgColor: { rgb: "3B82F6" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            } else if (val === "N/A") {
+              cell.s.fill = { fgColor: { rgb: "9CA3AF" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            } else if (val === "PENDENTE") {
+              cell.s.fill = { fgColor: { rgb: "EAB308" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "000000" } };
             }
           }
         }
