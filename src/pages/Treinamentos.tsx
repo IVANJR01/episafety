@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity, Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -22,6 +22,7 @@ import * as XLSX from "xlsx-js-style";
 import CadastroCursos from "@/components/CadastroCursos";
 import BulkDocumentUpload from "@/components/BulkDocumentUpload";
 import AIDocumentValidator from "@/components/AIDocumentValidator";
+import CadastroFuncaoRequisitos from "@/components/CadastroFuncaoRequisitos";
 
 interface ControleTreinamento {
   id: string;
@@ -907,6 +908,7 @@ export default function Treinamentos() {
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
           
           <TabsTrigger value="ia" className="gap-1.5"><Brain className="w-4 h-4" />Validação IA</TabsTrigger>
+          <TabsTrigger value="requisitos" className="gap-1.5"><Briefcase className="w-4 h-4" />Requisitos por Função</TabsTrigger>
           <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
         </TabsList>
 
@@ -1110,6 +1112,15 @@ export default function Treinamentos() {
                 empresaId={empresaId}
                 onComplete={fetchData}
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* === ABA REQUISITOS POR FUNÇÃO === */}
+        <TabsContent value="requisitos">
+          <Card>
+            <CardContent className="p-6">
+              <CadastroFuncaoRequisitos onUpdate={fetchCursosDB} />
             </CardContent>
           </Card>
         </TabsContent>
