@@ -1657,6 +1657,53 @@ export default function Treinamentos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* === DIALOG DISPENSAR REQUISITOS === */}
+      <Dialog open={dispensaDialogOpen} onOpenChange={setDispensaDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ban className="w-5 h-5" />
+              Dispensar Requisitos — {funcMap[dispensaFuncId]?.nome}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Marque os cursos/documentos que <strong>não se aplicam</strong> a este colaborador. Eles serão removidos das pendências e exibidos como "N/A" na Matriz.
+          </p>
+          <div className="space-y-2 max-h-[300px] overflow-auto">
+            {getRequiredCourses(funcMap[dispensaFuncId]?.cargo ?? null).map(req => (
+              <label key={req.curso_nome} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                <Checkbox
+                  checked={dispensaCursosSelecionados.includes(req.curso_nome)}
+                  onCheckedChange={(checked) => {
+                    setDispensaCursosSelecionados(prev =>
+                      checked ? [...prev, req.curso_nome] : prev.filter(c => c !== req.curso_nome)
+                    );
+                  }}
+                />
+                <span className="text-sm">{req.curso_nome}</span>
+              </label>
+            ))}
+          </div>
+          {dispensaCursosSelecionados.length > 0 && (
+            <div className="space-y-2">
+              <Label>Motivo da Dispensa</Label>
+              <Textarea
+                placeholder="Ex: Colaborador não conduz veículo da empresa"
+                value={dispensaMotivo}
+                onChange={e => setDispensaMotivo(e.target.value)}
+                rows={2}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDispensaDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveDispensas} disabled={savingDispensa}>
+              {savingDispensa ? "Salvando..." : "Salvar Dispensas"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
