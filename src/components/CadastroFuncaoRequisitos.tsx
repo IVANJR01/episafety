@@ -46,6 +46,8 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
 
   // Form state
   const [funcaoNome, setFuncaoNome] = useState("");
+  const [funcoesMultiplas, setFuncoesMultiplas] = useState<string[]>([]);
+  const [funcaoInput, setFuncaoInput] = useState("");
   const [cursosSelecionados, setCursosSelecionados] = useState<{ curso_nome: string; carga_horaria: number; validade_meses: number; permanente: boolean }[]>([]);
   const [cursoPopoverOpen, setCursoPopoverOpen] = useState(false);
 
@@ -92,6 +94,8 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
   const openNew = () => {
     setEditing(null);
     setFuncaoNome("");
+    setFuncoesMultiplas([]);
+    setFuncaoInput("");
     setCursosSelecionados([]);
     setOpen(true);
   };
@@ -99,6 +103,8 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
   const openEditFuncao = (funcao: string, reqs: RequisitoCliente[]) => {
     setEditing(null);
     setFuncaoNome(funcao);
+    setFuncoesMultiplas([funcao]);
+    setFuncaoInput("");
     setCursosSelecionados(reqs.map(r => ({
       curso_nome: r.curso_nome,
       carga_horaria: r.carga_horaria_minima,
@@ -107,6 +113,19 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
     })));
     setOpen(true);
   };
+
+  const addFuncao = (nome: string) => {
+    const trimmed = nome.trim();
+    if (!trimmed || funcoesMultiplas.includes(trimmed)) return;
+    setFuncoesMultiplas(prev => [...prev, trimmed]);
+    setFuncaoInput("");
+  };
+
+  const removeFuncao = (nome: string) => {
+    setFuncoesMultiplas(prev => prev.filter(f => f !== nome));
+  };
+
+  const isEditingMode = funcoesMultiplas.length === 1 && funcaoNome === funcoesMultiplas[0];
 
   const toggleCurso = (cursoNome: string) => {
     const exists = cursosSelecionados.find(c => c.curso_nome === cursoNome);
@@ -124,50 +143,50 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
   };
 
   const handleSave = async () => {
-    if (!funcaoNome.trim() || cursosSelecionados.length === 0) {
-      toast({ title: "Preencha a função e selecione ao menos um curso", variant: "destructive" });
+    if (funcoesMultiplas.length === 0 || cursosSelecionados.length === 0) {
+      toast({ title: "Adicione ao menos uma função e selecione ao menos um curso", variant: "destructive" });
       return;
     }
 
-    // Delete existing requisitos for this funcao
-    const existingForFuncao = requisitos.filter(r =>
-      r.funcoes_exigidas?.includes(funcaoNome)
-    );
+    for (const currentFuncao of funcoesMultiplas) {
+      // Delete existing requisitos for this funcao
+      const existingForFuncao = requisitos.filter(r =>
+        r.funcoes_exigidas?.includes(currentFuncao)
+      );
 
-    for (const req of existingForFuncao) {
-      const newFuncoes = (req.funcoes_exigidas || []).filter(f => f !== funcaoNome);
-      if (newFuncoes.length === 0) {
-        await (supabase.from as any)("requisitos_cliente").delete().eq("id", req.id);
-      } else {
-        await (supabase.from as any)("requisitos_cliente").update({ funcoes_exigidas: newFuncoes }).eq("id", req.id);
+      for (const req of existingForFuncao) {
+        const newFuncoes = (req.funcoes_exigidas || []).filter(f => f !== currentFuncao);
+        if (newFuncoes.length === 0) {
+          await (supabase.from as any)("requisitos_cliente").delete().eq("id", req.id);
+        } else {
+          await (supabase.from as any)("requisitos_cliente").update({ funcoes_exigidas: newFuncoes }).eq("id", req.id);
+        }
+      }
+
+      // Add/update requisitos for each selected curso
+      for (const curso of cursosSelecionados) {
+        const existingReq = requisitos.find(r => r.curso_nome === curso.curso_nome && !r.funcoes_exigidas?.includes(currentFuncao));
+        if (existingReq) {
+          const updatedFuncoes = [...(existingReq.funcoes_exigidas || []), currentFuncao];
+          await (supabase.from as any)("requisitos_cliente").update({
+            funcoes_exigidas: updatedFuncoes,
+            carga_horaria_minima: curso.carga_horaria || existingReq.carga_horaria_minima,
+            validade_meses: curso.permanente ? 0 : curso.validade_meses,
+          }).eq("id", existingReq.id);
+        } else {
+          await (supabase.from as any)("requisitos_cliente").insert({
+            nome_cliente: "Matriz Unificada",
+            curso_nome: curso.curso_nome,
+            funcoes_exigidas: [currentFuncao],
+            carga_horaria_minima: curso.carga_horaria,
+            validade_meses: curso.permanente ? 0 : curso.validade_meses,
+            empresa_id: empresaId,
+          });
+        }
       }
     }
 
-    // Add/update requisitos for each selected curso
-    for (const curso of cursosSelecionados) {
-      const existingReq = requisitos.find(r => r.curso_nome === curso.curso_nome && !r.funcoes_exigidas?.includes(funcaoNome));
-      if (existingReq) {
-        // Add funcao to existing requisito
-        const updatedFuncoes = [...(existingReq.funcoes_exigidas || []), funcaoNome];
-        await (supabase.from as any)("requisitos_cliente").update({
-          funcoes_exigidas: updatedFuncoes,
-          carga_horaria_minima: curso.carga_horaria || existingReq.carga_horaria_minima,
-          validade_meses: curso.permanente ? 0 : curso.validade_meses,
-        }).eq("id", existingReq.id);
-      } else {
-        // Create new requisito
-        await (supabase.from as any)("requisitos_cliente").insert({
-          nome_cliente: "Matriz Unificada",
-          curso_nome: curso.curso_nome,
-          funcoes_exigidas: [funcaoNome],
-          carga_horaria_minima: curso.carga_horaria,
-          validade_meses: curso.permanente ? 0 : curso.validade_meses,
-          empresa_id: empresaId,
-        });
-      }
-    }
-
-    toast({ title: "Requisitos salvos com sucesso!" });
+    toast({ title: `Requisitos salvos para ${funcoesMultiplas.length} função(ões)!` });
     setOpen(false);
     await fetchData();
     onUpdate?.();
@@ -275,20 +294,42 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
             {/* Nome da Função */}
             <div>
               <Label>Nome da Função / Cargo *</Label>
-              <div className="relative">
-                <Input
-                  placeholder="Ex: Técnico de Planejamento, Eletricista..."
-                  value={funcaoNome}
-                  onChange={e => setFuncaoNome(e.target.value)}
-                  list="cargos-existentes"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Ex: Técnico de Planejamento, Eletricista..."
+                    value={funcaoInput}
+                    onChange={e => setFuncaoInput(e.target.value)}
+                    list="cargos-existentes"
+                    onKeyDown={e => {
+                      if (e.key === "Enter") { e.preventDefault(); addFuncao(funcaoInput); }
+                    }}
+                  />
+                </div>
+                <Button type="button" size="sm" variant="secondary" onClick={() => addFuncao(funcaoInput)} disabled={!funcaoInput.trim()}>
+                  <Plus className="w-4 h-4 mr-1" />Adicionar
+                </Button>
               </div>
               <datalist id="cargos-existentes">
-                {cargosExistentes.map(c => <option key={c} value={c} />)}
+                {cargosExistentes.filter(c => !funcoesMultiplas.includes(c)).map(c => <option key={c} value={c} />)}
               </datalist>
               <p className="text-xs text-muted-foreground mt-1">
-                Este nome será comparado com o campo "Cargo" dos funcionários cadastrados
+                {isEditingMode
+                  ? "Editando os requisitos desta função"
+                  : "Adicione uma ou mais funções que compartilham os mesmos requisitos. Pressione Enter ou clique em Adicionar."}
               </p>
+              {funcoesMultiplas.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {funcoesMultiplas.map(f => (
+                    <Badge key={f} variant="secondary" className="text-xs gap-1 pr-1">
+                      {f}
+                      <button type="button" onClick={() => removeFuncao(f)} className="ml-0.5 hover:bg-destructive/20 rounded-full p-0.5">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Cursos Obrigatórios */}
@@ -395,8 +436,8 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={!funcaoNome.trim() || cursosSelecionados.length === 0}>
-              Salvar Requisitos ({cursosSelecionados.length} curso{cursosSelecionados.length !== 1 ? "s" : ""})
+            <Button onClick={handleSave} disabled={funcoesMultiplas.length === 0 || cursosSelecionados.length === 0}>
+              Salvar Requisitos ({funcoesMultiplas.length} função{funcoesMultiplas.length !== 1 ? "ões" : ""} • {cursosSelecionados.length} curso{cursosSelecionados.length !== 1 ? "s" : ""})
             </Button>
           </DialogFooter>
         </DialogContent>
