@@ -752,6 +752,7 @@ export default function Treinamentos() {
       func: Funcionario;
       cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>;
       pendentes: string[];
+      protocolados: string[];
       autoPendentes: string[];
       requiredCourseNames: Set<string>;
     }[];
