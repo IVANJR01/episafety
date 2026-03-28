@@ -143,50 +143,50 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
   };
 
   const handleSave = async () => {
-    if (!funcaoNome.trim() || cursosSelecionados.length === 0) {
-      toast({ title: "Preencha a função e selecione ao menos um curso", variant: "destructive" });
+    if (funcoesMultiplas.length === 0 || cursosSelecionados.length === 0) {
+      toast({ title: "Adicione ao menos uma função e selecione ao menos um curso", variant: "destructive" });
       return;
     }
 
-    // Delete existing requisitos for this funcao
-    const existingForFuncao = requisitos.filter(r =>
-      r.funcoes_exigidas?.includes(funcaoNome)
-    );
+    for (const currentFuncao of funcoesMultiplas) {
+      // Delete existing requisitos for this funcao
+      const existingForFuncao = requisitos.filter(r =>
+        r.funcoes_exigidas?.includes(currentFuncao)
+      );
 
-    for (const req of existingForFuncao) {
-      const newFuncoes = (req.funcoes_exigidas || []).filter(f => f !== funcaoNome);
-      if (newFuncoes.length === 0) {
-        await (supabase.from as any)("requisitos_cliente").delete().eq("id", req.id);
-      } else {
-        await (supabase.from as any)("requisitos_cliente").update({ funcoes_exigidas: newFuncoes }).eq("id", req.id);
+      for (const req of existingForFuncao) {
+        const newFuncoes = (req.funcoes_exigidas || []).filter(f => f !== currentFuncao);
+        if (newFuncoes.length === 0) {
+          await (supabase.from as any)("requisitos_cliente").delete().eq("id", req.id);
+        } else {
+          await (supabase.from as any)("requisitos_cliente").update({ funcoes_exigidas: newFuncoes }).eq("id", req.id);
+        }
+      }
+
+      // Add/update requisitos for each selected curso
+      for (const curso of cursosSelecionados) {
+        const existingReq = requisitos.find(r => r.curso_nome === curso.curso_nome && !r.funcoes_exigidas?.includes(currentFuncao));
+        if (existingReq) {
+          const updatedFuncoes = [...(existingReq.funcoes_exigidas || []), currentFuncao];
+          await (supabase.from as any)("requisitos_cliente").update({
+            funcoes_exigidas: updatedFuncoes,
+            carga_horaria_minima: curso.carga_horaria || existingReq.carga_horaria_minima,
+            validade_meses: curso.permanente ? 0 : curso.validade_meses,
+          }).eq("id", existingReq.id);
+        } else {
+          await (supabase.from as any)("requisitos_cliente").insert({
+            nome_cliente: "Matriz Unificada",
+            curso_nome: curso.curso_nome,
+            funcoes_exigidas: [currentFuncao],
+            carga_horaria_minima: curso.carga_horaria,
+            validade_meses: curso.permanente ? 0 : curso.validade_meses,
+            empresa_id: empresaId,
+          });
+        }
       }
     }
 
-    // Add/update requisitos for each selected curso
-    for (const curso of cursosSelecionados) {
-      const existingReq = requisitos.find(r => r.curso_nome === curso.curso_nome && !r.funcoes_exigidas?.includes(funcaoNome));
-      if (existingReq) {
-        // Add funcao to existing requisito
-        const updatedFuncoes = [...(existingReq.funcoes_exigidas || []), funcaoNome];
-        await (supabase.from as any)("requisitos_cliente").update({
-          funcoes_exigidas: updatedFuncoes,
-          carga_horaria_minima: curso.carga_horaria || existingReq.carga_horaria_minima,
-          validade_meses: curso.permanente ? 0 : curso.validade_meses,
-        }).eq("id", existingReq.id);
-      } else {
-        // Create new requisito
-        await (supabase.from as any)("requisitos_cliente").insert({
-          nome_cliente: "Matriz Unificada",
-          curso_nome: curso.curso_nome,
-          funcoes_exigidas: [funcaoNome],
-          carga_horaria_minima: curso.carga_horaria,
-          validade_meses: curso.permanente ? 0 : curso.validade_meses,
-          empresa_id: empresaId,
-        });
-      }
-    }
-
-    toast({ title: "Requisitos salvos com sucesso!" });
+    toast({ title: `Requisitos salvos para ${funcoesMultiplas.length} função(ões)!` });
     setOpen(false);
     await fetchData();
     onUpdate?.();
