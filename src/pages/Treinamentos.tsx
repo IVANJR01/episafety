@@ -1274,6 +1274,66 @@ export default function Treinamentos() {
                             )}
                           </div>
                         </div>
+
+                        {/* Documentos Pendentes */}
+                        <div>
+                          <Label className="text-xs mb-1 block">Documentos Pendentes</Label>
+                          <Popover open={curso.docPopoverOpen} onOpenChange={(o) => updateMultiCurso(idx, { docPopoverOpen: o })}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-8 font-normal text-xs">
+                                <span className="text-muted-foreground truncate">
+                                  {curso.documento_pendente
+                                    ? `${curso.documento_pendente.split(" | ").filter(Boolean).length} doc(s)`
+                                    : "Selecione..."}
+                                </span>
+                                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[350px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Pesquisar documento..." />
+                                <CommandList>
+                                  <CommandEmpty>Nenhum documento encontrado.</CommandEmpty>
+                                  <CommandGroup>
+                                    {DOCUMENTOS_LISTA.map(doc => {
+                                      const docs = curso.documento_pendente ? curso.documento_pendente.split(" | ").filter(Boolean) : [];
+                                      const isSelected = docs.includes(doc);
+                                      return (
+                                        <CommandItem
+                                          key={doc}
+                                          value={doc}
+                                          onSelect={() => {
+                                            const currentDocs = curso.documento_pendente ? curso.documento_pendente.split(" | ").filter(Boolean) : [];
+                                            const updated = isSelected
+                                              ? currentDocs.filter(d => d !== doc)
+                                              : [...currentDocs, doc];
+                                            updateMultiCurso(idx, { documento_pendente: updated.join(" | ") });
+                                          }}
+                                        >
+                                          <Check className={`mr-2 h-3 w-3 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                                          <span className="text-xs">{doc}</span>
+                                        </CommandItem>
+                                      );
+                                    })}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          {curso.documento_pendente && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {curso.documento_pendente.split(" | ").filter(Boolean).map(doc => (
+                                <Badge key={doc} variant="secondary" className="text-[10px] gap-0.5">
+                                  {doc}
+                                  <X className="h-2.5 w-2.5 cursor-pointer hover:text-destructive" onClick={() => {
+                                    const updated = curso.documento_pendente.split(" | ").filter(Boolean).filter(d => d !== doc);
+                                    updateMultiCurso(idx, { documento_pendente: updated.join(" | ") });
+                                  }} />
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   );
