@@ -167,7 +167,7 @@ Para INVÁLIDO por Matriz:
 
 Para DOCUMENTO SEM ASSINATURA:
 "❌ REPROVADO: Documento sem assinatura obrigatória. [Campo(s) em branco]. Documento apócrifo - não possui validade legal."`;
-
+}
 
 const toolSchema = {
   type: "function" as const,
