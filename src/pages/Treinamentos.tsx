@@ -530,11 +530,11 @@ export default function Treinamentos() {
       const func = funcMap[fid];
       if (!func) return;
       const treinos = exportItems.filter(t => t.funcionario_id === fid);
-      const docsSet = new Set<string>();
+      const protocoladosSet = new Set<string>();
       treinos.forEach(t => {
-        if (t.documento_pendente) t.documento_pendente.split(" | ").filter(Boolean).forEach(d => docsSet.add(d));
+        if (t.documento_pendente) t.documento_pendente.split(" | ").filter(Boolean).forEach(d => protocoladosSet.add(d));
       });
-      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—", docsSet.size > 0 ? Array.from(docsSet).join(", ") : "—"];
+      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—", protocoladosSet.size > 0 ? "✅ " + Array.from(protocoladosSet).join(", ") : "—"];
       cursos.forEach(curso => {
         const t = treinos.find(tr => tr.nome_curso === curso);
         if (!t) {
