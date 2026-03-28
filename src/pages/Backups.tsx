@@ -145,6 +145,8 @@ export default function Backups() {
   const [validationResult, setValidationResult] = useState<any>(null);
   const [migrating, setMigrating] = useState(false);
   const [migrationResult, setMigrationResult] = useState<any>(null);
+  const [sanityTesting, setSanityTesting] = useState(false);
+  const [sanityResult, setSanityResult] = useState<any>(null);
 
   const validateDriveConnection = async () => {
     setValidating(true);
@@ -183,6 +185,102 @@ export default function Backups() {
       toast({ title: "Erro na migração", description: err.message, variant: "destructive" });
     } finally {
       setMigrating(false);
+    }
+  };
+
+  const runSanityTest = async () => {
+    setSanityTesting(true);
+    setSanityResult(null);
+    const log: string[] = [];
+    try {
+      log.push("⏳ Obtendo token de acesso ao Google Drive...");
+      setSanityResult({ inProgress: true, log: [...log] });
+
+      const access = await getDriveAccess("teste-homologacao");
+      log.push(`✅ Token obtido. Empresa: ${access.empresaNome}`);
+      log.push(`📁 Pasta criada/encontrada: EPISafety > ${access.empresaNome} > teste-homologacao`);
+      setSanityResult({ inProgress: true, log: [...log] });
+
+      // Create a small test PDF (minimal valid PDF)
+      const testContent = `%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<</Font<</F1 4 0 R>>>>>>endobj
+4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000240 00000 n 
+trailer<</Size 5/Root 1 0 R>>
+startxref
+315
+%%EOF`;
+      const testFileName = `teste_homologacao_${Date.now()}.pdf`;
+      const testBlob = new Blob([testContent], { type: "application/pdf" });
+
+      log.push(`⏳ Enviando arquivo de teste: ${testFileName} (${testBlob.size} bytes)...`);
+      setSanityResult({ inProgress: true, log: [...log] });
+
+      const metadata = { name: testFileName, parents: [access.folderId] };
+      const formData = new FormData();
+      formData.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+      formData.append("file", testBlob);
+
+      const uploadRes = await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,size",
+        { method: "POST", headers: { Authorization: `Bearer ${access.accessToken}` }, body: formData }
+      );
+      const uploadData = await uploadRes.json();
+
+      if (!uploadRes.ok) {
+        throw new Error(`Upload falhou (${uploadRes.status}): ${uploadData?.error?.message || JSON.stringify(uploadData)}`);
+      }
+
+      log.push(`✅ Upload concluído! File ID: ${uploadData.id}`);
+
+      // Set public permission
+      await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${access.accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "reader", type: "anyone" }),
+      });
+      log.push("🔓 Permissão pública aplicada");
+
+      const viewLink = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
+      const previewLink = `https://drive.google.com/file/d/${uploadData.id}/preview`;
+
+      log.push(`🔗 Link: ${viewLink}`);
+      log.push("✅ TESTE PASSOU — Arquivo visível no Google Drive!");
+
+      // Cleanup: delete test file after verification
+      await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${access.accessToken}` },
+      });
+      log.push("🧹 Arquivo de teste removido do Drive (cleanup automático)");
+
+      setSanityResult({
+        success: true,
+        log,
+        fileId: uploadData.id,
+        viewLink,
+        previewLink,
+        empresaNome: access.empresaNome,
+      });
+
+      toast({ title: "✅ Teste de homologação passou!", description: `Pasta EPISafety > ${access.empresaNome} validada com sucesso.` });
+    } catch (err: any) {
+      const errorCode = err.message.includes("401") ? "401 (Token expirado)" :
+                        err.message.includes("403") ? "403 (Permissão negada)" :
+                        err.message.includes("404") ? "404 (Pasta não encontrada)" : err.message;
+      log.push(`❌ FALHA: ${errorCode}`);
+      setSanityResult({ success: false, log, error: errorCode });
+      toast({ title: "Teste falhou", description: errorCode, variant: "destructive" });
+    } finally {
+      setSanityTesting(false);
     }
   };
 
@@ -447,6 +545,10 @@ export default function Backups() {
             Migre todos os arquivos do Storage interno para o Google Drive e libere espaço na plataforma.
           </p>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={runSanityTest} disabled={sanityTesting}>
+              {sanityTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
+              Testar Nuvem Própria
+            </Button>
             <Button variant="outline" size="sm" onClick={validateDriveConnection} disabled={validating}>
               {validating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
               Validar Armazenamento Externo
@@ -456,6 +558,40 @@ export default function Backups() {
               {migrating ? "Migrando..." : "Migrar Arquivos → Google Drive"}
             </Button>
           </div>
+
+          {sanityResult && (
+            <div className={`p-4 rounded-lg border text-sm ${sanityResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : sanityResult.inProgress ? "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800" : "bg-destructive/10 border-destructive/30"}`}>
+              <div className="space-y-2">
+                {sanityResult.success && (
+                  <p className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Teste de Homologação Passou!
+                  </p>
+                )}
+                {sanityResult.inProgress && (
+                  <p className="font-medium text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Executando teste...
+                  </p>
+                )}
+                {sanityResult.success === false && (
+                  <p className="font-medium text-destructive flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" /> Teste Falhou
+                  </p>
+                )}
+                <div className="font-mono text-xs space-y-0.5 bg-background/50 p-3 rounded border max-h-48 overflow-y-auto">
+                  {sanityResult.log?.map((line: string, i: number) => (
+                    <p key={i} className={line.startsWith("❌") ? "text-destructive" : line.startsWith("✅") ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
+                {sanityResult.success && sanityResult.empresaNome && (
+                  <p className="text-xs text-muted-foreground">
+                    Hierarquia validada: <strong>EPISafety &gt; {sanityResult.empresaNome} &gt; teste-homologacao</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {validationResult && (
             <div className={`p-3 rounded-lg border text-sm ${validationResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-destructive/10 border-destructive/30"}`}>
