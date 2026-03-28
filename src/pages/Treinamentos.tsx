@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity, Briefcase, Ban, Settings2, Maximize2, Minimize2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity, Briefcase, Ban, Settings2, Maximize2, Minimize2, Building2, FilterX } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,7 +36,7 @@ interface ControleTreinamento {
   created_by: string | null;
 }
 
-interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; setor: string | null; }
+interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; setor: string | null; unidade_id: string | null; contrato_id: string | null; }
 interface RequisitoCliente { id: string; curso_nome: string; funcoes_exigidas: string[] | null; carga_horaria_minima: number; validade_meses: number; }
 
 type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
@@ -114,6 +114,10 @@ export default function Treinamentos() {
   const [dispensaCursosSelecionados, setDispensaCursosSelecionados] = useState<string[]>([]);
   const [savingDispensa, setSavingDispensa] = useState(false);
   const [matrizFullscreen, setMatrizFullscreen] = useState(false);
+  const [unidadeFilter, setUnidadeFilter] = useState("");
+  const [contratoFilter, setContratoFilter] = useState("");
+  const [unidades, setUnidades] = useState<{ id: string; nome: string }[]>([]);
+  const [contratos, setContratos] = useState<{ id: string; nome: string; unidade_id: string }[]>([]);
 
   const fetchCursosDB = useCallback(async () => {
     if (!isOnline()) {
@@ -151,12 +155,16 @@ export default function Treinamentos() {
       return;
     }
     try {
-      const [{ data: treinos }, { data: funcs }] = await Promise.all([
+      const [{ data: treinos }, { data: funcs }, { data: unidadesData }, { data: contratosData }] = await Promise.all([
         (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
-        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
+        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, unidade_id, contrato_id"),
+        (supabase.from as any)("empresa_config").select("id, nome").neq("tipo", "matriz").order("nome"),
+        (supabase.from as any)("contratos").select("id, nome, unidade_id").order("nome"),
       ]);
       if (treinos) { setItems(treinos); setCachedData("controle_treinamentos", treinos); }
       if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
+      if (unidadesData) setUnidades(unidadesData);
+      if (contratosData) setContratos(contratosData);
     } catch {
       setItems(getCachedData<ControleTreinamento>("controle_treinamentos") || []);
       setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
@@ -263,6 +271,20 @@ export default function Treinamentos() {
     return [...s].sort();
   }, [funcionarios]);
 
+  // Contratos filtrados por unidade selecionada
+  const contratosFiltered = useMemo(() => {
+    if (!unidadeFilter) return contratos;
+    return contratos.filter(c => c.unidade_id === unidadeFilter);
+  }, [contratos, unidadeFilter]);
+
+  const hasActiveFilters = !!setorFilter || !!unidadeFilter || !!contratoFilter;
+
+  const clearAllFilters = () => {
+    setSetorFilter("");
+    setUnidadeFilter("");
+    setContratoFilter("");
+  };
+
   const filtered = useMemo(() => {
     let list = [...items];
     // Setor filter
@@ -288,7 +310,7 @@ export default function Treinamentos() {
 
   const refreshFuncionarios = async () => {
     if (!isOnline()) return;
-    const { data: funcs } = await supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor");
+    const { data: funcs } = await supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, unidade_id, contrato_id");
     if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
   };
 
@@ -721,13 +743,17 @@ export default function Treinamentos() {
     funcionarios.forEach(f => {
       if (getRequiredCourses(f.cargo).length > 0) allFuncIds.add(f.id);
     });
-    // Apply setor filter if active
-    const filteredFuncIds = setorFilter
-      ? [...allFuncIds].filter(fid => {
-          const f = funcMap[fid];
-          return f?.setor === setorFilter;
-        })
-      : [...allFuncIds];
+    // Apply setor, unidade, and contrato filters
+    let filteredFuncIds = [...allFuncIds];
+    if (setorFilter) {
+      filteredFuncIds = filteredFuncIds.filter(fid => funcMap[fid]?.setor === setorFilter);
+    }
+    if (unidadeFilter) {
+      filteredFuncIds = filteredFuncIds.filter(fid => funcMap[fid]?.unidade_id === unidadeFilter);
+    }
+    if (contratoFilter) {
+      filteredFuncIds = filteredFuncIds.filter(fid => funcMap[fid]?.contrato_id === contratoFilter);
+    }
 
     const rows = filteredFuncIds.map(fid => {
       const func = funcMap[fid];
@@ -798,7 +824,7 @@ export default function Treinamentos() {
     }[];
 
     return { cursos, rows };
-  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, dispensas]);
+  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, unidadeFilter, contratoFilter, dispensas]);
 
   // === Dispensa helpers ===
   const openDispensaDialog = (funcId: string) => {
@@ -974,30 +1000,60 @@ export default function Treinamentos() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Pesquisar por nome ou curso..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Pesquisar por nome, CPF ou curso..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          {unidades.length > 0 && (
+            <Select value={unidadeFilter || "all"} onValueChange={v => { setUnidadeFilter(v === "all" ? "" : v); setContratoFilter(""); }}>
+              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Unidade..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as unidades</SelectItem>
+                {unidades.map(u => <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {contratosFiltered.length > 0 && (
+            <Select value={contratoFilter || "all"} onValueChange={v => setContratoFilter(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Contrato..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os contratos</SelectItem>
+                {contratosFiltered.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
         </div>
-        {setoresUnicos.length > 0 && (
-          <Select value={setorFilter || "all"} onValueChange={v => setSetorFilter(v === "all" ? "" : v)}>
-            <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por setor..." /></SelectTrigger>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          {setoresUnicos.length > 0 && (
+            <Select value={setorFilter || "all"} onValueChange={v => setSetorFilter(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por setor..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os setores</SelectItem>
+                {setoresUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os setores</SelectItem>
-              {setoresUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              <SelectItem value="todos">Ver todos</SelectItem>
+              <SelectItem value="vencido">🔴 Vencidos</SelectItem>
+              <SelectItem value="atencao">🟡 A vencer</SelectItem>
+              <SelectItem value="vigente">🟢 Vigentes</SelectItem>
+              <SelectItem value="pendente">📄 Doc. Pendentes</SelectItem>
             </SelectContent>
           </Select>
-        )}
-        <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Ver todos</SelectItem>
-            <SelectItem value="vencido">🔴 Vencidos</SelectItem>
-            <SelectItem value="atencao">🟡 A vencer</SelectItem>
-            <SelectItem value="vigente">🟢 Vigentes</SelectItem>
-            <SelectItem value="pendente">📄 Doc. Pendentes</SelectItem>
-          </SelectContent>
-        </Select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground hover:text-foreground gap-1.5">
+              <FilterX className="w-4 h-4" />Limpar filtros
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground ml-auto">
+            Exibindo <strong>{matrixData.rows.length}</strong> colaborador{matrixData.rows.length !== 1 ? "es" : ""}
+          </span>
+        </div>
       </div>
 
       <Tabs defaultValue="lista" className="w-full">
