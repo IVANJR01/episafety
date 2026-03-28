@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity, Briefcase } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity, Briefcase, Ban, Settings2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -103,6 +104,15 @@ export default function Treinamentos() {
   const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
   // Requisitos da Matriz Unificada
   const [requisitos, setRequisitos] = useState<RequisitoCliente[]>([]);
+  // Dispensas de requisito por colaborador
+  interface DispensaRequisito { id: string; funcionario_id: string; curso_nome: string; motivo: string; }
+  const [dispensas, setDispensas] = useState<DispensaRequisito[]>([]);
+  // Dialog para gerenciar dispensas
+  const [dispensaDialogOpen, setDispensaDialogOpen] = useState(false);
+  const [dispensaFuncId, setDispensaFuncId] = useState("");
+  const [dispensaMotivo, setDispensaMotivo] = useState("");
+  const [dispensaCursosSelecionados, setDispensaCursosSelecionados] = useState<string[]>([]);
+  const [savingDispensa, setSavingDispensa] = useState(false);
 
   const fetchCursosDB = useCallback(async () => {
     if (!isOnline()) {
@@ -112,12 +122,14 @@ export default function Treinamentos() {
       if (cachedReq) setRequisitos(cachedReq);
       return;
     }
-    const [{ data }, { data: reqData }] = await Promise.all([
+    const [{ data }, { data: reqData }, { data: dispData }] = await Promise.all([
       (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome"),
       (supabase.from as any)("requisitos_cliente").select("id, curso_nome, funcoes_exigidas, carga_horaria_minima, validade_meses"),
+      (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo"),
     ]);
     if (data) { setDbCursos(data); setCachedData("cursos_documentos", data); }
     if (reqData) { setRequisitos(reqData); setCachedData("requisitos_cliente", reqData); }
+    if (dispData) setDispensas(dispData);
   }, []);
 
   // Multi-course mode
@@ -727,8 +739,14 @@ export default function Treinamentos() {
       const requiredCourseNames = new Set(requiredCourses.map(req => req.curso_nome));
       const autoPendentes: string[] = [];
 
+      // Dispensas deste colaborador
+      const funcDispensas = dispensas.filter(d => d.funcionario_id === fid);
+      const dispensadosSet = new Set(funcDispensas.map(d => d.curso_nome));
+
       requiredCourses.forEach(req => {
         const cd = cursoData[req.curso_nome];
+        // Se dispensado, ignorar completamente
+        if (dispensadosSet.has(req.curso_nome)) return;
         // Se o documento foi protocolado, considerar como válido (não pendente)
         if (protocoladosSet.has(req.curso_nome)) return;
         if (!cd) {
@@ -747,6 +765,7 @@ export default function Treinamentos() {
         protocolados: Array.from(protocoladosSet),
         autoPendentes,
         requiredCourseNames,
+        dispensados: dispensadosSet,
       };
     }).filter(Boolean) as {
       func: Funcionario;
@@ -755,10 +774,61 @@ export default function Treinamentos() {
       protocolados: string[];
       autoPendentes: string[];
       requiredCourseNames: Set<string>;
+      dispensados: Set<string>;
     }[];
 
     return { cursos, rows };
-  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter]);
+  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, dispensas]);
+
+  // === Dispensa helpers ===
+  const openDispensaDialog = (funcId: string) => {
+    const func = funcMap[funcId];
+    if (!func) return;
+    const funcDispensas = dispensas.filter(d => d.funcionario_id === funcId);
+    setDispensaFuncId(funcId);
+    setDispensaCursosSelecionados(funcDispensas.map(d => d.curso_nome));
+    setDispensaMotivo("");
+    setDispensaDialogOpen(true);
+  };
+
+  const handleSaveDispensas = async () => {
+    if (!dispensaFuncId) return;
+    setSavingDispensa(true);
+    const existing = dispensas.filter(d => d.funcionario_id === dispensaFuncId);
+    const existingNames = new Set(existing.map(d => d.curso_nome));
+    const selectedSet = new Set(dispensaCursosSelecionados);
+
+    // Add new dispensas
+    const toAdd = dispensaCursosSelecionados.filter(c => !existingNames.has(c));
+    // Remove unselected dispensas
+    const toRemove = existing.filter(d => !selectedSet.has(d.curso_nome));
+
+    try {
+      if (toAdd.length > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const rows = toAdd.map(curso => ({
+          funcionario_id: dispensaFuncId,
+          curso_nome: curso,
+          motivo: dispensaMotivo || "Não se aplica ao colaborador",
+          empresa_id: empresaId,
+          created_by: user?.id || null,
+        }));
+        await (supabase.from as any)("dispensas_requisito").insert(rows);
+      }
+      if (toRemove.length > 0) {
+        const ids = toRemove.map(d => d.id);
+        await (supabase.from as any)("dispensas_requisito").delete().in("id", ids);
+      }
+      // Refresh dispensas
+      const { data: dispData } = await (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo");
+      if (dispData) setDispensas(dispData);
+      toast({ title: "Dispensas atualizadas", description: "Requisitos do colaborador foram ajustados." });
+      setDispensaDialogOpen(false);
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+    setSavingDispensa(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -1036,7 +1106,14 @@ export default function Treinamentos() {
                       {matrixData.rows.map((row, idx) => (
                         <tr key={row.func.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/30"}>
                           <td className="border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 bg-inherit z-10">{idx + 1}</td>
-                          <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">{row.func.nome}</td>
+                          <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              {row.func.nome}
+                              <button onClick={() => openDispensaDialog(row.func.id)} className="opacity-40 hover:opacity-100 transition-opacity" title="Dispensar requisitos">
+                                <Settings2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
@@ -1066,6 +1143,19 @@ export default function Treinamentos() {
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
                             const isProtocolado = row.protocolados.includes(curso);
+                            const isDispensado = row.dispensados.has(curso);
+
+                            // Curso dispensado — mostrar N/A
+                            if (isDispensado) {
+                              return [
+                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                <td key={`${row.func.id}-${curso}-s`} className="border border-border/30 px-1 py-1.5 text-center text-[10px] bg-muted text-muted-foreground font-bold">
+                                  N/A
+                                </td>,
+                              ];
+                            }
+                            
                             const isRequiredAndMissing = row.requiredCourseNames.has(curso) && !cd && !isProtocolado;
                             
                             // Curso protocolado mas sem registro de treinamento — mostrar como VÁLIDO
@@ -1564,6 +1654,53 @@ export default function Treinamentos() {
             ) : (
               <Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* === DIALOG DISPENSAR REQUISITOS === */}
+      <Dialog open={dispensaDialogOpen} onOpenChange={setDispensaDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ban className="w-5 h-5" />
+              Dispensar Requisitos — {funcMap[dispensaFuncId]?.nome}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Marque os cursos/documentos que <strong>não se aplicam</strong> a este colaborador. Eles serão removidos das pendências e exibidos como "N/A" na Matriz.
+          </p>
+          <div className="space-y-2 max-h-[300px] overflow-auto">
+            {getRequiredCourses(funcMap[dispensaFuncId]?.cargo ?? null).map(req => (
+              <label key={req.curso_nome} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                <Checkbox
+                  checked={dispensaCursosSelecionados.includes(req.curso_nome)}
+                  onCheckedChange={(checked) => {
+                    setDispensaCursosSelecionados(prev =>
+                      checked ? [...prev, req.curso_nome] : prev.filter(c => c !== req.curso_nome)
+                    );
+                  }}
+                />
+                <span className="text-sm">{req.curso_nome}</span>
+              </label>
+            ))}
+          </div>
+          {dispensaCursosSelecionados.length > 0 && (
+            <div className="space-y-2">
+              <Label>Motivo da Dispensa</Label>
+              <Textarea
+                placeholder="Ex: Colaborador não conduz veículo da empresa"
+                value={dispensaMotivo}
+                onChange={e => setDispensaMotivo(e.target.value)}
+                rows={2}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDispensaDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveDispensas} disabled={savingDispensa}>
+              {savingDispensa ? "Salvando..." : "Salvar Dispensas"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
