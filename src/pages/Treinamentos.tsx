@@ -1144,7 +1144,7 @@ export default function Treinamentos() {
                               ) : (
                                 <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
                               )}
-                            )}
+                            </div>
                           </td>
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
