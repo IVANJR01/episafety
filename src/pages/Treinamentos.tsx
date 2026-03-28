@@ -1143,6 +1143,19 @@ export default function Treinamentos() {
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
                             const isProtocolado = row.protocolados.includes(curso);
+                            const isDispensado = row.dispensados.has(curso);
+
+                            // Curso dispensado — mostrar N/A
+                            if (isDispensado) {
+                              return [
+                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                <td key={`${row.func.id}-${curso}-s`} className="border border-border/30 px-1 py-1.5 text-center text-[10px] bg-muted text-muted-foreground font-bold">
+                                  N/A
+                                </td>,
+                              ];
+                            }
+                            
                             const isRequiredAndMissing = row.requiredCourseNames.has(curso) && !cd && !isProtocolado;
                             
                             // Curso protocolado mas sem registro de treinamento — mostrar como VÁLIDO
