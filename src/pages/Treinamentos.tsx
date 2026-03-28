@@ -201,6 +201,7 @@ export default function Treinamentos() {
   const [docPopoverOpen, setDocPopoverOpen] = useState(false);
 
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normalizeCourseName = (s: string | null | undefined) => normalize(s ?? "").replace(/\s+/g, " ").trim();
 
   // Helper: check if employee cargo matches any of the funcoes_exigidas using fuzzy matching
   const cargoMatchesFuncao = useCallback((cargo: string | null, funcoes: string[] | null): boolean => {
@@ -718,49 +719,46 @@ export default function Treinamentos() {
       const treinos = items.filter(t => t.funcionario_id === fid);
       const treinosComCurso = treinos.filter(t => t.nome_curso !== "Documentação Pendente");
       const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
-      const pendentesSet = new Set<string>();
+      const cursoDataNormalizado: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
 
       // Documentos protocolados são considerados válidos — removem pendências
       const protocoladosSet = new Set<string>();
       treinos.forEach(t => {
         if (t.documento_pendente) {
-          t.documento_pendente.split(" | ").filter(Boolean).forEach(d => protocoladosSet.add(d));
+          t.documento_pendente.split(" | ").filter(Boolean).forEach(d => protocoladosSet.add(normalizeCourseName(d)));
         }
       });
 
       cursos.forEach(curso => {
         const t = treinosComCurso.find(tr => tr.nome_curso === curso);
         if (t) {
-          cursoData[curso] = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
+          const value = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
+          cursoData[curso] = value;
+          cursoDataNormalizado[normalizeCourseName(curso)] = value;
         }
       });
 
       const requiredCourses = getRequiredCourses(func.cargo);
-      const requiredCourseNames = new Set(requiredCourses.map(req => req.curso_nome));
-      const autoPendentes: string[] = [];
+      const requiredCourseNames = new Set(requiredCourses.map(req => normalizeCourseName(req.curso_nome)));
+      const autoPendentesMap = new Map<string, string>();
 
       // Dispensas deste colaborador
       const funcDispensas = dispensas.filter(d => d.funcionario_id === fid);
-      const dispensadosSet = new Set(funcDispensas.map(d => d.curso_nome));
+      const dispensadosSet = new Set(funcDispensas.map(d => normalizeCourseName(d.curso_nome)));
 
       requiredCourses.forEach(req => {
-        const cd = cursoData[req.curso_nome];
+        const reqKey = normalizeCourseName(req.curso_nome);
+        const cd = cursoData[req.curso_nome] || cursoDataNormalizado[reqKey];
         // Se dispensado, ignorar completamente — prioridade sobre regra da função
-        if (dispensadosSet.has(req.curso_nome)) return;
-        // Verificação fuzzy para dispensas (caso o nome tenha pequenas variações)
-        let isDispensadoFuzzy = false;
-        dispensadosSet.forEach(dName => {
-          if (dName.trim().toLowerCase() === req.curso_nome.trim().toLowerCase()) isDispensadoFuzzy = true;
-        });
-        if (isDispensadoFuzzy) return;
+        if (dispensadosSet.has(reqKey)) return;
         // Se o documento foi protocolado, considerar como válido (não pendente)
-        if (protocoladosSet.has(req.curso_nome)) return;
+        if (protocoladosSet.has(reqKey)) return;
         if (!cd) {
-          autoPendentes.push(req.curso_nome);
+          autoPendentesMap.set(reqKey, req.curso_nome);
         } else if (cd.status.key === "permanente") {
           // Permanent doc already delivered — skip
         } else if (cd.status.key === "vencido") {
-          autoPendentes.push(`${req.curso_nome} (Vencido)`);
+          autoPendentesMap.set(reqKey, `${req.curso_nome} (Vencido)`);
         }
       });
 
@@ -768,8 +766,8 @@ export default function Treinamentos() {
         func,
         cursoData,
         pendentes: [], // Protocolados agora são válidos, não pendentes
-        protocolados: Array.from(protocoladosSet),
-        autoPendentes,
+        protocolados: protocoladosSet,
+        autoPendentes: Array.from(autoPendentesMap.values()),
         requiredCourseNames,
         dispensados: dispensadosSet,
       };
@@ -777,7 +775,7 @@ export default function Treinamentos() {
       func: Funcionario;
       cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>;
       pendentes: string[];
-      protocolados: string[];
+      protocolados: Set<string>;
       autoPendentes: string[];
       requiredCourseNames: Set<string>;
       dispensados: Set<string>;
@@ -819,18 +817,16 @@ export default function Treinamentos() {
           empresa_id: empresaId,
           created_by: user?.id || null,
         }));
-        const { error: insertError } = await (supabase.from as any)("dispensas_requisito").insert(rows);
+        const { data: insertedRows, error: insertError } = await (supabase.from as any)("dispensas_requisito").insert(rows).select("id, funcionario_id, curso_nome, motivo");
         if (insertError) throw insertError;
+        setDispensas(prev => [...prev.filter(d => !(d.funcionario_id === dispensaFuncId && selectedSet.has(d.curso_nome) && !existingNames.has(d.curso_nome))), ...(insertedRows || [])]);
       }
       if (toRemove.length > 0) {
         const ids = toRemove.map(d => d.id);
         const { error: deleteError } = await (supabase.from as any)("dispensas_requisito").delete().in("id", ids);
         if (deleteError) throw deleteError;
+        setDispensas(prev => prev.filter(d => !ids.includes(d.id)));
       }
-      // Refresh dispensas — forçar atualização
-      const { data: dispData, error: fetchError } = await (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo");
-      if (fetchError) throw fetchError;
-      setDispensas(dispData || []);
       toast({ title: "Dispensas atualizadas", description: "Requisitos do colaborador foram ajustados com sucesso." });
       setDispensaDialogOpen(false);
     } catch (e: any) {
@@ -1158,8 +1154,9 @@ export default function Treinamentos() {
                           </td>
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
-                            const isProtocolado = row.protocolados.includes(curso);
-                            const isDispensado = row.dispensados.has(curso);
+                            const cursoKey = normalizeCourseName(curso);
+                            const isProtocolado = row.protocolados.has(cursoKey);
+                            const isDispensado = row.dispensados.has(cursoKey);
 
                             // Curso dispensado — mostrar N/A
                             if (isDispensado) {
@@ -1172,7 +1169,7 @@ export default function Treinamentos() {
                               ];
                             }
                             
-                            const isRequiredAndMissing = row.requiredCourseNames.has(curso) && !cd && !isProtocolado;
+                            const isRequiredAndMissing = row.requiredCourseNames.has(cursoKey) && !cd && !isProtocolado;
                             
                             // Curso protocolado mas sem registro de treinamento — mostrar como VÁLIDO
                             if (!cd && isProtocolado) {
