@@ -545,6 +545,10 @@ startxref
             Migre todos os arquivos do Storage interno para o Google Drive e libere espaço na plataforma.
           </p>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={runSanityTest} disabled={sanityTesting}>
+              {sanityTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
+              Testar Nuvem Própria
+            </Button>
             <Button variant="outline" size="sm" onClick={validateDriveConnection} disabled={validating}>
               {validating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
               Validar Armazenamento Externo
@@ -554,6 +558,40 @@ startxref
               {migrating ? "Migrando..." : "Migrar Arquivos → Google Drive"}
             </Button>
           </div>
+
+          {sanityResult && (
+            <div className={`p-4 rounded-lg border text-sm ${sanityResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : sanityResult.inProgress ? "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800" : "bg-destructive/10 border-destructive/30"}`}>
+              <div className="space-y-2">
+                {sanityResult.success && (
+                  <p className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Teste de Homologação Passou!
+                  </p>
+                )}
+                {sanityResult.inProgress && (
+                  <p className="font-medium text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Executando teste...
+                  </p>
+                )}
+                {sanityResult.success === false && (
+                  <p className="font-medium text-destructive flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" /> Teste Falhou
+                  </p>
+                )}
+                <div className="font-mono text-xs space-y-0.5 bg-background/50 p-3 rounded border max-h-48 overflow-y-auto">
+                  {sanityResult.log?.map((line: string, i: number) => (
+                    <p key={i} className={line.startsWith("❌") ? "text-destructive" : line.startsWith("✅") ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
+                {sanityResult.success && sanityResult.empresaNome && (
+                  <p className="text-xs text-muted-foreground">
+                    Hierarquia validada: <strong>EPISafety &gt; {sanityResult.empresaNome} &gt; teste-homologacao</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {validationResult && (
             <div className={`p-3 rounded-lg border text-sm ${validationResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-destructive/10 border-destructive/30"}`}>
