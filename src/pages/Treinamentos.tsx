@@ -708,9 +708,11 @@ export default function Treinamentos() {
       const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
       const pendentesSet = new Set<string>();
 
+      // Documentos protocolados são considerados válidos — removem pendências
+      const protocoladosSet = new Set<string>();
       treinos.forEach(t => {
         if (t.documento_pendente) {
-          t.documento_pendente.split(" | ").filter(Boolean).forEach(d => pendentesSet.add(d));
+          t.documento_pendente.split(" | ").filter(Boolean).forEach(d => protocoladosSet.add(d));
         }
       });
 
@@ -727,6 +729,8 @@ export default function Treinamentos() {
 
       requiredCourses.forEach(req => {
         const cd = cursoData[req.curso_nome];
+        // Se o documento foi protocolado, considerar como válido (não pendente)
+        if (protocoladosSet.has(req.curso_nome)) return;
         if (!cd) {
           autoPendentes.push(req.curso_nome);
         } else if (cd.status.key === "permanente") {
@@ -739,7 +743,8 @@ export default function Treinamentos() {
       return {
         func,
         cursoData,
-        pendentes: Array.from(pendentesSet),
+        pendentes: [], // Protocolados agora são válidos, não pendentes
+        protocolados: Array.from(protocoladosSet),
         autoPendentes,
         requiredCourseNames,
       };
@@ -930,7 +935,7 @@ export default function Treinamentos() {
                       <TableHead>Data Realização</TableHead>
                       <TableHead>Renovação</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Doc. Pendente</TableHead>
+                      <TableHead>Doc. Protocolada</TableHead>
                       <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -966,8 +971,8 @@ export default function Treinamentos() {
                             {t.documento_pendente ? (
                               <div className="flex flex-wrap gap-1">
                                 {t.documento_pendente.split(" | ").filter(Boolean).map(doc => (
-                                  <Badge key={doc} variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
-                                    <FileWarning className="w-3 h-3 mr-1" />{doc}
+                                  <Badge key={doc} variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+                                    <CheckCircle className="w-3 h-3 mr-1" />{doc}
                                   </Badge>
                                 ))}
                               </div>
