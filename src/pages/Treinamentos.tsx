@@ -670,19 +670,36 @@ export default function Treinamentos() {
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
   // Matrix data: group by employee, list all unique courses as columns
+  // Now includes ALL employees (even without trainings) and auto-pendentes from Matriz Unificada
   const matrixData = useMemo(() => {
     const cursoSet = new Set<string>();
     items.forEach(t => cursoSet.add(t.nome_curso));
+    // Also add required courses from Matriz Unificada as columns
+    requisitos.forEach(r => cursoSet.add(r.curso_nome));
     const cursos = Array.from(cursoSet).sort();
 
-    const funcIds = Array.from(new Set(items.map(t => t.funcionario_id)));
-    const rows = funcIds.map(fid => {
+    // Include ALL employees, not just those with trainings
+    const allFuncIds = new Set<string>();
+    items.forEach(t => allFuncIds.add(t.funcionario_id));
+    // Also include employees that have required courses via their cargo
+    funcionarios.forEach(f => {
+      if (getRequiredCourses(f.cargo).length > 0) allFuncIds.add(f.id);
+    });
+    // Apply setor filter if active
+    const filteredFuncIds = setorFilter
+      ? [...allFuncIds].filter(fid => {
+          const f = funcMap[fid];
+          return f?.setor === setorFilter;
+        })
+      : [...allFuncIds];
+
+    const rows = filteredFuncIds.map(fid => {
       const func = funcMap[fid];
       if (!func) return null;
       const treinos = items.filter(t => t.funcionario_id === fid);
       const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
       const pendentesSet = new Set<string>();
-      // Collect ALL pendentes from all treinos of this employee
+      // Collect manual pendentes from treinos
       treinos.forEach(t => {
         if (t.documento_pendente) {
           t.documento_pendente.split(" | ").filter(Boolean).forEach(d => pendentesSet.add(d));
@@ -694,11 +711,26 @@ export default function Treinamentos() {
           cursoData[curso] = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
         }
       });
-      return { func, cursoData, pendentes: Array.from(pendentesSet) };
-    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>; pendentes: string[] }[];
+
+      // Auto-pendentes from Matriz Unificada: courses required for this cargo but missing or expired
+      const requiredCourses = getRequiredCourses(func.cargo);
+      const autoPendentes: string[] = [];
+      requiredCourses.forEach(req => {
+        const cd = cursoData[req.curso_nome];
+        if (!cd) {
+          // Course not registered at all
+          autoPendentes.push(req.curso_nome);
+        } else if (cd.status.key === "vencido") {
+          // Course exists but is expired
+          autoPendentes.push(`${req.curso_nome} (Vencido)`);
+        }
+      });
+
+      return { func, cursoData, pendentes: Array.from(pendentesSet), autoPendentes };
+    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>; pendentes: string[]; autoPendentes: string[] }[];
 
     return { cursos, rows };
-  }, [items, funcMap]);
+  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter]);
 
   return (
     <div className="space-y-6">
