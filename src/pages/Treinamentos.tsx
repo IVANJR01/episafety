@@ -153,7 +153,7 @@ export default function Treinamentos() {
     try {
       const [{ data: treinos }, { data: funcs }] = await Promise.all([
         (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
-        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor"),
+        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, unidade_id, contrato_id"),
       ]);
       if (treinos) { setItems(treinos); setCachedData("controle_treinamentos", treinos); }
       if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
@@ -288,7 +288,7 @@ export default function Treinamentos() {
 
   const refreshFuncionarios = async () => {
     if (!isOnline()) return;
-    const { data: funcs } = await supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor");
+    const { data: funcs } = await supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, unidade_id, contrato_id");
     if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
   };
 
