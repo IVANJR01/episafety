@@ -1107,11 +1107,17 @@ export default function Treinamentos() {
                         <tr key={row.func.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/30"}>
                           <td className="border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 bg-inherit z-10">{idx + 1}</td>
                           <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
                               {row.func.nome}
-                              <button onClick={() => openDispensaDialog(row.func.id)} className="opacity-40 hover:opacity-100 transition-opacity" title="Dispensar requisitos">
-                                <Settings2 className="w-3.5 h-3.5" />
-                              </button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 shrink-0"
+                                onClick={() => openDispensaDialog(row.func.id)}
+                                title="Dispensar requisitos"
+                              >
+                                <Settings2 className="w-3.5 h-3.5 text-primary" />
+                              </Button>
                             </div>
                           </td>
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
