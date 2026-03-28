@@ -224,10 +224,17 @@ export default function Treinamentos() {
     });
   }, []);
 
-  // Get required courses for a given cargo from Matriz Unificada
+  // Get required courses for a given cargo from Matriz Unificada (deduplicated by curso_nome)
   const getRequiredCourses = useCallback((cargo: string | null): RequisitoCliente[] => {
     if (!cargo) return [];
-    return requisitos.filter(r => cargoMatchesFuncao(cargo, r.funcoes_exigidas));
+    const matched = requisitos.filter(r => cargoMatchesFuncao(cargo, r.funcoes_exigidas));
+    // Deduplicate by curso_nome — keep only first occurrence
+    const seen = new Set<string>();
+    return matched.filter(r => {
+      if (seen.has(r.curso_nome)) return false;
+      seen.add(r.curso_nome);
+      return true;
+    });
   }, [requisitos, cargoMatchesFuncao]);
 
   // Open add modal with pre-selected course from a pendente tag click

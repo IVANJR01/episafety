@@ -76,11 +76,17 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
       const funcoes = r.funcoes_exigidas || [];
       funcoes.forEach(f => {
         if (!map.has(f)) map.set(f, []);
-        map.get(f)!.push(r);
+        const existing = map.get(f)!;
+        // Prevent duplicate courses within the same function
+        if (!existing.some(e => e.curso_nome === r.curso_nome)) {
+          existing.push(r);
+        }
       });
     });
-    // Sort by function name
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    // Sort by function name, and sort courses alphabetically within each function
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([funcao, reqs]) => [funcao, reqs.sort((a, b) => a.curso_nome.localeCompare(b.curso_nome))] as [string, RequisitoCliente[]]);
   }, [requisitos]);
 
   const filteredGroups = useMemo(() => {
@@ -132,6 +138,11 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
     if (exists) {
       setCursosSelecionados(prev => prev.filter(c => c.curso_nome !== cursoNome));
     } else {
+      // Prevent adding duplicate course
+      if (cursosSelecionados.some(c => c.curso_nome === cursoNome)) {
+        toast({ title: "Este curso já é um requisito desta função", variant: "destructive" });
+        return;
+      }
       const dbCurso = cursos.find(c => c.nome === cursoNome);
       setCursosSelecionados(prev => [...prev, {
         curso_nome: cursoNome,
@@ -148,6 +159,11 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
       return;
     }
 
+    // Deduplicate cursos by name (prevent same course twice)
+    const uniqueCursos = cursosSelecionados.filter((c, idx, arr) =>
+      arr.findIndex(x => x.curso_nome === c.curso_nome) === idx
+    );
+
     for (const currentFuncao of funcoesMultiplas) {
       // Delete existing requisitos for this funcao
       const existingForFuncao = requisitos.filter(r =>
@@ -163,11 +179,29 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
         }
       }
 
-      // Add/update requisitos for each selected curso
-      for (const curso of cursosSelecionados) {
-        const existingReq = requisitos.find(r => r.curso_nome === curso.curso_nome && !r.funcoes_exigidas?.includes(currentFuncao));
-        if (existingReq) {
-          const updatedFuncoes = [...(existingReq.funcoes_exigidas || []), currentFuncao];
+      // Re-fetch to get clean state after deletions/updates
+      const { data: freshReqs } = await (supabase.from as any)("requisitos_cliente").select("*");
+      const currentReqs: RequisitoCliente[] = freshReqs || [];
+
+      // Add/update requisitos for each selected curso (no duplicates)
+      for (const curso of uniqueCursos) {
+        // Check if this curso already has a row that we can add this funcao to
+        const existingReq = currentReqs.find(r =>
+          r.curso_nome === curso.curso_nome && !r.funcoes_exigidas?.includes(currentFuncao)
+        );
+        // Also check if it already has this funcao (skip if so)
+        const alreadyHas = currentReqs.find(r =>
+          r.curso_nome === curso.curso_nome && r.funcoes_exigidas?.includes(currentFuncao)
+        );
+
+        if (alreadyHas) {
+          // Already exists — just update params if needed
+          await (supabase.from as any)("requisitos_cliente").update({
+            carga_horaria_minima: curso.carga_horaria || alreadyHas.carga_horaria_minima,
+            validade_meses: curso.permanente ? 0 : curso.validade_meses,
+          }).eq("id", alreadyHas.id);
+        } else if (existingReq) {
+          const updatedFuncoes = [...new Set([...(existingReq.funcoes_exigidas || []), currentFuncao])];
           await (supabase.from as any)("requisitos_cliente").update({
             funcoes_exigidas: updatedFuncoes,
             carga_horaria_minima: curso.carga_horaria || existingReq.carga_horaria_minima,
