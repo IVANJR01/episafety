@@ -745,8 +745,14 @@ export default function Treinamentos() {
 
       requiredCourses.forEach(req => {
         const cd = cursoData[req.curso_nome];
-        // Se dispensado, ignorar completamente
+        // Se dispensado, ignorar completamente — prioridade sobre regra da função
         if (dispensadosSet.has(req.curso_nome)) return;
+        // Verificação fuzzy para dispensas (caso o nome tenha pequenas variações)
+        let isDispensadoFuzzy = false;
+        dispensadosSet.forEach(dName => {
+          if (dName.trim().toLowerCase() === req.curso_nome.trim().toLowerCase()) isDispensadoFuzzy = true;
+        });
+        if (isDispensadoFuzzy) return;
         // Se o documento foi protocolado, considerar como válido (não pendente)
         if (protocoladosSet.has(req.curso_nome)) return;
         if (!cd) {
@@ -813,19 +819,23 @@ export default function Treinamentos() {
           empresa_id: empresaId,
           created_by: user?.id || null,
         }));
-        await (supabase.from as any)("dispensas_requisito").insert(rows);
+        const { error: insertError } = await (supabase.from as any)("dispensas_requisito").insert(rows);
+        if (insertError) throw insertError;
       }
       if (toRemove.length > 0) {
         const ids = toRemove.map(d => d.id);
-        await (supabase.from as any)("dispensas_requisito").delete().in("id", ids);
+        const { error: deleteError } = await (supabase.from as any)("dispensas_requisito").delete().in("id", ids);
+        if (deleteError) throw deleteError;
       }
-      // Refresh dispensas
-      const { data: dispData } = await (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo");
-      if (dispData) setDispensas(dispData);
-      toast({ title: "Dispensas atualizadas", description: "Requisitos do colaborador foram ajustados." });
+      // Refresh dispensas — forçar atualização
+      const { data: dispData, error: fetchError } = await (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo");
+      if (fetchError) throw fetchError;
+      setDispensas(dispData || []);
+      toast({ title: "Dispensas atualizadas", description: "Requisitos do colaborador foram ajustados com sucesso." });
       setDispensaDialogOpen(false);
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      console.error("Erro ao salvar dispensas:", e);
+      toast({ title: "Erro ao salvar dispensas", description: e.message, variant: "destructive" });
     }
     setSavingDispensa(false);
   };
