@@ -1060,15 +1060,18 @@ export default function Treinamentos() {
                           </td>
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
+                            const isRequiredAndMissing = row.requiredCourseNames.has(curso) && !cd;
                             if (!cd) {
                               return [
-                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
-                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
-                                <td key={`${row.func.id}-${curso}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">{isRequiredAndMissing ? "⚠️ Pendente" : "—"}</td>,
+                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">{isRequiredAndMissing ? "⚠️ Pendente" : "—"}</td>,
+                                <td key={`${row.func.id}-${curso}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] font-bold ${isRequiredAndMissing ? "bg-warning text-warning-foreground" : "text-muted-foreground"}`}>
+                                  {isRequiredAndMissing ? "PENDENTE" : "—"}
+                                </td>,
                               ];
                             }
                             const statusBg = cd.status.key === "permanente"
-                              ? "bg-blue-500 text-white font-bold"
+                              ? "bg-primary text-primary-foreground font-bold"
                               : cd.status.key === "vencido"
                               ? "bg-destructive text-destructive-foreground font-bold"
                               : cd.status.key === "atencao"
