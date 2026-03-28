@@ -1116,6 +1116,15 @@ export default function Treinamentos() {
           </Card>
         </TabsContent>
 
+        {/* === ABA REQUISITOS POR FUNÇÃO === */}
+        <TabsContent value="requisitos">
+          <Card>
+            <CardContent className="p-6">
+              <CadastroFuncaoRequisitos onUpdate={fetchCursosDB} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* === ABA CADASTRO DE CURSOS === */}
         <TabsContent value="cadastro">
           <CadastroCursos onUpdate={fetchCursosDB} />
