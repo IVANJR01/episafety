@@ -302,8 +302,27 @@ serve(async (req) => {
         ).join("\n")}\n\nREGRA CRÍTICA DE CH VARIÁVEL: O mesmo curso pode ter CH diferente por função. Ex: POP 00 = 8h (Administrativo) vs 40h (Eletricista). Use a CH correspondente à FUNÇÃO do colaborador selecionado.`
       : "";
 
+    // Fetch other documents being analyzed in this batch (from analises_ia)
+    let batchContext = "";
+    if (funcionarioId && empresaId) {
+      const { data: recentAnalyses } = await supabase
+        .from("analises_ia")
+        .select("arquivo_nome, ia_metadata, status")
+        .eq("empresa_id", empresaId)
+        .eq("funcionario_id", funcionarioId)
+        .in("status", ["analisado", "confirmado"])
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (recentAnalyses && recentAnalyses.length > 0) {
+        batchContext = `\n\nDOCUMENTOS JÁ ANALISADOS PELA IA PARA ESTE COLABORADOR (use para validação cruzada):\n${recentAnalyses.map((a: any) => {
+          const meta = a.ia_metadata || {};
+          return `- Arquivo: ${a.arquivo_nome} | Curso: ${meta.curso || "?"} | CH: ${meta.carga_horaria || "?"}h | Realização: ${meta.data_realizacao || "?"} | Validade: ${meta.data_validade || "?"} | NR Conforme: ${meta.conforme_nr} | Status: ${a.status}`;
+        }).join("\n")}`;
+      }
+    }
+
     const funcionarioContext = funcionarioNome
-      ? `\nDADOS DO COLABORADOR SELECIONADO:\nNome: ${funcionarioNome}\nCPF: ${funcionarioCpf || "Não informado"}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\n\nREGRAS DE IDENTIFICAÇÃO:\n- Use o CPF "${funcionarioCpf || ""}" como CHAVE PRIMÁRIA de identificação infalível.\n- Se o CPF do documento coincidir com "${funcionarioCpf || ""}", o colaborador é o MESMO, independentemente de variações no nome (abreviações, nome do meio, acentos).\n- Só defina alerta_nome=true se AMBOS nome E CPF forem completamente diferentes.${treinamentosExistentes}`
+      ? `\nDADOS DO COLABORADOR SELECIONADO:\nNome: ${funcionarioNome}\nCPF: ${funcionarioCpf || "Não informado"}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\n\nREGRAS DE IDENTIFICAÇÃO:\n- Use o CPF "${funcionarioCpf || ""}" como CHAVE PRIMÁRIA de identificação infalível.\n- Se o CPF do documento coincidir com "${funcionarioCpf || ""}", o colaborador é o MESMO, independentemente de variações no nome (abreviações, nome do meio, acentos).\n- Só defina alerta_nome=true se AMBOS nome E CPF forem completamente diferentes.${treinamentosExistentes}${batchContext}\n\nREGRA CRÍTICA DE DEPENDÊNCIA MULTIDOCUMENTO:\n- Para validar uma ANUÊNCIA NR-10 (item 10.8.4), você DEVE verificar se o colaborador possui NR-10 Básico (40h) E NR-10 SEP (40h) VIGENTES.\n- Consulte os TREINAMENTOS JÁ CADASTRADOS e os DOCUMENTOS JÁ ANALISADOS acima.\n- Se NR-10 Básico ou SEP estiverem presentes (no sistema OU no lote atual), use esses dados para validar a Anuência.\n- Se NR-10 Básico ou SEP NÃO forem encontrados em NENHUMA fonte, marque: conforme_nr=false e motivo_nr="❌ Pré-requisito ausente: certificado de NR-10 Básico/SEP não localizado no sistema nem no lote atual."\n- A validade da Anuência = data de vencimento do treinamento mais antigo (Básico ou SEP).\n- Se encontrar o NR-10, inclua na descricao_completa: "✅ Certificado de NR-10 identificado e vinculado. Atende à carga horária de 40h exigida pela Matriz Unificada. Anuência validada com base neste treinamento."`
       : "";
 
     const systemPrompt = buildSystemPrompt(requisitosContext, funcionarioContext);
