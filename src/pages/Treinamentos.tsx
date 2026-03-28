@@ -104,6 +104,15 @@ export default function Treinamentos() {
   const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
   // Requisitos da Matriz Unificada
   const [requisitos, setRequisitos] = useState<RequisitoCliente[]>([]);
+  // Dispensas de requisito por colaborador
+  interface DispensaRequisito { id: string; funcionario_id: string; curso_nome: string; motivo: string; }
+  const [dispensas, setDispensas] = useState<DispensaRequisito[]>([]);
+  // Dialog para gerenciar dispensas
+  const [dispensaDialogOpen, setDispensaDialogOpen] = useState(false);
+  const [dispensaFuncId, setDispensaFuncId] = useState("");
+  const [dispensaMotivo, setDispensaMotivo] = useState("");
+  const [dispensaCursosSelecionados, setDispensaCursosSelecionados] = useState<string[]>([]);
+  const [savingDispensa, setSavingDispensa] = useState(false);
 
   const fetchCursosDB = useCallback(async () => {
     if (!isOnline()) {
