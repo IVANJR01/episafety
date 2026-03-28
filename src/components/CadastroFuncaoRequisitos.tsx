@@ -436,8 +436,8 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={!funcaoNome.trim() || cursosSelecionados.length === 0}>
-              Salvar Requisitos ({cursosSelecionados.length} curso{cursosSelecionados.length !== 1 ? "s" : ""})
+            <Button onClick={handleSave} disabled={funcoesMultiplas.length === 0 || cursosSelecionados.length === 0}>
+              Salvar Requisitos ({funcoesMultiplas.length} função{funcoesMultiplas.length !== 1 ? "ões" : ""} • {cursosSelecionados.length} curso{cursosSelecionados.length !== 1 ? "s" : ""})
             </Button>
           </DialogFooter>
         </DialogContent>
