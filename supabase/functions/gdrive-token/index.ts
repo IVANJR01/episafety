@@ -108,10 +108,16 @@ Deno.serve(async (req) => {
       if (body?.folder) folder = body.folder;
     } catch { /* no body */ }
 
-    // Ensure folder exists and return its ID
+    // Ensure folder hierarchy exists: EPISafety > Empresa > folder/sub/paths
     const rootId = await getRootFolderId(driveToken);
     const empresaFolderId = await findOrCreateFolder(driveToken, rootId, empresaNome);
-    const targetFolderId = await findOrCreateFolder(driveToken, empresaFolderId, folder);
+    
+    // Support multi-level folder paths (e.g. "Colaborador/Certificados")
+    const folderParts = folder.split("/").filter(Boolean);
+    let targetFolderId = empresaFolderId;
+    for (const part of folderParts) {
+      targetFolderId = await findOrCreateFolder(driveToken, targetFolderId, part);
+    }
 
     return new Response(JSON.stringify({
       accessToken: driveToken,
