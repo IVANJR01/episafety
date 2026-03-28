@@ -1000,30 +1000,60 @@ export default function Treinamentos() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Pesquisar por nome ou curso..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Pesquisar por nome, CPF ou curso..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          {unidades.length > 0 && (
+            <Select value={unidadeFilter || "all"} onValueChange={v => { setUnidadeFilter(v === "all" ? "" : v); setContratoFilter(""); }}>
+              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Unidade..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as unidades</SelectItem>
+                {unidades.map(u => <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {contratosFiltered.length > 0 && (
+            <Select value={contratoFilter || "all"} onValueChange={v => setContratoFilter(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Contrato..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os contratos</SelectItem>
+                {contratosFiltered.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
         </div>
-        {setoresUnicos.length > 0 && (
-          <Select value={setorFilter || "all"} onValueChange={v => setSetorFilter(v === "all" ? "" : v)}>
-            <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por setor..." /></SelectTrigger>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          {setoresUnicos.length > 0 && (
+            <Select value={setorFilter || "all"} onValueChange={v => setSetorFilter(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrar por setor..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os setores</SelectItem>
+                {setoresUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os setores</SelectItem>
-              {setoresUnicos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              <SelectItem value="todos">Ver todos</SelectItem>
+              <SelectItem value="vencido">🔴 Vencidos</SelectItem>
+              <SelectItem value="atencao">🟡 A vencer</SelectItem>
+              <SelectItem value="vigente">🟢 Vigentes</SelectItem>
+              <SelectItem value="pendente">📄 Doc. Pendentes</SelectItem>
             </SelectContent>
           </Select>
-        )}
-        <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Ver todos</SelectItem>
-            <SelectItem value="vencido">🔴 Vencidos</SelectItem>
-            <SelectItem value="atencao">🟡 A vencer</SelectItem>
-            <SelectItem value="vigente">🟢 Vigentes</SelectItem>
-            <SelectItem value="pendente">📄 Doc. Pendentes</SelectItem>
-          </SelectContent>
-        </Select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground hover:text-foreground gap-1.5">
+              <FilterX className="w-4 h-4" />Limpar filtros
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground ml-auto">
+            Exibindo <strong>{matrixData.rows.length}</strong> colaborador{matrixData.rows.length !== 1 ? "es" : ""}
+          </span>
+        </div>
       </div>
 
       <Tabs defaultValue="lista" className="w-full">
