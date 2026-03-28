@@ -180,10 +180,10 @@ export default function Treinamentos() {
     return format(renovacao, "yyyy-MM-dd");
   };
 
-  // Documentos Pendentes list comes from the "Documentos Permanentes" registered in cursos_documentos (validade_meses === 0)
+  // Documentação Protocolada list: ALL registered courses/documents
   const DOCUMENTOS_LISTA = useMemo(() => {
-    const permanentes = dbCursos.filter(c => c.validade_meses === 0).map(c => c.nome);
-    return permanentes.length > 0 ? permanentes : ["Ordem de Serviço", "Ficha de EPI", "ASO"];
+    const todos = dbCursos.map(c => c.nome);
+    return todos.length > 0 ? todos : ["Ordem de Serviço", "Ficha de EPI", "ASO"];
   }, [dbCursos]);
 
   const [docPopoverOpen, setDocPopoverOpen] = useState(false);
@@ -1087,7 +1087,7 @@ export default function Treinamentos() {
                                 {isPermanentDate(cd.renovacao) ? "∞" : cd.renovacao ? format(parseISO(cd.renovacao), "dd/MM/yyyy") : "—"}
                               </td>,
                               <td key={`${row.func.id}-${curso}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${statusBg}`}>
-                                {cd.status.key === "permanente" ? "∞ Entregue" : cd.status.key === "vencido" ? "Vencido" : cd.status.key === "atencao" ? "Atenção" : "Válido"}
+                                {cd.status.key === "permanente" ? "✅ VALIDADO" : cd.status.key === "vencido" ? "Vencido" : cd.status.key === "atencao" ? "Atenção" : "✅ VALIDADO"}
                               </td>,
                             ];
                           })}
