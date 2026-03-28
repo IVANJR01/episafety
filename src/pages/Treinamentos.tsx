@@ -1041,7 +1041,7 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-center text-xs min-w-[200px]">
-                            {(row.autoPendentes.length > 0 || row.pendentes.length > 0) ? (
+                            {(row.autoPendentes.length > 0) ? (
                               <div className="flex flex-wrap gap-0.5 justify-center">
                                 {row.autoPendentes.map(d => {
                                   const cursoName = d.replace(" (Vencido)", "");
@@ -1058,8 +1058,14 @@ export default function Treinamentos() {
                                     </Badge>
                                   );
                                 })}
-                                {row.pendentes.map(d => (
-                                  <Badge key={`doc-${d}`} variant="outline" className="text-[9px] bg-warning/10 text-warning border-warning/30">⚠️ {d}</Badge>
+                                {row.protocolados.length > 0 && row.protocolados.map(d => (
+                                  <Badge key={`prot-${d}`} variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✅ {d}</Badge>
+                                ))}
+                              </div>
+                            ) : row.protocolados.length > 0 ? (
+                              <div className="flex flex-wrap gap-0.5 justify-center">
+                                {row.protocolados.map(d => (
+                                  <Badge key={`prot-${d}`} variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✅ {d}</Badge>
                                 ))}
                               </div>
                             ) : (
