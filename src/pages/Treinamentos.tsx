@@ -81,15 +81,23 @@ export default function Treinamentos() {
 
   // DB-based courses
   const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
+  // Requisitos da Matriz Unificada
+  const [requisitos, setRequisitos] = useState<RequisitoCliente[]>([]);
 
   const fetchCursosDB = useCallback(async () => {
     if (!isOnline()) {
       const cached = getCachedData<{ nome: string; validade_meses: number }>("cursos_documentos");
       if (cached) setDbCursos(cached);
+      const cachedReq = getCachedData<RequisitoCliente>("requisitos_cliente");
+      if (cachedReq) setRequisitos(cachedReq);
       return;
     }
-    const { data } = await (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome");
+    const [{ data }, { data: reqData }] = await Promise.all([
+      (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome"),
+      (supabase.from as any)("requisitos_cliente").select("id, curso_nome, funcoes_exigidas, carga_horaria_minima, validade_meses"),
+    ]);
     if (data) { setDbCursos(data); setCachedData("cursos_documentos", data); }
+    if (reqData) { setRequisitos(reqData); setCachedData("requisitos_cliente", reqData); }
   }, []);
 
   // Multi-course mode
