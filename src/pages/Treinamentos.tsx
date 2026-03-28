@@ -114,6 +114,10 @@ export default function Treinamentos() {
   const [dispensaCursosSelecionados, setDispensaCursosSelecionados] = useState<string[]>([]);
   const [savingDispensa, setSavingDispensa] = useState(false);
   const [matrizFullscreen, setMatrizFullscreen] = useState(false);
+  const [unidadeFilter, setUnidadeFilter] = useState("");
+  const [contratoFilter, setContratoFilter] = useState("");
+  const [unidades, setUnidades] = useState<{ id: string; nome: string }[]>([]);
+  const [contratos, setContratos] = useState<{ id: string; nome: string; unidade_id: string }[]>([]);
 
   const fetchCursosDB = useCallback(async () => {
     if (!isOnline()) {
