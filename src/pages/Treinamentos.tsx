@@ -566,8 +566,8 @@ export default function Treinamentos() {
           const s = getStatus(t.data_renovacao);
           row.push(
             t.data_realizacao ? format(parseISO(t.data_realizacao), "dd/MM/yyyy") : "—",
-            t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—",
-            s.key === "vencido" ? "Vencido" : s.key === "atencao" ? "Atenção" : "Válido"
+            isPermanentDate(t.data_renovacao) ? "Vitalício" : t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—",
+            s.key === "permanente" ? "∞ Entregue" : s.key === "vencido" ? "Vencido" : s.key === "atencao" ? "Atenção" : "Válido"
           );
         }
       });
