@@ -780,6 +780,56 @@ export default function Treinamentos() {
     return { cursos, rows };
   }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, dispensas]);
 
+  // === Dispensa helpers ===
+  const openDispensaDialog = (funcId: string) => {
+    const func = funcMap[funcId];
+    if (!func) return;
+    const funcDispensas = dispensas.filter(d => d.funcionario_id === funcId);
+    setDispensaFuncId(funcId);
+    setDispensaCursosSelecionados(funcDispensas.map(d => d.curso_nome));
+    setDispensaMotivo("");
+    setDispensaDialogOpen(true);
+  };
+
+  const handleSaveDispensas = async () => {
+    if (!dispensaFuncId) return;
+    setSavingDispensa(true);
+    const existing = dispensas.filter(d => d.funcionario_id === dispensaFuncId);
+    const existingNames = new Set(existing.map(d => d.curso_nome));
+    const selectedSet = new Set(dispensaCursosSelecionados);
+
+    // Add new dispensas
+    const toAdd = dispensaCursosSelecionados.filter(c => !existingNames.has(c));
+    // Remove unselected dispensas
+    const toRemove = existing.filter(d => !selectedSet.has(d.curso_nome));
+
+    try {
+      if (toAdd.length > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const rows = toAdd.map(curso => ({
+          funcionario_id: dispensaFuncId,
+          curso_nome: curso,
+          motivo: dispensaMotivo || "Não se aplica ao colaborador",
+          empresa_id: empresaId,
+          created_by: user?.id || null,
+        }));
+        await (supabase.from as any)("dispensas_requisito").insert(rows);
+      }
+      if (toRemove.length > 0) {
+        const ids = toRemove.map(d => d.id);
+        await (supabase.from as any)("dispensas_requisito").delete().in("id", ids);
+      }
+      // Refresh dispensas
+      const { data: dispData } = await (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo");
+      if (dispData) setDispensas(dispData);
+      toast({ title: "Dispensas atualizadas", description: "Requisitos do colaborador foram ajustados." });
+      setDispensaDialogOpen(false);
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
+    setSavingDispensa(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header com gradiente */}
