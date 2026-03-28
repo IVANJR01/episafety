@@ -145,6 +145,8 @@ export default function Backups() {
   const [validationResult, setValidationResult] = useState<any>(null);
   const [migrating, setMigrating] = useState(false);
   const [migrationResult, setMigrationResult] = useState<any>(null);
+  const [sanityTesting, setSanityTesting] = useState(false);
+  const [sanityResult, setSanityResult] = useState<any>(null);
 
   const validateDriveConnection = async () => {
     setValidating(true);
