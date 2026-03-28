@@ -102,6 +102,14 @@ NR-23: Treinamento obrigatório, periodicidade anual.
 NR-33: Trabalhadores 16h | Supervisores 40h | Validade: anual.
 NR-35: CH mínima 8h | Validade: 2 anos.
 
+=== DOCUMENTOS SEM VENCIMENTO (CARGA ÚNICA / PERMANENTE) ===
+
+Os seguintes tipos de documento NÃO POSSUEM validade/vencimento:
+- Ficha de EPI, Comprovante de Escolaridade, Ficha de Registro, CTPS, Regras de Ouro, Contrato de Trabalho, CNH, Edital
+- Para esses documentos: defina data_validade como "9999-12-31" e dias_para_vencimento como null.
+- Eles são considerados "Entregues" permanentemente uma vez enviados.
+- Na descricao_completa, indique: "📋 Documento de Carga Única — sem vencimento."
+
 === REGRAS DE FUZZY MATCHING PARA CURSOS ===
 
 Normalize nomes: "NR10 Básico", "NR-10 Básico", "NR 10 Básico", "Segurança em Instalações Elétricas" → "NR 10"
