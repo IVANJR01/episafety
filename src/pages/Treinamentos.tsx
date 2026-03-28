@@ -1285,9 +1285,9 @@ export default function Treinamentos() {
                           </div>
                         </div>
 
-                        {/* Documentos Pendentes */}
+                        {/* Documentação Protocolada */}
                         <div>
-                          <Label className="text-xs mb-1 block">Documentos Pendentes</Label>
+                          <Label className="text-xs mb-1 block">Documentação Protocolada</Label>
                           <Popover open={curso.docPopoverOpen} onOpenChange={(o) => updateMultiCurso(idx, { docPopoverOpen: o })}>
                             <PopoverTrigger asChild>
                               <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-8 font-normal text-xs">
@@ -1477,14 +1477,14 @@ export default function Treinamentos() {
               </div>
 
               <div>
-                <Label className="mb-2 block">Documentos Pendentes</Label>
+                <Label className="mb-2 block">Documentação Protocolada</Label>
                 <Popover open={docPopoverOpen} onOpenChange={setDocPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={docPopoverOpen} className="w-full justify-between h-auto min-h-10 font-normal">
                       <span className="text-sm text-muted-foreground truncate">
                         {form.documento_pendente
-                          ? `${form.documento_pendente.split(" | ").filter(Boolean).length} documento(s) selecionado(s)`
-                          : "Selecione os documentos pendentes..."}
+                          ? `${form.documento_pendente.split(" | ").filter(Boolean).length} documento(s) protocolado(s)`
+                          : "Selecione os documentos entregues..."}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
