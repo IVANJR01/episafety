@@ -501,12 +501,8 @@ export default function Treinamentos() {
       }
     }
 
-    // Use filtered data (respects sector filter) instead of all items
-    const exportItems = filtered;
-    const cursoSet = new Set<string>();
-    exportItems.forEach(t => cursoSet.add(t.nome_curso));
-    const cursos = Array.from(cursoSet).sort();
-    const funcIds = Array.from(new Set(exportItems.map(t => t.funcionario_id)));
+    // Use matrixData to match the Matriz sub-module exactly
+    const cursos = matrixData.cursos;
     const fixedCols = 6; // Nº, COLABORADOR, CPF, FUNÇÃO, SETOR, PENDENTES
     const totalCols = fixedCols + cursos.length * 3;
 
@@ -529,8 +525,8 @@ export default function Treinamentos() {
     // Row 4: Empty separator
     wsData.push([""]);
 
-    // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, PENDENTES, then each course spans 3 cols
-    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "SETOR", "PENDENTES"];
+    // Header row 1: Nº, COLABORADOR, CPF, FUNÇÃO, SETOR, PENDENTES, then each course spans 3 cols
+    const header1: any[] = ["Nº", "COLABORADOR", "CPF", "FUNÇÃO", "SETOR", "PENDÊNCIAS"];
     cursos.forEach(curso => { header1.push(curso, "", ""); });
     wsData.push(header1);
 
@@ -539,30 +535,43 @@ export default function Treinamentos() {
     cursos.forEach(() => { header2.push("ÚLTIMA DATA", "DATA RENOVAÇÃO", "STATUS"); });
     wsData.push(header2);
 
-    // Data rows
-    funcIds.forEach((fid, idx) => {
-      const func = funcMap[fid];
-      if (!func) return;
-      const treinos = exportItems.filter(t => t.funcionario_id === fid);
-      const protocoladosSet = new Set<string>();
-      treinos.forEach(t => {
-        if (t.documento_pendente) t.documento_pendente.split(" | ").filter(Boolean).forEach(d => protocoladosSet.add(d));
-      });
-      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—", protocoladosSet.size > 0 ? "✅ " + Array.from(protocoladosSet).join(", ") : "—"];
+    // Data rows — using matrixData.rows to match Matriz sub-module
+    matrixData.rows.forEach((row, idx) => {
+      const func = row.func;
+      // Pendências: only auto-pendentes (excludes VÁLIDO and N/A)
+      const pendenciasText = row.autoPendentes.length > 0
+        ? row.autoPendentes.join(", ")
+        : "✅ Conforme";
+
+      const dataRow: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—", pendenciasText];
+
       cursos.forEach(curso => {
-        const t = treinos.find(tr => tr.nome_curso === curso);
-        if (!t) {
-          row.push("—", "—", "—");
+        const cd = row.cursoData[curso];
+        const cursoKey = normalizeCourseName(curso);
+        const isProtocolado = row.protocolados.has(cursoKey);
+        const isDispensado = row.dispensados.has(cursoKey);
+        const isRequiredAndMissing = row.requiredCourseNames.has(cursoKey) && !cd && !isProtocolado;
+
+        if (isDispensado) {
+          dataRow.push("—", "—", "N/A");
+        } else if (!cd && isProtocolado) {
+          dataRow.push("—", "—", "VÁLIDO");
+        } else if (!cd) {
+          dataRow.push(
+            isRequiredAndMissing ? "⚠️" : "—",
+            isRequiredAndMissing ? "⚠️" : "—",
+            isRequiredAndMissing ? "PENDENTE" : "—"
+          );
         } else {
-          const s = getStatus(t.data_renovacao);
-          row.push(
-            t.data_realizacao ? format(parseISO(t.data_realizacao), "dd/MM/yyyy") : "—",
-            isPermanentDate(t.data_renovacao) ? "Vitalício" : t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—",
+          const s = cd.status;
+          dataRow.push(
+            cd.realizacao ? format(parseISO(cd.realizacao), "dd/MM/yyyy") : "—",
+            isPermanentDate(cd.renovacao) ? "Vitalício" : cd.renovacao ? format(parseISO(cd.renovacao), "dd/MM/yyyy") : "—",
             s.key === "permanente" ? "∞ Entregue" : s.key === "vencido" ? "Vencido" : s.key === "atencao" ? "Atenção" : "Válido"
           );
         }
       });
-      wsData.push(row);
+      wsData.push(dataRow);
     });
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -663,12 +672,18 @@ export default function Treinamentos() {
             } else if (val === "Atenção") {
               cell.s.fill = { fgColor: { rgb: "F59E0B" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
-            } else if (val === "Válido") {
+            } else if (val === "Válido" || val === "VÁLIDO") {
               cell.s.fill = { fgColor: { rgb: "16A34A" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
             } else if (val === "∞ Entregue") {
               cell.s.fill = { fgColor: { rgb: "3B82F6" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            } else if (val === "N/A") {
+              cell.s.fill = { fgColor: { rgb: "9CA3AF" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            } else if (val === "PENDENTE") {
+              cell.s.fill = { fgColor: { rgb: "EAB308" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "000000" } };
             }
           }
         }
