@@ -819,19 +819,23 @@ export default function Treinamentos() {
           empresa_id: empresaId,
           created_by: user?.id || null,
         }));
-        await (supabase.from as any)("dispensas_requisito").insert(rows);
+        const { error: insertError } = await (supabase.from as any)("dispensas_requisito").insert(rows);
+        if (insertError) throw insertError;
       }
       if (toRemove.length > 0) {
         const ids = toRemove.map(d => d.id);
-        await (supabase.from as any)("dispensas_requisito").delete().in("id", ids);
+        const { error: deleteError } = await (supabase.from as any)("dispensas_requisito").delete().in("id", ids);
+        if (deleteError) throw deleteError;
       }
-      // Refresh dispensas
-      const { data: dispData } = await (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo");
-      if (dispData) setDispensas(dispData);
-      toast({ title: "Dispensas atualizadas", description: "Requisitos do colaborador foram ajustados." });
+      // Refresh dispensas — forçar atualização
+      const { data: dispData, error: fetchError } = await (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo");
+      if (fetchError) throw fetchError;
+      setDispensas(dispData || []);
+      toast({ title: "Dispensas atualizadas", description: "Requisitos do colaborador foram ajustados com sucesso." });
       setDispensaDialogOpen(false);
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      console.error("Erro ao salvar dispensas:", e);
+      toast({ title: "Erro ao salvar dispensas", description: e.message, variant: "destructive" });
     }
     setSavingDispensa(false);
   };
