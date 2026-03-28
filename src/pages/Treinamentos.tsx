@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity, Briefcase, Ban, Settings2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity, Briefcase, Ban, Settings2, Maximize2, Minimize2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1075,31 +1075,39 @@ export default function Treinamentos() {
 
         {/* === ABA MATRIZ === */}
         <TabsContent value="matriz">
-          <Card>
+          <Card className={matrizFullscreen ? "fixed inset-0 z-50 rounded-none m-0" : ""}>
             <CardContent className="p-0">
+              {/* Fullscreen toggle */}
+              <div className="flex justify-end p-2 border-b border-border/30">
+                <Button size="sm" variant="outline" onClick={() => setMatrizFullscreen(f => !f)} className="gap-1.5 text-xs">
+                  {matrizFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  {matrizFullscreen ? "Sair Tela Cheia" : "Tela Cheia"}
+                </Button>
+              </div>
               {loading ? (
                 <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
               ) : matrixData.cursos.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</div>
               ) : (
-                <div className="overflow-auto max-h-[70vh] relative">
+                <div className={`overflow-auto relative ${matrizFullscreen ? "max-h-[calc(100vh-50px)]" : "max-h-[70vh]"}`}>
+                  <style>{`
+                    .matrix-sticky-shadow { box-shadow: 4px 0 8px -2px rgba(0,0,0,0.15); }
+                  `}</style>
                   <table className="w-full text-xs border-collapse">
                     <thead className="sticky top-0 z-30">
-                      {/* Header row 1: grouped course names */}
                       <tr className="bg-primary text-primary-foreground">
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-0 bg-primary z-40 min-w-[40px]">Nº</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-40 min-w-[200px]">COLABORADOR</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold sticky left-0 bg-primary z-40 min-w-[36px] w-[36px]">Nº</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[36px] bg-primary z-40 min-w-[220px] matrix-sticky-shadow">COLABORADOR</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[160px] max-w-[220px]">PENDENTES</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">SETOR</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[140px] max-w-[180px]">PENDENTES</th>
                         {matrixData.cursos.map(curso => (
                           <th key={curso} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
                             {curso}
                           </th>
                         ))}
                       </tr>
-                      {/* Header row 2: sub-columns */}
                       <tr className="bg-primary/80 text-primary-foreground">
                         {matrixData.cursos.flatMap(curso => [
                             <th key={`${curso}-data`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[90px]">ÚLTIMA DATA</th>,
@@ -1110,51 +1118,52 @@ export default function Treinamentos() {
                     </thead>
                     <tbody>
                       {matrixData.rows.map((row, idx) => {
-                        const rowBg = idx % 2 === 0 ? "bg-background" : "bg-muted/30";
-                        const cellBg = idx % 2 === 0 ? "bg-white dark:bg-background" : "bg-muted/30";
+                        const isEven = idx % 2 === 0;
+                        const stickyBg = isEven
+                          ? "bg-[hsl(var(--background))]"
+                          : "bg-[hsl(var(--muted))]";
                         return (
-                        <tr key={row.func.id} className={rowBg}>
-                          <td className={`border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 z-20 ${cellBg}`}>{idx + 1}</td>
-                          <td className={`border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] z-20 whitespace-nowrap ${cellBg}`}>
-                            <div className="flex items-center gap-1.5">
-                              {row.func.nome}
+                        <tr key={row.func.id} className={`${stickyBg} h-[44px]`}>
+                          <td className={`border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 z-20 ${stickyBg}`}>{idx + 1}</td>
+                          <td className={`border border-border/30 px-2 py-1.5 font-medium sticky left-[36px] z-20 whitespace-nowrap ${stickyBg} matrix-sticky-shadow`}>
+                            <div className="flex items-center gap-1">
+                              <span className="truncate max-w-[170px]">{row.func.nome}</span>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-6 w-6 shrink-0"
+                                className="h-5 w-5 shrink-0"
                                 onClick={() => openDispensaDialog(row.func.id)}
                                 title="Dispensar requisitos"
                               >
-                                <Settings2 className="w-3.5 h-3.5 text-primary" />
+                                <Settings2 className="w-3 h-3 text-primary" />
                               </Button>
                             </div>
                           </td>
-                          <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs max-w-[220px]">
+                          <td className="border border-border/30 px-2 py-1.5 font-mono text-[10px]">{row.func.cpf || "—"}</td>
+                          <td className="border border-border/30 px-2 py-1.5 text-[10px]">{row.func.cargo || "—"}</td>
+                          <td className="border border-border/30 px-2 py-1.5 text-muted-foreground text-[10px]">{row.func.setor || "—"}</td>
+                          <td className="border border-border/30 px-1 py-1.5 text-center max-w-[180px]">
                             {row.autoPendentes.length > 0 ? (
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <div className="flex flex-wrap gap-0.5 justify-center cursor-pointer">
-                                    {row.autoPendentes.slice(0, 3).map(d => {
+                                    {row.autoPendentes.slice(0, 2).map(d => {
                                       const cursoName = d.replace(" (Vencido)", "");
-                                      const shortName = cursoName.length > 14 ? cursoName.substring(0, 12) + "…" : cursoName;
-                                      const isVencido = d.includes("(Vencido)");
+                                      const shortName = cursoName.length > 12 ? cursoName.substring(0, 10) + "…" : cursoName;
                                       return (
                                         <Badge
                                           key={`auto-${d}`}
                                           variant="outline"
-                                          className={`text-[8px] leading-tight px-1 py-0 ${isVencido ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-destructive/10 text-destructive border-destructive/30"}`}
+                                          className="text-[7px] leading-tight px-1 py-0 bg-destructive/10 text-destructive border-destructive/30"
                                           title={cursoName}
                                         >
                                           {shortName}
                                         </Badge>
                                       );
                                     })}
-                                    {row.autoPendentes.length > 3 && (
-                                      <Badge variant="outline" className="text-[8px] leading-tight px-1 py-0 bg-warning/10 text-warning border-warning/30">
-                                        +{row.autoPendentes.length - 3}
+                                    {row.autoPendentes.length > 2 && (
+                                      <Badge variant="outline" className="text-[7px] leading-tight px-1 py-0 bg-warning/10 text-warning border-warning/30">
+                                        +{row.autoPendentes.length - 2}
                                       </Badge>
                                     )}
                                   </div>
@@ -1180,7 +1189,7 @@ export default function Treinamentos() {
                                 </PopoverContent>
                               </Popover>
                             ) : (
-                              <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
+                              <Badge variant="outline" className="text-[8px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
                             )}
                           </td>
                           {matrixData.cursos.flatMap(curso => {
@@ -1189,7 +1198,6 @@ export default function Treinamentos() {
                             const isProtocolado = row.protocolados.has(cursoKey);
                             const isDispensado = row.dispensados.has(cursoKey);
 
-                            // Curso dispensado — mostrar N/A
                             if (isDispensado) {
                               return [
                                 <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
@@ -1202,7 +1210,6 @@ export default function Treinamentos() {
                             
                             const isRequiredAndMissing = row.requiredCourseNames.has(cursoKey) && !cd && !isProtocolado;
                             
-                            // Curso protocolado mas sem registro de treinamento — mostrar como VÁLIDO
                             if (!cd && isProtocolado) {
                               return [
                                 <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
@@ -1229,10 +1236,10 @@ export default function Treinamentos() {
                               ? "bg-warning text-warning-foreground font-bold"
                               : "bg-success text-success-foreground font-bold";
                             return [
-                              <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                              <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono text-[10px]">
                                 {format(parseISO(cd.realizacao), "dd/MM/yyyy")}
                               </td>,
-                              <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                              <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center font-mono text-[10px]">
                                 {isPermanentDate(cd.renovacao) ? "∞" : cd.renovacao ? format(parseISO(cd.renovacao), "dd/MM/yyyy") : "—"}
                               </td>,
                               <td key={`${row.func.id}-${curso}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${statusBg}`}>
