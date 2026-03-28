@@ -530,11 +530,11 @@ export default function Treinamentos() {
       const func = funcMap[fid];
       if (!func) return;
       const treinos = exportItems.filter(t => t.funcionario_id === fid);
-      const docsSet = new Set<string>();
+      const protocoladosSet = new Set<string>();
       treinos.forEach(t => {
-        if (t.documento_pendente) t.documento_pendente.split(" | ").filter(Boolean).forEach(d => docsSet.add(d));
+        if (t.documento_pendente) t.documento_pendente.split(" | ").filter(Boolean).forEach(d => protocoladosSet.add(d));
       });
-      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—", docsSet.size > 0 ? Array.from(docsSet).join(", ") : "—"];
+      const row: any[] = [idx + 1, func.nome, func.cpf || "—", func.cargo || "—", func.setor || "—", protocoladosSet.size > 0 ? "✅ " + Array.from(protocoladosSet).join(", ") : "—"];
       cursos.forEach(curso => {
         const t = treinos.find(tr => tr.nome_curso === curso);
         if (!t) {
@@ -708,9 +708,11 @@ export default function Treinamentos() {
       const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
       const pendentesSet = new Set<string>();
 
+      // Documentos protocolados são considerados válidos — removem pendências
+      const protocoladosSet = new Set<string>();
       treinos.forEach(t => {
         if (t.documento_pendente) {
-          t.documento_pendente.split(" | ").filter(Boolean).forEach(d => pendentesSet.add(d));
+          t.documento_pendente.split(" | ").filter(Boolean).forEach(d => protocoladosSet.add(d));
         }
       });
 
@@ -727,6 +729,8 @@ export default function Treinamentos() {
 
       requiredCourses.forEach(req => {
         const cd = cursoData[req.curso_nome];
+        // Se o documento foi protocolado, considerar como válido (não pendente)
+        if (protocoladosSet.has(req.curso_nome)) return;
         if (!cd) {
           autoPendentes.push(req.curso_nome);
         } else if (cd.status.key === "permanente") {
@@ -739,7 +743,8 @@ export default function Treinamentos() {
       return {
         func,
         cursoData,
-        pendentes: Array.from(pendentesSet),
+        pendentes: [], // Protocolados agora são válidos, não pendentes
+        protocolados: Array.from(protocoladosSet),
         autoPendentes,
         requiredCourseNames,
       };
@@ -747,6 +752,7 @@ export default function Treinamentos() {
       func: Funcionario;
       cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>;
       pendentes: string[];
+      protocolados: string[];
       autoPendentes: string[];
       requiredCourseNames: Set<string>;
     }[];
@@ -930,7 +936,7 @@ export default function Treinamentos() {
                       <TableHead>Data Realização</TableHead>
                       <TableHead>Renovação</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Doc. Pendente</TableHead>
+                      <TableHead>Doc. Protocolada</TableHead>
                       <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -966,8 +972,8 @@ export default function Treinamentos() {
                             {t.documento_pendente ? (
                               <div className="flex flex-wrap gap-1">
                                 {t.documento_pendente.split(" | ").filter(Boolean).map(doc => (
-                                  <Badge key={doc} variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
-                                    <FileWarning className="w-3 h-3 mr-1" />{doc}
+                                  <Badge key={doc} variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+                                    <CheckCircle className="w-3 h-3 mr-1" />{doc}
                                   </Badge>
                                 ))}
                               </div>
@@ -1035,7 +1041,7 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-center text-xs min-w-[200px]">
-                            {(row.autoPendentes.length > 0 || row.pendentes.length > 0) ? (
+                            {(row.autoPendentes.length > 0) ? (
                               <div className="flex flex-wrap gap-0.5 justify-center">
                                 {row.autoPendentes.map(d => {
                                   const cursoName = d.replace(" (Vencido)", "");
@@ -1052,8 +1058,14 @@ export default function Treinamentos() {
                                     </Badge>
                                   );
                                 })}
-                                {row.pendentes.map(d => (
-                                  <Badge key={`doc-${d}`} variant="outline" className="text-[9px] bg-warning/10 text-warning border-warning/30">⚠️ {d}</Badge>
+                                {row.protocolados.length > 0 && row.protocolados.map(d => (
+                                  <Badge key={`prot-${d}`} variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✅ {d}</Badge>
+                                ))}
+                              </div>
+                            ) : row.protocolados.length > 0 ? (
+                              <div className="flex flex-wrap gap-0.5 justify-center">
+                                {row.protocolados.map(d => (
+                                  <Badge key={`prot-${d}`} variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✅ {d}</Badge>
                                 ))}
                               </div>
                             ) : (
