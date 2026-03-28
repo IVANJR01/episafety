@@ -434,6 +434,94 @@ export default function Backups() {
         </div>
       </div>
 
+      {/* Migration & Validation Panel */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Cloud className="w-5 h-5 text-primary" />
+            Migração para Google Drive
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Migre todos os arquivos do Storage interno para o Google Drive e libere espaço na plataforma.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={validateDriveConnection} disabled={validating}>
+              {validating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+              Validar Armazenamento Externo
+            </Button>
+            <Button size="sm" onClick={runMigration} disabled={migrating} variant="default">
+              {migrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+              {migrating ? "Migrando..." : "Migrar Arquivos → Google Drive"}
+            </Button>
+          </div>
+
+          {validationResult && (
+            <div className={`p-3 rounded-lg border text-sm ${validationResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-destructive/10 border-destructive/30"}`}>
+              {validationResult.success ? (
+                <div className="space-y-1">
+                  <p className="font-medium flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <CheckCircle2 className="w-4 h-4" /> Conexão ativa com Google Drive
+                  </p>
+                  {validationResult.storageQuota && (
+                    <p className="text-xs text-muted-foreground">
+                      Espaço usado: {(parseInt(validationResult.storageQuota.usage || "0") / 1024 / 1024 / 1024).toFixed(2)} GB
+                      {" / "}
+                      {(parseInt(validationResult.storageQuota.limit || "0") / 1024 / 1024 / 1024).toFixed(0)} GB
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-destructive font-medium">❌ Erro: {validationResult.error}</p>
+              )}
+            </div>
+          )}
+
+          {migrationResult && (
+            <div className={`p-4 rounded-lg border text-sm ${migrationResult.success ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : "bg-destructive/10 border-destructive/30"}`}>
+              {migrationResult.success ? (
+                <div className="space-y-2">
+                  <p className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Migração Concluída!
+                  </p>
+                  <p className="text-foreground font-semibold">{migrationResult.summary}</p>
+                  {migrationResult.errors?.length > 0 && (
+                    <div className="text-xs text-destructive mt-2">
+                      <p className="font-medium">Erros ({migrationResult.errors.length}):</p>
+                      <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                        {migrationResult.errors.slice(0, 5).map((e: string, i: number) => (
+                          <li key={i}>{e}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {migrationResult.results?.length > 0 && (
+                    <details className="text-xs mt-2">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                        Ver {migrationResult.results.length} arquivo(s) detalhados
+                      </summary>
+                      <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                        {migrationResult.results.map((r: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <Badge variant={r.status === "migrated" ? "default" : "destructive"} className="text-[10px]">
+                              {r.status === "migrated" ? "✓" : "✗"}
+                            </Badge>
+                            <span className="truncate">{r.bucket}/{r.file}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ) : (
+                <p className="text-destructive font-medium">❌ Erro: {migrationResult.error}</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {generating && (
         <Card>
           <CardContent className="pt-6">
@@ -449,7 +537,6 @@ export default function Backups() {
         </Card>
       )}
 
-      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
