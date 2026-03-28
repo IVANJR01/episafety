@@ -70,32 +70,47 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
   useEffect(() => { fetchData(); }, []);
 
   // Group requisitos by funcao for display
-  const funcaoGroups = useMemo(() => {
+  // Build per-function course lists
+  const funcaoMap = useMemo(() => {
     const map = new Map<string, RequisitoCliente[]>();
     requisitos.forEach(r => {
       const funcoes = r.funcoes_exigidas || [];
       funcoes.forEach(f => {
         if (!map.has(f)) map.set(f, []);
         const existing = map.get(f)!;
-        // Prevent duplicate courses within the same function
         if (!existing.some(e => e.curso_nome === r.curso_nome)) {
           existing.push(r);
         }
       });
     });
-    // Sort by function name, and sort courses alphabetically within each function
-    return Array.from(map.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([funcao, reqs]) => [funcao, reqs.sort((a, b) => a.curso_nome.localeCompare(b.curso_nome))] as [string, RequisitoCliente[]]);
+    return map;
   }, [requisitos]);
 
+  // Group functions that share the exact same set of courses into one card
+  const consolidatedGroups = useMemo(() => {
+    const signatureMap = new Map<string, { funcoes: string[]; reqs: RequisitoCliente[] }>();
+    funcaoMap.forEach((reqs, funcao) => {
+      const sorted = [...reqs].sort((a, b) => a.curso_nome.localeCompare(b.curso_nome));
+      const signature = sorted.map(r => `${r.curso_nome}|${r.carga_horaria_minima}|${r.validade_meses}`).join(";;");
+      if (signatureMap.has(signature)) {
+        signatureMap.get(signature)!.funcoes.push(funcao);
+      } else {
+        signatureMap.set(signature, { funcoes: [funcao], reqs: sorted });
+      }
+    });
+    return Array.from(signatureMap.values())
+      .map(g => ({ ...g, funcoes: g.funcoes.sort() }))
+      .sort((a, b) => a.funcoes[0].localeCompare(b.funcoes[0]));
+  }, [funcaoMap]);
+
   const filteredGroups = useMemo(() => {
-    if (!search.trim()) return funcaoGroups;
+    if (!search.trim()) return consolidatedGroups;
     const term = search.toLowerCase();
-    return funcaoGroups.filter(([funcao, reqs]) =>
-      funcao.toLowerCase().includes(term) || reqs.some(r => r.curso_nome.toLowerCase().includes(term))
+    return consolidatedGroups.filter(g =>
+      g.funcoes.some(f => f.toLowerCase().includes(term)) ||
+      g.reqs.some(r => r.curso_nome.toLowerCase().includes(term))
     );
-  }, [funcaoGroups, search]);
+  }, [consolidatedGroups, search]);
 
   const openNew = () => {
     setEditing(null);
@@ -106,10 +121,10 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
     setOpen(true);
   };
 
-  const openEditFuncao = (funcao: string, reqs: RequisitoCliente[]) => {
+  const openEditGroup = (funcoes: string[], reqs: RequisitoCliente[]) => {
     setEditing(null);
-    setFuncaoNome(funcao);
-    setFuncoesMultiplas([funcao]);
+    setFuncaoNome(funcoes[0]);
+    setFuncoesMultiplas([...funcoes]);
     setFuncaoInput("");
     setCursosSelecionados(reqs.map(r => ({
       curso_nome: r.curso_nome,
@@ -226,14 +241,18 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
     onUpdate?.();
   };
 
-  const handleDeleteFuncao = async (funcao: string, reqs: RequisitoCliente[]) => {
-    if (!confirm(`Remover todos os requisitos da função "${funcao}"?`)) return;
-    for (const req of reqs) {
-      const newFuncoes = (req.funcoes_exigidas || []).filter(f => f !== funcao);
-      if (newFuncoes.length === 0) {
-        await (supabase.from as any)("requisitos_cliente").delete().eq("id", req.id);
-      } else {
-        await (supabase.from as any)("requisitos_cliente").update({ funcoes_exigidas: newFuncoes }).eq("id", req.id);
+  const handleDeleteGroup = async (funcoes: string[], reqs: RequisitoCliente[]) => {
+    const label = funcoes.length === 1 ? `"${funcoes[0]}"` : `${funcoes.length} funções (${funcoes.join(", ")})`;
+    if (!confirm(`Remover todos os requisitos de ${label}?`)) return;
+    for (const funcao of funcoes) {
+      const funcaoReqs = requisitos.filter(r => r.funcoes_exigidas?.includes(funcao));
+      for (const req of funcaoReqs) {
+        const newFuncoes = (req.funcoes_exigidas || []).filter(f => f !== funcao);
+        if (newFuncoes.length === 0) {
+          await (supabase.from as any)("requisitos_cliente").delete().eq("id", req.id);
+        } else {
+          await (supabase.from as any)("requisitos_cliente").update({ funcoes_exigidas: newFuncoes }).eq("id", req.id);
+        }
       }
     }
     toast({ title: "Requisitos removidos!" });
