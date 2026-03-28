@@ -271,6 +271,20 @@ export default function Treinamentos() {
     return [...s].sort();
   }, [funcionarios]);
 
+  // Contratos filtrados por unidade selecionada
+  const contratosFiltered = useMemo(() => {
+    if (!unidadeFilter) return contratos;
+    return contratos.filter(c => c.unidade_id === unidadeFilter);
+  }, [contratos, unidadeFilter]);
+
+  const hasActiveFilters = !!setorFilter || !!unidadeFilter || !!contratoFilter;
+
+  const clearAllFilters = () => {
+    setSetorFilter("");
+    setUnidadeFilter("");
+    setContratoFilter("");
+  };
+
   const filtered = useMemo(() => {
     let list = [...items];
     // Setor filter
