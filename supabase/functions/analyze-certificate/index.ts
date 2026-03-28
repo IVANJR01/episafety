@@ -125,11 +125,21 @@ VALIDAÇÃO LEGAL (NR):
 - Verifique presença do nome do instrutor e registro profissional (CREA, CFT, CRM)
 - Verifique validade conforme periodicidade da NR
 
-VALIDAÇÃO CONTRATUAL (Matriz Neoenergia - Capacitação MANUT SE LD Rev.13.8):
+VALIDAÇÃO CONTRATUAL (Matriz Unificada Neoenergia Rev.12 - SE e LD):
 - Identifique o curso na Matriz usando sinônimos
-- Compare carga horária com o mínimo da Matriz
+- Compare carga horária com o mínimo da Matriz PARA A FUNÇÃO ESPECÍFICA do colaborador
+- IMPORTANTE: O mesmo curso pode ter CH diferente por função (ex: POP 00 = 8h para Administrativo, 40h para Eletricista)
 - Verifique se a função do colaborador está na lista de funções exigidas
 - EXCEÇÃO: Se o colaborador tem os cursos necessários no sistema, valide mesmo que o cargo nominal não esteja na lista
+
+=== VALIDAÇÃO DE ASSINATURAS (IA Vision) ===
+
+A IA deve identificar VISUALMENTE nos documentos PDF:
+- Se os campos de ASSINATURA DO COLABORADOR estão preenchidos (não em branco)
+- Se os campos de ASSINATURA DO INSTRUTOR estão preenchidos
+- Se há CARIMBO ou REGISTRO PROFISSIONAL (CREA/CFT) do Responsável Técnico
+- Se faltar qualquer assinatura obrigatória, marcar conforme_nr=false e adicionar na descricao_completa: "❌ ERRO: Documento sem assinatura do [Instrutor/Colaborador/Responsável Técnico]"
+- Para Anuências: OBRIGATÓRIO ter assinatura do Engenheiro com CREA visível
 ${requisitosContext}
 ${funcionarioContext}
 
