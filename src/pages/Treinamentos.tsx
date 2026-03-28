@@ -1203,7 +1203,8 @@ export default function Treinamentos() {
                               placeholder="Pesquisar ou digitar curso..."
                               value={curso.cursoSearch}
                               onChange={e => {
-                                const newRen = calcularRenovacao(e.target.value, curso.data_realizacao);
+                                const isPerm = isPermanentCourse(e.target.value);
+                                const newRen = isPerm ? "9999-12-31" : calcularRenovacao(e.target.value, curso.data_realizacao);
                                 updateMultiCurso(idx, { cursoSearch: e.target.value, nome_curso: e.target.value, data_renovacao: newRen || curso.data_renovacao, showCursoList: true });
                               }}
                               onFocus={() => updateMultiCurso(idx, { showCursoList: true })}
@@ -1220,7 +1221,8 @@ export default function Treinamentos() {
                                   type="button"
                                   className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted"
                                   onClick={() => {
-                                    const newRen = calcularRenovacao(c, curso.data_realizacao);
+                                    const isPerm = isPermanentCourse(c);
+                                    const newRen = isPerm ? "9999-12-31" : calcularRenovacao(c, curso.data_realizacao);
                                     updateMultiCurso(idx, { nome_curso: c, cursoSearch: c, data_renovacao: newRen || curso.data_renovacao, showCursoList: false });
                                   }}
                                 >
@@ -1231,19 +1233,44 @@ export default function Treinamentos() {
                           )}
                         </div>
 
+                        {/* Checkbox Sem Vencimento */}
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`sem-venc-${idx}`}
+                            checked={isPermanentDate(curso.data_renovacao)}
+                            onCheckedChange={(checked) => {
+                              const isChecked = !!checked;
+                              updateMultiCurso(idx, { data_renovacao: isChecked ? "9999-12-31" : calcularRenovacao(curso.nome_curso, curso.data_realizacao) || "" });
+                            }}
+                          />
+                          <Label htmlFor={`sem-venc-${idx}`} className="text-xs cursor-pointer flex items-center gap-1">
+                            <Infinity className="w-3.5 h-3.5 text-blue-500" />
+                            Sem Vencimento
+                          </Label>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <Label className="text-xs">Data Realização</Label>
                             <Input type="date" value={curso.data_realizacao} onChange={e => {
-                              const newRen = calcularRenovacao(curso.nome_curso, e.target.value);
+                              const isPerm = isPermanentDate(curso.data_renovacao);
+                              const newRen = isPerm ? "9999-12-31" : calcularRenovacao(curso.nome_curso, e.target.value);
                               updateMultiCurso(idx, { data_realizacao: e.target.value, data_renovacao: newRen || curso.data_renovacao });
                             }} />
                           </div>
                           <div>
                             <Label className="text-xs">Data Renovação</Label>
-                            <Input type="date" value={curso.data_renovacao} onChange={e => updateMultiCurso(idx, { data_renovacao: e.target.value })} />
-                            {curso.nome_curso && cursosValidade[curso.nome_curso] !== undefined && cursosValidade[curso.nome_curso] > 0 && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {cursosValidade[curso.nome_curso]} meses</p>
+                            {isPermanentDate(curso.data_renovacao) ? (
+                              <div className="flex items-center gap-1.5 h-9 px-3 rounded-md border bg-muted/50 text-xs text-blue-600 font-medium">
+                                <Infinity className="w-3.5 h-3.5" /> Vitalício
+                              </div>
+                            ) : (
+                              <>
+                                <Input type="date" value={curso.data_renovacao} onChange={e => updateMultiCurso(idx, { data_renovacao: e.target.value })} />
+                                {curso.nome_curso && cursosValidade[curso.nome_curso] !== undefined && cursosValidade[curso.nome_curso] > 0 && (
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">⏱ {cursosValidade[curso.nome_curso]} meses</p>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
