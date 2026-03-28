@@ -179,35 +179,11 @@ export default function Treinamentos() {
     return format(renovacao, "yyyy-MM-dd");
   };
 
-  const DOCUMENTOS_LISTA = [
-    "Ordem de Serviço",
-    "Ficha de EPI",
-    "ASO",
-    "Ficha de Registro do Empregado",
-    "Termo de Anuência - NR10",
-    "Termo de Anuência - NR12",
-    "Termo de Anuência - NR33",
-    "Termo de Anuência - NR35",
-    "Anuência da Empresa (Condução de Veículo)",
-    "Registro no Conselho de Classe",
-    "Certificado de Treinamento",
-    "Comprovante de Escolaridade",
-    "Licença de Porte e Uso - LPU",
-    "Procedimento Operacional",
-    "Procedimento Seg. Máq. e Equipamentos",
-    "Edital",
-    "CTPS Digital",
-    "CNH (Categoria)",
-    "Declaração de Saúde",
-    "Termo de Responsabilidade",
-    "Contrato de Trabalho",
-    "Comprovante de Residência",
-    "Certidão Negativa",
-    "Laudo Técnico",
-    "PGR / PCMSO",
-    "PPRA",
-    "LTCAT",
-  ];
+  // Documentos Pendentes list comes from the "Documentos Permanentes" registered in cursos_documentos (validade_meses === 0)
+  const DOCUMENTOS_LISTA = useMemo(() => {
+    const permanentes = dbCursos.filter(c => c.validade_meses === 0).map(c => c.nome);
+    return permanentes.length > 0 ? permanentes : ["Ordem de Serviço", "Ficha de EPI", "ASO"];
+  }, [dbCursos]);
 
   const [docPopoverOpen, setDocPopoverOpen] = useState(false);
 
