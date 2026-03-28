@@ -292,18 +292,20 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredGroups.map(([funcao, reqs]) => (
-            <Card key={funcao} className="border-l-4 border-l-primary/60">
+          {filteredGroups.map((group, idx) => (
+            <Card key={group.funcoes.join(",")} className="border-l-4 border-l-primary/60">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <Briefcase className="w-4 h-4 text-primary" />
-                      <h4 className="font-bold text-sm">{funcao}</h4>
-                      <Badge variant="secondary" className="text-xs">{reqs.length} curso(s)</Badge>
+                      {group.funcoes.map(f => (
+                        <Badge key={f} variant="default" className="text-xs">{f}</Badge>
+                      ))}
+                      <Badge variant="secondary" className="text-xs">{group.reqs.length} curso(s)</Badge>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {reqs.map(r => (
+                      {group.reqs.map(r => (
                         <Badge
                           key={r.id}
                           variant="outline"
@@ -320,10 +322,10 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditFuncao(funcao, reqs)}>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditGroup(group.funcoes, group.reqs)}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDeleteFuncao(funcao, reqs)}>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDeleteGroup(group.funcoes, group.reqs)}>
                       <Trash2 className="w-3.5 h-3.5 text-destructive" />
                     </Button>
                   </div>
