@@ -1107,44 +1107,44 @@ export default function Treinamentos() {
                         <tr key={row.func.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/30"}>
                           <td className="border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 bg-inherit z-10">{idx + 1}</td>
                           <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">
-                            {row.func.nome}
+                            <div className="flex items-center gap-1.5">
+                              {row.func.nome}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 shrink-0"
+                                onClick={() => openDispensaDialog(row.func.id)}
+                                title="Dispensar requisitos"
+                              >
+                                <Settings2 className="w-3.5 h-3.5 text-primary" />
+                              </Button>
+                            </div>
                           </td>
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-center text-xs min-w-[200px]">
-                            <div className="flex flex-wrap gap-0.5 justify-center items-center">
-                              {row.autoPendentes.length > 0 ? (
-                                <>
-                                  {row.autoPendentes.map(d => {
-                                    const cursoName = d.replace(" (Vencido)", "");
-                                    const isVencido = d.includes("(Vencido)");
-                                    return (
-                                      <Badge
-                                        key={`auto-${d}`}
-                                        variant="outline"
-                                        className={`text-[9px] cursor-pointer hover:opacity-80 transition-opacity ${isVencido ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-destructive/10 text-destructive border-destructive/30"}`}
-                                        onClick={() => openNewWithCourse(row.func.id, cursoName)}
-                                        title={`Clique para cadastrar: ${cursoName}`}
-                                      >
-                                        {d}
-                                      </Badge>
-                                    );
-                                  })}
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-5 w-5 shrink-0 ml-1"
-                                    onClick={() => openDispensaDialog(row.func.id)}
-                                    title="Dispensar requisitos deste colaborador"
-                                  >
-                                    <Ban className="w-3.5 h-3.5 text-muted-foreground" />
-                                  </Button>
-                                </>
-                              ) : (
-                                <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
-                              )}
-                            </div>
+                            {row.autoPendentes.length > 0 ? (
+                              <div className="flex flex-wrap gap-0.5 justify-center">
+                                {row.autoPendentes.map(d => {
+                                  const cursoName = d.replace(" (Vencido)", "");
+                                  const isVencido = d.includes("(Vencido)");
+                                  return (
+                                    <Badge
+                                      key={`auto-${d}`}
+                                      variant="outline"
+                                      className={`text-[9px] cursor-pointer hover:opacity-80 transition-opacity ${isVencido ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-destructive/10 text-destructive border-destructive/30"}`}
+                                      onClick={() => openNewWithCourse(row.func.id, cursoName)}
+                                      title={`Clique para cadastrar: ${cursoName}`}
+                                    >
+                                      {d}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
+                            )}
                           </td>
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
