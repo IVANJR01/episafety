@@ -125,7 +125,7 @@ VALIDAÇÃO LEGAL (NR):
 - Verifique presença do nome do instrutor e registro profissional (CREA, CFT, CRM)
 - Verifique validade conforme periodicidade da NR
 
-VALIDAÇÃO CONTRATUAL (Matriz Neoenergia Rev.12):
+VALIDAÇÃO CONTRATUAL (Matriz Neoenergia - Capacitação MANUT SE LD Rev.13.8):
 - Identifique o curso na Matriz usando sinônimos
 - Compare carga horária com o mínimo da Matriz
 - Verifique se a função do colaborador está na lista de funções exigidas
