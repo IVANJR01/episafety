@@ -1061,9 +1061,9 @@ export default function Treinamentos() {
           <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
           <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
           
-          <TabsTrigger value="ia" className="gap-1.5"><Brain className="w-4 h-4" />Validação IA</TabsTrigger>
           <TabsTrigger value="requisitos" className="gap-1.5"><Briefcase className="w-4 h-4" />Requisitos por Função</TabsTrigger>
           <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
+          <TabsTrigger value="ia" className="gap-1.5"><Brain className="w-4 h-4" />Validação IA <Badge variant="outline" className="text-[8px] ml-1 px-1 py-0 border-amber-400 text-amber-600">Beta</Badge></TabsTrigger>
         </TabsList>
 
         {/* === ABA LISTA === */}
