@@ -122,12 +122,14 @@ export default function Treinamentos() {
       if (cachedReq) setRequisitos(cachedReq);
       return;
     }
-    const [{ data }, { data: reqData }] = await Promise.all([
+    const [{ data }, { data: reqData }, { data: dispData }] = await Promise.all([
       (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome"),
       (supabase.from as any)("requisitos_cliente").select("id, curso_nome, funcoes_exigidas, carga_horaria_minima, validade_meses"),
+      (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo"),
     ]);
     if (data) { setDbCursos(data); setCachedData("cursos_documentos", data); }
     if (reqData) { setRequisitos(reqData); setCachedData("requisitos_cliente", reqData); }
+    if (dispData) setDispensas(dispData);
   }, []);
 
   // Multi-course mode
