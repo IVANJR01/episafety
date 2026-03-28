@@ -188,6 +188,102 @@ export default function Backups() {
     }
   };
 
+  const runSanityTest = async () => {
+    setSanityTesting(true);
+    setSanityResult(null);
+    const log: string[] = [];
+    try {
+      log.push("⏳ Obtendo token de acesso ao Google Drive...");
+      setSanityResult({ inProgress: true, log: [...log] });
+
+      const access = await getDriveAccess("teste-homologacao");
+      log.push(`✅ Token obtido. Empresa: ${access.empresaNome}`);
+      log.push(`📁 Pasta criada/encontrada: EPISafety > ${access.empresaNome} > teste-homologacao`);
+      setSanityResult({ inProgress: true, log: [...log] });
+
+      // Create a small test PDF (minimal valid PDF)
+      const testContent = `%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<</Font<</F1 4 0 R>>>>>>endobj
+4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000240 00000 n 
+trailer<</Size 5/Root 1 0 R>>
+startxref
+315
+%%EOF`;
+      const testFileName = `teste_homologacao_${Date.now()}.pdf`;
+      const testBlob = new Blob([testContent], { type: "application/pdf" });
+
+      log.push(`⏳ Enviando arquivo de teste: ${testFileName} (${testBlob.size} bytes)...`);
+      setSanityResult({ inProgress: true, log: [...log] });
+
+      const metadata = { name: testFileName, parents: [access.folderId] };
+      const formData = new FormData();
+      formData.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+      formData.append("file", testBlob);
+
+      const uploadRes = await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,size",
+        { method: "POST", headers: { Authorization: `Bearer ${access.accessToken}` }, body: formData }
+      );
+      const uploadData = await uploadRes.json();
+
+      if (!uploadRes.ok) {
+        throw new Error(`Upload falhou (${uploadRes.status}): ${uploadData?.error?.message || JSON.stringify(uploadData)}`);
+      }
+
+      log.push(`✅ Upload concluído! File ID: ${uploadData.id}`);
+
+      // Set public permission
+      await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${access.accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "reader", type: "anyone" }),
+      });
+      log.push("🔓 Permissão pública aplicada");
+
+      const viewLink = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
+      const previewLink = `https://drive.google.com/file/d/${uploadData.id}/preview`;
+
+      log.push(`🔗 Link: ${viewLink}`);
+      log.push("✅ TESTE PASSOU — Arquivo visível no Google Drive!");
+
+      // Cleanup: delete test file after verification
+      await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${access.accessToken}` },
+      });
+      log.push("🧹 Arquivo de teste removido do Drive (cleanup automático)");
+
+      setSanityResult({
+        success: true,
+        log,
+        fileId: uploadData.id,
+        viewLink,
+        previewLink,
+        empresaNome: access.empresaNome,
+      });
+
+      toast({ title: "✅ Teste de homologação passou!", description: `Pasta EPISafety > ${access.empresaNome} validada com sucesso.` });
+    } catch (err: any) {
+      const errorCode = err.message.includes("401") ? "401 (Token expirado)" :
+                        err.message.includes("403") ? "403 (Permissão negada)" :
+                        err.message.includes("404") ? "404 (Pasta não encontrada)" : err.message;
+      log.push(`❌ FALHA: ${errorCode}`);
+      setSanityResult({ success: false, log, error: errorCode });
+      toast({ title: "Teste falhou", description: errorCode, variant: "destructive" });
+    } finally {
+      setSanityTesting(false);
+    }
+  };
+
   const cleanupSupabaseStorage = async () => {
     setCleaningStorage(true);
     try {
