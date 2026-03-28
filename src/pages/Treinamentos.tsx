@@ -316,7 +316,7 @@ export default function Treinamentos() {
   const openNewMulti = () => {
     setEditing(null);
     setMultiMode(true);
-    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
+    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "", sem_vencimento: false });
     setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
     setMultiCursos([emptyCurso()]);
     setMultiFuncId("");
