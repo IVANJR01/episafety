@@ -376,7 +376,7 @@ export default function Treinamentos() {
     setSavingMulti(true);
     const payloads = validCursos.map(c => ({
       funcionario_id: multiFuncId,
-      nome_curso: c.nome_curso,
+      nome_curso: c.nome_curso.trim() || c.documento_pendente.split(" | ")[0] || "Documento",
       data_realizacao: c.data_realizacao,
       data_renovacao: c.data_renovacao || null,
       documento_pendente: c.documento_pendente || null,
