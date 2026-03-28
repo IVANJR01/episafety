@@ -762,6 +762,51 @@ export type Database = {
           },
         ]
       }
+      dispensas_requisito: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          curso_nome: string
+          empresa_id: string | null
+          funcionario_id: string
+          id: string
+          motivo: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          curso_nome: string
+          empresa_id?: string | null
+          funcionario_id: string
+          id?: string
+          motivo?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          curso_nome?: string
+          empresa_id?: string | null
+          funcionario_id?: string
+          id?: string
+          motivo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispensas_requisito_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispensas_requisito_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresa_config: {
         Row: {
           cnpj: string | null
