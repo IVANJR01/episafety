@@ -147,6 +147,28 @@ export default function Backups() {
   const [migrationResult, setMigrationResult] = useState<any>(null);
   const [sanityTesting, setSanityTesting] = useState(false);
   const [sanityResult, setSanityResult] = useState<any>(null);
+  const [runningScheduled, setRunningScheduled] = useState(false);
+  const [scheduledResult, setScheduledResult] = useState<any>(null);
+
+  const triggerScheduledBackup = async () => {
+    setRunningScheduled(true);
+    setScheduledResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("scheduled-backup");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setScheduledResult(data);
+      toast({
+        title: "✅ Backup automático executado!",
+        description: `${data.totalRecords} registros salvos em ${data.elapsed}`,
+      });
+    } catch (err: any) {
+      setScheduledResult({ success: false, error: err.message });
+      toast({ title: "Erro no backup automático", description: err.message, variant: "destructive" });
+    } finally {
+      setRunningScheduled(false);
+    }
+  };
 
   const validateDriveConnection = async () => {
     setValidating(true);
