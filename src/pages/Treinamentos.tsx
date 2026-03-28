@@ -739,8 +739,14 @@ export default function Treinamentos() {
       const requiredCourseNames = new Set(requiredCourses.map(req => req.curso_nome));
       const autoPendentes: string[] = [];
 
+      // Dispensas deste colaborador
+      const funcDispensas = dispensas.filter(d => d.funcionario_id === fid);
+      const dispensadosSet = new Set(funcDispensas.map(d => d.curso_nome));
+
       requiredCourses.forEach(req => {
         const cd = cursoData[req.curso_nome];
+        // Se dispensado, ignorar completamente
+        if (dispensadosSet.has(req.curso_nome)) return;
         // Se o documento foi protocolado, considerar como válido (não pendente)
         if (protocoladosSet.has(req.curso_nome)) return;
         if (!cd) {
@@ -759,6 +765,7 @@ export default function Treinamentos() {
         protocolados: Array.from(protocoladosSet),
         autoPendentes,
         requiredCourseNames,
+        dispensados: dispensadosSet,
       };
     }).filter(Boolean) as {
       func: Funcionario;
@@ -767,10 +774,11 @@ export default function Treinamentos() {
       protocolados: string[];
       autoPendentes: string[];
       requiredCourseNames: Set<string>;
+      dispensados: Set<string>;
     }[];
 
     return { cursos, rows };
-  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter]);
+  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, dispensas]);
 
   return (
     <div className="space-y-6">
