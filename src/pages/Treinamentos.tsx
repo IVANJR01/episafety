@@ -1106,7 +1106,14 @@ export default function Treinamentos() {
                       {matrixData.rows.map((row, idx) => (
                         <tr key={row.func.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/30"}>
                           <td className="border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 bg-inherit z-10">{idx + 1}</td>
-                          <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">{row.func.nome}</td>
+                          <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              {row.func.nome}
+                              <button onClick={() => openDispensaDialog(row.func.id)} className="opacity-40 hover:opacity-100 transition-opacity" title="Dispensar requisitos">
+                                <Settings2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
