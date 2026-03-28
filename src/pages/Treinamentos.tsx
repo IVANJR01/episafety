@@ -155,12 +155,16 @@ export default function Treinamentos() {
       return;
     }
     try {
-      const [{ data: treinos }, { data: funcs }] = await Promise.all([
+      const [{ data: treinos }, { data: funcs }, { data: unidadesData }, { data: contratosData }] = await Promise.all([
         (supabase.from as any)("controle_treinamentos").select("*").order("data_renovacao", { ascending: true, nullsFirst: false }),
         supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, unidade_id, contrato_id"),
+        (supabase.from as any)("empresa_config").select("id, nome").neq("tipo", "matriz").order("nome"),
+        (supabase.from as any)("contratos").select("id, nome, unidade_id").order("nome"),
       ]);
       if (treinos) { setItems(treinos); setCachedData("controle_treinamentos", treinos); }
       if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
+      if (unidadesData) setUnidades(unidadesData);
+      if (contratosData) setContratos(contratosData);
     } catch {
       setItems(getCachedData<ControleTreinamento>("controle_treinamentos") || []);
       setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
