@@ -810,7 +810,7 @@ export default function Treinamentos() {
     }[];
 
     return { cursos, rows };
-  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, dispensas]);
+  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, unidadeFilter, contratoFilter, dispensas]);
 
   // === Dispensa helpers ===
   const openDispensaDialog = (funcId: string) => {
