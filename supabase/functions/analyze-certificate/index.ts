@@ -125,11 +125,21 @@ VALIDAÇÃO LEGAL (NR):
 - Verifique presença do nome do instrutor e registro profissional (CREA, CFT, CRM)
 - Verifique validade conforme periodicidade da NR
 
-VALIDAÇÃO CONTRATUAL (Matriz Neoenergia - Capacitação MANUT SE LD Rev.13.8):
+VALIDAÇÃO CONTRATUAL (Matriz Unificada Neoenergia Rev.12 - SE e LD):
 - Identifique o curso na Matriz usando sinônimos
-- Compare carga horária com o mínimo da Matriz
+- Compare carga horária com o mínimo da Matriz PARA A FUNÇÃO ESPECÍFICA do colaborador
+- IMPORTANTE: O mesmo curso pode ter CH diferente por função (ex: POP 00 = 8h para Administrativo, 40h para Eletricista)
 - Verifique se a função do colaborador está na lista de funções exigidas
 - EXCEÇÃO: Se o colaborador tem os cursos necessários no sistema, valide mesmo que o cargo nominal não esteja na lista
+
+=== VALIDAÇÃO DE ASSINATURAS (IA Vision) ===
+
+A IA deve identificar VISUALMENTE nos documentos PDF:
+- Se os campos de ASSINATURA DO COLABORADOR estão preenchidos (não em branco)
+- Se os campos de ASSINATURA DO INSTRUTOR estão preenchidos
+- Se há CARIMBO ou REGISTRO PROFISSIONAL (CREA/CFT) do Responsável Técnico
+- Se faltar qualquer assinatura obrigatória, marcar conforme_nr=false e adicionar na descricao_completa: "❌ ERRO: Documento sem assinatura do [Instrutor/Colaborador/Responsável Técnico]"
+- Para Anuências: OBRIGATÓRIO ter assinatura do Engenheiro com CREA visível
 ${requisitosContext}
 ${funcionarioContext}
 
@@ -141,19 +151,22 @@ Converta TODAS as datas para formato YYYY-MM-DD (ex: 20/07/2024 → 2024-07-20).
 NUNCA deixe este campo vazio. SEMPRE concatene os dados extraídos:
 
 Para CERTIFICADO VÁLIDO:
-"✅ VALIDADO: Atende aos requisitos da [NR-XX] (carga horária: Xh ≥ Yh mínimas) e da Matriz Neoenergia Rev.12. Instrutor: [NOME] ([REGISTRO]). Instituição: [NOME]. Conteúdo verificado: [resumo dos tópicos principais]."
+"✅ VALIDADO: Atende aos requisitos da [NR-XX] (carga horária: Xh ≥ Yh mínimas para a função [FUNÇÃO]) e da Matriz Unificada Neoenergia Rev.12. Instrutor: [NOME] ([REGISTRO]). Instituição: [NOME]. Assinaturas: verificadas. Conteúdo verificado: [resumo dos tópicos principais]."
 
 Para ANUÊNCIA NR-10 VÁLIDA:
-"✅ Anuência Formal validada conforme item 10.8.4 da NR-10. Colaborador capacitado e autorizado pelo Responsável Técnico [NOME] ([CREA]). Empresa: [NOME]. Data: [DATA]."
+"✅ Anuência Formal validada conforme item 10.8.4 da NR-10. Colaborador capacitado e autorizado pelo Responsável Técnico [NOME] ([CREA]). Empresa: [NOME]. Data: [DATA]. Assinaturas: verificadas."
 
 Para ANUÊNCIA NR-12 VÁLIDA:
-"✅ Anuência NR-12 Validada. Colaborador autorizado para operação de [EQUIPAMENTO] conforme item 12.16.1 da norma vigente. Responsável Técnico: [NOME] ([CREA]). ⚠️ Autorização restrita ao equipamento citado."
+"✅ Anuência NR-12 Validada. Colaborador autorizado para operação de [EQUIPAMENTO] conforme item 12.16.1. Responsável Técnico: [NOME] ([CREA]). ⚠️ Autorização restrita ao equipamento citado."
 
 Para INVÁLIDO por NR:
 "❌ INVÁLIDO: Certificado em desacordo com a [NR-XX]. [MOTIVO DETALHADO]. Itens faltantes: [LISTA]."
 
 Para INVÁLIDO por Matriz:
-"⚠️ ATENÇÃO: Atende à [NR-XX] mas NÃO atende à Matriz Neoenergia Rev.12. [MOTIVO]."`;
+"⚠️ ATENÇÃO: Atende à [NR-XX] mas NÃO atende à Matriz Unificada Neoenergia Rev.12. [MOTIVO]. CH exigida para função [FUNÇÃO]: [X]h. CH do certificado: [Y]h."
+
+Para DOCUMENTO SEM ASSINATURA:
+"❌ REPROVADO: Documento sem assinatura obrigatória. [Campo(s) em branco]. Documento apócrifo - não possui validade legal."`;
 }
 
 const toolSchema = {
@@ -284,9 +297,9 @@ serve(async (req) => {
     }
 
     const requisitosContext = requisitos.length > 0
-      ? `\n\nMATRIZ DE REQUISITOS NEOENERGIA (Capacitação MANUT SE LD Rev.13.8 - Subtransmissão):\n${requisitos.map(r =>
-          `CURSO: "${r.curso_nome}" | Sinônimos: [${(r.sinonimos || []).join(", ")}] | Carga Horária MÍNIMA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções exigidas: [${(r.funcoes_exigidas || []).join(", ")}]`
-        ).join("\n")}`
+      ? `\n\nMATRIZ UNIFICADA NEOENERGIA (Rev.12 - Atividades em SE e LD):\n${requisitos.map(r =>
+          `CURSO: "${r.curso_nome}" | Sinônimos: [${(r.sinonimos || []).join(", ")}] | CH MÍNIMA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções: [${(r.funcoes_exigidas || []).join(", ")}] | Obs: ${r.descricao || ""}`
+        ).join("\n")}\n\nREGRA CRÍTICA DE CH VARIÁVEL: O mesmo curso pode ter CH diferente por função. Ex: POP 00 = 8h (Administrativo) vs 40h (Eletricista). Use a CH correspondente à FUNÇÃO do colaborador selecionado.`
       : "";
 
     const funcionarioContext = funcionarioNome
