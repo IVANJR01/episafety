@@ -141,6 +141,50 @@ export default function Backups() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [driveAccess, setDriveAccess] = useState<{ accessToken: string; folderId: string } | null>(null);
   const [cleaningStorage, setCleaningStorage] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<any>(null);
+
+  const validateDriveConnection = async () => {
+    setValidating(true);
+    setValidationResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("migrate-to-drive", {
+        headers: { "x-action": "validate" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setValidationResult(data);
+      toast({ title: "✅ Conexão com Google Drive ativa!", description: `Pasta raiz: EPISafety` });
+    } catch (err: any) {
+      setValidationResult({ success: false, error: err.message });
+      toast({ title: "Erro na validação", description: err.message, variant: "destructive" });
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const runMigration = async () => {
+    if (!confirm("Isso vai mover TODOS os arquivos do Storage interno para o Google Drive e deletar os originais. Deseja continuar?")) return;
+    setMigrating(true);
+    setMigrationResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("migrate-to-drive");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setMigrationResult(data);
+      toast({
+        title: "✅ Migração concluída!",
+        description: data.summary || `${data.totalMigrated} arquivos migrados`,
+      });
+    } catch (err: any) {
+      setMigrationResult({ success: false, error: err.message });
+      toast({ title: "Erro na migração", description: err.message, variant: "destructive" });
+    } finally {
+      setMigrating(false);
+    }
+  };
 
   const cleanupSupabaseStorage = async () => {
     setCleaningStorage(true);
