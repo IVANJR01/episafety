@@ -1082,17 +1082,17 @@ export default function Treinamentos() {
               ) : matrixData.cursos.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</div>
               ) : (
-                <div className="overflow-auto max-h-[70vh]">
+                <div className="overflow-auto max-h-[70vh] relative">
                   <table className="w-full text-xs border-collapse">
-                    <thead className="sticky top-0 z-10">
+                    <thead className="sticky top-0 z-30">
                       {/* Header row 1: grouped course names */}
                       <tr className="bg-primary text-primary-foreground">
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-0 bg-primary z-20 min-w-[40px]">Nº</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-20 min-w-[180px]">COLABORADOR</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-0 bg-primary z-40 min-w-[40px]">Nº</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-40 min-w-[200px]">COLABORADOR</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
                         <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[180px]">PENDENTES</th>
+                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[160px] max-w-[220px]">PENDENTES</th>
                         {matrixData.cursos.map(curso => (
                           <th key={curso} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
                             {curso}
@@ -1109,10 +1109,13 @@ export default function Treinamentos() {
                       </tr>
                     </thead>
                     <tbody>
-                      {matrixData.rows.map((row, idx) => (
-                        <tr key={row.func.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/30"}>
-                          <td className="border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 bg-inherit z-10">{idx + 1}</td>
-                          <td className="border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] bg-inherit z-10 whitespace-nowrap">
+                      {matrixData.rows.map((row, idx) => {
+                        const rowBg = idx % 2 === 0 ? "bg-background" : "bg-muted/30";
+                        const cellBg = idx % 2 === 0 ? "bg-white dark:bg-background" : "bg-muted/30";
+                        return (
+                        <tr key={row.func.id} className={rowBg}>
+                          <td className={`border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 z-20 ${cellBg}`}>{idx + 1}</td>
+                          <td className={`border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] z-20 whitespace-nowrap ${cellBg}`}>
                             <div className="flex items-center gap-1.5">
                               {row.func.nome}
                               <Button
@@ -1129,25 +1132,53 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs min-w-[200px]">
+                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs max-w-[220px]">
                             {row.autoPendentes.length > 0 ? (
-                              <div className="flex flex-wrap gap-0.5 justify-center">
-                                {row.autoPendentes.map(d => {
-                                  const cursoName = d.replace(" (Vencido)", "");
-                                  const isVencido = d.includes("(Vencido)");
-                                  return (
-                                    <Badge
-                                      key={`auto-${d}`}
-                                      variant="outline"
-                                      className={`text-[9px] cursor-pointer hover:opacity-80 transition-opacity ${isVencido ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-destructive/10 text-destructive border-destructive/30"}`}
-                                      onClick={() => openNewWithCourse(row.func.id, cursoName)}
-                                      title={`Clique para cadastrar: ${cursoName}`}
-                                    >
-                                      {d}
-                                    </Badge>
-                                  );
-                                })}
-                              </div>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <div className="flex flex-wrap gap-0.5 justify-center cursor-pointer">
+                                    {row.autoPendentes.slice(0, 3).map(d => {
+                                      const cursoName = d.replace(" (Vencido)", "");
+                                      const shortName = cursoName.length > 14 ? cursoName.substring(0, 12) + "…" : cursoName;
+                                      const isVencido = d.includes("(Vencido)");
+                                      return (
+                                        <Badge
+                                          key={`auto-${d}`}
+                                          variant="outline"
+                                          className={`text-[8px] leading-tight px-1 py-0 ${isVencido ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-destructive/10 text-destructive border-destructive/30"}`}
+                                          title={cursoName}
+                                        >
+                                          {shortName}
+                                        </Badge>
+                                      );
+                                    })}
+                                    {row.autoPendentes.length > 3 && (
+                                      <Badge variant="outline" className="text-[8px] leading-tight px-1 py-0 bg-warning/10 text-warning border-warning/30">
+                                        +{row.autoPendentes.length - 3}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-2">
+                                  <p className="text-xs font-semibold mb-1.5">Pendências ({row.autoPendentes.length})</p>
+                                  <div className="flex flex-col gap-1">
+                                    {row.autoPendentes.map(d => {
+                                      const cursoName = d.replace(" (Vencido)", "");
+                                      return (
+                                        <Badge
+                                          key={`full-${d}`}
+                                          variant="outline"
+                                          className="text-[9px] cursor-pointer hover:opacity-80 bg-destructive/10 text-destructive border-destructive/30 justify-start"
+                                          onClick={() => openNewWithCourse(row.func.id, cursoName)}
+                                          title={`Clique para cadastrar: ${cursoName}`}
+                                        >
+                                          {d}
+                                        </Badge>
+                                      );
+                                    })}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             ) : (
                               <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
                             )}
@@ -1183,8 +1214,8 @@ export default function Treinamentos() {
                             }
                             if (!cd) {
                               return [
-                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">{isRequiredAndMissing ? "⚠️ Pendente" : "—"}</td>,
-                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">{isRequiredAndMissing ? "⚠️ Pendente" : "—"}</td>,
+                                <td key={`${row.func.id}-${curso}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">{isRequiredAndMissing ? "⚠️" : "—"}</td>,
+                                <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">{isRequiredAndMissing ? "⚠️" : "—"}</td>,
                                 <td key={`${row.func.id}-${curso}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] font-bold ${isRequiredAndMissing ? "bg-warning text-warning-foreground" : "text-muted-foreground"}`}>
                                   {isRequiredAndMissing ? "PENDENTE" : "—"}
                                 </td>,
@@ -1210,7 +1241,8 @@ export default function Treinamentos() {
                             ];
                           })}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
