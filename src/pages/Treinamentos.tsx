@@ -675,6 +675,9 @@ export default function Treinamentos() {
             } else if (val === "Válido") {
               cell.s.fill = { fgColor: { rgb: "16A34A" } };
               cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
+            } else if (val === "∞ Entregue") {
+              cell.s.fill = { fgColor: { rgb: "3B82F6" } };
+              cell.s.font = { name: "Arial", sz: 9, bold: true, color: { rgb: "FFFFFF" } };
             }
           }
         }
