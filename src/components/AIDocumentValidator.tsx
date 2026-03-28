@@ -42,6 +42,13 @@ interface AIAnalysis {
   motivo_nao_conforme?: string;
   requisito_atendido?: string;
   confianca?: number;
+  // Bernhoeft audit fields
+  assinatura_colaborador?: boolean;
+  assinatura_instrutor?: boolean;
+  assinatura_responsavel?: boolean;
+  parecer_bernhoeft?: "APROVADO" | "REPROVADO" | "COM_RESSALVA";
+  motivo_reprovacao_bernhoeft?: string;
+  dias_para_vencimento?: number;
 }
 
 interface AnalyzedFile {
