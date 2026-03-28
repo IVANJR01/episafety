@@ -193,6 +193,40 @@ export default function Treinamentos() {
 
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
+  // Helper: check if employee cargo matches any of the funcoes_exigidas using fuzzy matching
+  const cargoMatchesFuncao = useCallback((cargo: string | null, funcoes: string[] | null): boolean => {
+    if (!cargo || !funcoes || funcoes.length === 0) return false;
+    const normCargo = normalize(cargo);
+    return funcoes.some(f => {
+      const normF = normalize(f);
+      // Split compound function names by "/" and check each part
+      const parts = normF.split("/").map(p => p.trim()).filter(Boolean);
+      return parts.some(part => normCargo.includes(part) || part.includes(normCargo));
+    });
+  }, []);
+
+  // Get required courses for a given cargo from Matriz Unificada
+  const getRequiredCourses = useCallback((cargo: string | null): RequisitoCliente[] => {
+    if (!cargo) return [];
+    return requisitos.filter(r => cargoMatchesFuncao(cargo, r.funcoes_exigidas));
+  }, [requisitos, cargoMatchesFuncao]);
+
+  // Open add modal with pre-selected course from a pendente tag click
+  const openNewWithCourse = (funcId: string, cursoNome: string) => {
+    setEditing(null);
+    setMultiMode(false);
+    const func = funcMap[funcId];
+    setForm({ funcionario_id: funcId, nome_curso: cursoNome, data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
+    setFuncSearch(func?.nome || "");
+    setCursoSearch(cursoNome);
+    setShowCursoList(false);
+    // Auto-calc renewal
+    const newRen = calcularRenovacao(cursoNome, new Date().toISOString().split("T")[0]);
+    if (newRen) setForm(prev => ({ ...prev, data_renovacao: newRen }));
+    refreshFuncionarios();
+    setOpen(true);
+  };
+
   const filteredFuncionarios = useMemo(() => {
     if (!funcSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
     const q = normalize(funcSearch);
