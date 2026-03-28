@@ -70,12 +70,33 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
       toast({ title: "Informe o nome", variant: "destructive" });
       return;
     }
-    const payload = { nome: form.nome.trim(), validade_meses: form.validade_meses, empresa_id: empresaId };
+    const newName = form.nome.trim();
+    const payload = { nome: newName, validade_meses: form.validade_meses, empresa_id: empresaId };
 
     if (editing) {
+      const oldName = editing.nome;
       const { error } = await (supabase.from as any)("cursos_documentos").update(payload).eq("id", editing.id);
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
-      toast({ title: "Atualizado com sucesso!" });
+
+      // Atualização em cascata: propagar renomeação para tabelas relacionadas
+      if (oldName !== newName) {
+        const cascadeUpdates = [
+          (supabase.from as any)("requisitos_cliente")
+            .update({ curso_nome: newName })
+            .eq("curso_nome", oldName)
+            .eq("empresa_id", empresaId),
+          (supabase.from as any)("controle_treinamentos")
+            .update({ nome_curso: newName })
+            .eq("nome_curso", oldName)
+            .eq("empresa_id", empresaId),
+          (supabase.from as any)("dispensas_requisito")
+            .update({ curso_nome: newName })
+            .eq("curso_nome", oldName)
+            .eq("empresa_id", empresaId),
+        ];
+        await Promise.allSettled(cascadeUpdates);
+      }
+      toast({ title: "Atualizado com sucesso!", description: oldName !== newName ? "Nome atualizado em todos os módulos." : undefined });
     } else {
       const { error } = await (supabase.from as any)("cursos_documentos").insert(payload);
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
