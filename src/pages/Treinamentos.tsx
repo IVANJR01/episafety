@@ -1006,14 +1006,31 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs">
-                            {row.pendentes.length > 0 ? (
+                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs min-w-[200px]">
+                            {(row.autoPendentes.length > 0 || row.pendentes.length > 0) ? (
                               <div className="flex flex-wrap gap-0.5 justify-center">
+                                {row.autoPendentes.map(d => {
+                                  const cursoName = d.replace(" (Vencido)", "");
+                                  const isVencido = d.includes("(Vencido)");
+                                  return (
+                                    <Badge
+                                      key={`auto-${d}`}
+                                      variant="outline"
+                                      className={`text-[9px] cursor-pointer hover:opacity-80 transition-opacity ${isVencido ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-destructive/10 text-destructive border-destructive/30"}`}
+                                      onClick={() => openNewWithCourse(row.func.id, cursoName)}
+                                      title={`Clique para cadastrar: ${cursoName}`}
+                                    >
+                                      {d}
+                                    </Badge>
+                                  );
+                                })}
                                 {row.pendentes.map(d => (
-                                  <Badge key={d} variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">{d}</Badge>
+                                  <Badge key={`doc-${d}`} variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">{d}</Badge>
                                 ))}
                               </div>
-                            ) : <span className="text-muted-foreground">—</span>}
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
+                            )}
                           </td>
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
