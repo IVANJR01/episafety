@@ -860,6 +860,9 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
               <Brain className="w-5 h-5 text-primary animate-pulse" />
               Analisando Documentos com IA
             </DialogTitle>
+            <DialogDescription>
+              Aguarde enquanto o documento é processado e validado automaticamente.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="relative overflow-hidden rounded-xl bg-muted/50 p-6">
