@@ -35,6 +35,7 @@ interface ControleTreinamento {
 }
 
 interface Funcionario { id: string; nome: string; cargo: string | null; cpf: string | null; matricula: string | null; setor: string | null; }
+interface RequisitoCliente { id: string; curso_nome: string; funcoes_exigidas: string[] | null; carga_horaria_minima: number; validade_meses: number; }
 
 type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
 
@@ -80,15 +81,23 @@ export default function Treinamentos() {
 
   // DB-based courses
   const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
+  // Requisitos da Matriz Unificada
+  const [requisitos, setRequisitos] = useState<RequisitoCliente[]>([]);
 
   const fetchCursosDB = useCallback(async () => {
     if (!isOnline()) {
       const cached = getCachedData<{ nome: string; validade_meses: number }>("cursos_documentos");
       if (cached) setDbCursos(cached);
+      const cachedReq = getCachedData<RequisitoCliente>("requisitos_cliente");
+      if (cachedReq) setRequisitos(cachedReq);
       return;
     }
-    const { data } = await (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome");
+    const [{ data }, { data: reqData }] = await Promise.all([
+      (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome"),
+      (supabase.from as any)("requisitos_cliente").select("id, curso_nome, funcoes_exigidas, carga_horaria_minima, validade_meses"),
+    ]);
     if (data) { setDbCursos(data); setCachedData("cursos_documentos", data); }
+    if (reqData) { setRequisitos(reqData); setCachedData("requisitos_cliente", reqData); }
   }, []);
 
   // Multi-course mode
@@ -183,6 +192,40 @@ export default function Treinamentos() {
   const [docPopoverOpen, setDocPopoverOpen] = useState(false);
 
   const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  // Helper: check if employee cargo matches any of the funcoes_exigidas using fuzzy matching
+  const cargoMatchesFuncao = useCallback((cargo: string | null, funcoes: string[] | null): boolean => {
+    if (!cargo || !funcoes || funcoes.length === 0) return false;
+    const normCargo = normalize(cargo);
+    return funcoes.some(f => {
+      const normF = normalize(f);
+      // Split compound function names by "/" and check each part
+      const parts = normF.split("/").map(p => p.trim()).filter(Boolean);
+      return parts.some(part => normCargo.includes(part) || part.includes(normCargo));
+    });
+  }, []);
+
+  // Get required courses for a given cargo from Matriz Unificada
+  const getRequiredCourses = useCallback((cargo: string | null): RequisitoCliente[] => {
+    if (!cargo) return [];
+    return requisitos.filter(r => cargoMatchesFuncao(cargo, r.funcoes_exigidas));
+  }, [requisitos, cargoMatchesFuncao]);
+
+  // Open add modal with pre-selected course from a pendente tag click
+  const openNewWithCourse = (funcId: string, cursoNome: string) => {
+    setEditing(null);
+    setMultiMode(false);
+    const func = funcMap[funcId];
+    setForm({ funcionario_id: funcId, nome_curso: cursoNome, data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
+    setFuncSearch(func?.nome || "");
+    setCursoSearch(cursoNome);
+    setShowCursoList(false);
+    // Auto-calc renewal
+    const newRen = calcularRenovacao(cursoNome, new Date().toISOString().split("T")[0]);
+    if (newRen) setForm(prev => ({ ...prev, data_renovacao: newRen }));
+    refreshFuncionarios();
+    setOpen(true);
+  };
 
   const filteredFuncionarios = useMemo(() => {
     if (!funcSearch.trim()) return funcionarios.slice().sort((a, b) => a.nome.localeCompare(b.nome));
@@ -627,19 +670,36 @@ export default function Treinamentos() {
   const conformidade = totalItems > 0 ? Math.round((vigentesCount / totalItems) * 100) : 100;
 
   // Matrix data: group by employee, list all unique courses as columns
+  // Now includes ALL employees (even without trainings) and auto-pendentes from Matriz Unificada
   const matrixData = useMemo(() => {
     const cursoSet = new Set<string>();
     items.forEach(t => cursoSet.add(t.nome_curso));
+    // Also add required courses from Matriz Unificada as columns
+    requisitos.forEach(r => cursoSet.add(r.curso_nome));
     const cursos = Array.from(cursoSet).sort();
 
-    const funcIds = Array.from(new Set(items.map(t => t.funcionario_id)));
-    const rows = funcIds.map(fid => {
+    // Include ALL employees, not just those with trainings
+    const allFuncIds = new Set<string>();
+    items.forEach(t => allFuncIds.add(t.funcionario_id));
+    // Also include employees that have required courses via their cargo
+    funcionarios.forEach(f => {
+      if (getRequiredCourses(f.cargo).length > 0) allFuncIds.add(f.id);
+    });
+    // Apply setor filter if active
+    const filteredFuncIds = setorFilter
+      ? [...allFuncIds].filter(fid => {
+          const f = funcMap[fid];
+          return f?.setor === setorFilter;
+        })
+      : [...allFuncIds];
+
+    const rows = filteredFuncIds.map(fid => {
       const func = funcMap[fid];
       if (!func) return null;
       const treinos = items.filter(t => t.funcionario_id === fid);
       const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
       const pendentesSet = new Set<string>();
-      // Collect ALL pendentes from all treinos of this employee
+      // Collect manual pendentes from treinos
       treinos.forEach(t => {
         if (t.documento_pendente) {
           t.documento_pendente.split(" | ").filter(Boolean).forEach(d => pendentesSet.add(d));
@@ -651,11 +711,26 @@ export default function Treinamentos() {
           cursoData[curso] = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
         }
       });
-      return { func, cursoData, pendentes: Array.from(pendentesSet) };
-    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>; pendentes: string[] }[];
+
+      // Auto-pendentes from Matriz Unificada: courses required for this cargo but missing or expired
+      const requiredCourses = getRequiredCourses(func.cargo);
+      const autoPendentes: string[] = [];
+      requiredCourses.forEach(req => {
+        const cd = cursoData[req.curso_nome];
+        if (!cd) {
+          // Course not registered at all
+          autoPendentes.push(req.curso_nome);
+        } else if (cd.status.key === "vencido") {
+          // Course exists but is expired
+          autoPendentes.push(`${req.curso_nome} (Vencido)`);
+        }
+      });
+
+      return { func, cursoData, pendentes: Array.from(pendentesSet), autoPendentes };
+    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>; pendentes: string[]; autoPendentes: string[] }[];
 
     return { cursos, rows };
-  }, [items, funcMap]);
+  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter]);
 
   return (
     <div className="space-y-6">
@@ -931,14 +1006,31 @@ export default function Treinamentos() {
                           <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
                           <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs">
-                            {row.pendentes.length > 0 ? (
+                          <td className="border border-border/30 px-2 py-1.5 text-center text-xs min-w-[200px]">
+                            {(row.autoPendentes.length > 0 || row.pendentes.length > 0) ? (
                               <div className="flex flex-wrap gap-0.5 justify-center">
+                                {row.autoPendentes.map(d => {
+                                  const cursoName = d.replace(" (Vencido)", "");
+                                  const isVencido = d.includes("(Vencido)");
+                                  return (
+                                    <Badge
+                                      key={`auto-${d}`}
+                                      variant="outline"
+                                      className={`text-[9px] cursor-pointer hover:opacity-80 transition-opacity ${isVencido ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-destructive/10 text-destructive border-destructive/30"}`}
+                                      onClick={() => openNewWithCourse(row.func.id, cursoName)}
+                                      title={`Clique para cadastrar: ${cursoName}`}
+                                    >
+                                      {d}
+                                    </Badge>
+                                  );
+                                })}
                                 {row.pendentes.map(d => (
-                                  <Badge key={d} variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">{d}</Badge>
+                                  <Badge key={`doc-${d}`} variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">{d}</Badge>
                                 ))}
                               </div>
-                            ) : <span className="text-muted-foreground">—</span>}
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
+                            )}
                           </td>
                           {matrixData.cursos.flatMap(curso => {
                             const cd = row.cursoData[curso];
