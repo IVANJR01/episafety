@@ -368,9 +368,9 @@ export default function Treinamentos() {
       toast({ title: "Selecione o funcionário", variant: "destructive" });
       return;
     }
-    const validCursos = multiCursos.filter(c => c.nome_curso.trim());
+    const validCursos = multiCursos.filter(c => c.nome_curso.trim() || c.documento_pendente.trim());
     if (validCursos.length === 0) {
-      toast({ title: "Adicione pelo menos um curso", variant: "destructive" });
+      toast({ title: "Adicione pelo menos um curso ou documento", variant: "destructive" });
       return;
     }
     setSavingMulti(true);
@@ -1510,7 +1510,7 @@ export default function Treinamentos() {
           <DialogFooter>
             {multiMode && !editing ? (
               <Button onClick={handleSaveMulti} disabled={savingMulti}>
-                {savingMulti ? "Salvando..." : `Cadastrar ${multiCursos.filter(c => c.nome_curso.trim()).length} curso(s)`}
+                {savingMulti ? "Salvando..." : `Cadastrar ${multiCursos.filter(c => c.nome_curso.trim() || c.documento_pendente.trim()).length} item(ns)`}
               </Button>
             ) : (
               <Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button>
