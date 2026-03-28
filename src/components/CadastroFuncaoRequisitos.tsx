@@ -94,6 +94,8 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
   const openNew = () => {
     setEditing(null);
     setFuncaoNome("");
+    setFuncoesMultiplas([]);
+    setFuncaoInput("");
     setCursosSelecionados([]);
     setOpen(true);
   };
@@ -101,6 +103,8 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
   const openEditFuncao = (funcao: string, reqs: RequisitoCliente[]) => {
     setEditing(null);
     setFuncaoNome(funcao);
+    setFuncoesMultiplas([funcao]);
+    setFuncaoInput("");
     setCursosSelecionados(reqs.map(r => ({
       curso_nome: r.curso_nome,
       carga_horaria: r.carga_horaria_minima,
@@ -109,6 +113,19 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
     })));
     setOpen(true);
   };
+
+  const addFuncao = (nome: string) => {
+    const trimmed = nome.trim();
+    if (!trimmed || funcoesMultiplas.includes(trimmed)) return;
+    setFuncoesMultiplas(prev => [...prev, trimmed]);
+    setFuncaoInput("");
+  };
+
+  const removeFuncao = (nome: string) => {
+    setFuncoesMultiplas(prev => prev.filter(f => f !== nome));
+  };
+
+  const isEditingMode = funcoesMultiplas.length === 1 && funcaoNome === funcoesMultiplas[0];
 
   const toggleCurso = (cursoNome: string) => {
     const exists = cursosSelecionados.find(c => c.curso_nome === cursoNome);
