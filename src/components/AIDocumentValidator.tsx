@@ -387,11 +387,12 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
           };
           await (supabase.from as any)("controle_treinamentos").insert(record);
 
-          // Upload file to storage if we have the file object
+          // Upload file to Google Drive organized by collaborator/course
           if (af.file) {
             const safeName = selectedFunc.nome.replace(/[^a-zA-Z0-9]/g, "_");
-            const path = `${empresaId}/${safeName}_${selectedFunc.id}/${af.analysis.curso}/${Date.now()}_${af.fileName}`;
-            await supabase.storage.from("documentos-treinamento").upload(path, af.file, { upsert: false });
+            const folderPath = `${safeName}/Certificados`;
+            const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+            await uploadToDrive(af.file, folderPath, `${Date.now()}_${af.fileName}`);
           }
 
           // Update the analysis status in analises_ia to "confirmado"

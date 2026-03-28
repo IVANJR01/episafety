@@ -86,27 +86,36 @@ export async function uploadToDrive(
 }
 
 /**
- * Delete a file from Google Drive (still uses edge function - tiny payload)
+ * Delete a file from Google Drive using token from gdrive-token
  */
 export async function deleteFromDrive(fileId: string): Promise<void> {
-  const { data, error } = await supabase.functions.invoke("gdrive-storage", {
-    body: { fileId },
-    headers: { "x-action": "delete" },
+  const { accessToken } = await getDriveToken("geral");
+
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (error) throw new Error(error.message || "Delete from Drive failed");
-  if (data?.error) throw new Error(data.error);
+
+  if (!res.ok && res.status !== 404) {
+    const text = await res.text();
+    throw new Error(`Delete from Drive failed: ${text}`);
+  }
 }
 
 /**
- * List files in a Drive folder (still uses edge function - tiny payload)
+ * List files in a Drive folder (uses token from gdrive-token)
  */
 export async function listDriveFiles(folder: string) {
-  const { data, error } = await supabase.functions.invoke("gdrive-storage", {
-    body: null,
-    headers: { "x-action": "list", "x-folder": folder },
-  });
-  if (error) throw new Error(error.message || "List from Drive failed");
-  if (data?.error) throw new Error(data.error);
+  const { accessToken, folderId } = await getDriveToken(folder);
+
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,createdTime,size,webViewLink)&orderBy=createdTime desc&pageSize=50`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(`List from Drive failed: ${JSON.stringify(data)}`);
   return data.files || [];
 }
 
