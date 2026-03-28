@@ -125,7 +125,7 @@ VALIDAÇÃO LEGAL (NR):
 - Verifique presença do nome do instrutor e registro profissional (CREA, CFT, CRM)
 - Verifique validade conforme periodicidade da NR
 
-VALIDAÇÃO CONTRATUAL (Matriz Neoenergia Rev.12):
+VALIDAÇÃO CONTRATUAL (Matriz Neoenergia - Capacitação MANUT SE LD Rev.13.8):
 - Identifique o curso na Matriz usando sinônimos
 - Compare carga horária com o mínimo da Matriz
 - Verifique se a função do colaborador está na lista de funções exigidas
@@ -284,7 +284,7 @@ serve(async (req) => {
     }
 
     const requisitosContext = requisitos.length > 0
-      ? `\n\nMATRIZ DE REQUISITOS NEOENERGIA (Rev.12 - 24/09/2024 - Expansão AT, SE e LD):\n${requisitos.map(r =>
+      ? `\n\nMATRIZ DE REQUISITOS NEOENERGIA (Capacitação MANUT SE LD Rev.13.8 - Subtransmissão):\n${requisitos.map(r =>
           `CURSO: "${r.curso_nome}" | Sinônimos: [${(r.sinonimos || []).join(", ")}] | Carga Horária MÍNIMA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções exigidas: [${(r.funcoes_exigidas || []).join(", ")}]`
         ).join("\n")}`
       : "";
