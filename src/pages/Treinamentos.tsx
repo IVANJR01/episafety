@@ -113,6 +113,7 @@ export default function Treinamentos() {
   const [dispensaMotivo, setDispensaMotivo] = useState("");
   const [dispensaCursosSelecionados, setDispensaCursosSelecionados] = useState<string[]>([]);
   const [savingDispensa, setSavingDispensa] = useState(false);
+  const [matrizFullscreen, setMatrizFullscreen] = useState(false);
 
   const fetchCursosDB = useCallback(async () => {
     if (!isOnline()) {
