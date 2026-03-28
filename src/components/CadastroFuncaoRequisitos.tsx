@@ -174,66 +174,74 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
       return;
     }
 
-    // Deduplicate cursos by name (prevent same course twice)
     const uniqueCursos = cursosSelecionados.filter((c, idx, arr) =>
       arr.findIndex(x => x.curso_nome === c.curso_nome) === idx
     );
 
-    for (const currentFuncao of funcoesMultiplas) {
-      // Delete existing requisitos for this funcao
-      const existingForFuncao = requisitos.filter(r =>
-        r.funcoes_exigidas?.includes(currentFuncao)
-      );
+    // 1. Remove all selected functions from existing requisitos in batch
+    const affectedReqs = requisitos.filter(r =>
+      r.funcoes_exigidas?.some(f => funcoesMultiplas.includes(f))
+    );
 
-      for (const req of existingForFuncao) {
-        const newFuncoes = (req.funcoes_exigidas || []).filter(f => f !== currentFuncao);
-        if (newFuncoes.length === 0) {
-          await (supabase.from as any)("requisitos_cliente").delete().eq("id", req.id);
-        } else {
-          await (supabase.from as any)("requisitos_cliente").update({ funcoes_exigidas: newFuncoes }).eq("id", req.id);
-        }
-      }
+    const deleteIds: string[] = [];
+    const updateBatch: { id: string; funcoes_exigidas: string[] }[] = [];
 
-      // Re-fetch to get clean state after deletions/updates
-      const { data: freshReqs } = await (supabase.from as any)("requisitos_cliente").select("*");
-      const currentReqs: RequisitoCliente[] = freshReqs || [];
-
-      // Add/update requisitos for each selected curso (no duplicates)
-      for (const curso of uniqueCursos) {
-        // Check if this curso already has a row that we can add this funcao to
-        const existingReq = currentReqs.find(r =>
-          r.curso_nome === curso.curso_nome && !r.funcoes_exigidas?.includes(currentFuncao)
-        );
-        // Also check if it already has this funcao (skip if so)
-        const alreadyHas = currentReqs.find(r =>
-          r.curso_nome === curso.curso_nome && r.funcoes_exigidas?.includes(currentFuncao)
-        );
-
-        if (alreadyHas) {
-          // Already exists — just update params if needed
-          await (supabase.from as any)("requisitos_cliente").update({
-            carga_horaria_minima: curso.carga_horaria || alreadyHas.carga_horaria_minima,
-            validade_meses: curso.permanente ? 0 : curso.validade_meses,
-          }).eq("id", alreadyHas.id);
-        } else if (existingReq) {
-          const updatedFuncoes = [...new Set([...(existingReq.funcoes_exigidas || []), currentFuncao])];
-          await (supabase.from as any)("requisitos_cliente").update({
-            funcoes_exigidas: updatedFuncoes,
-            carga_horaria_minima: curso.carga_horaria || existingReq.carga_horaria_minima,
-            validade_meses: curso.permanente ? 0 : curso.validade_meses,
-          }).eq("id", existingReq.id);
-        } else {
-          await (supabase.from as any)("requisitos_cliente").insert({
-            nome_cliente: "Matriz Unificada",
-            curso_nome: curso.curso_nome,
-            funcoes_exigidas: [currentFuncao],
-            carga_horaria_minima: curso.carga_horaria,
-            validade_meses: curso.permanente ? 0 : curso.validade_meses,
-            empresa_id: empresaId,
-          });
-        }
+    for (const req of affectedReqs) {
+      const newFuncoes = (req.funcoes_exigidas || []).filter(f => !funcoesMultiplas.includes(f));
+      if (newFuncoes.length === 0) {
+        deleteIds.push(req.id);
+      } else {
+        updateBatch.push({ id: req.id, funcoes_exigidas: newFuncoes });
       }
     }
+
+    // Execute deletes and updates in parallel
+    const batchOps: Promise<any>[] = [];
+    if (deleteIds.length > 0) {
+      batchOps.push((supabase.from as any)("requisitos_cliente").delete().in("id", deleteIds));
+    }
+    for (const u of updateBatch) {
+      batchOps.push((supabase.from as any)("requisitos_cliente").update({ funcoes_exigidas: u.funcoes_exigidas }).eq("id", u.id));
+    }
+    await Promise.all(batchOps);
+
+    // 2. Fetch clean state once
+    const { data: freshReqs } = await (supabase.from as any)("requisitos_cliente").select("*");
+    const currentReqs: RequisitoCliente[] = freshReqs || [];
+
+    // 3. For each curso, find or create a row and add all functions at once
+    const insertRows: any[] = [];
+    const updateOps: Promise<any>[] = [];
+
+    for (const curso of uniqueCursos) {
+      const existingReq = currentReqs.find(r => r.curso_nome === curso.curso_nome);
+
+      if (existingReq) {
+        const mergedFuncoes = [...new Set([...(existingReq.funcoes_exigidas || []), ...funcoesMultiplas])];
+        updateOps.push(
+          (supabase.from as any)("requisitos_cliente").update({
+            funcoes_exigidas: mergedFuncoes,
+            carga_horaria_minima: curso.carga_horaria || existingReq.carga_horaria_minima,
+            validade_meses: curso.permanente ? 0 : curso.validade_meses,
+          }).eq("id", existingReq.id)
+        );
+      } else {
+        insertRows.push({
+          nome_cliente: "Matriz Unificada",
+          curso_nome: curso.curso_nome,
+          funcoes_exigidas: [...funcoesMultiplas],
+          carga_horaria_minima: curso.carga_horaria,
+          validade_meses: curso.permanente ? 0 : curso.validade_meses,
+          empresa_id: empresaId,
+        });
+      }
+    }
+
+    // Execute inserts and updates in parallel
+    if (insertRows.length > 0) {
+      updateOps.push((supabase.from as any)("requisitos_cliente").insert(insertRows));
+    }
+    await Promise.all(updateOps);
 
     toast({ title: `Requisitos salvos para ${funcoesMultiplas.length} função(ões)!` });
     setOpen(false);
