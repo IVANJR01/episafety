@@ -675,9 +675,12 @@ export default function Treinamentos() {
   // Matrix data: group by employee, list all unique courses as columns
   // Now includes ALL employees (even without trainings) and auto-pendentes from Matriz Unificada
   const matrixData = useMemo(() => {
+    const matrixItems = items.filter(t => t.nome_curso !== "Documentação Pendente");
     const cursoSet = new Set<string>();
-    items.forEach(t => cursoSet.add(t.nome_curso));
-    // Also add required courses from Matriz Unificada as columns
+    matrixItems.forEach(t => {
+      if (t.nome_curso?.trim()) cursoSet.add(t.nome_curso);
+    });
+    // Also add required courses/documents from Matriz Unificada as columns
     requisitos.forEach(r => cursoSet.add(r.curso_nome));
     const cursos = Array.from(cursoSet).sort();
 
@@ -700,39 +703,52 @@ export default function Treinamentos() {
       const func = funcMap[fid];
       if (!func) return null;
       const treinos = items.filter(t => t.funcionario_id === fid);
+      const treinosComCurso = treinos.filter(t => t.nome_curso !== "Documentação Pendente");
       const cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }> = {};
       const pendentesSet = new Set<string>();
-      // Collect manual pendentes from treinos
+
       treinos.forEach(t => {
         if (t.documento_pendente) {
           t.documento_pendente.split(" | ").filter(Boolean).forEach(d => pendentesSet.add(d));
         }
       });
+
       cursos.forEach(curso => {
-        const t = treinos.find(tr => tr.nome_curso === curso);
+        const t = treinosComCurso.find(tr => tr.nome_curso === curso);
         if (t) {
           cursoData[curso] = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
         }
       });
 
-      // Auto-pendentes from Matriz Unificada: courses required for this cargo but missing or expired
       const requiredCourses = getRequiredCourses(func.cargo);
+      const requiredCourseNames = new Set(requiredCourses.map(req => req.curso_nome));
       const autoPendentes: string[] = [];
+
       requiredCourses.forEach(req => {
         const cd = cursoData[req.curso_nome];
         if (!cd) {
-          // Course not registered at all - show as grey/missing
           autoPendentes.push(req.curso_nome);
         } else if (cd.status.key === "permanente") {
-          // Permanent doc - already delivered, never expires — skip
+          // Permanent doc already delivered — skip
         } else if (cd.status.key === "vencido") {
-          // Course exists but is expired
           autoPendentes.push(`${req.curso_nome} (Vencido)`);
         }
       });
 
-      return { func, cursoData, pendentes: Array.from(pendentesSet), autoPendentes };
-    }).filter(Boolean) as { func: Funcionario; cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>; pendentes: string[]; autoPendentes: string[] }[];
+      return {
+        func,
+        cursoData,
+        pendentes: Array.from(pendentesSet),
+        autoPendentes,
+        requiredCourseNames,
+      };
+    }).filter(Boolean) as {
+      func: Funcionario;
+      cursoData: Record<string, { realizacao: string; renovacao: string | null; status: ReturnType<typeof getStatus> }>;
+      pendentes: string[];
+      autoPendentes: string[];
+      requiredCourseNames: Set<string>;
+    }[];
 
     return { cursos, rows };
   }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter]);
