@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -39,7 +39,25 @@ interface RequisitoCliente { id: string; curso_nome: string; funcoes_exigidas: s
 
 type StatusFilter = "todos" | "vencido" | "atencao" | "vigente" | "pendente";
 
+// Documents that never expire (one-time upload)
+const DOCUMENTOS_PERMANENTES = [
+  "Ficha de EPI", "Comprovante de Escolaridade", "Escolaridade", "Ficha de Registro",
+  "Ficha de Registro do Empregado", "CTPS", "CTPS Digital", "Regras de Ouro",
+  "Contrato de Trabalho", "Comprovante de Residência", "CNH (Categoria)",
+  "Registro no Conselho de Classe", "Certidão Negativa", "Edital",
+];
+
+function isPermanentDate(dataRenovacao: string | null): boolean {
+  return dataRenovacao === "9999-12-31";
+}
+
+function isPermanentCourse(nomeCurso: string): boolean {
+  const norm = nomeCurso.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return DOCUMENTOS_PERMANENTES.some(d => norm.includes(d.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()));
+}
+
 function getStatus(dataRenovacao: string | null): { label: string; variant: "destructive" | "outline" | "default"; key: string } {
+  if (isPermanentDate(dataRenovacao)) return { label: "∞ Vitalício", variant: "default", key: "permanente" };
   if (!dataRenovacao) return { label: "Sem renovação", variant: "outline", key: "vigente" };
   const hoje = new Date();
   const renovacao = parseISO(dataRenovacao);
@@ -73,6 +91,7 @@ export default function Treinamentos() {
     data_realizacao: new Date().toISOString().split("T")[0],
     data_renovacao: "",
     documento_pendente: "",
+    sem_vencimento: false,
   });
   const [funcSearch, setFuncSearch] = useState("");
   const [showFuncList, setShowFuncList] = useState(false);
@@ -150,7 +169,8 @@ export default function Treinamentos() {
     return dbCursos.map(c => c.nome).sort();
   }, [dbCursos]);
 
-  const calcularRenovacao = (curso: string, dataRealizacao: string): string => {
+  const calcularRenovacao = (curso: string, dataRealizacao: string, forceNoPermanent?: boolean): string => {
+    if (!forceNoPermanent && isPermanentCourse(curso)) return "9999-12-31";
     const meses = cursosValidade[curso];
     if (meses === undefined || meses === 0 || !dataRealizacao) return "";
     const data = parseISO(dataRealizacao);
@@ -216,13 +236,15 @@ export default function Treinamentos() {
     setEditing(null);
     setMultiMode(false);
     const func = funcMap[funcId];
-    setForm({ funcionario_id: funcId, nome_curso: cursoNome, data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
+    const isPerm = isPermanentCourse(cursoNome);
+    setForm({ funcionario_id: funcId, nome_curso: cursoNome, data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: isPerm ? "9999-12-31" : "", documento_pendente: "", sem_vencimento: isPerm });
     setFuncSearch(func?.nome || "");
     setCursoSearch(cursoNome);
     setShowCursoList(false);
-    // Auto-calc renewal
-    const newRen = calcularRenovacao(cursoNome, new Date().toISOString().split("T")[0]);
-    if (newRen) setForm(prev => ({ ...prev, data_renovacao: newRen }));
+    if (!isPerm) {
+      const newRen = calcularRenovacao(cursoNome, new Date().toISOString().split("T")[0]);
+      if (newRen) setForm(prev => ({ ...prev, data_renovacao: newRen }));
+    }
     refreshFuncionarios();
     setOpen(true);
   };
@@ -282,7 +304,7 @@ export default function Treinamentos() {
   const openNew = () => {
     setEditing(null);
     setMultiMode(false);
-    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "" });
+    setForm({ funcionario_id: "", nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "", sem_vencimento: false });
     setFuncSearch(""); setCursoSearch(""); setShowCursoList(false);
     setMultiCursos([emptyCurso()]);
     setMultiFuncId("");
@@ -305,12 +327,14 @@ export default function Treinamentos() {
 
   const openEdit = (t: ControleTreinamento) => {
     setEditing(t);
+    const isPerm = isPermanentDate(t.data_renovacao) || isPermanentCourse(t.nome_curso);
     setForm({
       funcionario_id: t.funcionario_id,
       nome_curso: t.nome_curso,
       data_realizacao: t.data_realizacao,
       data_renovacao: t.data_renovacao || "",
       documento_pendente: t.documento_pendente || "",
+      sem_vencimento: isPerm,
     });
     const func = funcMap[t.funcionario_id];
     setFuncSearch(func?.nome || "");
@@ -718,8 +742,10 @@ export default function Treinamentos() {
       requiredCourses.forEach(req => {
         const cd = cursoData[req.curso_nome];
         if (!cd) {
-          // Course not registered at all
+          // Course not registered at all - show as grey/missing
           autoPendentes.push(req.curso_nome);
+        } else if (cd.status.key === "permanente") {
+          // Permanent doc - already delivered, never expires — skip
         } else if (cd.status.key === "vencido") {
           // Course exists but is expired
           autoPendentes.push(`${req.curso_nome} (Vencido)`);
@@ -925,11 +951,12 @@ export default function Treinamentos() {
                           <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
                           <TableCell>{t.nome_curso}</TableCell>
                           <TableCell className="font-mono text-xs">{format(parseISO(t.data_realizacao), "dd/MM/yyyy")}</TableCell>
-                          <TableCell className="font-mono text-xs">{t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
+                          <TableCell className="font-mono text-xs">{isPermanentDate(t.data_renovacao) ? "Vitalício / Permanente" : t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
                           <TableCell>
                             <Badge
                               variant={status.variant}
                               className={
+                                status.key === "permanente" ? "bg-blue-500/10 text-blue-600 border-blue-300" :
                                 status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
                                 status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
                                 "bg-success/10 text-success border-success/20"
@@ -1041,7 +1068,9 @@ export default function Treinamentos() {
                                 <td key={`${row.func.id}-${curso}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
                               ];
                             }
-                            const statusBg = cd.status.key === "vencido"
+                            const statusBg = cd.status.key === "permanente"
+                              ? "bg-blue-500 text-white font-bold"
+                              : cd.status.key === "vencido"
                               ? "bg-destructive text-destructive-foreground font-bold"
                               : cd.status.key === "atencao"
                               ? "bg-warning text-warning-foreground font-bold"
@@ -1051,10 +1080,10 @@ export default function Treinamentos() {
                                 {format(parseISO(cd.realizacao), "dd/MM/yyyy")}
                               </td>,
                               <td key={`${row.func.id}-${curso}-r`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {cd.renovacao ? format(parseISO(cd.renovacao), "dd/MM/yyyy") : "—"}
+                                {isPermanentDate(cd.renovacao) ? "∞" : cd.renovacao ? format(parseISO(cd.renovacao), "dd/MM/yyyy") : "—"}
                               </td>,
                               <td key={`${row.func.id}-${curso}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${statusBg}`}>
-                                {cd.status.key === "vencido" ? "Vencido" : cd.status.key === "atencao" ? "Atenção" : "Válido"}
+                                {cd.status.key === "permanente" ? "∞ Entregue" : cd.status.key === "vencido" ? "Vencido" : cd.status.key === "atencao" ? "Atenção" : "Válido"}
                               </td>,
                             ];
                           })}
@@ -1272,8 +1301,9 @@ export default function Treinamentos() {
                     value={cursoSearch}
                     onChange={e => {
                       setCursoSearch(e.target.value);
-                      const newRenovacao = calcularRenovacao(e.target.value, form.data_realizacao);
-                      setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
+                      const isPerm = isPermanentCourse(e.target.value);
+                      const newRenovacao = isPerm ? "9999-12-31" : calcularRenovacao(e.target.value, form.data_realizacao);
+                      setForm({ ...form, nome_curso: e.target.value, data_renovacao: newRenovacao || form.data_renovacao, sem_vencimento: isPerm });
                       setShowCursoList(e.target.value.trim().length > 0);
                     }}
                     onBlur={() => setTimeout(() => setShowCursoList(false), 200)}
@@ -1290,8 +1320,9 @@ export default function Treinamentos() {
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
                         onClick={() => {
-                          const newRenovacao = calcularRenovacao(c, form.data_realizacao);
-                          setForm({ ...form, nome_curso: c, data_renovacao: newRenovacao || form.data_renovacao });
+                          const isPerm = isPermanentCourse(c);
+                          const newRenovacao = isPerm ? "9999-12-31" : calcularRenovacao(c, form.data_realizacao);
+                          setForm({ ...form, nome_curso: c, data_renovacao: newRenovacao || form.data_renovacao, sem_vencimento: isPerm });
                           setCursoSearch(c);
                           setShowCursoList(false);
                         }}
@@ -1303,18 +1334,40 @@ export default function Treinamentos() {
                 )}
               </div>
 
+              {/* Checkbox: Documento Sem Vencimento */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sem-vencimento"
+                  checked={form.sem_vencimento}
+                  onCheckedChange={(checked) => {
+                    const isChecked = !!checked;
+                    setForm({ ...form, sem_vencimento: isChecked, data_renovacao: isChecked ? "9999-12-31" : calcularRenovacao(form.nome_curso, form.data_realizacao) || "" });
+                  }}
+                />
+                <Label htmlFor="sem-vencimento" className="text-sm cursor-pointer flex items-center gap-1.5">
+                  <Infinity className="w-4 h-4 text-blue-500" />
+                  Documento Sem Vencimento (Carga Única / Permanente)
+                </Label>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Data de Realização</Label>
                   <Input type="date" value={form.data_realizacao} onChange={e => {
-                    const newRenovacao = calcularRenovacao(form.nome_curso, e.target.value);
+                    const newRenovacao = form.sem_vencimento ? "9999-12-31" : calcularRenovacao(form.nome_curso, e.target.value);
                     setForm({ ...form, data_realizacao: e.target.value, data_renovacao: newRenovacao || form.data_renovacao });
                   }} />
                 </div>
                 <div>
                   <Label>Data de Renovação/Reciclagem</Label>
-                  <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
-                  {form.nome_curso && cursosValidade[form.nome_curso] !== undefined && (
+                  {form.sem_vencimento ? (
+                    <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-muted/50 text-sm text-blue-600 font-medium">
+                      <Infinity className="w-4 h-4" /> Vitalício / Permanente
+                    </div>
+                  ) : (
+                    <Input type="date" value={form.data_renovacao} onChange={e => setForm({ ...form, data_renovacao: e.target.value })} />
+                  )}
+                  {!form.sem_vencimento && form.nome_curso && cursosValidade[form.nome_curso] !== undefined && (
                     <p className="text-xs text-muted-foreground mt-1">
                       ⏱ Validade: {cursosValidade[form.nome_curso] === 0 ? "Sem renovação" : `${cursosValidade[form.nome_curso]} meses`}
                       {cursosValidade[form.nome_curso] > 0 && " (calculado automaticamente)"}
