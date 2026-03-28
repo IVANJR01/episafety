@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Search, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, BookOpen, GraduationCap, FileText, Infinity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
 interface CursoDocumento {
@@ -47,6 +48,10 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
     if (!search.trim()) return true;
     return i.nome.toLowerCase().includes(search.toLowerCase());
   });
+
+  // Separate: courses WITH validity vs permanent documents WITHOUT validity
+  const cursos = filtered.filter(i => i.validade_meses > 0);
+  const documentos = filtered.filter(i => i.validade_meses === 0);
 
   const openNew = () => {
     setEditing(null);
@@ -87,6 +92,54 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
     onUpdate?.();
   };
 
+  const renderTable = (data: CursoDocumento[], type: "curso" | "documento") => (
+    <Card>
+      <CardContent className="p-0">
+        {loading ? (
+          <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome {type === "curso" ? "do Curso" : "do Documento"}</TableHead>
+                <TableHead className="w-[150px]">{type === "curso" ? "Validade (meses)" : "Tipo"}</TableHead>
+                <TableHead className="w-[100px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                    Nenhum {type === "curso" ? "curso" : "documento"} cadastrado
+                  </TableCell>
+                </TableRow>
+              ) : data.map(item => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.nome}</TableCell>
+                  <TableCell>
+                    {item.validade_meses > 0 ? (
+                      <Badge variant="outline" className="text-xs">{item.validade_meses} meses</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-300">
+                        <Infinity className="w-3 h-3 mr-1" />Permanente
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1 justify-end">
+                      <Button size="icon" variant="ghost" onClick={() => openEdit(item)}><Pencil className="w-3.5 h-3.5" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -105,49 +158,28 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
         <Input placeholder="Pesquisar curso ou documento..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome do Curso / Documento</TableHead>
-                  <TableHead className="w-[150px]">Validade (meses)</TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                      Nenhum curso ou documento cadastrado
-                    </TableCell>
-                  </TableRow>
-                ) : filtered.map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.nome}</TableCell>
-                    <TableCell>
-                      {item.validade_meses > 0 ? (
-                        <Badge variant="outline" className="text-xs">{item.validade_meses} meses</Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Sem renovação</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 justify-end">
-                        <Button size="icon" variant="ghost" onClick={() => openEdit(item)}><Pencil className="w-3.5 h-3.5" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="cursos" className="w-full">
+        <TabsList>
+          <TabsTrigger value="cursos" className="gap-1.5">
+            <GraduationCap className="w-4 h-4" />
+            Cursos com Validade
+            <Badge variant="secondary" className="text-[10px] ml-1">{cursos.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="documentos" className="gap-1.5">
+            <FileText className="w-4 h-4" />
+            Documentos Permanentes
+            <Badge variant="secondary" className="text-[10px] ml-1">{documentos.length}</Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cursos">
+          {renderTable(cursos, "curso")}
+        </TabsContent>
+
+        <TabsContent value="documentos">
+          {renderTable(documentos, "documento")}
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
@@ -162,7 +194,7 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
             <div>
               <Label>Validade (em meses)</Label>
               <Input type="number" min={0} value={form.validade_meses} onChange={e => setForm({ ...form, validade_meses: parseInt(e.target.value) || 0 })} />
-              <p className="text-xs text-muted-foreground mt-1">0 = sem renovação automática</p>
+              <p className="text-xs text-muted-foreground mt-1">0 = documento permanente (sem vencimento)</p>
             </div>
           </div>
           <DialogFooter>
