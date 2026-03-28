@@ -284,7 +284,7 @@ serve(async (req) => {
     }
 
     const requisitosContext = requisitos.length > 0
-      ? `\n\nMATRIZ DE REQUISITOS NEOENERGIA (Rev.12 - 24/09/2024 - Expansão AT, SE e LD):\n${requisitos.map(r =>
+      ? `\n\nMATRIZ DE REQUISITOS NEOENERGIA (Capacitação MANUT SE LD Rev.13.8 - Subtransmissão):\n${requisitos.map(r =>
           `CURSO: "${r.curso_nome}" | Sinônimos: [${(r.sinonimos || []).join(", ")}] | Carga Horária MÍNIMA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções exigidas: [${(r.funcoes_exigidas || []).join(", ")}]`
         ).join("\n")}`
       : "";
