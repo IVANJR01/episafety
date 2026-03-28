@@ -1051,7 +1051,7 @@ export default function Treinamentos() {
                                   );
                                 })}
                                 {row.pendentes.map(d => (
-                                  <Badge key={`doc-${d}`} variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">{d}</Badge>
+                                  <Badge key={`doc-${d}`} variant="outline" className="text-[9px] bg-warning/10 text-warning border-warning/30">⚠️ {d}</Badge>
                                 ))}
                               </div>
                             ) : (
