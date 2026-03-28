@@ -294,20 +294,42 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
             {/* Nome da Função */}
             <div>
               <Label>Nome da Função / Cargo *</Label>
-              <div className="relative">
-                <Input
-                  placeholder="Ex: Técnico de Planejamento, Eletricista..."
-                  value={funcaoNome}
-                  onChange={e => setFuncaoNome(e.target.value)}
-                  list="cargos-existentes"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Ex: Técnico de Planejamento, Eletricista..."
+                    value={funcaoInput}
+                    onChange={e => setFuncaoInput(e.target.value)}
+                    list="cargos-existentes"
+                    onKeyDown={e => {
+                      if (e.key === "Enter") { e.preventDefault(); addFuncao(funcaoInput); }
+                    }}
+                  />
+                </div>
+                <Button type="button" size="sm" variant="secondary" onClick={() => addFuncao(funcaoInput)} disabled={!funcaoInput.trim()}>
+                  <Plus className="w-4 h-4 mr-1" />Adicionar
+                </Button>
               </div>
               <datalist id="cargos-existentes">
-                {cargosExistentes.map(c => <option key={c} value={c} />)}
+                {cargosExistentes.filter(c => !funcoesMultiplas.includes(c)).map(c => <option key={c} value={c} />)}
               </datalist>
               <p className="text-xs text-muted-foreground mt-1">
-                Este nome será comparado com o campo "Cargo" dos funcionários cadastrados
+                {isEditingMode
+                  ? "Editando os requisitos desta função"
+                  : "Adicione uma ou mais funções que compartilham os mesmos requisitos. Pressione Enter ou clique em Adicionar."}
               </p>
+              {funcoesMultiplas.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {funcoesMultiplas.map(f => (
+                    <Badge key={f} variant="secondary" className="text-xs gap-1 pr-1">
+                      {f}
+                      <button type="button" onClick={() => removeFuncao(f)} className="ml-0.5 hover:bg-destructive/20 rounded-full p-0.5">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Cursos Obrigatórios */}
