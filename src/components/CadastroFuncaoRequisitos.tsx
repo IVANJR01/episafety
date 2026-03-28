@@ -46,6 +46,8 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
 
   // Form state
   const [funcaoNome, setFuncaoNome] = useState("");
+  const [funcoesMultiplas, setFuncoesMultiplas] = useState<string[]>([]);
+  const [funcaoInput, setFuncaoInput] = useState("");
   const [cursosSelecionados, setCursosSelecionados] = useState<{ curso_nome: string; carga_horaria: number; validade_meses: number; permanente: boolean }[]>([]);
   const [cursoPopoverOpen, setCursoPopoverOpen] = useState(false);
 
