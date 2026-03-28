@@ -42,6 +42,13 @@ interface AIAnalysis {
   motivo_nao_conforme?: string;
   requisito_atendido?: string;
   confianca?: number;
+  // Bernhoeft audit fields
+  assinatura_colaborador?: boolean;
+  assinatura_instrutor?: boolean;
+  assinatura_responsavel?: boolean;
+  parecer_bernhoeft?: "APROVADO" | "REPROVADO" | "COM_RESSALVA";
+  motivo_reprovacao_bernhoeft?: string;
+  dias_para_vencimento?: number;
 }
 
 interface AnalyzedFile {
@@ -698,7 +705,74 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                 )}
 
                 {af.analysis && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div className="space-y-3">
+                    {/* Bernhoeft Audit Badge */}
+                    {af.analysis.parecer_bernhoeft && (
+                      <div className={`p-3 rounded-lg border-2 ${
+                        af.analysis.parecer_bernhoeft === "APROVADO" 
+                          ? "border-green-500 bg-green-50 dark:bg-green-950/20" 
+                          : af.analysis.parecer_bernhoeft === "COM_RESSALVA"
+                          ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20"
+                          : "border-destructive bg-red-50 dark:bg-red-950/20"
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Parecer Bernhoeft</span>
+                          <Badge className={`text-xs ${
+                            af.analysis.parecer_bernhoeft === "APROVADO" ? "bg-green-600 hover:bg-green-700" :
+                            af.analysis.parecer_bernhoeft === "COM_RESSALVA" ? "bg-yellow-600 hover:bg-yellow-700" :
+                            "bg-destructive hover:bg-destructive/90"
+                          }`}>
+                            {af.analysis.parecer_bernhoeft === "APROVADO" ? "✅ APROVADO PARA CAMPO" :
+                             af.analysis.parecer_bernhoeft === "COM_RESSALVA" ? "⚠️ COM RESSALVA" :
+                             "❌ REPROVADO / BLOQUEADO"}
+                          </Badge>
+                        </div>
+                        {af.analysis.motivo_reprovacao_bernhoeft && (
+                          <p className="text-sm text-destructive font-medium">{af.analysis.motivo_reprovacao_bernhoeft}</p>
+                        )}
+                        {af.analysis.dias_para_vencimento != null && (
+                          <p className={`text-xs mt-1 font-medium ${
+                            af.analysis.dias_para_vencimento < 0 ? "text-destructive" :
+                            af.analysis.dias_para_vencimento <= 30 ? "text-yellow-600 dark:text-yellow-400" :
+                            "text-green-600 dark:text-green-400"
+                          }`}>
+                            {af.analysis.dias_para_vencimento < 0 
+                              ? `⛔ VENCIDO há ${Math.abs(af.analysis.dias_para_vencimento)} dias`
+                              : af.analysis.dias_para_vencimento <= 30
+                              ? `⚠️ Vence em ${af.analysis.dias_para_vencimento} dias — RISCO DE BLOQUEIO`
+                              : `✅ ${af.analysis.dias_para_vencimento} dias até o vencimento`}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Signature Checklist */}
+                    <div className="p-3 rounded-lg bg-muted/50 border">
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Verificação de Assinaturas</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="flex items-center gap-1.5 text-xs">
+                          {af.analysis.assinatura_colaborador 
+                            ? <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                            : <AlertCircle className="w-4 h-4 text-destructive shrink-0" />}
+                          <span>Colaborador</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          {af.analysis.assinatura_instrutor 
+                            ? <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                            : <AlertCircle className="w-4 h-4 text-destructive shrink-0" />}
+                          <span>Instrutor</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          {af.analysis.assinatura_responsavel 
+                            ? <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                            : <AlertCircle className="w-4 h-4 text-destructive shrink-0" />}
+                          <span>CREA/Carimbo</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Data Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div className={`p-2 rounded-lg ${af.analysis.alerta_nome ? "bg-red-50 dark:bg-red-950/20 border border-red-200" : "bg-muted/50"}`}>
                       <Label className="text-xs text-muted-foreground">Nome no Certificado</Label>
                       <p className="font-medium">{af.analysis.nome_certificado || "—"}</p>
@@ -754,8 +828,9 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                       </div>
                     )}
                     <div className="col-span-full p-2 rounded-lg bg-muted/50">
-                      <Label className="text-xs text-muted-foreground">Descrição (gerada pela IA)</Label>
-                      <p className="text-sm">{af.analysis.descricao_completa || "—"}</p>
+                      <Label className="text-xs text-muted-foreground">Parecer de Auditoria (IA)</Label>
+                      <p className="text-sm whitespace-pre-line">{af.analysis.descricao_completa || "—"}</p>
+                    </div>
                     </div>
                   </div>
                 )}
