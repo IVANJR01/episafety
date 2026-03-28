@@ -297,9 +297,9 @@ serve(async (req) => {
     }
 
     const requisitosContext = requisitos.length > 0
-      ? `\n\nMATRIZ DE REQUISITOS NEOENERGIA (Capacitação MANUT SE LD Rev.13.8 - Subtransmissão):\n${requisitos.map(r =>
-          `CURSO: "${r.curso_nome}" | Sinônimos: [${(r.sinonimos || []).join(", ")}] | Carga Horária MÍNIMA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções exigidas: [${(r.funcoes_exigidas || []).join(", ")}]`
-        ).join("\n")}`
+      ? `\n\nMATRIZ UNIFICADA NEOENERGIA (Rev.12 - Atividades em SE e LD):\n${requisitos.map(r =>
+          `CURSO: "${r.curso_nome}" | Sinônimos: [${(r.sinonimos || []).join(", ")}] | CH MÍNIMA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções: [${(r.funcoes_exigidas || []).join(", ")}] | Obs: ${r.descricao || ""}`
+        ).join("\n")}\n\nREGRA CRÍTICA DE CH VARIÁVEL: O mesmo curso pode ter CH diferente por função. Ex: POP 00 = 8h (Administrativo) vs 40h (Eletricista). Use a CH correspondente à FUNÇÃO do colaborador selecionado.`
       : "";
 
     const funcionarioContext = funcionarioNome
