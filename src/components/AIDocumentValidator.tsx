@@ -411,6 +411,66 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
     toast({ title: "Rascunho descartado", description: "A análise foi removida." });
   };
 
+  const reanalyzeFile = async (id: string) => {
+    const af = files.find(f => f.id === id);
+    if (!af?.file || !selectedFunc) return;
+
+    // Delete old draft from DB
+    if (af.dbId) {
+      await (supabase.from as any)("analises_ia").delete().eq("id", af.dbId);
+    }
+
+    // Reset to pending and re-analyze
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "analyzing" as const, analysis: undefined, dbId: undefined, confirmed: false } : f));
+    setSyncStatus("saving");
+    setShowScanModal(true);
+    setCurrentFile(af.fileName);
+    setCurrentStep(0);
+
+    const stepInterval = setInterval(() => {
+      setCurrentStep(prev => prev < ANALYSIS_STEPS.length - 1 ? prev + 1 : prev);
+    }, 2000);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", af.file);
+      if (empresaId) formData.append("empresa_id", empresaId);
+      formData.append("funcionario_id", selectedFunc.id);
+      formData.append("funcionario_nome", selectedFunc.nome);
+      formData.append("funcionario_cargo", selectedFunc.cargo || "");
+      if (selectedFunc.cpf) formData.append("funcionario_cpf", selectedFunc.cpf);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-certificate`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: formData,
+        }
+      );
+
+      clearInterval(stepInterval);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: "Erro desconhecido" }));
+        throw new Error(errData.error || `Erro ${response.status}`);
+      }
+
+      const result = await response.json();
+      setFiles(prev => prev.map(f => f.id === id ? {
+        ...f, status: "analyzed" as const, analysis: result.analysis, dbId: result.analysisId || undefined,
+      } : f));
+      showSyncSaved();
+      toast({ title: "Reanálise concluída", description: `"${af.fileName}" foi reanalisado com sucesso.` });
+    } catch (err: any) {
+      clearInterval(stepInterval);
+      setSyncStatus("error");
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "error" as const, errorMsg: err.message } : f));
+    }
+
+    setShowScanModal(false);
+  };
+
   const toggleConfirm = (id: string) => {
     setFiles(prev => prev.map(f => f.id === id ? { ...f, confirmed: !f.confirmed } : f));
   };
