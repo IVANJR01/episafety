@@ -729,13 +729,17 @@ export default function Treinamentos() {
     funcionarios.forEach(f => {
       if (getRequiredCourses(f.cargo).length > 0) allFuncIds.add(f.id);
     });
-    // Apply setor filter if active
-    const filteredFuncIds = setorFilter
-      ? [...allFuncIds].filter(fid => {
-          const f = funcMap[fid];
-          return f?.setor === setorFilter;
-        })
-      : [...allFuncIds];
+    // Apply setor, unidade, and contrato filters
+    let filteredFuncIds = [...allFuncIds];
+    if (setorFilter) {
+      filteredFuncIds = filteredFuncIds.filter(fid => funcMap[fid]?.setor === setorFilter);
+    }
+    if (unidadeFilter) {
+      filteredFuncIds = filteredFuncIds.filter(fid => funcMap[fid]?.unidade_id === unidadeFilter);
+    }
+    if (contratoFilter) {
+      filteredFuncIds = filteredFuncIds.filter(fid => funcMap[fid]?.contrato_id === contratoFilter);
+    }
 
     const rows = filteredFuncIds.map(fid => {
       const func = funcMap[fid];
