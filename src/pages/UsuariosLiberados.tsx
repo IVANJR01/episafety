@@ -297,19 +297,30 @@ export default function UsuariosLiberados() {
 
   const handleSaveUserData = async (userId: string) => {
     setSavingData(true);
+    const newEmpresaId = editEmpresaId || null;
+    const newContratoId = (editContratoId && editContratoId !== "none") ? editContratoId : null;
+    const newEmail = editEmail.trim().toLowerCase();
+    const newNome = editNome.trim();
+
     const { error } = await (supabase.from as any)("usuarios_liberados")
       .update({
-        nome: editNome.trim(),
-        email: editEmail.trim().toLowerCase(),
-        empresa_id: editEmpresaId || null,
-        contrato_id: (editContratoId && editContratoId !== "none") ? editContratoId : null,
+        nome: newNome,
+        email: newEmail,
+        empresa_id: newEmpresaId,
+        contrato_id: newContratoId,
       })
       .eq("id", userId);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message.includes("unique") ? "Este e-mail já está cadastrado" : error.message, variant: "destructive" });
     } else {
+      // Sync profiles.empresa_id via edge function (bypasses RLS)
+      if (newEmpresaId) {
+        await supabase.functions.invoke("update-profile", {
+          body: { email: newEmail, empresa_id: newEmpresaId },
+        }).catch(() => {});
+      }
       toast({ title: "Dados atualizados!" });
-      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: editNome.trim(), email: editEmail.trim().toLowerCase(), empresa_id: editEmpresaId || null, contrato_id: (editContratoId && editContratoId !== "none") ? editContratoId : null } : u));
+      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: newNome, email: newEmail, empresa_id: newEmpresaId, contrato_id: newContratoId } : u));
     }
     setSavingData(false);
   };
