@@ -189,11 +189,13 @@ export default function UsuariosLiberados() {
 
     setAddingUser(true);
     try {
+      const targetEmpresaIdForProfile = novoEmpresaId || empresaId;
       const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
         body: {
           email: novoEmail.trim().toLowerCase(),
           password: novaSenha,
           nome: novoNome.trim(),
+          empresa_id: targetEmpresaIdForProfile,
         },
       });
 
