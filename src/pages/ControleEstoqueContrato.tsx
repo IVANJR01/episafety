@@ -836,7 +836,31 @@ export default function ControleEstoqueContrato() {
                                                 )}
                                               </div>
                                             </div>
-                                            <div className="overflow-auto rounded-md border border-border/60">
+                                            {/* Mobile: Card layout for movements */}
+                                            <div className="sm:hidden space-y-2 max-h-[300px] overflow-auto">
+                                              {filteredMovs.length === 0 ? (
+                                                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação no período</p>
+                                              ) : filteredMovs.map((mov, idx) => (
+                                                <div key={idx} className="rounded-lg border border-border/60 p-3 space-y-1">
+                                                  <div className="flex items-center justify-between gap-2">
+                                                    <Badge variant="secondary" className={`text-[9px] px-1.5 py-0 ${
+                                                      mov.tipo === "Entrada" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                                                      "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                                    }`}>
+                                                      {mov.tipo}
+                                                    </Badge>
+                                                    <span className="text-[10px] text-muted-foreground">{format(new Date(mov.data), "dd/MM/yy", { locale: ptBR })}</span>
+                                                  </div>
+                                                  <p className="text-xs font-semibold">{mov.epi_nome}</p>
+                                                  <div className="flex items-center justify-between text-[11px]">
+                                                    <span className="text-muted-foreground truncate max-w-[60%]">{mov.destino}</span>
+                                                    <span className="font-bold">Qtd: {mov.quantidade}</span>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                            {/* Desktop: Table layout for movements */}
+                                            <div className="hidden sm:block overflow-auto rounded-md border border-border/60">
                                               <Table>
                                                 <TableHeader>
                                                   <TableRow className="text-[10px]">
