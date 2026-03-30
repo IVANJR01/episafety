@@ -13,12 +13,34 @@ interface Props {
 
 export default function FullscreenSignature({ open, employeeName, employeeRole, onSave, onCancel, onFacialRecognition }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasHostRef = useRef<HTMLDivElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const retryTimerRef = useRef<number | null>(null);
   const resizeTimerRef = useRef<number | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const canvasSizeRef = useRef({ width: 0, height: 0 });
   const isClearingRef = useRef(false);
+  const isSubmittingRef = useRef(false);
   const [showNameInput, setShowNameInput] = useState(false);
   const [indicativeName, setIndicativeName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const scaleStrokeData = useCallback((data: any[], fromWidth: number, fromHeight: number, toWidth: number, toHeight: number) => {
+    if (!Array.isArray(data) || fromWidth <= 0 || fromHeight <= 0 || toWidth <= 0 || toHeight <= 0) return data;
+    const scaleX = toWidth / fromWidth;
+    const scaleY = toHeight / fromHeight;
+
+    return data.map((group) => ({
+      ...group,
+      points: Array.isArray(group?.points)
+        ? group.points.map((point: any) => ({
+            ...point,
+            x: typeof point?.x === "number" ? point.x * scaleX : point?.x,
+            y: typeof point?.y === "number" ? point.y * scaleY : point?.y,
+          }))
+        : group?.points,
+    }));
+  }, []);
 
   const initPad = useCallback(() => {
     if (!canvasRef.current) return false;
@@ -30,6 +52,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
 
     if (width < 2 || height < 2) return false;
 
+    const previousSize = canvasSizeRef.current;
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     const nextWidth = Math.round(width * ratio);
     const nextHeight = Math.round(height * ratio);
@@ -58,14 +81,16 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     });
 
     if (previousData.length > 0) {
-      padRef.current.fromData(previousData);
+      const scaledData = scaleStrokeData(previousData, previousSize.width, previousSize.height, width, height);
+      padRef.current.fromData(scaledData);
     } else {
       padRef.current.clear();
     }
 
+    canvasSizeRef.current = { width, height };
     isClearingRef.current = false;
     return true;
-  }, []);
+  }, [scaleStrokeData]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,8 +100,15 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     document.body.style.overflow = "hidden";
     document.body.style.touchAction = "none";
     isClearingRef.current = false;
+    isSubmittingRef.current = false;
+    setIsSubmitting(false);
     setShowNameInput(false);
     setIndicativeName("");
+
+    const orientation = (screen as any)?.orientation;
+    if (typeof orientation?.lock === "function") {
+      orientation.lock("landscape").catch(() => null);
+    }
 
     let attempts = 0;
     let disposed = false;
@@ -92,25 +124,42 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
 
     tryInit();
 
-    const handleResize = () => {
+    const scheduleResize = () => {
       if (resizeTimerRef.current) window.clearTimeout(resizeTimerRef.current);
-      resizeTimerRef.current = window.setTimeout(() => initPad(), 100);
+      resizeTimerRef.current = window.setTimeout(() => initPad(), 80);
     };
 
-    window.addEventListener("resize", handleResize);
+    window.addEventListener("resize", scheduleResize);
+
+    if (canvasHostRef.current && "ResizeObserver" in window) {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = new ResizeObserver(() => scheduleResize());
+      resizeObserverRef.current.observe(canvasHostRef.current);
+    }
 
     return () => {
       disposed = true;
       if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
       if (resizeTimerRef.current) window.clearTimeout(resizeTimerRef.current);
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", scheduleResize);
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       padRef.current?.off();
+      if (typeof orientation?.unlock === "function") orientation.unlock();
       document.body.style.overflow = previousOverflow;
       document.body.style.touchAction = previousTouchAction;
     };
   }, [open, initPad]);
 
+  const handleCancel = () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    onCancel();
+  };
+
   const handleClear = () => {
+    if (isSubmittingRef.current) return;
     isClearingRef.current = true;
     padRef.current?.clear();
     const canvas = canvasRef.current;
@@ -128,12 +177,16 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   };
 
   const handleSave = () => {
+    if (isSubmittingRef.current) return;
     if (padRef.current?.isEmpty()) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     const dataUrl = padRef.current.toDataURL("image/jpeg", 0.8);
     onSave(dataUrl);
   };
 
   const handleSaveIndicativeName = () => {
+    if (isSubmittingRef.current) return;
     const name = indicativeName.trim();
     if (!name) return;
 
@@ -174,6 +227,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     ctx.lineTo((width + textWidth) / 2, height / 2 + fontSize * 0.55);
     ctx.stroke();
 
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
     onSave(dataUrl);
   };
@@ -185,7 +240,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b shrink-0 safe-area-top">
         <button
           type="button"
-          onClick={onCancel}
+          onClick={handleCancel}
+          disabled={isSubmitting}
           className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-2 py-1"
         >
           Cancelar
@@ -193,6 +249,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         <button
           type="button"
           onClick={handleClear}
+          disabled={isSubmitting}
           className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-2 py-1"
         >
           Limpar
@@ -200,9 +257,10 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         <button
           type="button"
           onClick={handleSave}
+          disabled={isSubmitting}
           className="text-sm font-semibold text-primary uppercase tracking-wide px-2 py-1"
         >
-          Salvar
+          {isSubmitting ? "Salvando..." : "Salvar"}
         </button>
       </div>
 
@@ -223,6 +281,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
             <button
               type="button"
               onClick={() => { setShowNameInput(false); setIndicativeName(""); }}
+              disabled={isSubmitting}
               className="px-5 py-2.5 text-sm font-semibold text-muted-foreground border border-input rounded-lg"
             >
               Voltar
@@ -230,7 +289,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
             <button
               type="button"
               onClick={handleSaveIndicativeName}
-              disabled={!indicativeName.trim()}
+              disabled={!indicativeName.trim() || isSubmitting}
               className="px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-lg disabled:opacity-40"
             >
               Confirmar Nome
@@ -238,7 +297,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
           </div>
         </div>
       ) : (
-        <div className="flex-1 relative min-h-0">
+        <div ref={canvasHostRef} className="flex-1 relative min-h-0">
           <canvas
             ref={canvasRef}
             className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
@@ -251,6 +310,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
           <button
             type="button"
             onClick={() => {
+                if (isSubmitting) return;
               if (onFacialRecognition) {
                 onFacialRecognition();
               } else {
