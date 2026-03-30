@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, password, nome } = await req.json();
+    const { email, password, nome, empresa_id } = await req.json();
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "Email e senha são obrigatórios" }), {
@@ -52,6 +52,10 @@ Deno.serve(async (req) => {
         if (existingUser) {
           // Update password for existing user
           await adminClient.auth.admin.updateUserById(existingUser.id, { password });
+          // Also update empresa_id on profile if provided
+          if (empresa_id) {
+            await adminClient.from("profiles").update({ empresa_id }).eq("user_id", existingUser.id);
+          }
           return new Response(JSON.stringify({ user_id: existingUser.id, already_exists: true }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -62,6 +66,13 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Update empresa_id on the profile created by trigger (which doesn't set empresa_id)
+    if (empresa_id && newUser.user.id) {
+      // Small delay to ensure trigger has fired and profile exists
+      await new Promise((r) => setTimeout(r, 500));
+      await adminClient.from("profiles").update({ empresa_id }).eq("user_id", newUser.user.id);
     }
 
     return new Response(JSON.stringify({ user_id: newUser.user.id }), {

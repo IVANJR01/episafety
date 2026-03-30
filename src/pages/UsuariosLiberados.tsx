@@ -182,6 +182,11 @@ export default function UsuariosLiberados() {
       toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
       return;
     }
+    const targetEmpresa = novoEmpresaId || empresaId;
+    if (!targetEmpresa) {
+      toast({ title: "Selecione uma Unidade", description: "O vínculo com uma unidade é obrigatório para que o usuário tenha acesso aos dados.", variant: "destructive" });
+      return;
+    }
     if (!isOnline()) {
       toast({ title: "Sem conexão", description: "Criar usuários requer conexão com a internet.", variant: "destructive" });
       return;
@@ -189,11 +194,13 @@ export default function UsuariosLiberados() {
 
     setAddingUser(true);
     try {
+      const targetEmpresaIdForProfile = novoEmpresaId || empresaId;
       const { data: fnData, error: fnError } = await supabase.functions.invoke("create-user", {
         body: {
           email: novoEmail.trim().toLowerCase(),
           password: novaSenha,
           nome: novoNome.trim(),
+          empresa_id: targetEmpresaIdForProfile,
         },
       });
 
@@ -215,9 +222,7 @@ export default function UsuariosLiberados() {
       if (error) {
         toast({ title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar", description: error.message, variant: "destructive" });
       } else {
-        if (targetEmpresaId && fnData?.user_id) {
-          await (supabase.from as any)("profiles").update({ empresa_id: targetEmpresaId }).eq("user_id", fnData.user_id);
-        }
+        // empresa_id on profiles is now set by the edge function (service role, bypasses RLS)
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado com sucesso!" });
         setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId(""); setNovoContratoId("");
         setNewOpen(false);
@@ -297,19 +302,30 @@ export default function UsuariosLiberados() {
 
   const handleSaveUserData = async (userId: string) => {
     setSavingData(true);
+    const newEmpresaId = editEmpresaId || null;
+    const newContratoId = (editContratoId && editContratoId !== "none") ? editContratoId : null;
+    const newEmail = editEmail.trim().toLowerCase();
+    const newNome = editNome.trim();
+
     const { error } = await (supabase.from as any)("usuarios_liberados")
       .update({
-        nome: editNome.trim(),
-        email: editEmail.trim().toLowerCase(),
-        empresa_id: editEmpresaId || null,
-        contrato_id: (editContratoId && editContratoId !== "none") ? editContratoId : null,
+        nome: newNome,
+        email: newEmail,
+        empresa_id: newEmpresaId,
+        contrato_id: newContratoId,
       })
       .eq("id", userId);
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message.includes("unique") ? "Este e-mail já está cadastrado" : error.message, variant: "destructive" });
     } else {
+      // Sync profiles.empresa_id via edge function (bypasses RLS)
+      if (newEmpresaId) {
+        await supabase.functions.invoke("update-profile", {
+          body: { email: newEmail, empresa_id: newEmpresaId },
+        }).catch(() => {});
+      }
       toast({ title: "Dados atualizados!" });
-      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: editNome.trim(), email: editEmail.trim().toLowerCase(), empresa_id: editEmpresaId || null, contrato_id: (editContratoId && editContratoId !== "none") ? editContratoId : null } : u));
+      setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: newNome, email: newEmail, empresa_id: newEmpresaId, contrato_id: newContratoId } : u));
     }
     setSavingData(false);
   };
