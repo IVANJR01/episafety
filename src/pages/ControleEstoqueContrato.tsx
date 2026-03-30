@@ -718,7 +718,34 @@ export default function ControleEstoqueContrato() {
                                           <p className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
                                             <Package className="w-3.5 h-3.5" /> Estoque
                                           </p>
-                                          <div className="overflow-auto max-h-[250px] rounded-md border border-border/60">
+                                          {/* Mobile: Card layout */}
+                                          <div className="sm:hidden space-y-2 max-h-[300px] overflow-auto">
+                                            {contrato.itens.length === 0 ? (
+                                              <p className="text-xs text-muted-foreground text-center py-4">Nenhum EPI cadastrado</p>
+                                            ) : contrato.itens.map((item, idx) => (
+                                              <div key={idx} className="rounded-lg border border-border/60 p-3 space-y-1.5">
+                                                <div className="flex items-start justify-between gap-2">
+                                                  <p className="text-xs font-semibold leading-tight flex-1">
+                                                    {item.epi_nome}
+                                                    {item.tamanho && <span className="ml-1 text-[10px] text-muted-foreground font-normal">({item.tamanho})</span>}
+                                                  </p>
+                                                  {item.estoque === 0 ? (
+                                                    <Badge variant="destructive" className="text-[9px] px-1.5 py-0 shrink-0">Zerado</Badge>
+                                                  ) : item.estoque <= item.estoque_minimo ? (
+                                                    <Badge variant="outline" className="text-amber-600 border-amber-300 text-[9px] px-1.5 py-0 shrink-0">Baixo</Badge>
+                                                  ) : (
+                                                    <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-[9px] px-1.5 py-0 shrink-0">OK</Badge>
+                                                  )}
+                                                </div>
+                                                <div className="flex items-center gap-4 text-[11px]">
+                                                  <span className="text-muted-foreground">Estoque: <strong className="text-foreground">{item.estoque}</strong></span>
+                                                  <span className="text-muted-foreground">Valor: <strong className="text-foreground">R$ {item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong></span>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                          {/* Desktop: Table layout */}
+                                          <div className="hidden sm:block overflow-auto max-h-[250px] rounded-md border border-border/60">
                                             <Table>
                                               <TableHeader>
                                                 <TableRow className="text-[10px]">
@@ -809,7 +836,31 @@ export default function ControleEstoqueContrato() {
                                                 )}
                                               </div>
                                             </div>
-                                            <div className="overflow-auto rounded-md border border-border/60">
+                                            {/* Mobile: Card layout for movements */}
+                                            <div className="sm:hidden space-y-2 max-h-[300px] overflow-auto">
+                                              {filteredMovs.length === 0 ? (
+                                                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação no período</p>
+                                              ) : filteredMovs.map((mov, idx) => (
+                                                <div key={idx} className="rounded-lg border border-border/60 p-3 space-y-1">
+                                                  <div className="flex items-center justify-between gap-2">
+                                                    <Badge variant="secondary" className={`text-[9px] px-1.5 py-0 ${
+                                                      mov.tipo === "Entrada" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                                                      "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                                    }`}>
+                                                      {mov.tipo}
+                                                    </Badge>
+                                                    <span className="text-[10px] text-muted-foreground">{format(new Date(mov.data), "dd/MM/yy", { locale: ptBR })}</span>
+                                                  </div>
+                                                  <p className="text-xs font-semibold">{mov.epi_nome}</p>
+                                                  <div className="flex items-center justify-between text-[11px]">
+                                                    <span className="text-muted-foreground truncate max-w-[60%]">{mov.destino}</span>
+                                                    <span className="font-bold">Qtd: {mov.quantidade}</span>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                            {/* Desktop: Table layout for movements */}
+                                            <div className="hidden sm:block overflow-auto rounded-md border border-border/60">
                                               <Table>
                                                 <TableHeader>
                                                   <TableRow className="text-[10px]">
