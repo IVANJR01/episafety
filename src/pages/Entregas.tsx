@@ -6,7 +6,7 @@ import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
-import { isOnline, addToSyncQueue, getCachedData, setCachedData, getSyncQueue } from "@/lib/offlineStorage";
+import { isOnline, addToSyncQueue, getCachedData, setCachedData, getSyncQueue, removeFromSyncQueue } from "@/lib/offlineStorage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,7 +78,7 @@ export default function Entregas() {
   const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
   const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
 
-  const resetSignFlow = useCallback(() => {
+  const resetSignState = useCallback(() => {
     setSignOpen(false);
     setPendingEntrega(null);
     setSelectedUnsigned([]);
@@ -90,6 +90,45 @@ export default function Entregas() {
     setFullscreenSigOpen(false);
   }, []);
 
+  const rollbackPendingEntrega = useCallback(async () => {
+    const ids = pendingEntrega?.entrega_ids || [];
+    if (signMode !== "new" || ids.length === 0) return true;
+
+    if (!isOnline()) {
+      const queueIdsToRemove = getSyncQueue()
+        .filter(op => op.table === "entregas" && ids.includes(op.payload?.id))
+        .map(op => op.id);
+
+      queueIdsToRemove.forEach(removeFromSyncQueue);
+
+      const cached = getCachedData<Entrega>("entregas") || [];
+      setCachedData("entregas", cached.filter((e) => !ids.includes(e.id)));
+      toast({ title: "Entrega cancelada", description: "Registro temporário removido do histórico local." });
+      refetch();
+      return true;
+    }
+
+    const { error } = await (supabase.from as any)("entregas")
+      .delete()
+      .in("id", ids);
+
+    if (error) {
+      toast({ title: "Falha ao cancelar entrega", description: "Tente novamente para remover do histórico.", variant: "destructive" });
+      return false;
+    }
+
+    toast({ title: "Entrega cancelada", description: "Nenhum registro foi mantido no histórico." });
+    refetch();
+    return true;
+  }, [pendingEntrega, signMode, toast, refetch]);
+
+  const handleCancelSignatureFlow = useCallback(async () => {
+    if (savingConfirmation) return;
+    const rolledBack = await rollbackPendingEntrega();
+    if (!rolledBack) return;
+    resetSignState();
+  }, [rollbackPendingEntrega, resetSignState, savingConfirmation]);
+
   const openFullscreenSignature = useCallback(() => {
     setShouldOpenSignatureAfterSave(false);
     setSignOpen(false);
@@ -99,7 +138,22 @@ export default function Entregas() {
   }, []);
 
   const closeFullscreenSignature = useCallback((dataUrl?: string) => {
-    if (dataUrl) setSavedSignatureDataUrl(dataUrl);
+    if (savingConfirmation) return;
+
+    if (!dataUrl) {
+      if (signMode === "new" && pendingEntrega) {
+        void handleCancelSignatureFlow();
+        return;
+      }
+
+      setFullscreenSigOpen(false);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setSignOpen(true));
+      });
+      return;
+    }
+
+    setSavedSignatureDataUrl(dataUrl);
     setFullscreenSigOpen(false);
 
     if (dataUrl && signMode === "new" && pendingEntrega) {
@@ -140,7 +194,7 @@ export default function Entregas() {
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setSignOpen(true));
     });
-  }, [signMode, pendingEntrega, empresaId, refetch, toast]);
+  }, [savingConfirmation, signMode, pendingEntrega, refetch, toast, handleCancelSignatureFlow]);
 
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
@@ -1057,7 +1111,7 @@ export default function Entregas() {
             setSignOpen(false);
             return;
           }
-          resetSignFlow();
+          void handleCancelSignatureFlow();
           return;
         }
         setSignOpen(true);
@@ -1188,7 +1242,7 @@ export default function Entregas() {
             )}
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => { resetSignFlow(); refetch(); }}>
+            <Button variant="outline" onClick={() => void handleCancelSignatureFlow()} disabled={savingConfirmation}>
               Cancelar
             </Button>
             <Button
