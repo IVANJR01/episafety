@@ -217,9 +217,7 @@ export default function UsuariosLiberados() {
       if (error) {
         toast({ title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar", description: error.message, variant: "destructive" });
       } else {
-        if (targetEmpresaId && fnData?.user_id) {
-          await (supabase.from as any)("profiles").update({ empresa_id: targetEmpresaId }).eq("user_id", fnData.user_id);
-        }
+        // empresa_id on profiles is now set by the edge function (service role, bypasses RLS)
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado com sucesso!" });
         setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId(""); setNovoContratoId("");
         setNewOpen(false);
