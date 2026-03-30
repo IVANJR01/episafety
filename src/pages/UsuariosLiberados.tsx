@@ -182,6 +182,11 @@ export default function UsuariosLiberados() {
       toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
       return;
     }
+    const targetEmpresa = novoEmpresaId || empresaId;
+    if (!targetEmpresa) {
+      toast({ title: "Selecione uma Unidade", description: "O vínculo com uma unidade é obrigatório para que o usuário tenha acesso aos dados.", variant: "destructive" });
+      return;
+    }
     if (!isOnline()) {
       toast({ title: "Sem conexão", description: "Criar usuários requer conexão com a internet.", variant: "destructive" });
       return;
