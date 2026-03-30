@@ -92,7 +92,7 @@ export default function Entregas() {
 
   const rollbackPendingEntrega = useCallback(async () => {
     const ids = pendingEntrega?.entrega_ids || [];
-    if (signMode !== "new" || ids.length === 0) return;
+    if (signMode !== "new" || ids.length === 0) return true;
 
     if (!isOnline()) {
       const queueIdsToRemove = getSyncQueue()
@@ -105,7 +105,7 @@ export default function Entregas() {
       setCachedData("entregas", cached.filter((e) => !ids.includes(e.id)));
       toast({ title: "Entrega cancelada", description: "Registro temporário removido do histórico local." });
       refetch();
-      return;
+      return true;
     }
 
     const { error } = await (supabase.from as any)("entregas")
@@ -114,16 +114,18 @@ export default function Entregas() {
 
     if (error) {
       toast({ title: "Falha ao cancelar entrega", description: "Tente novamente para remover do histórico.", variant: "destructive" });
-      return;
+      return false;
     }
 
     toast({ title: "Entrega cancelada", description: "Nenhum registro foi mantido no histórico." });
     refetch();
+    return true;
   }, [pendingEntrega, signMode, toast, refetch]);
 
   const handleCancelSignatureFlow = useCallback(async () => {
     if (savingConfirmation) return;
-    await rollbackPendingEntrega();
+    const rolledBack = await rollbackPendingEntrega();
+    if (!rolledBack) return;
     resetSignState();
   }, [rollbackPendingEntrega, resetSignState, savingConfirmation]);
 
