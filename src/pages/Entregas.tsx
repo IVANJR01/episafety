@@ -77,6 +77,7 @@ export default function Entregas() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
   const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
+  const [sigNonce, setSigNonce] = useState(0);
 
   const resetSignState = useCallback(() => {
     setSignOpen(false);
