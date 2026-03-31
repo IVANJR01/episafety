@@ -1264,6 +1264,7 @@ export default function Entregas() {
       </Dialog>
 
       <FullscreenSignature
+        key={sigNonce}
         open={fullscreenSigOpen}
         employeeName={(() => {
           const fid = signMode === "new" ? pendingEntrega?.funcionario_id : signFuncId;
