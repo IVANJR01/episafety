@@ -89,6 +89,7 @@ export default function Entregas() {
     setCapturedPhoto(null);
     setSavedSignatureDataUrl(null);
     setFullscreenSigOpen(false);
+    setSigNonce(n => n + 1);
   }, []);
 
   const rollbackPendingEntrega = useCallback(async () => {
