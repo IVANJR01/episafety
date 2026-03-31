@@ -428,6 +428,7 @@ export default function Entregas() {
     setShouldOpenSignatureAfterSave(false);
     setSignMode("new");
     setSignInputType("assinatura");
+    setSigNonce(n => n + 1);
     setFullscreenSigOpen(true);
   }, [shouldOpenSignatureAfterSave, open, pendingEntrega, fullscreenSigOpen, signOpen]);
 
