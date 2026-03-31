@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { addToSyncQueue, getCachedData, isOnline, setCachedData } from "@/lib/offlineStorage";
 
 interface CursoDocumento {
   id: string;
@@ -35,10 +36,19 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
 
   const fetchData = async () => {
     setLoading(true);
+    if (!isOnline()) {
+      setItems(getCachedData<CursoDocumento>("cursos_documentos") || []);
+      setLoading(false);
+      return;
+    }
+
     const { data } = await (supabase.from as any)("cursos_documentos")
       .select("*")
       .order("nome");
-    if (data) setItems(data);
+    if (data) {
+      setItems(data);
+      setCachedData("cursos_documentos", data);
+    }
     setLoading(false);
   };
 
@@ -72,6 +82,83 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
     }
     const newName = form.nome.trim();
     const payload = { nome: newName, validade_meses: form.validade_meses, empresa_id: empresaId };
+
+    if (!isOnline()) {
+      const cachedItems = getCachedData<CursoDocumento>("cursos_documentos") || items;
+
+      if (editing) {
+        const oldName = editing.nome;
+        addToSyncQueue({ table: "cursos_documentos", type: "update", payload: { id: editing.id, ...payload } });
+
+        const nextItems = cachedItems.map((item) =>
+          item.id === editing.id ? { ...item, ...payload } : item
+        );
+        setItems(nextItems);
+        setCachedData("cursos_documentos", nextItems);
+
+        if (oldName !== newName) {
+          const requisitos = getCachedData<any>("requisitos_cliente") || [];
+          const requisitosUpdated = requisitos.map((row: any) =>
+            row.curso_nome === oldName ? { ...row, curso_nome: newName } : row
+          );
+          requisitos
+            .filter((row: any) => row.curso_nome === oldName)
+            .forEach((row: any) => {
+              addToSyncQueue({
+                table: "requisitos_cliente",
+                type: "update",
+                payload: { id: row.id, curso_nome: newName },
+              });
+            });
+          setCachedData("requisitos_cliente", requisitosUpdated);
+
+          const treinamentos = getCachedData<any>("controle_treinamentos") || [];
+          const treinamentosUpdated = treinamentos.map((row: any) =>
+            row.nome_curso === oldName ? { ...row, nome_curso: newName } : row
+          );
+          treinamentos
+            .filter((row: any) => row.nome_curso === oldName)
+            .forEach((row: any) => {
+              addToSyncQueue({
+                table: "controle_treinamentos",
+                type: "update",
+                payload: { id: row.id, nome_curso: newName },
+              });
+            });
+          setCachedData("controle_treinamentos", treinamentosUpdated);
+
+          const dispensas = getCachedData<any>("dispensas_requisito") || [];
+          const dispensasUpdated = dispensas.map((row: any) =>
+            row.curso_nome === oldName ? { ...row, curso_nome: newName } : row
+          );
+          dispensas
+            .filter((row: any) => row.curso_nome === oldName)
+            .forEach((row: any) => {
+              addToSyncQueue({
+                table: "dispensas_requisito",
+                type: "update",
+                payload: { id: row.id, curso_nome: newName },
+              });
+            });
+          setCachedData("dispensas_requisito", dispensasUpdated);
+        }
+
+        toast({ title: "Atualizado offline", description: "Será sincronizado quando houver conexão." });
+      } else {
+        const newItem: CursoDocumento = { id: crypto.randomUUID(), ...payload };
+        addToSyncQueue({ table: "cursos_documentos", type: "insert", payload: newItem });
+
+        const nextItems = [newItem, ...cachedItems];
+        setItems(nextItems);
+        setCachedData("cursos_documentos", nextItems);
+
+        toast({ title: "Cadastrado offline", description: "Será sincronizado quando houver conexão." });
+      }
+
+      setOpen(false);
+      onUpdate?.();
+      return;
+    }
 
     if (editing) {
       const oldName = editing.nome;
@@ -108,6 +195,16 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isOnline()) {
+      addToSyncQueue({ table: "cursos_documentos", type: "delete", payload: { id } });
+      const nextItems = (getCachedData<CursoDocumento>("cursos_documentos") || items).filter((item) => item.id !== id);
+      setItems(nextItems);
+      setCachedData("cursos_documentos", nextItems);
+      toast({ title: "Removido offline", description: "Será sincronizado quando houver conexão." });
+      onUpdate?.();
+      return;
+    }
+
     await (supabase.from as any)("cursos_documentos").delete().eq("id", id);
     fetchData();
     onUpdate?.();

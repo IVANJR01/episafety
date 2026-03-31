@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { addToSyncQueue, getCachedData, isOnline, setCachedData } from "@/lib/offlineStorage";
 
 interface RequisitoCliente {
   id: string;
@@ -53,13 +54,36 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
 
   const fetchData = async () => {
     setLoading(true);
+
+    if (!isOnline()) {
+      const cachedReqs = getCachedData<RequisitoCliente>("requisitos_cliente") || [];
+      const cachedCursos = getCachedData<CursoDocumento>("cursos_documentos") || [];
+      const cachedFuncs = getCachedData<{ cargo: string | null }>("funcionarios") || [];
+
+      setRequisitos(cachedReqs);
+      setCursos(cachedCursos);
+      const unique = [...new Set(cachedFuncs.map((f) => f.cargo).filter(Boolean))] as string[];
+      setCargosExistentes(unique.sort());
+      setLoading(false);
+      return;
+    }
+
     const [{ data: reqData }, { data: cursosData }, { data: funcsData }] = await Promise.all([
       (supabase.from as any)("requisitos_cliente").select("*").order("curso_nome"),
       (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome"),
       supabase.from("funcionarios").select("cargo"),
     ]);
-    if (reqData) setRequisitos(reqData);
-    if (cursosData) setCursos(cursosData);
+    if (reqData) {
+      setRequisitos(reqData);
+      setCachedData("requisitos_cliente", reqData);
+    }
+    if (cursosData) {
+      setCursos(cursosData);
+      setCachedData("cursos_documentos", cursosData);
+    }
+    if (funcsData) {
+      setCachedData("funcionarios", funcsData as any);
+    }
     if (funcsData) {
       const unique = [...new Set(funcsData.map((f: any) => f.cargo).filter(Boolean))] as string[];
       setCargosExistentes(unique.sort());
@@ -178,6 +202,82 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
       arr.findIndex(x => x.curso_nome === c.curso_nome) === idx
     );
 
+    if (!isOnline()) {
+      let nextReqs = [...(getCachedData<RequisitoCliente>("requisitos_cliente") || requisitos)];
+
+      // 1) Remove selected functions from existing requirements
+      const affectedReqs = nextReqs.filter((r) =>
+        r.funcoes_exigidas?.some((f) => funcoesMultiplas.includes(f))
+      );
+
+      for (const req of affectedReqs) {
+        const newFuncoes = (req.funcoes_exigidas || []).filter((f) => !funcoesMultiplas.includes(f));
+
+        if (newFuncoes.length === 0) {
+          addToSyncQueue({ table: "requisitos_cliente", type: "delete", payload: { id: req.id } });
+          nextReqs = nextReqs.filter((r) => r.id !== req.id);
+        } else {
+          addToSyncQueue({
+            table: "requisitos_cliente",
+            type: "update",
+            payload: { id: req.id, funcoes_exigidas: newFuncoes },
+          });
+          nextReqs = nextReqs.map((r) => (r.id === req.id ? { ...r, funcoes_exigidas: newFuncoes } : r));
+        }
+      }
+
+      // 2) Merge/add selected courses
+      for (const curso of uniqueCursos) {
+        const existingReq = nextReqs.find((r) => r.curso_nome === curso.curso_nome);
+
+        if (existingReq) {
+          const mergedFuncoes = [...new Set([...(existingReq.funcoes_exigidas || []), ...funcoesMultiplas])];
+          const payload = {
+            id: existingReq.id,
+            funcoes_exigidas: mergedFuncoes,
+            carga_horaria_minima: curso.carga_horaria || existingReq.carga_horaria_minima,
+            validade_meses: curso.permanente ? 0 : curso.validade_meses,
+          };
+
+          addToSyncQueue({ table: "requisitos_cliente", type: "update", payload });
+          nextReqs = nextReqs.map((r) =>
+            r.id === existingReq.id
+              ? {
+                  ...r,
+                  funcoes_exigidas: mergedFuncoes,
+                  carga_horaria_minima: payload.carga_horaria_minima,
+                  validade_meses: payload.validade_meses,
+                }
+              : r
+          );
+        } else {
+          const newReq: RequisitoCliente = {
+            id: crypto.randomUUID(),
+            nome_cliente: "Matriz Unificada",
+            curso_nome: curso.curso_nome,
+            funcoes_exigidas: [...funcoesMultiplas],
+            carga_horaria_minima: curso.carga_horaria,
+            validade_meses: curso.permanente ? 0 : curso.validade_meses,
+            descricao: null,
+          };
+
+          addToSyncQueue({
+            table: "requisitos_cliente",
+            type: "insert",
+            payload: { ...newReq, empresa_id: empresaId },
+          });
+          nextReqs = [...nextReqs, newReq];
+        }
+      }
+
+      setRequisitos(nextReqs);
+      setCachedData("requisitos_cliente", nextReqs);
+      toast({ title: `Requisitos salvos offline para ${funcoesMultiplas.length} função(ões)!` });
+      setOpen(false);
+      onUpdate?.();
+      return;
+    }
+
     // 1. Remove all selected functions from existing requisitos in batch
     const affectedReqs = requisitos.filter(r =>
       r.funcoes_exigidas?.some(f => funcoesMultiplas.includes(f))
@@ -252,6 +352,33 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
   const handleDeleteGroup = async (funcoes: string[], reqs: RequisitoCliente[]) => {
     const label = funcoes.length === 1 ? `"${funcoes[0]}"` : `${funcoes.length} funções (${funcoes.join(", ")})`;
     if (!confirm(`Remover todos os requisitos de ${label}?`)) return;
+
+    if (!isOnline()) {
+      let nextReqs = [...(getCachedData<RequisitoCliente>("requisitos_cliente") || requisitos)];
+      const groupReqs = nextReqs.filter((r) => r.funcoes_exigidas?.some((f) => funcoes.includes(f)));
+
+      for (const req of groupReqs) {
+        const newFuncoes = (req.funcoes_exigidas || []).filter((f) => !funcoes.includes(f));
+        if (newFuncoes.length === 0) {
+          addToSyncQueue({ table: "requisitos_cliente", type: "delete", payload: { id: req.id } });
+          nextReqs = nextReqs.filter((r) => r.id !== req.id);
+        } else {
+          addToSyncQueue({
+            table: "requisitos_cliente",
+            type: "update",
+            payload: { id: req.id, funcoes_exigidas: newFuncoes },
+          });
+          nextReqs = nextReqs.map((r) => (r.id === req.id ? { ...r, funcoes_exigidas: newFuncoes } : r));
+        }
+      }
+
+      setRequisitos(nextReqs);
+      setCachedData("requisitos_cliente", nextReqs);
+      toast({ title: "Requisitos removidos offline!" });
+      onUpdate?.();
+      return;
+    }
+
     for (const funcao of funcoes) {
       const funcaoReqs = requisitos.filter(r => r.funcoes_exigidas?.includes(funcao));
       for (const req of funcaoReqs) {
