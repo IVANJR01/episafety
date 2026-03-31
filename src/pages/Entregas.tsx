@@ -77,6 +77,7 @@ export default function Entregas() {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
   const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
+  const [sigNonce, setSigNonce] = useState(0);
 
   const resetSignState = useCallback(() => {
     setSignOpen(false);
@@ -88,6 +89,7 @@ export default function Entregas() {
     setCapturedPhoto(null);
     setSavedSignatureDataUrl(null);
     setFullscreenSigOpen(false);
+    setSigNonce(n => n + 1);
   }, []);
 
   const rollbackPendingEntrega = useCallback(async () => {
@@ -132,6 +134,7 @@ export default function Entregas() {
   const openFullscreenSignature = useCallback(() => {
     setShouldOpenSignatureAfterSave(false);
     setSignOpen(false);
+    setSigNonce(n => n + 1);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setFullscreenSigOpen(true));
     });
@@ -425,6 +428,7 @@ export default function Entregas() {
     setShouldOpenSignatureAfterSave(false);
     setSignMode("new");
     setSignInputType("assinatura");
+    setSigNonce(n => n + 1);
     setFullscreenSigOpen(true);
   }, [shouldOpenSignatureAfterSave, open, pendingEntrega, fullscreenSigOpen, signOpen]);
 
@@ -1262,6 +1266,7 @@ export default function Entregas() {
       </Dialog>
 
       <FullscreenSignature
+        key={sigNonce}
         open={fullscreenSigOpen}
         employeeName={(() => {
           const fid = signMode === "new" ? pendingEntrega?.funcionario_id : signFuncId;
