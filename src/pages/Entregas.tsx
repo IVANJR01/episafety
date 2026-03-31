@@ -1350,6 +1350,64 @@ export default function Entregas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Devolução confirmation dialog */}
+      <Dialog open={devolucaoDialogOpen} onOpenChange={(v) => { if (!devolucaoSaving) setDevolucaoDialogOpen(v); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Undo2 className="w-5 h-5" />
+              Confirmar Devolução de EPI
+            </DialogTitle>
+          </DialogHeader>
+          {devolucaoTarget && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border p-3 space-y-1 bg-muted/30">
+                <p className="text-sm"><span className="text-muted-foreground">Colaborador:</span> <strong>{getName(funcionarios, devolucaoTarget.funcionario_id)}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">EPI:</span> <strong>{getName(epis, devolucaoTarget.epi_id)}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">Quantidade:</span> <strong>{devolucaoTarget.quantidade}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">Data entrega:</span> {devolucaoTarget.data}</p>
+              </div>
+
+              <div>
+                <Label>Destino do item</Label>
+                <Select value={devolucaoDestino} onValueChange={(v) => setDevolucaoDestino(v as "estoque" | "descarte")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {devolucaoDestinos.map((d) => (
+                      <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {devolucaoDestino === "estoque"
+                    ? "O item será devolvido ao saldo disponível da unidade."
+                    : "O item será registrado como avaria/descarte e NÃO voltará ao estoque."}
+                </p>
+              </div>
+
+              <div>
+                <Label>Observações sobre o estado do item</Label>
+                <Textarea
+                  placeholder="Ex: Item com defeito, vencido, sem uso, etc."
+                  value={devolucaoObs}
+                  onChange={(e) => setDevolucaoObs(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDevolucaoDialogOpen(false)} disabled={devolucaoSaving}>Cancelar</Button>
+            <Button onClick={confirmDevolver} disabled={devolucaoSaving}>
+              {devolucaoSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Undo2 className="w-4 h-4 mr-2" />}
+              Confirmar Devolução
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
