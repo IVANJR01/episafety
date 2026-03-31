@@ -30,6 +30,10 @@ interface EpiItem { epi: EPI; quantidade: number; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
+const devolucaoDestinos = [
+  { value: "estoque", label: "Retornar ao estoque" },
+  { value: "descarte", label: "Descarte / Avaria" },
+] as const;
 
 const normalizeEntregaTipo = (value?: string | null): keyof typeof tipoLabels => {
   const normalized = (value || "")
@@ -78,6 +82,13 @@ export default function Entregas() {
   const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
   const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
   const [sigNonce, setSigNonce] = useState(0);
+
+  // Devolução confirmation modal state
+  const [devolucaoDialogOpen, setDevolucaoDialogOpen] = useState(false);
+  const [devolucaoTarget, setDevolucaoTarget] = useState<Entrega | null>(null);
+  const [devolucaoObs, setDevolucaoObs] = useState("");
+  const [devolucaoDestino, setDevolucaoDestino] = useState<"estoque" | "descarte">("estoque");
+  const [devolucaoSaving, setDevolucaoSaving] = useState(false);
 
   const resetSignState = useCallback(() => {
     setSignOpen(false);
@@ -591,32 +602,36 @@ export default function Entregas() {
 
   const handleDevolver = async (entrega: Entrega) => {
     if (!canEdit) return;
+    setDevolucaoTarget(entrega);
+    setDevolucaoObs("");
+    setDevolucaoDestino("estoque");
+    setDevolucaoDialogOpen(true);
+  };
+
+  const confirmDevolver = async () => {
+    if (!devolucaoTarget) return;
+    setDevolucaoSaving(true);
+
+    const entrega = devolucaoTarget;
     const epiObj = epis.find(ep => ep.id === entrega.epi_id);
     const funcObj = funcionarios.find(f => f.id === entrega.funcionario_id);
+    const obsText = [
+      `Devolução ref. entrega de ${entrega.data}`,
+      devolucaoDestino === "descarte" ? "[DESCARTE/AVARIA - não retornado ao estoque]" : null,
+      devolucaoObs.trim() || null,
+    ].filter(Boolean).join(" • ");
 
     try {
-      const userResult = await supabase.auth.getUser();
-      const currentUserId = userResult.data.user?.id || null;
-      let responsavelNome: string | null = null;
-
-      if (currentUserId) {
-        const { data: profile } = await (supabase.from as any)("profiles")
-          .select("nome")
-          .eq("user_id", currentUserId)
-          .maybeSingle();
-        responsavelNome = profile?.nome || null;
-      }
-
       await (supabase.from as any)("entregas").update({ status: "devolvido" }).eq("id", entrega.id);
 
       const { error: devolucaoError } = await (supabase.from as any)("entregas").insert({
         funcionario_id: entrega.funcionario_id,
         epi_id: entrega.epi_id,
-        quantidade: entrega.quantidade,
+        quantidade: devolucaoDestino === "estoque" ? entrega.quantidade : 0,
         data: new Date().toISOString().split("T")[0],
         tipo: "devolucao",
         status: "devolvido",
-        observacao: `Devolução ref. entrega de ${entrega.data}`,
+        observacao: obsText,
         empresa_id: (entrega as any).empresa_id || empresaId,
       });
 
@@ -624,10 +639,16 @@ export default function Entregas() {
 
       // Contract stock sync is now handled by DB trigger (trg_sync_contrato_stock)
 
-      toast({ title: "EPI devolvido ao estoque!", description: `${epiObj?.nome || "EPI"} devolvido por ${funcObj?.nome || "colaborador"}.` });
+      toast({
+        title: devolucaoDestino === "estoque" ? "EPI devolvido ao estoque!" : "EPI registrado como descarte/avaria",
+        description: `${epiObj?.nome || "EPI"} — ${funcObj?.nome || "colaborador"}.`,
+      });
+      setDevolucaoDialogOpen(false);
       refetch();
     } catch {
       toast({ title: "Erro ao devolver EPI", variant: "destructive" });
+    } finally {
+      setDevolucaoSaving(false);
     }
   };
 
@@ -1326,6 +1347,64 @@ export default function Entregas() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setFichaOpen(false)}>Cancelar</Button>
             <Button onClick={handleGerarFicha}><FileText className="w-4 h-4 mr-2" />Gerar PDF</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Devolução confirmation dialog */}
+      <Dialog open={devolucaoDialogOpen} onOpenChange={(v) => { if (!devolucaoSaving) setDevolucaoDialogOpen(v); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Undo2 className="w-5 h-5" />
+              Confirmar Devolução de EPI
+            </DialogTitle>
+          </DialogHeader>
+          {devolucaoTarget && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border p-3 space-y-1 bg-muted/30">
+                <p className="text-sm"><span className="text-muted-foreground">Colaborador:</span> <strong>{getName(funcionarios, devolucaoTarget.funcionario_id)}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">EPI:</span> <strong>{getName(epis, devolucaoTarget.epi_id)}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">Quantidade:</span> <strong>{devolucaoTarget.quantidade}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">Data entrega:</span> {devolucaoTarget.data}</p>
+              </div>
+
+              <div>
+                <Label>Destino do item</Label>
+                <Select value={devolucaoDestino} onValueChange={(v) => setDevolucaoDestino(v as "estoque" | "descarte")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {devolucaoDestinos.map((d) => (
+                      <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {devolucaoDestino === "estoque"
+                    ? "O item será devolvido ao saldo disponível da unidade."
+                    : "O item será registrado como avaria/descarte e NÃO voltará ao estoque."}
+                </p>
+              </div>
+
+              <div>
+                <Label>Observações sobre o estado do item</Label>
+                <Textarea
+                  placeholder="Ex: Item com defeito, vencido, sem uso, etc."
+                  value={devolucaoObs}
+                  onChange={(e) => setDevolucaoObs(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDevolucaoDialogOpen(false)} disabled={devolucaoSaving}>Cancelar</Button>
+            <Button onClick={confirmDevolver} disabled={devolucaoSaving}>
+              {devolucaoSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Undo2 className="w-4 h-4 mr-2" />}
+              Confirmar Devolução
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
