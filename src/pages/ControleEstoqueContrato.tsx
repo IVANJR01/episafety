@@ -45,7 +45,7 @@ interface ContratoStockSummary {
   valorTotal: number;
   alertas: number;
   itens: { epi_nome: string; tamanho: string | null; estoque: number; estoque_minimo: number; valor: number }[];
-  movimentos: { data: string; tipo: string; epi_nome: string; destino: string; quantidade: number }[];
+  movimentos: { data: string; tipo: string; epi_nome: string; tamanho: string | null; destino: string; quantidade: number }[];
   loadedDetails: boolean;
 }
 
