@@ -852,7 +852,7 @@ export default function ControleEstoqueContrato() {
                                                     </Badge>
                                                     <span className="text-[10px] text-muted-foreground">{format(new Date(mov.data), "dd/MM/yy", { locale: ptBR })}</span>
                                                   </div>
-                                                  <p className="text-xs font-semibold">{mov.epi_nome}</p>
+                                                  <p className="text-xs font-semibold">{mov.epi_nome} {mov.tamanho ? <span className="text-[10px] text-muted-foreground font-normal">({mov.tamanho})</span> : null}</p>
                                                   <div className="flex items-center justify-between text-[11px]">
                                                     <span className="text-muted-foreground truncate max-w-[60%]">{mov.destino}</span>
                                                     <span className="font-bold">Qtd: {mov.quantidade}</span>
