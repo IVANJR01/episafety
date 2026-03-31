@@ -894,6 +894,7 @@ export default function ControleEstoqueContrato() {
                                                         </Badge>
                                                       </TableCell>
                                                       <TableCell className="px-2 py-1.5 max-w-[140px] truncate">{mov.epi_nome}</TableCell>
+                                                      <TableCell className="px-2 py-1.5 text-muted-foreground">{mov.tamanho || "—"}</TableCell>
                                                       <TableCell className="px-2 py-1.5 max-w-[100px] truncate">{mov.destino}</TableCell>
                                                       <TableCell className="px-2 py-1.5 text-right font-semibold">{mov.quantidade}</TableCell>
                                                     </TableRow>
