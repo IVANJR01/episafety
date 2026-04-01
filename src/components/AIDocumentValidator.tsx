@@ -523,7 +523,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
     }
   };
 
-
+  const toggleConfirm = (id: string) => {
     setFiles(prev => prev.map(f => f.id === id ? { ...f, confirmed: !f.confirmed } : f));
   };
 
