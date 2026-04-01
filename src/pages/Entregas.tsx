@@ -108,6 +108,10 @@ export default function Entregas() {
   const [estornoTarget, setEstornoTarget] = useState<Entrega | null>(null);
   const [estornoSaving, setEstornoSaving] = useState(false);
 
+  // Substituição + descarte automático
+  const [descarteSubstituicao, setDescarteSubstituicao] = useState(true);
+  const [descarteDescricao, setDescarteDescricao] = useState("");
+
   const resetSignState = useCallback(() => {
     setSignOpen(false);
     setPendingEntrega(null);
@@ -607,6 +611,53 @@ export default function Entregas() {
       return;
     }
 
+    // Auto-discard old items when tipo is substituição and discard is enabled
+    if (normalizedTipo === "substituicao" && descarteSubstituicao && insertedIds.length > 0) {
+      for (const item of epiList) {
+        const epiId = item.epi.source_epi_id || item.epi.id;
+        // Find the active delivery for same employee + same EPI
+        const activeEntrega = entregas.find(e =>
+          e.funcionario_id === form.funcionario_id &&
+          e.epi_id === epiId &&
+          e.status === "ativo" &&
+          e.tipo !== "devolucao"
+        );
+
+        if (activeEntrega) {
+          const obsDescarte = [
+            `Descarte automático por substituição em ${form.data}`,
+            `Entrega origem: ${activeEntrega.id}`,
+            `Status anterior: ${activeEntrega.status}`,
+            `Processado por: ${user?.email || "usuário autenticado"}`,
+            "[DESCARTE/AVARIA - não retornado ao estoque]",
+            descarteDescricao.trim() ? `Estado: ${descarteDescricao.trim()}` : null,
+          ].filter(Boolean).join(" • ");
+
+          try {
+            // Create devolução record with qty 0 (descarte = não retorna ao estoque)
+            await (supabase.from as any)("entregas").insert({
+              funcionario_id: activeEntrega.funcionario_id,
+              epi_id: activeEntrega.epi_id,
+              quantidade: 0,
+              data: form.data,
+              tipo: "devolucao",
+              status: "devolvido",
+              observacao: obsDescarte,
+              empresa_id: (activeEntrega as any).empresa_id || empresaId,
+              created_by: currentUserId,
+            });
+
+            // Mark old delivery as "substituido"
+            await (supabase.from as any)("entregas")
+              .update({ status: "substituido" })
+              .eq("id", activeEntrega.id);
+          } catch (err) {
+            console.error("Erro ao descartar item antigo automaticamente:", err);
+          }
+        }
+      }
+    }
+
     setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
     setOpen(false);
     resetForm();
@@ -614,6 +665,8 @@ export default function Entregas() {
     setEpiCaSearch("");
     setEpiList([]);
     setEpiDropdownResults([]);
+    setDescarteSubstituicao(true);
+    setDescarteDescricao("");
     setSaving(false);
     setShouldOpenSignatureAfterSave(true);
   };
@@ -1166,7 +1219,7 @@ export default function Entregas() {
         </>
       )}
 
-      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); } }}>
+      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); setDescarteSubstituicao(true); setDescarteDescricao(""); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nova Movimentação</DialogTitle>
@@ -1187,6 +1240,36 @@ export default function Entregas() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Descarte automático para substituições */}
+            {normalizeEntregaTipo(form.tipo) === "substituicao" && (
+              <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="descarte-substituicao"
+                    checked={descarteSubstituicao}
+                    onCheckedChange={(v) => setDescarteSubstituicao(!!v)}
+                  />
+                  <Label htmlFor="descarte-substituicao" className="text-xs font-semibold cursor-pointer">
+                    ♻️ Descartar material antigo (inservível/desgaste)
+                  </Label>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  Se marcado, o EPI anterior do colaborador será automaticamente baixado como <strong>descartado</strong> sem retornar ao estoque.
+                </p>
+                {descarteSubstituicao && (
+                  <div>
+                    <Label className="text-[11px]">Estado do material antigo</Label>
+                    <Input
+                      placeholder="Ex: Luva rasgada, Bota furada, Desgaste natural..."
+                      value={descarteDescricao}
+                      onChange={e => setDescarteDescricao(e.target.value)}
+                      className="h-8 text-xs mt-1"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <Label>Funcionário</Label>
               <Input
