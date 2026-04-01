@@ -195,7 +195,7 @@ function drawFooter(doc: jsPDF) {
 }
 
 /** Convert an image URL to a base64 data URL via canvas */
-async function urlToBase64(url: string): Promise<string | null> {
+export async function urlToBase64(url: string): Promise<string | null> {
   try {
     return await new Promise<string | null>((resolve) => {
       const img = new Image();
