@@ -500,27 +500,86 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
     setShowScanModal(false);
   };
-  // Retry pending_credit documents (no file needed - re-sends from DB)
+  // Retry pending_credit documents - immediately re-analyze via Gemini
   const retryPendingCredit = async (id: string, dbId?: string) => {
     const af = files.find(f => f.id === id);
     if (!af || !selectedFunc) return;
 
-    // If we have the original file, re-analyze it
-    if (af.file) {
-      // Delete old pending_credit record
-      if (dbId) {
-        await (supabase.from as any)("analises_ia").delete().eq("id", dbId);
-      }
-      // Reset to pending and trigger analysis
-      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "pending" as const, dbId: undefined, errorMsg: undefined } : f));
-      toast({ title: "Documento na fila", description: `"${af.fileName}" será reprocessado. Clique em "Analisar" para iniciar.` });
-    } else {
+    if (!af.file) {
       toast({
         title: "Arquivo não disponível",
         description: "O arquivo original não está mais disponível. Faça o upload novamente.",
         variant: "destructive",
       });
+      return;
     }
+
+    // Delete old pending_credit record
+    if (dbId) {
+      await (supabase.from as any)("analises_ia").delete().eq("id", dbId);
+    }
+
+    // Immediately re-analyze (same flow as reanalyzeFile)
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "analyzing" as const, analysis: undefined, dbId: undefined, confirmed: false, errorMsg: undefined } : f));
+    setSyncStatus("saving");
+    setShowScanModal(true);
+    setCurrentFile(af.fileName);
+    setCurrentStep(0);
+
+    const stepInterval = setInterval(() => {
+      setCurrentStep(prev => prev < ANALYSIS_STEPS.length - 1 ? prev + 1 : prev);
+    }, 2000);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", af.file);
+      if (empresaId) formData.append("empresa_id", empresaId);
+      formData.append("funcionario_id", selectedFunc.id);
+      formData.append("funcionario_nome", selectedFunc.nome);
+      formData.append("funcionario_cargo", selectedFunc.cargo || "");
+      if (selectedFunc.cpf) formData.append("funcionario_cpf", selectedFunc.cpf);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-certificate`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: formData,
+        }
+      );
+
+      clearInterval(stepInterval);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: "Erro desconhecido" }));
+        throw new Error(errData.error || `Erro ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.status === "pending_credit") {
+        setFiles(prev => prev.map(f => f.id === id ? {
+          ...f,
+          status: "pending_credit" as const,
+          dbId: result.analysisId || undefined,
+          errorMsg: result.error || "Créditos insuficientes. Documento na fila.",
+        } : f));
+        toast({ title: "⚠️ Ainda pendente", description: "Ambos provedores falharam. Tente novamente mais tarde.", variant: "destructive" });
+      } else {
+        setFiles(prev => prev.map(f => f.id === id ? {
+          ...f, status: "analyzed" as const, analysis: result.analysis, dbId: result.analysisId || undefined,
+        } : f));
+        toast({ title: "✅ Validado via Gemini", description: `"${af.fileName}" foi reprocessado com sucesso.` });
+      }
+      showSyncSaved();
+    } catch (err: any) {
+      clearInterval(stepInterval);
+      setSyncStatus("error");
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "error" as const, errorMsg: err.message } : f));
+      toast({ title: "Erro no reprocessamento", description: err.message, variant: "destructive" });
+    }
+
+    setShowScanModal(false);
   };
 
   const toggleConfirm = (id: string) => {
