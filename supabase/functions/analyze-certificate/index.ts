@@ -324,7 +324,10 @@ serve(async (req) => {
 
     console.log("Sending request to AI gateway...");
 
-    const makeRequest = async (isMultimodal: boolean) => {
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const useBYO = !!OPENAI_API_KEY;
+
+    const makeRequest = async (isMultimodal: boolean, provider: "lovable" | "openai" = "lovable") => {
       const messages = isMultimodal
         ? [
             { role: "system", content: systemPrompt },
@@ -366,6 +369,23 @@ ${pdfBase64.substring(0, 50000)}`,
             },
           ];
 
+      if (provider === "openai") {
+        console.log("Using BYO OpenAI key (gpt-4o-mini)...");
+        return fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages,
+            tools: [toolSchema],
+            tool_choice: { type: "function", function: { name: "analyze_certificate" } },
+          }),
+        });
+      }
+
       return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -381,7 +401,26 @@ ${pdfBase64.substring(0, 50000)}`,
       });
     };
 
-    let response = await makeRequest(true);
+    // Save pending_credit status for queue
+    const savePendingCredit = async () => {
+      if (funcionarioId && empresaId) {
+        try {
+          const { data: row } = await supabase.from("analises_ia").insert({
+            empresa_id: empresaId,
+            funcionario_id: funcionarioId,
+            arquivo_nome: file.name,
+            ia_metadata: {},
+            status: "pending_credit",
+          }).select("id").single();
+          return row?.id || null;
+        } catch (e) {
+          console.error("Failed to save pending_credit:", e);
+        }
+      }
+      return null;
+    };
+
+    let response = await makeRequest(true, "lovable");
     console.log(`AI gateway response status: ${response.status}`);
 
     if (!response.ok) {
@@ -393,16 +432,40 @@ ${pdfBase64.substring(0, 50000)}`,
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // 402 = credits exhausted → try BYO OpenAI fallback
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos nas configurações." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        if (useBYO) {
+          console.log("Lovable credits exhausted, falling back to BYO OpenAI...");
+          response = await makeRequest(true, "openai");
+          if (!response.ok) {
+            const byoErr = await response.text();
+            console.error(`BYO OpenAI also failed ${response.status}: ${byoErr}`);
+            const pendingId = await savePendingCredit();
+            return new Response(JSON.stringify({
+              error: "Créditos insuficientes e chave OpenAI falhou. Documento salvo na fila.",
+              status: "pending_credit",
+              analysisId: pendingId,
+            }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        } else {
+          const pendingId = await savePendingCredit();
+          return new Response(JSON.stringify({
+            error: "Créditos insuficientes. Documento salvo na fila para reprocessamento.",
+            status: "pending_credit",
+            analysisId: pendingId,
+          }), {
+            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
 
       // Fallback: text-only
       if (response.status === 400 || response.status === 422) {
         console.log("PDF format rejected, trying text-only fallback...");
-        response = await makeRequest(false);
+        response = await makeRequest(false, useBYO ? "openai" : "lovable");
         if (!response.ok) {
           const fallbackErr = await response.text();
           console.error(`Fallback also failed ${response.status}: ${fallbackErr}`);

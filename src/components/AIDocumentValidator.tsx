@@ -56,7 +56,7 @@ interface AnalyzedFile {
   id: string;
   dbId?: string;
   fileName: string;
-  status: "pending" | "analyzing" | "analyzed" | "error";
+  status: "pending" | "analyzing" | "analyzed" | "error" | "pending_credit";
   analysis?: AIAnalysis;
   errorMsg?: string;
   confirmed: boolean;
@@ -144,7 +144,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
         if (data && (data as any[]).length > 0) {
           const rows = data as any[];
-          const hasPending = rows.some((r: any) => r.status === "analisado" || r.status === "pendente");
+          const hasPending = rows.some((r: any) => r.status === "analisado" || r.status === "pendente" || r.status === "pending_credit");
 
           if (hasPending) {
             setPendingRestoreData(rows);
@@ -169,8 +169,9 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       id: crypto.randomUUID(),
       dbId: row.id,
       fileName: row.arquivo_nome,
-      status: "analyzed" as const,
-      analysis: row.ia_metadata as AIAnalysis,
+      status: row.status === "pending_credit" ? "pending_credit" as const : "analyzed" as const,
+      analysis: row.status === "pending_credit" ? undefined : (row.ia_metadata as AIAnalysis),
+      errorMsg: row.status === "pending_credit" ? "Créditos insuficientes. Aguardando reprocessamento." : undefined,
       confirmed: false,
     }));
     setFiles(previousFiles);
@@ -320,6 +321,27 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
         }
 
         const result = await response.json();
+
+        // Handle pending_credit queue status (credits exhausted but document saved)
+        if (result.status === "pending_credit") {
+          setFiles(prev => prev.map(f => f.id === af.id ? {
+            ...f,
+            status: "pending_credit" as const,
+            dbId: result.analysisId || undefined,
+            errorMsg: result.error || "Créditos insuficientes. Documento na fila.",
+          } : f));
+          toast({
+            title: "⚠️ Créditos insuficientes",
+            description: `"${af.fileName}" salvo na fila. Reprocesse quando houver créditos.`,
+            variant: "destructive",
+          });
+          showSyncSaved();
+          clearInterval(stepInterval);
+          completed++;
+          setOverallProgress(Math.round((completed / pendingFiles.length) * 100));
+          continue;
+        }
+
         setFiles(prev => prev.map(f => f.id === af.id ? {
           ...f,
           status: "analyzed",
@@ -478,6 +500,28 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
     setShowScanModal(false);
   };
+  // Retry pending_credit documents (no file needed - re-sends from DB)
+  const retryPendingCredit = async (id: string, dbId?: string) => {
+    const af = files.find(f => f.id === id);
+    if (!af || !selectedFunc) return;
+
+    // If we have the original file, re-analyze it
+    if (af.file) {
+      // Delete old pending_credit record
+      if (dbId) {
+        await (supabase.from as any)("analises_ia").delete().eq("id", dbId);
+      }
+      // Reset to pending and trigger analysis
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "pending" as const, dbId: undefined, errorMsg: undefined } : f));
+      toast({ title: "Documento na fila", description: `"${af.fileName}" será reprocessado. Clique em "Analisar" para iniciar.` });
+    } else {
+      toast({
+        title: "Arquivo não disponível",
+        description: "O arquivo original não está mais disponível. Faça o upload novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const toggleConfirm = (id: string) => {
     setFiles(prev => prev.map(f => f.id === id ? { ...f, confirmed: !f.confirmed } : f));
@@ -626,7 +670,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       )}
 
       {/* Analysis Results */}
-      {files.some(f => f.status === "analyzed" || f.status === "error") && (
+      {files.some(f => f.status === "analyzed" || f.status === "error" || f.status === "pending_credit") && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -638,7 +682,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {files.filter(f => f.status === "analyzed" || f.status === "error").map(af => (
+            {files.filter(f => f.status === "analyzed" || f.status === "error" || f.status === "pending_credit").map(af => (
               <div key={af.id} className={`border rounded-xl p-4 space-y-3 transition-colors ${
                 af.confirmed ? "border-green-500/50 bg-green-50/30 dark:bg-green-950/10" : "border-border"
               }`}>
@@ -703,6 +747,20 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
                 {af.status === "error" && (
                   <p className="text-sm text-destructive">{af.errorMsg}</p>
+                )}
+
+                {af.status === "pending_credit" && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Pendente de Créditos</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400">{af.errorMsg || "Documento salvo na fila. Será reprocessado quando houver créditos disponíveis."}</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1"
+                      onClick={() => retryPendingCredit(af.id, af.dbId)}>
+                      <RefreshCw className="w-3.5 h-3.5" /> Retentar
+                    </Button>
+                  </div>
                 )}
 
                 {af.analysis && (
