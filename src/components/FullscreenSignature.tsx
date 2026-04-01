@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useLayoutEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import SignaturePad from "signature_pad";
 import { Loader2 } from "lucide-react";
