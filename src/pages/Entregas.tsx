@@ -1319,6 +1319,49 @@ export default function Entregas() {
                   ))}
                 </div>
               )}
+
+              {/* Descarte de material — aparece quando colaborador + EPI selecionados e há item ativo */}
+              {form.funcionario_id && epiList.length > 0 && (() => {
+                const episComAtivo = epiList.filter(item => {
+                  const epiId = item.epi.source_epi_id || item.epi.id;
+                  return entregas.some(e =>
+                    e.funcionario_id === form.funcionario_id &&
+                    e.epi_id === epiId &&
+                    e.status === "ativo" &&
+                    e.tipo !== "devolucao"
+                  );
+                });
+                if (episComAtivo.length === 0) return null;
+                return (
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="descarte-substituicao"
+                        checked={descarteSubstituicao}
+                        onCheckedChange={(v) => setDescarteSubstituicao(!!v)}
+                      />
+                      <Label htmlFor="descarte-substituicao" className="text-xs font-semibold cursor-pointer">
+                        ♻️ Descartar material antigo (inservível/desgaste)
+                      </Label>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      O colaborador já possui <strong>{episComAtivo.map(i => i.epi.nome).join(", ")}</strong> ativo(s).
+                      Se marcado, o item anterior será baixado como <strong>descartado</strong> sem retornar ao estoque.
+                    </p>
+                    {descarteSubstituicao && (
+                      <div>
+                        <Label className="text-[11px]">Estado do material antigo</Label>
+                        <Input
+                          placeholder="Ex: Luva rasgada, Bota furada, Desgaste natural..."
+                          value={descarteDescricao}
+                          onChange={e => setDescarteDescricao(e.target.value)}
+                          className="h-8 text-xs mt-1"
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div>
