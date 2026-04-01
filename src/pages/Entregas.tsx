@@ -665,6 +665,8 @@ export default function Entregas() {
     setEpiCaSearch("");
     setEpiList([]);
     setEpiDropdownResults([]);
+    setDescarteSubstituicao(true);
+    setDescarteDescricao("");
     setSaving(false);
     setShouldOpenSignatureAfterSave(true);
   };
