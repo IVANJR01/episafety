@@ -144,7 +144,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
         if (data && (data as any[]).length > 0) {
           const rows = data as any[];
-          const hasPending = rows.some((r: any) => r.status === "analisado" || r.status === "pendente");
+          const hasPending = rows.some((r: any) => r.status === "analisado" || r.status === "pendente" || r.status === "pending_credit");
 
           if (hasPending) {
             setPendingRestoreData(rows);
