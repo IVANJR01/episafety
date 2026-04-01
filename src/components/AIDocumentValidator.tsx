@@ -320,6 +320,27 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
         }
 
         const result = await response.json();
+
+        // Handle pending_credit queue status (credits exhausted but document saved)
+        if (result.status === "pending_credit") {
+          setFiles(prev => prev.map(f => f.id === af.id ? {
+            ...f,
+            status: "pending_credit" as const,
+            dbId: result.analysisId || undefined,
+            errorMsg: result.error || "Créditos insuficientes. Documento na fila.",
+          } : f));
+          toast({
+            title: "⚠️ Créditos insuficientes",
+            description: `"${af.fileName}" salvo na fila. Reprocesse quando houver créditos.`,
+            variant: "destructive",
+          });
+          showSyncSaved();
+          clearInterval(stepInterval);
+          completed++;
+          setOverallProgress(Math.round((completed / pendingFiles.length) * 100));
+          continue;
+        }
+
         setFiles(prev => prev.map(f => f.id === af.id ? {
           ...f,
           status: "analyzed",
