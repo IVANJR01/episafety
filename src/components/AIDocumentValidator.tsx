@@ -753,13 +753,27 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Pendente de Créditos</p>
-                      <p className="text-xs text-amber-700 dark:text-amber-400">{af.errorMsg || "Documento salvo na fila. Será reprocessado quando houver créditos disponíveis."}</p>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Pendente — Requer Re-upload</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        {af.file 
+                          ? "Arquivo disponível. Clique em Reprocessar via Gemini para analisar agora." 
+                          : "Faça o upload deste PDF novamente para reprocessar via Gemini (sem custo de créditos)."}
+                      </p>
                     </div>
-                    <Button variant="outline" size="sm" className="shrink-0 gap-1"
-                      onClick={() => retryPendingCredit(af.id, af.dbId)}>
-                      <RefreshCw className="w-3.5 h-3.5" /> Retentar
-                    </Button>
+                    {af.file ? (
+                      <Button variant="outline" size="sm" className="shrink-0 gap-1 border-green-500 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/30"
+                        onClick={() => retryPendingCredit(af.id, af.dbId)}>
+                        <RefreshCw className="w-3.5 h-3.5" /> Reprocessar via Gemini
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="shrink-0 gap-1"
+                        onClick={() => {
+                          deleteAnalysis(af.id, af.dbId);
+                          toast({ title: "Registro removido", description: `Faça o upload de "${af.fileName}" novamente na área acima.` });
+                        }}>
+                        <Trash2 className="w-3.5 h-3.5" /> Remover e Re-enviar
+                      </Button>
+                    )}
                   </div>
                 )}
 
