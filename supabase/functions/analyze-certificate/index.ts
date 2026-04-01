@@ -239,8 +239,12 @@ serve(async (req) => {
   }
 
   try {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    
+    if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
+      throw new Error("Nenhuma chave de IA configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)");
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -322,21 +326,119 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(requisitosContext, funcionarioContext);
 
-    console.log("Sending request to AI gateway...");
+    console.log("Sending request to AI...");
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    const useBYO = !!OPENAI_API_KEY;
+    // ==================== GEMINI DIRECT API ====================
+    const callGeminiDirect = async (): Promise<any> => {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      
+      const geminiBody = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: systemPrompt },
+              { text: `Analise este documento PDF de segurança do trabalho.
+Extraia TODAS as informações de TODAS as páginas (frente e verso), incluindo:
+- Conteúdo programático (geralmente na página 2 / verso)
+- Nome e registro profissional do instrutor/responsável técnico
+- CPF do colaborador
+- Datas (converter para YYYY-MM-DD)
+- Entidade/Instituição emissora
+- Carga horária
+- Equipamento/máquina mencionado (se for NR-12)
+Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL e para qual NR.` },
+              {
+                inlineData: {
+                  mimeType: "application/pdf",
+                  data: pdfBase64,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 4096,
+        },
+        tools: [{
+          functionDeclarations: [{
+            name: toolSchema.function.name,
+            description: toolSchema.function.description,
+            parameters: toolSchema.function.parameters,
+          }],
+        }],
+        toolConfig: {
+          functionCallingConfig: {
+            mode: "ANY",
+            allowedFunctionNames: ["analyze_certificate"],
+          },
+        },
+      };
 
-    const makeRequest = async (isMultimodal: boolean, provider: "lovable" | "openai" = "lovable") => {
-      const messages = isMultimodal
-        ? [
-            { role: "system", content: systemPrompt },
+      const resp = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(geminiBody),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.error(`Gemini API error ${resp.status}: ${errText}`);
+        throw new Error(`Gemini API error: ${resp.status}`);
+      }
+
+      const geminiResult = await resp.json();
+      console.log("Gemini direct response received");
+
+      // Extract from Gemini native format
+      const candidate = geminiResult.candidates?.[0];
+      const parts = candidate?.content?.parts || [];
+      
+      for (const part of parts) {
+        if (part.functionCall) {
+          console.log("Parsed from Gemini functionCall successfully");
+          return part.functionCall.args;
+        }
+      }
+
+      // Fallback: try parsing text content
+      for (const part of parts) {
+        if (part.text) {
+          try {
+            const cleaned = part.text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+            return JSON.parse(cleaned);
+          } catch {
+            return {
+              curso: "Não identificado",
+              descricao_completa: part.text || "IA não conseguiu analisar o documento",
+              confianca: 0.3,
+              conforme_nr: false,
+              conforme_matriz: false,
+              carga_horaria: 0,
+              nome_certificado: "",
+              assinatura_colaborador: false,
+              assinatura_instrutor: false,
+              assinatura_responsavel: false,
+              parecer_bernhoeft: "REPROVADO",
+            };
+          }
+        }
+      }
+
+      throw new Error("Gemini returned no usable content");
+    };
+
+    // ==================== LOVABLE GATEWAY (FALLBACK) ====================
+    const callLovableGateway = async (): Promise<any> => {
+      const messages = [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
             {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: `Analise este documento PDF de segurança do trabalho. 
+              type: "text",
+              text: `Analise este documento PDF de segurança do trabalho.
 Extraia TODAS as informações de TODAS as páginas (frente e verso), incluindo:
 - Conteúdo programático (geralmente na página 2 / verso)
 - Nome e registro profissional do instrutor/responsável técnico
@@ -346,47 +448,16 @@ Extraia TODAS as informações de TODAS as páginas (frente e verso), incluindo:
 - Carga horária
 - Equipamento/máquina mencionado (se for NR-12)
 Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL e para qual NR.`,
-                },
-                {
-                  type: "image_url",
-                  image_url: { url: `data:application/pdf;base64,${pdfBase64}` },
-                },
-              ],
             },
-          ]
-        : [
-            { role: "system", content: systemPrompt },
             {
-              role: "user",
-              content: `Analise este documento de segurança do trabalho. O conteúdo do PDF está codificado em base64 abaixo. Extraia TODAS as informações de TODAS as páginas.
-Identifique se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL e para qual NR.
-Converta datas para formato YYYY-MM-DD.
-
-Nome do arquivo: ${file.name}
-
-PDF em Base64 (decodifique e analise):
-${pdfBase64.substring(0, 50000)}`,
+              type: "image_url",
+              image_url: { url: `data:application/pdf;base64,${pdfBase64}` },
             },
-          ];
+          ],
+        },
+      ];
 
-      if (provider === "openai") {
-        console.log("Using BYO OpenAI key (gpt-4o-mini)...");
-        return fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages,
-            tools: [toolSchema],
-            tool_choice: { type: "function", function: { name: "analyze_certificate" } },
-          }),
-        });
-      }
-
-      return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -399,12 +470,67 @@ ${pdfBase64.substring(0, 50000)}`,
           tool_choice: { type: "function", function: { name: "analyze_certificate" } },
         }),
       });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.error(`Lovable gateway error ${resp.status}: ${errText}`);
+        throw new Error(`Lovable gateway error: ${resp.status}`);
+      }
+
+      const aiResult = await resp.json();
+      return extractAnalysis(aiResult);
     };
 
-    // Save pending_credit status for queue
-    const savePendingCredit = async () => {
-      if (funcionarioId && empresaId) {
-        try {
+    // ==================== EXECUTION FLOW ====================
+    let parsed: any;
+    let provider = "gemini_direct";
+
+    if (GEMINI_API_KEY) {
+      // PRIMARY: Google Gemini Direct API (free/low cost)
+      try {
+        console.log("Using Gemini Direct API (primary)...");
+        parsed = await callGeminiDirect();
+      } catch (geminiErr) {
+        console.error("Gemini Direct failed:", geminiErr);
+        // FALLBACK: Lovable Gateway
+        if (LOVABLE_API_KEY) {
+          try {
+            console.log("Falling back to Lovable AI Gateway...");
+            provider = "lovable_gateway";
+            parsed = await callLovableGateway();
+          } catch (lovableErr) {
+            console.error("Lovable Gateway also failed:", lovableErr);
+            // QUEUE: save as pending
+            if (funcionarioId && empresaId) {
+              const { data: row } = await supabase.from("analises_ia").insert({
+                empresa_id: empresaId,
+                funcionario_id: funcionarioId,
+                arquivo_nome: file.name,
+                ia_metadata: {},
+                status: "pending_credit",
+              }).select("id").single();
+              return new Response(JSON.stringify({
+                error: "Ambos provedores falharam. Documento salvo na fila.",
+                status: "pending_credit",
+                analysisId: row?.id || null,
+              }), {
+                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+            throw lovableErr;
+          }
+        } else {
+          throw geminiErr;
+        }
+      }
+    } else {
+      // No Gemini key, use Lovable directly
+      console.log("No GEMINI_API_KEY, using Lovable AI Gateway...");
+      provider = "lovable_gateway";
+      try {
+        parsed = await callLovableGateway();
+      } catch (err: any) {
+        if (funcionarioId && empresaId) {
           const { data: row } = await supabase.from("analises_ia").insert({
             empresa_id: empresaId,
             funcionario_id: funcionarioId,
@@ -412,78 +538,19 @@ ${pdfBase64.substring(0, 50000)}`,
             ia_metadata: {},
             status: "pending_credit",
           }).select("id").single();
-          return row?.id || null;
-        } catch (e) {
-          console.error("Failed to save pending_credit:", e);
-        }
-      }
-      return null;
-    };
-
-    let response = await makeRequest(true, "lovable");
-    console.log(`AI gateway response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`AI Gateway error ${response.status}: ${errText}`);
-
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em instantes." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // 402 = credits exhausted → try BYO OpenAI fallback
-      if (response.status === 402) {
-        if (useBYO) {
-          console.log("Lovable credits exhausted, falling back to BYO OpenAI...");
-          response = await makeRequest(true, "openai");
-          if (!response.ok) {
-            const byoErr = await response.text();
-            console.error(`BYO OpenAI also failed ${response.status}: ${byoErr}`);
-            const pendingId = await savePendingCredit();
-            return new Response(JSON.stringify({
-              error: "Créditos insuficientes e chave OpenAI falhou. Documento salvo na fila.",
-              status: "pending_credit",
-              analysisId: pendingId,
-            }), {
-              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-        } else {
-          const pendingId = await savePendingCredit();
           return new Response(JSON.stringify({
-            error: "Créditos insuficientes. Documento salvo na fila para reprocessamento.",
+            error: "Créditos insuficientes. Documento salvo na fila.",
             status: "pending_credit",
-            analysisId: pendingId,
+            analysisId: row?.id || null,
           }), {
             status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-      }
-
-      // Fallback: text-only
-      if (response.status === 400 || response.status === 422) {
-        console.log("PDF format rejected, trying text-only fallback...");
-        response = await makeRequest(false, useBYO ? "openai" : "lovable");
-        if (!response.ok) {
-          const fallbackErr = await response.text();
-          console.error(`Fallback also failed ${response.status}: ${fallbackErr}`);
-          return new Response(JSON.stringify({ error: "Erro ao processar documento com IA" }), {
-            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-      } else {
-        return new Response(JSON.stringify({ error: "Erro ao processar documento com IA" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        throw err;
       }
     }
 
-    const aiResult = await response.json();
-    console.log("AI response received, extracting analysis...");
-    const parsed = extractAnalysis(aiResult);
-    console.log(`Analysis complete: curso=${parsed.curso}, confianca=${parsed.confianca}`);
+    console.log(`Analysis complete via ${provider}: curso=${parsed.curso}, confianca=${parsed.confianca}`);
 
     // Persist analysis to analises_ia table
     let analysisId: string | null = null;
@@ -493,17 +560,17 @@ ${pdfBase64.substring(0, 50000)}`,
           empresa_id: empresaId,
           funcionario_id: funcionarioId,
           arquivo_nome: file.name,
-          ia_metadata: parsed,
+          ia_metadata: { ...parsed, _provider: provider },
           status: "analisado",
         }).select("id").single();
         analysisId = insertedRow?.id || null;
-        console.log("Analysis persisted to analises_ia table, id:", analysisId);
+        console.log("Analysis persisted, id:", analysisId);
       } catch (e) {
         console.error("Failed to persist analysis:", e);
       }
     }
 
-    return new Response(JSON.stringify({ success: true, analysis: parsed, analysisId }), {
+    return new Response(JSON.stringify({ success: true, analysis: parsed, analysisId, provider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
