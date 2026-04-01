@@ -732,7 +732,7 @@ export default function Entregas() {
 
     try {
       const restoredStatus = audit.previousStatus || "ativo";
-      const operadorDevolucao = audit.processedBy || estornoTarget.created_at || "não identificado";
+      const operadorDevolucao = audit.processedBy || (estornoTarget as any).created_by || "não identificado";
       const operadorEstorno = user?.email || user?.id || "usuário autenticado";
       const auditNote = `Estorno de devolução por erro em ${new Date().toLocaleDateString("pt-BR")} por ${operadorEstorno}. Devolução original: ${estornoTarget.data}${audit.processedBy ? `, processada por ${operadorDevolucao}` : ", sem operador identificado"}.`;
 
@@ -775,20 +775,6 @@ export default function Entregas() {
           .eq("id", estornoTarget.epi_id);
 
         if (epiUpdateError) throw epiUpdateError;
-      }
-
-      if (Array.isArray(contratoTarget) && contratoTarget[0]?.contrato_epi_id && estornoTarget.quantidade > 0) {
-        await (supabase.from as any)("contrato_epis_movimentacoes").insert({
-          contrato_epi_id: contratoTarget[0].contrato_epi_id,
-          contrato_id: contratoTarget[0].contrato_id,
-          epi_id: contratoTarget[0].resolved_epi_id || estornoTarget.epi_id,
-          empresa_id: contratoTarget[0].resolved_empresa_id || (estornoTarget as any).empresa_id || empresaId,
-          tipo: "saida",
-          quantidade: estornoTarget.quantidade,
-          motivo: `Estorno de devolução por erro — ${getName(funcionarios, estornoTarget.funcionario_id)}`,
-          responsavel_nome: operadorEstorno,
-          created_by: user?.id || null,
-        });
       }
 
       toast({ title: "Devolução desfeita com sucesso" });
