@@ -169,8 +169,9 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       id: crypto.randomUUID(),
       dbId: row.id,
       fileName: row.arquivo_nome,
-      status: "analyzed" as const,
-      analysis: row.ia_metadata as AIAnalysis,
+      status: row.status === "pending_credit" ? "pending_credit" as const : "analyzed" as const,
+      analysis: row.status === "pending_credit" ? undefined : (row.ia_metadata as AIAnalysis),
+      errorMsg: row.status === "pending_credit" ? "Créditos insuficientes. Aguardando reprocessamento." : undefined,
       confirmed: false,
     }));
     setFiles(previousFiles);
