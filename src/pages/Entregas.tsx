@@ -988,13 +988,26 @@ export default function Entregas() {
     const funcEntregas = entregas.filter(e => e.funcionario_id === fichaFuncId);
     if (funcEntregas.length === 0) { toast({ title: "Nenhuma entrega encontrada para este funcionário", variant: "destructive" }); return; }
 
+    // Fetch current unit, then resolve parent (empresa mãe) for header
     let emp: any = {};
     if (isOnline()) {
       const { data: empresaData } = await (supabase.from as any)("empresa_config").select("*").eq("id", empresaId).limit(1);
-      emp = empresaData?.[0] || {};
+      let unit = empresaData?.[0] || {};
+      // If this is a filial, fetch the empresa mãe
+      if (unit.empresa_pai_id) {
+        const { data: matrizData } = await (supabase.from as any)("empresa_config").select("*").eq("id", unit.empresa_pai_id).limit(1);
+        emp = matrizData?.[0] || unit;
+      } else {
+        emp = unit;
+      }
     } else {
       const cached = getCachedData<any>("empresa_config");
-      emp = cached?.find((c: any) => c.id === empresaId) || cached?.[0] || {};
+      let unit = cached?.find((c: any) => c.id === empresaId) || cached?.[0] || {};
+      if (unit.empresa_pai_id) {
+        emp = cached?.find((c: any) => c.id === unit.empresa_pai_id) || unit;
+      } else {
+        emp = unit;
+      }
     }
 
     const now = new Date();
