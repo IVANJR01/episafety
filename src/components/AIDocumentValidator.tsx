@@ -56,7 +56,7 @@ interface AnalyzedFile {
   id: string;
   dbId?: string;
   fileName: string;
-  status: "pending" | "analyzing" | "analyzed" | "error";
+  status: "pending" | "analyzing" | "analyzed" | "error" | "pending_credit";
   analysis?: AIAnalysis;
   errorMsg?: string;
   confirmed: boolean;
