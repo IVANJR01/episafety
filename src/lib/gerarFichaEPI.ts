@@ -74,23 +74,40 @@ function drawPageHeader(doc: jsPDF, data: FichaData, pageNum: number, totalPages
   doc.text(`Documento gerado em: ${now.toLocaleDateString("pt-BR")}`, MARGIN, y);
   doc.text(`Pág. ${pageNum} de ${totalPages}`, PAGE_W - MARGIN, y, { align: "right" });
 
-  y = 28;
+  y = 16;
 
-  // Company name centered
+  // --- Company header: Logo left + Name/CNPJ beside it ---
+  const logoMaxH = 18;
+  const logoMaxW = 28;
+  let textStartX = MARGIN;
+
+  if (data.empresa.logo_url) {
+    try {
+      const logoSrc = data.fotosBase64?.get(data.empresa.logo_url) || data.empresa.logo_url;
+      if (logoSrc.startsWith("data:")) {
+        doc.addImage(logoSrc, "JPEG", MARGIN, y, logoMaxW, logoMaxH);
+        textStartX = MARGIN + logoMaxW + 4;
+      }
+    } catch { /* logo failed, skip */ }
+  }
+
   doc.setTextColor(0);
-  doc.setFontSize(16);
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(data.empresa.nome || "EMPRESA", PAGE_W / 2, y, { align: "center" });
+  doc.text(data.empresa.nome || "EMPRESA", textStartX, y + 7);
 
-  y += 7;
-  doc.setFontSize(12);
-  doc.text("Ficha de EPI - Trabalhadores", PAGE_W / 2, y, { align: "center" });
+  if (data.empresa.cnpj) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`CNPJ: ${data.empresa.cnpj}`, textStartX, y + 13);
+  }
 
-  y += 7;
-  const cnpjText = data.empresa.cnpj ? ` (${data.empresa.cnpj})` : "";
-  doc.text(`${data.empresa.nome || "EMPRESA"}${cnpjText}`, PAGE_W / 2, y, { align: "center" });
+  // Title right-aligned
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Ficha de EPI - Trabalhadores", PAGE_W - MARGIN, y + 10, { align: "right" });
 
-  y += 10;
+  y += logoMaxH + 4;
 
   // Employee info table
   const colWidths = [0.40, 0.30, 0.12, 0.18]; // proportions
@@ -178,7 +195,7 @@ function drawFooter(doc: jsPDF) {
 }
 
 /** Convert an image URL to a base64 data URL via canvas */
-async function urlToBase64(url: string): Promise<string | null> {
+export async function urlToBase64(url: string): Promise<string | null> {
   try {
     return await new Promise<string | null>((resolve) => {
       const img = new Image();

@@ -1027,11 +1027,16 @@ export default function Entregas() {
       };
     });
 
-    // Pre-load photos as base64 for PDF embedding
+    // Pre-load photos + logo as base64 for PDF embedding
     const fotosBase64 = await preloadFotosReconhecimento(entregasData);
+    if (emp.logo_url && !emp.logo_url.startsWith("data:")) {
+      const { urlToBase64 } = await import("@/lib/gerarFichaEPI");
+      const logoB64 = await urlToBase64(emp.logo_url);
+      if (logoB64) fotosBase64.set(emp.logo_url, logoB64);
+    }
 
     const doc = gerarFichaEPI({
-      empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: null },
+      empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: emp.logo_url || null },
       funcionario: { nome: func.nome, cargo: func.cargo, setor: func.setor, cpf: func.cpf, matricula: func.matricula, data_admissao: func.data_admissao },
       entregas: entregasData,
       fotosBase64,
