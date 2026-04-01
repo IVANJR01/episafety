@@ -648,7 +648,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
       )}
 
       {/* Analysis Results */}
-      {files.some(f => f.status === "analyzed" || f.status === "error") && (
+      {files.some(f => f.status === "analyzed" || f.status === "error" || f.status === "pending_credit") && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
