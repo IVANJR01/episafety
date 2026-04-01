@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, Undo2 } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, Undo2, RotateCcw } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,13 +48,28 @@ const normalizeEntregaTipo = (value?: string | null): keyof typeof tipoLabels =>
   return "entrega";
 };
 
+const parseDevolucaoAudit = (observacao?: string | null) => {
+  const sourceEntregaId = observacao?.match(/Entrega origem:\s*([0-9a-f-]{36})/i)?.[1] ?? null;
+  const previousStatus = observacao?.match(/Status anterior:\s*([a-z_]+)/i)?.[1] ?? null;
+  const processedBy = observacao?.match(/Processado por:\s*([^•]+)/i)?.[1]?.trim() ?? null;
+
+  return {
+    sourceEntregaId,
+    previousStatus,
+    processedBy,
+  };
+};
+
+const appendObservacao = (current: string | null | undefined, note: string) =>
+  [current?.trim(), note.trim()].filter(Boolean).join(" • ");
+
 export default function Entregas() {
   const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
   const { toast } = useToast();
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
-  const { empresaId, contratoId } = useAuth();
+  const { user, empresaId, contratoId } = useAuth();
 
 
   const offlinePendingIds = useMemo(() => {
@@ -89,6 +104,9 @@ export default function Entregas() {
   const [devolucaoObs, setDevolucaoObs] = useState("");
   const [devolucaoDestino, setDevolucaoDestino] = useState<"estoque" | "descarte">("estoque");
   const [devolucaoSaving, setDevolucaoSaving] = useState(false);
+  const [estornoDialogOpen, setEstornoDialogOpen] = useState(false);
+  const [estornoTarget, setEstornoTarget] = useState<Entrega | null>(null);
+  const [estornoSaving, setEstornoSaving] = useState(false);
 
   const resetSignState = useCallback(() => {
     setSignOpen(false);
@@ -617,14 +635,15 @@ export default function Entregas() {
     const funcObj = funcionarios.find(f => f.id === entrega.funcionario_id);
     const obsText = [
       `Devolução ref. entrega de ${entrega.data}`,
+      `Entrega origem: ${entrega.id}`,
+      `Status anterior: ${entrega.status || "ativo"}`,
+      `Processado por: ${user?.email || user?.id || "usuário autenticado"}`,
       devolucaoDestino === "descarte" ? "[DESCARTE/AVARIA - não retornado ao estoque]" : null,
       devolucaoObs.trim() || null,
     ].filter(Boolean).join(" • ");
 
     try {
-      await (supabase.from as any)("entregas").update({ status: "devolvido" }).eq("id", entrega.id);
-
-      const { error: devolucaoError } = await (supabase.from as any)("entregas").insert({
+      const { data: devolucaoCriada, error: devolucaoError } = await (supabase.from as any)("entregas").insert({
         funcionario_id: entrega.funcionario_id,
         epi_id: entrega.epi_id,
         quantidade: devolucaoDestino === "estoque" ? entrega.quantidade : 0,
@@ -633,9 +652,21 @@ export default function Entregas() {
         status: "devolvido",
         observacao: obsText,
         empresa_id: (entrega as any).empresa_id || empresaId,
-      });
+        created_by: user?.id || null,
+      }).select("id").single();
 
       if (devolucaoError) throw devolucaoError;
+
+      const { error: updateEntregaError } = await (supabase.from as any)("entregas")
+        .update({ status: "devolvido" })
+        .eq("id", entrega.id);
+
+      if (updateEntregaError) {
+        if (devolucaoCriada?.id) {
+          await (supabase.from as any)("entregas").delete().eq("id", devolucaoCriada.id);
+        }
+        throw updateEntregaError;
+      }
 
       // Contract stock sync is now handled by DB trigger (trg_sync_contrato_stock)
 
@@ -645,10 +676,130 @@ export default function Entregas() {
       });
       setDevolucaoDialogOpen(false);
       refetch();
+      refetchEpis();
     } catch {
       toast({ title: "Erro ao devolver EPI", variant: "destructive" });
     } finally {
       setDevolucaoSaving(false);
+    }
+  };
+
+  const resolveEntregaOrigem = useCallback((devolucao: Entrega) => {
+    const audit = parseDevolucaoAudit(devolucao.observacao);
+
+    if (audit.sourceEntregaId) {
+      const entregaOrigem = entregas.find((item) => item.id === audit.sourceEntregaId) || null;
+      if (entregaOrigem) {
+        return { entregaOrigem, audit };
+      }
+    }
+
+    const devolucaoTs = new Date(devolucao.created_at).getTime();
+    const entregaOrigem = [...entregas]
+      .filter((item) =>
+        item.id !== devolucao.id &&
+        item.tipo !== "devolucao" &&
+        item.funcionario_id === devolucao.funcionario_id &&
+        item.epi_id === devolucao.epi_id &&
+        new Date(item.created_at).getTime() <= devolucaoTs,
+      )
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null;
+
+    return { entregaOrigem, audit };
+  }, [entregas]);
+
+  const handleOpenEstorno = (devolucao: Entrega) => {
+    if (!canEdit) return;
+    setEstornoTarget(devolucao);
+    setEstornoDialogOpen(true);
+  };
+
+  const confirmEstornoDevolucao = async () => {
+    if (!estornoTarget) return;
+    if (!isOnline()) {
+      toast({ title: "Conecte-se para desfazer a devolução", variant: "destructive" });
+      return;
+    }
+
+    const { entregaOrigem, audit } = resolveEntregaOrigem(estornoTarget);
+
+    if (!entregaOrigem) {
+      toast({ title: "Não foi possível localizar a entrega original", variant: "destructive" });
+      return;
+    }
+
+    setEstornoSaving(true);
+
+    try {
+      const restoredStatus = audit.previousStatus || "ativo";
+      const operadorDevolucao = audit.processedBy || estornoTarget.created_at || "não identificado";
+      const operadorEstorno = user?.email || user?.id || "usuário autenticado";
+      const auditNote = `Estorno de devolução por erro em ${new Date().toLocaleDateString("pt-BR")} por ${operadorEstorno}. Devolução original: ${estornoTarget.data}${audit.processedBy ? `, processada por ${operadorDevolucao}` : ", sem operador identificado"}.`;
+
+      const { data: contratoTarget, error: contratoTargetError } = await (supabase.rpc as any)("resolve_contrato_target_for_entrega", {
+        _funcionario_id: estornoTarget.funcionario_id,
+        _unidade_id: (estornoTarget as any).empresa_id,
+        _selected_epi_id: estornoTarget.epi_id,
+      });
+
+      if (contratoTargetError) throw contratoTargetError;
+
+      const shouldAdjustUnitStock = !Array.isArray(contratoTarget) || !contratoTarget[0]?.contrato_epi_id;
+
+      const { error: restoreEntregaError } = await (supabase.from as any)("entregas")
+        .update({
+          status: restoredStatus,
+          observacao: appendObservacao(entregaOrigem.observacao, auditNote),
+        })
+        .eq("id", entregaOrigem.id);
+
+      if (restoreEntregaError) throw restoreEntregaError;
+
+      const { error: deleteDevolucaoError } = await (supabase.from as any)("entregas")
+        .delete()
+        .eq("id", estornoTarget.id);
+
+      if (deleteDevolucaoError) throw deleteDevolucaoError;
+
+      if (shouldAdjustUnitStock && estornoTarget.quantidade > 0) {
+        const { data: epiRow, error: epiLoadError } = await (supabase.from as any)("epis")
+          .select("estoque")
+          .eq("id", estornoTarget.epi_id)
+          .maybeSingle();
+
+        if (epiLoadError) throw epiLoadError;
+
+        const nextStock = Math.max(Number(epiRow?.estoque || 0) - estornoTarget.quantidade, 0);
+        const { error: epiUpdateError } = await (supabase.from as any)("epis")
+          .update({ estoque: nextStock })
+          .eq("id", estornoTarget.epi_id);
+
+        if (epiUpdateError) throw epiUpdateError;
+      }
+
+      if (Array.isArray(contratoTarget) && contratoTarget[0]?.contrato_epi_id && estornoTarget.quantidade > 0) {
+        await (supabase.from as any)("contrato_epis_movimentacoes").insert({
+          contrato_epi_id: contratoTarget[0].contrato_epi_id,
+          contrato_id: contratoTarget[0].contrato_id,
+          epi_id: contratoTarget[0].resolved_epi_id || estornoTarget.epi_id,
+          empresa_id: contratoTarget[0].resolved_empresa_id || (estornoTarget as any).empresa_id || empresaId,
+          tipo: "saida",
+          quantidade: estornoTarget.quantidade,
+          motivo: `Estorno de devolução por erro — ${getName(funcionarios, estornoTarget.funcionario_id)}`,
+          responsavel_nome: operadorEstorno,
+          created_by: user?.id || null,
+        });
+      }
+
+      toast({ title: "Devolução desfeita com sucesso" });
+      setEstornoDialogOpen(false);
+      setEstornoTarget(null);
+      refetch();
+      refetchEpis();
+    } catch {
+      toast({ title: "Erro ao desfazer devolução", variant: "destructive" });
+    } finally {
+      setEstornoSaving(false);
     }
   };
 
@@ -929,6 +1080,11 @@ export default function Entregas() {
                             <Undo2 className="w-3 h-3 text-primary" />
                           </Button>
                         )}
+                        {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
+                            <RotateCcw className="w-3 h-3 text-primary" />
+                          </Button>
+                        )}
                         {!e.assinatura_colaborador && canEdit && (
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
                             <PenLine className="w-3 h-3 text-amber-500" />
@@ -1005,6 +1161,11 @@ export default function Entregas() {
                           {e.status === "ativo" && canEdit && (
                             <Button size="icon" variant="ghost" title="Devolver ao estoque" onClick={() => handleDevolver(e)}>
                               <Undo2 className="w-3.5 h-3.5 text-primary" />
+                            </Button>
+                          )}
+                          {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
+                            <Button size="icon" variant="ghost" title="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
+                              <RotateCcw className="w-3.5 h-3.5 text-primary" />
                             </Button>
                           )}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
@@ -1404,6 +1565,38 @@ export default function Entregas() {
             <Button onClick={confirmDevolver} disabled={devolucaoSaving}>
               {devolucaoSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Undo2 className="w-4 h-4 mr-2" />}
               Confirmar Devolução
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={estornoDialogOpen} onOpenChange={(v) => { if (!estornoSaving) setEstornoDialogOpen(v); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-5 h-5" />
+              Desfazer devolução
+            </DialogTitle>
+          </DialogHeader>
+          {estornoTarget && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border p-3 space-y-1 bg-muted/30">
+                <p className="text-sm"><span className="text-muted-foreground">Colaborador:</span> <strong>{getName(funcionarios, estornoTarget.funcionario_id)}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">EPI:</span> <strong>{getName(epis, estornoTarget.epi_id)}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">Quantidade:</span> <strong>{estornoTarget.quantidade}</strong></p>
+                <p className="text-sm"><span className="text-muted-foreground">Ação:</span> restaurar para <strong>{parseDevolucaoAudit(estornoTarget.observacao).previousStatus || "ativo"}</strong></p>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Confirme apenas se a devolução foi registrada por engano. O item voltará para <strong className="text-foreground">Em uso</strong> e o estoque será estornado automaticamente.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setEstornoDialogOpen(false)} disabled={estornoSaving}>Cancelar</Button>
+            <Button onClick={confirmEstornoDevolucao} disabled={estornoSaving}>
+              {estornoSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+              Confirmar estorno
             </Button>
           </DialogFooter>
         </DialogContent>
