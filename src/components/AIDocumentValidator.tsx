@@ -727,6 +727,20 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
                   <p className="text-sm text-destructive">{af.errorMsg}</p>
                 )}
 
+                {af.status === "pending_credit" && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Pendente de Créditos</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400">{af.errorMsg || "Documento salvo na fila. Será reprocessado quando houver créditos disponíveis."}</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1"
+                      onClick={() => retryPendingCredit(af.id, af.dbId)}>
+                      <RefreshCw className="w-3.5 h-3.5" /> Retentar
+                    </Button>
+                  </div>
+                )}
+
                 {af.analysis && (
                   <div className="space-y-3">
                     {/* Bernhoeft Audit Badge */}
