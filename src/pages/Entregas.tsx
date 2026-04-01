@@ -108,6 +108,10 @@ export default function Entregas() {
   const [estornoTarget, setEstornoTarget] = useState<Entrega | null>(null);
   const [estornoSaving, setEstornoSaving] = useState(false);
 
+  // Substituição + descarte automático
+  const [descarteSubstituicao, setDescarteSubstituicao] = useState(true);
+  const [descarteDescricao, setDescarteDescricao] = useState("");
+
   const resetSignState = useCallback(() => {
     setSignOpen(false);
     setPendingEntrega(null);
