@@ -500,8 +500,30 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
 
     setShowScanModal(false);
   };
+  // Retry pending_credit documents (no file needed - re-sends from DB)
+  const retryPendingCredit = async (id: string, dbId?: string) => {
+    const af = files.find(f => f.id === id);
+    if (!af || !selectedFunc) return;
 
-  const toggleConfirm = (id: string) => {
+    // If we have the original file, re-analyze it
+    if (af.file) {
+      // Delete old pending_credit record
+      if (dbId) {
+        await (supabase.from as any)("analises_ia").delete().eq("id", dbId);
+      }
+      // Reset to pending and trigger analysis
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, status: "pending" as const, dbId: undefined, errorMsg: undefined } : f));
+      toast({ title: "Documento na fila", description: `"${af.fileName}" será reprocessado. Clique em "Analisar" para iniciar.` });
+    } else {
+      toast({
+        title: "Arquivo não disponível",
+        description: "O arquivo original não está mais disponível. Faça o upload novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
     setFiles(prev => prev.map(f => f.id === id ? { ...f, confirmed: !f.confirmed } : f));
   };
 
