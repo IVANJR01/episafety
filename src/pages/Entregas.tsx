@@ -611,8 +611,8 @@ export default function Entregas() {
       return;
     }
 
-    // Auto-discard old items when tipo is substituição and discard is enabled
-    if (normalizedTipo === "substituicao" && descarteSubstituicao && insertedIds.length > 0) {
+    // Auto-discard old items when discard is enabled and employee has active items
+    if (descarteSubstituicao && insertedIds.length > 0) {
       for (const item of epiList) {
         const epiId = item.epi.source_epi_id || item.epi.id;
         // Find the active delivery for same employee + same EPI
