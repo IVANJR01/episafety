@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useLayoutEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import SignaturePad from "signature_pad";
 import { Loader2 } from "lucide-react";
@@ -93,13 +93,26 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     return true;
   }, [scaleStrokeData]);
 
-  useEffect(() => {
-    if (!open) return;
+  // Primary resize logic using useLayoutEffect for immediate DOM sync
+  useLayoutEffect(() => {
+    if (!open || !canvasRef.current) return;
 
-    const previousOverflow = document.body.style.overflow;
-    const previousTouchAction = document.body.style.touchAction;
-    document.body.style.overflow = "hidden";
-    document.body.style.touchAction = "none";
+    const canvas = canvasRef.current;
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    const previousTouchAction = body.style.touchAction;
+    const previousPosition = body.style.position;
+    const previousTop = body.style.top;
+    const previousWidth = body.style.width;
+    const scrollY = window.scrollY;
+
+    // Lock body scroll — iOS-safe approach
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    body.style.touchAction = "none";
+
     isClearingRef.current = false;
     isSubmittingRef.current = false;
     setIsSubmitting(false);
@@ -111,26 +124,75 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       orientation.lock("landscape").catch(() => null);
     }
 
-    let attempts = 0;
-    let disposed = false;
+    const resize = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const r = parent.getBoundingClientRect();
+      const width = Math.round(r.width);
+      const height = Math.round(r.height);
+      if (width < 2 || height < 2) return;
 
-    const tryInit = () => {
-      if (disposed) return;
-      attempts += 1;
-      const ready = initPad();
-      if (!ready && attempts < 30) {
-        retryTimerRef.current = window.setTimeout(tryInit, 50);
+      const previousSize = canvasSizeRef.current;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const previousData = isClearingRef.current ? [] : (padRef.current?.toData() ?? []);
+
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = "rgb(255, 255, 255)";
+      ctx.fillRect(0, 0, width, height);
+
+      padRef.current?.off();
+      padRef.current = new SignaturePad(canvas, {
+        backgroundColor: "rgb(255, 255, 255)",
+        penColor: "rgb(0, 0, 0)",
+        minWidth: 0.5,
+        maxWidth: 2.5,
+        throttle: 0,
+        velocityFilterWeight: 0.4,
+      });
+
+      if (previousData.length > 0 && previousSize.width > 0 && previousSize.height > 0) {
+        const scaledData = scaleStrokeData(previousData, previousSize.width, previousSize.height, width, height);
+        padRef.current.fromData(scaledData);
       }
+
+      canvasSizeRef.current = { width, height };
+      isClearingRef.current = false;
     };
 
+    // Initial resize with small delay for DOM readiness (dialog animations)
+    let initAttempts = 0;
+    let initTimer: number | null = null;
+    const tryInit = () => {
+      initAttempts++;
+      const parent = canvas.parentElement;
+      const r = parent?.getBoundingClientRect();
+      if (r && r.width > 2 && r.height > 2) {
+        resize();
+      } else if (initAttempts < 30) {
+        initTimer = window.setTimeout(tryInit, 50);
+      }
+    };
     tryInit();
 
+    // Debounced resize handler
+    let resizeTimer: number | null = null;
     const scheduleResize = () => {
-      if (resizeTimerRef.current) window.clearTimeout(resizeTimerRef.current);
-      resizeTimerRef.current = window.setTimeout(() => initPad(), 80);
+      if (resizeTimer) window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(resize, 80);
     };
 
     window.addEventListener("resize", scheduleResize);
+    window.addEventListener("orientationchange", scheduleResize);
+
+    const vv = window.visualViewport;
+    if (vv) vv.addEventListener("resize", scheduleResize);
 
     if (canvasHostRef.current && "ResizeObserver" in window) {
       resizeObserverRef.current?.disconnect();
@@ -139,18 +201,24 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     }
 
     return () => {
-      disposed = true;
-      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
-      if (resizeTimerRef.current) window.clearTimeout(resizeTimerRef.current);
+      if (initTimer) window.clearTimeout(initTimer);
+      if (resizeTimer) window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", scheduleResize);
+      window.removeEventListener("orientationchange", scheduleResize);
+      if (vv) vv.removeEventListener("resize", scheduleResize);
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
       padRef.current?.off();
       if (typeof orientation?.unlock === "function") orientation.unlock();
-      document.body.style.overflow = previousOverflow;
-      document.body.style.touchAction = previousTouchAction;
+      // Restore body scroll
+      body.style.position = previousPosition;
+      body.style.top = previousTop;
+      body.style.width = previousWidth;
+      body.style.overflow = previousOverflow;
+      body.style.touchAction = previousTouchAction;
+      window.scrollTo(0, scrollY);
     };
-  }, [open, initPad]);
+  }, [open, initPad, scaleStrokeData]);
 
   const handleCancel = () => {
     if (isSubmittingRef.current) return;
@@ -265,7 +333,15 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] bg-white flex flex-col"
-      style={{ touchAction: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties}
+      style={{
+        height: "100dvh",
+        /* fallback for older iOS */
+        minHeight: "-webkit-fill-available",
+        touchAction: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+        overscrollBehavior: "none",
+      } as React.CSSProperties}
     >
       <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b shrink-0 safe-area-top">
         <button
