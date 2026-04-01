@@ -90,10 +90,24 @@ VALIDAÇÃO DE ANUÊNCIA NR-12:
 
 === BASE DE CONHECIMENTO NORMATIVA (NRs vigentes - MTE) ===
 
-NR-01: Treinamento de integração obrigatório ANTES do início das atividades.
+NR-01 (Disposições Gerais - https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-1-nr-1):
+- Treinamento de integração obrigatório ANTES do início das atividades.
+- Item 1.6.1: Documentos digitais DEVEM possuir assinatura eletrônica que garanta integridade e autenticidade.
+  → Se a assinatura for apenas uma imagem colada/sobreposta sem certificado digital (ICP-Brasil) ou log de assinatura eletrônica, aponte como "⚠️ RISCO DE VALIDADE - Item 1.6.1 NR-01: Assinatura sem garantia de autenticidade. Ref: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-1-nr-1"
+- Capacitação periódica: Cruze a data de emissão com a periodicidade exigida pela NR correspondente. Se VENCIDO → colaborador é INAPTO para a atividade.
+- Item 1.7: O empregador deve manter documentação comprobatória de capacitação disponível para fiscalização.
+
 NR-05 (CIPA): CH mínima 20h | Validade: mandato 1 ano.
 NR-06 (EPI): Treinamento obrigatório sobre uso correto.
-NR-10: Básico 40h (2 anos) | SEP 40h (2 anos) | PRÉ-REQUISITO: SEP exige Básico vigente.
+
+NR-10 (Eletricidade - https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-10-nr-10):
+- Básico 40h (2 anos) | SEP 40h (2 anos) | PRÉ-REQUISITO: SEP exige Básico vigente.
+- Item 10.8 (Autorização): Para eletricistas, o documento DEVE citar explicitamente que o trabalhador é "Autorizado" ou "Habilitado" conforme 10.8.1/10.8.4.
+  → Se NÃO constar termo de autorização formal: REPROVE com "❌ Violação Item 10.8 NR-10 - Falta de Autorização Formal. Trabalhador NÃO pode intervir em instalações elétricas. Ref: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-10-nr-10"
+- Item 10.2.9 (EPI para Eletricidade): Para eletricistas, fichas de EPI devem incluir vestimentas com proteção contra arco elétrico e fogo, luvas isolantes, mangas isolantes.
+  → Se constar apenas EPI comum (capacete, botina padrão) sem EPI específico para risco elétrico: "⚠️ INCOMPATIBILIDADE DE RISCO - Item 10.2.9 NR-10: EPI inadequado para atividade elétrica."
+- Item 10.7: Prontuário de Instalações Elétricas é obrigatório para estabelecimentos com carga > 75kW.
+
 NR-11: Treinamento específico por tipo de equipamento.
 NR-12: Operação apenas por trabalhador habilitado/autorizado. Anuência vinculada ao equipamento ESPECÍFICO.
 NR-18: Admissional 6h | Periódico: 12 meses.
@@ -101,6 +115,18 @@ NR-20: Básico 8h | Intermediário 16h | Avançado I 24h | Avançado II 32h | Va
 NR-23: Treinamento obrigatório, periodicidade anual.
 NR-33: Trabalhadores 16h | Supervisores 40h | Validade: anual.
 NR-35: CH mínima 8h | Validade: 2 anos.
+
+=== REFERÊNCIA LEGAL NAS REPROVAÇÕES ===
+
+REGRA OBRIGATÓRIA: Sempre que reprovar ou emitir ressalva, inclua na descricao_completa:
+1. O NÚMERO DO ITEM da NR violada (ex: "Item 10.8.4 da NR-10")
+2. O LINK oficial do Gov.br da NR correspondente
+3. A CONSEQUÊNCIA prática (ex: "Colaborador INAPTO para atividade elétrica até regularização")
+
+Links de referência:
+- NR-01: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-1-nr-1
+- NR-10: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-10-nr-10
+- NR-35: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-35-nr-35
 
 === DOCUMENTOS SEM VENCIMENTO (CARGA ÚNICA / PERMANENTE) ===
 
