@@ -660,7 +660,7 @@ export default function AIDocumentValidator({ funcionarios, cursos, empresaId, o
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {files.filter(f => f.status === "analyzed" || f.status === "error").map(af => (
+            {files.filter(f => f.status === "analyzed" || f.status === "error" || f.status === "pending_credit").map(af => (
               <div key={af.id} className={`border rounded-xl p-4 space-y-3 transition-colors ${
                 af.confirmed ? "border-green-500/50 bg-green-50/30 dark:bg-green-950/10" : "border-border"
               }`}>
