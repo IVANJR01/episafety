@@ -74,40 +74,27 @@ function drawPageHeader(doc: jsPDF, data: FichaData, pageNum: number, totalPages
   doc.text(`Documento gerado em: ${now.toLocaleDateString("pt-BR")}`, MARGIN, y);
   doc.text(`Pág. ${pageNum} de ${totalPages}`, PAGE_W - MARGIN, y, { align: "right" });
 
-  y = 16;
+  y = 18;
 
-  // --- Company header: Logo left + Name/CNPJ beside it ---
-  const logoMaxH = 18;
-  const logoMaxW = 28;
-  let textStartX = MARGIN;
-
-  if (data.empresa.logo_url) {
-    try {
-      const logoSrc = data.fotosBase64?.get(data.empresa.logo_url) || data.empresa.logo_url;
-      if (logoSrc.startsWith("data:")) {
-        doc.addImage(logoSrc, "JPEG", MARGIN, y, logoMaxW, logoMaxH);
-        textStartX = MARGIN + logoMaxW + 4;
-      }
-    } catch { /* logo failed, skip */ }
-  }
-
+  // --- Centered company header ---
   doc.setTextColor(0);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(data.empresa.nome || "EMPRESA", textStartX, y + 7);
+  doc.text(data.empresa.nome || "EMPRESA", PAGE_W / 2, y, { align: "center" });
 
+  y += 6;
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
   if (data.empresa.cnpj) {
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(`CNPJ: ${data.empresa.cnpj}`, textStartX, y + 13);
+    doc.text(`CNPJ: ${data.empresa.cnpj}`, PAGE_W / 2, y, { align: "center" });
+    y += 5;
   }
 
-  // Title right-aligned
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("Ficha de EPI - Trabalhadores", PAGE_W - MARGIN, y + 10, { align: "right" });
+  doc.text("Ficha de EPI - Trabalhadores", PAGE_W / 2, y, { align: "center" });
 
-  y += logoMaxH + 4;
+  y += 8;
 
   // Employee info table
   const colWidths = [0.40, 0.30, 0.12, 0.18]; // proportions
