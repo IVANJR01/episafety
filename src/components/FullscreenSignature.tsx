@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import SignaturePad from "signature_pad";
+import { Loader2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -176,12 +177,33 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     ctx.restore();
   };
 
+  /** Downscale canvas to max 800px wide and export as JPEG 0.7 */
+  const exportScaledJpeg = (sourceCanvas: HTMLCanvasElement): string => {
+    const maxW = 800;
+    const srcW = sourceCanvas.width;
+    const srcH = sourceCanvas.height;
+    if (srcW <= maxW) {
+      return sourceCanvas.toDataURL("image/jpeg", 0.7);
+    }
+    const scale = maxW / srcW;
+    const outW = Math.round(srcW * scale);
+    const outH = Math.round(srcH * scale);
+    const tmp = document.createElement("canvas");
+    tmp.width = outW;
+    tmp.height = outH;
+    const ctx = tmp.getContext("2d")!;
+    ctx.drawImage(sourceCanvas, 0, 0, outW, outH);
+    return tmp.toDataURL("image/jpeg", 0.7);
+  };
+
   const handleSave = () => {
     if (isSubmittingRef.current) return;
     if (padRef.current?.isEmpty()) return;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
-    const dataUrl = padRef.current.toDataURL("image/jpeg", 0.8);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = exportScaledJpeg(canvas);
     onSave(dataUrl);
   };
 
@@ -193,7 +215,6 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Draw the name on a clean canvas and export
     const rect = canvas.getBoundingClientRect();
     const width = Math.round(rect.width);
     const height = Math.round(rect.height);
@@ -210,7 +231,6 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     ctx.fillStyle = "rgb(255, 255, 255)";
     ctx.fillRect(0, 0, width, height);
 
-    // Draw name centered
     const fontSize = Math.min(32, width / (name.length * 0.6));
     ctx.fillStyle = "rgb(0, 0, 0)";
     ctx.font = `italic ${fontSize}px "Georgia", serif`;
@@ -218,7 +238,6 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     ctx.textBaseline = "middle";
     ctx.fillText(name.toUpperCase(), width / 2, height / 2);
 
-    // Underline
     const textWidth = ctx.measureText(name.toUpperCase()).width;
     ctx.strokeStyle = "rgb(0, 0, 0)";
     ctx.lineWidth = 1;
@@ -229,14 +248,25 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
 
     isSubmittingRef.current = true;
     setIsSubmitting(true);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    const dataUrl = exportScaledJpeg(canvas);
     onSave(dataUrl);
   };
 
   if (!open) return null;
 
+  /* iOS-safe inline styles to block magnifier, callout, and selection */
+  const iosCanvasStyle: React.CSSProperties = {
+    touchAction: "none",
+    WebkitUserSelect: "none",
+    userSelect: "none",
+    WebkitTouchCallout: "none" as any,
+  };
+
   return createPortal(
-    <div className="fixed inset-0 z-[9999] bg-white flex flex-col" style={{ touchAction: "none" }}>
+    <div
+      className="fixed inset-0 z-[9999] bg-white flex flex-col"
+      style={{ touchAction: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties}
+    >
       <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b shrink-0 safe-area-top">
         <button
           type="button"
@@ -258,9 +288,16 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
           type="button"
           onClick={handleSave}
           disabled={isSubmitting}
-          className="text-sm font-semibold text-primary uppercase tracking-wide px-2 py-1"
+          className="text-sm font-semibold text-primary uppercase tracking-wide px-2 py-1 flex items-center gap-1.5"
         >
-          {isSubmitting ? "Salvando..." : "Salvar"}
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Salvando…
+            </>
+          ) : (
+            "Salvar"
+          )}
         </button>
       </div>
 
@@ -290,9 +327,16 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
               type="button"
               onClick={handleSaveIndicativeName}
               disabled={!indicativeName.trim() || isSubmitting}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-lg disabled:opacity-40"
+              className="px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-lg disabled:opacity-40 flex items-center gap-1.5"
             >
-              Confirmar Nome
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Salvando…
+                </>
+              ) : (
+                "Confirmar Nome"
+              )}
             </button>
           </div>
         </div>
@@ -300,7 +344,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         <div ref={canvasHostRef} className="flex-1 relative min-h-0">
           <canvas
             ref={canvasRef}
-            className="absolute inset-0 w-full h-full touch-none cursor-crosshair"
+            className="absolute inset-0 w-full h-full cursor-crosshair"
+            style={iosCanvasStyle}
           />
         </div>
       )}
@@ -310,7 +355,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
           <button
             type="button"
             onClick={() => {
-                if (isSubmitting) return;
+              if (isSubmitting) return;
               if (onFacialRecognition) {
                 onFacialRecognition();
               } else {
@@ -335,4 +380,3 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     document.body,
   );
 }
-
