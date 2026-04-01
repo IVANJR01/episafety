@@ -333,7 +333,15 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] bg-white flex flex-col"
-      style={{ touchAction: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties}
+      style={{
+        height: "100dvh",
+        /* fallback for older iOS */
+        minHeight: "-webkit-fill-available",
+        touchAction: "none",
+        WebkitUserSelect: "none",
+        userSelect: "none",
+        overscrollBehavior: "none",
+      } as React.CSSProperties}
     >
       <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b shrink-0 safe-area-top">
         <button
