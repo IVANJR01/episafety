@@ -611,6 +611,53 @@ export default function Entregas() {
       return;
     }
 
+    // Auto-discard old items when tipo is substituição and discard is enabled
+    if (normalizedTipo === "substituicao" && descarteSubstituicao && insertedIds.length > 0) {
+      for (const item of epiList) {
+        const epiId = item.epi.source_epi_id || item.epi.id;
+        // Find the active delivery for same employee + same EPI
+        const activeEntrega = entregas.find(e =>
+          e.funcionario_id === form.funcionario_id &&
+          e.epi_id === epiId &&
+          e.status === "ativo" &&
+          e.tipo !== "devolucao"
+        );
+
+        if (activeEntrega) {
+          const obsDescarte = [
+            `Descarte automático por substituição em ${form.data}`,
+            `Entrega origem: ${activeEntrega.id}`,
+            `Status anterior: ${activeEntrega.status}`,
+            `Processado por: ${user?.email || "usuário autenticado"}`,
+            "[DESCARTE/AVARIA - não retornado ao estoque]",
+            descarteDescricao.trim() ? `Estado: ${descarteDescricao.trim()}` : null,
+          ].filter(Boolean).join(" • ");
+
+          try {
+            // Create devolução record with qty 0 (descarte = não retorna ao estoque)
+            await (supabase.from as any)("entregas").insert({
+              funcionario_id: activeEntrega.funcionario_id,
+              epi_id: activeEntrega.epi_id,
+              quantidade: 0,
+              data: form.data,
+              tipo: "devolucao",
+              status: "devolvido",
+              observacao: obsDescarte,
+              empresa_id: (activeEntrega as any).empresa_id || empresaId,
+              created_by: currentUserId,
+            });
+
+            // Mark old delivery as "substituido"
+            await (supabase.from as any)("entregas")
+              .update({ status: "substituido" })
+              .eq("id", activeEntrega.id);
+          } catch (err) {
+            console.error("Erro ao descartar item antigo automaticamente:", err);
+          }
+        }
+      }
+    }
+
     setPendingEntrega({ funcionario_id: form.funcionario_id, entrega_ids: insertedIds });
     setOpen(false);
     resetForm();
