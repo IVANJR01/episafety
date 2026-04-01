@@ -343,12 +343,12 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         overscrollBehavior: "none",
       } as React.CSSProperties}
     >
-      <div className="flex items-center justify-between w-full px-4 py-3 bg-muted/50 border-b shrink-0 safe-area-top">
+      <div className="flex items-center gap-6 w-full px-4 py-3 bg-muted/50 border-b shrink-0 safe-area-top">
         <button
           type="button"
           onClick={handleCancel}
           disabled={isSubmitting}
-          className="text-base font-bold text-muted-foreground uppercase tracking-wider px-3 py-2"
+          className="text-base font-bold text-green-600 uppercase tracking-wider px-1 py-2"
         >
           Cancelar
         </button>
@@ -356,7 +356,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
           type="button"
           onClick={handleClear}
           disabled={isSubmitting}
-          className="text-base font-bold text-muted-foreground uppercase tracking-wider px-3 py-2"
+          className="text-base font-bold text-green-600 uppercase tracking-wider px-1 py-2"
         >
           Limpar
         </button>
@@ -364,7 +364,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
           type="button"
           onClick={handleSave}
           disabled={isSubmitting}
-          className="text-base font-bold text-primary uppercase tracking-wider px-3 py-2 flex items-center gap-1.5"
+          className="text-base font-bold text-muted-foreground uppercase tracking-wider px-1 py-2 flex items-center gap-1.5"
         >
           {isSubmitting ? (
             <>
