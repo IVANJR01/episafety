@@ -772,6 +772,7 @@ export default function ControleEstoqueContrato() {
                                                       {item.epi_nome}
                                                       {item.tamanho && <span className="ml-1 text-[10px] text-muted-foreground">({item.tamanho})</span>}
                                                     </TableCell>
+                                                    <TableCell className="px-2 py-1.5 font-mono text-[10px]">{item.ca || "—"}</TableCell>
                                                     <TableCell className="px-2 py-1.5 text-right font-semibold">{item.estoque}</TableCell>
                                                     <TableCell className="px-2 py-1.5 text-right text-muted-foreground">
                                                       R$ {item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
