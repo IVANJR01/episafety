@@ -372,7 +372,7 @@ export default function ControleEstoqueContrato() {
     // Fetch EPI names + values
     const epiIds = [...new Set([...cepis.map(e => e.epi_id), ...movs.map(m => m.epi_id)])];
     const { data: episData } = epiIds.length > 0
-      ? await supabase.from("epis").select("id, nome, valor, estoque_minimo, tamanho").in("id", epiIds)
+      ? await supabase.from("epis").select("id, nome, ca, valor, estoque_minimo, tamanho").in("id", epiIds)
       : { data: [] };
     const epiMap = Object.fromEntries((episData || []).map(e => [e.id, e]));
 
