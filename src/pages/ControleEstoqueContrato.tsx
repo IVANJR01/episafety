@@ -740,6 +740,7 @@ export default function ControleEstoqueContrato() {
                                                   )}
                                                 </div>
                                                 <div className="flex items-center gap-4 text-[11px]">
+                                                  {item.ca && <span className="text-muted-foreground">CA: <strong className="text-foreground font-mono">{item.ca}</strong></span>}
                                                   <span className="text-muted-foreground">Estoque: <strong className="text-foreground">{item.estoque}</strong></span>
                                                   <span className="text-muted-foreground">Valor: <strong className="text-foreground">R$ {item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong></span>
                                                 </div>
