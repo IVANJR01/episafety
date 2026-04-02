@@ -389,6 +389,7 @@ export default function ControleEstoqueContrato() {
       data: m.created_at,
       tipo: m.tipo === "entrada" ? "Entrada" : m.motivo || "Saída",
       epi_nome: epiMap[m.epi_id]?.nome || "—",
+      ca: epiMap[m.epi_id]?.ca || null,
       tamanho: epiMap[m.epi_id]?.tamanho || null,
       destino: m.responsavel_nome || "—",
       quantidade: m.quantidade || 0,
