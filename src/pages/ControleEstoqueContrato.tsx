@@ -882,7 +882,7 @@ export default function ControleEstoqueContrato() {
                                                 <TableBody>
                                                   {filteredMovs.length === 0 ? (
                                                     <TableRow>
-                                                      <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-4">
+                                                      <TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">
                                                         Nenhuma movimentação no período
                                                       </TableCell>
                                                     </TableRow>
