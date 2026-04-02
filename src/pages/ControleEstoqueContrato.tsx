@@ -753,6 +753,7 @@ export default function ControleEstoqueContrato() {
                                               <TableHeader>
                                                 <TableRow className="text-[10px]">
                                                   <TableHead className="px-2 py-1.5">EPI</TableHead>
+                                                  <TableHead className="px-2 py-1.5">C.A.</TableHead>
                                                   <TableHead className="px-2 py-1.5 text-right">Estoque</TableHead>
                                                   <TableHead className="px-2 py-1.5 text-right">Valor</TableHead>
                                                   <TableHead className="px-2 py-1.5 text-center">Status</TableHead>
