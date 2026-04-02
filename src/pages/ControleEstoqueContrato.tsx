@@ -762,7 +762,7 @@ export default function ControleEstoqueContrato() {
                                               <TableBody>
                                                 {contrato.itens.length === 0 ? (
                                                   <TableRow>
-                                                    <TableCell colSpan={4} className="text-center text-muted-foreground text-xs py-4">
+                                                    <TableCell colSpan={5} className="text-center text-muted-foreground text-xs py-4">
                                                       Nenhum EPI cadastrado
                                                     </TableCell>
                                                   </TableRow>
