@@ -45,7 +45,7 @@ interface ContratoStockSummary {
   valorTotal: number;
   alertas: number;
   itens: { epi_nome: string; ca: string | null; tamanho: string | null; estoque: number; estoque_minimo: number; valor: number }[];
-  movimentos: { data: string; tipo: string; epi_nome: string; tamanho: string | null; destino: string; quantidade: number }[];
+  movimentos: { data: string; tipo: string; epi_nome: string; ca: string | null; tamanho: string | null; destino: string; quantidade: number }[];
   loadedDetails: boolean;
 }
 
@@ -389,6 +389,7 @@ export default function ControleEstoqueContrato() {
       data: m.created_at,
       tipo: m.tipo === "entrada" ? "Entrada" : m.motivo || "Saída",
       epi_nome: epiMap[m.epi_id]?.nome || "—",
+      ca: epiMap[m.epi_id]?.ca || null,
       tamanho: epiMap[m.epi_id]?.tamanho || null,
       destino: m.responsavel_nome || "—",
       quantidade: m.quantidade || 0,
@@ -856,7 +857,7 @@ export default function ControleEstoqueContrato() {
                                                     </Badge>
                                                     <span className="text-[10px] text-muted-foreground">{format(new Date(mov.data), "dd/MM/yy", { locale: ptBR })}</span>
                                                   </div>
-                                                  <p className="text-xs font-semibold">{mov.epi_nome} {mov.tamanho ? <span className="text-[10px] text-muted-foreground font-normal">({mov.tamanho})</span> : null}</p>
+                                                  <p className="text-xs font-semibold">{mov.epi_nome} {mov.ca ? <span className="text-[10px] text-muted-foreground font-normal">CA: {mov.ca}</span> : null} {mov.tamanho ? <span className="text-[10px] text-muted-foreground font-normal">({mov.tamanho})</span> : null}</p>
                                                   <div className="flex items-center justify-between text-[11px]">
                                                     <span className="text-muted-foreground truncate max-w-[60%]">{mov.destino}</span>
                                                     <span className="font-bold">Qtd: {mov.quantidade}</span>
@@ -872,6 +873,7 @@ export default function ControleEstoqueContrato() {
                                                     <TableHead className="px-2 py-1.5">Data</TableHead>
                                                     <TableHead className="px-2 py-1.5">Tipo</TableHead>
                                                     <TableHead className="px-2 py-1.5">EPI</TableHead>
+                                                    <TableHead className="px-2 py-1.5 w-[70px]">C.A.</TableHead>
                                                     <TableHead className="px-2 py-1.5">Tam.</TableHead>
                                                     <TableHead className="px-2 py-1.5">Colaborador</TableHead>
                                                     <TableHead className="px-2 py-1.5 text-right">Qtd</TableHead>
@@ -880,7 +882,7 @@ export default function ControleEstoqueContrato() {
                                                 <TableBody>
                                                   {filteredMovs.length === 0 ? (
                                                     <TableRow>
-                                                      <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-4">
+                                                      <TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">
                                                         Nenhuma movimentação no período
                                                       </TableCell>
                                                     </TableRow>
@@ -898,6 +900,7 @@ export default function ControleEstoqueContrato() {
                                                         </Badge>
                                                       </TableCell>
                                                       <TableCell className="px-2 py-1.5 max-w-[140px] truncate">{mov.epi_nome}</TableCell>
+                                                      <TableCell className="px-2 py-1.5 font-mono text-[10px] text-muted-foreground">{mov.ca || "—"}</TableCell>
                                                       <TableCell className="px-2 py-1.5 text-muted-foreground">{mov.tamanho || "—"}</TableCell>
                                                       <TableCell className="px-2 py-1.5 max-w-[100px] truncate">{mov.destino}</TableCell>
                                                       <TableCell className="px-2 py-1.5 text-right font-semibold">{mov.quantidade}</TableCell>
