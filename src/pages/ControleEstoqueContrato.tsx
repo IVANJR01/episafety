@@ -378,6 +378,7 @@ export default function ControleEstoqueContrato() {
 
     const itens = cepis.map(ce => ({
       epi_nome: epiMap[ce.epi_id]?.nome || "—",
+      ca: epiMap[ce.epi_id]?.ca || null,
       tamanho: epiMap[ce.epi_id]?.tamanho || null,
       estoque: ce.estoque || 0,
       estoque_minimo: epiMap[ce.epi_id]?.estoque_minimo || 0,
