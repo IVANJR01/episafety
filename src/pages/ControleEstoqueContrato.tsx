@@ -873,6 +873,7 @@ export default function ControleEstoqueContrato() {
                                                     <TableHead className="px-2 py-1.5">Data</TableHead>
                                                     <TableHead className="px-2 py-1.5">Tipo</TableHead>
                                                     <TableHead className="px-2 py-1.5">EPI</TableHead>
+                                                    <TableHead className="px-2 py-1.5 w-[70px]">C.A.</TableHead>
                                                     <TableHead className="px-2 py-1.5">Tam.</TableHead>
                                                     <TableHead className="px-2 py-1.5">Colaborador</TableHead>
                                                     <TableHead className="px-2 py-1.5 text-right">Qtd</TableHead>
