@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { preCacheAllData } from "@/lib/offlineStorage";
+import { clearCachedSession, loadCachedSession, saveCachedSession } from "@/lib/authSessionCache";
+import { resolveOfflineSession } from "@/lib/authState";
 
 interface AuthContextType {
   user: User | null;
@@ -136,6 +138,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isPrincipal, setIsPrincipal] = useState(false);
 
+  const applySignedOutState = useCallback(() => {
+    setUser(null);
+    setSession(null);
+    setAuthorized(true);
+    setModulosPermitidos([]);
+    setEmpresaId(null);
+    setContratoId(null);
+    setIsSuperAdmin(false);
+    setIsPrincipal(false);
+  }, []);
+
   const handleAuthCheck = useCallback(async (currentUser: User | null) => {
     const applyCachedState = (cached: AuthCache | null) => {
       if (!cached) {
@@ -198,36 +211,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         applyCachedState(loadAuthCache(currentUser.email));
       }
     } else {
-      setAuthorized(true);
-      setModulosPermitidos([]);
-      setEmpresaId(null);
-      setContratoId(null);
-      setIsSuperAdmin(false);
-      setIsPrincipal(false);
+      applySignedOutState();
     }
     setLoading(false);
-  }, []);
+  }, [applySignedOutState]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const cached = loadCachedSession();
+
+    if (cached.user) {
+      setSession(cached.session);
+      setUser(cached.user);
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const next = resolveOfflineSession(session, session?.user ?? null);
+
+      if (event === "SIGNED_OUT") {
+        clearCachedSession();
+        setLoading(false);
+        applySignedOutState();
+        return;
+      }
+
+      if (next.session) {
+        saveCachedSession(next.session);
+      }
+
+      setSession(next.session);
+      setUser(next.user);
+
+      if (event === "TOKEN_REFRESHED") {
+        return;
+      }
+
       setLoading(true);
       setTimeout(() => {
-        handleAuthCheck(session?.user ?? null);
+        handleAuthCheck(next.user ?? null);
       }, 0);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      handleAuthCheck(session?.user ?? null);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        const next = resolveOfflineSession(session, session?.user ?? null);
 
-    return () => subscription.unsubscribe();
-  }, [handleAuthCheck]);
+        if (next.session) {
+          saveCachedSession(next.session);
+        }
+
+        setSession(next.session);
+        setUser(next.user);
+        handleAuthCheck(next.user ?? null);
+      })
+      .catch(() => {
+        const fallback = loadCachedSession();
+        setSession(fallback.session);
+        setUser(fallback.user);
+        handleAuthCheck(fallback.user ?? null);
+      });
+
+    const handleOnline = () => {
+      supabase.auth.refreshSession().then(({ data: { session } }) => {
+        if (session) {
+          saveCachedSession(session);
+          setSession(session);
+          setUser(session.user);
+          handleAuthCheck(session.user);
+        }
+      }).catch(() => {});
+    };
+
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      subscription.unsubscribe();
+    };
+  }, [applySignedOutState, handleAuthCheck]);
 
   const signOut = async () => {
+    clearCachedSession();
     await supabase.auth.signOut();
   };
 

@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
 import { Capacitor } from "@capacitor/core";
 import App from "./App.tsx";
+import { supabase } from "@/integrations/supabase/client";
 import "./index.css";
 
 const isNativeApp = Capacitor.isNativePlatform();
@@ -51,4 +52,12 @@ if (isNativeApp) {
     .catch(() => {});
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+async function bootstrap() {
+  try {
+    await supabase.auth.getSession();
+  } catch {}
+
+  createRoot(document.getElementById("root")!).render(<App />);
+}
+
+void bootstrap();
