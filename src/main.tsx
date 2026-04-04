@@ -5,6 +5,19 @@ import App from "./App.tsx";
 import { supabase } from "@/integrations/supabase/client";
 import "./index.css";
 
+// Handle Android back button in native app
+if (Capacitor.isNativePlatform()) {
+  import("@capacitor/app").then(({ App: CapApp }) => {
+    CapApp.addListener("backButton", ({ canGoBack }) => {
+      if (canGoBack) {
+        window.history.back();
+      } else {
+        CapApp.minimizeApp();
+      }
+    });
+  }).catch(() => {});
+}
+
 const isNativeApp = Capacitor.isNativePlatform();
 
 // Purge only video entries from storage cache (keep all other caches for offline use)
