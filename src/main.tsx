@@ -7,25 +7,15 @@ import "./index.css";
 
 const isNativeApp = Capacitor.isNativePlatform();
 
-// Clean up old caches on every launch
+// Purge only video entries from storage cache (keep all other caches for offline use)
 if (typeof window !== "undefined" && "caches" in window) {
-  void caches.keys().then(async (names) => {
-    for (const name of names) {
-      // Delete legacy workbox caches that don't match current prefix
-      if (name.startsWith("workbox-precache-") || name.startsWith("workbox-runtime-")) {
-        await caches.delete(name);
-      }
-    }
-    // Also purge video entries from storage cache
-    try {
-      const storageCache = await caches.open("supabase-storage-cache");
-      const requests = await storageCache.keys();
-      await Promise.all(
-        requests
-          .filter((r) => r.url.includes("/videos-treinamento/"))
-          .map((r) => storageCache.delete(r))
-      );
-    } catch {}
+  void caches.open("supabase-storage-cache").then(async (storageCache) => {
+    const requests = await storageCache.keys();
+    await Promise.all(
+      requests
+        .filter((r) => r.url.includes("/videos-treinamento/"))
+        .map((r) => storageCache.delete(r))
+    );
   }).catch(() => {});
 }
 
