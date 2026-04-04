@@ -44,7 +44,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
       let query = (supabase.from as any)(table).select(columns || "*");
       if (orderBy) query = query.order(orderBy, { ascending: ascending ?? false });
 
-      const { data: rows, error } = await withTimeout(query);
+      const { data: rows, error } = await withTimeout(query) as any;
       if (error) throw error;
 
       const result = (rows as T[]) || [];
