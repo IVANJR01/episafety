@@ -3,6 +3,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData, addToSyncQueue, isOnline } from "@/lib/offlineStorage";
+import { isNetworkFailure } from "@/lib/offlineViewCache";
+
+const QUERY_TIMEOUT_MS = 3000;
+
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs = QUERY_TIMEOUT_MS) => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  }) as Promise<T>;
+};
 
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
   const [data, setData] = useState<T[]>([]);
@@ -13,38 +28,47 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     setLoading(true);
 
     if (!isOnline()) {
-      // Use cached data when offline
       const cached = getCachedData<T>(table);
       if (cached) {
         setData(cached);
+        toast({ title: "Exibindo dados offline", description: "Você está offline. Exibindo dados da última sincronização." });
         setLoading(false);
         return;
       }
-      toast({ title: "Offline", description: "Sem dados em cache para " + table, variant: "destructive" });
+      toast({ title: "Sem conexão", description: "Conecte-se à internet para sincronizar este módulo." });
       setLoading(false);
       return;
     }
 
-    let query = (supabase.from as any)(table).select(columns || "*");
-    if (orderBy) query = query.order(orderBy, { ascending: ascending ?? false });
-    const { data: rows, error } = await query;
-    if (error) {
-      // On network error, try cache
-      const cached = getCachedData<T>(table);
-      if (cached) {
-        setData(cached);
-        toast({ title: "Usando dados em cache", description: "Não foi possível conectar ao servidor." });
-      } else {
-        toast({ title: "Erro ao carregar", description: error.message, variant: "destructive" });
-      }
-    } else {
+    try {
+      let query = (supabase.from as any)(table).select(columns || "*");
+      if (orderBy) query = query.order(orderBy, { ascending: ascending ?? false });
+
+      const { data: rows, error } = await withTimeout(query);
+      if (error) throw error;
+
       const result = (rows as T[]) || [];
       setData(result);
-      // Cache data for offline use
       setCachedData(table, result);
+    } catch (error: any) {
+      const cached = getCachedData<T>(table);
+      if (cached && isNetworkFailure(error)) {
+        setData(cached);
+        toast({ title: "Exibindo dados offline", description: "Você está offline. Exibindo dados da última sincronização." });
+      } else if (cached) {
+        setData(cached);
+        toast({ title: "Usando dados em cache", description: "Não foi possível atualizar agora, mantendo os últimos dados salvos." });
+      } else {
+        toast({
+          title: isNetworkFailure(error) ? "Sem conexão" : "Erro ao carregar",
+          description: isNetworkFailure(error) ? "Conecte-se à internet para baixar dados deste módulo." : error.message,
+          variant: isNetworkFailure(error) ? undefined : "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [table, orderBy, ascending]);
+  }, [table, orderBy, ascending, columns, toast]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

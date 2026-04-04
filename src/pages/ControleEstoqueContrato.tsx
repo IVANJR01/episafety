@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { fetchWithOfflineFallback, isNetworkFailure } from "@/lib/offlineViewCache";
 import StockBreadcrumb, { BreadcrumbLevel } from "@/components/stock/StockBreadcrumb";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -59,6 +60,26 @@ interface UnidadeSummary {
   alertas: number;
   contratos: ContratoStockSummary[];
   loaded: boolean;
+}
+
+interface HierarchyPayload {
+  unidades: UnidadeData[];
+  contratos: ContratoData[];
+  matrizId: string | null;
+  matrizNome: string;
+  matrizSummary: {
+    estoqueTotal: number;
+    valorTotal: number;
+    totalSaidas: number;
+    valorSaidas: number;
+    baixoEstoque: number;
+  };
+}
+
+interface ContractDetailsPayload {
+  itens: ContratoStockSummary["itens"];
+  movimentos: ContratoStockSummary["movimentos"];
+  valorTotal: number;
 }
 
 export default function ControleEstoqueContrato() {
@@ -105,6 +126,18 @@ export default function ControleEstoqueContrato() {
 
   // Matriz summary
   const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
+  const offlineToastCooldownRef = useRef(0);
+
+  const notifyOfflineData = useCallback((description = "Você está offline. Exibindo quantidades da última sincronização.") => {
+    const now = Date.now();
+    if (now - offlineToastCooldownRef.current < 4000) return;
+
+    offlineToastCooldownRef.current = now;
+    toast({
+      title: "Exibindo dados offline",
+      description,
+    });
+  }, [toast]);
 
   const loadScopedHierarchy = useCallback(async () => {
     let scopedContratos: ContratoData[] = [];
@@ -185,96 +218,133 @@ export default function ControleEstoqueContrato() {
 
     try {
       if (isRestrictedStockUser) {
-        const { scopedUnidades, scopedContratos, matriz } = await loadScopedHierarchy();
+        const { data, fromCache } = await fetchWithOfflineFallback<HierarchyPayload>({
+          cacheKey: `stock-hierarchy:restricted:${empresaId || "sem-empresa"}:${userContratoId || "sem-contrato"}`,
+          queryFn: async () => {
+            const { scopedUnidades, scopedContratos, matriz } = await loadScopedHierarchy();
+            return {
+              unidades: scopedUnidades,
+              contratos: scopedContratos,
+              matrizId: matriz?.id || scopedUnidades[0]?.id || null,
+              matrizNome: matriz?.nome || scopedUnidades[0]?.nome || "Minha Unidade",
+              matrizSummary: { estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 },
+            };
+          },
+        });
 
-        unidadesRef.current = scopedUnidades;
-        contratosRef.current = scopedContratos;
-        setUnidades(scopedUnidades);
-        setContratos(scopedContratos);
-        setMatrizId(matriz?.id || scopedUnidades[0]?.id || null);
-        setMatrizNome(matriz?.nome || scopedUnidades[0]?.nome || "Minha Unidade");
-        setMatrizSummary({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
+        unidadesRef.current = data.unidades;
+        contratosRef.current = data.contratos;
+        setUnidades(data.unidades);
+        setContratos(data.contratos);
+        setMatrizId(data.matrizId);
+        setMatrizNome(data.matrizNome);
+        setMatrizSummary(data.matrizSummary);
+
+        if (fromCache) {
+          notifyOfflineData();
+        }
 
         console.log("[ControleEstoqueContrato] scoped hierarchy", {
           empresaId,
           userContratoId,
-          unidades: scopedUnidades,
-          contratos: scopedContratos,
+          unidades: data.unidades,
+          contratos: data.contratos,
+          fromCache,
         });
 
         return;
       }
 
-      const [unidadesRes, contratosRes] = await Promise.all([
-        supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id"),
-        supabase.from("contratos").select("id, nome, unidade_id"),
-      ]);
+      const { data, fromCache } = await fetchWithOfflineFallback<HierarchyPayload>({
+        cacheKey: `stock-hierarchy:full:${empresaId || "global"}`,
+        queryFn: async () => {
+          const [unidadesRes, contratosRes] = await Promise.all([
+            supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id"),
+            supabase.from("contratos").select("id, nome, unidade_id"),
+          ]);
 
-      if (unidadesRes.error) throw unidadesRes.error;
-      if (contratosRes.error) throw contratosRes.error;
+          if (unidadesRes.error) throw unidadesRes.error;
+          if (contratosRes.error) throw contratosRes.error;
 
-      const allUnidades = (unidadesRes.data || []) as UnidadeData[];
-      const allContratos = (contratosRes.data || []) as ContratoData[];
-      unidadesRef.current = allUnidades;
-      contratosRef.current = allContratos;
-      setUnidades(allUnidades);
-      setContratos(allContratos);
+          const allUnidades = (unidadesRes.data || []) as UnidadeData[];
+          const allContratos = (contratosRes.data || []) as ContratoData[];
+          const matrizes = allUnidades.filter(u => u.empresa_pai_id === null);
+          let matriz: UnidadeData | undefined;
 
-      const matrizes = allUnidades.filter(u => u.empresa_pai_id === null);
-      let matriz: UnidadeData | undefined;
-
-      if (empresaId) {
-        matriz = matrizes.find(m => m.id === empresaId);
-        if (!matriz) {
-          const userUnit = allUnidades.find(u => u.id === empresaId);
-          if (userUnit?.empresa_pai_id) {
-            matriz = matrizes.find(m => m.id === userUnit.empresa_pai_id);
+          if (empresaId) {
+            matriz = matrizes.find(m => m.id === empresaId);
+            if (!matriz) {
+              const userUnit = allUnidades.find(u => u.id === empresaId);
+              if (userUnit?.empresa_pai_id) {
+                matriz = matrizes.find(m => m.id === userUnit.empresa_pai_id);
+              }
+            }
           }
-        }
-      }
-      if (!matriz && matrizes.length === 1) matriz = matrizes[0];
-      if (!matriz && matrizes.length > 1) matriz = matrizes[0];
+          if (!matriz && matrizes.length === 1) matriz = matrizes[0];
+          if (!matriz && matrizes.length > 1) matriz = matrizes[0];
 
-      if (matriz) {
-        setMatrizId(matriz.id);
-        setMatrizNome(matriz.nome);
+          let nextMatrizSummary = { estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 };
+          if (matriz) {
+            const { data: episMatriz, error: episMatrizError } = await supabase
+              .from("epis")
+              .select("estoque, estoque_minimo, valor")
+              .eq("empresa_id", matriz.id);
 
-        const { data: episMatriz, error: episMatrizError } = await supabase
-          .from("epis")
-          .select("estoque, estoque_minimo, valor")
-          .eq("empresa_id", matriz.id);
+            if (episMatrizError) throw episMatrizError;
 
-        if (episMatrizError) throw episMatrizError;
+            const epis = episMatriz || [];
+            nextMatrizSummary = {
+              estoqueTotal: epis.reduce((s, e) => s + (e.estoque || 0), 0),
+              valorTotal: epis.reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0),
+              totalSaidas: 0,
+              valorSaidas: 0,
+              baixoEstoque: epis.filter(e => e.estoque <= e.estoque_minimo).length,
+            };
+          }
 
-        const epis = episMatriz || [];
-        setMatrizSummary({
-          estoqueTotal: epis.reduce((s, e) => s + (e.estoque || 0), 0),
-          valorTotal: epis.reduce((s, e) => s + ((e.estoque || 0) * (e.valor || 0)), 0),
-          totalSaidas: 0,
-          valorSaidas: 0,
-          baixoEstoque: epis.filter(e => e.estoque <= e.estoque_minimo).length,
-        });
+          return {
+            unidades: allUnidades,
+            contratos: allContratos,
+            matrizId: matriz?.id || null,
+            matrizNome: matriz?.nome || "Matriz",
+            matrizSummary: nextMatrizSummary,
+          };
+        },
+      });
+
+      unidadesRef.current = data.unidades;
+      contratosRef.current = data.contratos;
+      setUnidades(data.unidades);
+      setContratos(data.contratos);
+      setMatrizId(data.matrizId);
+      setMatrizNome(data.matrizNome);
+      setMatrizSummary(data.matrizSummary);
+
+      if (fromCache) {
+        notifyOfflineData();
       }
 
       console.log("[ControleEstoqueContrato] full hierarchy", {
         empresaId,
-        unidades: allUnidades,
-        contratos: allContratos,
+        unidades: data.unidades,
+        contratos: data.contratos,
+        fromCache,
       });
     } catch (error) {
       console.error("[ControleEstoqueContrato] erro ao carregar hierarquia", error);
-      setUnidades([]);
-      setContratos([]);
-      setMatrizId(null);
-      toast({
-        title: "Erro ao carregar estoque",
-        description: "Não foi possível montar a hierarquia de unidade e contrato do usuário.",
-        variant: "destructive",
-      });
+      if (isNetworkFailure(error)) {
+        notifyOfflineData("Você está offline. Exibindo quantidades da última sincronização quando disponíveis.");
+      } else {
+        toast({
+          title: "Erro ao carregar estoque",
+          description: "Não foi possível montar a hierarquia de unidade e contrato do usuário.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
-  }, [authLoading, canAccessStock, empresaId, isRestrictedStockUser, loadScopedHierarchy, toast]);
+  }, [authLoading, canAccessStock, empresaId, isRestrictedStockUser, loadScopedHierarchy, notifyOfflineData, toast, userContratoId]);
 
   useEffect(() => { void loadInitialData(); }, [loadInitialData]);
 
@@ -289,127 +359,206 @@ export default function ControleEstoqueContrato() {
   }, [authLoading, userContratoId, contratos]);
 
   // Lazy load unidade data when accordion opens
-  const loadUnidadeData = async (unidadeId: string) => {
-    if (unidadeSummariesRef.current[unidadeId]?.loaded) return;
+  const loadUnidadeData = useCallback(async (unidadeId: string, force = false) => {
+    if (!force && unidadeSummariesRef.current[unidadeId]?.loaded) return;
     setLoadingUnidade(unidadeId);
 
     const unidadeContratos = contratosRef.current.filter(c => c.unidade_id === unidadeId);
     const contratoIds = unidadeContratos.map(c => c.id);
-
     const currentUnidades = unidadesRef.current;
 
-    const [recebidosRes, episRes, contratoEpisRes] = await Promise.all([
-      supabase.from("estoque_movimentacoes")
-        .select("quantidade, valor_unitario")
-        .eq("empresa_destino_id", unidadeId),
-      supabase.from("epis").select("estoque, estoque_minimo").eq("empresa_id", unidadeId),
-      contratoIds.length > 0
-        ? supabase.from("contrato_epis").select("estoque, contrato_id, epi_id").in("contrato_id", contratoIds)
-        : Promise.resolve({ data: [] as any[] }),
-    ]);
+    try {
+      const { data, fromCache } = await fetchWithOfflineFallback<UnidadeSummary>({
+        cacheKey: `stock-unit:${unidadeId}:${[...contratoIds].sort().join(",")}`,
+        queryFn: async () => {
+          const [recebidosRes, episRes, contratoEpisRes] = await Promise.all([
+            supabase.from("estoque_movimentacoes")
+              .select("quantidade, valor_unitario")
+              .eq("empresa_destino_id", unidadeId),
+            supabase.from("epis").select("estoque, estoque_minimo").eq("empresa_id", unidadeId),
+            contratoIds.length > 0
+              ? supabase.from("contrato_epis").select("estoque, contrato_id, epi_id").in("contrato_id", contratoIds)
+              : Promise.resolve({ data: [] as any[], error: null }),
+          ]);
 
-    const recebidos = recebidosRes.data || [];
-    const episUnidade = episRes.data || [];
-    const contratoEpis = contratoEpisRes.data || [];
+          if (recebidosRes.error) throw recebidosRes.error;
+          if (episRes.error) throw episRes.error;
+          if (contratoEpisRes.error) throw contratoEpisRes.error;
 
-    const estoqueUnidade = episUnidade.reduce((s, e) => s + (e.estoque || 0), 0);
-    const estoqueContratos = contratoEpis.reduce((s: number, e: any) => s + (e.estoque || 0), 0);
-    const baixoUnidade = episUnidade.filter(e => e.estoque <= e.estoque_minimo).length;
+          const recebidos = recebidosRes.data || [];
+          const episUnidade = episRes.data || [];
+          const contratoEpis = contratoEpisRes.data || [];
+          const estoqueUnidade = episUnidade.reduce((s, e) => s + (e.estoque || 0), 0);
+          const estoqueContratos = contratoEpis.reduce((s: number, e: any) => s + (e.estoque || 0), 0);
+          const baixoUnidade = episUnidade.filter(e => e.estoque <= e.estoque_minimo).length;
 
-    // Build contract summaries (without details yet)
-    const contratoSummaries: ContratoStockSummary[] = unidadeContratos.map(c => {
-      const cEpis = contratoEpis.filter((e: any) => e.contrato_id === c.id);
-      return {
-        contratoId: c.id,
-        contratoNome: c.nome,
-        totalItens: cEpis.length,
-        estoqueTotal: cEpis.reduce((s: number, e: any) => s + (e.estoque || 0), 0),
-        valorTotal: 0,
-        alertas: cEpis.filter((e: any) => (e.estoque || 0) === 0).length,
-        itens: [],
-        movimentos: [],
-        loadedDetails: false,
-      };
-    });
+          const contratoSummaries: ContratoStockSummary[] = unidadeContratos.map(c => {
+            const cEpis = contratoEpis.filter((e: any) => e.contrato_id === c.id);
+            return {
+              contratoId: c.id,
+              contratoNome: c.nome,
+              totalItens: cEpis.length,
+              estoqueTotal: cEpis.reduce((s: number, e: any) => s + (e.estoque || 0), 0),
+              valorTotal: 0,
+              alertas: cEpis.filter((e: any) => (e.estoque || 0) === 0).length,
+              itens: [],
+              movimentos: [],
+              loadedDetails: false,
+            };
+          });
 
-    setUnidadeSummaries(prev => ({
-      ...prev,
-      [unidadeId]: {
-        id: unidadeId,
-        nome: currentUnidades.find(u => u.id === unidadeId)?.nome || "",
-        tipo: currentUnidades.find(u => u.id === unidadeId)?.tipo || "",
-        recebidoMatriz: recebidos.reduce((s, m) => s + (m.quantidade || 0), 0),
-        valorRecebido: recebidos.reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0),
-        estoqueAtual: estoqueUnidade + estoqueContratos,
-        alertas: baixoUnidade,
-        contratos: contratoSummaries,
-        loaded: true,
+          return {
+            id: unidadeId,
+            nome: currentUnidades.find(u => u.id === unidadeId)?.nome || "",
+            tipo: currentUnidades.find(u => u.id === unidadeId)?.tipo || "",
+            recebidoMatriz: recebidos.reduce((s, m) => s + (m.quantidade || 0), 0),
+            valorRecebido: recebidos.reduce((s, m) => s + ((m.quantidade || 0) * (m.valor_unitario || 0)), 0),
+            estoqueAtual: estoqueUnidade + estoqueContratos,
+            alertas: baixoUnidade,
+            contratos: contratoSummaries,
+            loaded: true,
+          };
+        },
+      });
+
+      setUnidadeSummaries(prev => ({
+        ...prev,
+        [unidadeId]: data,
+      }));
+
+      if (fromCache) {
+        notifyOfflineData();
       }
-    }));
-    setLoadingUnidade(null);
-  };
+    } catch (error) {
+      console.error("[ControleEstoqueContrato] erro ao carregar unidade", error);
+      if (isNetworkFailure(error)) {
+        notifyOfflineData();
+      } else {
+        toast({
+          title: "Erro ao carregar estoque",
+          description: "Não foi possível carregar os dados desta unidade.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoadingUnidade(null);
+    }
+  }, [notifyOfflineData, toast]);
 
   // Lazy load contract details (stock table + movements)
-  const loadContratoDetails = async (contratoId: string, unidadeId: string) => {
+  const loadContratoDetails = useCallback(async (contratoId: string, unidadeId: string, force = false) => {
     const summary = unidadeSummariesRef.current[unidadeId];
     if (!summary) return;
     const contrato = summary.contratos.find(c => c.contratoId === contratoId);
-    if (contrato?.loadedDetails) return;
+    if (!force && contrato?.loadedDetails) return;
     setLoadingContrato(contratoId);
 
-    const [cepisRes, movsRes] = await Promise.all([
-      supabase.from("contrato_epis").select("estoque, epi_id").eq("contrato_id", contratoId),
-      supabase.from("contrato_epis_movimentacoes")
-        .select("quantidade, tipo, epi_id, created_at, responsavel_nome, motivo")
-        .eq("contrato_id", contratoId)
-        .order("created_at", { ascending: false })
-        .limit(20),
-    ]);
+    try {
+      const { data, fromCache } = await fetchWithOfflineFallback<ContractDetailsPayload>({
+        cacheKey: `stock-contract:${contratoId}`,
+        queryFn: async () => {
+          const [cepisRes, movsRes] = await Promise.all([
+            supabase.from("contrato_epis").select("estoque, epi_id").eq("contrato_id", contratoId),
+            supabase.from("contrato_epis_movimentacoes")
+              .select("quantidade, tipo, epi_id, created_at, responsavel_nome, motivo")
+              .eq("contrato_id", contratoId)
+              .order("created_at", { ascending: false })
+              .limit(20),
+          ]);
 
-    const cepis = cepisRes.data || [];
-    const movs = movsRes.data || [];
+          if (cepisRes.error) throw cepisRes.error;
+          if (movsRes.error) throw movsRes.error;
 
-    // Fetch EPI names + values
-    const epiIds = [...new Set([...cepis.map(e => e.epi_id), ...movs.map(m => m.epi_id)])];
-    const { data: episData } = epiIds.length > 0
-      ? await supabase.from("epis").select("id, nome, ca, valor, estoque_minimo, tamanho").in("id", epiIds)
-      : { data: [] };
-    const epiMap = Object.fromEntries((episData || []).map(e => [e.id, e]));
+          const cepis = cepisRes.data || [];
+          const movs = movsRes.data || [];
+          const epiIds = [...new Set([...cepis.map(e => e.epi_id), ...movs.map(m => m.epi_id)])];
+          const episResult = epiIds.length > 0
+            ? await supabase.from("epis").select("id, nome, ca, valor, estoque_minimo, tamanho").in("id", epiIds)
+            : { data: [], error: null };
 
-    const itens = cepis.map(ce => ({
-      epi_nome: epiMap[ce.epi_id]?.nome || "—",
-      ca: epiMap[ce.epi_id]?.ca || null,
-      tamanho: epiMap[ce.epi_id]?.tamanho || null,
-      estoque: ce.estoque || 0,
-      estoque_minimo: epiMap[ce.epi_id]?.estoque_minimo || 0,
-      valor: (ce.estoque || 0) * (epiMap[ce.epi_id]?.valor || 0),
-    })).sort((a, b) => a.epi_nome.localeCompare(b.epi_nome));
+          if (episResult.error) throw episResult.error;
 
-    const movimentos = movs.map(m => ({
-      data: m.created_at,
-      tipo: m.tipo === "entrada" ? "Entrada" : m.motivo || "Saída",
-      epi_nome: epiMap[m.epi_id]?.nome || "—",
-      ca: epiMap[m.epi_id]?.ca || null,
-      tamanho: epiMap[m.epi_id]?.tamanho || null,
-      destino: m.responsavel_nome || "—",
-      quantidade: m.quantidade || 0,
-    }));
+          const epiMap = Object.fromEntries((episResult.data || []).map(e => [e.id, e]));
+          const itens = cepis.map(ce => ({
+            epi_nome: epiMap[ce.epi_id]?.nome || "—",
+            ca: epiMap[ce.epi_id]?.ca || null,
+            tamanho: epiMap[ce.epi_id]?.tamanho || null,
+            estoque: ce.estoque || 0,
+            estoque_minimo: epiMap[ce.epi_id]?.estoque_minimo || 0,
+            valor: (ce.estoque || 0) * (epiMap[ce.epi_id]?.valor || 0),
+          })).sort((a, b) => a.epi_nome.localeCompare(b.epi_nome));
 
-    const valorTotal = itens.reduce((s, i) => s + i.valor, 0);
+          const movimentos = movs.map(m => ({
+            data: m.created_at,
+            tipo: m.tipo === "entrada" ? "Entrada" : m.motivo || "Saída",
+            epi_nome: epiMap[m.epi_id]?.nome || "—",
+            ca: epiMap[m.epi_id]?.ca || null,
+            tamanho: epiMap[m.epi_id]?.tamanho || null,
+            destino: m.responsavel_nome || "—",
+            quantidade: m.quantidade || 0,
+          }));
 
-    setUnidadeSummaries(prev => {
-      const updated = { ...prev };
-      const uSummary = { ...updated[unidadeId] };
-      uSummary.contratos = uSummary.contratos.map(c =>
-        c.contratoId === contratoId
-          ? { ...c, itens, movimentos, valorTotal, loadedDetails: true }
-          : c
-      );
-      updated[unidadeId] = uSummary;
-      return updated;
-    });
-    setLoadingContrato(null);
-  };
+          return {
+            itens,
+            movimentos,
+            valorTotal: itens.reduce((s, i) => s + i.valor, 0),
+          };
+        },
+      });
+
+      setUnidadeSummaries(prev => {
+        const updated = { ...prev };
+        const uSummary = updated[unidadeId];
+        if (!uSummary) return prev;
+
+        updated[unidadeId] = {
+          ...uSummary,
+          contratos: uSummary.contratos.map(c =>
+            c.contratoId === contratoId
+              ? { ...c, itens: data.itens, movimentos: data.movimentos, valorTotal: data.valorTotal, loadedDetails: true }
+              : c
+          ),
+        };
+        return updated;
+      });
+
+      if (fromCache) {
+        notifyOfflineData();
+      }
+    } catch (error) {
+      console.error("[ControleEstoqueContrato] erro ao carregar contrato", error);
+      if (isNetworkFailure(error)) {
+        notifyOfflineData();
+      } else {
+        toast({
+          title: "Erro ao carregar estoque",
+          description: "Não foi possível carregar os detalhes deste contrato.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoadingContrato(null);
+    }
+  }, [notifyOfflineData, toast]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      void loadInitialData();
+
+      Object.entries(unidadeSummariesRef.current).forEach(([unidadeId, summary]) => {
+        if (!summary?.loaded) return;
+        void loadUnidadeData(unidadeId, true);
+        summary.contratos.forEach((contrato) => {
+          if (contrato.loadedDetails) {
+            void loadContratoDetails(contrato.contratoId, unidadeId, true);
+          }
+        });
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [loadContratoDetails, loadInitialData, loadUnidadeData]);
 
   const matrizes = unidades.filter(u => u.empresa_pai_id === null);
   const showMatrizSelector = isSuperAdmin && matrizes.length > 1;
