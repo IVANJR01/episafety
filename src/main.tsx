@@ -53,8 +53,12 @@ if (isNativeApp) {
 }
 
 async function bootstrap() {
+  // Timeout getSession so the app renders even when offline / slow network
   try {
-    await supabase.auth.getSession();
+    await Promise.race([
+      supabase.auth.getSession(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
+    ]);
   } catch {}
 
   createRoot(document.getElementById("root")!).render(<App />);

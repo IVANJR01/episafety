@@ -176,11 +176,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!navigator.onLine) {
           applyCachedState(loadAuthCache(currentUser.email));
         } else {
-          const [authResult, profileResult, superAdmin] = await Promise.all([
-            checkAuthorized(currentUser.email),
-            loadProfile(currentUser.id, currentUser.email),
-            checkSuperAdmin(currentUser.id),
-          ]);
+          const authCheckTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("auth check timeout")), 5000)
+          );
+          const [authResult, profileResult, superAdmin] = await Promise.race([
+            Promise.all([
+              checkAuthorized(currentUser.email),
+              loadProfile(currentUser.id, currentUser.email),
+              checkSuperAdmin(currentUser.id),
+            ]),
+            authCheckTimeout.then(() => { throw new Error("timeout"); }),
+          ]) as [Awaited<ReturnType<typeof checkAuthorized>>, Awaited<ReturnType<typeof loadProfile>>, boolean];
 
           const nextState: AuthCache = {
             authorized: superAdmin || authResult.authorized,
@@ -251,8 +257,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, 0);
     });
 
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
+    // Race getSession against a 4-second timeout so the app never hangs offline
+    Promise.race([
+      supabase.auth.getSession(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 4000)),
+    ])
+      .then(({ data: { session } }: any) => {
         const next = resolveOfflineSession(session, session?.user ?? null);
 
         if (next.session) {
