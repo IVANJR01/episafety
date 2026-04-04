@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => ({
         navigateFallbackDenylist: [/^\/~oauth/],
         skipWaiting: true,
         clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/bccqjqimbjzskyexpjca\.supabase\.co\/rest\/v1\/.*/i,
@@ -64,7 +65,7 @@ export default defineConfig(({ mode }) => ({
           },
           {
             urlPattern: /^https:\/\/bccqjqimbjzskyexpjca\.supabase\.co\/storage\/.*/i,
-            handler: "CacheFirst",
+            handler: "NetworkFirst",
             options: {
               cacheName: "supabase-storage-cache",
               expiration: {
@@ -74,6 +75,7 @@ export default defineConfig(({ mode }) => ({
               cacheableResponse: {
                 statuses: [0, 200],
               },
+              networkTimeoutSeconds: 5,
             },
           },
         ],
@@ -81,13 +83,13 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "EPISafety - Segurança do Trabalho",
         short_name: "EPISafety",
-        description: "Sistema de gestão de EPIs e segurança do trabalho",
+        description: "Sistema de gestão de EPIs e segurança do trabalho v1.2.0",
         theme_color: "#1A1A1A",
         background_color: "#FFFFFF",
         display: "standalone",
         orientation: "any",
         scope: "/",
-        start_url: "/",
+        start_url: "/?v=1.2.0",
         icons: [
           {
             src: "/pwa-192x192.png",

@@ -7,18 +7,26 @@ import "./index.css";
 
 const isNativeApp = Capacitor.isNativePlatform();
 
+// Clean up old caches on every launch
 if (typeof window !== "undefined" && "caches" in window) {
-  void caches
-    .open("supabase-storage-cache")
-    .then(async (cache) => {
-      const requests = await cache.keys();
+  void caches.keys().then(async (names) => {
+    for (const name of names) {
+      // Delete legacy workbox caches that don't match current prefix
+      if (name.startsWith("workbox-precache-") || name.startsWith("workbox-runtime-")) {
+        await caches.delete(name);
+      }
+    }
+    // Also purge video entries from storage cache
+    try {
+      const storageCache = await caches.open("supabase-storage-cache");
+      const requests = await storageCache.keys();
       await Promise.all(
         requests
-          .filter((request) => request.url.includes("/videos-treinamento/"))
-          .map((request) => cache.delete(request))
+          .filter((r) => r.url.includes("/videos-treinamento/"))
+          .map((r) => storageCache.delete(r))
       );
-    })
-    .catch(() => {});
+    } catch {}
+  }).catch(() => {});
 }
 
 let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
@@ -26,11 +34,17 @@ let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
 if (!isNativeApp) {
   updateSW = registerSW({
     onNeedRefresh() {
-      window.dispatchEvent(
-        new CustomEvent("sw-update-available", {
-          detail: (reloadPage?: boolean) => updateSW?.(reloadPage),
-        })
-      );
+      // Auto-reload when a new version is detected and the page is not visible
+      // or dispatch event so UpdateBanner can show the prompt
+      if (document.hidden) {
+        updateSW?.(true);
+      } else {
+        window.dispatchEvent(
+          new CustomEvent("sw-update-available", {
+            detail: (reloadPage?: boolean) => updateSW?.(reloadPage),
+          })
+        );
+      }
     },
     onOfflineReady() {
       console.log("PWA pronto para uso offline");
@@ -38,9 +52,17 @@ if (!isNativeApp) {
     immediate: true,
   });
 
+  // Check for updates every 30 seconds instead of 60
   window.setInterval(() => {
     void updateSW?.();
-  }, 60 * 1000);
+  }, 30 * 1000);
+
+  // Also check for updates whenever the app comes back to the foreground
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      void updateSW?.();
+    }
+  });
 }
 
 if (isNativeApp) {
@@ -53,7 +75,6 @@ if (isNativeApp) {
 }
 
 async function bootstrap() {
-  // Timeout getSession so the app renders even when offline / slow network
   try {
     await Promise.race([
       supabase.auth.getSession(),
