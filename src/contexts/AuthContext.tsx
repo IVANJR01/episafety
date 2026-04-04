@@ -251,8 +251,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, 0);
     });
 
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
+    // Race getSession against a 4-second timeout so the app never hangs offline
+    Promise.race([
+      supabase.auth.getSession(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 4000)),
+    ])
+      .then(({ data: { session } }: any) => {
         const next = resolveOfflineSession(session, session?.user ?? null);
 
         if (next.session) {
