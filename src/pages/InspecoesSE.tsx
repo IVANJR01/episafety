@@ -697,8 +697,8 @@ export default function InspecoesSE() {
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{item.situacao_detectada}</TableCell>
                     <TableCell>
-                      {item.foto_antes ? (
-                        <img src={item.foto_antes} alt="Antes" className="w-14 h-10 object-cover rounded border" />
+                    {item.foto_antes ? (
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-14 h-10" />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
