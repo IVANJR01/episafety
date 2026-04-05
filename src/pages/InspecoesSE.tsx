@@ -222,6 +222,18 @@ export default function InspecoesSE() {
         if (uploads[1]) foto_depois = uploads[1];
         console.log("[handleSave] foto_antes URL:", foto_antes);
         console.log("[handleSave] foto_depois URL:", foto_depois);
+
+        // Se o usuário anexou foto mas o upload falhou, bloquear salvamento
+        if (fotoAntesFile && !uploads[0]) {
+          toast({ title: "Upload da foto falhou", description: "Não foi possível enviar a foto ao Google Drive. Tente novamente.", variant: "destructive" });
+          setSaving(false);
+          return;
+        }
+        if (fotoDepoisFile && !uploads[1]) {
+          toast({ title: "Upload da foto falhou", description: "Não foi possível enviar a foto ao Google Drive. Tente novamente.", variant: "destructive" });
+          setSaving(false);
+          return;
+        }
       } else {
         if (fotoAntesPreview) foto_antes = fotoAntesPreview;
         if (fotoDepoisPreview) foto_depois = fotoDepoisPreview;
