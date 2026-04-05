@@ -611,6 +611,25 @@ export default function InspecoesSE() {
       drawCenteredText(item.referencia_normativa || "", x, y, scaledWidths[3], ROW_H, 5.5);
       x += scaledWidths[3];
 
+      // Helper: draw "sem foto" placeholder as grey box
+      const drawNoPhoto = (cellX: number, cellY: number, cellW: number, cellH: number) => {
+        const boxW = IMG_W - 4;
+        const boxH = IMG_H - 4;
+        const bx = cellX + (cellW - boxW) / 2;
+        const by = cellY + (cellH - boxH) / 2;
+        doc.setFillColor(240, 240, 240);
+        doc.setDrawColor(210, 210, 210);
+        doc.roundedRect(bx, by, boxW, boxH, 1.5, 1.5, "FD");
+        doc.setFontSize(5);
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(170, 170, 170);
+        const label = "Sem foto";
+        const lw = doc.getTextWidth(label);
+        doc.text(label, bx + (boxW - lw) / 2, by + boxH / 2 + 1.5);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+      };
+
       // Foto Antes - centered image
       const cache = photoCache[item.id];
       if (cache?.antes) {
@@ -618,9 +637,11 @@ export default function InspecoesSE() {
           const imgX = x + (scaledWidths[4] - (IMG_W - 2)) / 2;
           const imgY = y + (ROW_H - IMG_H) / 2;
           doc.addImage(cache.antes, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
-        } catch {}
+        } catch {
+          drawNoPhoto(x, y, scaledWidths[4], ROW_H);
+        }
       } else {
-        drawCenteredText("Sem foto", x, y, scaledWidths[4], ROW_H, 5.5, false, [180, 180, 180]);
+        drawNoPhoto(x, y, scaledWidths[4], ROW_H);
       }
       x += scaledWidths[4];
 
@@ -630,9 +651,11 @@ export default function InspecoesSE() {
           const imgX = x + (scaledWidths[5] - (IMG_W - 2)) / 2;
           const imgY = y + (ROW_H - IMG_H) / 2;
           doc.addImage(cache.depois, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
-        } catch {}
+        } catch {
+          drawNoPhoto(x, y, scaledWidths[5], ROW_H);
+        }
       } else {
-        drawCenteredText("Sem foto", x, y, scaledWidths[5], ROW_H, 5.5, false, [180, 180, 180]);
+        drawNoPhoto(x, y, scaledWidths[5], ROW_H);
       }
       x += scaledWidths[5];
 
