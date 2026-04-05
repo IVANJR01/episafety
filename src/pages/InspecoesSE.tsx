@@ -316,8 +316,46 @@ export default function InspecoesSE() {
     }
   }
 
+  function extractDriveFileId(url: string): string | null {
+    const patterns = [/[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
+    for (const p of patterns) {
+      const m = url.match(p);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  async function resolveDriveUrl(url: string): Promise<string> {
+    if (!url.includes("drive.google.com")) return url;
+    const fileId = extractDriveFileId(url);
+    if (!fileId) return url;
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke("gdrive-proxy", {
+        body: { id: fileId },
+      });
+      if (fnErr || data?.error) return `https://lh3.googleusercontent.com/d/${fileId}=w800`;
+      return data.url;
+    } catch {
+      return `https://lh3.googleusercontent.com/d/${fileId}=w800`;
+    }
+  }
+
   async function loadImageAsDataUrl(url: string): Promise<string | null> {
     try {
+      const resolvedUrl = await resolveDriveUrl(url);
+      // For Drive images, fetch as blob to avoid CORS canvas tainting
+      if (url.includes("drive.google.com") || resolvedUrl.includes("googleusercontent.com")) {
+        const resp = await fetch(resolvedUrl, { mode: "cors" });
+        if (!resp.ok) return null;
+        const blob = await resp.blob();
+        return await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      }
+      // Non-Drive URLs: use canvas approach
       const img = new Image();
       img.crossOrigin = "anonymous";
       return await new Promise<string | null>((resolve) => {
