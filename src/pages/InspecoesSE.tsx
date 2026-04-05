@@ -214,10 +214,15 @@ export default function InspecoesSE() {
       let foto_depois = existingFotoDepois;
 
       if (isOnline()) {
-        if (fotoAntesFile) foto_antes = await uploadPhoto(fotoAntesFile);
-        if (fotoDepoisFile) foto_depois = await uploadPhoto(fotoDepoisFile);
+        const uploads = await Promise.all([
+          fotoAntesFile ? uploadPhoto(fotoAntesFile) : Promise.resolve(null),
+          fotoDepoisFile ? uploadPhoto(fotoDepoisFile) : Promise.resolve(null),
+        ]);
+        if (uploads[0]) foto_antes = uploads[0];
+        if (uploads[1]) foto_depois = uploads[1];
+        console.log("[handleSave] foto_antes URL:", foto_antes);
+        console.log("[handleSave] foto_depois URL:", foto_depois);
       } else {
-        // Store base64 previews for offline viewing
         if (fotoAntesPreview) foto_antes = fotoAntesPreview;
         if (fotoDepoisPreview) foto_depois = fotoDepoisPreview;
       }
