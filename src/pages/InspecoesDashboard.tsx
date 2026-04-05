@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { getCachedData, isOnline } from "@/lib/offlineStorage";
+import { isNetworkFailure } from "@/lib/offlineViewCache";
 
 interface Stats {
   total: number;
@@ -13,66 +15,117 @@ interface Stats {
   byStatus: { name: string; value: number; fill: string }[];
 }
 
+interface ConformidadeResumo {
+  status: string;
+  gravidade: string;
+  empresa_id: string | null;
+}
+
 const GRAVIDADE_COLORS: Record<string, string> = {
-  "LEVE": "hsl(210, 70%, 50%)",
-  "MODERADO": "hsl(38, 92%, 50%)",
-  "GRAVE": "hsl(0, 72%, 51%)",
-  "RISCO CRÍTICO": "hsl(0, 90%, 40%)",
+  "LEVE": "hsl(var(--info))",
+  "MODERADO": "hsl(var(--warning))",
+  "GRAVE": "hsl(var(--destructive))",
+  "RISCO CRÍTICO": "hsl(var(--foreground))",
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  "PENDENTE": "hsl(0, 72%, 51%)",
-  "SOLUCIONADO": "hsl(142, 72%, 40%)",
+  "PENDENTE": "hsl(var(--warning))",
+  "SOLUCIONADO": "hsl(var(--success))",
 };
+
+const LOAD_TIMEOUT_MS = 3000;
+
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs = LOAD_TIMEOUT_MS) => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  }) as Promise<T>;
+};
+
+function buildStats(data: ConformidadeResumo[]): Stats {
+  const total = data.length;
+  const pendentes = data.filter(d => d.status === "PENDENTE").length;
+  const solucionados = data.filter(d => d.status === "SOLUCIONADO").length;
+
+  const byStatus: Stats["byStatus"] = [];
+  if (pendentes > 0) byStatus.push({ name: "Pendente", value: pendentes, fill: STATUS_COLORS.PENDENTE });
+  if (solucionados > 0) byStatus.push({ name: "Solucionado", value: solucionados, fill: STATUS_COLORS.SOLUCIONADO });
+
+  const gravCounts: Record<string, number> = {};
+  data.forEach(d => {
+    gravCounts[d.gravidade] = (gravCounts[d.gravidade] || 0) + 1;
+  });
+
+  const gravidadeOrder = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
+  const byGravidade = gravidadeOrder
+    .filter(g => gravCounts[g])
+    .map(g => ({
+      name: g.charAt(0) + g.slice(1).toLowerCase(),
+      value: gravCounts[g],
+      fill: GRAVIDADE_COLORS[g] || "hsl(var(--muted-foreground))",
+    }));
+
+  return { total, pendentes, solucionados, byGravidade, byStatus };
+}
 
 export default function InspecoesDashboard() {
   const { empresaId } = useAuth();
   const [stats, setStats] = useState<Stats>({ total: 0, pendentes: 0, solucionados: 0, byGravidade: [], byStatus: [] });
   const [loading, setLoading] = useState(true);
+  const cachedData = useMemo(() => {
+    const cached = getCachedData<ConformidadeResumo>("conformidades") || [];
+    return empresaId ? cached.filter(item => item.empresa_id === empresaId) : cached;
+  }, [empresaId]);
 
   useEffect(() => {
     async function load() {
-      if (!empresaId) return;
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("conformidades")
-        .select("status, gravidade")
-        .eq("empresa_id", empresaId);
-
-      if (error || !data) {
+      if (!empresaId) {
+        setStats(buildStats([]));
         setLoading(false);
         return;
       }
 
-      const total = data.length;
-      const pendentes = data.filter(d => d.status === "PENDENTE").length;
-      const solucionados = data.filter(d => d.status === "SOLUCIONADO").length;
+      setLoading(true);
 
-      // Status pie
-      const byStatus: Stats["byStatus"] = [];
-      if (pendentes > 0) byStatus.push({ name: "Pendente", value: pendentes, fill: STATUS_COLORS["PENDENTE"] });
-      if (solucionados > 0) byStatus.push({ name: "Solucionado", value: solucionados, fill: STATUS_COLORS["SOLUCIONADO"] });
+      if (!isOnline()) {
+        setStats(buildStats(cachedData));
+        setLoading(false);
+        return;
+      }
 
-      // Gravidade bar
-      const gravCounts: Record<string, number> = {};
-      data.forEach(d => {
-        gravCounts[d.gravidade] = (gravCounts[d.gravidade] || 0) + 1;
-      });
-      const gravidadeOrder = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
-      const byGravidade = gravidadeOrder
-        .filter(g => gravCounts[g])
-        .map(g => ({
-          name: g.charAt(0) + g.slice(1).toLowerCase(),
-          value: gravCounts[g],
-          fill: GRAVIDADE_COLORS[g] || "hsl(210,10%,60%)",
-        }));
+      try {
+        const { data, error } = await withTimeout(
+          (supabase
+            .from("conformidades")
+            .select("status, gravidade, empresa_id")
+            .eq("empresa_id", empresaId)) as any
+        ) as any;
 
-      setStats({ total, pendentes, solucionados, byGravidade, byStatus });
-      setLoading(false);
+        if (error) throw error;
+
+        setStats(buildStats((data || []) as ConformidadeResumo[]));
+      } catch (error) {
+        if (cachedData.length > 0 || isNetworkFailure(error)) {
+          setStats(buildStats(cachedData));
+        } else {
+          setStats(buildStats([]));
+        }
+      } finally {
+        setLoading(false);
+      }
     }
-    load();
-  }, [empresaId]);
+
+    void load();
+
+    const handleOnline = () => void load();
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [cachedData, empresaId]);
 
   if (loading) {
     return (
@@ -88,10 +141,10 @@ export default function InspecoesDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPICard label="Total de Inspeções" value={stats.total} icon={<ClipboardList className="w-5 h-5" />} color="text-primary" />
-        <KPICard label="Pendentes" value={stats.pendentes} icon={<Clock className="w-5 h-5" />} color="text-destructive" />
-        <KPICard label="Solucionados" value={stats.solucionados} icon={<CheckCircle2 className="w-5 h-5" />} color="text-emerald-600" />
-        <KPICard label="Taxa de Resolução" value={stats.total > 0 ? `${Math.round((stats.solucionados / stats.total) * 100)}%` : "—"} icon={<AlertTriangle className="w-5 h-5" />} color="text-amber-600" />
+        <KPICard label="Total de Inspeções" value={stats.total} icon={<ClipboardList className="w-5 h-5" />} color="text-primary" tone="bg-primary/10" />
+        <KPICard label="Pendentes" value={stats.pendentes} icon={<Clock className="w-5 h-5" />} color="text-warning" tone="bg-warning/10" />
+        <KPICard label="Solucionados" value={stats.solucionados} icon={<CheckCircle2 className="w-5 h-5" />} color="text-success" tone="bg-success/10" />
+        <KPICard label="Taxa de Resolução" value={stats.total > 0 ? `${Math.round((stats.solucionados / stats.total) * 100)}%` : "—"} icon={<AlertTriangle className="w-5 h-5" />} color="text-info" tone="bg-info/10" />
       </div>
 
       {/* Charts */}
@@ -154,11 +207,11 @@ export default function InspecoesDashboard() {
   );
 }
 
-function KPICard({ label, value, icon, color }: { label: string; value: number | string; icon: React.ReactNode; color: string }) {
+function KPICard({ label, value, icon, color, tone }: { label: string; value: number | string; icon: React.ReactNode; color: string; tone: string }) {
   return (
     <Card className="border-border/60">
       <CardContent className="p-4 flex items-start gap-3">
-        <div className={`p-2 rounded-lg bg-primary/10 ${color}`}>{icon}</div>
+        <div className={`p-2 rounded-lg ${tone} ${color}`}>{icon}</div>
         <div>
           <p className="text-[11px] text-muted-foreground">{label}</p>
           <p className="font-bold text-lg leading-tight">{value}</p>
