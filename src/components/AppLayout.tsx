@@ -88,13 +88,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
   const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
+  const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
   const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
+  const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
+  const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
 
   // Bottom nav items for mobile
   const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
