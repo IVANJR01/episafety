@@ -128,6 +128,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[gdrive-token] ERROR:", message);
     return new Response(JSON.stringify({ error: message }), {
       status: err instanceof Error && message === "Unauthorized" ? 401 : 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

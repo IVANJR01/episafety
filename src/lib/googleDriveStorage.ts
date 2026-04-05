@@ -20,7 +20,14 @@ async function getDriveToken(folder: string): Promise<TokenResponse> {
   const { data, error } = await supabase.functions.invoke("gdrive-token", {
     body: { folder },
   });
-  if (error) throw new Error(error.message || "Failed to get Drive token");
+  if (error) {
+    // Try to extract the real error from the response body
+    const msg = typeof data === "object" && data?.error
+      ? data.error
+      : error.message || "Failed to get Drive token";
+    console.error("[getDriveToken] Error:", msg, "Raw data:", data);
+    throw new Error(msg);
+  }
   if (data?.error) throw new Error(data.error);
   return data as TokenResponse;
 }
