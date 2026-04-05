@@ -1347,16 +1347,23 @@ export default function Treinamentos() {
               <strong>Em fase de teste.</strong> Este módulo utiliza inteligência artificial para validar documentos automaticamente. Os resultados devem ser conferidos manualmente.
             </p>
           </div>
-          <Card>
-            <CardContent className="p-6">
-              <AIDocumentValidator
-                funcionarios={funcionarios}
-                cursos={CURSOS_SUGERIDOS}
-                empresaId={empresaId}
-                onComplete={fetchData}
-              />
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <AIDocumentValidator
+                  funcionarios={funcionarios}
+                  cursos={CURSOS_SUGERIDOS}
+                  empresaId={empresaId}
+                  onComplete={fetchData}
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-0">
+                <NRChatbot embedded />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* === ABA REQUISITOS POR FUNÇÃO === */}
