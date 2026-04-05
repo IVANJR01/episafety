@@ -805,7 +805,7 @@ export default function InspecoesSE() {
                     {item.foto_depois ? (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-medium">DEPOIS</p>
-                        <img src={item.foto_depois} alt="Depois" className="w-full h-24 object-cover rounded-lg border" />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full h-24" />
                       </div>
                     ) : <div />}
                   </div>
