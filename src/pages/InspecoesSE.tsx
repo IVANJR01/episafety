@@ -799,7 +799,7 @@ export default function InspecoesSE() {
                     {item.foto_antes ? (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-medium">ANTES</p>
-                        <img src={item.foto_antes} alt="Antes" className="w-full h-24 object-cover rounded-lg border" />
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full h-24" />
                       </div>
                     ) : <div />}
                     {item.foto_depois ? (
