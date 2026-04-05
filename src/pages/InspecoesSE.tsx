@@ -14,6 +14,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { toast } from "@/hooks/use-toast";
 import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
 import DriveImage from "@/components/DriveImage";
+import { extractGDriveFileId, getGDriveImageProxyUrl } from "@/lib/googleDrive";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -342,28 +343,16 @@ export default function InspecoesSE() {
   const MAX_IMG_WIDTH = 800;
   const IMG_TIMEOUT_MS = 12000;
 
-  function extractDriveFileId(url: string): string | null {
-    const patterns = [/[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
-    for (const p of patterns) {
-      const m = url.match(p);
-      if (m) return m[1];
-    }
-    return null;
-  }
-
   async function resolveDriveUrl(url: string): Promise<string> {
     if (!url.includes("drive.google.com")) return url;
-    const fileId = extractDriveFileId(url);
+
+    const proxyUrl = getGDriveImageProxyUrl(url);
+    if (proxyUrl) return proxyUrl;
+
+    const fileId = extractGDriveFileId(url);
     if (!fileId) return url;
-    try {
-      const { data, error: fnErr } = await supabase.functions.invoke("gdrive-proxy", {
-        body: { id: fileId },
-      });
-      if (fnErr || data?.error) return `https://lh3.googleusercontent.com/d/${fileId}=w${MAX_IMG_WIDTH}`;
-      return data.url;
-    } catch {
-      return `https://lh3.googleusercontent.com/d/${fileId}=w${MAX_IMG_WIDTH}`;
-    }
+
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${MAX_IMG_WIDTH}`;
   }
 
   /** Gera um placeholder base64 "Imagem Indisponível" para fallback */

@@ -10,7 +10,22 @@
 
 const GDRIVE_FILE_REGEX = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
 const GDRIVE_OPEN_REGEX = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
-const GDRIVE_UC_REGEX   = /drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/;
+const GDRIVE_UC_REGEX = /drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/;
+
+function getProxyConfig() {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseUrl || !anonKey) return null;
+  return { supabaseUrl, anonKey };
+}
+
+function buildProxyUrl(fileId: string, fileName: string, raw = false): string | null {
+  const config = getProxyConfig();
+  if (!config) return null;
+  const safeFileName = encodeURIComponent(fileName);
+  const rawFlag = raw ? "&raw=1" : "";
+  return `${config.supabaseUrl}/functions/v1/gdrive-proxy/${safeFileName}?id=${encodeURIComponent(fileId)}${rawFlag}&apikey=${encodeURIComponent(config.anonKey)}`;
+}
 
 /** Extract the Google Drive file ID from a URL, or null if not a Drive link. */
 export function extractGDriveFileId(url: string): string | null {
@@ -49,6 +64,13 @@ export function getGDriveDirectUrl(url: string): string | null {
   return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
 }
 
+/** Resolve a Google Drive image through the proxy so browsers/PDF fetches can load it reliably. */
+export function getGDriveImageProxyUrl(url: string): string | null {
+  const fileId = extractGDriveFileId(url);
+  if (!fileId) return null;
+  return buildProxyUrl(fileId, "image.jpg", true);
+}
+
 /**
  * Resolve a Google Drive video URL through the edge function proxy.
  * Returns a direct CDN URL that can be used in <video src="...">.
@@ -57,21 +79,13 @@ export function getGDriveDirectUrl(url: string): string | null {
 export async function resolveGDriveVideoUrl(url: string): Promise<string | null> {
   const fileId = extractGDriveFileId(url);
   if (!fileId) return null;
-  
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !anonKey) return null;
+
+  const proxyUrl = buildProxyUrl(fileId, "metadata.json", false);
+  if (!proxyUrl) return null;
 
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/gdrive-proxy?id=${fileId}`, {
-      headers: {
-        "Authorization": `Bearer ${anonKey}`,
-        "apikey": anonKey,
-      },
-    });
-    
+    const response = await fetch(proxyUrl);
     if (!response.ok) return null;
-    
     const data = await response.json();
     return data?.url || null;
   } catch {
@@ -86,8 +100,5 @@ export async function resolveGDriveVideoUrl(url: string): Promise<string | null>
 export function getGDriveProxyUrl(url: string): string | null {
   const fileId = extractGDriveFileId(url);
   if (!fileId) return null;
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !anonKey) return null;
-  return `${supabaseUrl}/functions/v1/gdrive-proxy/treinamento.mp4?id=${fileId}&apikey=${anonKey}`;
+  return buildProxyUrl(fileId, "treinamento.mp4", true);
 }
