@@ -1072,9 +1072,21 @@ export default function InspecoesSE() {
             </div>
           </div>
 
+          {/* Aviso se não tem foto */}
+          {!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+              <Camera className="w-4 h-4 flex-shrink-0" />
+              <span>Nenhuma foto "Antes" anexada. Registre a evidência fotográfica para laudos completos.</span>
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando fotos...</>
+              ) : "Salvar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
