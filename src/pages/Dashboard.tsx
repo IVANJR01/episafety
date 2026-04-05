@@ -1,7 +1,7 @@
 import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes, Building2, MapPin } from "lucide-react";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
-import { cachedQuery } from "@/lib/offlineStorage";
+import { cachedQuery, getCachedData } from "@/lib/offlineStorage";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -71,6 +71,22 @@ export default function Dashboard() {
   const [allEstoqueMovimentacoes, setAllEstoqueMovimentacoes] = useState<EstoqueMovimentacao[]>([]);
 
   useEffect(() => {
+    const hydrateFromCache = () => {
+      const cachedMovimentacoes = getCachedData<ContratoMovimentacao>("dashboard_movimentacoes");
+      const cachedContratos = getCachedData<Contrato>("dashboard_contratos");
+      const cachedProfiles = getCachedData<Profile>("dashboard_profiles");
+      const cachedContratoEpis = getCachedData<ContratoEpi>("dashboard_contrato_epis");
+      const cachedUnidades = getCachedData<Unidade>("dashboard_unidades");
+      const cachedEstoqueMovimentacoes = getCachedData<EstoqueMovimentacao>("dashboard_estoque_mov");
+
+      if (cachedMovimentacoes) setAllMovimentacoes(cachedMovimentacoes);
+      if (cachedContratos) setAllContratos(cachedContratos);
+      if (cachedProfiles) setProfiles(cachedProfiles);
+      if (cachedContratoEpis) setAllContratoEpis(cachedContratoEpis);
+      if (cachedUnidades) setAllUnidades(cachedUnidades);
+      if (cachedEstoqueMovimentacoes) setAllEstoqueMovimentacoes(cachedEstoqueMovimentacoes);
+    };
+
     async function fetchContractData() {
       const [movResult, contResult, profResult, ceResult, uniResult, emResult] = await Promise.all([
         cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
@@ -103,7 +119,16 @@ export default function Dashboard() {
       setAllUnidades(uniResult.data);
       setAllEstoqueMovimentacoes(emResult.data);
     }
-    fetchContractData();
+
+    hydrateFromCache();
+    void fetchContractData();
+
+    const handleOnline = () => {
+      void fetchContractData();
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
   }, []);
 
   // Build the set of empresa IDs in the user's company tree (empresa + filiais)

@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +7,7 @@ import { getCachedData, setCachedData, addToSyncQueue, isOnline } from "@/lib/of
 import { isNetworkFailure } from "@/lib/offlineViewCache";
 
 const QUERY_TIMEOUT_MS = 3000;
+const QUERY_GC_MS = 24 * 60 * 60 * 1000;
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs = QUERY_TIMEOUT_MS) => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -19,66 +21,113 @@ const withTimeout = <T,>(promise: Promise<T>, timeoutMs = QUERY_TIMEOUT_MS) => {
   }) as Promise<T>;
 };
 
+const getSupabaseQueryKey = (table: string, orderBy?: string, ascending?: boolean, columns?: string) => [
+  "supabase",
+  table,
+  orderBy || null,
+  ascending ?? false,
+  columns || "*",
+] as const;
+
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const cachedData = useMemo(() => getCachedData<T>(table) ?? undefined, [table]);
+  const queryKey = useMemo(() => getSupabaseQueryKey(table, orderBy, ascending, columns), [table, orderBy, ascending, columns]);
+  const backgroundRefreshStartedRef = useRef(false);
+  const errorToastShownRef = useRef(false);
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-
-    if (!isOnline()) {
+  const query = useQuery<T[]>({
+    queryKey,
+    initialData: cachedData,
+    staleTime: Infinity,
+    gcTime: QUERY_GC_MS,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
       const cached = getCachedData<T>(table);
-      if (cached) {
-        setData(cached);
-        toast({ title: "Exibindo dados offline", description: "Você está offline. Exibindo dados da última sincronização." });
-        setLoading(false);
-        return;
+
+      if (!isOnline()) {
+        return cached || [];
       }
-      toast({ title: "Sem conexão", description: "Conecte-se à internet para sincronizar este módulo." });
-      setLoading(false);
+
+      try {
+        let queryBuilder = (supabase.from as any)(table).select(columns || "*");
+        if (orderBy) queryBuilder = queryBuilder.order(orderBy, { ascending: ascending ?? false });
+
+        const { data: rows, error } = await withTimeout(queryBuilder) as any;
+        if (error) throw error;
+
+        const result = (rows as T[]) || [];
+        setCachedData(table, result);
+        return result;
+      } catch (error) {
+        if (cached && isNetworkFailure(error)) {
+          return cached;
+        }
+
+        if (cached) {
+          return cached;
+        }
+
+        if (isNetworkFailure(error)) {
+          return [];
+        }
+
+        throw error;
+      }
+    },
+  });
+
+  const fetch = useCallback(async () => query.refetch(), [query]);
+
+  useEffect(() => {
+    if (!cachedData || !isOnline() || backgroundRefreshStartedRef.current) return;
+
+    backgroundRefreshStartedRef.current = true;
+    void query.refetch();
+  }, [cachedData, query]);
+
+  useEffect(() => {
+    backgroundRefreshStartedRef.current = false;
+  }, [table, orderBy, ascending, columns]);
+
+  useEffect(() => {
+    if (!query.error) {
+      errorToastShownRef.current = false;
       return;
     }
 
-    try {
-      let query = (supabase.from as any)(table).select(columns || "*");
-      if (orderBy) query = query.order(orderBy, { ascending: ascending ?? false });
-
-      const { data: rows, error } = await withTimeout(query) as any;
-      if (error) throw error;
-
-      const result = (rows as T[]) || [];
-      setData(result);
-      setCachedData(table, result);
-    } catch (error: any) {
-      const cached = getCachedData<T>(table);
-      if (cached && isNetworkFailure(error)) {
-        setData(cached);
-        toast({ title: "Exibindo dados offline", description: "Você está offline. Exibindo dados da última sincronização." });
-      } else if (cached) {
-        setData(cached);
-        toast({ title: "Usando dados em cache", description: "Não foi possível atualizar agora, mantendo os últimos dados salvos." });
-      } else {
-        toast({
-          title: isNetworkFailure(error) ? "Sem conexão" : "Erro ao carregar",
-          description: isNetworkFailure(error) ? "Conecte-se à internet para baixar dados deste módulo." : error.message,
-          variant: isNetworkFailure(error) ? undefined : "destructive",
-        });
-      }
-    } finally {
-      setLoading(false);
+    if (isNetworkFailure(query.error) || errorToastShownRef.current) {
+      return;
     }
-  }, [table, orderBy, ascending, columns, toast]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+    errorToastShownRef.current = true;
+    toast({
+      title: "Erro ao carregar",
+      description: query.error instanceof Error ? query.error.message : "Não foi possível carregar os dados.",
+      variant: "destructive",
+    });
+  }, [query.error, toast]);
 
-  return { data, loading, refetch: fetch };
+  return {
+    data: query.data || [],
+    loading: query.isLoading && query.data === undefined,
+    refetch: fetch,
+  };
 }
 
 export function useSupabaseCrud<T extends { id: string } = any>(table: string, orderBy?: string, ascending?: boolean) {
   const { data, loading, refetch } = useSupabaseQuery<T>(table, orderBy, ascending);
   const { toast } = useToast();
   const { empresaId } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = useMemo(() => getSupabaseQueryKey(table, orderBy, ascending, undefined), [table, orderBy, ascending]);
+
+  const syncLocalState = useCallback((nextData: T[]) => {
+    setCachedData(table, nextData);
+    queryClient.setQueryData(queryKey, nextData);
+  }, [queryClient, queryKey, table]);
 
   const add = async (item: Partial<T>) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -91,8 +140,8 @@ export function useSupabaseCrud<T extends { id: string } = any>(table: string, o
       addToSyncQueue({ table, type: "insert", payload });
       // Update local cache optimistically
       const cached = getCachedData<T>(table) || [];
-      cached.unshift(payload as T);
-      setCachedData(table, cached);
+      const nextData = [payload as T, ...cached];
+      syncLocalState(nextData);
       await refetch();
       toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
       return true;
@@ -113,7 +162,7 @@ export function useSupabaseCrud<T extends { id: string } = any>(table: string, o
       // Update local cache optimistically
       const cached = getCachedData<T>(table) || [];
       const updated = cached.map(item => (item as any).id === id ? { ...item, ...updates } : item);
-      setCachedData(table, updated);
+      syncLocalState(updated);
       await refetch();
       toast({ title: "Atualizado offline", description: "Será sincronizado quando houver conexão." });
       return true;
@@ -133,7 +182,7 @@ export function useSupabaseCrud<T extends { id: string } = any>(table: string, o
       addToSyncQueue({ table, type: "delete", payload: { id } });
       // Update local cache optimistically
       const cached = getCachedData<T>(table) || [];
-      setCachedData(table, cached.filter(item => (item as any).id !== id));
+      syncLocalState(cached.filter(item => (item as any).id !== id));
       await refetch();
       toast({ title: "Excluído offline", description: "Será sincronizado quando houver conexão." });
       return true;

@@ -126,18 +126,42 @@ export default function ControleEstoqueContrato() {
 
   // Matriz summary
   const [matrizSummary, setMatrizSummary] = useState({ estoqueTotal: 0, valorTotal: 0, totalSaidas: 0, valorSaidas: 0, baixoEstoque: 0 });
-  const offlineToastCooldownRef = useRef(0);
 
-  const notifyOfflineData = useCallback((description = "Você está offline. Exibindo quantidades da última sincronização.") => {
-    const now = Date.now();
-    if (now - offlineToastCooldownRef.current < 4000) return;
+  const applyHierarchyData = useCallback((data: HierarchyPayload) => {
+    unidadesRef.current = data.unidades;
+    contratosRef.current = data.contratos;
+    setUnidades(data.unidades);
+    setContratos(data.contratos);
+    setMatrizId(data.matrizId);
+    setMatrizNome(data.matrizNome);
+    setMatrizSummary(data.matrizSummary);
+  }, []);
 
-    offlineToastCooldownRef.current = now;
-    toast({
-      title: "Exibindo dados offline",
-      description,
+  const applyUnidadeSummary = useCallback((unidadeId: string, data: UnidadeSummary) => {
+    setUnidadeSummaries((prev) => ({
+      ...prev,
+      [unidadeId]: data,
+    }));
+  }, []);
+
+  const applyContratoDetails = useCallback((unidadeId: string, contratoId: string, data: ContractDetailsPayload) => {
+    setUnidadeSummaries((prev) => {
+      const updated = { ...prev };
+      const unidadeSummary = updated[unidadeId];
+      if (!unidadeSummary) return prev;
+
+      updated[unidadeId] = {
+        ...unidadeSummary,
+        contratos: unidadeSummary.contratos.map((contrato) =>
+          contrato.contratoId === contratoId
+            ? { ...contrato, itens: data.itens, movimentos: data.movimentos, valorTotal: data.valorTotal, loadedDetails: true }
+            : contrato,
+        ),
+      };
+
+      return updated;
     });
-  }, [toast]);
+  }, []);
 
   const loadScopedHierarchy = useCallback(async () => {
     let scopedContratos: ContratoData[] = [];
@@ -218,8 +242,9 @@ export default function ControleEstoqueContrato() {
 
     try {
       if (isRestrictedStockUser) {
-        const { data, fromCache } = await fetchWithOfflineFallback<HierarchyPayload>({
+        const { data } = await fetchWithOfflineFallback<HierarchyPayload>({
           cacheKey: `stock-hierarchy:restricted:${empresaId || "sem-empresa"}:${userContratoId || "sem-contrato"}`,
+          onFreshData: applyHierarchyData,
           queryFn: async () => {
             const { scopedUnidades, scopedContratos, matriz } = await loadScopedHierarchy();
             return {
@@ -232,31 +257,21 @@ export default function ControleEstoqueContrato() {
           },
         });
 
-        unidadesRef.current = data.unidades;
-        contratosRef.current = data.contratos;
-        setUnidades(data.unidades);
-        setContratos(data.contratos);
-        setMatrizId(data.matrizId);
-        setMatrizNome(data.matrizNome);
-        setMatrizSummary(data.matrizSummary);
-
-        if (fromCache) {
-          notifyOfflineData();
-        }
+        applyHierarchyData(data);
 
         console.log("[ControleEstoqueContrato] scoped hierarchy", {
           empresaId,
           userContratoId,
           unidades: data.unidades,
           contratos: data.contratos,
-          fromCache,
         });
 
         return;
       }
 
-      const { data, fromCache } = await fetchWithOfflineFallback<HierarchyPayload>({
+      const { data } = await fetchWithOfflineFallback<HierarchyPayload>({
         cacheKey: `stock-hierarchy:full:${empresaId || "global"}`,
+        onFreshData: applyHierarchyData,
         queryFn: async () => {
           const [unidadesRes, contratosRes] = await Promise.all([
             supabase.from("empresa_config").select("id, nome, tipo, empresa_pai_id"),
@@ -312,29 +327,16 @@ export default function ControleEstoqueContrato() {
         },
       });
 
-      unidadesRef.current = data.unidades;
-      contratosRef.current = data.contratos;
-      setUnidades(data.unidades);
-      setContratos(data.contratos);
-      setMatrizId(data.matrizId);
-      setMatrizNome(data.matrizNome);
-      setMatrizSummary(data.matrizSummary);
-
-      if (fromCache) {
-        notifyOfflineData();
-      }
+      applyHierarchyData(data);
 
       console.log("[ControleEstoqueContrato] full hierarchy", {
         empresaId,
         unidades: data.unidades,
         contratos: data.contratos,
-        fromCache,
       });
     } catch (error) {
       console.error("[ControleEstoqueContrato] erro ao carregar hierarquia", error);
-      if (isNetworkFailure(error)) {
-        notifyOfflineData("Você está offline. Exibindo quantidades da última sincronização quando disponíveis.");
-      } else {
+      if (!isNetworkFailure(error)) {
         toast({
           title: "Erro ao carregar estoque",
           description: "Não foi possível montar a hierarquia de unidade e contrato do usuário.",
@@ -344,7 +346,7 @@ export default function ControleEstoqueContrato() {
     } finally {
       setLoading(false);
     }
-  }, [authLoading, canAccessStock, empresaId, isRestrictedStockUser, loadScopedHierarchy, notifyOfflineData, toast, userContratoId]);
+  }, [applyHierarchyData, authLoading, canAccessStock, empresaId, isRestrictedStockUser, loadScopedHierarchy, toast, userContratoId]);
 
   useEffect(() => { void loadInitialData(); }, [loadInitialData]);
 
@@ -368,8 +370,9 @@ export default function ControleEstoqueContrato() {
     const currentUnidades = unidadesRef.current;
 
     try {
-      const { data, fromCache } = await fetchWithOfflineFallback<UnidadeSummary>({
+      const { data } = await fetchWithOfflineFallback<UnidadeSummary>({
         cacheKey: `stock-unit:${unidadeId}:${[...contratoIds].sort().join(",")}`,
+        onFreshData: (freshData) => applyUnidadeSummary(unidadeId, freshData),
         queryFn: async () => {
           const [recebidosRes, episRes, contratoEpisRes] = await Promise.all([
             supabase.from("estoque_movimentacoes")
@@ -421,19 +424,10 @@ export default function ControleEstoqueContrato() {
         },
       });
 
-      setUnidadeSummaries(prev => ({
-        ...prev,
-        [unidadeId]: data,
-      }));
-
-      if (fromCache) {
-        notifyOfflineData();
-      }
+      applyUnidadeSummary(unidadeId, data);
     } catch (error) {
       console.error("[ControleEstoqueContrato] erro ao carregar unidade", error);
-      if (isNetworkFailure(error)) {
-        notifyOfflineData();
-      } else {
+      if (!isNetworkFailure(error)) {
         toast({
           title: "Erro ao carregar estoque",
           description: "Não foi possível carregar os dados desta unidade.",
@@ -443,7 +437,7 @@ export default function ControleEstoqueContrato() {
     } finally {
       setLoadingUnidade(null);
     }
-  }, [notifyOfflineData, toast]);
+  }, [applyUnidadeSummary, toast]);
 
   // Lazy load contract details (stock table + movements)
   const loadContratoDetails = useCallback(async (contratoId: string, unidadeId: string, force = false) => {
@@ -454,8 +448,9 @@ export default function ControleEstoqueContrato() {
     setLoadingContrato(contratoId);
 
     try {
-      const { data, fromCache } = await fetchWithOfflineFallback<ContractDetailsPayload>({
+      const { data } = await fetchWithOfflineFallback<ContractDetailsPayload>({
         cacheKey: `stock-contract:${contratoId}`,
+        onFreshData: (freshData) => applyContratoDetails(unidadeId, contratoId, freshData),
         queryFn: async () => {
           const [cepisRes, movsRes] = await Promise.all([
             supabase.from("contrato_epis").select("estoque, epi_id").eq("contrato_id", contratoId),
@@ -506,30 +501,10 @@ export default function ControleEstoqueContrato() {
         },
       });
 
-      setUnidadeSummaries(prev => {
-        const updated = { ...prev };
-        const uSummary = updated[unidadeId];
-        if (!uSummary) return prev;
-
-        updated[unidadeId] = {
-          ...uSummary,
-          contratos: uSummary.contratos.map(c =>
-            c.contratoId === contratoId
-              ? { ...c, itens: data.itens, movimentos: data.movimentos, valorTotal: data.valorTotal, loadedDetails: true }
-              : c
-          ),
-        };
-        return updated;
-      });
-
-      if (fromCache) {
-        notifyOfflineData();
-      }
+      applyContratoDetails(unidadeId, contratoId, data);
     } catch (error) {
       console.error("[ControleEstoqueContrato] erro ao carregar contrato", error);
-      if (isNetworkFailure(error)) {
-        notifyOfflineData();
-      } else {
+      if (!isNetworkFailure(error)) {
         toast({
           title: "Erro ao carregar estoque",
           description: "Não foi possível carregar os detalhes deste contrato.",
@@ -539,7 +514,7 @@ export default function ControleEstoqueContrato() {
     } finally {
       setLoadingContrato(null);
     }
-  }, [notifyOfflineData, toast]);
+  }, [applyContratoDetails, toast]);
 
   useEffect(() => {
     const handleOnline = () => {
