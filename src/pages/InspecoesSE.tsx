@@ -316,6 +316,9 @@ export default function InspecoesSE() {
     }
   }
 
+  const MAX_IMG_WIDTH = 800;
+  const IMG_TIMEOUT_MS = 12000;
+
   function extractDriveFileId(url: string): string | null {
     const patterns = [/[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
     for (const p of patterns) {
@@ -333,44 +336,90 @@ export default function InspecoesSE() {
       const { data, error: fnErr } = await supabase.functions.invoke("gdrive-proxy", {
         body: { id: fileId },
       });
-      if (fnErr || data?.error) return `https://lh3.googleusercontent.com/d/${fileId}=w800`;
+      if (fnErr || data?.error) return `https://lh3.googleusercontent.com/d/${fileId}=w${MAX_IMG_WIDTH}`;
       return data.url;
     } catch {
-      return `https://lh3.googleusercontent.com/d/${fileId}=w800`;
+      return `https://lh3.googleusercontent.com/d/${fileId}=w${MAX_IMG_WIDTH}`;
     }
   }
 
+  /** Gera um placeholder base64 "Imagem Indisponível" para fallback */
+  function generatePlaceholderDataUrl(): string {
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 200;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#e5e7eb";
+    ctx.fillRect(0, 0, 320, 200);
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Imagem Indisponível", 160, 100);
+    return canvas.toDataURL("image/jpeg", 0.8);
+  }
+
+  /** Redimensiona imagem no canvas para max 800px de largura e comprime como JPEG */
+  function resizeImageToDataUrl(source: HTMLImageElement | ImageBitmap): string {
+    let w = "width" in source ? source.width : (source as any).width;
+    let h = "height" in source ? source.height : (source as any).height;
+    if (w > MAX_IMG_WIDTH) {
+      h = Math.round(h * (MAX_IMG_WIDTH / w));
+      w = MAX_IMG_WIDTH;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d")!.drawImage(source as any, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.65);
+  }
+
   async function loadImageAsDataUrl(url: string): Promise<string | null> {
+    const placeholder = generatePlaceholderDataUrl();
     try {
       const resolvedUrl = await resolveDriveUrl(url);
-      // For Drive images, fetch as blob to avoid CORS canvas tainting
+
+      // Fetch com timeout para conexões lentas de obra
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), IMG_TIMEOUT_MS);
+
+      // Para Drive e googleusercontent: fetch como blob
       if (url.includes("drive.google.com") || resolvedUrl.includes("googleusercontent.com")) {
-        const resp = await fetch(resolvedUrl, { mode: "cors" });
-        if (!resp.ok) return null;
-        const blob = await resp.blob();
-        return await new Promise<string | null>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
-        });
+        try {
+          const resp = await fetch(resolvedUrl, { mode: "cors", signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (!resp.ok) return placeholder;
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          try {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              img.onload = () => resolve(resizeImageToDataUrl(img));
+              img.onerror = () => reject(new Error("img load failed"));
+              img.src = blobUrl;
+            });
+            return dataUrl;
+          } finally {
+            URL.revokeObjectURL(blobUrl);
+          }
+        } catch {
+          clearTimeout(timeoutId);
+          return placeholder;
+        }
       }
-      // Non-Drive URLs: use canvas approach
+
+      // URLs normais (ex: Supabase Storage)
+      clearTimeout(timeoutId);
       const img = new Image();
       img.crossOrigin = "anonymous";
-      return await new Promise<string | null>((resolve) => {
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          canvas.getContext("2d")!.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL("image/jpeg", 0.7));
-        };
-        img.onerror = () => resolve(null);
-        img.src = url;
+      return await new Promise<string>((resolve) => {
+        img.onload = () => resolve(resizeImageToDataUrl(img));
+        img.onerror = () => resolve(placeholder);
+        img.src = resolvedUrl;
       });
     } catch {
-      return null;
+      return placeholder;
     }
   }
 
