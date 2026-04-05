@@ -1,7 +1,10 @@
+import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { canAccessModule } from "@/lib/permissions";
@@ -33,8 +36,49 @@ import PortalTreinamentos from "@/pages/PortalTreinamentos";
 
 import Faturas from "@/pages/Faturas";
 import NotFound from "./pages/NotFound";
+import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 
-const queryClient = new QueryClient();
+const QUERY_PERSIST_MAX_AGE = 24 * 60 * 60 * 1000;
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: Infinity,
+      gcTime: QUERY_PERSIST_MAX_AGE,
+      retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
+const storagePersister = typeof window !== "undefined"
+  ? createSyncStoragePersister({
+      storage: window.localStorage,
+      key: "episafety-react-query-cache",
+    })
+  : undefined;
+
+function QueryProvider({ children }: { children: ReactNode }) {
+  if (!storagePersister) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+
+  return (
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: storagePersister,
+        maxAge: QUERY_PERSIST_MAX_AGE,
+      }}
+    >
+      {children}
+    </PersistQueryClientProvider>
+  );
+}
 
 function DashboardGuard() {
   const { modulosPermitidos, isSuperAdmin, loading } = useAuth();
@@ -111,9 +155,9 @@ function ProtectedRoute() {
   return (
     <AppLayout>
       <Routes>
-        <Route path="/" element={<DashboardGuard />} />
+        <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
         <Route path="/epis" element={<EPIs />} />
-        <Route path="/epis/controle-contrato" element={<ControleEstoqueContrato />} />
+        <Route path="/epis/controle-contrato" element={<NetworkErrorBoundary><ControleEstoqueContrato /></NetworkErrorBoundary>} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/cadastro" element={<CadastroDashboard />} />
@@ -144,7 +188,7 @@ function AuthPage() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <QueryProvider>
     <TooltipProvider>
       <OfflineBanner />
       <UpdateBanner />
@@ -162,7 +206,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
+  </QueryProvider>
 );
 
 export default App;

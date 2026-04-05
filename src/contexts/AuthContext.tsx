@@ -4,6 +4,7 @@ import type { User, Session } from "@supabase/supabase-js";
 import { preCacheAllData } from "@/lib/offlineStorage";
 import { clearCachedSession, loadCachedSession, saveCachedSession } from "@/lib/authSessionCache";
 import { resolveOfflineSession } from "@/lib/authState";
+import { prefetchDashboardOfflineData, prefetchStockOfflineData } from "@/lib/stockOfflinePrefetch";
 
 interface AuthContextType {
   user: User | null;
@@ -211,6 +212,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             nextState.modulos.length > 0 && nextState.modulos.every(p => p.startsWith("video_treinamentos"));
           if (!isVideoOnly) {
             preCacheAllData().catch(() => {});
+            prefetchDashboardOfflineData().catch(() => {});
+
+            const hasGestaoEstoque = nextState.isSuperAdmin || nextState.isPrincipal ||
+              nextState.modulos.includes("epis:gestao_estoque") || nextState.modulos.includes("epis");
+            const hasEstoqueContrato = nextState.modulos.includes("estoque_contrato") ||
+              nextState.modulos.some((modulo) => modulo.startsWith("estoque_contrato:"));
+            const canAccessStock = hasGestaoEstoque || hasEstoqueContrato || !!nextState.contratoId;
+
+            if (canAccessStock) {
+              prefetchStockOfflineData({
+                empresaId: nextState.empresaId,
+                contratoId: nextState.contratoId,
+                restricted: !hasGestaoEstoque && (hasEstoqueContrato || !!nextState.contratoId),
+              }).catch(() => {});
+            }
           }
         }
       } catch {

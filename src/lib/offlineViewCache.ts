@@ -74,21 +74,42 @@ export async function fetchWithOfflineFallback<T>({
   queryFn,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   ttlMs = DEFAULT_TTL_MS,
+  onFreshData,
+  preferCache = true,
 }: {
   cacheKey: string;
   queryFn: () => Promise<T>;
   timeoutMs?: number;
   ttlMs?: number;
+  onFreshData?: (data: T) => void;
+  preferCache?: boolean;
 }): Promise<{ data: T; fromCache: boolean; offline: boolean }> {
   const cached = getOfflineViewCache<T>(cacheKey);
+  const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
 
-  if (typeof navigator !== "undefined" && !navigator.onLine && cached !== null) {
+  if (preferCache && cached !== null) {
+    if (!isOffline) {
+      void withTimeout(queryFn(), timeoutMs)
+        .then((freshData) => {
+          setOfflineViewCache(cacheKey, freshData, ttlMs);
+          onFreshData?.(freshData);
+        })
+        .catch(() => {
+          // Silently keep cached data on background refresh failures.
+        });
+    }
+
+    return { data: cached, fromCache: true, offline: isOffline };
+  }
+
+  if (isOffline && cached !== null) {
     return { data: cached, fromCache: true, offline: true };
   }
 
   try {
     const data = await withTimeout(queryFn(), timeoutMs);
     setOfflineViewCache(cacheKey, data, ttlMs);
+    onFreshData?.(data);
     return { data, fromCache: false, offline: false };
   } catch (error) {
     if (cached !== null && isNetworkFailure(error)) {
