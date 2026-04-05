@@ -1842,6 +1842,9 @@ export default function Treinamentos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* NR Chatbot - Floating */}
+      <NRChatbot />
     </div>
   );
 }
