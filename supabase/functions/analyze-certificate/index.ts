@@ -191,8 +191,9 @@ Use SEMPRE o formato "NR XX" (com espaço).
 
 === VALIDAÇÃO CONTRATUAL (Matriz Unificada Neoenergia Rev.12) ===
 
-- Compare carga horária com o mínimo da Matriz PARA A FUNÇÃO ESPECÍFICA do colaborador
-- IMPORTANTE: O mesmo curso pode ter CH diferente por função (ex: POP 00 = 8h para Administrativo, 40h para Eletricista)
+- Compare carga horária EXCLUSIVAMENTE com o mínimo listado nos REQUISITOS ESPECÍFICOS PARA A FUNÇÃO do colaborador abaixo.
+- NUNCA invente ou assuma valores de CH. Use SOMENTE os valores fornecidos nos dados abaixo.
+- Se um curso NÃO aparece nos requisitos para esta função, ele NÃO é exigido — aprove automaticamente.
 - Se encontrar no conteúdo programático itens que NÃO constam na grade obrigatória da NR, registrar como "Conteúdo Extra" (não penalizar)
 - Se FALTAR item obrigatório do conteúdo programático, REPROVAR
 ${requisitosContext}
