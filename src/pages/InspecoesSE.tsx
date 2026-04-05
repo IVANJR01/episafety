@@ -214,10 +214,15 @@ export default function InspecoesSE() {
       let foto_depois = existingFotoDepois;
 
       if (isOnline()) {
-        if (fotoAntesFile) foto_antes = await uploadPhoto(fotoAntesFile);
-        if (fotoDepoisFile) foto_depois = await uploadPhoto(fotoDepoisFile);
+        const uploads = await Promise.all([
+          fotoAntesFile ? uploadPhoto(fotoAntesFile) : Promise.resolve(null),
+          fotoDepoisFile ? uploadPhoto(fotoDepoisFile) : Promise.resolve(null),
+        ]);
+        if (uploads[0]) foto_antes = uploads[0];
+        if (uploads[1]) foto_depois = uploads[1];
+        console.log("[handleSave] foto_antes URL:", foto_antes);
+        console.log("[handleSave] foto_depois URL:", foto_depois);
       } else {
-        // Store base64 previews for offline viewing
         if (fotoAntesPreview) foto_antes = fotoAntesPreview;
         if (fotoDepoisPreview) foto_depois = fotoDepoisPreview;
       }
@@ -606,6 +611,25 @@ export default function InspecoesSE() {
       drawCenteredText(item.referencia_normativa || "", x, y, scaledWidths[3], ROW_H, 5.5);
       x += scaledWidths[3];
 
+      // Helper: draw "sem foto" placeholder as grey box
+      const drawNoPhoto = (cellX: number, cellY: number, cellW: number, cellH: number) => {
+        const boxW = IMG_W - 4;
+        const boxH = IMG_H - 4;
+        const bx = cellX + (cellW - boxW) / 2;
+        const by = cellY + (cellH - boxH) / 2;
+        doc.setFillColor(240, 240, 240);
+        doc.setDrawColor(210, 210, 210);
+        doc.roundedRect(bx, by, boxW, boxH, 1.5, 1.5, "FD");
+        doc.setFontSize(5);
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(170, 170, 170);
+        const label = "Sem foto";
+        const lw = doc.getTextWidth(label);
+        doc.text(label, bx + (boxW - lw) / 2, by + boxH / 2 + 1.5);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+      };
+
       // Foto Antes - centered image
       const cache = photoCache[item.id];
       if (cache?.antes) {
@@ -613,9 +637,11 @@ export default function InspecoesSE() {
           const imgX = x + (scaledWidths[4] - (IMG_W - 2)) / 2;
           const imgY = y + (ROW_H - IMG_H) / 2;
           doc.addImage(cache.antes, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
-        } catch {}
+        } catch {
+          drawNoPhoto(x, y, scaledWidths[4], ROW_H);
+        }
       } else {
-        drawCenteredText("Sem foto", x, y, scaledWidths[4], ROW_H, 5.5, false, [180, 180, 180]);
+        drawNoPhoto(x, y, scaledWidths[4], ROW_H);
       }
       x += scaledWidths[4];
 
@@ -625,9 +651,11 @@ export default function InspecoesSE() {
           const imgX = x + (scaledWidths[5] - (IMG_W - 2)) / 2;
           const imgY = y + (ROW_H - IMG_H) / 2;
           doc.addImage(cache.depois, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
-        } catch {}
+        } catch {
+          drawNoPhoto(x, y, scaledWidths[5], ROW_H);
+        }
       } else {
-        drawCenteredText("Sem foto", x, y, scaledWidths[5], ROW_H, 5.5, false, [180, 180, 180]);
+        drawNoPhoto(x, y, scaledWidths[5], ROW_H);
       }
       x += scaledWidths[5];
 
@@ -973,7 +1001,7 @@ export default function InspecoesSE() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Foto ANTES</Label>
-                <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
+                <input ref={antesRef} type="file" accept="image/*" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                 {(fotoAntesPreview || existingFotoAntes) ? (
                   <div className="relative mt-1">
@@ -985,13 +1013,13 @@ export default function InspecoesSE() {
                   </div>
                 ) : (
                   <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => antesRef.current?.click()}>
-                    <Camera className="w-4 h-4 mr-1" /> Capturar
+                    <Camera className="w-4 h-4 mr-1" /> Capturar / Selecionar
                   </Button>
                 )}
               </div>
               <div>
                 <Label>Foto DEPOIS</Label>
-                <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
+                <input ref={depoisRef} type="file" accept="image/*" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                 {(fotoDepoisPreview || existingFotoDepois) ? (
                   <div className="relative mt-1">
