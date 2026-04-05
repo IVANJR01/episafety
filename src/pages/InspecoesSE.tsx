@@ -92,7 +92,7 @@ export default function InspecoesSE() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const cached = getCachedData<Conformidade>("conformidades") || [];
+    const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id === empresaId);
 
     if (!empresaId) {
       setItems([]);
@@ -258,7 +258,7 @@ export default function InspecoesSE() {
   }
 
   function saveOffline(payload: any) {
-    const cached = getCachedData<Conformidade>("conformidades") || [];
+    const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id === empresaId);
 
     if (editingId) {
       addToSyncQueue({ table: "conformidades", type: "update", payload: { id: editingId, ...payload } });
@@ -382,7 +382,7 @@ export default function InspecoesSE() {
     } catch (error) {
       if (!isOnline() || isNetworkFailure(error)) {
         addToSyncQueue({ table: "conformidades", type: "delete", payload: { id } });
-        const cached = getCachedData<Conformidade>("conformidades") || [];
+        const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id === empresaId);
         const updated = cached.filter(c => c.id !== id);
         setCachedData("conformidades", updated);
         setItems(updated);

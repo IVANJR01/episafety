@@ -100,11 +100,11 @@ export default function InspecoesDashboard() {
 
       try {
         const { data, error } = await withTimeout(
-          supabase
+          (supabase
             .from("conformidades")
             .select("status, gravidade, empresa_id")
-            .eq("empresa_id", empresaId)
-        );
+            .eq("empresa_id", empresaId)) as any
+        ) as any;
 
         if (error) throw error;
 
