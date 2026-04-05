@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -18,10 +18,24 @@ import { extractGDriveFileId, getGDriveImageProxyUrl } from "@/lib/googleDrive";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
+import { isNetworkFailure } from "@/lib/offlineViewCache";
 import jsPDF from "jspdf";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
 const STATUS_OPTIONS = ["PENDENTE", "SOLUCIONADO"];
+const LOAD_TIMEOUT_MS = 3000;
+
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs = LOAD_TIMEOUT_MS) => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  }) as Promise<T>;
+};
 
 interface Conformidade {
   id: string;
@@ -76,28 +90,58 @@ export default function InspecoesSE() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterGravidade, setFilterGravidade] = useState("all");
 
-  useEffect(() => { loadData(); }, [empresaId]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
+    const cached = getCachedData<Conformidade>("conformidades") || [];
+
+    if (!empresaId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    if (!isOnline()) {
+      setItems(cached);
+      setLoading(false);
+      return;
+    }
+
     try {
-      if (isOnline() && empresaId) {
-        const { data, error } = await (supabase.from as any)("conformidades")
+      const { data, error } = await withTimeout(
+        (supabase.from as any)("conformidades")
           .select("*")
           .eq("empresa_id", empresaId)
-          .order("numero", { ascending: true });
-        if (error) throw error;
-        const records = (data || []) as Conformidade[];
-        setItems(records);
-        setCachedData("conformidades", records);
+          .order("numero", { ascending: true })
+      ) as any;
+
+      if (error) throw error;
+
+      const records = (data || []) as Conformidade[];
+      setItems(records);
+      setCachedData("conformidades", records);
+    } catch (error) {
+      if (cached.length > 0 || isNetworkFailure(error)) {
+        setItems(cached);
       } else {
-        setItems(getCachedData<Conformidade>("conformidades") || []);
+        setItems([]);
       }
-    } catch {
-      setItems(getCachedData<Conformidade>("conformidades") || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }
+  }, [empresaId]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      void loadData();
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [loadData]);
 
   async function askAI() {
     if (!form.situacao_detectada.trim() || form.situacao_detectada.trim().length < 5) {
@@ -184,24 +228,60 @@ export default function InspecoesSE() {
     reader.readAsDataURL(file);
   }
 
-  async function uploadPhoto(file: File): Promise<string | null> {
-    try {
-      const { uploadToDrive } = await import("@/lib/googleDriveStorage");
-      const result = await uploadToDrive(
-        file,
-        "inspecoes",
-        `${Date.now()}_${Math.random().toString(36).slice(2)}.${file.name.split(".").pop()}`
-      );
-      return result.publicUrl;
-    } catch (err) {
-      console.error("[uploadPhoto] Falha no upload:", err);
-      toast({ 
-        title: "Erro ao enviar foto", 
-        description: "A foto não pôde ser enviada ao Google Drive. Verifique sua conexão.", 
-        variant: "destructive" 
-      });
-      return null;
+  async function uploadPhoto(file: File): Promise<string> {
+    const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+    const result = await uploadToDrive(
+      file,
+      "inspecoes",
+      `${Date.now()}_${Math.random().toString(36).slice(2)}.${file.name.split(".").pop()}`
+    );
+
+    return result.publicUrl;
+  }
+
+  function buildPayload(foto_antes: string | null, foto_depois: string | null) {
+    return {
+      data_inspecao: form.data_inspecao,
+      situacao_detectada: form.situacao_detectada,
+      gravidade: form.gravidade,
+      acao_corretiva: form.acao_corretiva || null,
+      responsavel: form.responsavel || null,
+      local: form.local || null,
+      data_realizado: form.data_realizado || null,
+      status: form.status,
+      foto_antes,
+      foto_depois,
+      referencia_normativa: form.referencia_normativa || null,
+      empresa_id: empresaId,
+      created_by: user?.id,
+    };
+  }
+
+  function saveOffline(payload: any) {
+    const cached = getCachedData<Conformidade>("conformidades") || [];
+
+    if (editingId) {
+      addToSyncQueue({ table: "conformidades", type: "update", payload: { id: editingId, ...payload } });
+      const updated = cached.map(c => c.id === editingId ? { ...c, ...payload } : c);
+      setCachedData("conformidades", updated);
+      setItems(updated);
+      toast({ title: "Atualizado offline", description: "Será sincronizado quando houver conexão." });
+      return;
     }
+
+    const nextNumero = (cached.length > 0 ? Math.max(...cached.map(i => i.numero || 0)) : 0) + 1;
+    const offlineRecord = {
+      ...payload,
+      id: crypto.randomUUID(),
+      numero: nextNumero,
+      created_at: new Date().toISOString(),
+    } as Conformidade;
+
+    addToSyncQueue({ table: "conformidades", type: "insert", payload: offlineRecord });
+    const updated = [...cached, offlineRecord].sort((a, b) => a.numero - b.numero);
+    setCachedData("conformidades", updated);
+    setItems(updated);
+    toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
   }
 
   async function handleSave() {
@@ -213,107 +293,76 @@ export default function InspecoesSE() {
     try {
       let foto_antes = existingFotoAntes;
       let foto_depois = existingFotoDepois;
+      let shouldSaveOffline = !isOnline();
 
-      if (isOnline()) {
-        const uploads = await Promise.all([
-          fotoAntesFile ? uploadPhoto(fotoAntesFile) : Promise.resolve(null),
-          fotoDepoisFile ? uploadPhoto(fotoDepoisFile) : Promise.resolve(null),
-        ]);
-        if (uploads[0]) foto_antes = uploads[0];
-        if (uploads[1]) foto_depois = uploads[1];
-        console.log("[handleSave] foto_antes URL:", foto_antes);
-        console.log("[handleSave] foto_depois URL:", foto_depois);
+      if (!shouldSaveOffline) {
+        try {
+          const uploads = await Promise.all([
+            fotoAntesFile ? uploadPhoto(fotoAntesFile) : Promise.resolve(null),
+            fotoDepoisFile ? uploadPhoto(fotoDepoisFile) : Promise.resolve(null),
+          ]);
 
-        // Se o usuário anexou foto mas o upload falhou, bloquear salvamento
-        if (fotoAntesFile && !uploads[0]) {
-          toast({ title: "Upload da foto falhou", description: "Não foi possível enviar a foto ao Google Drive. Tente novamente.", variant: "destructive" });
-          setSaving(false);
-          return;
+          if (uploads[0]) foto_antes = uploads[0];
+          if (uploads[1]) foto_depois = uploads[1];
+        } catch (error) {
+          if (isNetworkFailure(error)) {
+            shouldSaveOffline = true;
+          } else {
+            console.error("[uploadPhoto] Falha no upload:", error);
+            toast({
+              title: "Erro ao enviar foto",
+              description: "A foto não pôde ser enviada ao Google Drive. Tente novamente.",
+              variant: "destructive",
+            });
+            setSaving(false);
+            return;
+          }
         }
-        if (fotoDepoisFile && !uploads[1]) {
-          toast({ title: "Upload da foto falhou", description: "Não foi possível enviar a foto ao Google Drive. Tente novamente.", variant: "destructive" });
-          setSaving(false);
-          return;
-        }
-      } else {
+      }
+
+      if (shouldSaveOffline) {
         if (fotoAntesPreview) foto_antes = fotoAntesPreview;
         if (fotoDepoisPreview) foto_depois = fotoDepoisPreview;
       }
 
-      const payload: any = {
-        data_inspecao: form.data_inspecao,
-        situacao_detectada: form.situacao_detectada,
-        gravidade: form.gravidade,
-        acao_corretiva: form.acao_corretiva || null,
-        responsavel: form.responsavel || null,
-        local: form.local || null,
-        data_realizado: form.data_realizado || null,
-        status: form.status,
-        foto_antes: foto_antes || null,
-        foto_depois: foto_depois || null,
-        referencia_normativa: form.referencia_normativa || null,
-      };
+      const payload = buildPayload(foto_antes || null, foto_depois || null);
 
       if (editingId) {
-        if (isOnline()) {
+        if (!shouldSaveOffline) {
           const { error } = await (supabase.from as any)("conformidades").update(payload).eq("id", editingId);
           if (error) throw error;
         } else {
-          addToSyncQueue({ table: "conformidades", type: "update", payload: { id: editingId, ...payload } });
-          // Update local cache optimistically
-          const cached = getCachedData<Conformidade>("conformidades") || [];
-          setCachedData("conformidades", cached.map(c => c.id === editingId ? { ...c, ...payload } : c));
+          saveOffline(payload);
         }
-        toast({ title: editingId && !isOnline() ? "Atualizado offline" : "Registro atualizado!" });
+        if (!shouldSaveOffline) {
+          toast({ title: "Registro atualizado!" });
+        }
       } else {
-        payload.empresa_id = empresaId;
-        payload.created_by = user?.id;
-        if (isOnline()) {
+        if (!shouldSaveOffline) {
           const { error } = await (supabase.from as any)("conformidades").insert(payload);
           if (error) throw error;
         } else {
-          payload.id = crypto.randomUUID();
-          payload.numero = (items.length > 0 ? Math.max(...items.map(i => i.numero || 0)) : 0) + 1;
-          payload.created_at = new Date().toISOString();
-          addToSyncQueue({ table: "conformidades", type: "insert", payload });
-          // Update local cache optimistically
-          const cached = getCachedData<Conformidade>("conformidades") || [];
-          cached.push(payload as Conformidade);
-          setCachedData("conformidades", cached);
+          saveOffline(payload);
         }
-        toast({ title: !isOnline() ? "Salvo offline" : "Registro criado!", description: !isOnline() ? "Será sincronizado quando houver conexão." : undefined });
+        if (!shouldSaveOffline) {
+          toast({ title: "Registro criado!" });
+        }
       }
 
       resetDraft();
       setDialogOpen(false);
-      loadData();
+      if (!shouldSaveOffline) {
+        void loadData();
+      }
     } catch (err: any) {
-      if (!isOnline() || err?.message?.includes("fetch")) {
-        const payload: any = {
-          data_inspecao: form.data_inspecao, situacao_detectada: form.situacao_detectada,
-          gravidade: form.gravidade, acao_corretiva: form.acao_corretiva || null,
-          responsavel: form.responsavel || null, local: form.local || null,
-          data_realizado: form.data_realizado || null, status: form.status,
-          foto_antes: fotoAntesPreview || null, foto_depois: fotoDepoisPreview || null,
-          empresa_id: empresaId, created_by: user?.id,
-          referencia_normativa: form.referencia_normativa || null,
-        };
-        const cached = getCachedData<Conformidade>("conformidades") || [];
-        if (editingId) {
-          addToSyncQueue({ table: "conformidades", type: "update", payload: { id: editingId, ...payload } });
-          setCachedData("conformidades", cached.map(c => c.id === editingId ? { ...c, ...payload } : c));
-        } else {
-          payload.id = crypto.randomUUID();
-          payload.numero = (items.length > 0 ? Math.max(...items.map(i => i.numero || 0)) : 0) + 1;
-          payload.created_at = new Date().toISOString();
-          addToSyncQueue({ table: "conformidades", type: "insert", payload });
-          cached.push(payload as Conformidade);
-          setCachedData("conformidades", cached);
-        }
-        toast({ title: "Salvo offline", description: "Será sincronizado quando houver conexão." });
+      if (!isOnline() || isNetworkFailure(err) || err?.message?.includes("fetch")) {
+        const payload = buildPayload(
+          fotoAntesPreview || existingFotoAntes || null,
+          fotoDepoisPreview || existingFotoDepois || null,
+        );
+        saveOffline(payload);
         resetDraft();
         setDialogOpen(false);
-        loadData();
       } else {
         toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
       }
@@ -327,15 +376,20 @@ export default function InspecoesSE() {
       if (isOnline()) {
         const { error } = await (supabase.from as any)("conformidades").delete().eq("id", id);
         if (error) throw error;
-      } else {
-        addToSyncQueue({ table: "conformidades", type: "delete", payload: { id } });
-        // Update local cache optimistically
-        const cached = getCachedData<Conformidade>("conformidades") || [];
-        setCachedData("conformidades", cached.filter(c => c.id !== id));
       }
-      toast({ title: !isOnline() ? "Excluído offline" : "Registro excluído" });
-      loadData();
-    } catch {
+      toast({ title: "Registro excluído" });
+      void loadData();
+    } catch (error) {
+      if (!isOnline() || isNetworkFailure(error)) {
+        addToSyncQueue({ table: "conformidades", type: "delete", payload: { id } });
+        const cached = getCachedData<Conformidade>("conformidades") || [];
+        const updated = cached.filter(c => c.id !== id);
+        setCachedData("conformidades", updated);
+        setItems(updated);
+        toast({ title: "Excluído offline", description: "Será sincronizado quando houver conexão." });
+        return;
+      }
+
       toast({ title: "Erro ao excluir", variant: "destructive" });
     }
   }
