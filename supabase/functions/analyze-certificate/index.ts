@@ -61,14 +61,14 @@ Retorne OBRIGATORIAMENTE os seguintes campos booleanos:
 - assinatura_responsavel: true se detectou assinatura/carimbo do responsável técnico (CREA)
 - parecer_bernhoeft: "APROVADO" | "REPROVADO" | "COM_RESSALVA"
 - motivo_reprovacao_bernhoeft: texto explicando por que a Bernhoeft reprovaria (vazio se aprovado)
-- dias_para_vencimento: número de dias até o vencimento (null se não aplicável)
+- dias_para_vencimento: número de dias até o vencimento (negativo se já vencido)
 
 === TAREFA ===
 
 Analise o documento PDF enviado. O documento pode ser:
 1) Um CERTIFICADO de treinamento/curso
 2) Uma ANUÊNCIA/AUTORIZAÇÃO FORMAL para NR-10 (item 10.8.4) ou NR-12 (item 12.16.1) ou outra NR
-3) Outro documento de segurança do trabalho
+3) Outro documento de segurança do trabalho (ASO, Ficha de EPI, etc.)
 
 Primeiro, IDENTIFIQUE O TIPO DE DOCUMENTO e a NR correspondente, depois aplique a validação dos 4 Pilares Bernhoeft.
 
@@ -93,28 +93,59 @@ VALIDAÇÃO DE ANUÊNCIA NR-12:
 NR-01 (Disposições Gerais - https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-1-nr-1):
 - Treinamento de integração obrigatório ANTES do início das atividades.
 - Item 1.6.1: Documentos digitais DEVEM possuir assinatura eletrônica que garanta integridade e autenticidade.
-  → Se a assinatura for apenas uma imagem colada/sobreposta sem certificado digital (ICP-Brasil) ou log de assinatura eletrônica, aponte como "⚠️ RISCO DE VALIDADE - Item 1.6.1 NR-01: Assinatura sem garantia de autenticidade. Ref: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-1-nr-1"
+  → Se a assinatura for apenas uma imagem colada/sobreposta sem certificado digital (ICP-Brasil) ou log de assinatura eletrônica, aponte como "⚠️ RISCO DE VALIDADE - Item 1.6.1 NR-01: Assinatura sem garantia de autenticidade."
 - Capacitação periódica: Cruze a data de emissão com a periodicidade exigida pela NR correspondente. Se VENCIDO → colaborador é INAPTO para a atividade.
 - Item 1.7: O empregador deve manter documentação comprobatória de capacitação disponível para fiscalização.
 
-NR-05 (CIPA): CH mínima 20h | Validade: mandato 1 ano.
-NR-06 (EPI): Treinamento obrigatório sobre uso correto.
+NR-05 (CIPA - Comissão Interna de Prevenção de Acidentes e de Assédio): CH mínima 20h | Validade: mandato 1 ano.
+  → Nota: A denominação atualizada (outubro/2024) inclui "e de Assédio". Aceite ambas as versões.
+
+NR-06 (EPI - https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-6-nr-6):
+- Item 6.6.1: O empregador deve fornecer ao trabalhador somente o EPI aprovado pelo órgão nacional competente.
+- Treinamento obrigatório sobre uso correto, guarda e conservação de cada EPI fornecido.
+- Ficha de EPI deve conter: descrição do EPI, CA (Certificado de Aprovação), data de entrega e assinatura do trabalhador.
+- Se a Ficha de EPI NÃO contiver CA válido ou assinatura do trabalhador → REPROVE.
 
 NR-10 (Eletricidade - https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-10-nr-10):
 - Básico 40h (2 anos) | SEP 40h (2 anos) | PRÉ-REQUISITO: SEP exige Básico vigente.
 - Item 10.8 (Autorização): Para eletricistas, o documento DEVE citar explicitamente que o trabalhador é "Autorizado" ou "Habilitado" conforme 10.8.1/10.8.4.
-  → Se NÃO constar termo de autorização formal: REPROVE com "❌ Violação Item 10.8 NR-10 - Falta de Autorização Formal. Trabalhador NÃO pode intervir em instalações elétricas. Ref: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-10-nr-10"
+  → Se NÃO constar termo de autorização formal: REPROVE com "❌ Violação Item 10.8 NR-10 - Falta de Autorização Formal. Trabalhador NÃO pode intervir em instalações elétricas."
 - Item 10.2.9 (EPI para Eletricidade): Para eletricistas, fichas de EPI devem incluir vestimentas com proteção contra arco elétrico e fogo, luvas isolantes, mangas isolantes.
-  → Se constar apenas EPI comum (capacete, botina padrão) sem EPI específico para risco elétrico: "⚠️ INCOMPATIBILIDADE DE RISCO - Item 10.2.9 NR-10: EPI inadequado para atividade elétrica."
+  → Se constar apenas EPI comum sem EPI específico para risco elétrico: "⚠️ INCOMPATIBILIDADE DE RISCO - Item 10.2.9 NR-10."
 - Item 10.7: Prontuário de Instalações Elétricas é obrigatório para estabelecimentos com carga > 75kW.
 
-NR-11: Treinamento específico por tipo de equipamento.
-NR-12: Operação apenas por trabalhador habilitado/autorizado. Anuência vinculada ao equipamento ESPECÍFICO.
-NR-18: Admissional 6h | Periódico: 12 meses.
-NR-20: Básico 8h | Intermediário 16h | Avançado I 24h | Avançado II 32h | Validade: 3 anos.
-NR-23: Treinamento obrigatório, periodicidade anual.
-NR-33: Trabalhadores 16h | Supervisores 40h | Validade: anual.
-NR-35: CH mínima 8h | Validade: 2 anos.
+NR-11 (Transporte, Movimentação, Armazenagem e Manuseio de Materiais):
+- Operador de empilhadeira: treinamento específico obrigatório com reciclagem periódica.
+- Item 11.1.5: Todos os equipamentos devem ter inspeção diária documentada.
+- Certificado deve especificar o TIPO de equipamento (empilhadeira a combustão, elétrica, etc.).
+
+NR-12 (Segurança no Trabalho em Máquinas e Equipamentos):
+- Operação apenas por trabalhador habilitado/autorizado.
+- Anuência vinculada ao equipamento ESPECÍFICO.
+- Item 12.16.1: A operação de máquinas deve ser realizada somente por trabalhadores que tenham sido capacitados quanto aos riscos, medidas de proteção e modos seguros de operação.
+
+NR-18 (Condições de Segurança e Saúde no Trabalho na Indústria da Construção):
+- Admissional 6h | Periódico: 12 meses.
+- Item 18.28.1: Treinamento admissional obrigatório com carga horária mínima de 6h.
+
+NR-20 (Segurança e Saúde no Trabalho com Inflamáveis e Combustíveis):
+- Básico 8h | Intermediário 16h | Avançado I 24h | Avançado II 32h | Validade: 3 anos.
+- Reciclagem: Básico/Intermediário 4h | Avançado I 8h | Avançado II 8h.
+- Item 20.11.1: Classificar corretamente o nível do trabalhador (Básico/Intermediário/Avançado).
+
+NR-23 (Proteção Contra Incêndios):
+- Treinamento obrigatório, periodicidade anual.
+- Deve incluir: utilização de extintores, rotas de fuga, alarme.
+
+NR-33 (Segurança e Saúde nos Trabalhos em Espaços Confinados):
+- Trabalhadores 16h | Supervisores de Entrada 40h | Validade: anual.
+- Item 33.3.5: Supervisor de Entrada deve ter treinamento específico de 40h.
+- PRÉ-REQUISITO: NR-33 exige que o trabalhador tenha Primeiros Socorros válido.
+
+NR-35 (Trabalho em Altura - https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-35-nr-35):
+- CH mínima 8h | Validade: 2 anos.
+- Item 35.3.2: Treinamento deve incluir: normas e regulamentos, análise de risco, procedimentos de emergência.
+- PRÉ-REQUISITO: ASO (Atestado de Saúde Ocupacional) apto para trabalho em altura.
 
 === REFERÊNCIA LEGAL NAS REPROVAÇÕES ===
 
@@ -125,8 +156,19 @@ REGRA OBRIGATÓRIA: Sempre que reprovar ou emitir ressalva, inclua na descricao_
 
 Links de referência:
 - NR-01: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-1-nr-1
+- NR-06: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-6-nr-6
 - NR-10: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-10-nr-10
+- NR-12: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-12-nr-12
+- NR-20: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-20-nr-20
+- NR-33: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-33-nr-33
 - NR-35: https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-paritaria-permanente/normas-regulamentadora/normas-regulamentadoras-vigentes/norma-regulamentadora-no-35-nr-35
+
+=== REGRA ANTI-ALUCINAÇÃO ===
+
+Se você NÃO tem certeza do sub-item específico da NR:
+- Cite a NR e a seção geral (ex: "NR-10, Seção 10.8")
+- NÃO invente números de itens
+- Indique: "Verificar sub-item específico na NR vigente"
 
 === DOCUMENTOS SEM VENCIMENTO (CARGA ÚNICA / PERMANENTE) ===
 
@@ -141,6 +183,9 @@ Os seguintes tipos de documento NÃO POSSUEM validade/vencimento:
 Normalize nomes: "NR10 Básico", "NR-10 Básico", "NR 10 Básico", "Segurança em Instalações Elétricas" → "NR 10"
 "NR10 SEP", "NR-10 SEP", "Sistema Elétrico de Potência" → "NR 10 SEP"
 "NR35", "NR-35", "Trabalho em Altura" → "NR 35"
+"NR33", "NR-33", "Espaço Confinado", "Espaços Confinados" → "NR 33"
+"NR20", "NR-20", "Inflamáveis e Combustíveis" → "NR 20"
+"NR12", "NR-12", "Segurança em Máquinas" → "NR 12"
 Anuências: "Anuência NR 10", "Anuência NR 12 - [EQUIPAMENTO]"
 Use SEMPRE o formato "NR XX" (com espaço).
 
@@ -185,7 +230,6 @@ const toolSchema = {
         motivo_nao_conforme: { type: "string", description: "Motivo da não conformidade" },
         requisito_atendido: { type: "string", description: "Requisito da Matriz atendido" },
         confianca: { type: "number", description: "Nível de confiança 0.0 a 1.0" },
-        // Bernhoeft audit fields
         assinatura_colaborador: { type: "boolean", description: "true se assinatura do colaborador foi detectada visualmente" },
         assinatura_instrutor: { type: "boolean", description: "true se assinatura do instrutor foi detectada visualmente" },
         assinatura_responsavel: { type: "boolean", description: "true se assinatura/carimbo do responsável técnico (CREA) foi detectado" },
@@ -229,6 +273,10 @@ function extractAnalysis(aiResult: any): any {
       motivo_nao_conforme: "IA não conseguiu estruturar a resposta",
       carga_horaria: 0,
       nome_certificado: "",
+      assinatura_colaborador: false,
+      assinatura_instrutor: false,
+      assinatura_responsavel: false,
+      parecer_bernhoeft: "REPROVADO" as const,
     };
   }
 }
@@ -280,7 +328,7 @@ serve(async (req) => {
       .order("curso_nome");
     if (data) requisitos = data;
 
-    // Fetch existing trainings for this employee (cross-validation)
+    // Fetch existing trainings for this employee (cross-validation & dependency check)
     let treinamentosExistentes = "";
     if (funcionarioId && empresaId) {
       const { data: treinos } = await supabase
@@ -321,24 +369,14 @@ serve(async (req) => {
     }
 
     const funcionarioContext = funcionarioNome
-      ? `\nDADOS DO COLABORADOR SELECIONADO:\nNome: ${funcionarioNome}\nCPF: ${funcionarioCpf || "Não informado"}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\n\nREGRAS DE IDENTIFICAÇÃO:\n- Use o CPF "${funcionarioCpf || ""}" como CHAVE PRIMÁRIA de identificação infalível.\n- Se o CPF do documento coincidir com "${funcionarioCpf || ""}", o colaborador é o MESMO, independentemente de variações no nome (abreviações, nome do meio, acentos).\n- Só defina alerta_nome=true se AMBOS nome E CPF forem completamente diferentes.${treinamentosExistentes}${batchContext}\n\nREGRA CRÍTICA DE DEPENDÊNCIA MULTIDOCUMENTO:\n- Para validar uma ANUÊNCIA NR-10 (item 10.8.4), você DEVE verificar se o colaborador possui NR-10 Básico (40h) E NR-10 SEP (40h) VIGENTES.\n- Consulte os TREINAMENTOS JÁ CADASTRADOS e os DOCUMENTOS JÁ ANALISADOS acima.\n- Se NR-10 Básico ou SEP estiverem presentes (no sistema OU no lote atual), use esses dados para validar a Anuência.\n- Se NR-10 Básico ou SEP NÃO forem encontrados em NENHUMA fonte, marque: conforme_nr=false e motivo_nr="❌ Pré-requisito ausente: certificado de NR-10 Básico/SEP não localizado no sistema nem no lote atual."\n- A validade da Anuência = data de vencimento do treinamento mais antigo (Básico ou SEP).\n- Se encontrar o NR-10, inclua na descricao_completa: "✅ Certificado de NR-10 identificado e vinculado. Atende à carga horária de 40h exigida pela Matriz Unificada. Anuência validada com base neste treinamento."`
+      ? `\nDADOS DO COLABORADOR SELECIONADO:\nNome: ${funcionarioNome}\nCPF: ${funcionarioCpf || "Não informado"}\nFunção/Cargo: ${funcionarioCargo || "Não informada"}\n\nREGRAS DE IDENTIFICAÇÃO:\n- Use o CPF "${funcionarioCpf || ""}" como CHAVE PRIMÁRIA de identificação infalível.\n- Se o CPF do documento coincidir com "${funcionarioCpf || ""}", o colaborador é o MESMO, independentemente de variações no nome (abreviações, nome do meio, acentos).\n- Só defina alerta_nome=true se AMBOS nome E CPF forem completamente diferentes.${treinamentosExistentes}${batchContext}\n\nREGRA CRÍTICA DE DEPENDÊNCIA MULTIDOCUMENTO:\n- Para validar uma ANUÊNCIA NR-10 (item 10.8.4), você DEVE verificar se o colaborador possui NR-10 Básico (40h) E NR-10 SEP (40h) VIGENTES.\n- Para validar NR-33, verifique se o colaborador possui Primeiros Socorros VIGENTE.\n- Para validar NR-35, verifique se o colaborador possui ASO apto para trabalho em altura.\n- Para validar NR-10 SEP, verifique se o colaborador possui NR-10 Básico VIGENTE.\n- Consulte os TREINAMENTOS JÁ CADASTRADOS e os DOCUMENTOS JÁ ANALISADOS acima.\n- Se o pré-requisito estiver presente (no sistema OU no lote atual), valide normalmente.\n- Se o pré-requisito NÃO for encontrado em NENHUMA fonte, marque: conforme_nr=false e motivo_nr="❌ Pré-requisito ausente: [detalhe do pré-requisito] não localizado no sistema nem no lote atual."\n- A validade da Anuência = data de vencimento do treinamento mais antigo (Básico ou SEP).\n- Se encontrar o pré-requisito, inclua na descricao_completa: "✅ Pré-requisito identificado e vinculado."`
       : "";
 
     const systemPrompt = buildSystemPrompt(requisitosContext, funcionarioContext);
 
     console.log("Sending request to AI...");
 
-    // ==================== GEMINI DIRECT API ====================
-    const callGeminiDirect = async (): Promise<any> => {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-      
-      const geminiBody = {
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: systemPrompt },
-              { text: `Analise este documento PDF de segurança do trabalho.
+    const userPrompt = `Analise este documento PDF de segurança do trabalho.
 Extraia TODAS as informações de TODAS as páginas (frente e verso), incluindo:
 - Conteúdo programático (geralmente na página 2 / verso)
 - Nome e registro profissional do instrutor/responsável técnico
@@ -347,7 +385,20 @@ Extraia TODAS as informações de TODAS as páginas (frente e verso), incluindo:
 - Entidade/Instituição emissora
 - Carga horária
 - Equipamento/máquina mencionado (se for NR-12)
-Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL e para qual NR.` },
+Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL e para qual NR.`;
+
+    // ==================== GEMINI DIRECT API ====================
+    const callGeminiDirect = async (): Promise<any> => {
+      // Use gemini-2.5-flash for better accuracy
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      
+      const geminiBody = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: systemPrompt },
+              { text: userPrompt },
               {
                 inlineData: {
                   mimeType: "application/pdf",
@@ -359,7 +410,7 @@ Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL 
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
         },
         tools: [{
           functionDeclarations: [{
@@ -436,19 +487,7 @@ Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL 
         {
           role: "user",
           content: [
-            {
-              type: "text",
-              text: `Analise este documento PDF de segurança do trabalho.
-Extraia TODAS as informações de TODAS as páginas (frente e verso), incluindo:
-- Conteúdo programático (geralmente na página 2 / verso)
-- Nome e registro profissional do instrutor/responsável técnico
-- CPF do colaborador
-- Datas (converter para YYYY-MM-DD)
-- Entidade/Instituição emissora
-- Carga horária
-- Equipamento/máquina mencionado (se for NR-12)
-Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL e para qual NR.`,
-            },
+            { type: "text", text: userPrompt },
             {
               type: "image_url",
               image_url: { url: `data:application/pdf;base64,${pdfBase64}` },
@@ -474,6 +513,12 @@ Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL 
       if (!resp.ok) {
         const errText = await resp.text();
         console.error(`Lovable gateway error ${resp.status}: ${errText}`);
+        if (resp.status === 429) {
+          throw new Error("Rate limit excedido. Tente novamente em alguns segundos.");
+        }
+        if (resp.status === 402) {
+          throw new Error("Créditos insuficientes. Adicione créditos em Settings > Workspace > Usage.");
+        }
         throw new Error(`Lovable gateway error: ${resp.status}`);
       }
 
@@ -486,13 +531,11 @@ Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL 
     let provider = "gemini_direct";
 
     if (GEMINI_API_KEY) {
-      // PRIMARY: Google Gemini Direct API (free/low cost)
       try {
         console.log("Using Gemini Direct API (primary)...");
         parsed = await callGeminiDirect();
       } catch (geminiErr) {
         console.error("Gemini Direct failed:", geminiErr);
-        // FALLBACK: Lovable Gateway
         if (LOVABLE_API_KEY) {
           try {
             console.log("Falling back to Lovable AI Gateway...");
@@ -500,7 +543,6 @@ Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL 
             parsed = await callLovableGateway();
           } catch (lovableErr) {
             console.error("Lovable Gateway also failed:", lovableErr);
-            // QUEUE: save as pending
             if (funcionarioId && empresaId) {
               const { data: row } = await supabase.from("analises_ia").insert({
                 empresa_id: empresaId,
@@ -524,7 +566,6 @@ Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL 
         }
       }
     } else {
-      // No Gemini key, use Lovable directly
       console.log("No GEMINI_API_KEY, using Lovable AI Gateway...");
       provider = "lovable_gateway";
       try {
@@ -539,7 +580,7 @@ Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL 
             status: "pending_credit",
           }).select("id").single();
           return new Response(JSON.stringify({
-            error: "Créditos insuficientes. Documento salvo na fila.",
+            error: err.message || "Créditos insuficientes. Documento salvo na fila.",
             status: "pending_credit",
             analysisId: row?.id || null,
           }), {
