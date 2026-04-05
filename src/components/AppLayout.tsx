@@ -40,8 +40,12 @@ const gestaoDocItems: NavItem[] = [
 
 const afterCadastroItems: NavItem[] = [
   { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
-  { path: "/inspecoes-se", label: "Inspeções", icon: HardHat, moduleKey: "inspecoes_se" },
   { path: "/video-treinamentos", label: "Treinamentos", icon: Video, moduleKey: "video_treinamentos" },
+];
+
+const inspecoesItems: NavItem[] = [
+  { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
+  { path: "/inspecoes-se", label: "Listagem", icon: ClipboardList, moduleKey: "inspecoes_se" },
 ];
 
 const cadastroItems: NavItem[] = [

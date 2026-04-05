@@ -168,6 +168,7 @@ function ProtectedRoute() {
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
         <Route path="/dds" element={<DDS />} />
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
+        <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
         <Route path="/treinamentos" element={<Treinamentos />} />
         <Route path="/exames" element={<ExamesModule />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
