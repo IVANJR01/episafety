@@ -40,8 +40,12 @@ const gestaoDocItems: NavItem[] = [
 
 const afterCadastroItems: NavItem[] = [
   { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
-  { path: "/inspecoes-se", label: "Inspeções", icon: HardHat, moduleKey: "inspecoes_se" },
   { path: "/video-treinamentos", label: "Treinamentos", icon: Video, moduleKey: "video_treinamentos" },
+];
+
+const inspecoesItems: NavItem[] = [
+  { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
+  { path: "/inspecoes-se", label: "Listagem", icon: ClipboardList, moduleKey: "inspecoes_se" },
 ];
 
 const cadastroItems: NavItem[] = [
@@ -84,13 +88,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
   const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
+  const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
   const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
+  const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
+  const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
 
   // Bottom nav items for mobile
   const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
@@ -333,6 +340,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+
+          {visibleInspecoesItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setInspecoesOpen(!inspecoesOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isInspecoesActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <HardHat className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Inspeções</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${inspecoesOpen ? "rotate-180" : ""}`} />
+              </button>
+              {inspecoesOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleInspecoesItems.map((item) => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
 
           {(isSuperAdmin || isPrincipal) && (
             <Link

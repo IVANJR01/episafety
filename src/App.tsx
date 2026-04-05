@@ -27,6 +27,7 @@ import Install from "@/pages/Install";
 import Privacidade from "@/pages/Privacidade";
 import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
+import InspecoesDashboard from "@/pages/InspecoesDashboard";
 import Treinamentos from "@/pages/Treinamentos";
 import ExamesModule from "@/pages/ExamesModule";
 import CadastroDashboard from "@/pages/CadastroDashboard";
@@ -167,6 +168,7 @@ function ProtectedRoute() {
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
         <Route path="/dds" element={<DDS />} />
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
+        <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
         <Route path="/treinamentos" element={<Treinamentos />} />
         <Route path="/exames" element={<ExamesModule />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
