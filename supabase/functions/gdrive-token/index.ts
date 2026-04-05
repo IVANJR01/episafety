@@ -12,6 +12,14 @@ async function getAccessToken(): Promise<string> {
   const clientId = Deno.env.get("GOOGLE_OAUTH_CLIENT_ID");
   const clientSecret = Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET");
   const refreshToken = Deno.env.get("GOOGLE_OAUTH_REFRESH_TOKEN");
+  console.log("[gdrive-token] DEBUG credentials check:", {
+    hasClientId: !!clientId,
+    clientIdPrefix: clientId?.substring(0, 20) + "...",
+    hasClientSecret: !!clientSecret,
+    secretLen: clientSecret?.length,
+    hasRefreshToken: !!refreshToken,
+    refreshTokenPrefix: refreshToken?.substring(0, 15) + "...",
+  });
   if (!clientId || !clientSecret || !refreshToken) throw new Error("Google OAuth credentials missing");
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
