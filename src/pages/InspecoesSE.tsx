@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
+import DriveImage from "@/components/DriveImage";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -696,13 +697,13 @@ export default function InspecoesSE() {
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{item.situacao_detectada}</TableCell>
                     <TableCell>
-                      {item.foto_antes ? (
-                        <img src={item.foto_antes} alt="Antes" className="w-14 h-10 object-cover rounded border" />
+                    {item.foto_antes ? (
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-14 h-10" />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       {item.foto_depois ? (
-                        <img src={item.foto_depois} alt="Depois" className="w-14 h-10 object-cover rounded border" />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-14 h-10" />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
@@ -798,13 +799,13 @@ export default function InspecoesSE() {
                     {item.foto_antes ? (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-medium">ANTES</p>
-                        <img src={item.foto_antes} alt="Antes" className="w-full h-24 object-cover rounded-lg border" />
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full h-24" />
                       </div>
                     ) : <div />}
                     {item.foto_depois ? (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-medium">DEPOIS</p>
-                        <img src={item.foto_depois} alt="Depois" className="w-full h-24 object-cover rounded-lg border" />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full h-24" />
                       </div>
                     ) : <div />}
                   </div>
