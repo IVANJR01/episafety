@@ -703,7 +703,7 @@ export default function InspecoesSE() {
                     </TableCell>
                     <TableCell>
                       {item.foto_depois ? (
-                        <img src={item.foto_depois} alt="Depois" className="w-14 h-10 object-cover rounded border" />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-14 h-10" />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
