@@ -24,6 +24,7 @@ import CadastroCursos from "@/components/CadastroCursos";
 import BulkDocumentUpload from "@/components/BulkDocumentUpload";
 import AIDocumentValidator from "@/components/AIDocumentValidator";
 import CadastroFuncaoRequisitos from "@/components/CadastroFuncaoRequisitos";
+import NRChatbot from "@/components/NRChatbot";
 
 interface ControleTreinamento {
   id: string;
