@@ -44,8 +44,23 @@ interface UnidadeSummary {
     estoqueTotal: number;
     valorTotal: number;
     alertas: number;
-    itens: never[];
-    movimentos: never[];
+    itens: {
+      epi_nome: string;
+      ca: string | null;
+      tamanho: string | null;
+      estoque: number;
+      estoque_minimo: number;
+      valor: number;
+    }[];
+    movimentos: {
+      data: string;
+      tipo: string;
+      epi_nome: string;
+      ca: string | null;
+      tamanho: string | null;
+      destino: string;
+      quantidade: number;
+    }[];
     loadedDetails: boolean;
   }[];
   loaded: boolean;
