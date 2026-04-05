@@ -17,11 +17,16 @@ interface TokenResponse {
  * from the lightweight edge function (no file binary transferred).
  */
 async function getDriveToken(folder: string): Promise<TokenResponse> {
+  // Refresh session to ensure valid JWT before calling edge function
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) {
+    console.error("[getDriveToken] Session refresh failed:", refreshError.message);
+  }
+
   const { data, error } = await supabase.functions.invoke("gdrive-token", {
     body: { folder },
   });
   if (error) {
-    // Try to extract the real error from the response body
     const msg = typeof data === "object" && data?.error
       ? data.error
       : error.message || "Failed to get Drive token";
