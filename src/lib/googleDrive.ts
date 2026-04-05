@@ -11,6 +11,7 @@
 const GDRIVE_FILE_REGEX = /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
 const GDRIVE_OPEN_REGEX = /drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/;
 const GDRIVE_UC_REGEX = /drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/;
+const GDRIVE_PROXY_VERSION = "2026-04-05-raw-image-fix";
 
 function getProxyConfig() {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -24,7 +25,8 @@ function buildProxyUrl(fileId: string, fileName: string, raw = false): string | 
   if (!config) return null;
   const safeFileName = encodeURIComponent(fileName);
   const rawFlag = raw ? "&raw=1" : "";
-  return `${config.supabaseUrl}/functions/v1/gdrive-proxy/${safeFileName}?id=${encodeURIComponent(fileId)}${rawFlag}&apikey=${encodeURIComponent(config.anonKey)}`;
+  const versionFlag = raw ? `&v=${encodeURIComponent(GDRIVE_PROXY_VERSION)}` : "";
+  return `${config.supabaseUrl}/functions/v1/gdrive-proxy/${safeFileName}?id=${encodeURIComponent(fileId)}${rawFlag}${versionFlag}&apikey=${encodeURIComponent(config.anonKey)}`;
 }
 
 /** Extract the Google Drive file ID from a URL, or null if not a Drive link. */
