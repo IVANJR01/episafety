@@ -1850,8 +1850,7 @@ export default function Treinamentos() {
         </DialogContent>
       </Dialog>
 
-      {/* NR Chatbot - Floating */}
-      <NRChatbot />
+      {/* NR Chatbot moved to Validação IA tab */}
     </div>
   );
 }

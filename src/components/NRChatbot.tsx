@@ -11,6 +11,10 @@ interface Message {
   content: string;
 }
 
+interface NRChatbotProps {
+  embedded?: boolean;
+}
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nr-chatbot`;
 
 const QUICK_QUESTIONS = [
@@ -20,7 +24,7 @@ const QUICK_QUESTIONS = [
   "O que é PGR e quem precisa ter?",
 ];
 
-export default function NRChatbot() {
+export default function NRChatbot({ embedded = false }: NRChatbotProps) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -153,6 +157,52 @@ export default function NRChatbot() {
     setMessages([]);
   };
 
+  // ── Embedded mode: render inline ──
+  if (embedded) {
+    return (
+      <div className="flex flex-col h-[600px]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-primary/5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <Bot className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Assistente SST</p>
+              <p className="text-[10px] text-muted-foreground">Especialista em NRs</p>
+            </div>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Beta</Badge>
+          </div>
+          {messages.length > 0 && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={clearChat} title="Limpar conversa">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
+
+        {/* Messages */}
+        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          {messages.length === 0 ? (
+            <ChatEmpty onQuickQuestion={send} />
+          ) : (
+            <ChatMessages messages={messages} isLoading={isLoading} />
+          )}
+        </ScrollArea>
+
+        {/* Input */}
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          onSend={() => send()}
+          onKeyDown={handleKeyDown}
+          isLoading={isLoading}
+          ref={textareaRef}
+        />
+      </div>
+    );
+  }
+
+  // ── Floating mode ──
   if (!open) {
     return (
       <Button
@@ -201,96 +251,134 @@ export default function NRChatbot() {
       {/* Messages */}
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="space-y-4">
-            <div className="text-center space-y-2 py-4">
-              <Bot className="w-12 h-12 mx-auto text-primary/30" />
-              <p className="text-sm font-medium">Olá! Sou o assistente de SST.</p>
-              <p className="text-xs text-muted-foreground">
-                Tire dúvidas sobre NRs, EPIs, treinamentos e documentação de segurança do trabalho.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-medium">Perguntas frequentes:</p>
-              {QUICK_QUESTIONS.map((q, i) => (
-                <button
-                  key={i}
-                  onClick={() => send(q)}
-                  className="w-full text-left text-xs p-2.5 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
+          <ChatEmpty onQuickQuestion={send} />
         ) : (
-          <div className="space-y-4">
-            {messages.map((m, i) => (
-              <div key={i} className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                {m.role === "assistant" && (
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
-                    <Bot className="w-3 h-3 text-primary" />
-                  </div>
-                )}
-                <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
-                  m.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                }`}>
-                  {m.role === "assistant" ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>table]:text-xs">
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{m.content}</p>
-                  )}
-                </div>
-                {m.role === "user" && (
-                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 mt-1">
-                    <User className="w-3 h-3 text-primary-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-            {isLoading && messages[messages.length - 1]?.role === "user" && (
-              <div className="flex gap-2">
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="w-3 h-3 text-primary" />
-                </div>
-                <div className="bg-muted rounded-xl px-3 py-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                </div>
-              </div>
-            )}
-          </div>
+          <ChatMessages messages={messages} isLoading={isLoading} />
         )}
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-3 border-t">
-        <div className="flex gap-2">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Pergunte sobre NRs, EPIs, treinamentos..."
-            className="min-h-[40px] max-h-[100px] resize-none text-sm"
-            rows={1}
-            disabled={isLoading}
-          />
-          <Button
-            size="icon"
-            onClick={() => send()}
-            disabled={!input.trim() || isLoading}
-            className="shrink-0 h-10 w-10"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-          IA pode cometer erros. Sempre verifique as NRs no site oficial do Gov.br.
+      <ChatInput
+        input={input}
+        setInput={setInput}
+        onSend={() => send()}
+        onKeyDown={handleKeyDown}
+        isLoading={isLoading}
+        ref={textareaRef}
+      />
+    </div>
+  );
+}
+
+// ── Sub-components ──
+
+function ChatEmpty({ onQuickQuestion }: { onQuickQuestion: (q: string) => void }) {
+  return (
+    <div className="space-y-4">
+      <div className="text-center space-y-2 py-4">
+        <Bot className="w-12 h-12 mx-auto text-primary/30" />
+        <p className="text-sm font-medium">Olá! Sou o assistente de SST.</p>
+        <p className="text-xs text-muted-foreground">
+          Tire dúvidas sobre NRs, EPIs, treinamentos e documentação de segurança do trabalho.
         </p>
+      </div>
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground font-medium">Perguntas frequentes:</p>
+        {QUICK_QUESTIONS.map((q, i) => (
+          <button
+            key={i}
+            onClick={() => onQuickQuestion(q)}
+            className="w-full text-left text-xs p-2.5 rounded-lg border hover:bg-muted/50 transition-colors"
+          >
+            {q}
+          </button>
+        ))}
       </div>
     </div>
   );
 }
+
+function ChatMessages({ messages, isLoading }: { messages: Message[]; isLoading: boolean }) {
+  return (
+    <div className="space-y-4">
+      {messages.map((m, i) => (
+        <div key={i} className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+          {m.role === "assistant" && (
+            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+              <Bot className="w-3 h-3 text-primary" />
+            </div>
+          )}
+          <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+            m.role === "user"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted"
+          }`}>
+            {m.role === "assistant" ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>table]:text-xs">
+                <ReactMarkdown>{m.content}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="whitespace-pre-wrap">{m.content}</p>
+            )}
+          </div>
+          {m.role === "user" && (
+            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 mt-1">
+              <User className="w-3 h-3 text-primary-foreground" />
+            </div>
+          )}
+        </div>
+      ))}
+      {isLoading && messages[messages.length - 1]?.role === "user" && (
+        <div className="flex gap-2">
+          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Bot className="w-3 h-3 text-primary" />
+          </div>
+          <div className="bg-muted rounded-xl px-3 py-2">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+import { forwardRef } from "react";
+
+interface ChatInputProps {
+  input: string;
+  setInput: (v: string) => void;
+  onSend: () => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  isLoading: boolean;
+}
+
+const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
+  ({ input, setInput, onSend, onKeyDown, isLoading }, ref) => (
+    <div className="p-3 border-t">
+      <div className="flex gap-2">
+        <Textarea
+          ref={ref}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Pergunte sobre NRs, EPIs, treinamentos..."
+          className="min-h-[40px] max-h-[100px] resize-none text-sm"
+          rows={1}
+          disabled={isLoading}
+        />
+        <Button
+          size="icon"
+          onClick={onSend}
+          disabled={!input.trim() || isLoading}
+          className="shrink-0 h-10 w-10"
+        >
+          <Send className="w-4 h-4" />
+        </Button>
+      </div>
+      <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+        IA pode cometer erros. Sempre verifique as NRs no site oficial do Gov.br.
+      </p>
+    </div>
+  )
+);
+ChatInput.displayName = "ChatInput";
