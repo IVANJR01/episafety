@@ -343,10 +343,22 @@ serve(async (req) => {
       }
     }
 
+    // Filter requisitos by collaborator's function for precise CH matching
+    const cargoNorm = (funcionarioCargo || "").toUpperCase().trim();
+    const requisitosParaFuncao = cargoNorm
+      ? requisitos.filter(r => {
+          const funcoes = (r.funcoes_exigidas || []) as string[];
+          return funcoes.length === 0 || funcoes.some((f: string) => {
+            const fNorm = f.toUpperCase().trim();
+            return cargoNorm.includes(fNorm) || fNorm.includes(cargoNorm);
+          });
+        })
+      : requisitos;
+
     const requisitosContext = requisitos.length > 0
-      ? `\n\nMATRIZ UNIFICADA NEOENERGIA (Rev.12 - Atividades em SE e LD):\n${requisitos.map(r =>
-          `CURSO: "${r.curso_nome}" | Sinônimos: [${(r.sinonimos || []).join(", ")}] | CH MÍNIMA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções: [${(r.funcoes_exigidas || []).join(", ")}] | Obs: ${r.descricao || ""}`
-        ).join("\n")}\n\nREGRA CRÍTICA DE CH VARIÁVEL: O mesmo curso pode ter CH diferente por função. Ex: POP 00 = 8h (Administrativo) vs 40h (Eletricista). Use a CH correspondente à FUNÇÃO do colaborador selecionado.`
+      ? `\n\nREQUISITOS ESPECÍFICOS PARA A FUNÇÃO "${funcionarioCargo || "Não informada"}" (USE ESTES VALORES DE CH):\n${requisitosParaFuncao.map(r =>
+          `CURSO: "${r.curso_nome}" | CH MÍNIMA EXIGIDA: ${r.carga_horaria_minima}h | Validade: ${r.validade_meses} meses | Funções: [${(r.funcoes_exigidas || []).join(", ")}] | Sinônimos: [${(r.sinonimos || []).join(", ")}]`
+        ).join("\n")}\n\n⚠️ REGRA ABSOLUTA: Use SOMENTE os valores de CH listados acima para a função "${funcionarioCargo || ""}". NÃO use valores de CH de outras funções. Se o curso não aparece na lista acima, ele NÃO é exigido para esta função — marque conforme_matriz=true e requisito_atendido="Curso não exigido para esta função".`
       : "";
 
     // Fetch other documents being analyzed in this batch (from analises_ia)
