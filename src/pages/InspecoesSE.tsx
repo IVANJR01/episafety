@@ -192,7 +192,13 @@ export default function InspecoesSE() {
         `${Date.now()}_${Math.random().toString(36).slice(2)}.${file.name.split(".").pop()}`
       );
       return result.publicUrl;
-    } catch {
+    } catch (err) {
+      console.error("[uploadPhoto] Falha no upload:", err);
+      toast({ 
+        title: "Erro ao enviar foto", 
+        description: "A foto não pôde ser enviada ao Google Drive. Verifique sua conexão.", 
+        variant: "destructive" 
+      });
       return null;
     }
   }
