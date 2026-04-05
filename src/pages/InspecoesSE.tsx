@@ -1001,7 +1001,7 @@ export default function InspecoesSE() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Foto ANTES</Label>
-                <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
+                <input ref={antesRef} type="file" accept="image/*" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                 {(fotoAntesPreview || existingFotoAntes) ? (
                   <div className="relative mt-1">
@@ -1013,13 +1013,13 @@ export default function InspecoesSE() {
                   </div>
                 ) : (
                   <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => antesRef.current?.click()}>
-                    <Camera className="w-4 h-4 mr-1" /> Capturar
+                    <Camera className="w-4 h-4 mr-1" /> Capturar / Selecionar
                   </Button>
                 )}
               </div>
               <div>
                 <Label>Foto DEPOIS</Label>
-                <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
+                <input ref={depoisRef} type="file" accept="image/*" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                 {(fotoDepoisPreview || existingFotoDepois) ? (
                   <div className="relative mt-1">
