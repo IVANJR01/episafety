@@ -867,7 +867,7 @@ export default function InspecoesSE() {
               <TableBody>
                 {filtered.map((item, idx) => (
                   <TableRow key={item.id} className="cursor-pointer hover:bg-muted/30" onClick={() => openEdit(item)}>
-                    <TableCell className="font-medium">{item.numero || idx + 1}</TableCell>
+                    <TableCell className="font-medium">{idx + 1}</TableCell>
                     <TableCell className="text-xs">
                       {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "—"}
                     </TableCell>
@@ -929,7 +929,7 @@ export default function InspecoesSE() {
                 {/* Top row: N°, Status, Actions */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted-foreground">#{item.numero || idx + 1}</span>
+                    <span className="text-xs font-bold text-muted-foreground">#{idx + 1}</span>
                     <span className="text-xs text-muted-foreground">
                       {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : ""}
                     </span>
@@ -1056,7 +1056,7 @@ export default function InspecoesSE() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Foto ANTES</Label>
-                <input ref={antesRef} type="file" accept="image/*" className="hidden"
+                <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                 {(fotoAntesPreview || existingFotoAntes) ? (
                   <div className="relative mt-1">
@@ -1074,7 +1074,7 @@ export default function InspecoesSE() {
               </div>
               <div>
                 <Label>Foto DEPOIS</Label>
-                <input ref={depoisRef} type="file" accept="image/*" className="hidden"
+                <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                 {(fotoDepoisPreview || existingFotoDepois) ? (
                   <div className="relative mt-1">
