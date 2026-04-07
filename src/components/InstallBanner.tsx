@@ -7,12 +7,16 @@ export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: b
   const [visible, setVisible] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [installEvent, setInstallEvent] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches
       || (navigator as any).standalone === true;
     setIsStandalone(standalone);
     if (standalone) return;
+
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    setIsIOS(ios);
 
     const dismissed = localStorage.getItem(DISMISSED_KEY);
     if (dismissed) return;
