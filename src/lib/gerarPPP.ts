@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import previdenciaLogo from "@/assets/previdencia-logo.png";
 
 export interface PPPData {
   // Dados Administrativos
