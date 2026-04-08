@@ -416,10 +416,10 @@ export default function CentralPPP() {
       cpf: func.cpf || "",
       dataNascimento: "",
       sexo: "",
-      matriculaEsocial: "",
+      matriculaEsocial: func.matricula || "N/A",
       dataAdmissao: formatDate(func.data_admissao),
       dataDemissao: formatDate(func.data_demissao),
-      regime: "NA",
+      regime: func.regime_revezamento || "NA",
       cargo: func.cargo || "",
       funcao: "",
       cbo,
@@ -445,7 +445,9 @@ export default function CentralPPP() {
           }
         : null,
       dataEmissao: new Date().toLocaleDateString("pt-BR"),
-      representanteLegal: null,
+      representanteLegal: empresa?.cpf_representante_legal
+        ? { nome: empresa.nome_representante_legal || "", cpf: empresa.cpf_representante_legal }
+        : null,
       observacoes: "",
     });
 
