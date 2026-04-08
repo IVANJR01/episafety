@@ -372,6 +372,37 @@ export default function CentralPPP() {
     const profissiografia = cargoRiscos.find((r) => r.profissiografia)?.profissiografia || "";
     const cbo = cargoRiscos.find((r) => r.cbo)?.cbo || "";
 
+    // Filter only previdenciários risks for PPP
+    const riscosPrevidenciarios = cargoRiscos.filter((r) => RISCOS_PREVIDENCIARIOS.includes(r.tipo_risco));
+
+    // If no previdenciário risks, auto-add 09.01.001
+    const riscosParaPPP = riscosPrevidenciarios.length > 0
+      ? riscosPrevidenciarios.map((r) => ({
+          tipo: r.tipo_risco,
+          fatorRisco: r.fator_risco,
+          intensidade: r.intensidade_concentracao || "",
+          tecnica: r.tecnica_utilizada || "",
+          epcEficaz: r.epc_eficaz ? "S" : "N",
+          epiEficaz: r.epi_eficaz ? "S" : "N",
+          caEpi: r.ca_epi || "",
+        }))
+      : [
+          {
+            tipo: "fisico",
+            fatorRisco: AUSENCIA_FATOR,
+            intensidade: "Não se aplica",
+            tecnica: "Não se aplica",
+            epcEficaz: "Não se aplica",
+            epiEficaz: "Não se aplica",
+            caEpi: "",
+          },
+        ];
+
+    // Build observation with 09.01.001 note when applicable
+    const profissiografiaFinal = riscosPrevidenciarios.length === 0
+      ? (profissiografia ? profissiografia + "\n\n" : "") + AUSENCIA_OBS
+      : profissiografia;
+
     const doc = gerarPPPPdf({
       cnpj: empresa?.cnpj || "",
       nomeEmpresa: empresa?.nome || "",
@@ -389,16 +420,8 @@ export default function CentralPPP() {
       funcao: "",
       cbo,
       setor: func.setor || "",
-      profissiografia,
-      riscos: cargoRiscos.map((r) => ({
-        tipo: r.tipo_risco,
-        fatorRisco: r.fator_risco,
-        intensidade: r.intensidade_concentracao || "",
-        tecnica: r.tecnica_utilizada || "",
-        epcEficaz: r.epc_eficaz ? "S" : "N",
-        epiEficaz: r.epi_eficaz ? "S" : "N",
-        caEpi: r.ca_epi || "",
-      })),
+      profissiografia: profissiografiaFinal,
+      riscos: riscosParaPPP,
       engenheiro: eng
         ? {
             nome: eng.nome,
@@ -622,6 +645,40 @@ export default function CentralPPP() {
             <DialogDescription>Configure os fatores de risco extraídos do LTCAT</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            {/* Ausência de Risco checkbox */}
+            <div className="flex items-center gap-3 p-3 rounded-md border border-dashed bg-muted/30">
+              <Switch
+                checked={riscoForm.ausencia_risco}
+                onCheckedChange={(v) => {
+                  if (v) {
+                    setRiscoForm({
+                      ...riscoForm,
+                      ausencia_risco: true,
+                      tipo_risco: "fisico",
+                      fator_risco: AUSENCIA_FATOR,
+                      intensidade_concentracao: "Não se aplica",
+                      tecnica_utilizada: "Não se aplica",
+                      epc_eficaz: false,
+                      epi_eficaz: false,
+                      ca_epi: "",
+                    });
+                  } else {
+                    setRiscoForm({
+                      ...riscoForm,
+                      ausencia_risco: false,
+                      fator_risco: "",
+                      intensidade_concentracao: "",
+                      tecnica_utilizada: "",
+                    });
+                  }
+                }}
+              />
+              <div>
+                <Label className="text-sm font-medium">Declarar Ausência de Agentes Nocivos</Label>
+                <p className="text-[11px] text-muted-foreground">Código eSocial 09.01.001 — Quando não há exposição acima do nível de ação</p>
+              </div>
+            </div>
+
             {/* Cargo field: multi-select chips for new, single input for edit */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -657,7 +714,7 @@ export default function CentralPPP() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Tipo de Risco *</Label>
-                <Select value={riscoForm.tipo_risco} onValueChange={(v) => setRiscoForm({ ...riscoForm, tipo_risco: v })}>
+                <Select value={riscoForm.tipo_risco} onValueChange={(v) => setRiscoForm({ ...riscoForm, tipo_risco: v })} disabled={riscoForm.ausencia_risco}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(TIPO_RISCO_LABELS).map(([k, v]) => (
@@ -668,31 +725,31 @@ export default function CentralPPP() {
               </div>
               <div>
                 <Label>Fator de Risco *</Label>
-                <Input value={riscoForm.fator_risco} onChange={(e) => setRiscoForm({ ...riscoForm, fator_risco: e.target.value })} placeholder="Ex: Ruídos" />
+                <Input value={riscoForm.fator_risco} onChange={(e) => setRiscoForm({ ...riscoForm, fator_risco: e.target.value })} placeholder="Ex: Ruídos" disabled={riscoForm.ausencia_risco} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Intensidade/Concentração</Label>
-                <Input value={riscoForm.intensidade_concentracao} onChange={(e) => setRiscoForm({ ...riscoForm, intensidade_concentracao: e.target.value })} placeholder="Ex: 85 dB(A)" />
+                <Input value={riscoForm.intensidade_concentracao} onChange={(e) => setRiscoForm({ ...riscoForm, intensidade_concentracao: e.target.value })} placeholder="Ex: 85 dB(A)" disabled={riscoForm.ausencia_risco} />
               </div>
               <div>
                 <Label>Técnica Utilizada</Label>
-                <Input value={riscoForm.tecnica_utilizada} onChange={(e) => setRiscoForm({ ...riscoForm, tecnica_utilizada: e.target.value })} placeholder="Ex: NHO-01" />
+                <Input value={riscoForm.tecnica_utilizada} onChange={(e) => setRiscoForm({ ...riscoForm, tecnica_utilizada: e.target.value })} placeholder="Ex: NHO-01" disabled={riscoForm.ausencia_risco} />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="flex items-center gap-2">
-                <Switch checked={riscoForm.epc_eficaz} onCheckedChange={(v) => setRiscoForm({ ...riscoForm, epc_eficaz: v })} />
+                <Switch checked={riscoForm.epc_eficaz} onCheckedChange={(v) => setRiscoForm({ ...riscoForm, epc_eficaz: v })} disabled={riscoForm.ausencia_risco} />
                 <Label>EPC Eficaz</Label>
               </div>
               <div className="flex items-center gap-2">
-                <Switch checked={riscoForm.epi_eficaz} onCheckedChange={(v) => setRiscoForm({ ...riscoForm, epi_eficaz: v })} />
+                <Switch checked={riscoForm.epi_eficaz} onCheckedChange={(v) => setRiscoForm({ ...riscoForm, epi_eficaz: v })} disabled={riscoForm.ausencia_risco} />
                 <Label>EPI Eficaz</Label>
               </div>
               <div>
                 <Label>CA do EPI</Label>
-                <Input value={riscoForm.ca_epi} onChange={(e) => setRiscoForm({ ...riscoForm, ca_epi: e.target.value })} placeholder="Ex: 33.161" />
+                <Input value={riscoForm.ca_epi} onChange={(e) => setRiscoForm({ ...riscoForm, ca_epi: e.target.value })} placeholder="Ex: 33.161" disabled={riscoForm.ausencia_risco} />
               </div>
             </div>
             <div>
@@ -786,6 +843,9 @@ export default function CentralPPP() {
               const func = funcionarios.find((f) => f.id === selectedFuncId);
               if (!func) return null;
               const cargoRiscos = riscos.filter((r) => r.cargo.toLowerCase() === (func.cargo || "").toLowerCase());
+              const riscosPrevidenciarios = cargoRiscos.filter((r) => RISCOS_PREVIDENCIARIOS.includes(r.tipo_risco));
+              const hasAusencia = cargoRiscos.some((r) => r.fator_risco === AUSENCIA_FATOR);
+              const temRiscoPrevidenciario = riscosPrevidenciarios.length > 0 && !hasAusencia;
               return (
                 <Card className="bg-muted/50">
                   <CardContent className="p-4 space-y-2">
@@ -795,12 +855,18 @@ export default function CentralPPP() {
                       <div><span className="text-muted-foreground">Admissão:</span> <strong>{func.data_admissao || "—"}</strong></div>
                       <div><span className="text-muted-foreground">Demissão:</span> <strong>{func.data_demissao || "—"}</strong></div>
                     </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      <Badge variant={cargoRiscos.length > 0 ? "default" : "destructive"}>
-                        {cargoRiscos.length} risco(s) configurado(s)
-                      </Badge>
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      {temRiscoPrevidenciario ? (
+                        <Badge variant="destructive" className="gap-1">
+                          🔴 {riscosPrevidenciarios.length} Risco(s) Previdenciário(s)
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1 border-green-500 text-green-700">
+                          🟢 Sem Riscos — 09.01.001
+                        </Badge>
+                      )}
                       {cargoRiscos.length === 0 && (
-                        <span className="text-xs text-destructive">Configure os riscos para este cargo primeiro</span>
+                        <span className="text-xs text-muted-foreground">Nenhum registro — será gerado com Ausência automática</span>
                       )}
                     </div>
                   </CardContent>
