@@ -204,6 +204,7 @@ export default function CentralPPP() {
       if (error) { toast.error("Erro ao cadastrar"); return; }
       toast.success("Risco cadastrado");
     }
+    clearRiscoDraft();
     setRiscoOpen(false);
     loadAll();
   }
