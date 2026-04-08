@@ -375,7 +375,7 @@ export default function CentralPPP() {
         </Button>
       </div>
 
-      <Tabs defaultValue="riscos">
+      <Tabs defaultValue={localStorage.getItem("ppp_active_tab") || "riscos"} onValueChange={(v) => localStorage.setItem("ppp_active_tab", v)}>
         <TabsList>
           <TabsTrigger value="riscos">Riscos por Cargo</TabsTrigger>
           <TabsTrigger value="responsaveis">Responsáveis Técnicos</TabsTrigger>
