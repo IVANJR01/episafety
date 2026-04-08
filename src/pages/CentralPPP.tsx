@@ -547,17 +547,36 @@ export default function CentralPPP() {
             <DialogDescription>Configure os fatores de risco extraídos do LTCAT</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            {/* Cargo field: multi-select chips for new, single input for edit */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Cargo *</Label>
-                <Input value={riscoForm.cargo} onChange={(e) => setRiscoForm({ ...riscoForm, cargo: e.target.value })} placeholder="Ex: Servente" list="cargos-list" />
-                <datalist id="cargos-list">
-                  {cargos.map((c) => <option key={c} value={c} />)}
-                </datalist>
+                <Label>Cargo{!editingRisco ? "s" : ""} *</Label>
+                {editingRisco ? (
+                  <>
+                    <Input value={riscoForm.cargo} onChange={(e) => setRiscoForm({ ...riscoForm, cargo: e.target.value })} placeholder="Ex: Servente" list="cargos-list" />
+                    <datalist id="cargos-list">
+                      {cargos.map((c) => <option key={c} value={c} />)}
+                    </datalist>
+                  </>
+                ) : (
+                  <CargoMultiSelect
+                    selected={riscoForm.cargos_multi}
+                    onChange={(v) => setRiscoForm({ ...riscoForm, cargos_multi: v })}
+                    suggestions={allCargos}
+                  />
+                )}
               </div>
               <div>
                 <Label>CBO</Label>
-                <Input value={riscoForm.cbo} onChange={(e) => setRiscoForm({ ...riscoForm, cbo: e.target.value })} placeholder="Ex: 717020" />
+                <Input
+                  value={riscoForm.cbo}
+                  onChange={(e) => setRiscoForm({ ...riscoForm, cbo: e.target.value })}
+                  placeholder="Ex: 717020"
+                  disabled={!editingRisco && riscoForm.cargos_multi.length > 1}
+                />
+                {!editingRisco && riscoForm.cargos_multi.length > 1 && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Desabilitado com múltiplos cargos</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
