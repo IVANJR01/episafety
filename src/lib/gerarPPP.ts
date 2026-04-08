@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import previdenciaLogo from "@/assets/previdencia-logo.png";
 
 export interface PPPData {
   // Dados Administrativos
@@ -99,6 +100,9 @@ export function gerarPPPPdf(data: PPPData) {
   const periodo = `${data.dataAdmissao || "__/__/____"} a ${data.dataDemissao || "atual"}`;
 
   // ========== CABEÇALHO ==========
+  try {
+    doc.addImage(previdenciaLogo, "PNG", M, y, 22, 10);
+  } catch { /* logo não disponível */ }
   setFont("bold", 8);
   doc.text("INSTITUTO NACIONAL DO SEGURO SOCIAL", W / 2, y + 4, { align: "center" });
   setFont("bold", 10);
