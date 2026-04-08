@@ -248,6 +248,7 @@ export default function CentralPPP() {
       profissiografia: r.profissiografia || "",
       cbo: r.cbo || "",
       cargos_multi: [],
+      ausencia_risco: r.fator_risco === AUSENCIA_FATOR,
     });
     setRiscoOpen(true);
   }
