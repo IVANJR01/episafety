@@ -520,9 +520,16 @@ export default function CentralPPP() {
               <Card key={cargo}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base">{cargo}</CardTitle>
-                      <CardDescription>CBO: {items[0]?.cbo || "—"} • {items.length} risco(s)</CardDescription>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <CardTitle className="text-base">{cargo}</CardTitle>
+                        <CardDescription>CBO: {items[0]?.cbo || "—"} • {items.length} risco(s)</CardDescription>
+                      </div>
+                      {items.some((r) => r.fator_risco === AUSENCIA_FATOR) ? (
+                        <Badge variant="outline" className="border-green-500 text-green-700 text-[10px]">🟢 09.01.001</Badge>
+                      ) : items.some((r) => RISCOS_PREVIDENCIARIOS.includes(r.tipo_risco)) ? (
+                        <Badge variant="destructive" className="text-[10px]">🔴 Risco Previdenciário</Badge>
+                      ) : null}
                     </div>
                   </div>
                 </CardHeader>
