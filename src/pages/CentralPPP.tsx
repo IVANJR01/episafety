@@ -408,24 +408,26 @@ export default function CentralPPP() {
       nomeEmpresa: empresa?.nome || "",
       cnae: "",
       nomeTrabalhador: func.nome,
-      nit: "",
+      brPdh: "NA",
+      cpf: func.cpf || "",
       dataNascimento: "",
       sexo: "",
-      ctps: "",
-      cpf: func.cpf || "",
+      matriculaEsocial: "",
       dataAdmissao: formatDate(func.data_admissao),
       dataDemissao: formatDate(func.data_demissao),
-      regime: "CLT",
+      regime: "NA",
       cargo: func.cargo || "",
       funcao: "",
       cbo,
       setor: func.setor || "",
+      codigoGfip: "01",
+      cats: [],
       profissiografia: profissiografiaFinal,
       riscos: riscosParaPPP,
       engenheiro: eng
         ? {
             nome: eng.nome,
-            nit: eng.nit || "",
+            cpf: eng.nit || "",
             registro: eng.registro_conselho || "",
             periodo: `${formatDate(eng.periodo_inicio)} a ${formatDate(eng.periodo_fim) || "atual"}`,
           }
@@ -433,12 +435,14 @@ export default function CentralPPP() {
       medico: med
         ? {
             nome: med.nome,
-            nit: med.nit || "",
+            cpf: med.nit || "",
             registro: med.registro_conselho || "",
             periodo: `${formatDate(med.periodo_inicio)} a ${formatDate(med.periodo_fim) || "atual"}`,
           }
         : null,
       dataEmissao: new Date().toLocaleDateString("pt-BR"),
+      representanteLegal: null,
+      observacoes: "",
     });
 
     doc.save(`PPP_${func.nome.replace(/\s+/g, "_")}.pdf`);
