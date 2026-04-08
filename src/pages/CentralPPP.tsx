@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, FileText, Download, Search, Users } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Plus, Pencil, Trash2, FileText, Download, Search, Users, X } from "lucide-react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
