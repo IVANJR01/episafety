@@ -170,7 +170,7 @@ export default function CentralPPP() {
     }
     const payload = {
       cargo: riscoForm.cargo.trim(),
-      tipo_risco: riscoForm.tipo_risco,
+      tipo_risco: riscoForm.tipo_risco as "fisico" | "quimico" | "biologico" | "ergonomico" | "acidente",
       fator_risco: riscoForm.fator_risco.trim(),
       intensidade_concentracao: riscoForm.intensidade_concentracao || null,
       tecnica_utilizada: riscoForm.tecnica_utilizada || null,
