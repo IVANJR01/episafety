@@ -1632,6 +1632,118 @@ export type Database = {
           },
         ]
       }
+      ppp_responsaveis: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          id: string
+          nit: string | null
+          nome: string
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          registro_conselho: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          id?: string
+          nit?: string | null
+          nome: string
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          registro_conselho?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          id?: string
+          nit?: string | null
+          nome?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          registro_conselho?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_responsaveis_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_riscos_cargo: {
+        Row: {
+          ca_epi: string | null
+          cargo: string
+          cbo: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          epc_eficaz: boolean | null
+          epi_eficaz: boolean | null
+          fator_risco: string
+          id: string
+          intensidade_concentracao: string | null
+          profissiografia: string | null
+          tecnica_utilizada: string | null
+          tipo_risco: Database["public"]["Enums"]["tipo_risco_ppp"]
+          updated_at: string
+        }
+        Insert: {
+          ca_epi?: string | null
+          cargo: string
+          cbo?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          epc_eficaz?: boolean | null
+          epi_eficaz?: boolean | null
+          fator_risco: string
+          id?: string
+          intensidade_concentracao?: string | null
+          profissiografia?: string | null
+          tecnica_utilizada?: string | null
+          tipo_risco: Database["public"]["Enums"]["tipo_risco_ppp"]
+          updated_at?: string
+        }
+        Update: {
+          ca_epi?: string | null
+          cargo?: string
+          cbo?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          epc_eficaz?: boolean | null
+          epi_eficaz?: boolean | null
+          fator_risco?: string
+          id?: string
+          intensidade_concentracao?: string | null
+          profissiografia?: string | null
+          tecnica_utilizada?: string | null
+          tipo_risco?: Database["public"]["Enums"]["tipo_risco_ppp"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_riscos_cargo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -2299,6 +2411,12 @@ export type Database = {
         | "demissional"
         | "retorno"
         | "mudanca_funcao"
+      tipo_risco_ppp:
+        | "fisico"
+        | "quimico"
+        | "biologico"
+        | "ergonomico"
+        | "acidente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2455,6 +2573,13 @@ export const Constants = {
         "demissional",
         "retorno",
         "mudanca_funcao",
+      ],
+      tipo_risco_ppp: [
+        "fisico",
+        "quimico",
+        "biologico",
+        "ergonomico",
+        "acidente",
       ],
     },
   },
