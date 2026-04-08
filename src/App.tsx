@@ -31,6 +31,7 @@ import InspecoesDashboard from "@/pages/InspecoesDashboard";
 import Treinamentos from "@/pages/Treinamentos";
 import ExamesModule from "@/pages/ExamesModule";
 import CadastroDashboard from "@/pages/CadastroDashboard";
+import CentralPPP from "@/pages/CentralPPP";
 import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
@@ -171,6 +172,7 @@ function ProtectedRoute() {
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
         <Route path="/treinamentos" element={<Treinamentos />} />
         <Route path="/exames" element={<ExamesModule />} />
+        <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
         <Route path="/faturas" element={<Faturas />} />
