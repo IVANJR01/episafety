@@ -134,6 +134,13 @@ export default function CentralPPP() {
 
   // Unique cargos from riscos
   const cargos = useMemo(() => [...new Set(riscos.map((r) => r.cargo))].sort(), [riscos]);
+  // All known cargos: from riscos + from funcionarios
+  const allCargos = useMemo(() => {
+    const set = new Set<string>();
+    riscos.forEach((r) => set.add(r.cargo));
+    funcionarios.forEach((f) => { if (f.cargo) set.add(f.cargo); });
+    return [...set].sort();
+  }, [riscos, funcionarios]);
 
   useEffect(() => {
     if (empresaId) loadAll();
