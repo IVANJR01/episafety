@@ -185,6 +185,7 @@ export default function CentralPPP() {
   const { form: riscoForm, setForm: setRiscoForm, resetForm: resetRiscoForm, hasDraft: hasRiscoDraft, clearDraft: clearRiscoDraft } = useFormDraft("ppp_risco", emptyRiscoForm);
   const { form: respForm, setForm: setRespForm, resetForm: resetRespForm, hasDraft: hasRespDraft, clearDraft: clearRespDraft } = useFormDraft("ppp_resp", emptyRespForm);
   const [selectedFuncId, setSelectedFuncId] = useState("");
+  const [pppSearchName, setPppSearchName] = useState("");
   const [search, setSearch] = useState("");
 
   // Prevent accidental exit with unsaved form data
