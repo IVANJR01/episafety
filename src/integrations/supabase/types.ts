@@ -810,6 +810,7 @@ export type Database = {
       empresa_config: {
         Row: {
           cnpj: string | null
+          cpf_representante_legal: string | null
           created_at: string
           email: string | null
           empresa_pai_id: string | null
@@ -817,12 +818,14 @@ export type Database = {
           id: string
           logo_url: string | null
           nome: string
+          nome_representante_legal: string | null
           telefone: string | null
           tipo: string
           updated_at: string
         }
         Insert: {
           cnpj?: string | null
+          cpf_representante_legal?: string | null
           created_at?: string
           email?: string | null
           empresa_pai_id?: string | null
@@ -830,12 +833,14 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nome?: string
+          nome_representante_legal?: string | null
           telefone?: string | null
           tipo?: string
           updated_at?: string
         }
         Update: {
           cnpj?: string | null
+          cpf_representante_legal?: string | null
           created_at?: string
           email?: string | null
           empresa_pai_id?: string | null
@@ -843,6 +848,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nome?: string
+          nome_representante_legal?: string | null
           telefone?: string | null
           tipo?: string
           updated_at?: string
@@ -1243,6 +1249,7 @@ export type Database = {
           id: string
           matricula: string | null
           nome: string
+          regime_revezamento: string | null
           setor: string | null
           unidade_id: string | null
           updated_at: string
@@ -1260,6 +1267,7 @@ export type Database = {
           id?: string
           matricula?: string | null
           nome: string
+          regime_revezamento?: string | null
           setor?: string | null
           unidade_id?: string | null
           updated_at?: string
@@ -1277,6 +1285,7 @@ export type Database = {
           id?: string
           matricula?: string | null
           nome?: string
+          regime_revezamento?: string | null
           setor?: string | null
           unidade_id?: string | null
           updated_at?: string
