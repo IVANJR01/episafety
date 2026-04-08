@@ -97,6 +97,65 @@ const emptyRespForm = {
   periodo_fim: "",
 };
 
+function CargoMultiSelect({ selected, onChange, suggestions }: { selected: string[]; onChange: (v: string[]) => void; suggestions: string[] }) {
+  const [inputValue, setInputValue] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = suggestions.filter(
+    (s) => !selected.includes(s) && s.toLowerCase().includes(inputValue.toLowerCase())
+  );
+
+  const addCargo = (cargo: string) => {
+    const trimmed = cargo.trim();
+    if (trimmed && !selected.includes(trimmed)) {
+      onChange([...selected, trimmed]);
+    }
+    setInputValue("");
+  };
+
+  const removeCargo = (cargo: string) => {
+    onChange(selected.filter((c) => c !== cargo));
+  };
+
+  return (
+    <div className="relative">
+      <div className="flex flex-wrap gap-1 rounded-md border border-input bg-background px-2 py-1.5 min-h-[36px] cursor-text" onClick={() => inputRef.current?.focus()}>
+        {selected.map((c) => (
+          <span key={c} className="inline-flex items-center gap-0.5 bg-primary/10 text-primary text-xs font-medium px-2 py-0.5 rounded-full">
+            {c}
+            <button type="button" onClick={(e) => { e.stopPropagation(); removeCargo(c); }} className="hover:text-destructive">
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => { setInputValue(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && inputValue.trim()) { e.preventDefault(); addCargo(inputValue); }
+            if (e.key === "Backspace" && !inputValue && selected.length > 0) { removeCargo(selected[selected.length - 1]); }
+          }}
+          placeholder={selected.length === 0 ? "Ex: Servente" : "Adicionar..."}
+          className="flex-1 min-w-[80px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      {showSuggestions && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md max-h-40 overflow-y-auto">
+          {filtered.map((s) => (
+            <button key={s} type="button" onMouseDown={(e) => { e.preventDefault(); addCargo(s); }} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent truncate">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CentralPPP() {
   const { empresaId } = useAuth();
 
