@@ -156,12 +156,12 @@ export default function CentralPPP() {
   // === RISCOS CRUD ===
   function openNewRisco() {
     setEditingRisco(null);
-    setRiscoForm(emptyRiscoForm);
+    if (!hasRiscoDraft()) resetRiscoForm();
     setRiscoOpen(true);
   }
   function openEditRisco(r: RiscoCargo) {
     setEditingRisco(r);
-    setRiscoForm({
+    resetRiscoForm({
       cargo: r.cargo,
       tipo_risco: r.tipo_risco,
       fator_risco: r.fator_risco,
