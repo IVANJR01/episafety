@@ -218,12 +218,12 @@ export default function CentralPPP() {
   // === RESPONSÁVEIS CRUD ===
   function openNewResp() {
     setEditingResp(null);
-    setRespForm(emptyRespForm);
+    if (!hasRespDraft()) resetRespForm();
     setRespOpen(true);
   }
   function openEditResp(r: Responsavel) {
     setEditingResp(r);
-    setRespForm({
+    resetRespForm({
       tipo: r.tipo,
       nome: r.nome,
       nit: r.nit || "",
@@ -252,6 +252,7 @@ export default function CentralPPP() {
       await supabase.from("ppp_responsaveis").insert(payload);
       toast.success("Responsável cadastrado");
     }
+    clearRespDraft();
     setRespOpen(false);
     loadAll();
   }
