@@ -891,31 +891,91 @@ export default function CentralPPP() {
               const riscosPrevidenciarios = cargoRiscos.filter((r) => RISCOS_PREVIDENCIARIOS.includes(r.tipo_risco));
               const hasAusencia = cargoRiscos.some((r) => r.fator_risco === AUSENCIA_FATOR);
               const temRiscoPrevidenciario = riscosPrevidenciarios.length > 0 && !hasAusencia;
+              const profissiografia = cargoRiscos.find((r) => r.profissiografia)?.profissiografia;
+              const eng = responsaveis.find((r) => r.tipo === "engenheiro");
+              const med = responsaveis.find((r) => r.tipo === "medico");
+
+              // Pendencies checklist
+              const pendencias: { label: string; ok: boolean }[] = [
+                { label: "CPF do funcionário", ok: !!func.cpf },
+                { label: "Cargo definido", ok: !!func.cargo },
+                { label: "Data de admissão", ok: !!func.data_admissao },
+                { label: "Matrícula / eSocial", ok: !!func.matricula },
+                { label: "Profissiografia (Descrição das Atividades)", ok: !!profissiografia },
+                { label: "Engenheiro de Segurança cadastrado", ok: !!eng },
+                { label: "CPF do Engenheiro", ok: !!(eng?.nit) },
+                { label: "Registro Conselho do Engenheiro", ok: !!(eng?.registro_conselho) },
+                { label: "Médico do Trabalho cadastrado", ok: !!med },
+                { label: "CPF do Médico", ok: !!(med?.nit) },
+                { label: "Representante Legal da empresa", ok: !!(empresa?.cpf_representante_legal) },
+                { label: "CNPJ da empresa", ok: !!(empresa?.cnpj) },
+              ];
+              const pendenciasCount = pendencias.filter(p => !p.ok).length;
+
               return (
-                <Card className="bg-muted/50">
-                  <CardContent className="p-4 space-y-2">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">Cargo:</span> <strong>{func.cargo || "—"}</strong></div>
-                      <div><span className="text-muted-foreground">CPF:</span> <strong>{func.cpf || "—"}</strong></div>
-                      <div><span className="text-muted-foreground">Admissão:</span> <strong>{func.data_admissao || "—"}</strong></div>
-                      <div><span className="text-muted-foreground">Demissão:</span> <strong>{func.data_demissao || "—"}</strong></div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1 flex-wrap">
-                      {temRiscoPrevidenciario ? (
-                        <Badge variant="destructive" className="gap-1">
-                          🔴 {riscosPrevidenciarios.length} Risco(s) Previdenciário(s)
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="gap-1 border-green-500 text-green-700">
-                          🟢 Sem Riscos — 09.01.001
-                        </Badge>
+                <div className="space-y-3">
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-muted-foreground">Cargo:</span> <strong>{func.cargo || "—"}</strong></div>
+                        <div><span className="text-muted-foreground">CPF:</span> <strong>{func.cpf || "—"}</strong></div>
+                        <div><span className="text-muted-foreground">Admissão:</span> <strong>{func.data_admissao || "—"}</strong></div>
+                        <div><span className="text-muted-foreground">Demissão:</span> <strong>{func.data_demissao || "—"}</strong></div>
+                        <div><span className="text-muted-foreground">Matrícula:</span> <strong>{func.matricula || "N/A"}</strong></div>
+                        <div><span className="text-muted-foreground">Regime:</span> <strong>{func.regime_revezamento || "NA"}</strong></div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                        {temRiscoPrevidenciario ? (
+                          <Badge variant="destructive" className="gap-1">
+                            🔴 {riscosPrevidenciarios.length} Risco(s) Previdenciário(s)
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1 border-green-500 text-green-700">
+                            🟢 Sem Riscos — 09.01.001
+                          </Badge>
+                        )}
+                        {cargoRiscos.length === 0 && (
+                          <span className="text-xs text-muted-foreground">Nenhum registro — será gerado com Ausência automática</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Pendencies Checklist */}
+                  <Card className={pendenciasCount > 0 ? "border-yellow-500/50" : "border-green-500/50"}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        {pendenciasCount > 0 ? (
+                          <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {pendenciasCount > 0
+                            ? `${pendenciasCount} pendência(s) encontrada(s)`
+                            : "Todos os campos preenchidos"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                        {pendencias.map((p, i) => (
+                          <div key={i} className="flex items-center gap-1.5 text-xs">
+                            {p.ok ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                            ) : (
+                              <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
+                            )}
+                            <span className={p.ok ? "text-muted-foreground" : "text-foreground font-medium"}>{p.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {pendenciasCount > 0 && (
+                        <p className="text-[11px] text-muted-foreground mt-2">
+                          O PDF será gerado com "N/A" nos campos pendentes. Preencha-os para um PPP completo.
+                        </p>
                       )}
-                      {cargoRiscos.length === 0 && (
-                        <span className="text-xs text-muted-foreground">Nenhum registro — será gerado com Ausência automática</span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               );
             })()}
           </div>
