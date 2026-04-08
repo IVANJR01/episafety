@@ -113,11 +113,23 @@ export default function CentralPPP() {
   const [editingRisco, setEditingRisco] = useState<RiscoCargo | null>(null);
   const [editingResp, setEditingResp] = useState<Responsavel | null>(null);
 
-  // Forms
-  const [riscoForm, setRiscoForm] = useState(emptyRiscoForm);
-  const [respForm, setRespForm] = useState(emptyRespForm);
+  // Forms with localStorage persistence
+  const { form: riscoForm, setForm: setRiscoForm, resetForm: resetRiscoForm, hasDraft: hasRiscoDraft, clearDraft: clearRiscoDraft } = useFormDraft("ppp_risco", emptyRiscoForm);
+  const { form: respForm, setForm: setRespForm, resetForm: resetRespForm, hasDraft: hasRespDraft, clearDraft: clearRespDraft } = useFormDraft("ppp_resp", emptyRespForm);
   const [selectedFuncId, setSelectedFuncId] = useState("");
   const [search, setSearch] = useState("");
+
+  // Prevent accidental exit with unsaved form data
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (riscoOpen || respOpen) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [riscoOpen, respOpen]);
 
   // Unique cargos from riscos
   const cargos = useMemo(() => [...new Set(riscos.map((r) => r.cargo))].sort(), [riscos]);
