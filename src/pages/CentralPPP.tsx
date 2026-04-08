@@ -66,6 +66,13 @@ const TIPO_RISCO_LABELS: Record<string, string> = {
   acidente: "Acidente",
 };
 
+// Riscos previdenciários (entram no PPP/eSocial S-2240)
+const RISCOS_PREVIDENCIARIOS = ["fisico", "quimico", "biologico"];
+
+const AUSENCIA_FATOR = "Ausência de Agente Nocivo ou Agentes Nocivos não arrolados no Decreto 3.048/1999";
+const AUSENCIA_CODIGO = "09.01.001";
+const AUSENCIA_OBS = "Informação declarada com base nas avaliações quantitativas e qualitativas constantes no LTCAT da empresa, em conformidade com o Anexo IV do Decreto 3.048/99";
+
 const TIPO_RISCO_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   fisico: "default",
   quimico: "destructive",
@@ -86,6 +93,7 @@ const emptyRiscoForm = {
   profissiografia: "",
   cbo: "",
   cargos_multi: [] as string[], // for bulk creation
+  ausencia_risco: false, // checkbox for 09.01.001
 };
 
 const emptyRespForm = {
