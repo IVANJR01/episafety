@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Plus, Pencil, Trash2, FileText, Download, Search, Users, X } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Download, Search, Users, X, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,12 +50,15 @@ interface Funcionario {
   data_admissao: string | null;
   data_demissao: string | null;
   matricula: string | null;
+  regime_revezamento: string | null;
 }
 
 interface EmpresaConfig {
   id: string;
   nome: string;
   cnpj: string | null;
+  cpf_representante_legal: string | null;
+  nome_representante_legal: string | null;
 }
 
 const TIPO_RISCO_LABELS: Record<string, string> = {
@@ -99,7 +102,7 @@ const emptyRiscoForm = {
 const emptyRespForm = {
   tipo: "engenheiro",
   nome: "",
-  nit: "",
+  cpf_responsavel: "",
   registro_conselho: "",
   periodo_inicio: "",
   periodo_fim: "",
