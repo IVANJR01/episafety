@@ -185,6 +185,7 @@ export default function CentralPPP() {
   const { form: riscoForm, setForm: setRiscoForm, resetForm: resetRiscoForm, hasDraft: hasRiscoDraft, clearDraft: clearRiscoDraft } = useFormDraft("ppp_risco", emptyRiscoForm);
   const { form: respForm, setForm: setRespForm, resetForm: resetRespForm, hasDraft: hasRespDraft, clearDraft: clearRespDraft } = useFormDraft("ppp_resp", emptyRespForm);
   const [selectedFuncId, setSelectedFuncId] = useState("");
+  const [pppSearchName, setPppSearchName] = useState("");
   const [search, setSearch] = useState("");
 
   // Prevent accidental exit with unsaved form data
@@ -839,16 +840,44 @@ export default function CentralPPP() {
           <div className="space-y-4 py-2">
             <div>
               <Label>Funcionário</Label>
-              <Select value={selectedFuncId} onValueChange={setSelectedFuncId}>
-                <SelectTrigger><SelectValue placeholder="Selecione um funcionário..." /></SelectTrigger>
-                <SelectContent>
-                  {funcionarios.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.nome} {f.cargo ? `— ${f.cargo}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar por nome..."
+                  className="pl-8"
+                  value={(() => {
+                    const sel = funcionarios.find(f => f.id === selectedFuncId);
+                    return sel ? sel.nome : pppSearchName;
+                  })()}
+                  onChange={(e) => {
+                    setPppSearchName(e.target.value);
+                    setSelectedFuncId("");
+                  }}
+                />
+              </div>
+              {pppSearchName.length >= 2 && !selectedFuncId && (
+                <div className="border rounded-md mt-1 max-h-48 overflow-y-auto bg-background shadow-md">
+                  {funcionarios
+                    .filter(f => f.nome.toLowerCase().includes(pppSearchName.toLowerCase()))
+                    .map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+                        onClick={() => {
+                          setSelectedFuncId(f.id);
+                          setPppSearchName("");
+                        }}
+                      >
+                        <span className="font-medium">{f.nome}</span>
+                        {f.cargo && <span className="text-muted-foreground ml-2">— {f.cargo}</span>}
+                      </button>
+                    ))}
+                  {funcionarios.filter(f => f.nome.toLowerCase().includes(pppSearchName.toLowerCase())).length === 0 && (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">Nenhum funcionário encontrado</div>
+                  )}
+                </div>
+              )}
             </div>
             {selectedFuncId && (() => {
               const func = funcionarios.find((f) => f.id === selectedFuncId);
