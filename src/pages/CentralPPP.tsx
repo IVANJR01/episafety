@@ -173,17 +173,26 @@ export default function CentralPPP() {
       ca_epi: r.ca_epi || "",
       profissiografia: r.profissiografia || "",
       cbo: r.cbo || "",
+      cargos_multi: [],
     });
     setRiscoOpen(true);
   }
 
   async function saveRisco() {
-    if (!riscoForm.cargo || !riscoForm.fator_risco) {
-      toast.error("Preencha cargo e fator de risco");
+    const isEditing = !!editingRisco;
+    // In edit mode use single cargo; in create mode use multi or single
+    const cargosList = isEditing
+      ? [riscoForm.cargo.trim()]
+      : riscoForm.cargos_multi.length > 0
+        ? riscoForm.cargos_multi.map((c) => c.trim())
+        : riscoForm.cargo.trim() ? [riscoForm.cargo.trim()] : [];
+
+    if (cargosList.length === 0 || !riscoForm.fator_risco) {
+      toast.error("Preencha cargo(s) e fator de risco");
       return;
     }
-    const payload = {
-      cargo: riscoForm.cargo.trim(),
+
+    const basePayload = {
       tipo_risco: riscoForm.tipo_risco as "fisico" | "quimico" | "biologico" | "ergonomico" | "acidente",
       fator_risco: riscoForm.fator_risco.trim(),
       intensidade_concentracao: riscoForm.intensidade_concentracao || null,
@@ -196,14 +205,15 @@ export default function CentralPPP() {
       empresa_id: empresaId,
     };
 
-    if (editingRisco) {
-      const { error } = await supabase.from("ppp_riscos_cargo").update(payload).eq("id", editingRisco.id);
+    if (isEditing) {
+      const { error } = await supabase.from("ppp_riscos_cargo").update({ ...basePayload, cargo: cargosList[0] }).eq("id", editingRisco!.id);
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Risco atualizado");
     } else {
-      const { error } = await supabase.from("ppp_riscos_cargo").insert(payload);
+      const rows = cargosList.map((cargo) => ({ ...basePayload, cargo }));
+      const { error } = await supabase.from("ppp_riscos_cargo").insert(rows);
       if (error) { toast.error("Erro ao cadastrar"); return; }
-      toast.success("Risco cadastrado");
+      toast.success(`${rows.length} risco(s) cadastrado(s) com sucesso`);
     }
     clearRiscoDraft();
     setRiscoOpen(false);
