@@ -85,6 +85,7 @@ const emptyRiscoForm = {
   ca_epi: "",
   profissiografia: "",
   cbo: "",
+  cargos_multi: [] as string[], // for bulk creation
 };
 
 const emptyRespForm = {
