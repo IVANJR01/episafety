@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, Pencil, Trash2, FileText, Download, Search, Users } from "lucide-react";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -112,11 +113,23 @@ export default function CentralPPP() {
   const [editingRisco, setEditingRisco] = useState<RiscoCargo | null>(null);
   const [editingResp, setEditingResp] = useState<Responsavel | null>(null);
 
-  // Forms
-  const [riscoForm, setRiscoForm] = useState(emptyRiscoForm);
-  const [respForm, setRespForm] = useState(emptyRespForm);
+  // Forms with localStorage persistence
+  const { form: riscoForm, setForm: setRiscoForm, resetForm: resetRiscoForm, hasDraft: hasRiscoDraft, clearDraft: clearRiscoDraft } = useFormDraft("ppp_risco", emptyRiscoForm);
+  const { form: respForm, setForm: setRespForm, resetForm: resetRespForm, hasDraft: hasRespDraft, clearDraft: clearRespDraft } = useFormDraft("ppp_resp", emptyRespForm);
   const [selectedFuncId, setSelectedFuncId] = useState("");
   const [search, setSearch] = useState("");
+
+  // Prevent accidental exit with unsaved form data
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (riscoOpen || respOpen) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [riscoOpen, respOpen]);
 
   // Unique cargos from riscos
   const cargos = useMemo(() => [...new Set(riscos.map((r) => r.cargo))].sort(), [riscos]);
@@ -143,12 +156,12 @@ export default function CentralPPP() {
   // === RISCOS CRUD ===
   function openNewRisco() {
     setEditingRisco(null);
-    setRiscoForm(emptyRiscoForm);
+    if (!hasRiscoDraft()) resetRiscoForm();
     setRiscoOpen(true);
   }
   function openEditRisco(r: RiscoCargo) {
     setEditingRisco(r);
-    setRiscoForm({
+    resetRiscoForm({
       cargo: r.cargo,
       tipo_risco: r.tipo_risco,
       fator_risco: r.fator_risco,
@@ -191,6 +204,7 @@ export default function CentralPPP() {
       if (error) { toast.error("Erro ao cadastrar"); return; }
       toast.success("Risco cadastrado");
     }
+    clearRiscoDraft();
     setRiscoOpen(false);
     loadAll();
   }
@@ -204,12 +218,12 @@ export default function CentralPPP() {
   // === RESPONSÁVEIS CRUD ===
   function openNewResp() {
     setEditingResp(null);
-    setRespForm(emptyRespForm);
+    if (!hasRespDraft()) resetRespForm();
     setRespOpen(true);
   }
   function openEditResp(r: Responsavel) {
     setEditingResp(r);
-    setRespForm({
+    resetRespForm({
       tipo: r.tipo,
       nome: r.nome,
       nit: r.nit || "",
@@ -238,6 +252,7 @@ export default function CentralPPP() {
       await supabase.from("ppp_responsaveis").insert(payload);
       toast.success("Responsável cadastrado");
     }
+    clearRespDraft();
     setRespOpen(false);
     loadAll();
   }
@@ -360,7 +375,7 @@ export default function CentralPPP() {
         </Button>
       </div>
 
-      <Tabs defaultValue="riscos">
+      <Tabs defaultValue={localStorage.getItem("ppp_active_tab") || "riscos"} onValueChange={(v) => localStorage.setItem("ppp_active_tab", v)}>
         <TabsList>
           <TabsTrigger value="riscos">Riscos por Cargo</TabsTrigger>
           <TabsTrigger value="responsaveis">Responsáveis Técnicos</TabsTrigger>
