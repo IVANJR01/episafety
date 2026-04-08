@@ -316,7 +316,7 @@ export default function CentralPPP() {
     resetRespForm({
       tipo: r.tipo,
       nome: r.nome,
-      nit: r.nit || "",
+      cpf_responsavel: r.nit || "",
       registro_conselho: r.registro_conselho || "",
       periodo_inicio: r.periodo_inicio || "",
       periodo_fim: r.periodo_fim || "",
@@ -329,7 +329,7 @@ export default function CentralPPP() {
     const payload = {
       tipo: respForm.tipo,
       nome: respForm.nome.trim(),
-      nit: respForm.nit || null,
+      nit: respForm.cpf_responsavel || null,
       registro_conselho: respForm.registro_conselho || null,
       periodo_inicio: respForm.periodo_inicio || null,
       periodo_fim: respForm.periodo_fim || null,
