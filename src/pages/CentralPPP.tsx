@@ -222,8 +222,8 @@ export default function CentralPPP() {
     const [rRes, respRes, fRes, eRes] = await Promise.all([
       supabase.from("ppp_riscos_cargo").select("*").order("cargo"),
       supabase.from("ppp_responsaveis").select("*").order("tipo"),
-      supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_admissao, data_demissao, matricula").order("nome"),
-      supabase.from("empresa_config").select("id, nome, cnpj").eq("id", empresaId!).single(),
+      supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_admissao, data_demissao, matricula, regime_revezamento").order("nome"),
+      supabase.from("empresa_config").select("id, nome, cnpj, cpf_representante_legal, nome_representante_legal").eq("id", empresaId!).single(),
     ]);
     if (rRes.data) setRiscos(rRes.data as any);
     if (respRes.data) setResponsaveis(respRes.data as any);
@@ -605,7 +605,7 @@ export default function CentralPPP() {
                   <TableRow>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Nome</TableHead>
-                    <TableHead className="hidden sm:table-cell">NIT</TableHead>
+                    <TableHead className="hidden sm:table-cell">CPF</TableHead>
                     <TableHead className="hidden sm:table-cell">Reg. Conselho</TableHead>
                     <TableHead className="hidden md:table-cell">Período</TableHead>
                     <TableHead className="w-20"></TableHead>
