@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, FileText, Download, Search, Users } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Plus, Pencil, Trash2, FileText, Download, Search, Users, X } from "lucide-react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,6 +85,7 @@ const emptyRiscoForm = {
   ca_epi: "",
   profissiografia: "",
   cbo: "",
+  cargos_multi: [] as string[], // for bulk creation
 };
 
 const emptyRespForm = {
@@ -95,6 +96,65 @@ const emptyRespForm = {
   periodo_inicio: "",
   periodo_fim: "",
 };
+
+function CargoMultiSelect({ selected, onChange, suggestions }: { selected: string[]; onChange: (v: string[]) => void; suggestions: string[] }) {
+  const [inputValue, setInputValue] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = suggestions.filter(
+    (s) => !selected.includes(s) && s.toLowerCase().includes(inputValue.toLowerCase())
+  );
+
+  const addCargo = (cargo: string) => {
+    const trimmed = cargo.trim();
+    if (trimmed && !selected.includes(trimmed)) {
+      onChange([...selected, trimmed]);
+    }
+    setInputValue("");
+  };
+
+  const removeCargo = (cargo: string) => {
+    onChange(selected.filter((c) => c !== cargo));
+  };
+
+  return (
+    <div className="relative">
+      <div className="flex flex-wrap gap-1 rounded-md border border-input bg-background px-2 py-1.5 min-h-[36px] cursor-text" onClick={() => inputRef.current?.focus()}>
+        {selected.map((c) => (
+          <span key={c} className="inline-flex items-center gap-0.5 bg-primary/10 text-primary text-xs font-medium px-2 py-0.5 rounded-full">
+            {c}
+            <button type="button" onClick={(e) => { e.stopPropagation(); removeCargo(c); }} className="hover:text-destructive">
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => { setInputValue(e.target.value); setShowSuggestions(true); }}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && inputValue.trim()) { e.preventDefault(); addCargo(inputValue); }
+            if (e.key === "Backspace" && !inputValue && selected.length > 0) { removeCargo(selected[selected.length - 1]); }
+          }}
+          placeholder={selected.length === 0 ? "Ex: Servente" : "Adicionar..."}
+          className="flex-1 min-w-[80px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      {showSuggestions && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md max-h-40 overflow-y-auto">
+          {filtered.map((s) => (
+            <button key={s} type="button" onMouseDown={(e) => { e.preventDefault(); addCargo(s); }} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent truncate">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CentralPPP() {
   const { empresaId } = useAuth();
@@ -133,6 +193,13 @@ export default function CentralPPP() {
 
   // Unique cargos from riscos
   const cargos = useMemo(() => [...new Set(riscos.map((r) => r.cargo))].sort(), [riscos]);
+  // All known cargos: from riscos + from funcionarios
+  const allCargos = useMemo(() => {
+    const set = new Set<string>();
+    riscos.forEach((r) => set.add(r.cargo));
+    funcionarios.forEach((f) => { if (f.cargo) set.add(f.cargo); });
+    return [...set].sort();
+  }, [riscos, funcionarios]);
 
   useEffect(() => {
     if (empresaId) loadAll();
@@ -172,17 +239,26 @@ export default function CentralPPP() {
       ca_epi: r.ca_epi || "",
       profissiografia: r.profissiografia || "",
       cbo: r.cbo || "",
+      cargos_multi: [],
     });
     setRiscoOpen(true);
   }
 
   async function saveRisco() {
-    if (!riscoForm.cargo || !riscoForm.fator_risco) {
-      toast.error("Preencha cargo e fator de risco");
+    const isEditing = !!editingRisco;
+    // In edit mode use single cargo; in create mode use multi or single
+    const cargosList = isEditing
+      ? [riscoForm.cargo.trim()]
+      : riscoForm.cargos_multi.length > 0
+        ? riscoForm.cargos_multi.map((c) => c.trim())
+        : riscoForm.cargo.trim() ? [riscoForm.cargo.trim()] : [];
+
+    if (cargosList.length === 0 || !riscoForm.fator_risco) {
+      toast.error("Preencha cargo(s) e fator de risco");
       return;
     }
-    const payload = {
-      cargo: riscoForm.cargo.trim(),
+
+    const basePayload = {
       tipo_risco: riscoForm.tipo_risco as "fisico" | "quimico" | "biologico" | "ergonomico" | "acidente",
       fator_risco: riscoForm.fator_risco.trim(),
       intensidade_concentracao: riscoForm.intensidade_concentracao || null,
@@ -195,14 +271,15 @@ export default function CentralPPP() {
       empresa_id: empresaId,
     };
 
-    if (editingRisco) {
-      const { error } = await supabase.from("ppp_riscos_cargo").update(payload).eq("id", editingRisco.id);
+    if (isEditing) {
+      const { error } = await supabase.from("ppp_riscos_cargo").update({ ...basePayload, cargo: cargosList[0] }).eq("id", editingRisco!.id);
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Risco atualizado");
     } else {
-      const { error } = await supabase.from("ppp_riscos_cargo").insert(payload);
+      const rows = cargosList.map((cargo) => ({ ...basePayload, cargo }));
+      const { error } = await supabase.from("ppp_riscos_cargo").insert(rows);
       if (error) { toast.error("Erro ao cadastrar"); return; }
-      toast.success("Risco cadastrado");
+      toast.success(`${rows.length} risco(s) cadastrado(s) com sucesso`);
     }
     clearRiscoDraft();
     setRiscoOpen(false);
@@ -536,17 +613,36 @@ export default function CentralPPP() {
             <DialogDescription>Configure os fatores de risco extraídos do LTCAT</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            {/* Cargo field: multi-select chips for new, single input for edit */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Cargo *</Label>
-                <Input value={riscoForm.cargo} onChange={(e) => setRiscoForm({ ...riscoForm, cargo: e.target.value })} placeholder="Ex: Servente" list="cargos-list" />
-                <datalist id="cargos-list">
-                  {cargos.map((c) => <option key={c} value={c} />)}
-                </datalist>
+                <Label>Cargo{!editingRisco ? "s" : ""} *</Label>
+                {editingRisco ? (
+                  <>
+                    <Input value={riscoForm.cargo} onChange={(e) => setRiscoForm({ ...riscoForm, cargo: e.target.value })} placeholder="Ex: Servente" list="cargos-list" />
+                    <datalist id="cargos-list">
+                      {cargos.map((c) => <option key={c} value={c} />)}
+                    </datalist>
+                  </>
+                ) : (
+                  <CargoMultiSelect
+                    selected={riscoForm.cargos_multi}
+                    onChange={(v) => setRiscoForm({ ...riscoForm, cargos_multi: v })}
+                    suggestions={allCargos}
+                  />
+                )}
               </div>
               <div>
                 <Label>CBO</Label>
-                <Input value={riscoForm.cbo} onChange={(e) => setRiscoForm({ ...riscoForm, cbo: e.target.value })} placeholder="Ex: 717020" />
+                <Input
+                  value={riscoForm.cbo}
+                  onChange={(e) => setRiscoForm({ ...riscoForm, cbo: e.target.value })}
+                  placeholder="Ex: 717020"
+                  disabled={!editingRisco && riscoForm.cargos_multi.length > 1}
+                />
+                {!editingRisco && riscoForm.cargos_multi.length > 1 && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Desabilitado com múltiplos cargos</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
