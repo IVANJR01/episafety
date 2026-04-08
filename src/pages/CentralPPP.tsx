@@ -806,8 +806,8 @@ export default function CentralPPP() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>NIT</Label>
-                <Input value={respForm.nit} onChange={(e) => setRespForm({ ...respForm, nit: e.target.value })} />
+                <Label>CPF do Responsável</Label>
+                <Input value={respForm.cpf_responsavel} onChange={(e) => setRespForm({ ...respForm, cpf_responsavel: e.target.value })} placeholder="000.000.000-00" />
               </div>
               <div>
                 <Label>Registro Conselho</Label>
