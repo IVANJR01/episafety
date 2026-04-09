@@ -163,9 +163,9 @@ export async function preCacheAllData(): Promise<{ cached: number; failed: numbe
   let cached = 0;
   let failed = 0;
 
-  // Process in parallel batches of 5
-  for (let i = 0; i < CRITICAL_TABLES.length; i += 5) {
-    const batch = CRITICAL_TABLES.slice(i, i + 5);
+  // Process in parallel batches of 8 with a small delay between batches
+  for (let i = 0; i < CRITICAL_TABLES.length; i += 8) {
+    const batch = CRITICAL_TABLES.slice(i, i + 8);
     const results = await Promise.allSettled(
       batch.map(async (table) => {
         const { data, error } = await (supabase.from as any)(table).select("*");
@@ -180,6 +180,10 @@ export async function preCacheAllData(): Promise<{ cached: number; failed: numbe
       if (r.status === "fulfilled") cached++;
       else failed++;
     });
+    // Small yield between batches to avoid blocking the main thread
+    if (i + 8 < CRITICAL_TABLES.length) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   }
 
   // Also cache RPC results

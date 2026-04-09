@@ -206,26 +206,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsPrincipal(nextState.isPrincipal);
           saveAuthCache(currentUser.email, nextState);
 
-          // Pre-cache all data for offline use (fire and forget)
+          // Pre-cache all data for offline use — deferred so the UI stays responsive
           // Skip for video-only users to speed up portal loading on mobile
           const isVideoOnly = !nextState.isSuperAdmin && !nextState.isPrincipal &&
             nextState.modulos.length > 0 && nextState.modulos.every(p => p.startsWith("video_treinamentos"));
           if (!isVideoOnly) {
-            preCacheAllData().catch(() => {});
-            prefetchDashboardOfflineData().catch(() => {});
+            const deferPrefetch = () => {
+              preCacheAllData().catch(() => {});
+              // Stagger dashboard prefetch to avoid flooding network
+              setTimeout(() => prefetchDashboardOfflineData().catch(() => {}), 3000);
 
-            const hasGestaoEstoque = nextState.isSuperAdmin || nextState.isPrincipal ||
-              nextState.modulos.includes("epis:gestao_estoque") || nextState.modulos.includes("epis");
-            const hasEstoqueContrato = nextState.modulos.includes("estoque_contrato") ||
-              nextState.modulos.some((modulo) => modulo.startsWith("estoque_contrato:"));
-            const canAccessStock = hasGestaoEstoque || hasEstoqueContrato || !!nextState.contratoId;
+              const hasGestaoEstoque = nextState.isSuperAdmin || nextState.isPrincipal ||
+                nextState.modulos.includes("epis:gestao_estoque") || nextState.modulos.includes("epis");
+              const hasEstoqueContrato = nextState.modulos.includes("estoque_contrato") ||
+                nextState.modulos.some((modulo) => modulo.startsWith("estoque_contrato:"));
+              const canAccessStock = hasGestaoEstoque || hasEstoqueContrato || !!nextState.contratoId;
 
-            if (canAccessStock) {
-              prefetchStockOfflineData({
-                empresaId: nextState.empresaId,
-                contratoId: nextState.contratoId,
-                restricted: !hasGestaoEstoque && (hasEstoqueContrato || !!nextState.contratoId),
-              }).catch(() => {});
+              if (canAccessStock) {
+                setTimeout(() => prefetchStockOfflineData({
+                  empresaId: nextState.empresaId,
+                  contratoId: nextState.contratoId,
+                  restricted: !hasGestaoEstoque && (hasEstoqueContrato || !!nextState.contratoId),
+                }).catch(() => {}), 6000);
+              }
+            };
+
+            // Use requestIdleCallback to avoid blocking the main thread
+            if (typeof requestIdleCallback === "function") {
+              requestIdleCallback(() => deferPrefetch(), { timeout: 8000 });
+            } else {
+              setTimeout(deferPrefetch, 2000);
             }
           }
         }
