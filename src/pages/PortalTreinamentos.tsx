@@ -147,7 +147,18 @@ export default function PortalTreinamentos() {
       let foundFuncId: string | null = null;
       let empId = profile?.empresa_id || null;
 
-      if (empId && normalizedProfileName) {
+      // 1) Try to find funcionario by user_id (most reliable)
+      if (user?.id) {
+        const { data: myFuncs } = await supabase.from("funcionarios").select("id, nome, empresa_id")
+          .eq("user_id", user.id).is("data_demissao", null).limit(1);
+        if (myFuncs && myFuncs.length > 0) {
+          foundFuncId = myFuncs[0].id;
+          setFuncEmpresaId(myFuncs[0].empresa_id);
+        }
+      }
+
+      // 2) Fallback: match by name within same empresa
+      if (!foundFuncId && empId && normalizedProfileName) {
         setFuncEmpresaId(empId);
         const { data: funcs } = await supabase.from("funcionarios").select("id, nome, empresa_id")
           .eq("empresa_id", empId).is("data_demissao", null);
@@ -157,6 +168,8 @@ export default function PortalTreinamentos() {
           setFuncEmpresaId(matched.empresa_id);
         }
       }
+
+      // 3) Fallback: match by name across all visible funcionarios
       if (!foundFuncId && normalizedProfileName) {
         const { data: allFuncs } = await supabase.from("funcionarios").select("id, nome").is("data_demissao", null);
         const matched = allFuncs?.find(f => normalize(f.nome) === normalizedProfileName);
