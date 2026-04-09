@@ -85,7 +85,10 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     if (!cachedData || !isOnline() || backgroundRefreshStartedRef.current) return;
 
     backgroundRefreshStartedRef.current = true;
-    void query.refetch();
+    // Stagger background refresh with a random delay (0-2s) to avoid flooding
+    const delay = Math.floor(Math.random() * 2000);
+    const timer = setTimeout(() => void query.refetch(), delay);
+    return () => clearTimeout(timer);
   }, [cachedData, query]);
 
   useEffect(() => {
