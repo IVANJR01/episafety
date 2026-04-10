@@ -113,6 +113,14 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     body.style.overflow = "hidden";
     body.style.touchAction = "none";
 
+    // Prevent iOS rubber-banding / scroll-through on the overlay
+    const preventScroll = (e: TouchEvent) => {
+      // Allow touches on canvas only
+      if (e.target === canvas) return;
+      e.preventDefault();
+    };
+    document.addEventListener("touchmove", preventScroll, { passive: false });
+
     isClearingRef.current = false;
     isSubmittingRef.current = false;
     setIsSubmitting(false);
@@ -206,6 +214,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       window.removeEventListener("resize", scheduleResize);
       window.removeEventListener("orientationchange", scheduleResize);
       if (vv) vv.removeEventListener("resize", scheduleResize);
+      document.removeEventListener("touchmove", preventScroll);
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
       padRef.current?.off();
@@ -343,12 +352,12 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         overscrollBehavior: "none",
       } as React.CSSProperties}
     >
-      <div className="flex items-center gap-6 w-full px-4 py-3 bg-muted/50 border-b shrink-0 safe-area-top">
+      <div className="flex items-center gap-4 w-full px-3 bg-muted/50 border-b shrink-0 safe-area-top" style={{ minHeight: 52 }}>
         <button
           type="button"
           onClick={handleCancel}
           disabled={isSubmitting}
-          className="text-base font-bold text-green-600 uppercase tracking-wider px-1 py-2"
+          className="text-base font-bold text-green-600 uppercase tracking-wider px-3 min-h-[44px] min-w-[44px] active:opacity-60 transition-opacity"
         >
           Cancelar
         </button>
@@ -356,7 +365,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
           type="button"
           onClick={handleClear}
           disabled={isSubmitting}
-          className="text-base font-bold text-green-600 uppercase tracking-wider px-1 py-2"
+          className="text-base font-bold text-green-600 uppercase tracking-wider px-3 min-h-[44px] min-w-[44px] active:opacity-60 transition-opacity"
         >
           Limpar
         </button>
@@ -364,11 +373,11 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
           type="button"
           onClick={handleSave}
           disabled={isSubmitting}
-          className="text-base font-bold text-muted-foreground uppercase tracking-wider px-1 py-2 flex items-center gap-1.5"
+          className="text-base font-bold text-muted-foreground uppercase tracking-wider px-3 min-h-[44px] min-w-[44px] flex items-center gap-1.5 ml-auto active:opacity-60 transition-opacity"
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
               Salvando…
             </>
           ) : (
@@ -426,7 +435,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         </div>
       )}
 
-      <div className="text-center py-3 border-t bg-muted/30 shrink-0 safe-area-bottom">
+      <div className="text-center border-t bg-muted/30 shrink-0" style={{ paddingTop: 8, paddingBottom: `max(10px, env(safe-area-inset-bottom, 10px))` }}>
         {!showNameInput && (
           <button
             type="button"
@@ -438,7 +447,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
                 setShowNameInput(true);
               }
             }}
-            className="text-xs text-primary font-semibold underline underline-offset-2 mb-1"
+            className="text-xs text-primary font-semibold underline underline-offset-2 mb-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
           >
             Não sabe assinar? Toque aqui
           </button>
