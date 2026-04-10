@@ -874,12 +874,12 @@ export default function InspecoesSE() {
                     <TableCell className="text-xs max-w-[200px] truncate">{item.situacao_detectada}</TableCell>
                     <TableCell>
                     {item.foto_antes ? (
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-24 h-16" thumbnail />
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-28 h-auto aspect-[3/2]" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       {item.foto_depois ? (
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-24 h-16" thumbnail />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-28 h-auto aspect-[3/2]" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
@@ -975,13 +975,13 @@ export default function InspecoesSE() {
                     {item.foto_antes ? (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-medium">ANTES</p>
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full h-24" thumbnail />
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full h-auto aspect-[3/2]" thumbnail />
                       </div>
                     ) : <div />}
                     {item.foto_depois ? (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-medium">DEPOIS</p>
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full h-24" thumbnail />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full h-auto aspect-[3/2]" thumbnail />
                       </div>
                     ) : <div />}
                   </div>
