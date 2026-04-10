@@ -879,6 +879,7 @@ export type Database = {
           quantidade: number
           status: Database["public"]["Enums"]["status_entrega"]
           tipo: Database["public"]["Enums"]["tipo_entrega"]
+          unidade_origem_id: string | null
         }
         Insert: {
           assinatura_colaborador?: string | null
@@ -895,6 +896,7 @@ export type Database = {
           quantidade?: number
           status?: Database["public"]["Enums"]["status_entrega"]
           tipo?: Database["public"]["Enums"]["tipo_entrega"]
+          unidade_origem_id?: string | null
         }
         Update: {
           assinatura_colaborador?: string | null
@@ -911,6 +913,7 @@ export type Database = {
           quantidade?: number
           status?: Database["public"]["Enums"]["status_entrega"]
           tipo?: Database["public"]["Enums"]["tipo_entrega"]
+          unidade_origem_id?: string | null
         }
         Relationships: [
           {
@@ -932,6 +935,13 @@ export type Database = {
             columns: ["funcionario_id"]
             isOneToOne: false
             referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregas_unidade_origem_id_fkey"
+            columns: ["unidade_origem_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
             referencedColumns: ["id"]
           },
         ]
