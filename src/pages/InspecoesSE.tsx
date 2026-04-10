@@ -14,7 +14,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { toast } from "@/hooks/use-toast";
 import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
 import DriveImage from "@/components/DriveImage";
-import { extractGDriveFileId, getGDriveImageProxyUrl } from "@/lib/googleDrive";
+import { extractGDriveFileId, getGDriveImageProxyUrl, getGDriveThumbnailUrl } from "@/lib/googleDrive";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -85,6 +85,7 @@ export default function InspecoesSE() {
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("all");
@@ -394,11 +395,14 @@ export default function InspecoesSE() {
     }
   }
 
-  const MAX_IMG_WIDTH = 800;
-  const IMG_TIMEOUT_MS = 20000;
+  const MAX_IMG_WIDTH = 480;
+  const IMG_TIMEOUT_MS = 9000;
 
   async function resolveDriveUrl(url: string): Promise<string> {
     if (!url.includes("drive.google.com")) return url;
+
+    const thumbnailUrl = getGDriveThumbnailUrl(url, MAX_IMG_WIDTH);
+    if (thumbnailUrl) return thumbnailUrl;
 
     const proxyUrl = getGDriveImageProxyUrl(url);
     if (proxyUrl) return proxyUrl;
@@ -470,12 +474,18 @@ export default function InspecoesSE() {
   }
 
   async function loadImageAsDataUrl(url: string): Promise<string | null> {
+    const cached = pdfImageCacheRef.current.get(url);
+    if (cached !== undefined) return cached;
+
     const placeholder = generatePlaceholderDataUrl();
     try {
       // Attempt 1: proxy URL (full res)
       const resolvedUrl = await resolveDriveUrl(url);
       const result = await fetchImageAsDataUrl(resolvedUrl, IMG_TIMEOUT_MS);
-      if (result) return result;
+      if (result) {
+        pdfImageCacheRef.current.set(url, result);
+        return result;
+      }
 
       // Attempt 2: Google thumbnail fallback (lighter, no CORS issues)
       const fileId = extractGDriveFileId(url);
@@ -483,7 +493,10 @@ export default function InspecoesSE() {
         const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w${MAX_IMG_WIDTH}`;
         if (thumbUrl !== resolvedUrl) {
           const thumbResult = await fetchImageAsDataUrl(thumbUrl, IMG_TIMEOUT_MS);
-          if (thumbResult) return thumbResult;
+          if (thumbResult) {
+            pdfImageCacheRef.current.set(url, thumbResult);
+            return thumbResult;
+          }
         }
 
         // Attempt 3: load via <img> tag (lets browser handle CORS/redirects)
@@ -495,11 +508,16 @@ export default function InspecoesSE() {
           img.onerror = () => { clearTimeout(t); resolve(null); };
           img.src = thumbUrl;
         });
-        if (imgResult) return imgResult;
+        if (imgResult) {
+          pdfImageCacheRef.current.set(url, imgResult);
+          return imgResult;
+        }
       }
 
+      pdfImageCacheRef.current.set(url, placeholder);
       return placeholder;
     } catch {
+      pdfImageCacheRef.current.set(url, placeholder);
       return placeholder;
     }
   }

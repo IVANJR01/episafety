@@ -66,6 +66,14 @@ export function getGDriveDirectUrl(url: string): string | null {
   return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
 }
 
+/** Get a lightweight Google Drive thumbnail URL for faster image rendering. */
+export function getGDriveThumbnailUrl(url: string, width = 200): string | null {
+  const fileId = extractGDriveFileId(url);
+  if (!fileId) return null;
+  const safeWidth = Math.max(64, Math.min(Math.round(width), 1600));
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${safeWidth}`;
+}
+
 /** Resolve a Google Drive image through the proxy so browsers/PDF fetches can load it reliably. */
 export function getGDriveImageProxyUrl(url: string): string | null {
   const fileId = extractGDriveFileId(url);
