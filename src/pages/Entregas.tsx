@@ -489,6 +489,10 @@ export default function Entregas() {
       toast({ title: "Preencha funcionário e adicione ao menos um EPI", variant: "destructive" });
       return;
     }
+    if (!form.unidade_origem_id) {
+      toast({ title: "Selecione o Local de Baixa", description: "Informe de qual unidade o EPI está saindo.", variant: "destructive" });
+      return;
+    }
     if (!empresaId) {
       toast({ title: "Erro de sessão", description: "Empresa não identificada. Faça logout e entre novamente.", variant: "destructive" });
       return;
