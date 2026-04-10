@@ -395,7 +395,7 @@ export default function InspecoesSE() {
   }
 
   const MAX_IMG_WIDTH = 800;
-  const IMG_TIMEOUT_MS = 12000;
+  const IMG_TIMEOUT_MS = 20000;
 
   async function resolveDriveUrl(url: string): Promise<string> {
     if (!url.includes("drive.google.com")) return url;
@@ -440,50 +440,65 @@ export default function InspecoesSE() {
     return canvas.toDataURL("image/jpeg", 0.65);
   }
 
+  /** Tenta carregar imagem via fetch blob, retorna dataUrl ou null */
+  async function fetchImageAsDataUrl(fetchUrl: string, timeoutMs: number): Promise<string | null> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(fetchUrl, { mode: "cors", signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      if (!blob.type.startsWith("image/") && blob.size < 500) return null;
+      const blobUrl = URL.createObjectURL(blob);
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          img.onload = () => resolve(resizeImageToDataUrl(img));
+          img.onerror = () => reject(new Error("img load failed"));
+          img.src = blobUrl;
+        });
+        return dataUrl;
+      } finally {
+        URL.revokeObjectURL(blobUrl);
+      }
+    } catch {
+      clearTimeout(timeoutId);
+      return null;
+    }
+  }
+
   async function loadImageAsDataUrl(url: string): Promise<string | null> {
     const placeholder = generatePlaceholderDataUrl();
     try {
+      // Attempt 1: proxy URL (full res)
       const resolvedUrl = await resolveDriveUrl(url);
+      const result = await fetchImageAsDataUrl(resolvedUrl, IMG_TIMEOUT_MS);
+      if (result) return result;
 
-      // Fetch com timeout para conexões lentas de obra
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), IMG_TIMEOUT_MS);
-
-      // Para Drive e googleusercontent: fetch como blob
-      if (url.includes("drive.google.com") || resolvedUrl.includes("googleusercontent.com")) {
-        try {
-          const resp = await fetch(resolvedUrl, { mode: "cors", signal: controller.signal });
-          clearTimeout(timeoutId);
-          if (!resp.ok) return placeholder;
-          const blob = await resp.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          try {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-              img.onload = () => resolve(resizeImageToDataUrl(img));
-              img.onerror = () => reject(new Error("img load failed"));
-              img.src = blobUrl;
-            });
-            return dataUrl;
-          } finally {
-            URL.revokeObjectURL(blobUrl);
-          }
-        } catch {
-          clearTimeout(timeoutId);
-          return placeholder;
+      // Attempt 2: Google thumbnail fallback (lighter, no CORS issues)
+      const fileId = extractGDriveFileId(url);
+      if (fileId) {
+        const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w${MAX_IMG_WIDTH}`;
+        if (thumbUrl !== resolvedUrl) {
+          const thumbResult = await fetchImageAsDataUrl(thumbUrl, IMG_TIMEOUT_MS);
+          if (thumbResult) return thumbResult;
         }
+
+        // Attempt 3: load via <img> tag (lets browser handle CORS/redirects)
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const imgResult = await new Promise<string | null>((resolve) => {
+          const t = setTimeout(() => resolve(null), IMG_TIMEOUT_MS);
+          img.onload = () => { clearTimeout(t); resolve(resizeImageToDataUrl(img)); };
+          img.onerror = () => { clearTimeout(t); resolve(null); };
+          img.src = thumbUrl;
+        });
+        if (imgResult) return imgResult;
       }
 
-      // URLs normais (ex: Supabase Storage)
-      clearTimeout(timeoutId);
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      return await new Promise<string>((resolve) => {
-        img.onload = () => resolve(resizeImageToDataUrl(img));
-        img.onerror = () => resolve(placeholder);
-        img.src = resolvedUrl;
-      });
+      return placeholder;
     } catch {
       return placeholder;
     }
