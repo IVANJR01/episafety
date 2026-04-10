@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { extractGDriveFileId, getGDriveImageProxyUrl } from "@/lib/googleDrive";
+import { getGDriveImageProxyUrl, getGDriveThumbnailUrl } from "@/lib/googleDrive";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DriveImageProps {
@@ -10,13 +10,6 @@ interface DriveImageProps {
   className?: string;
   /** Use low-res Google Drive thumbnail instead of full image (faster for lists) */
   thumbnail?: boolean;
-}
-
-const proxyCache = new Map<string, string>();
-
-/** Build a lightweight Google Drive thumbnail URL (sz=w200 ≈ 5-15 KB). */
-function getThumbnailUrl(fileId: string): string {
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
 }
 
 export default function DriveImage({ src, alt, className, thumbnail = false }: DriveImageProps) {
@@ -43,23 +36,9 @@ export default function DriveImage({ src, alt, className, thumbnail = false }: D
       return;
     }
 
-    const fileId = extractGDriveFileId(src);
-    if (!fileId) {
-      setResolvedUrl(src);
-      setLoading(false);
-      return;
-    }
-
-    // Thumbnail mode: use lightweight Google thumbnail (no proxy needed)
-    if (thumbnail) {
-      setResolvedUrl(getThumbnailUrl(fileId));
-      setLoading(false);
-      return;
-    }
-
-    // Full resolution: use proxy
-    if (proxyCache.has(fileId)) {
-      setResolvedUrl(proxyCache.get(fileId)!);
+    const preferredUrl = getGDriveThumbnailUrl(src, thumbnail ? 240 : 1200);
+    if (preferredUrl) {
+      setResolvedUrl(preferredUrl);
       setLoading(false);
       return;
     }
@@ -71,7 +50,6 @@ export default function DriveImage({ src, alt, className, thumbnail = false }: D
       return;
     }
 
-    proxyCache.set(fileId, proxyUrl);
     setResolvedUrl(proxyUrl);
     setLoading(false);
   }, [src, thumbnail]);
@@ -82,15 +60,14 @@ export default function DriveImage({ src, alt, className, thumbnail = false }: D
       return;
     }
 
-    const fileId = extractGDriveFileId(src);
-    if (!fileId) {
+    const proxyUrl = getGDriveImageProxyUrl(src);
+    if (!proxyUrl || proxyUrl === resolvedUrl) {
       setError(true);
       return;
     }
 
-    // Fallback: try Google thumbnail at higher res
     setUsedFallback(true);
-    setResolvedUrl(`https://drive.google.com/thumbnail?id=${fileId}&sz=w800`);
+    setResolvedUrl(proxyUrl);
   };
 
   if (!src) return null;
