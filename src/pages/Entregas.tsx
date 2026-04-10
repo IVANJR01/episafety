@@ -515,6 +515,7 @@ export default function Entregas() {
           status,
           observacao: form.observacao || null,
           empresa_id: empresaId,
+          unidade_origem_id: form.unidade_origem_id || null,
         };
 
         const queued = addToSyncQueue({ table: "entregas", type: "insert", payload });
@@ -590,6 +591,7 @@ export default function Entregas() {
             observacao: form.observacao || null,
             empresa_id: empresaId,
             created_by: currentUserId,
+            unidade_origem_id: form.unidade_origem_id || null,
           })
           .select("id")
           .single();
