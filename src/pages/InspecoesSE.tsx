@@ -846,14 +846,14 @@ export default function InspecoesSE() {
         <>
           {/* Desktop Table */}
           <div className="hidden md:block border rounded-lg overflow-hidden">
-            <Table>
+            <Table className="min-w-[1900px]">
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-[50px]">N°</TableHead>
                   <TableHead className="w-[100px]">Data</TableHead>
                   <TableHead>Situação Detectada</TableHead>
-                  <TableHead className="w-[80px]">Antes</TableHead>
-                  <TableHead className="w-[80px]">Depois</TableHead>
+                  <TableHead className="w-[240px]">Antes</TableHead>
+                  <TableHead className="w-[240px]">Depois</TableHead>
                   <TableHead className="w-[120px]">Gravidade</TableHead>
                   <TableHead>Ref. Normativa</TableHead>
                   <TableHead>O Que Fazer</TableHead>
@@ -872,14 +872,14 @@ export default function InspecoesSE() {
                       {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "—"}
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{item.situacao_detectada}</TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-[240px]">
                     {item.foto_antes ? (
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-56 h-auto aspect-[3/2]" thumbnail />
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full max-w-[240px] h-auto aspect-[3/2]" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-[240px]">
                       {item.foto_depois ? (
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-56 h-auto aspect-[3/2]" thumbnail />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full max-w-[240px] h-auto aspect-[3/2]" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
