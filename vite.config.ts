@@ -79,6 +79,34 @@ export default defineConfig(({ mode }) => ({
               networkTimeoutSeconds: 5,
             },
           },
+          {
+            urlPattern: /^https:\/\/drive\.google\.com\/thumbnail\?.*$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "gdrive-thumbnails",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/bccqjqimbjzskyexpjca\.supabase\.co\/functions\/v1\/gdrive-proxy\/.*\?.*raw=1.*$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "gdrive-proxy-images",
+              expiration: {
+                maxEntries: 150,
+                maxAgeSeconds: 60 * 60 * 24 * 14,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
         ],
       },
       manifest: {
