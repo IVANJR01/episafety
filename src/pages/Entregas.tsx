@@ -23,10 +23,11 @@ import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
 
 
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; unidade_origem_id?: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; empresa_id?: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; empresa_id?: string | null; source_epi_id?: string; tamanho?: string | null; }
 interface EpiItem { epi: EPI; quantidade: number; }
+interface Unidade { id: string; nome: string; tipo: string; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
@@ -236,8 +237,25 @@ export default function Entregas() {
     funcionario_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
     tipo: "entrega" as string, observacao: "",
+    unidade_origem_id: empresaId || "",
   };
   const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
+
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  useEffect(() => {
+    const loadUnidades = async () => {
+      const { data } = await supabase.from("empresa_config").select("id, nome, tipo").order("nome");
+      setUnidades((data as Unidade[]) || []);
+    };
+    loadUnidades();
+  }, []);
+
+  // Auto-fill unidade_origem_id when empresaId changes and form is empty
+  useEffect(() => {
+    if (empresaId && !form.unidade_origem_id) {
+      setForm(prev => ({ ...prev, unidade_origem_id: empresaId }));
+    }
+  }, [empresaId]);
 
   useEffect(() => {
     const normalizedTipo = normalizeEntregaTipo(form.tipo);
