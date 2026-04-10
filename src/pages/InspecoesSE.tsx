@@ -1075,9 +1075,12 @@ export default function InspecoesSE() {
                   onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                 {(fotoAntesPreview || existingFotoAntes) ? (
                   <div className="relative mt-1">
-                    <img src={fotoAntesPreview || existingFotoAntes!} alt="Antes" className="w-full h-28 object-cover rounded-lg border" />
-                    <button className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
-                      onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); }}>
+                    <DriveImage src={fotoAntesPreview || existingFotoAntes!} alt="Antes" className="w-full h-28" />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                      onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); }}
+                    >
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -1093,9 +1096,12 @@ export default function InspecoesSE() {
                   onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                 {(fotoDepoisPreview || existingFotoDepois) ? (
                   <div className="relative mt-1">
-                    <img src={fotoDepoisPreview || existingFotoDepois!} alt="Depois" className="w-full h-28 object-cover rounded-lg border" />
-                    <button className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
-                      onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); }}>
+                    <DriveImage src={fotoDepoisPreview || existingFotoDepois!} alt="Depois" className="w-full h-28" />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                      onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); }}
+                    >
                       <X className="w-3 h-3" />
                     </button>
                   </div>
