@@ -1272,6 +1272,21 @@ export default function Entregas() {
             </div>
 
             <div>
+              <Label>Local de Baixa (Unidade de Origem)</Label>
+              <Select value={form.unidade_origem_id || ""} onValueChange={v => setForm({ ...form, unidade_origem_id: v })}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecione a unidade..." /></SelectTrigger>
+                <SelectContent>
+                  {unidades.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nome} {u.tipo === "matriz" ? "(Matriz)" : u.tipo === "filial" ? "(Filial)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">De onde o EPI está saindo para esta entrega</p>
+            </div>
+
+            <div>
               <Label>Funcionário</Label>
               <Input
                 placeholder="Buscar por CPF, matrícula ou nome..."
