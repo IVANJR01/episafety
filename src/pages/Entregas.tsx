@@ -1132,11 +1132,6 @@ export default function Entregas() {
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-1">
-                        {e.status === "ativo" && canEdit && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Devolver ao estoque" onClick={() => handleDevolver(e)}>
-                            <Undo2 className="w-3 h-3 text-primary" />
-                          </Button>
-                        )}
                         {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
                           <Button size="icon" variant="ghost" className="h-7 w-7" title="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
                             <RotateCcw className="w-3 h-3 text-primary" />
@@ -1215,11 +1210,6 @@ export default function Entregas() {
                       <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate">{e.observacao || "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
-                          {e.status === "ativo" && canEdit && (
-                            <Button size="icon" variant="ghost" title="Devolver ao estoque" onClick={() => handleDevolver(e)}>
-                              <Undo2 className="w-3.5 h-3.5 text-primary" />
-                            </Button>
-                          )}
                           {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
                             <Button size="icon" variant="ghost" title="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
                               <RotateCcw className="w-3.5 h-3.5 text-primary" />
