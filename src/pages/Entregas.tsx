@@ -23,10 +23,11 @@ import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
 
 
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; unidade_origem_id?: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; empresa_id?: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; empresa_id?: string | null; source_epi_id?: string; tamanho?: string | null; }
 interface EpiItem { epi: EPI; quantidade: number; }
+interface Unidade { id: string; nome: string; tipo: string; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
 const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
@@ -236,8 +237,25 @@ export default function Entregas() {
     funcionario_id: "", quantidade: 1,
     data: new Date().toISOString().split("T")[0],
     tipo: "entrega" as string, observacao: "",
+    unidade_origem_id: empresaId || "",
   };
   const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
+
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  useEffect(() => {
+    const loadUnidades = async () => {
+      const { data } = await supabase.from("empresa_config").select("id, nome, tipo").order("nome");
+      setUnidades((data as Unidade[]) || []);
+    };
+    loadUnidades();
+  }, []);
+
+  // Auto-fill unidade_origem_id when empresaId changes and form is empty
+  useEffect(() => {
+    if (empresaId && !form.unidade_origem_id) {
+      setForm(prev => ({ ...prev, unidade_origem_id: empresaId }));
+    }
+  }, [empresaId]);
 
   useEffect(() => {
     const normalizedTipo = normalizeEntregaTipo(form.tipo);
@@ -471,6 +489,10 @@ export default function Entregas() {
       toast({ title: "Preencha funcionário e adicione ao menos um EPI", variant: "destructive" });
       return;
     }
+    if (!form.unidade_origem_id) {
+      toast({ title: "Selecione o Local de Baixa", description: "Informe de qual unidade o EPI está saindo.", variant: "destructive" });
+      return;
+    }
     if (!empresaId) {
       toast({ title: "Erro de sessão", description: "Empresa não identificada. Faça logout e entre novamente.", variant: "destructive" });
       return;
@@ -497,6 +519,7 @@ export default function Entregas() {
           status,
           observacao: form.observacao || null,
           empresa_id: empresaId,
+          unidade_origem_id: form.unidade_origem_id || null,
         };
 
         const queued = addToSyncQueue({ table: "entregas", type: "insert", payload });
@@ -572,6 +595,7 @@ export default function Entregas() {
             observacao: form.observacao || null,
             empresa_id: empresaId,
             created_by: currentUserId,
+            unidade_origem_id: form.unidade_origem_id || null,
           })
           .select("id")
           .single();
@@ -1251,6 +1275,21 @@ export default function Entregas() {
                   <SelectItem value="dano">⚠️ Dano</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <Label>Local de Baixa (Unidade de Origem)</Label>
+              <Select value={form.unidade_origem_id || ""} onValueChange={v => setForm({ ...form, unidade_origem_id: v })}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecione a unidade..." /></SelectTrigger>
+                <SelectContent>
+                  {unidades.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nome} {u.tipo === "matriz" ? "(Matriz)" : u.tipo === "filial" ? "(Filial)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">De onde o EPI está saindo para esta entrega</p>
             </div>
 
             <div>
