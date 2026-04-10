@@ -113,6 +113,7 @@ export default function DriveImage({ src, alt, className, thumbnail = false }: D
       src={resolvedUrl}
       alt={alt}
       className={cn("object-cover rounded border", className)}
+      style={{ imageOrientation: "from-image", aspectRatio: "16/9" }}
       loading="lazy"
       decoding="async"
       onLoad={() => setLoading(false)}
