@@ -953,7 +953,7 @@ export default function Entregas() {
     }
   };
 
-  const unsignedEntregas = useMemo(() => entregas.filter(e => !e.assinatura_colaborador), [entregas]);
+  const unsignedEntregas = useMemo(() => entregas.filter(e => !e.assinatura_colaborador && e.tipo !== "devolucao"), [entregas]);
 
   const toggleUnsigned = (id: string) => {
     setSelectedUnsigned(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -1113,7 +1113,9 @@ export default function Entregas() {
                         <span className={`text-[10px] font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
                           {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
                         </span>
-                        {e.assinatura_colaborador ? (
+                        {e.tipo === "devolucao" ? (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground font-medium">—</span>
+                        ) : e.assinatura_colaborador ? (
                           e.assinatura_colaborador === "BIOMETRIA_DIGITAL" || e.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? (
                             <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium">
                               <ScanFace className="w-3 h-3" />Rec. Facial
@@ -1192,7 +1194,9 @@ export default function Entregas() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        {e.assinatura_colaborador ? (
+                        {e.tipo === "devolucao" ? (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        ) : e.assinatura_colaborador ? (
                           e.assinatura_colaborador === "BIOMETRIA_DIGITAL" || e.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? (
                             <span className="inline-flex items-center gap-1 text-xs text-success font-medium">
                               <ScanFace className="w-3.5 h-3.5" />Rec. Facial
