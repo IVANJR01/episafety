@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon } from "lucide-react";
 import DriveImage from "@/components/DriveImage";
 import { extractGDriveFileId, getGDriveImageProxyUrl, getGDriveThumbnailUrl } from "@/lib/googleDrive";
 import { format } from "date-fns";
@@ -84,6 +84,8 @@ export default function InspecoesSE() {
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
+  const antesGalleryRef = useRef<HTMLInputElement>(null);
+  const depoisGalleryRef = useRef<HTMLInputElement>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
 
@@ -1124,7 +1126,11 @@ export default function InspecoesSE() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="font-semibold">Foto ANTES</Label>
-                  <input ref={antesRef} type="file" accept="image/*" className="hidden"
+                  {/* Camera input (capture) */}
+                  <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
+                  {/* Gallery input (Google Fotos / galeria) */}
+                  <input ref={antesGalleryRef} type="file" accept="image/*" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   {(fotoAntesPreview || existingFotoAntes) ? (
                     <div className="relative mt-1">
@@ -1138,14 +1144,23 @@ export default function InspecoesSE() {
                       </button>
                     </div>
                   ) : (
-                    <Button variant="outline" size="sm" className="w-full mt-1 min-h-[44px]" onClick={() => antesRef.current?.click()}>
-                      <Camera className="w-4 h-4 mr-1" /> Capturar / Selecionar
-                    </Button>
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px]" onClick={() => antesRef.current?.click()}>
+                        <Camera className="w-4 h-4 mr-1" /> Câmera
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30" onClick={() => antesGalleryRef.current?.click()}>
+                        <ImageIcon className="w-4 h-4 mr-1" /> Google Fotos
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <div>
                   <Label className="font-semibold">Foto DEPOIS</Label>
-                  <input ref={depoisRef} type="file" accept="image/*" className="hidden"
+                  {/* Camera input (capture) */}
+                  <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
+                  {/* Gallery input (Google Fotos / galeria) */}
+                  <input ref={depoisGalleryRef} type="file" accept="image/*" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                   {(fotoDepoisPreview || existingFotoDepois) ? (
                     <div className="relative mt-1">
@@ -1159,11 +1174,18 @@ export default function InspecoesSE() {
                       </button>
                     </div>
                   ) : (
-                    <Button variant="outline" size="sm" className="w-full mt-1 min-h-[44px]"
-                      onClick={() => depoisRef.current?.click()}
-                      disabled={form.status !== "SOLUCIONADO"}>
-                      <Camera className="w-4 h-4 mr-1" /> {form.status !== "SOLUCIONADO" ? "Somente após solução" : "Capturar"}
-                    </Button>
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px]"
+                        onClick={() => depoisRef.current?.click()}
+                        disabled={form.status !== "SOLUCIONADO"}>
+                        <Camera className="w-4 h-4 mr-1" /> {form.status !== "SOLUCIONADO" ? "Após solução" : "Câmera"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30"
+                        onClick={() => depoisGalleryRef.current?.click()}
+                        disabled={form.status !== "SOLUCIONADO"}>
+                        <ImageIcon className="w-4 h-4 mr-1" /> Google Fotos
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
