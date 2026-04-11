@@ -893,82 +893,100 @@ export default function InspecoesSE() {
         </div>
       ) : (
         <>
-          {/* Desktop Table */}
-          <div className="hidden md:block border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="w-[50px]">N°</TableHead>
-                  <TableHead className="w-[100px]">Data</TableHead>
-                  <TableHead>Situação Detectada</TableHead>
-                  <TableHead className="w-[140px]">Antes</TableHead>
-                  <TableHead className="w-[140px]">Depois</TableHead>
-                  <TableHead className="w-[120px]">Gravidade</TableHead>
-                  <TableHead>Ref. Normativa</TableHead>
-                  <TableHead>O Que Fazer</TableHead>
-                  <TableHead>Responsável</TableHead>
-                  <TableHead>Local</TableHead>
-                  <TableHead className="w-[100px]">Realizado</TableHead>
-                  <TableHead className="w-[110px]">Status</TableHead>
-                  <TableHead className="w-[80px]">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((item, idx) => (
-                  <TableRow key={item.id} className="cursor-pointer hover:bg-muted/30" onClick={() => openEdit(item)}>
-                    <TableCell className="font-medium">{idx + 1}</TableCell>
-                    <TableCell className="text-xs">
-                      {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs max-w-[250px] whitespace-normal break-words">{item.situacao_detectada}</TableCell>
-                    <TableCell>
-                    {item.foto_antes ? (
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-32 h-24 object-contain" thumbnail />
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell>
+          {/* Desktop Cards */}
+          <div className="hidden md:block space-y-3">
+            {filtered.map((item, idx) => (
+              <div key={item.id} className="border rounded-lg bg-card hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => openEdit(item)}>
+                <div className="flex gap-4 p-4">
+                  {/* Left: Number + Photos */}
+                  <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                    <span className="text-lg font-bold text-muted-foreground w-8 text-center">{idx + 1}</span>
+                    <div className="flex gap-2">
+                      {item.foto_antes ? (
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted-foreground font-semibold mb-1">ANTES</p>
+                          <DriveImage src={item.foto_antes} alt="Antes" className="w-28 h-20 object-cover rounded-md border" thumbnail />
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted-foreground font-semibold mb-1">ANTES</p>
+                          <div className="w-28 h-20 rounded-md border bg-muted/40 flex items-center justify-center">
+                            <span className="text-[10px] text-muted-foreground">Sem foto</span>
+                          </div>
+                        </div>
+                      )}
                       {item.foto_depois ? (
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-32 h-24 object-contain" thumbnail />
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell>
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted-foreground font-semibold mb-1">DEPOIS</p>
+                          <DriveImage src={item.foto_depois} alt="Depois" className="w-28 h-20 object-cover rounded-md border" thumbnail />
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted-foreground font-semibold mb-1">DEPOIS</p>
+                          <div className="w-28 h-20 rounded-md border bg-muted/40 flex items-center justify-center">
+                            <span className="text-[10px] text-muted-foreground">Sem foto</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Center: Main content */}
+                  <div className="flex-1 min-w-0 space-y-2">
+                    {/* Top badges row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">
+                        {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "—"}
+                      </span>
                       <GravidadeBadge gravidade={item.gravidade} />
-                    </TableCell>
-                    <TableCell className="text-xs max-w-[150px]">
-                      {item.referencia_normativa ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
+                      {item.referencia_normativa && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium">
                           <Sparkles className="w-3 h-3" />{item.referencia_normativa}
                         </span>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs max-w-[180px] whitespace-normal break-words">{item.acao_corretiva || "—"}</TableCell>
-                    <TableCell className="text-xs">{item.responsavel || "—"}</TableCell>
-                    <TableCell className="text-xs">{item.local || "—"}</TableCell>
-                    <TableCell className="text-xs">
-                      {item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
-                        className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
-                        {item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        {canDelete && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(item.id)}>
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
-                        )}
+                      )}
+                      {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
+                    </div>
+
+                    {/* Situação detectada */}
+                    <p className="text-sm leading-relaxed break-words">{item.situacao_detectada}</p>
+
+                    {/* Ação corretiva */}
+                    {item.acao_corretiva && (
+                      <div className="bg-muted/30 rounded-md px-3 py-2">
+                        <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">AÇÃO CORRETIVA</p>
+                        <p className="text-xs leading-relaxed">{item.acao_corretiva}</p>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    )}
+
+                    {/* Bottom info */}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {item.responsavel && <span><strong>Resp:</strong> {item.responsavel}</span>}
+                      {item.data_realizado && (
+                        <span><strong>Realizado:</strong> {format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy")}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Status + Actions */}
+                  <div className="flex-shrink-0 flex flex-col items-end justify-between">
+                    <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
+                      className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
+                      {item.status}
+                    </Badge>
+                    <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      {canDelete && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(item.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Mobile Cards */}
