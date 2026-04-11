@@ -755,25 +755,49 @@ export default function InspecoesSE() {
       }
       x += scaledWidths[2];
 
-      // Helper: draw image fitted inside cell with padding
+      // Helper: get image dimensions from base64 data URL synchronously via jsPDF
+      const getImageDimensions = (dataUrl: string): { w: number; h: number } => {
+        try {
+          // Use jsPDF's internal getImageProperties to read real dimensions
+          const props = (doc as any).getImageProperties(dataUrl);
+          if (props && props.width > 0 && props.height > 0) {
+            return { w: props.width, h: props.height };
+          }
+        } catch { /* fallback below */ }
+        return { w: 0, h: 0 };
+      };
+
+      // Helper: draw image fitted inside cell with padding, preserving aspect ratio
       const CELL_PAD = 2; // mm padding inside cell
       const drawFittedImage = (dataUrl: string, cellX: number, cellY: number, cellW: number, cellH: number) => {
         const maxW = cellW - CELL_PAD * 2;
         const maxH = cellH - CELL_PAD * 2;
         if (maxW <= 0 || maxH <= 0) return;
 
-        // Decode image to get aspect ratio
-        const img = new Image();
-        img.src = dataUrl;
-        const naturalW = img.naturalWidth || maxW;
-        const naturalH = img.naturalHeight || maxH;
+        const dims = getImageDimensions(dataUrl);
+        const naturalW = dims.w || maxW;
+        const naturalH = dims.h || maxH;
         const aspect = naturalW / naturalH;
 
-        let drawW = maxW;
-        let drawH = drawW / aspect;
-        if (drawH > maxH) {
+        let drawW: number;
+        let drawH: number;
+
+        if (aspect >= 1) {
+          // Landscape or square: fit to width first
+          drawW = maxW;
+          drawH = drawW / aspect;
+          if (drawH > maxH) {
+            drawH = maxH;
+            drawW = drawH * aspect;
+          }
+        } else {
+          // Portrait: fit to height first
           drawH = maxH;
           drawW = drawH * aspect;
+          if (drawW > maxW) {
+            drawW = maxW;
+            drawH = drawW / aspect;
+          }
         }
 
         const drawX = cellX + (cellW - drawW) / 2;
