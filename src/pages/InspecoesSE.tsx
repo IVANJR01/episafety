@@ -1126,7 +1126,11 @@ export default function InspecoesSE() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="font-semibold">Foto ANTES</Label>
-                  <input ref={antesRef} type="file" accept="image/*" className="hidden"
+                  {/* Camera input (capture) */}
+                  <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
+                  {/* Gallery input (Google Fotos / galeria) */}
+                  <input ref={antesGalleryRef} type="file" accept="image/*" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   {(fotoAntesPreview || existingFotoAntes) ? (
                     <div className="relative mt-1">
@@ -1140,14 +1144,23 @@ export default function InspecoesSE() {
                       </button>
                     </div>
                   ) : (
-                    <Button variant="outline" size="sm" className="w-full mt-1 min-h-[44px]" onClick={() => antesRef.current?.click()}>
-                      <Camera className="w-4 h-4 mr-1" /> Capturar / Selecionar
-                    </Button>
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px]" onClick={() => antesRef.current?.click()}>
+                        <Camera className="w-4 h-4 mr-1" /> Câmera
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30" onClick={() => antesGalleryRef.current?.click()}>
+                        <ImageIcon className="w-4 h-4 mr-1" /> Google Fotos
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <div>
                   <Label className="font-semibold">Foto DEPOIS</Label>
-                  <input ref={depoisRef} type="file" accept="image/*" className="hidden"
+                  {/* Camera input (capture) */}
+                  <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
+                  {/* Gallery input (Google Fotos / galeria) */}
+                  <input ref={depoisGalleryRef} type="file" accept="image/*" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                   {(fotoDepoisPreview || existingFotoDepois) ? (
                     <div className="relative mt-1">
@@ -1161,11 +1174,18 @@ export default function InspecoesSE() {
                       </button>
                     </div>
                   ) : (
-                    <Button variant="outline" size="sm" className="w-full mt-1 min-h-[44px]"
-                      onClick={() => depoisRef.current?.click()}
-                      disabled={form.status !== "SOLUCIONADO"}>
-                      <Camera className="w-4 h-4 mr-1" /> {form.status !== "SOLUCIONADO" ? "Somente após solução" : "Capturar"}
-                    </Button>
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px]"
+                        onClick={() => depoisRef.current?.click()}
+                        disabled={form.status !== "SOLUCIONADO"}>
+                        <Camera className="w-4 h-4 mr-1" /> {form.status !== "SOLUCIONADO" ? "Após solução" : "Câmera"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30"
+                        onClick={() => depoisGalleryRef.current?.click()}
+                        disabled={form.status !== "SOLUCIONADO"}>
+                        <ImageIcon className="w-4 h-4 mr-1" /> Google Fotos
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
