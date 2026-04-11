@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon } from "lucide-react";
 import DriveImage from "@/components/DriveImage";
 import { extractGDriveFileId, getGDriveImageProxyUrl, getGDriveThumbnailUrl } from "@/lib/googleDrive";
 import { format } from "date-fns";
