@@ -558,9 +558,9 @@ export default function InspecoesSE() {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const ROW_H = 42;
-    const IMG_H = 36;
-    const IMG_W = 34;
+    const ROW_H = 58;
+    const IMG_H = 48;
+    const IMG_W = 48;
     const MARGIN = 10;
     const tableWidth = pageWidth - MARGIN * 2;
 
