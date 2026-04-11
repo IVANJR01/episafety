@@ -441,7 +441,7 @@ export default function InspecoesSE() {
     canvas.width = w;
     canvas.height = h;
     canvas.getContext("2d")!.drawImage(source as any, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", 0.65);
+    return canvas.toDataURL("image/jpeg", 0.82);
   }
 
   /** Tenta carregar imagem via fetch blob, retorna dataUrl ou null */
