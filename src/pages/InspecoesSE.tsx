@@ -84,6 +84,8 @@ export default function InspecoesSE() {
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
+  const antesGalleryRef = useRef<HTMLInputElement>(null);
+  const depoisGalleryRef = useRef<HTMLInputElement>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
 
