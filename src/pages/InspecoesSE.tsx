@@ -485,9 +485,7 @@ export default function InspecoesSE() {
     const cached = pdfImageCacheRef.current.get(url);
     if (cached !== undefined) return cached;
 
-    const placeholder = generatePlaceholderDataUrl();
     try {
-      // Attempt 1: proxy URL (full res)
       const resolvedUrl = await resolveDriveUrl(url);
       const result = await fetchImageAsDataUrl(resolvedUrl, IMG_TIMEOUT_MS);
       if (result) {
@@ -495,7 +493,6 @@ export default function InspecoesSE() {
         return result;
       }
 
-      // Attempt 2: try proxy URL explicitly if not already used
       const fileId = extractGDriveFileId(url);
       if (fileId) {
         const proxyUrl = getGDriveImageProxyUrl(url);
@@ -507,32 +504,48 @@ export default function InspecoesSE() {
           }
         }
 
-        // Attempt 3: load via <img> tag with proxy (lets browser handle redirects)
-        const imgSrc = proxyUrl || `https://drive.google.com/thumbnail?id=${fileId}&sz=w${MAX_IMG_WIDTH}`;
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        const imgResult = await new Promise<string | null>((resolve) => {
-          const t = setTimeout(() => resolve(null), IMG_TIMEOUT_MS);
-          img.onload = () => { clearTimeout(t); resolve(resizeImageToDataUrl(img)); };
-          img.onerror = () => { clearTimeout(t); resolve(null); };
-          img.src = imgSrc;
-        });
-        if (imgResult) {
-          pdfImageCacheRef.current.set(url, imgResult);
-          return imgResult;
+        const thumbUrl = getGDriveThumbnailUrl(url, MAX_IMG_WIDTH);
+        if (thumbUrl && thumbUrl !== resolvedUrl) {
+          const thumbResult = await fetchImageAsDataUrl(thumbUrl, IMG_TIMEOUT_MS);
+          if (thumbResult) {
+            pdfImageCacheRef.current.set(url, thumbResult);
+            return thumbResult;
+          }
+        }
+
+        const imgSrc = proxyUrl || thumbUrl;
+        if (imgSrc) {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          const imgResult = await new Promise<string | null>((resolve) => {
+            const t = setTimeout(() => resolve(null), IMG_TIMEOUT_MS);
+            img.onload = () => { clearTimeout(t); resolve(resizeImageToDataUrl(img)); };
+            img.onerror = () => { clearTimeout(t); resolve(null); };
+            img.src = imgSrc;
+          });
+          if (imgResult) {
+            pdfImageCacheRef.current.set(url, imgResult);
+            return imgResult;
+          }
         }
       }
 
-      pdfImageCacheRef.current.set(url, placeholder);
-      return placeholder;
+      return null;
     } catch {
-      pdfImageCacheRef.current.set(url, placeholder);
-      return placeholder;
+      return null;
     }
+  }
+
+  function isValidPdfImageUrl(url: string | null | undefined): url is string {
+    if (!url || typeof url !== "string") return false;
+    return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:");
   }
 
   async function generatePDF() {
     toast({ title: "Gerando PDF...", description: "Aguarde, carregando imagens." });
+
+    // Clear stale cache so failed attempts don't persist across PDFs
+    pdfImageCacheRef.current.clear();
 
     // Load empresa logo & name
     let logoDataUrl: string | null = null;
@@ -544,25 +557,25 @@ export default function InspecoesSE() {
           .eq("id", empresaId)
           .limit(1)
           .single();
-        if (empresa?.logo_url) {
+        if (isValidPdfImageUrl(empresa?.logo_url)) {
           logoDataUrl = await loadImageAsDataUrl(empresa.logo_url);
         }
         empresaNome = empresa?.nome || "";
       }
     } catch {}
 
-    // Pre-load all item photos
+    // Pre-load all item photos sequentially to guarantee await before PDF render
     const filtered = getFilteredItems();
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
-    await Promise.all(
-      filtered.map(async (item) => {
-        const [antes, depois] = await Promise.all([
-          item.foto_antes ? loadImageAsDataUrl(item.foto_antes) : Promise.resolve(null),
-          item.foto_depois ? loadImageAsDataUrl(item.foto_depois) : Promise.resolve(null),
-        ]);
-        photoCache[item.id] = { antes, depois };
-      })
-    );
+    for (const item of filtered) {
+      const antes = isValidPdfImageUrl(item.foto_antes)
+        ? await loadImageAsDataUrl(item.foto_antes)
+        : null;
+      const depois = isValidPdfImageUrl(item.foto_depois)
+        ? await loadImageAsDataUrl(item.foto_depois)
+        : null;
+      photoCache[item.id] = { antes, depois };
+    }
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
