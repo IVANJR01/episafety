@@ -457,7 +457,11 @@ export default function InspecoesSE() {
       clearTimeout(timeoutId);
       if (!resp.ok) return null;
       const blob = await resp.blob();
-      if (!blob.type.startsWith("image/") && blob.size < 500) return null;
+      // Accept image types OR octet-stream (proxy may not always set correct type)
+      const isImage = blob.type.startsWith("image/") || blob.type === "application/octet-stream" || blob.type === "";
+      if (!isImage && blob.size < 500) return null;
+      // Extra check: if blob is too small it's likely an error page
+      if (blob.size < 200) return null;
       const blobUrl = URL.createObjectURL(blob);
       try {
         const img = new Image();
