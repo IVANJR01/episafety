@@ -491,26 +491,27 @@ export default function InspecoesSE() {
         return result;
       }
 
-      // Attempt 2: Google thumbnail fallback (lighter, no CORS issues)
+      // Attempt 2: try proxy URL explicitly if not already used
       const fileId = extractGDriveFileId(url);
       if (fileId) {
-        const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w${MAX_IMG_WIDTH}`;
-        if (thumbUrl !== resolvedUrl) {
-          const thumbResult = await fetchImageAsDataUrl(thumbUrl, IMG_TIMEOUT_MS);
-          if (thumbResult) {
-            pdfImageCacheRef.current.set(url, thumbResult);
-            return thumbResult;
+        const proxyUrl = getGDriveImageProxyUrl(url);
+        if (proxyUrl && proxyUrl !== resolvedUrl) {
+          const proxyResult = await fetchImageAsDataUrl(proxyUrl, IMG_TIMEOUT_MS);
+          if (proxyResult) {
+            pdfImageCacheRef.current.set(url, proxyResult);
+            return proxyResult;
           }
         }
 
-        // Attempt 3: load via <img> tag (lets browser handle CORS/redirects)
+        // Attempt 3: load via <img> tag with proxy (lets browser handle redirects)
+        const imgSrc = proxyUrl || `https://drive.google.com/thumbnail?id=${fileId}&sz=w${MAX_IMG_WIDTH}`;
         const img = new Image();
         img.crossOrigin = "anonymous";
         const imgResult = await new Promise<string | null>((resolve) => {
           const t = setTimeout(() => resolve(null), IMG_TIMEOUT_MS);
           img.onload = () => { clearTimeout(t); resolve(resizeImageToDataUrl(img)); };
           img.onerror = () => { clearTimeout(t); resolve(null); };
-          img.src = thumbUrl;
+          img.src = imgSrc;
         });
         if (imgResult) {
           pdfImageCacheRef.current.set(url, imgResult);
