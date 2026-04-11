@@ -1052,119 +1052,136 @@ export default function InspecoesSE() {
 
       {/* Edit/Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Registro" : "Novo Registro de Conformidade"}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Data da Inspeção *</Label>
-                <Input type="date" value={form.data_inspecao} onChange={e => setForm(p => ({ ...p, data_inspecao: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Gravidade *</Label>
-                <Select value={form.gravidade} onValueChange={v => setForm(p => ({ ...p, gravidade: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {GRAVIDADE_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
+          <div className="space-y-5 overflow-y-auto flex-1 pr-1">
+            {/* Seção: Localização */}
             <div>
-              <Label>Situação Detectada *</Label>
-              <Textarea placeholder="Descreva a não conformidade ou irregularidade..." value={form.situacao_detectada} onChange={e => setForm(p => ({ ...p, situacao_detectada: e.target.value }))} rows={3} />
-              <Button type="button" variant="outline" size="sm" className="mt-2 gap-1.5" onClick={askAI} disabled={aiLoading || form.situacao_detectada.trim().length < 5}>
-                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {aiLoading ? "Analisando..." : "Sugerir NR, Gravidade e Ação (IA)"}
-              </Button>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Localização</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="font-semibold">Data da Inspeção *</Label>
+                  <Input type="date" value={form.data_inspecao} onChange={e => setForm(p => ({ ...p, data_inspecao: e.target.value }))} className="min-h-[44px]" />
+                </div>
+                <div>
+                  <Label className="font-semibold">Local</Label>
+                  <Input placeholder="Ex: SE Jardim de Piranhas" value={form.local} onChange={e => setForm(p => ({ ...p, local: e.target.value }))} className="min-h-[44px]" />
+                </div>
+              </div>
             </div>
 
+            {/* Seção: Detalhamento */}
             <div>
-              <Label>Referência Normativa</Label>
-              <Input placeholder="Ex: NR-10, Item 10.2.1" value={form.referencia_normativa} onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))} />
-            </div>
-
-            {/* Photos */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Foto ANTES</Label>
-                <input ref={antesRef} type="file" accept="image/*" className="hidden"
-                  onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
-                {(fotoAntesPreview || existingFotoAntes) ? (
-                  <div className="relative mt-1">
-                    <DriveImage src={fotoAntesPreview || existingFotoAntes!} alt="Antes" className="w-full h-28" />
-                    <button
-                      type="button"
-                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
-                      onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); }}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Detalhamento</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="font-semibold">Gravidade *</Label>
+                    <Select value={form.gravidade} onValueChange={v => setForm(p => ({ ...p, gravidade: v }))}>
+                      <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {GRAVIDADE_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
-                ) : (
-                  <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => antesRef.current?.click()}>
-                    <Camera className="w-4 h-4 mr-1" /> Capturar / Selecionar
-                  </Button>
-                )}
-              </div>
-              <div>
-                <Label>Foto DEPOIS</Label>
-                <input ref={depoisRef} type="file" accept="image/*" className="hidden"
-                  onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                {(fotoDepoisPreview || existingFotoDepois) ? (
-                  <div className="relative mt-1">
-                    <DriveImage src={fotoDepoisPreview || existingFotoDepois!} alt="Depois" className="w-full h-28" />
-                    <button
-                      type="button"
-                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
-                      onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); }}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                  <div>
+                    <Label className="font-semibold">Referência Normativa</Label>
+                    <Input placeholder="Ex: NR-10, Item 10.2.1" value={form.referencia_normativa} onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))} className="min-h-[44px]" />
                   </div>
-                ) : (
-                  <Button variant="outline" size="sm" className="w-full mt-1"
-                    onClick={() => depoisRef.current?.click()}
-                    disabled={form.status !== "SOLUCIONADO"}>
-                    <Camera className="w-4 h-4 mr-1" /> {form.status !== "SOLUCIONADO" ? "Somente após solução" : "Capturar"}
+                </div>
+
+                <div>
+                  <Label className="font-semibold">Situação Detectada *</Label>
+                  <Textarea placeholder="Descreva a não conformidade ou irregularidade..." value={form.situacao_detectada} onChange={e => setForm(p => ({ ...p, situacao_detectada: e.target.value }))} rows={4} className="resize-y min-h-[80px]" />
+                  <Button type="button" variant="outline" size="sm" className="mt-2 gap-1.5" onClick={askAI} disabled={aiLoading || form.situacao_detectada.trim().length < 5}>
+                    {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {aiLoading ? "Analisando..." : "Sugerir NR, Gravidade e Ação (IA)"}
                   </Button>
-                )}
+                </div>
               </div>
             </div>
 
+            {/* Seção: Evidências */}
             <div>
-              <Label>O Que Fazer (Ação Corretiva)</Label>
-              <Textarea placeholder="Descreva a ação corretiva necessária..." value={form.acao_corretiva} onChange={e => setForm(p => ({ ...p, acao_corretiva: e.target.value }))} rows={2} />
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Evidências Fotográficas</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="font-semibold">Foto ANTES</Label>
+                  <input ref={antesRef} type="file" accept="image/*" className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
+                  {(fotoAntesPreview || existingFotoAntes) ? (
+                    <div className="relative mt-1">
+                      <DriveImage src={fotoAntesPreview || existingFotoAntes!} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      <button
+                        type="button"
+                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                        onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" size="sm" className="w-full mt-1 min-h-[44px]" onClick={() => antesRef.current?.click()}>
+                      <Camera className="w-4 h-4 mr-1" /> Capturar / Selecionar
+                    </Button>
+                  )}
+                </div>
+                <div>
+                  <Label className="font-semibold">Foto DEPOIS</Label>
+                  <input ref={depoisRef} type="file" accept="image/*" className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
+                  {(fotoDepoisPreview || existingFotoDepois) ? (
+                    <div className="relative mt-1">
+                      <DriveImage src={fotoDepoisPreview || existingFotoDepois!} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      <button
+                        type="button"
+                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                        onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" size="sm" className="w-full mt-1 min-h-[44px]"
+                      onClick={() => depoisRef.current?.click()}
+                      disabled={form.status !== "SOLUCIONADO"}>
+                      <Camera className="w-4 h-4 mr-1" /> {form.status !== "SOLUCIONADO" ? "Somente após solução" : "Capturar"}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Responsável</Label>
-                <Input placeholder="Nome ou setor" value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))} />
-              </div>
-              <div>
-                <Label>Local</Label>
-                <Input placeholder="Ex: SE Jardim de Piranhas" value={form.local} onChange={e => setForm(p => ({ ...p, local: e.target.value }))} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Data Realizado</Label>
-                <Input type="date" value={form.data_realizado} onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))} />
+            {/* Seção: Ação Corretiva */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Ação Corretiva</p>
+              <div className="space-y-3">
+                <div>
+                  <Label className="font-semibold">O Que Fazer</Label>
+                  <Textarea placeholder="Descreva a ação corretiva necessária..." value={form.acao_corretiva} onChange={e => setForm(p => ({ ...p, acao_corretiva: e.target.value }))} rows={2} className="resize-y" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="font-semibold">Responsável</Label>
+                    <Input placeholder="Nome ou setor" value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))} className="min-h-[44px]" />
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Status</Label>
+                    <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+                      <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label className="font-semibold">Data Realizado</Label>
+                  <Input type="date" value={form.data_realizado} onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))} className="min-h-[44px]" />
+                </div>
               </div>
             </div>
           </div>
@@ -1177,12 +1194,12 @@ export default function InspecoesSE() {
             </div>
           )}
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 sticky bottom-0 bg-background pt-3 border-t">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={handleSave} disabled={saving} className="min-h-[44px]">
               {saving ? (
                 <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando fotos...</>
-              ) : "Salvar"}
+              ) : "Salvar Inspeção"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1193,10 +1210,10 @@ export default function InspecoesSE() {
 
 function GravidadeBadge({ gravidade }: { gravidade: string }) {
   const colors: Record<string, string> = {
-    "LEVE": "bg-blue-100 text-blue-800 border-blue-200",
-    "MODERADO": "bg-amber-100 text-amber-800 border-amber-200",
-    "GRAVE": "bg-orange-100 text-orange-800 border-orange-200",
-    "RISCO CRÍTICO": "bg-red-100 text-red-800 border-red-200",
+    "LEVE": "bg-green-100 text-green-800 border-green-300",
+    "MODERADO": "bg-amber-100 text-amber-800 border-amber-300",
+    "GRAVE": "bg-red-100 text-red-800 border-red-300",
+    "RISCO CRÍTICO": "bg-red-200 text-red-900 border-red-400",
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colors[gravidade] || "bg-muted text-muted-foreground"}`}>
