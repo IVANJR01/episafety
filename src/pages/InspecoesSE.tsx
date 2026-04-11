@@ -885,8 +885,8 @@ export default function InspecoesSE() {
                   <TableHead className="w-[50px]">N°</TableHead>
                   <TableHead className="w-[100px]">Data</TableHead>
                   <TableHead>Situação Detectada</TableHead>
-                  <TableHead className="w-[80px]">Antes</TableHead>
-                  <TableHead className="w-[80px]">Depois</TableHead>
+                  <TableHead className="w-[140px]">Antes</TableHead>
+                  <TableHead className="w-[140px]">Depois</TableHead>
                   <TableHead className="w-[120px]">Gravidade</TableHead>
                   <TableHead>Ref. Normativa</TableHead>
                   <TableHead>O Que Fazer</TableHead>
@@ -907,12 +907,12 @@ export default function InspecoesSE() {
                     <TableCell className="text-xs max-w-[250px] whitespace-normal break-words">{item.situacao_detectada}</TableCell>
                     <TableCell>
                     {item.foto_antes ? (
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-28 h-20 object-contain" thumbnail />
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-32 h-24 object-contain" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       {item.foto_depois ? (
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-28 h-20 object-contain" thumbnail />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-32 h-24 object-contain" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
