@@ -904,15 +904,15 @@ export default function InspecoesSE() {
                     <TableCell className="text-xs">
                       {item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "—"}
                     </TableCell>
-                    <TableCell className="text-xs max-w-[200px] truncate">{item.situacao_detectada}</TableCell>
+                    <TableCell className="text-xs max-w-[250px] whitespace-normal break-words">{item.situacao_detectada}</TableCell>
                     <TableCell>
                     {item.foto_antes ? (
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-14 h-10" thumbnail />
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-20 h-14 object-contain" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       {item.foto_depois ? (
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-14 h-10" thumbnail />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-20 h-14 object-contain" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
@@ -925,7 +925,7 @@ export default function InspecoesSE() {
                         </span>
                       ) : "—"}
                     </TableCell>
-                    <TableCell className="text-xs max-w-[150px] truncate">{item.acao_corretiva || "—"}</TableCell>
+                    <TableCell className="text-xs max-w-[180px] whitespace-normal break-words">{item.acao_corretiva || "—"}</TableCell>
                     <TableCell className="text-xs">{item.responsavel || "—"}</TableCell>
                     <TableCell className="text-xs">{item.local || "—"}</TableCell>
                     <TableCell className="text-xs">
@@ -986,7 +986,10 @@ export default function InspecoesSE() {
                 </div>
 
                 {/* Situação */}
-                <p className="text-sm leading-snug">{item.situacao_detectada}</p>
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold mb-0.5">SITUAÇÃO DETECTADA</p>
+                  <p className="text-sm leading-snug break-words">{item.situacao_detectada}</p>
+                </div>
 
                 {/* Ref Normativa */}
                 {item.referencia_normativa && (
@@ -1004,19 +1007,19 @@ export default function InspecoesSE() {
 
                 {/* Photos */}
                 {(item.foto_antes || item.foto_depois) && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {item.foto_antes ? (
+                  <div className={`grid gap-2 ${item.foto_antes && item.foto_depois ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {item.foto_antes && (
                       <div>
-                        <p className="text-[10px] text-muted-foreground mb-1 font-medium">ANTES</p>
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full h-auto aspect-[3/2]" thumbnail />
+                        <p className="text-[10px] text-muted-foreground mb-1 font-semibold">ANTES</p>
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
                       </div>
-                    ) : <div />}
-                    {item.foto_depois ? (
+                    )}
+                    {item.foto_depois && (
                       <div>
-                        <p className="text-[10px] text-muted-foreground mb-1 font-medium">DEPOIS</p>
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full h-auto aspect-[3/2]" thumbnail />
+                        <p className="text-[10px] text-muted-foreground mb-1 font-semibold">DEPOIS</p>
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
                       </div>
-                    ) : <div />}
+                    )}
                   </div>
                 )}
 
