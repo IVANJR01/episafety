@@ -403,11 +403,13 @@ export default function InspecoesSE() {
   async function resolveDriveUrl(url: string): Promise<string> {
     if (!url.includes("drive.google.com")) return url;
 
-    const thumbnailUrl = getGDriveThumbnailUrl(url, MAX_IMG_WIDTH);
-    if (thumbnailUrl) return thumbnailUrl;
-
+    // Priority 1: proxy URL (avoids CORS, most reliable for PDF fetch)
     const proxyUrl = getGDriveImageProxyUrl(url);
     if (proxyUrl) return proxyUrl;
+
+    // Fallback: thumbnail URL
+    const thumbnailUrl = getGDriveThumbnailUrl(url, MAX_IMG_WIDTH);
+    if (thumbnailUrl) return thumbnailUrl;
 
     const fileId = extractGDriveFileId(url);
     if (!fileId) return url;
