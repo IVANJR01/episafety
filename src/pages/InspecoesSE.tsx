@@ -804,7 +804,19 @@ export default function InspecoesSE() {
       const cache = photoCache[item.id];
       if (cache?.antes) {
         try {
-          drawFittedImage(cache.antes, x, y, scaledWidths[4], ROW_H);
+          drawFittedImage(cache.antes, x, y, scaledWidths[3], ROW_H);
+        } catch {
+          drawNoPhoto(x, y, scaledWidths[3], ROW_H);
+        }
+      } else {
+        drawNoPhoto(x, y, scaledWidths[3], ROW_H);
+      }
+      x += scaledWidths[3];
+
+      // Foto Depois - fitted inside cell
+      if (cache?.depois) {
+        try {
+          drawFittedImage(cache.depois, x, y, scaledWidths[4], ROW_H);
         } catch {
           drawNoPhoto(x, y, scaledWidths[4], ROW_H);
         }
@@ -813,18 +825,6 @@ export default function InspecoesSE() {
       }
       x += scaledWidths[4];
 
-      // Foto Depois - fitted inside cell
-      if (cache?.depois) {
-        try {
-          drawFittedImage(cache.depois, x, y, scaledWidths[5], ROW_H);
-        } catch {
-          drawNoPhoto(x, y, scaledWidths[5], ROW_H);
-        }
-      } else {
-        drawNoPhoto(x, y, scaledWidths[5], ROW_H);
-      }
-      x += scaledWidths[5];
-
       // Gravidade - filled cell background with white text for critical levels
       const gravText = item.gravidade || "";
       const gravUpper = gravText.toUpperCase();
@@ -832,36 +832,35 @@ export default function InspecoesSE() {
       const isGravModerado = gravUpper.includes("MODERADO");
       if (isGravCritical) {
         doc.setFillColor(220, 38, 38);
-        doc.rect(x, y, scaledWidths[6], ROW_H, "F");
-        drawCenteredText(gravText, x, y, scaledWidths[6], ROW_H, 6.5, true, [255, 255, 255]);
+        doc.rect(x, y, scaledWidths[5], ROW_H, "F");
+        drawCenteredText(gravText, x, y, scaledWidths[5], ROW_H, 6.5, true, [255, 255, 255]);
       } else if (isGravModerado) {
         doc.setFillColor(234, 179, 8);
-        doc.rect(x, y, scaledWidths[6], ROW_H, "F");
-        drawCenteredText(gravText, x, y, scaledWidths[6], ROW_H, 6.5, true, [255, 255, 255]);
+        doc.rect(x, y, scaledWidths[5], ROW_H, "F");
+        drawCenteredText(gravText, x, y, scaledWidths[5], ROW_H, 6.5, true, [255, 255, 255]);
       } else {
-        // Leve - blue bg
         doc.setFillColor(59, 130, 246);
-        doc.rect(x, y, scaledWidths[6], ROW_H, "F");
-        drawCenteredText(gravText, x, y, scaledWidths[6], ROW_H, 6.5, true, [255, 255, 255]);
+        doc.rect(x, y, scaledWidths[5], ROW_H, "F");
+        drawCenteredText(gravText, x, y, scaledWidths[5], ROW_H, 6.5, true, [255, 255, 255]);
       }
-      x += scaledWidths[6];
+      x += scaledWidths[5];
 
       // Ação Corretiva - centered wrapped
-      drawCenteredText(item.acao_corretiva || "", x, y, scaledWidths[7], ROW_H, 5.5);
-      x += scaledWidths[7];
+      drawCenteredText(item.acao_corretiva || "", x, y, scaledWidths[6], ROW_H, 5.5);
+      x += scaledWidths[6];
 
       // Responsável - centered
-      drawCenteredText(item.responsavel || "", x, y, scaledWidths[8], ROW_H, 6);
-      x += scaledWidths[8];
+      drawCenteredText(item.responsavel || "", x, y, scaledWidths[7], ROW_H, 6);
+      x += scaledWidths[7];
 
       // Local - centered
-      drawCenteredText(item.local || "", x, y, scaledWidths[9], ROW_H, 6);
-      x += scaledWidths[9];
+      drawCenteredText(item.local || "", x, y, scaledWidths[8], ROW_H, 6);
+      x += scaledWidths[8];
 
       // Realizado - centered
       const realStr = item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "—";
-      drawCenteredText(realStr, x, y, scaledWidths[10], ROW_H, 6);
-      x += scaledWidths[10];
+      drawCenteredText(realStr, x, y, scaledWidths[9], ROW_H, 6);
+      x += scaledWidths[9];
 
       // Status - filled cell background with white text
       const statusText = item.status || "";
@@ -869,14 +868,14 @@ export default function InspecoesSE() {
       const isSolucionado = statusText.toUpperCase() === "SOLUCIONADO";
       if (isPendente) {
         doc.setFillColor(220, 38, 38);
-        doc.rect(x, y, scaledWidths[11], ROW_H, "F");
-        drawCenteredText(statusText, x, y, scaledWidths[11], ROW_H, 6.5, true, [255, 255, 255]);
+        doc.rect(x, y, scaledWidths[10], ROW_H, "F");
+        drawCenteredText(statusText, x, y, scaledWidths[10], ROW_H, 6.5, true, [255, 255, 255]);
       } else if (isSolucionado) {
         doc.setFillColor(22, 163, 74);
-        doc.rect(x, y, scaledWidths[11], ROW_H, "F");
-        drawCenteredText(statusText, x, y, scaledWidths[11], ROW_H, 6.5, true, [255, 255, 255]);
+        doc.rect(x, y, scaledWidths[10], ROW_H, "F");
+        drawCenteredText(statusText, x, y, scaledWidths[10], ROW_H, 6.5, true, [255, 255, 255]);
       } else {
-        drawCenteredText(statusText, x, y, scaledWidths[11], ROW_H, 6, true);
+        drawCenteredText(statusText, x, y, scaledWidths[10], ROW_H, 6, true);
       }
 
       y += ROW_H;
