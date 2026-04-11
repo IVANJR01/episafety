@@ -441,7 +441,7 @@ export default function InspecoesSE() {
     canvas.width = w;
     canvas.height = h;
     canvas.getContext("2d")!.drawImage(source as any, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", 0.65);
+    return canvas.toDataURL("image/jpeg", 0.82);
   }
 
   /** Tenta carregar imagem via fetch blob, retorna dataUrl ou null */
@@ -558,9 +558,9 @@ export default function InspecoesSE() {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const ROW_H = 42;
-    const IMG_H = 36;
-    const IMG_W = 34;
+    const ROW_H = 58;
+    const IMG_H = 48;
+    const IMG_W = 48;
     const MARGIN = 10;
     const tableWidth = pageWidth - MARGIN * 2;
 
