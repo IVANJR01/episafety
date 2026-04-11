@@ -705,7 +705,7 @@ export default function InspecoesSE() {
       let x = tableStartX;
 
       // N° - centered bold
-      drawCenteredText(String(item.numero || idx + 1), x, y, scaledWidths[0], ROW_H, 7, true);
+      drawCenteredText(String(idx + 1), x, y, scaledWidths[0], ROW_H, 7, true);
       x += scaledWidths[0];
 
       // Data - centered
