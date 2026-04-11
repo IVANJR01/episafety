@@ -907,12 +907,12 @@ export default function InspecoesSE() {
                     <TableCell className="text-xs max-w-[250px] whitespace-normal break-words">{item.situacao_detectada}</TableCell>
                     <TableCell>
                     {item.foto_antes ? (
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-20 h-14 object-contain" thumbnail />
+                        <DriveImage src={item.foto_antes} alt="Antes" className="w-28 h-20 object-contain" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       {item.foto_depois ? (
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-20 h-14 object-contain" thumbnail />
+                        <DriveImage src={item.foto_depois} alt="Depois" className="w-28 h-20 object-contain" thumbnail />
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
