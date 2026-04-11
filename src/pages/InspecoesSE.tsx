@@ -721,10 +721,36 @@ export default function InspecoesSE() {
       drawCenteredText(item.referencia_normativa || "", x, y, scaledWidths[3], ROW_H, 5.5);
       x += scaledWidths[3];
 
+      // Helper: draw image fitted inside cell with padding
+      const CELL_PAD = 2; // mm padding inside cell
+      const drawFittedImage = (dataUrl: string, cellX: number, cellY: number, cellW: number, cellH: number) => {
+        const maxW = cellW - CELL_PAD * 2;
+        const maxH = cellH - CELL_PAD * 2;
+        if (maxW <= 0 || maxH <= 0) return;
+
+        // Decode image to get aspect ratio
+        const img = new Image();
+        img.src = dataUrl;
+        const naturalW = img.naturalWidth || maxW;
+        const naturalH = img.naturalHeight || maxH;
+        const aspect = naturalW / naturalH;
+
+        let drawW = maxW;
+        let drawH = drawW / aspect;
+        if (drawH > maxH) {
+          drawH = maxH;
+          drawW = drawH * aspect;
+        }
+
+        const drawX = cellX + (cellW - drawW) / 2;
+        const drawY = cellY + (cellH - drawH) / 2;
+        doc.addImage(dataUrl, "JPEG", drawX, drawY, drawW, drawH);
+      };
+
       // Helper: draw "sem foto" placeholder as grey box
       const drawNoPhoto = (cellX: number, cellY: number, cellW: number, cellH: number) => {
-        const boxW = IMG_W - 4;
-        const boxH = IMG_H - 4;
+        const boxW = Math.min(cellW - 4, IMG_W - 4);
+        const boxH = Math.min(cellH - 4, IMG_H - 4);
         const bx = cellX + (cellW - boxW) / 2;
         const by = cellY + (cellH - boxH) / 2;
         doc.setFillColor(240, 240, 240);
@@ -740,13 +766,11 @@ export default function InspecoesSE() {
         doc.setFont("helvetica", "normal");
       };
 
-      // Foto Antes - centered image
+      // Foto Antes - fitted inside cell
       const cache = photoCache[item.id];
       if (cache?.antes) {
         try {
-          const imgX = x + (scaledWidths[4] - (IMG_W - 2)) / 2;
-          const imgY = y + (ROW_H - IMG_H) / 2;
-          doc.addImage(cache.antes, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
+          drawFittedImage(cache.antes, x, y, scaledWidths[4], ROW_H);
         } catch {
           drawNoPhoto(x, y, scaledWidths[4], ROW_H);
         }
@@ -755,12 +779,10 @@ export default function InspecoesSE() {
       }
       x += scaledWidths[4];
 
-      // Foto Depois - centered image
+      // Foto Depois - fitted inside cell
       if (cache?.depois) {
         try {
-          const imgX = x + (scaledWidths[5] - (IMG_W - 2)) / 2;
-          const imgY = y + (ROW_H - IMG_H) / 2;
-          doc.addImage(cache.depois, "JPEG", imgX, imgY, IMG_W - 2, IMG_H);
+          drawFittedImage(cache.depois, x, y, scaledWidths[5], ROW_H);
         } catch {
           drawNoPhoto(x, y, scaledWidths[5], ROW_H);
         }
