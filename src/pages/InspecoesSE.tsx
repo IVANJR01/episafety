@@ -827,24 +827,38 @@ export default function InspecoesSE() {
   const solucionados = items.filter(i => i.status === "SOLUCIONADO").length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-xl font-bold">Inspeções</h1>
-          <p className="text-sm text-muted-foreground">
-            {items.length} registro(s) — <span className="text-amber-600">{pendentes} pendente(s)</span> — <span className="text-green-600">{solucionados} solucionado(s)</span>
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Inspeções</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gestão de conformidades e não conformidades</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {canCreate && (
-            <Button onClick={openNew} size="sm">
-              <Plus className="w-4 h-4 mr-1" /> Novo Registro
+            <Button onClick={openNew} size="sm" className="min-h-[40px]">
+              <Plus className="w-4 h-4 mr-1.5" /> Novo Registro
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={generatePDF}>
-            <FileDown className="w-4 h-4 mr-1" /> Gerar PDF
+          <Button variant="outline" size="sm" onClick={generatePDF} className="min-h-[40px]">
+            <FileDown className="w-4 h-4 mr-1.5" /> Gerar PDF
           </Button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg border bg-card p-4 text-center">
+          <p className="text-2xl font-bold">{items.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">Total de Registros</p>
+        </div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
+          <p className="text-2xl font-bold text-amber-700">{pendentes}</p>
+          <p className="text-xs text-amber-600 mt-1">Pendentes</p>
+        </div>
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+          <p className="text-2xl font-bold text-green-700">{solucionados}</p>
+          <p className="text-xs text-green-600 mt-1">Solucionados</p>
         </div>
       </div>
 
@@ -852,7 +866,7 @@ export default function InspecoesSE() {
       <div className="flex flex-wrap gap-3 items-center">
         <Filter className="w-4 h-4 text-muted-foreground" />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[160px] h-10"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos Status</SelectItem>
             <SelectItem value="PENDENTE">Pendente</SelectItem>
@@ -860,7 +874,7 @@ export default function InspecoesSE() {
           </SelectContent>
         </Select>
         <Select value={filterGravidade} onValueChange={setFilterGravidade}>
-          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Gravidade" /></SelectTrigger>
+          <SelectTrigger className="w-[160px] h-10"><SelectValue placeholder="Gravidade" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas Gravidades</SelectItem>
             {GRAVIDADE_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
