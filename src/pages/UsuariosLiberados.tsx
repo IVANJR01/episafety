@@ -117,14 +117,26 @@ export default function UsuariosLiberados() {
       setUsuarios(getCachedData<UsuarioLiberado>("usuarios_liberados") || []);
       return;
     }
-    const { data } = await (supabase.from as any)("usuarios_liberados")
-      .select("*")
-      .order("nome", { ascending: true });
+    const [{ data }, { data: ueData }] = await Promise.all([
+      (supabase.from as any)("usuarios_liberados").select("*").order("nome", { ascending: true }),
+      (supabase.from as any)("usuario_empresas").select("email, empresa_id"),
+    ]);
     if (data) {
-      // Ensure ativo field exists for backward compat
       const normalized = data.map((u: any) => ({ ...u, ativo: u.ativo !== false }));
       setUsuarios(normalized);
       setCachedData("usuarios_liberados", normalized);
+    }
+    // Build map: email -> empresa_ids[]
+    if (ueData) {
+      const map: Record<string, string[]> = {};
+      ueData.forEach((row: any) => {
+        const email = (row.email || "").toLowerCase();
+        if (!map[email]) map[email] = [];
+        if (row.empresa_id && !map[email].includes(row.empresa_id)) {
+          map[email].push(row.empresa_id);
+        }
+      });
+      setUserEmpresasMap(map);
     }
   };
 
