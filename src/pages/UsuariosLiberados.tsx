@@ -790,7 +790,7 @@ export default function UsuariosLiberados() {
                     </div>
                     {unidadesDisponiveis.length > 0 && (
                       <div>
-                        <Label>Unidade / Empresa</Label>
+                        <Label>Unidade / Empresa Principal</Label>
                         <Select value={editEmpresaId} onValueChange={(val) => { setEditEmpresaId(val); setEditContratoId(""); }}>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione a unidade" />
@@ -806,6 +806,60 @@ export default function UsuariosLiberados() {
                             ))}
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Empresa padrão ao fazer login. Defina abaixo as demais empresas que este usuário pode acessar.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Multi-empresa access */}
+                    {unidadesDisponiveis.length > 1 && (
+                      <div>
+                        <Label>Acesso Multi-Empresa</Label>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Selecione todas as empresas/unidades que este usuário pode acessar. Ele poderá alternar entre elas no sistema.
+                        </p>
+                        <div className="border rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
+                          {unidadesDisponiveis.map(e => {
+                            const isChecked = editEmpresasIds.includes(e.id);
+                            return (
+                              <label key={e.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer">
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setEditEmpresasIds(prev => [...prev, e.id]);
+                                    } else {
+                                      setEditEmpresasIds(prev => prev.filter(id => id !== e.id));
+                                    }
+                                  }}
+                                />
+                                <span className="flex items-center gap-1.5 text-sm">
+                                  {e.empresa_pai_id ? <GitBranch className="w-3.5 h-3.5 text-muted-foreground" /> : <Building2 className="w-3.5 h-3.5 text-muted-foreground" />}
+                                  {e.nome}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {editEmpresasIds.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {editEmpresasIds.map(id => {
+                              const emp = empresas.find(e => e.id === id);
+                              return emp ? (
+                                <Badge key={id} variant="secondary" className="text-xs">
+                                  {emp.nome}
+                                  <button
+                                    className="ml-1 hover:text-destructive"
+                                    onClick={() => setEditEmpresasIds(prev => prev.filter(x => x !== id))}
+                                  >
+                                    ×
+                                  </button>
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                     {contratosForEditUnidade.length > 0 && (
