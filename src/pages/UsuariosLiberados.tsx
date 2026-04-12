@@ -465,6 +465,9 @@ export default function UsuariosLiberados() {
         setEditEmail(user.email || "");
         setEditEmpresaId(user.empresa_id || "");
         setEditContratoId(user.contrato_id || "");
+        // Load multi-empresas for this user
+        const ue = userEmpresasMap[(user.email || "").toLowerCase()] || [];
+        setEditEmpresasIds(ue.length > 0 ? ue : (user.empresa_id ? [user.empresa_id] : []));
       }
       setUsuarios(prev => prev.map(u => {
         if (u.id !== permsUserId) return u;
