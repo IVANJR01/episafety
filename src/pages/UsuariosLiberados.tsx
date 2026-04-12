@@ -58,6 +58,8 @@ export default function UsuariosLiberados() {
   const [addingUser, setAddingUser] = useState(false);
   const [savingPerms, setSavingPerms] = useState<string | null>(null);
   const [allContratos, setAllContratos] = useState<{ id: string; nome: string; unidade_id: string }[]>([]);
+  const [editEmpresasIds, setEditEmpresasIds] = useState<string[]>([]);
+  const [userEmpresasMap, setUserEmpresasMap] = useState<Record<string, string[]>>({});
 
   // Filters
   const [filterEmail, setFilterEmail] = useState("");
