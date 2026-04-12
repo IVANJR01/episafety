@@ -62,11 +62,25 @@ const BOTTOM_NAV_MAX = 5;
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { signOut, user, modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
+  const { signOut, user, modulosPermitidos, isSuperAdmin, isPrincipal, empresaId, empresasIds, setActiveEmpresaId } = useAuth();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [faturasAlerta, setFaturasAlerta] = useState(0);
   const [checking, setChecking] = useState(false);
+  const [empresasNomes, setEmpresasNomes] = useState<Record<string, string>>({});
+
+  // Load empresa names for the switcher
+  const showEmpresaSwitcher = empresasIds.length > 1;
+  useEffect(() => {
+    if (!showEmpresaSwitcher) return;
+    supabase.from("empresa_config").select("id, nome").in("id", empresasIds).then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((e: any) => { map[e.id] = e.nome; });
+        setEmpresasNomes(map);
+      }
+    });
+  }, [empresasIds, showEmpresaSwitcher]);
 
   // Busca contagem de faturas pendentes/vencidas para o badge no sidebar
   useEffect(() => {
@@ -445,6 +459,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Download className="w-4 h-4" />
               <span>Instalar App</span>
             </button>
+          )}
+          {/* Company switcher for multi-empresa users */}
+          {showEmpresaSwitcher && (
+            <div className="px-2 mb-2">
+              <select
+                value={empresaId || ""}
+                onChange={(e) => setActiveEmpresaId(e.target.value)}
+                className="w-full text-xs bg-sidebar-accent text-sidebar-foreground rounded-md px-2 py-1.5 border border-sidebar-border focus:outline-none focus:ring-1 focus:ring-primary truncate"
+                title="Alternar empresa"
+              >
+                {empresasIds.map(id => (
+                  <option key={id} value={id}>
+                    {empresasNomes[id] || id}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
           <p className="text-xs text-sidebar-foreground/40 text-center truncate">{user?.email}</p>
           <button
