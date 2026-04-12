@@ -629,11 +629,7 @@ export default function InspecoesSE() {
     doc.setFontSize(15);
     doc.setFont("helvetica", "bold");
     doc.text("GESTÃO DE CONFORMIDADES - INSPEÇÕES", pageWidth / 2, headerY + 5, { align: "center" });
-    if (empresaNome) {
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.text(empresaNome, pageWidth / 2, headerY + 11, { align: "center" });
-    }
+    // Company name removed from PDF header per user request
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
