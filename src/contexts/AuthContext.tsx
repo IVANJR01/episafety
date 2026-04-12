@@ -17,15 +17,21 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   isPrincipal: boolean;
   signOut: () => Promise<void>;
+  /** All empresa IDs this user can access (multi-empresa) */
+  empresasIds: string[];
+  /** Switch the active empresa context */
+  setActiveEmpresaId: (id: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, contratoId: null, isSuperAdmin: false, isPrincipal: false, signOut: async () => {},
+  empresasIds: [], setActiveEmpresaId: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 const AUTH_CACHE_KEY_PREFIX = "offline_auth_cache";
+const ACTIVE_EMPRESA_KEY = "active_empresa_id";
 
 type AuthCache = {
   authorized: boolean;
@@ -34,6 +40,7 @@ type AuthCache = {
   contratoId: string | null;
   isSuperAdmin: boolean;
   isPrincipal: boolean;
+  empresasIds?: string[];
 };
 
 function getAuthCacheKey(email?: string | null) {
@@ -57,6 +64,17 @@ function clearLegacyAuthCache() {
   try { localStorage.removeItem(AUTH_CACHE_KEY_PREFIX); } catch {}
 }
 
+function loadActiveEmpresaId(): string | null {
+  try { return localStorage.getItem(ACTIVE_EMPRESA_KEY); } catch { return null; }
+}
+
+function saveActiveEmpresaId(id: string | null) {
+  try {
+    if (id) localStorage.setItem(ACTIVE_EMPRESA_KEY, id);
+    else localStorage.removeItem(ACTIVE_EMPRESA_KEY);
+  } catch {}
+}
+
 async function checkAuthorized(email: string | undefined): Promise<{ authorized: boolean; modulos: string[]; isPrincipal: boolean; contratoId: string | null }> {
   if (!email) return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
   try {
@@ -68,7 +86,6 @@ async function checkAuthorized(email: string | undefined): Promise<{ authorized:
     if (error) throw error;
 
     if (data) {
-      // Block inactive users
       if (data.ativo === false) {
         return { authorized: false, modulos: [], isPrincipal: false, contratoId: null };
       }
@@ -97,14 +114,12 @@ async function loadProfile(userId: string, email?: string): Promise<{ empresaId:
     if (data && data.length > 0 && data[0].empresa_id) {
       return { empresaId: data[0].empresa_id };
     }
-    // Fallback: try to get empresa_id from usuarios_liberados
     if (email) {
       const { data: ulData } = await (supabase.from as any)("usuarios_liberados")
         .select("empresa_id")
         .eq("email", email.toLowerCase())
         .limit(1);
       if (ulData && ulData.length > 0 && ulData[0].empresa_id) {
-        // Also update profile so it's correct next time
         await (supabase.from as any)("profiles")
           .update({ empresa_id: ulData[0].empresa_id })
           .eq("user_id", userId);
@@ -113,6 +128,19 @@ async function loadProfile(userId: string, email?: string): Promise<{ empresaId:
     }
   } catch {}
   return { empresaId: null };
+}
+
+async function loadUserEmpresas(email: string | undefined): Promise<string[]> {
+  if (!email) return [];
+  try {
+    const { data } = await (supabase.from as any)("usuario_empresas")
+      .select("empresa_id")
+      .eq("email", email.toLowerCase());
+    if (data && data.length > 0) {
+      return data.map((d: any) => d.empresa_id).filter(Boolean);
+    }
+  } catch {}
+  return [];
 }
 
 async function checkSuperAdmin(userId: string): Promise<boolean> {
@@ -138,6 +166,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [contratoId, setContratoId] = useState<string | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isPrincipal, setIsPrincipal] = useState(false);
+  const [empresasIds, setEmpresasIds] = useState<string[]>([]);
+
+  const setActiveEmpresaId = useCallback((id: string) => {
+    if (empresasIds.includes(id) || isSuperAdmin) {
+      setEmpresaId(id);
+      saveActiveEmpresaId(id);
+    }
+  }, [empresasIds, isSuperAdmin]);
 
   const applySignedOutState = useCallback(() => {
     setUser(null);
@@ -148,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setContratoId(null);
     setIsSuperAdmin(false);
     setIsPrincipal(false);
+    setEmpresasIds([]);
   }, []);
 
   const handleAuthCheck = useCallback(async (currentUser: User | null) => {
@@ -159,15 +196,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setContratoId(null);
         setIsSuperAdmin(false);
         setIsPrincipal(false);
+        setEmpresasIds([]);
         return;
       }
 
+      const cachedEmpresas = cached.empresasIds || (cached.empresaId ? [cached.empresaId] : []);
       setAuthorized(cached.authorized);
       setModulosPermitidos(cached.modulos);
-      setEmpresaId(cached.empresaId);
       setContratoId(cached.contratoId || null);
       setIsSuperAdmin(cached.isSuperAdmin);
       setIsPrincipal(cached.isPrincipal || false);
+      setEmpresasIds(cachedEmpresas);
+
+      // Resolve active empresa
+      const saved = loadActiveEmpresaId();
+      if (saved && cachedEmpresas.includes(saved)) {
+        setEmpresaId(saved);
+      } else {
+        setEmpresaId(cached.empresaId);
+      }
     };
 
     clearLegacyAuthCache();
@@ -180,22 +227,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const authCheckTimeout = new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error("auth check timeout")), 5000)
           );
-          const [authResult, profileResult, superAdmin] = await Promise.race([
+          const [authResult, profileResult, superAdmin, userEmpresas] = await Promise.race([
             Promise.all([
               checkAuthorized(currentUser.email),
               loadProfile(currentUser.id, currentUser.email),
               checkSuperAdmin(currentUser.id),
+              loadUserEmpresas(currentUser.email),
             ]),
             authCheckTimeout.then(() => { throw new Error("timeout"); }),
-          ]) as [Awaited<ReturnType<typeof checkAuthorized>>, Awaited<ReturnType<typeof loadProfile>>, boolean];
+          ]) as [Awaited<ReturnType<typeof checkAuthorized>>, Awaited<ReturnType<typeof loadProfile>>, boolean, string[]];
+
+          // Build empresas list: merge profile empresa + usuario_empresas
+          const allEmpresas = Array.from(new Set([
+            ...(profileResult.empresaId ? [profileResult.empresaId] : []),
+            ...userEmpresas,
+          ]));
+
+          // Resolve active empresa
+          const saved = loadActiveEmpresaId();
+          const activeEmpresa = (saved && allEmpresas.includes(saved))
+            ? saved
+            : profileResult.empresaId;
 
           const nextState: AuthCache = {
             authorized: superAdmin || authResult.authorized,
             modulos: superAdmin ? [] : authResult.modulos,
-            empresaId: profileResult.empresaId,
+            empresaId: activeEmpresa,
             contratoId: authResult.contratoId,
             isSuperAdmin: superAdmin,
             isPrincipal: authResult.isPrincipal,
+            empresasIds: allEmpresas,
           };
 
           setAuthorized(nextState.authorized);
@@ -204,16 +265,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setContratoId(nextState.contratoId);
           setIsSuperAdmin(nextState.isSuperAdmin);
           setIsPrincipal(nextState.isPrincipal);
+          setEmpresasIds(allEmpresas);
           saveAuthCache(currentUser.email, nextState);
 
-          // Pre-cache all data for offline use — deferred so the UI stays responsive
-          // Skip for video-only users to speed up portal loading on mobile
+          // Pre-cache — same logic as before
           const isVideoOnly = !nextState.isSuperAdmin && !nextState.isPrincipal &&
             nextState.modulos.length > 0 && nextState.modulos.every(p => p.startsWith("video_treinamentos"));
           if (!isVideoOnly) {
             const deferPrefetch = () => {
               preCacheAllData().catch(() => {});
-              // Stagger dashboard prefetch to avoid flooding network
               setTimeout(() => prefetchDashboardOfflineData().catch(() => {}), 3000);
 
               const hasGestaoEstoque = nextState.isSuperAdmin || nextState.isPrincipal ||
@@ -231,7 +291,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             };
 
-            // Use requestIdleCallback to avoid blocking the main thread
             if (typeof requestIdleCallback === "function") {
               requestIdleCallback(() => deferPrefetch(), { timeout: 8000 });
             } else {
@@ -261,6 +320,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === "SIGNED_OUT") {
         clearCachedSession();
+        saveActiveEmpresaId(null);
         setLoading(false);
         applySignedOutState();
         return;
@@ -283,7 +343,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, 0);
     });
 
-    // Race getSession against a 4-second timeout so the app never hangs offline
     Promise.race([
       supabase.auth.getSession(),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 4000)),
@@ -327,11 +386,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     clearCachedSession();
+    saveActiveEmpresaId(null);
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, contratoId, isSuperAdmin, isPrincipal, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, contratoId, isSuperAdmin, isPrincipal, signOut, empresasIds, setActiveEmpresaId }}>
       {children}
     </AuthContext.Provider>
   );
