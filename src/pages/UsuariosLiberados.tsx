@@ -236,7 +236,14 @@ export default function UsuariosLiberados() {
       if (error) {
         toast({ title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar", description: error.message, variant: "destructive" });
       } else {
-        // empresa_id on profiles is now set by the edge function (service role, bypasses RLS)
+        // Also insert into usuario_empresas for multi-empresa support
+        const targetEmpresaForInsert = novoEmpresaId || empresaId;
+        if (targetEmpresaForInsert) {
+          await (supabase.from as any)("usuario_empresas")
+            .insert({ email: novoEmail.trim().toLowerCase(), empresa_id: targetEmpresaForInsert })
+            .then(() => {})
+            .catch(() => {});
+        }
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado com sucesso!" });
         setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId(""); setNovoContratoId("");
         setNewOpen(false);
