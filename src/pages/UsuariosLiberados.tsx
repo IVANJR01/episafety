@@ -577,6 +577,18 @@ export default function UsuariosLiberados() {
                       <TableCell className="text-sm">
                         <div>
                           {u.empresa_id ? (empresaMap[u.empresa_id] || "—") : <span className="text-muted-foreground italic">Sem empresa</span>}
+                          {(() => {
+                            const ue = userEmpresasMap[(u.email || "").toLowerCase()] || [];
+                            const extras = ue.filter(id => id !== u.empresa_id);
+                            if (extras.length > 0) {
+                              return (
+                                <span className="text-xs text-muted-foreground ml-1" title={extras.map(id => empresaMap[id] || id).join(", ")}>
+                                  +{extras.length}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                           {u.contrato_id && contratoMap[u.contrato_id] && (
                             <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                               <GitBranch className="w-3 h-3" />
