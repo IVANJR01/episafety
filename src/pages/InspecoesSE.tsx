@@ -481,7 +481,7 @@ export default function InspecoesSE() {
     }
   }
 
-  async function loadImageAsDataUrl(url: string): Promise<string | null> {
+  async function loadImageAsDataUrlOnce(url: string): Promise<string | null> {
     const cached = pdfImageCacheRef.current.get(url);
     if (cached !== undefined) return cached;
 
@@ -536,6 +536,21 @@ export default function InspecoesSE() {
     }
   }
 
+  /** loadImageAsDataUrl com retry (até 3 tentativas, intervalo 500ms) */
+  async function loadImageAsDataUrl(url: string): Promise<string | null> {
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const result = await loadImageAsDataUrlOnce(url);
+      if (result) return result;
+      // Limpa cache de falha para permitir nova tentativa
+      pdfImageCacheRef.current.delete(url);
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+    return null;
+  }
+
   function isValidPdfImageUrl(url: string | null | undefined): url is string {
     if (!url || typeof url !== "string") return false;
     return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:");
@@ -564,17 +579,21 @@ export default function InspecoesSE() {
       }
     } catch {}
 
-    // Pre-load all item photos IN PARALLEL for maximum speed
+    // Pre-load all item photos IN PARALLEL with allSettled (never skip slow images)
     const filtered = getFilteredItems();
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
+    const placeholderDataUrl = generatePlaceholderDataUrl();
     const photoPromises = filtered.map(async (item) => {
       const [antes, depois] = await Promise.all([
         isValidPdfImageUrl(item.foto_antes) ? loadImageAsDataUrl(item.foto_antes) : Promise.resolve(null),
         isValidPdfImageUrl(item.foto_depois) ? loadImageAsDataUrl(item.foto_depois) : Promise.resolve(null),
       ]);
-      photoCache[item.id] = { antes, depois };
+      photoCache[item.id] = {
+        antes: isValidPdfImageUrl(item.foto_antes) ? (antes || placeholderDataUrl) : null,
+        depois: isValidPdfImageUrl(item.foto_depois) ? (depois || placeholderDataUrl) : null,
+      };
     });
-    await Promise.all(photoPromises);
+    await Promise.allSettled(photoPromises);
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
