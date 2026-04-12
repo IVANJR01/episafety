@@ -397,7 +397,7 @@ export default function InspecoesSE() {
     }
   }
 
-  const MAX_IMG_WIDTH = 480;
+  const MAX_IMG_WIDTH = 600;
   const IMG_TIMEOUT_MS = 9000;
 
   async function resolveDriveUrl(url: string): Promise<string> {
@@ -445,7 +445,7 @@ export default function InspecoesSE() {
     canvas.width = w;
     canvas.height = h;
     canvas.getContext("2d")!.drawImage(source as any, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", 0.82);
+    return canvas.toDataURL("image/jpeg", 0.5);
   }
 
   /** Tenta carregar imagem via fetch blob, retorna dataUrl ou null */
@@ -564,18 +564,17 @@ export default function InspecoesSE() {
       }
     } catch {}
 
-    // Pre-load all item photos sequentially to guarantee await before PDF render
+    // Pre-load all item photos IN PARALLEL for maximum speed
     const filtered = getFilteredItems();
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
-    for (const item of filtered) {
-      const antes = isValidPdfImageUrl(item.foto_antes)
-        ? await loadImageAsDataUrl(item.foto_antes)
-        : null;
-      const depois = isValidPdfImageUrl(item.foto_depois)
-        ? await loadImageAsDataUrl(item.foto_depois)
-        : null;
+    const photoPromises = filtered.map(async (item) => {
+      const [antes, depois] = await Promise.all([
+        isValidPdfImageUrl(item.foto_antes) ? loadImageAsDataUrl(item.foto_antes) : Promise.resolve(null),
+        isValidPdfImageUrl(item.foto_depois) ? loadImageAsDataUrl(item.foto_depois) : Promise.resolve(null),
+      ]);
       photoCache[item.id] = { antes, depois };
-    }
+    });
+    await Promise.all(photoPromises);
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
