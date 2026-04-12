@@ -338,6 +338,22 @@ export default function UsuariosLiberados() {
           body: { email: newEmail, empresa_id: newEmpresaId },
         }).catch(() => {});
       }
+
+      // Sync usuario_empresas (multi-empresa)
+      try {
+        // Delete existing entries
+        await (supabase.from as any)("usuario_empresas")
+          .delete()
+          .eq("email", newEmail);
+        // Insert new entries
+        if (editEmpresasIds.length > 0) {
+          const rows = editEmpresasIds.map(eId => ({ email: newEmail, empresa_id: eId }));
+          await (supabase.from as any)("usuario_empresas").insert(rows);
+        }
+        // Update local map
+        setUserEmpresasMap(prev => ({ ...prev, [newEmail]: [...editEmpresasIds] }));
+      } catch {}
+
       toast({ title: "Dados atualizados!" });
       setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: newNome, email: newEmail, empresa_id: newEmpresaId, contrato_id: newContratoId } : u));
     }
