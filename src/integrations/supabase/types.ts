@@ -2041,6 +2041,38 @@ export type Database = {
         }
         Relationships: []
       }
+      usuario_empresas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          empresa_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          empresa_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          empresa_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usuario_empresas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usuarios_liberados: {
         Row: {
           ativo: boolean
@@ -2339,6 +2371,7 @@ export type Database = {
       get_filial_epis: { Args: { _filial_id: string }; Returns: Json }
       get_my_funcionario_ids: { Args: never; Returns: string[] }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
+      get_user_empresa_ids: { Args: { _email: string }; Returns: string[] }
       get_user_parent_empresa_id: {
         Args: { _user_id: string }
         Returns: string

@@ -58,6 +58,8 @@ export default function UsuariosLiberados() {
   const [addingUser, setAddingUser] = useState(false);
   const [savingPerms, setSavingPerms] = useState<string | null>(null);
   const [allContratos, setAllContratos] = useState<{ id: string; nome: string; unidade_id: string }[]>([]);
+  const [editEmpresasIds, setEditEmpresasIds] = useState<string[]>([]);
+  const [userEmpresasMap, setUserEmpresasMap] = useState<Record<string, string[]>>({});
 
   // Filters
   const [filterEmail, setFilterEmail] = useState("");
@@ -115,14 +117,26 @@ export default function UsuariosLiberados() {
       setUsuarios(getCachedData<UsuarioLiberado>("usuarios_liberados") || []);
       return;
     }
-    const { data } = await (supabase.from as any)("usuarios_liberados")
-      .select("*")
-      .order("nome", { ascending: true });
+    const [{ data }, { data: ueData }] = await Promise.all([
+      (supabase.from as any)("usuarios_liberados").select("*").order("nome", { ascending: true }),
+      (supabase.from as any)("usuario_empresas").select("email, empresa_id"),
+    ]);
     if (data) {
-      // Ensure ativo field exists for backward compat
       const normalized = data.map((u: any) => ({ ...u, ativo: u.ativo !== false }));
       setUsuarios(normalized);
       setCachedData("usuarios_liberados", normalized);
+    }
+    // Build map: email -> empresa_ids[]
+    if (ueData) {
+      const map: Record<string, string[]> = {};
+      ueData.forEach((row: any) => {
+        const email = (row.email || "").toLowerCase();
+        if (!map[email]) map[email] = [];
+        if (row.empresa_id && !map[email].includes(row.empresa_id)) {
+          map[email].push(row.empresa_id);
+        }
+      });
+      setUserEmpresasMap(map);
     }
   };
 
@@ -222,7 +236,14 @@ export default function UsuariosLiberados() {
       if (error) {
         toast({ title: error.message.includes("unique") ? "E-mail já cadastrado" : "Erro ao adicionar", description: error.message, variant: "destructive" });
       } else {
-        // empresa_id on profiles is now set by the edge function (service role, bypasses RLS)
+        // Also insert into usuario_empresas for multi-empresa support
+        const targetEmpresaForInsert = novoEmpresaId || empresaId;
+        if (targetEmpresaForInsert) {
+          await (supabase.from as any)("usuario_empresas")
+            .insert({ email: novoEmail.trim().toLowerCase(), empresa_id: targetEmpresaForInsert })
+            .then(() => {})
+            .catch(() => {});
+        }
         toast({ title: fnData?.already_exists ? "Usuário existente vinculado!" : "Usuário criado com sucesso!" });
         setNovoEmail(""); setNovoNome(""); setNovaSenha(""); setNovoEmpresaId(""); setNovoContratoId("");
         setNewOpen(false);
@@ -324,6 +345,22 @@ export default function UsuariosLiberados() {
           body: { email: newEmail, empresa_id: newEmpresaId },
         }).catch(() => {});
       }
+
+      // Sync usuario_empresas (multi-empresa)
+      try {
+        // Delete existing entries
+        await (supabase.from as any)("usuario_empresas")
+          .delete()
+          .eq("email", newEmail);
+        // Insert new entries
+        if (editEmpresasIds.length > 0) {
+          const rows = editEmpresasIds.map(eId => ({ email: newEmail, empresa_id: eId }));
+          await (supabase.from as any)("usuario_empresas").insert(rows);
+        }
+        // Update local map
+        setUserEmpresasMap(prev => ({ ...prev, [newEmail]: [...editEmpresasIds] }));
+      } catch {}
+
       toast({ title: "Dados atualizados!" });
       setUsuarios(prev => prev.map(u => u.id === userId ? { ...u, nome: newNome, email: newEmail, empresa_id: newEmpresaId, contrato_id: newContratoId } : u));
     }
@@ -435,6 +472,9 @@ export default function UsuariosLiberados() {
         setEditEmail(user.email || "");
         setEditEmpresaId(user.empresa_id || "");
         setEditContratoId(user.contrato_id || "");
+        // Load multi-empresas for this user
+        const ue = userEmpresasMap[(user.email || "").toLowerCase()] || [];
+        setEditEmpresasIds(ue.length > 0 ? ue : (user.empresa_id ? [user.empresa_id] : []));
       }
       setUsuarios(prev => prev.map(u => {
         if (u.id !== permsUserId) return u;
@@ -544,6 +584,18 @@ export default function UsuariosLiberados() {
                       <TableCell className="text-sm">
                         <div>
                           {u.empresa_id ? (empresaMap[u.empresa_id] || "—") : <span className="text-muted-foreground italic">Sem empresa</span>}
+                          {(() => {
+                            const ue = userEmpresasMap[(u.email || "").toLowerCase()] || [];
+                            const extras = ue.filter(id => id !== u.empresa_id);
+                            if (extras.length > 0) {
+                              return (
+                                <span className="text-xs text-muted-foreground ml-1" title={extras.map(id => empresaMap[id] || id).join(", ")}>
+                                  +{extras.length}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                           {u.contrato_id && contratoMap[u.contrato_id] && (
                             <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                               <GitBranch className="w-3 h-3" />
@@ -757,7 +809,7 @@ export default function UsuariosLiberados() {
                     </div>
                     {unidadesDisponiveis.length > 0 && (
                       <div>
-                        <Label>Unidade / Empresa</Label>
+                        <Label>Unidade / Empresa Principal</Label>
                         <Select value={editEmpresaId} onValueChange={(val) => { setEditEmpresaId(val); setEditContratoId(""); }}>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione a unidade" />
@@ -773,6 +825,60 @@ export default function UsuariosLiberados() {
                             ))}
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Empresa padrão ao fazer login. Defina abaixo as demais empresas que este usuário pode acessar.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Multi-empresa access */}
+                    {unidadesDisponiveis.length > 1 && (
+                      <div>
+                        <Label>Acesso Multi-Empresa</Label>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Selecione todas as empresas/unidades que este usuário pode acessar. Ele poderá alternar entre elas no sistema.
+                        </p>
+                        <div className="border rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
+                          {unidadesDisponiveis.map(e => {
+                            const isChecked = editEmpresasIds.includes(e.id);
+                            return (
+                              <label key={e.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer">
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setEditEmpresasIds(prev => [...prev, e.id]);
+                                    } else {
+                                      setEditEmpresasIds(prev => prev.filter(id => id !== e.id));
+                                    }
+                                  }}
+                                />
+                                <span className="flex items-center gap-1.5 text-sm">
+                                  {e.empresa_pai_id ? <GitBranch className="w-3.5 h-3.5 text-muted-foreground" /> : <Building2 className="w-3.5 h-3.5 text-muted-foreground" />}
+                                  {e.nome}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {editEmpresasIds.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {editEmpresasIds.map(id => {
+                              const emp = empresas.find(e => e.id === id);
+                              return emp ? (
+                                <Badge key={id} variant="secondary" className="text-xs">
+                                  {emp.nome}
+                                  <button
+                                    className="ml-1 hover:text-destructive"
+                                    onClick={() => setEditEmpresasIds(prev => prev.filter(x => x !== id))}
+                                  >
+                                    ×
+                                  </button>
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                     {contratosForEditUnidade.length > 0 && (
