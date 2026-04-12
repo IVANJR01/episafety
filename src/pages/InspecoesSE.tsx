@@ -911,6 +911,11 @@ export default function InspecoesSE() {
     doc.setTextColor(0);
 
     doc.save(`Conformidades_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+
+    // Free memory: clear cached Base64 strings
+    pdfImageCacheRef.current.clear();
+    Object.keys(photoCache).forEach((k) => delete photoCache[k]);
+
     toast({ title: "PDF gerado com sucesso!" });
   }
 
