@@ -582,7 +582,7 @@ export default function InspecoesSE() {
     // Pre-load all item photos IN PARALLEL with allSettled (never skip slow images)
     const filtered = getFilteredItems();
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
-    const placeholderDataUrl = createPlaceholderDataUrl();
+    const placeholderDataUrl = generatePlaceholderDataUrl();
     const photoPromises = filtered.map(async (item) => {
       const [antes, depois] = await Promise.all([
         isValidPdfImageUrl(item.foto_antes) ? loadImageAsDataUrl(item.foto_antes) : Promise.resolve(null),
