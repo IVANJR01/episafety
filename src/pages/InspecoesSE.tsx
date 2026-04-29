@@ -562,7 +562,7 @@ export default function InspecoesSE() {
     return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:");
   }
 
-  async function generatePDF() {
+  async function generatePDF(dateRange?: { start?: Date; end?: Date }) {
     toast({ title: "Gerando PDF...", description: "Aguarde, carregando imagens." });
 
     // Clear stale cache so failed attempts don't persist across PDFs
@@ -586,7 +586,7 @@ export default function InspecoesSE() {
     } catch {}
 
     // Pre-load all item photos IN PARALLEL with allSettled (never skip slow images)
-    const filtered = getFilteredItems();
+    const filtered = getFilteredItems(dateRange);
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
     const placeholderDataUrl = generatePlaceholderDataUrl();
     const photoPromises = filtered.map(async (item) => {
