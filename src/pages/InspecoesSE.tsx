@@ -972,7 +972,16 @@ export default function InspecoesSE() {
               <Plus className="w-4 h-4 mr-1.5" /> Novo Registro
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={generatePDF} className="min-h-[40px]">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setExportDateStart(undefined);
+              setExportDateEnd(undefined);
+              setExportDialogOpen(true);
+            }}
+            className="min-h-[40px]"
+          >
             <FileDown className="w-4 h-4 mr-1.5" /> Gerar PDF
           </Button>
         </div>
