@@ -1397,6 +1397,95 @@ export default function InspecoesSE() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Exportação de PDF com filtro por intervalo de datas */}
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exportar Relatório</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>Data de Início</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !exportDateStart && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {exportDateStart
+                      ? format(exportDateStart, "dd/MM/yyyy", { locale: ptBR })
+                      : <span>Selecione a data de início</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={exportDateStart}
+                    onSelect={setExportDateStart}
+                    initialFocus
+                    locale={ptBR}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Data de Fim</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !exportDateEnd && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {exportDateEnd
+                      ? format(exportDateEnd, "dd/MM/yyyy", { locale: ptBR })
+                      : <span>Selecione a data de fim</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={exportDateEnd}
+                    onSelect={setExportDateEnd}
+                    disabled={(date) => exportDateStart ? date < exportDateStart : false}
+                    initialFocus
+                    locale={ptBR}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!exportDateStart || !exportDateEnd}
+              onClick={async () => {
+                if (!exportDateStart || !exportDateEnd) return;
+                setExportDialogOpen(false);
+                await generatePDF({ start: exportDateStart, end: exportDateEnd });
+              }}
+            >
+              <FileDown className="w-4 h-4 mr-1.5" />
+              Exportar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
