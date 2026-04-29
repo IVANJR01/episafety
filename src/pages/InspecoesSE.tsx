@@ -940,10 +940,16 @@ export default function InspecoesSE() {
     toast({ title: "PDF gerado com sucesso!" });
   }
 
-  function getFilteredItems() {
+  function getFilteredItems(opts?: { start?: Date; end?: Date }) {
     return items.filter(i => {
       if (filterStatus !== "all" && i.status !== filterStatus) return false;
       if (filterGravidade !== "all" && i.gravidade !== filterGravidade) return false;
+      if (opts?.start || opts?.end) {
+        const d = i.data_inspecao ? new Date(i.data_inspecao + "T00:00:00") : null;
+        if (!d) return false;
+        if (opts.start && d < new Date(format(opts.start, "yyyy-MM-dd") + "T00:00:00")) return false;
+        if (opts.end && d > new Date(format(opts.end, "yyyy-MM-dd") + "T23:59:59")) return false;
+      }
       return true;
     });
   }
