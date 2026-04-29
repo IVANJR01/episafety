@@ -78,6 +78,9 @@ export default function InspecoesSE() {
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportDateStart, setExportDateStart] = useState<Date | undefined>(undefined);
+  const [exportDateEnd, setExportDateEnd] = useState<Date | undefined>(undefined);
   const { form, setForm, resetForm: resetDraft, hasDraft } = useFormDraft("inspecoes_se", emptyForm);
   const [fotoAntesFile, setFotoAntesFile] = useState<File | null>(null);
   const [fotoAntesPreview, setFotoAntesPreview] = useState<string | null>(null);
