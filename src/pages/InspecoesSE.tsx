@@ -12,7 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon } from "lucide-react";
+import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import DriveImage from "@/components/DriveImage";
 import { extractGDriveFileId, getGDriveImageProxyUrl, getGDriveThumbnailUrl } from "@/lib/googleDrive";
 import { format } from "date-fns";
@@ -75,6 +78,9 @@ export default function InspecoesSE() {
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportDateStart, setExportDateStart] = useState<Date | undefined>(undefined);
+  const [exportDateEnd, setExportDateEnd] = useState<Date | undefined>(undefined);
   const { form, setForm, resetForm: resetDraft, hasDraft } = useFormDraft("inspecoes_se", emptyForm);
   const [fotoAntesFile, setFotoAntesFile] = useState<File | null>(null);
   const [fotoAntesPreview, setFotoAntesPreview] = useState<string | null>(null);
@@ -556,7 +562,7 @@ export default function InspecoesSE() {
     return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:");
   }
 
-  async function generatePDF() {
+  async function generatePDF(dateRange?: { start?: Date; end?: Date }) {
     toast({ title: "Gerando PDF...", description: "Aguarde, carregando imagens." });
 
     // Clear stale cache so failed attempts don't persist across PDFs
@@ -580,7 +586,7 @@ export default function InspecoesSE() {
     } catch {}
 
     // Pre-load all item photos IN PARALLEL with allSettled (never skip slow images)
-    const filtered = getFilteredItems();
+    const filtered = getFilteredItems(dateRange);
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
     const placeholderDataUrl = generatePlaceholderDataUrl();
     const photoPromises = filtered.map(async (item) => {
@@ -934,10 +940,16 @@ export default function InspecoesSE() {
     toast({ title: "PDF gerado com sucesso!" });
   }
 
-  function getFilteredItems() {
+  function getFilteredItems(opts?: { start?: Date; end?: Date }) {
     return items.filter(i => {
       if (filterStatus !== "all" && i.status !== filterStatus) return false;
       if (filterGravidade !== "all" && i.gravidade !== filterGravidade) return false;
+      if (opts?.start || opts?.end) {
+        const d = i.data_inspecao ? new Date(i.data_inspecao + "T00:00:00") : null;
+        if (!d) return false;
+        if (opts.start && d < new Date(format(opts.start, "yyyy-MM-dd") + "T00:00:00")) return false;
+        if (opts.end && d > new Date(format(opts.end, "yyyy-MM-dd") + "T23:59:59")) return false;
+      }
       return true;
     });
   }
@@ -960,7 +972,16 @@ export default function InspecoesSE() {
               <Plus className="w-4 h-4 mr-1.5" /> Novo Registro
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={generatePDF} className="min-h-[40px]">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setExportDateStart(undefined);
+              setExportDateEnd(undefined);
+              setExportDialogOpen(true);
+            }}
+            className="min-h-[40px]"
+          >
             <FileDown className="w-4 h-4 mr-1.5" /> Gerar PDF
           </Button>
         </div>
@@ -1372,6 +1393,95 @@ export default function InspecoesSE() {
               {saving ? (
                 <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando fotos...</>
               ) : "Salvar Inspeção"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Exportação de PDF com filtro por intervalo de datas */}
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exportar Relatório</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>Data de Início</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !exportDateStart && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {exportDateStart
+                      ? format(exportDateStart, "dd/MM/yyyy", { locale: ptBR })
+                      : <span>Selecione a data de início</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={exportDateStart}
+                    onSelect={setExportDateStart}
+                    initialFocus
+                    locale={ptBR}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Data de Fim</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !exportDateEnd && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {exportDateEnd
+                      ? format(exportDateEnd, "dd/MM/yyyy", { locale: ptBR })
+                      : <span>Selecione a data de fim</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={exportDateEnd}
+                    onSelect={setExportDateEnd}
+                    disabled={(date) => exportDateStart ? date < exportDateStart : false}
+                    initialFocus
+                    locale={ptBR}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!exportDateStart || !exportDateEnd}
+              onClick={async () => {
+                if (!exportDateStart || !exportDateEnd) return;
+                setExportDialogOpen(false);
+                await generatePDF({ start: exportDateStart, end: exportDateEnd });
+              }}
+            >
+              <FileDown className="w-4 h-4 mr-1.5" />
+              Exportar
             </Button>
           </DialogFooter>
         </DialogContent>
