@@ -17,8 +17,17 @@ serve(async (req) => {
       });
     }
 
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
+      throw new Error("Nenhuma chave de IA configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)");
+    }
+    const useGemini = !!GEMINI_API_KEY;
+    const aiUrl = useGemini
+      ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+      : "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const aiKey = useGemini ? GEMINI_API_KEY : LOVABLE_API_KEY;
+    const aiModel = useGemini ? "gemini-2.5-flash" : "google/gemini-2.5-flash";
 
     const systemPrompt = `Você é um técnico de segurança do trabalho especialista em TODAS as normas regulamentadoras brasileiras vigentes (NR-01 a NR-38).
 
@@ -76,14 +85,14 @@ REGRAS DE ANÁLISE:
 - REGRA CRÍTICA: NÃO invente números de itens específicos da norma. Cite apenas o número da NR e o capítulo/seção geral (ex: "NR-24, Seção 24.3 - Água potável" ou "NR-12, Capítulo XII - Capacitação"). Se não souber o item exato, cite apenas a NR e seu título.
 - Para a NR-24 vigente (Portaria SEPRT nº 1.066/2019), a estrutura é: 24.1 Objetivo, 24.2 Instalações sanitárias, 24.3 Vestiários, 24.4 Locais para refeições, 24.5 Cozinhas, 24.6 Alojamento, 24.7 Vestimentas de trabalho, 24.8 Disposições gerais. O tema "água potável" está na seção 24.8 Disposições gerais.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(aiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${aiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: aiModel,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Situação detectada: "${situacao}"` },

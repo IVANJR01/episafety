@@ -77,9 +77,10 @@ serve(async (req) => {
   }
 
   try {
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }), {
+    if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "Nenhuma chave de IA configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -94,14 +95,22 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Prefer Gemini direct (OpenAI-compatible endpoint); fallback to Lovable Gateway.
+    const useGemini = !!GEMINI_API_KEY;
+    const url = useGemini
+      ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+      : "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const apiKey = useGemini ? GEMINI_API_KEY : LOVABLE_API_KEY;
+    const model = useGemini ? "gemini-2.5-flash" : "google/gemini-2.5-flash";
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...messages,
