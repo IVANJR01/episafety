@@ -417,7 +417,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, contratoId, isSuperAdmin, isPrincipal, signOut, empresasIds, setActiveEmpresaId }}>
+    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, contratoId, isSuperAdmin, isPrincipal, signOut, empresasIds, setActiveEmpresaId, empresaScopeIds }}>
       {children}
     </AuthContext.Provider>
   );
