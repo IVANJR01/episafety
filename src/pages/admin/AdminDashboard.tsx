@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Building2, Shield, Receipt, HardDrive, Users, Database, ArrowRight, Crown } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Building2, Shield, Receipt, HardDrive, Users, Database, ArrowRight, Crown, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Matriz { id: string; nome: string }
 
