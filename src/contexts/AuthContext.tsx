@@ -171,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isPrincipal, setIsPrincipal] = useState(false);
   const [empresasIds, setEmpresasIds] = useState<string[]>([]);
+  const [empresaScopeIds, setEmpresaScopeIds] = useState<string[]>([]);
 
   const setActiveEmpresaId = useCallback((id: string) => {
     if (empresasIds.includes(id) || isSuperAdmin) {
@@ -178,6 +179,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveActiveEmpresaId(id);
     }
   }, [empresasIds, isSuperAdmin]);
+
+  // Resolve empresa scope (matriz + filiais) for client-side filtering.
+  // Necessário porque a RLS de Super Admin libera tudo — sem este filtro,
+  // queries retornariam dados de todas as empresas mesmo após selecionar uma.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!empresaId) { setEmpresaScopeIds([]); return; }
+      try {
+        const { data } = await (supabase.from as any)("empresa_config")
+          .select("id")
+          .eq("empresa_pai_id", empresaId);
+        if (cancelled) return;
+        const filiais = (data || []).map((f: any) => f.id as string);
+        setEmpresaScopeIds([empresaId, ...filiais]);
+      } catch {
+        if (!cancelled) setEmpresaScopeIds([empresaId]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [empresaId]);
 
   const applySignedOutState = useCallback(() => {
     setUser(null);
