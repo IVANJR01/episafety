@@ -120,6 +120,42 @@ export default function AdminDashboard() {
     return () => { cancelled = true; };
   }, [selected]);
 
+  // KPIs por empresa (tabela detalhada)
+  const [perEmpresa, setPerEmpresa] = useState<PerEmpresaRow[]>([]);
+  const [perEmpresaLoading, setPerEmpresaLoading] = useState(false);
+
+  useEffect(() => {
+    if (matrizes.length === 0) { setPerEmpresa([]); return; }
+    let cancelled = false;
+    (async () => {
+      setPerEmpresaLoading(true);
+      try {
+        const rows = await Promise.all(matrizes.map(async (m) => {
+          const { data: filiais } = await (supabase.from as any)("empresa_config")
+            .select("id").eq("empresa_pai_id", m.id);
+          const filiaisIds = (filiais || []).map((f: any) => f.id);
+          const scope = [m.id, ...filiaisIds];
+          const [u, fu, fa] = await Promise.all([
+            supabase.from("usuarios_liberados" as any).select("id", { count: "exact", head: true }).in("empresa_id", scope),
+            supabase.from("funcionarios" as any).select("id", { count: "exact", head: true }).in("empresa_id", scope),
+            supabase.from("faturas" as any).select("id", { count: "exact", head: true }).in("empresa_id", scope).in("situacao", ["aberto", "vencido"]),
+          ]);
+          return {
+            id: m.id, nome: m.nome,
+            filiais: filiaisIds.length,
+            usuarios: (u as any).count || 0,
+            funcionarios: (fu as any).count || 0,
+            faturasAbertas: (fa as any).count || 0,
+          } as PerEmpresaRow;
+        }));
+        if (!cancelled) setPerEmpresa(rows);
+      } finally {
+        if (!cancelled) setPerEmpresaLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [matrizes]);
+
   const cards = useMemo(() => ([
     { label: "Matrizes", value: stats.matrizes, icon: Building2, color: "text-blue-500", bg: "bg-blue-500/10" },
     { label: selected === ALL ? "Filiais / Unidades" : "Filiais desta matriz", value: stats.filiais, icon: GitBranchIcon, color: "text-cyan-500", bg: "bg-cyan-500/10" },
