@@ -147,29 +147,43 @@ export default function AdminDashboard() {
         </Badge>
       </div>
 
-      {/* Empresa selector — isola dados por matriz */}
-      <Card className="border-border/60">
-        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Building2 className="w-4 h-4 text-primary" />
-            Empresa em foco:
+      {/* Empresa selector — isola dados por matriz e propaga para o app inteiro */}
+      <Card className="border-2 border-destructive/30 bg-destructive/5">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <span>
+              Ao selecionar uma empresa, <strong>todo o aplicativo</strong> (Dashboard, EPIs, Funcionários, Entregas, etc.) passa a mostrar somente os dados dessa empresa. Use "Todas" apenas para consolidação administrativa.
+            </span>
           </div>
-          <Select value={selected} onValueChange={setSelected}>
-            <SelectTrigger className="sm:w-[360px]">
-              <SelectValue placeholder="Selecionar empresa" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Todas as empresas (consolidado)</SelectItem>
-              {matrizes.map((m) => (
-                <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Badge variant="secondary" className="ml-auto">
-            {selectedNome}
-          </Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Building2 className="w-4 h-4 text-primary" />
+              Empresa em foco:
+            </div>
+            <Select value={selected} onValueChange={handleChange}>
+              <SelectTrigger className="sm:w-[360px]">
+                <SelectValue placeholder="Selecionar empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as empresas (consolidado)</SelectItem>
+                {matrizes.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Badge variant="secondary" className="sm:ml-auto">
+              {selectedNome}
+            </Badge>
+            {selected !== ALL && (
+              <Button size="sm" onClick={() => navigate("/")}>
+                Abrir app desta empresa
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
+
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {cards.map((c) => (
