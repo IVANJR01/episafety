@@ -39,6 +39,9 @@ import PortalTreinamentos from "@/pages/PortalTreinamentos";
 import Faturas from "@/pages/Faturas";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
+import AdminLayout from "@/components/AdminLayout";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminCloud from "@/pages/admin/AdminCloud";
 
 const QUERY_PERSIST_MAX_AGE = 24 * 60 * 60 * 1000;
 
