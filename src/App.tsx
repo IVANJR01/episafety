@@ -39,6 +39,9 @@ import PortalTreinamentos from "@/pages/PortalTreinamentos";
 import Faturas from "@/pages/Faturas";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
+import AdminLayout from "@/components/AdminLayout";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminCloud from "@/pages/admin/AdminCloud";
 
 const QUERY_PERSIST_MAX_AGE = 24 * 60 * 60 * 1000;
 
@@ -205,6 +208,12 @@ const App = () => (
             <Route path="/install" element={<Install />} />
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+            <Route path="/admin/empresas" element={<AdminLayout><AdminEmpresas /></AdminLayout>} />
+            <Route path="/admin/usuarios" element={<AdminLayout><UsuariosLiberados /></AdminLayout>} />
+            <Route path="/admin/faturas" element={<AdminLayout><Faturas /></AdminLayout>} />
+            <Route path="/admin/backups" element={<AdminLayout><Backups /></AdminLayout>} />
+            <Route path="/admin/cloud" element={<AdminLayout><AdminCloud /></AdminLayout>} />
             <Route path="/*" element={<ProtectedRoute />} />
           </Routes>
         </AuthProvider>
