@@ -23,9 +23,30 @@ interface Stats {
 const ALL = "__all__";
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, empresaId, isSuperAdmin, setActiveEmpresaId } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [matrizes, setMatrizes] = useState<Matriz[]>([]);
-  const [selected, setSelected] = useState<string>(ALL);
+  // Sincroniza com a empresa ativa global (active_empresa_id)
+  const [selected, setSelected] = useState<string>(empresaId || ALL);
+
+  // Quando o seletor mudar, propaga para o contexto global do app
+  function handleChange(value: string) {
+    setSelected(value);
+    if (value === ALL) {
+      try { localStorage.removeItem("active_empresa_id"); } catch {}
+    } else if (isSuperAdmin) {
+      setActiveEmpresaId(value);
+    }
+    // Invalida caches do TanStack Query para forçar reload com novo escopo
+    queryClient.invalidateQueries();
+  }
+
+  // Mantém em sincronia caso o empresaId global mude por outro lugar
+  useEffect(() => {
+    if (empresaId && empresaId !== selected) setSelected(empresaId);
+  }, [empresaId]);
+
   const [stats, setStats] = useState<Stats>({
     matrizes: 0, filiais: 0, usuarios: 0, funcionarios: 0, faturasAbertas: 0, loading: true,
   });
