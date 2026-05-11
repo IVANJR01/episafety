@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Building2, Shield, Receipt, HardDrive, Users, Database, ArrowRight, Crown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+
+interface Matriz { id: string; nome: string }
 
 interface Stats {
   matrizes: number;
@@ -15,44 +18,83 @@ interface Stats {
   loading: boolean;
 }
 
+const ALL = "__all__";
+
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const [matrizes, setMatrizes] = useState<Matriz[]>([]);
+  const [selected, setSelected] = useState<string>(ALL);
   const [stats, setStats] = useState<Stats>({
     matrizes: 0, filiais: 0, usuarios: 0, funcionarios: 0, faturasAbertas: 0, loading: true,
   });
 
+  // Load matrizes once for selector
   useEffect(() => {
+    (async () => {
+      const { data } = await (supabase.from as any)("empresa_config")
+        .select("id,nome")
+        .is("empresa_pai_id", null)
+        .order("nome");
+      setMatrizes((data as Matriz[]) || []);
+    })();
+  }, []);
+
+  // Reload stats whenever selection changes
+  useEffect(() => {
+    let cancelled = false;
     async function load() {
+      setStats((s) => ({ ...s, loading: true }));
       try {
-        const [matrizes, filiais, usuarios, funcionarios, faturas] = await Promise.all([
-          supabase.from("empresa_config" as any).select("id", { count: "exact", head: true }).is("empresa_pai_id", null),
-          supabase.from("empresa_config" as any).select("id", { count: "exact", head: true }).not("empresa_pai_id", "is", null),
-          supabase.from("usuarios_liberados" as any).select("id", { count: "exact", head: true }),
-          supabase.from("funcionarios" as any).select("id", { count: "exact", head: true }),
-          supabase.from("faturas" as any).select("id", { count: "exact", head: true }).in("situacao", ["aberto", "vencido"]),
-        ]);
+        // Resolve empresa scope: matriz + suas filiais
+        let scopeIds: string[] | null = null;
+        if (selected !== ALL) {
+          const { data: filiais } = await (supabase.from as any)("empresa_config")
+            .select("id")
+            .eq("empresa_pai_id", selected);
+          scopeIds = [selected, ...((filiais || []).map((f: any) => f.id))];
+        }
+
+        const applyScope = (q: any) => (scopeIds ? q.in("empresa_id", scopeIds) : q);
+
+        const matrizesQ = selected === ALL
+          ? supabase.from("empresa_config" as any).select("id", { count: "exact", head: true }).is("empresa_pai_id", null)
+          : Promise.resolve({ count: 1 });
+
+        const filiaisQ = selected === ALL
+          ? supabase.from("empresa_config" as any).select("id", { count: "exact", head: true }).not("empresa_pai_id", "is", null)
+          : supabase.from("empresa_config" as any).select("id", { count: "exact", head: true }).eq("empresa_pai_id", selected);
+
+        const usuariosQ = applyScope(supabase.from("usuarios_liberados" as any).select("id", { count: "exact", head: true }));
+        const funcionariosQ = applyScope(supabase.from("funcionarios" as any).select("id", { count: "exact", head: true }));
+        const faturasQ = applyScope(
+          supabase.from("faturas" as any).select("id", { count: "exact", head: true }).in("situacao", ["aberto", "vencido"])
+        );
+
+        const [m, f, u, fu, fa] = await Promise.all([matrizesQ, filiaisQ, usuariosQ, funcionariosQ, faturasQ]);
+        if (cancelled) return;
         setStats({
-          matrizes: matrizes.count || 0,
-          filiais: filiais.count || 0,
-          usuarios: usuarios.count || 0,
-          funcionarios: funcionarios.count || 0,
-          faturasAbertas: faturas.count || 0,
+          matrizes: (m as any).count || 0,
+          filiais: (f as any).count || 0,
+          usuarios: (u as any).count || 0,
+          funcionarios: (fu as any).count || 0,
+          faturasAbertas: (fa as any).count || 0,
           loading: false,
         });
       } catch {
-        setStats((s) => ({ ...s, loading: false }));
+        if (!cancelled) setStats((s) => ({ ...s, loading: false }));
       }
     }
     load();
-  }, []);
+    return () => { cancelled = true; };
+  }, [selected]);
 
-  const cards = [
+  const cards = useMemo(() => ([
     { label: "Matrizes", value: stats.matrizes, icon: Building2, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { label: "Filiais / Unidades", value: stats.filiais, icon: GitBranchIcon, color: "text-cyan-500", bg: "bg-cyan-500/10" },
+    { label: selected === ALL ? "Filiais / Unidades" : "Filiais desta matriz", value: stats.filiais, icon: GitBranchIcon, color: "text-cyan-500", bg: "bg-cyan-500/10" },
     { label: "Usuários liberados", value: stats.usuarios, icon: Shield, color: "text-emerald-500", bg: "bg-emerald-500/10" },
     { label: "Funcionários", value: stats.funcionarios, icon: Users, color: "text-violet-500", bg: "bg-violet-500/10" },
     { label: "Faturas em aberto", value: stats.faturasAbertas, icon: Receipt, color: "text-amber-500", bg: "bg-amber-500/10" },
-  ];
+  ]), [stats, selected]);
 
   const shortcuts = [
     { to: "/admin/empresas", icon: Building2, title: "Empresas / Matrizes", desc: "Criar matriz, filial e usuário responsável." },
@@ -61,6 +103,8 @@ export default function AdminDashboard() {
     { to: "/admin/backups", icon: HardDrive, title: "Backups", desc: "Geração e download dos snapshots semanais." },
     { to: "/admin/cloud", icon: Database, title: "Infraestrutura (Cloud)", desc: "Banco, edge functions, storage, cron." },
   ];
+
+  const selectedNome = selected === ALL ? "Todas as empresas" : (matrizes.find((m) => m.id === selected)?.nome || "—");
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -79,6 +123,30 @@ export default function AdminDashboard() {
           Ambiente Administrativo
         </Badge>
       </div>
+
+      {/* Empresa selector — isola dados por matriz */}
+      <Card className="border-border/60">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Building2 className="w-4 h-4 text-primary" />
+            Empresa em foco:
+          </div>
+          <Select value={selected} onValueChange={setSelected}>
+            <SelectTrigger className="sm:w-[360px]">
+              <SelectValue placeholder="Selecionar empresa" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas as empresas (consolidado)</SelectItem>
+              {matrizes.map((m) => (
+                <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Badge variant="secondary" className="ml-auto">
+            {selectedNome}
+          </Badge>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {cards.map((c) => (
@@ -123,7 +191,6 @@ export default function AdminDashboard() {
   );
 }
 
-// Inline icon to avoid extra import noise
 function GitBranchIcon(props: any) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
