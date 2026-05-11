@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Building2, Shield, Receipt, HardDrive, Users, Database, ArrowRight, Crown } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Building2, Shield, Receipt, HardDrive, Users, Database, ArrowRight, Crown, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Matriz { id: string; nome: string }
 
@@ -21,9 +23,30 @@ interface Stats {
 const ALL = "__all__";
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, empresaId, isSuperAdmin, setActiveEmpresaId } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [matrizes, setMatrizes] = useState<Matriz[]>([]);
-  const [selected, setSelected] = useState<string>(ALL);
+  // Sincroniza com a empresa ativa global (active_empresa_id)
+  const [selected, setSelected] = useState<string>(empresaId || ALL);
+
+  // Quando o seletor mudar, propaga para o contexto global do app
+  function handleChange(value: string) {
+    setSelected(value);
+    if (value === ALL) {
+      try { localStorage.removeItem("active_empresa_id"); } catch {}
+    } else if (isSuperAdmin) {
+      setActiveEmpresaId(value);
+    }
+    // Invalida caches do TanStack Query para forçar reload com novo escopo
+    queryClient.invalidateQueries();
+  }
+
+  // Mantém em sincronia caso o empresaId global mude por outro lugar
+  useEffect(() => {
+    if (empresaId && empresaId !== selected) setSelected(empresaId);
+  }, [empresaId]);
+
   const [stats, setStats] = useState<Stats>({
     matrizes: 0, filiais: 0, usuarios: 0, funcionarios: 0, faturasAbertas: 0, loading: true,
   });
@@ -124,29 +147,43 @@ export default function AdminDashboard() {
         </Badge>
       </div>
 
-      {/* Empresa selector — isola dados por matriz */}
-      <Card className="border-border/60">
-        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Building2 className="w-4 h-4 text-primary" />
-            Empresa em foco:
+      {/* Empresa selector — isola dados por matriz e propaga para o app inteiro */}
+      <Card className="border-2 border-destructive/30 bg-destructive/5">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <span>
+              Ao selecionar uma empresa, <strong>todo o aplicativo</strong> (Dashboard, EPIs, Funcionários, Entregas, etc.) passa a mostrar somente os dados dessa empresa. Use "Todas" apenas para consolidação administrativa.
+            </span>
           </div>
-          <Select value={selected} onValueChange={setSelected}>
-            <SelectTrigger className="sm:w-[360px]">
-              <SelectValue placeholder="Selecionar empresa" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Todas as empresas (consolidado)</SelectItem>
-              {matrizes.map((m) => (
-                <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Badge variant="secondary" className="ml-auto">
-            {selectedNome}
-          </Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Building2 className="w-4 h-4 text-primary" />
+              Empresa em foco:
+            </div>
+            <Select value={selected} onValueChange={handleChange}>
+              <SelectTrigger className="sm:w-[360px]">
+                <SelectValue placeholder="Selecionar empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as empresas (consolidado)</SelectItem>
+                {matrizes.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Badge variant="secondary" className="sm:ml-auto">
+              {selectedNome}
+            </Badge>
+            {selected !== ALL && (
+              <Button size="sm" onClick={() => navigate("/")}>
+                Abrir app desta empresa
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
+
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {cards.map((c) => (
