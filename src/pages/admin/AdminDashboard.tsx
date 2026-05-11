@@ -176,7 +176,7 @@ export default function AdminDashboard() {
               {selectedNome}
             </Badge>
             {selected !== ALL && (
-              <Button size="sm" onClick={() => navigate("/")}>
+              <Button size="sm" onClick={() => navigate(`/?empresa_id=${selected}`)}>
                 Abrir app desta empresa
               </Button>
             )}

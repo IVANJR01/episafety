@@ -42,6 +42,7 @@ import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminCloud from "@/pages/admin/AdminCloud";
+import EmpresaQuerySync from "@/components/EmpresaQuerySync";
 
 const QUERY_PERSIST_MAX_AGE = 24 * 60 * 60 * 1000;
 
@@ -159,6 +160,7 @@ function ProtectedRoute() {
 
   return (
     <AppLayout>
+      <EmpresaQuerySync />
       <Routes>
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
         <Route path="/epis" element={<EPIs />} />

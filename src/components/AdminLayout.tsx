@@ -15,6 +15,7 @@ import {
   GitBranch,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import EmpresaQuerySync from "@/components/EmpresaQuerySync";
 
 interface NavItem {
   path: string;
@@ -139,7 +140,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div className="w-8" />
         </header>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto">
+          <EmpresaQuerySync />
+          {children}
+        </main>
       </div>
     </div>
   );
