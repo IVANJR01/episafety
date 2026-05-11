@@ -269,6 +269,69 @@ export default function AdminDashboard() {
           ))}
         </div>
       </div>
+
+      {/* KPIs por empresa */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            KPIs por empresa
+          </h2>
+          {perEmpresaLoading && <span className="text-xs text-muted-foreground">Carregando…</span>}
+        </div>
+        <Card>
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40">
+                <tr className="text-left">
+                  <th className="px-4 py-2 font-medium">Empresa</th>
+                  <th className="px-4 py-2 font-medium text-right">Filiais</th>
+                  <th className="px-4 py-2 font-medium text-right">Usuários</th>
+                  <th className="px-4 py-2 font-medium text-right">Funcionários</th>
+                  <th className="px-4 py-2 font-medium text-right">Faturas em aberto</th>
+                  <th className="px-4 py-2 font-medium text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perEmpresa.map((r) => {
+                  const isActive = selected === r.id;
+                  return (
+                    <tr key={r.id} className={`border-t border-border/60 ${isActive ? "bg-primary/5" : ""}`}>
+                      <td className="px-4 py-2 font-medium">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                          {r.nome}
+                          {isActive && <Badge variant="secondary" className="text-[10px]">em foco</Badge>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">{r.filiais}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{r.usuarios}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{r.funcionarios}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {r.faturasAbertas > 0
+                          ? <Badge variant="destructive">{r.faturasAbertas}</Badge>
+                          : <span className="text-muted-foreground">0</span>}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleChange(r.id)}>
+                            Filtrar
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => { handleChange(r.id); navigate(`/?empresa_id=${r.id}`); }}>
+                            Abrir
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {perEmpresa.length === 0 && !perEmpresaLoading && (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">Nenhuma empresa cadastrada.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
