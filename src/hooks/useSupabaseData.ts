@@ -21,18 +21,41 @@ const withTimeout = <T,>(promise: Promise<T>, timeoutMs = QUERY_TIMEOUT_MS) => {
   }) as Promise<T>;
 };
 
-const getSupabaseQueryKey = (table: string, orderBy?: string, ascending?: boolean, columns?: string) => [
+const getSupabaseQueryKey = (
+  table: string,
+  orderBy?: string,
+  ascending?: boolean,
+  columns?: string,
+  scopeKey?: string,
+) => [
   "supabase",
   table,
   orderBy || null,
   ascending ?? false,
   columns || "*",
+  scopeKey || "",
 ] as const;
+
+// Tabelas que NÃO possuem coluna empresa_id — não aplicar filtro client-side.
+const TABLES_WITHOUT_EMPRESA_ID = new Set<string>([
+  "conferencia_itens",
+]);
 
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
   const { toast } = useToast();
+  const { isSuperAdmin, empresaScopeIds } = useAuth();
+  // Apenas para Super Admin aplicamos filtro client-side: a RLS deles libera tudo,
+  // então sem isso o seletor de empresa do painel admin não isola os dados.
+  const applyEmpresaFilter = isSuperAdmin
+    && empresaScopeIds.length > 0
+    && !TABLES_WITHOUT_EMPRESA_ID.has(table);
+  const scopeKey = applyEmpresaFilter ? empresaScopeIds.join(",") : "";
+
   const cachedData = useMemo(() => getCachedData<T>(table) ?? undefined, [table]);
-  const queryKey = useMemo(() => getSupabaseQueryKey(table, orderBy, ascending, columns), [table, orderBy, ascending, columns]);
+  const queryKey = useMemo(
+    () => getSupabaseQueryKey(table, orderBy, ascending, columns, scopeKey),
+    [table, orderBy, ascending, columns, scopeKey],
+  );
   const backgroundRefreshStartedRef = useRef(false);
   const errorToastShownRef = useRef(false);
 
@@ -53,6 +76,9 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
 
       try {
         let queryBuilder = (supabase.from as any)(table).select(columns || "*");
+        if (applyEmpresaFilter) {
+          queryBuilder = queryBuilder.in("empresa_id", empresaScopeIds);
+        }
         if (orderBy) queryBuilder = queryBuilder.order(orderBy, { ascending: ascending ?? false });
 
         const { data: rows, error } = await withTimeout(queryBuilder) as any;
