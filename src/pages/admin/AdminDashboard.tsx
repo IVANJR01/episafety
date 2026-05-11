@@ -20,6 +20,15 @@ interface Stats {
   loading: boolean;
 }
 
+interface PerEmpresaRow {
+  id: string;
+  nome: string;
+  filiais: number;
+  usuarios: number;
+  funcionarios: number;
+  faturasAbertas: number;
+}
+
 const ALL = "__all__";
 
 export default function AdminDashboard() {
