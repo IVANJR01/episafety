@@ -21,11 +21,15 @@ interface AuthContextType {
   empresasIds: string[];
   /** Switch the active empresa context */
   setActiveEmpresaId: (id: string) => void;
+  /** Effective empresa scope for client-side filtering (matriz + filiais).
+   *  Used mainly for Super Admin (whose RLS policy returns everything).
+   *  Empty array = sem filtro adicional. */
+  empresaScopeIds: string[];
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, contratoId: null, isSuperAdmin: false, isPrincipal: false, signOut: async () => {},
-  empresasIds: [], setActiveEmpresaId: () => {},
+  empresasIds: [], setActiveEmpresaId: () => {}, empresaScopeIds: [],
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -167,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isPrincipal, setIsPrincipal] = useState(false);
   const [empresasIds, setEmpresasIds] = useState<string[]>([]);
+  const [empresaScopeIds, setEmpresaScopeIds] = useState<string[]>([]);
 
   const setActiveEmpresaId = useCallback((id: string) => {
     if (empresasIds.includes(id) || isSuperAdmin) {
@@ -174,6 +179,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveActiveEmpresaId(id);
     }
   }, [empresasIds, isSuperAdmin]);
+
+  // Resolve empresa scope (matriz + filiais) for client-side filtering.
+  // Necessário porque a RLS de Super Admin libera tudo — sem este filtro,
+  // queries retornariam dados de todas as empresas mesmo após selecionar uma.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!empresaId) { setEmpresaScopeIds([]); return; }
+      try {
+        const { data } = await (supabase.from as any)("empresa_config")
+          .select("id")
+          .eq("empresa_pai_id", empresaId);
+        if (cancelled) return;
+        const filiais = (data || []).map((f: any) => f.id as string);
+        setEmpresaScopeIds([empresaId, ...filiais]);
+      } catch {
+        if (!cancelled) setEmpresaScopeIds([empresaId]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [empresaId]);
 
   const applySignedOutState = useCallback(() => {
     setUser(null);
@@ -391,7 +417,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, contratoId, isSuperAdmin, isPrincipal, signOut, empresasIds, setActiveEmpresaId }}>
+    <AuthContext.Provider value={{ user, session, loading, authorized, modulosPermitidos, empresaId, contratoId, isSuperAdmin, isPrincipal, signOut, empresasIds, setActiveEmpresaId, empresaScopeIds }}>
       {children}
     </AuthContext.Provider>
   );
