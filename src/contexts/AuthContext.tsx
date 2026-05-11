@@ -21,11 +21,15 @@ interface AuthContextType {
   empresasIds: string[];
   /** Switch the active empresa context */
   setActiveEmpresaId: (id: string) => void;
+  /** Effective empresa scope for client-side filtering (matriz + filiais).
+   *  Used mainly for Super Admin (whose RLS policy returns everything).
+   *  Empty array = sem filtro adicional. */
+  empresaScopeIds: string[];
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null, session: null, loading: true, authorized: true, modulosPermitidos: [], empresaId: null, contratoId: null, isSuperAdmin: false, isPrincipal: false, signOut: async () => {},
-  empresasIds: [], setActiveEmpresaId: () => {},
+  empresasIds: [], setActiveEmpresaId: () => {}, empresaScopeIds: [],
 });
 
 export const useAuth = () => useContext(AuthContext);
