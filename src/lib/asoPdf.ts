@@ -88,7 +88,7 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> 
   // Tipo de exame
   doc.setFont("helvetica", "bold"); doc.text("TIPO DE EXAME OCUPACIONAL", M + 2, y); y += 5;
   doc.setFont("helvetica", "normal");
-  const tipos = ["admissional", "periodico", "retorno", "mudanca_risco", "demissional"];
+  const tipos = ["admissional", "periodico", "retorno", "mudanca_risco", "mudanca_funcao", "demissional"];
   let tx = M + 2;
   tipos.forEach((t) => {
     const s = `${check(aso.tipo_exame === t)} ${TIPO[t]}`;
