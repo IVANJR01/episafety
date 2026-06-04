@@ -75,7 +75,14 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> 
   doc.text(`Matrícula: ${f?.matricula || "—"}`, M + 90, y); y += 5;
   doc.text(`Função: ${f?.cargo || "—"}`, M + 2, y);
   doc.text(`Setor: ${f?.setor || "—"}`, M + 90, y); y += 5;
-  doc.text(`Data de admissão: ${dt(f?.data_admissao)}`, M + 2, y); y += 6;
+  doc.text(`Data de admissão: ${dt(f?.data_admissao)}`, M + 2, y); y += 5;
+  if ((aso as any).ghe_ges) {
+    const g: any = (aso as any).ghe_ges;
+    doc.setFont("helvetica", "bold"); doc.text("GHE/GES:", M + 2, y);
+    doc.setFont("helvetica", "normal"); doc.text(`${g.codigo} — ${g.nome}${g.setor ? " (" + g.setor + ")" : ""}`, M + 24, y);
+    y += 5;
+  }
+  y += 1;
   doc.line(M, y, W - M, y); y += 4;
 
   // Tipo de exame
