@@ -85,7 +85,7 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
     queryKey: ["aso-funcionarios", empresaSel],
     enabled: !!empresaSel,
     queryFn: async () => {
-      const { data, error } = await supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_admissao, matricula").eq("empresa_id", empresaSel).order("nome");
+      const { data, error } = await supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_admissao, matricula, ghe_id, ghe_ges(id, codigo, nome, setor)").eq("empresa_id", empresaSel).order("nome");
       if (error) throw error;
       return data || [];
     },
