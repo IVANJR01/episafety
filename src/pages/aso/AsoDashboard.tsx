@@ -81,6 +81,20 @@ export default function AsoDashboard() {
 
   return (
     <div className="space-y-4">
+      {(stats.vencidos > 0 || stats.vencendo > 0) && (
+        <Card className="border-orange-500/40 bg-orange-500/5">
+          <CardContent className="p-3 flex items-center gap-3 flex-wrap">
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
+            <div className="text-sm">
+              <strong>Atenção:</strong>{" "}
+              {stats.vencidos > 0 && <span className="text-destructive">{stats.vencidos} ASO(s) vencido(s)</span>}
+              {stats.vencidos > 0 && stats.vencendo > 0 && " · "}
+              {stats.vencendo > 0 && <span className="text-orange-600">{stats.vencendo} vencendo em 30 dias</span>}
+              . Acesse a aba <em>Relatórios</em> para detalhes.
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <Kpi label="Total ASOs" value={stats.total} icon={FileText} color="bg-primary/10 text-primary" />
         <Kpi label="Aptos" value={stats.aptos} icon={CheckCircle2} color="bg-emerald-500/10 text-emerald-600" />

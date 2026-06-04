@@ -17,7 +17,7 @@ const GRUPO: Record<string, string> = {
 function check(b: boolean) { return b ? "[X]" : "[ ]"; }
 function dt(s?: string | null) { return s ? format(parseISO(s), "dd/MM/yyyy") : "—"; }
 
-export async function gerarPdfAso(asoId: string) {
+async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> {
   const { data: aso, error } = await supabase
     .from("asos")
     .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor, matricula, data_admissao), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj, endereco, logo_url)`)
@@ -161,5 +161,16 @@ export async function gerarPdfAso(asoId: string) {
   doc.addImage(qrData, "PNG", W - M - 28, 297 - M - 30, 22, 22);
   doc.setFontSize(6); doc.text("Verificação", W - M - 17, 297 - M - 6, { align: "center" });
 
-  doc.save(`ASO-${aso.numero_aso}.pdf`);
+  return { doc, numero: aso.numero_aso };
 }
+
+export async function gerarPdfAso(asoId: string) {
+  const { doc, numero } = await buildPdf(asoId);
+  doc.save(`ASO-${numero}.pdf`);
+}
+
+export async function gerarPdfAsoBlob(asoId: string): Promise<Blob> {
+  const { doc } = await buildPdf(asoId);
+  return doc.output("blob");
+}
+
