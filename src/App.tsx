@@ -213,6 +213,7 @@ const App = () => (
             <Route path="/install" element={<Install />} />
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
             <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
             <Route path="/admin/empresas" element={<AdminLayout><AdminEmpresas /></AdminLayout>} />
             <Route path="/admin/usuarios" element={<AdminLayout><UsuariosLiberados /></AdminLayout>} />
