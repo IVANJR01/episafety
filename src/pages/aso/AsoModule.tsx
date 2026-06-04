@@ -11,6 +11,7 @@ import AsoImport from "./AsoImport";
 import AsoLote from "./AsoLote";
 import AsoRelatorios from "./AsoRelatorios";
 import PcmsoGhe from "./PcmsoGhe";
+import AsoDiagnostico from "@/components/aso/AsoDiagnostico";
 
 export default function AsoModule() {
   const [tab, setTab] = useState("dashboard");
@@ -32,6 +33,8 @@ export default function AsoModule() {
           <p className="text-sm text-muted-foreground">Atestado de Saúde Ocupacional — multiempresa</p>
         </div>
       </div>
+
+      <AsoDiagnostico />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="flex flex-wrap h-auto">
