@@ -142,7 +142,7 @@ export default function Funcionarios() {
   const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); fetchUnidadesContratos(); setOpen(true); };
   const openEdit = (f: Funcionario) => {
     setEditing(f);
-    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "", data_demissao: f.data_demissao || "", unidade_id: f.unidade_id || "", contrato_id: f.contrato_id || "" });
+    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "", data_demissao: f.data_demissao || "", unidade_id: f.unidade_id || "", contrato_id: f.contrato_id || "", ghe_id: (f as any).ghe_id || "" });
     fetchUnidadesContratos();
     setOpen(true);
   };
