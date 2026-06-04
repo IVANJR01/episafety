@@ -658,6 +658,17 @@ export default function Funcionarios() {
             <div>
               <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
             </div>
+            <div>
+              <Label>GHE/GES (PCMSO)</Label>
+              <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione o GHE/GES" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {ghes.map(g => <SelectItem key={g.id} value={g.id}>{g.codigo} — {g.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">Define automaticamente os riscos e exames no ASO.</p>
+            </div>
             {editing && (
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Data Demissão</Label><Input type="date" value={form.data_demissao} onChange={e => setForm({...form, data_demissao: e.target.value})} /></div>
