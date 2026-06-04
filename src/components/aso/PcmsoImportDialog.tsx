@@ -273,9 +273,10 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="xlsx">Planilha (Excel/CSV)</TabsTrigger>
-            <TabsTrigger value="texto"><Sparkles className="h-3 w-3 mr-1" />Texto / PDF (IA)</TabsTrigger>
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="xlsx">Planilha</TabsTrigger>
+            <TabsTrigger value="pdf"><FileText className="h-3 w-3 mr-1" />PDF (IA)</TabsTrigger>
+            <TabsTrigger value="texto"><Sparkles className="h-3 w-3 mr-1" />Texto (IA)</TabsTrigger>
           </TabsList>
 
           <TabsContent value="xlsx" className="mt-3 space-y-3">
@@ -292,6 +293,23 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
             </p>
           </TabsContent>
 
+          <TabsContent value="pdf" className="mt-3 space-y-3">
+            <Label className="text-xs">Envie o PDF do PCMSO. A IA lê o documento completo (Quadro Laboral, GHEs, riscos e exames) e estrutura para importação.</Label>
+            <div className="flex gap-2 flex-wrap items-center">
+              <Label className="cursor-pointer">
+                <Input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && parsePdfIA(e.target.files[0])} disabled={loading} />
+                <Button asChild disabled={loading}>
+                  <span>
+                    {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                    {loading ? "Interpretando PDF..." : "Carregar PDF do PCMSO"}
+                  </span>
+                </Button>
+              </Label>
+              <span className="text-xs text-muted-foreground">Até 20 MB. A IA pode levar 30-60s.</span>
+            </div>
+            <p className="text-xs text-muted-foreground">A IA extrai GHEs/GES, funções por setor, riscos (físico, químico, biológico, ergonômico, acidente) e exames (admissional, periódico, etc.) diretamente do PDF.</p>
+          </TabsContent>
+
           <TabsContent value="texto" className="mt-3 space-y-3">
             <Label className="text-xs">Cole o texto do PCMSO (Quadro Laboral, lista por GHE, tabela copiada de PDF, etc.)</Label>
             <Textarea rows={10} value={textoLivre} onChange={(e) => setTextoLivre(e.target.value)} placeholder="GHE 01 — Administrativo / PCP&#10;Funções: Auxiliar Administrativo, Supervisor de PCP&#10;Riscos: Ergonômico — postura sentada prolongada&#10;Exames: Clínico ocupacional, Acuidade visual&#10;&#10;GHE 02 — Costura..." />
@@ -301,9 +319,9 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
                 Interpretar com IA
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Dica: para PDF, abra o arquivo, selecione tudo (Ctrl+A), copie e cole aqui.</p>
           </TabsContent>
         </Tabs>
+
 
         {ghes.length > 0 && (
           <div className="border rounded-lg p-3 space-y-2 mt-3 bg-muted/30">
