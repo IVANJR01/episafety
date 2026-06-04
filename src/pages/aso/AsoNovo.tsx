@@ -200,6 +200,9 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
         observacoes,
         local_emissao: localEmissao,
         status: "emitido",
+        ghe_id: (funcSel as any)?.ghe_id || null,
+        riscos_snapshot: riscos.filter(r => r.descricao.trim()),
+        exames_snapshot: exames.filter(e => e.nome_exame.trim()).map(e => ({ nome_exame: e.nome_exame })),
       };
 
       if (!asoId) {
