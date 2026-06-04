@@ -106,6 +106,60 @@ export type Database = {
           },
         ]
       }
+      aso_download_logs: {
+        Row: {
+          acao: string
+          aso_id: string | null
+          created_at: string
+          empresa_id: string
+          funcionario_id: string | null
+          id: string
+          ip: string | null
+          perfil_usuario: string | null
+          user_agent: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          acao: string
+          aso_id?: string | null
+          created_at?: string
+          empresa_id: string
+          funcionario_id?: string | null
+          id?: string
+          ip?: string | null
+          perfil_usuario?: string | null
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          acao?: string
+          aso_id?: string | null
+          created_at?: string
+          empresa_id?: string
+          funcionario_id?: string | null
+          id?: string
+          ip?: string | null
+          perfil_usuario?: string | null
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_download_logs_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_download_logs_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aso_exames: {
         Row: {
           aso_id: string
