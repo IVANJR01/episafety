@@ -149,6 +149,7 @@ export default function PcmsoGhe() {
       </Card>
 
       <GheFormDialog open={openForm} onOpenChange={setOpenForm} empresaId={empresaSel} editing={editing} onSaved={() => qc.invalidateQueries({ queryKey: ["ghe-list"] })} />
+      <PcmsoImportDialog open={openImport} onOpenChange={setOpenImport} empresaId={empresaSel} onImported={() => qc.invalidateQueries({ queryKey: ["ghe-list"] })} />
       {openGhe && <GheDetailDialog ghe={openGhe} onClose={() => { setOpenGhe(null); qc.invalidateQueries({ queryKey: ["ghe-list"] }); }} />}
     </div>
   );
