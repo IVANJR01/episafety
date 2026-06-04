@@ -118,11 +118,14 @@ export default function Funcionarios() {
   // Load unidades/contratos on mount for display in table
   useEffect(() => { fetchUnidadesContratos(); }, []);
 
-  // Load empresa info
+  // Load empresa info + GHEs
   useEffect(() => {
     if (!empresaId) return;
     supabase.from("empresa_config").select("nome, cnpj").eq("id", empresaId).single().then(({ data }) => {
       if (data) setEmpresaInfo({ nome: data.nome, cnpj: data.cnpj });
+    });
+    supabase.from("ghe_ges").select("id, codigo, nome").eq("empresa_id", empresaId).eq("status", "ativo").order("codigo").then(({ data }) => {
+      setGhes(data || []);
     });
   }, [empresaId]);
 
