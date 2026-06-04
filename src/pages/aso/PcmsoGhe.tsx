@@ -12,9 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, Users, FileText, AlertTriangle, Stethoscope, Briefcase } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, FileText, AlertTriangle, Stethoscope, Briefcase, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { GRUPOS_RISCO } from "@/lib/asoFromGhe";
+import PcmsoImportDialog from "@/components/aso/PcmsoImportDialog";
 
 const TIPO_EXAME_FLAGS = [
   { k: "admissional", l: "Admissional" },
@@ -30,6 +31,7 @@ export default function PcmsoGhe() {
   const qc = useQueryClient();
   const [openGhe, setOpenGhe] = useState<any | null>(null);
   const [openForm, setOpenForm] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
 
@@ -103,6 +105,7 @@ export default function PcmsoGhe() {
                 <SelectTrigger className="w-[240px]"><SelectValue placeholder="Empresa" /></SelectTrigger>
                 <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}</SelectContent>
               </Select>
+              <Button variant="outline" onClick={() => setOpenImport(true)} disabled={!empresaSel}><Upload className="h-4 w-4 mr-1" />Importar PCMSO</Button>
               <Button onClick={novoGhe} disabled={!empresaSel}><Plus className="h-4 w-4 mr-1" />Novo GHE/GES</Button>
             </div>
           </div>
@@ -146,6 +149,7 @@ export default function PcmsoGhe() {
       </Card>
 
       <GheFormDialog open={openForm} onOpenChange={setOpenForm} empresaId={empresaSel} editing={editing} onSaved={() => qc.invalidateQueries({ queryKey: ["ghe-list"] })} />
+      <PcmsoImportDialog open={openImport} onOpenChange={setOpenImport} empresaId={empresaSel} onImported={() => qc.invalidateQueries({ queryKey: ["ghe-list"] })} />
       {openGhe && <GheDetailDialog ghe={openGhe} onClose={() => { setOpenGhe(null); qc.invalidateQueries({ queryKey: ["ghe-list"] }); }} />}
     </div>
   );
