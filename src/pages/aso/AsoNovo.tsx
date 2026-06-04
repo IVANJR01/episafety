@@ -15,12 +15,14 @@ import { ChevronLeft, ChevronRight, Save, FileDown, Trash2, Plus } from "lucide-
 import { toast } from "sonner";
 import { addDays, addMonths, addYears, format } from "date-fns";
 import { gerarPdfAso } from "@/lib/asoPdf";
+import { loadGheRiscosExames } from "@/lib/asoFromGhe";
 
 const TIPO_EXAMES = [
   { v: "admissional", l: "Admissional" },
   { v: "periodico", l: "Periódico" },
   { v: "retorno", l: "Retorno ao Trabalho" },
   { v: "mudanca_risco", l: "Mudança de Risco" },
+  { v: "mudanca_funcao", l: "Mudança de Função" },
   { v: "demissional", l: "Demissional" },
 ];
 
