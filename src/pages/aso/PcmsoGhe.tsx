@@ -31,6 +31,7 @@ export default function PcmsoGhe() {
   const qc = useQueryClient();
   const [openGhe, setOpenGhe] = useState<any | null>(null);
   const [openForm, setOpenForm] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
 
