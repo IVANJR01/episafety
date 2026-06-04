@@ -204,6 +204,59 @@ export type Database = {
           },
         ]
       }
+      aso_funcoes: {
+        Row: {
+          ativo: boolean
+          cbo: string | null
+          created_at: string
+          descricao_atividades: string | null
+          empresa_id: string
+          exige_nr10: boolean
+          exige_nr33: boolean
+          exige_nr35: boolean
+          id: string
+          nome: string
+          setor_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cbo?: string | null
+          created_at?: string
+          descricao_atividades?: string | null
+          empresa_id: string
+          exige_nr10?: boolean
+          exige_nr33?: boolean
+          exige_nr35?: boolean
+          id?: string
+          nome: string
+          setor_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cbo?: string | null
+          created_at?: string
+          descricao_atividades?: string | null
+          empresa_id?: string
+          exige_nr10?: boolean
+          exige_nr33?: boolean
+          exige_nr35?: boolean
+          id?: string
+          nome?: string
+          setor_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_funcoes_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "aso_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aso_medicos: {
         Row: {
           assinatura_url: string | null
@@ -323,6 +376,83 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      aso_riscos_funcao: {
+        Row: {
+          aplica_aso: boolean
+          created_at: string
+          descricao: string
+          empresa_id: string
+          fonte_geradora: string | null
+          funcao_id: string
+          grupo: string
+          id: string
+          medidas_controle: string | null
+          possiveis_danos: string | null
+          updated_at: string
+        }
+        Insert: {
+          aplica_aso?: boolean
+          created_at?: string
+          descricao: string
+          empresa_id: string
+          fonte_geradora?: string | null
+          funcao_id: string
+          grupo: string
+          id?: string
+          medidas_controle?: string | null
+          possiveis_danos?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aplica_aso?: boolean
+          created_at?: string
+          descricao?: string
+          empresa_id?: string
+          fonte_geradora?: string | null
+          funcao_id?: string
+          grupo?: string
+          id?: string
+          medidas_controle?: string | null
+          possiveis_danos?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_riscos_funcao_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "aso_funcoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_setores: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       aso_verificacao: {
         Row: {
