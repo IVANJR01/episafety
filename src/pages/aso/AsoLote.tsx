@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import JSZip from "jszip";
-import jsPDF from "jspdf";
+import { gerarPdfAsoBlob } from "@/lib/asoPdf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,7 +47,7 @@ export default function AsoLote() {
   const { data: funcs = [] } = useQuery({
     queryKey: ["aso-lote-funcs", empresaSel],
     enabled: !!empresaSel,
-    queryFn: async () => (await supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, ativo").eq("empresa_id", empresaSel).order("nome")).data || [],
+    queryFn: async () => (await supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_demissao").eq("empresa_id", empresaSel).order("nome")).data || [],
   });
   const { data: medicos = [] } = useQuery({
     queryKey: ["aso-lote-medicos"],
@@ -58,7 +58,7 @@ export default function AsoLote() {
   const filtered = useMemo(() => funcs.filter((f: any) => {
     if (setor !== "all" && f.setor !== setor) return false;
     if (filter && !(`${f.nome} ${f.cpf}`.toLowerCase().includes(filter.toLowerCase()))) return false;
-    return f.ativo !== false;
+    return !f.data_demissao;
   }), [funcs, filter, setor]);
 
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -75,7 +75,6 @@ export default function AsoLote() {
   const executar = async () => {
     if (!empresaSel || !medicoId || selected.size === 0) return toast.error("Selecione empresa, médico e funcionários");
     setRunning(true); setProgress(0);
-    const { gerarPdfAso } = await import("@/lib/asoPdf");
     const zip = new JSZip();
     const ids = [...selected];
     const venc = calcVenc();
@@ -96,8 +95,7 @@ export default function AsoLote() {
         const hash = `${aso.id.slice(0, 8)}${Date.now().toString(36)}${i}`;
         await supabase.from("aso_verificacao").insert({ aso_id: aso.id, hash });
 
-        // gerar PDF como blob
-        const pdf = await pdfBlob(aso.id);
+        const pdf = await gerarPdfAsoBlob(aso.id);
         const funcNome = filtered.find((f: any) => f.id === fId)?.nome?.replace(/[^a-zA-Z0-9]/g, "_") || fId;
         zip.file(`ASO-${num}-${funcNome}.pdf`, pdf);
         ok++;
@@ -114,12 +112,6 @@ export default function AsoLote() {
     qc.invalidateQueries({ queryKey: ["aso-dashboard"] });
     toast.success(`${ok} ASOs emitidos${fail ? `, ${fail} falharam` : ""}`);
     setSelected(new Set()); setRunning(false);
-  };
-
-  // helper: gera PDF e retorna blob (sem download direto)
-  const pdfBlob = async (asoId: string): Promise<Blob> => {
-    const { gerarPdfAsoBlob } = await import("@/lib/asoPdf");
-    return await gerarPdfAsoBlob(asoId);
   };
 
   return (

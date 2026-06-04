@@ -180,7 +180,7 @@ export default function AsoImport() {
       const payload: any = {
         empresa_id: empresaSel, nome: r.nome, cpf: r.cpf,
         cargo: r.funcao || null, setor: r.setor || null,
-        matricula: r.matricula || null, data_admissao: r.data_admissao || null, ativo: true,
+        matricula: r.matricula || null, data_admissao: r.data_admissao || null,
       };
       try {
         const { data: ex } = await supabase.from("funcionarios").select("id").eq("empresa_id", empresaSel).eq("cpf", r.cpf).maybeSingle();

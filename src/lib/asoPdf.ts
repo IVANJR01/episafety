@@ -161,5 +161,16 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> 
   doc.addImage(qrData, "PNG", W - M - 28, 297 - M - 30, 22, 22);
   doc.setFontSize(6); doc.text("Verificação", W - M - 17, 297 - M - 6, { align: "center" });
 
-  doc.save(`ASO-${aso.numero_aso}.pdf`);
+  return { doc, numero: aso.numero_aso };
 }
+
+export async function gerarPdfAso(asoId: string) {
+  const { doc, numero } = await buildPdf(asoId);
+  doc.save(`ASO-${numero}.pdf`);
+}
+
+export async function gerarPdfAsoBlob(asoId: string): Promise<Blob> {
+  const { doc } = await buildPdf(asoId);
+  return doc.output("blob");
+}
+
