@@ -124,6 +124,58 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
     toast.success(`${map.size} GHEs identificados na planilha`);
   };
 
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const s = String(r.result || "");
+        const i = s.indexOf(",");
+        resolve(i >= 0 ? s.slice(i + 1) : s);
+      };
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(file);
+    });
+
+  const parsePdfIA = async (file: File) => {
+    if (file.size > 20 * 1024 * 1024) return toast.error("PDF acima de 20MB. Reduza ou cole o texto.");
+    setLoading(true);
+    try {
+      const pdf_base64 = await fileToBase64(file);
+      const { data, error } = await supabase.functions.invoke("parse-pcmso", {
+        body: { pdf_base64, mime_type: file.type || "application/pdf" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await applyParsed(data);
+    } catch (e: any) {
+      toast.error("Falha ao interpretar PDF: " + (e?.message || e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyParsed = async (data: any) => {
+    const parsed: ParsedGhe[] = (data?.ghes || []).map((g: any) => ({
+      codigo: String(g.codigo || "").trim(),
+      nome: String(g.nome || g.codigo || "").trim(),
+      setor: g.setor || "",
+      descricao: g.descricao || "",
+      funcoes: Array.isArray(g.funcoes) ? g.funcoes.filter(Boolean) : [],
+      riscos: (Array.isArray(g.riscos) ? g.riscos : []).map((r: any) => ({
+        grupo: normGrupo(r.grupo), tipo_agente: String(r.tipo_agente || "").trim(),
+        texto_aso: String(r.texto_aso || r.tipo_agente || "").trim(),
+      })).filter((r: any) => r.tipo_agente),
+      exames: (Array.isArray(g.exames) ? g.exames : []).map((e: any) => ({
+        nome_exame: String(e.nome_exame || "").trim(),
+        codigo_exame: e.codigo_exame || null,
+        admissional: !!e.admissional, periodico: !!e.periodico, retorno_trabalho: !!e.retorno_trabalho,
+        mudanca_risco: !!e.mudanca_risco, mudanca_funcao: !!e.mudanca_funcao, demissional: !!e.demissional,
+      })).filter((e: any) => e.nome_exame),
+    })).filter((g: ParsedGhe) => g.codigo || g.nome);
+    setGhes(parsed);
+    toast.success(`IA identificou ${parsed.length} GHEs`);
+  };
+
   const parseTextoIA = async () => {
     if (!textoLivre.trim()) return toast.error("Cole o texto do PCMSO");
     setLoading(true);
@@ -131,31 +183,15 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
       const { data, error } = await supabase.functions.invoke("parse-pcmso", { body: { texto: textoLivre } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const parsed: ParsedGhe[] = (data?.ghes || []).map((g: any) => ({
-        codigo: String(g.codigo || "").trim(),
-        nome: String(g.nome || g.codigo || "").trim(),
-        setor: g.setor || "",
-        descricao: g.descricao || "",
-        funcoes: Array.isArray(g.funcoes) ? g.funcoes.filter(Boolean) : [],
-        riscos: (Array.isArray(g.riscos) ? g.riscos : []).map((r: any) => ({
-          grupo: normGrupo(r.grupo), tipo_agente: String(r.tipo_agente || "").trim(),
-          texto_aso: String(r.texto_aso || r.tipo_agente || "").trim(),
-        })).filter((r: any) => r.tipo_agente),
-        exames: (Array.isArray(g.exames) ? g.exames : []).map((e: any) => ({
-          nome_exame: String(e.nome_exame || "").trim(),
-          codigo_exame: e.codigo_exame || null,
-          admissional: !!e.admissional, periodico: !!e.periodico, retorno_trabalho: !!e.retorno_trabalho,
-          mudanca_risco: !!e.mudanca_risco, mudanca_funcao: !!e.mudanca_funcao, demissional: !!e.demissional,
-        })).filter((e: any) => e.nome_exame),
-      })).filter((g: ParsedGhe) => g.codigo || g.nome);
-      setGhes(parsed);
-      toast.success(`IA identificou ${parsed.length} GHEs`);
+      await applyParsed(data);
     } catch (e: any) {
       toast.error("Falha ao interpretar: " + (e?.message || e));
     } finally {
       setLoading(false);
     }
   };
+
+
 
   const importar = async () => {
     if (!ghes.length || !empresaId) return;
@@ -237,9 +273,10 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="xlsx">Planilha (Excel/CSV)</TabsTrigger>
-            <TabsTrigger value="texto"><Sparkles className="h-3 w-3 mr-1" />Texto / PDF (IA)</TabsTrigger>
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="xlsx">Planilha</TabsTrigger>
+            <TabsTrigger value="pdf"><FileText className="h-3 w-3 mr-1" />PDF (IA)</TabsTrigger>
+            <TabsTrigger value="texto"><Sparkles className="h-3 w-3 mr-1" />Texto (IA)</TabsTrigger>
           </TabsList>
 
           <TabsContent value="xlsx" className="mt-3 space-y-3">
@@ -256,6 +293,23 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
             </p>
           </TabsContent>
 
+          <TabsContent value="pdf" className="mt-3 space-y-3">
+            <Label className="text-xs">Envie o PDF do PCMSO. A IA lê o documento completo (Quadro Laboral, GHEs, riscos e exames) e estrutura para importação.</Label>
+            <div className="flex gap-2 flex-wrap items-center">
+              <Label className="cursor-pointer">
+                <Input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && parsePdfIA(e.target.files[0])} disabled={loading} />
+                <Button asChild disabled={loading}>
+                  <span>
+                    {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                    {loading ? "Interpretando PDF..." : "Carregar PDF do PCMSO"}
+                  </span>
+                </Button>
+              </Label>
+              <span className="text-xs text-muted-foreground">Até 20 MB. A IA pode levar 30-60s.</span>
+            </div>
+            <p className="text-xs text-muted-foreground">A IA extrai GHEs/GES, funções por setor, riscos (físico, químico, biológico, ergonômico, acidente) e exames (admissional, periódico, etc.) diretamente do PDF.</p>
+          </TabsContent>
+
           <TabsContent value="texto" className="mt-3 space-y-3">
             <Label className="text-xs">Cole o texto do PCMSO (Quadro Laboral, lista por GHE, tabela copiada de PDF, etc.)</Label>
             <Textarea rows={10} value={textoLivre} onChange={(e) => setTextoLivre(e.target.value)} placeholder="GHE 01 — Administrativo / PCP&#10;Funções: Auxiliar Administrativo, Supervisor de PCP&#10;Riscos: Ergonômico — postura sentada prolongada&#10;Exames: Clínico ocupacional, Acuidade visual&#10;&#10;GHE 02 — Costura..." />
@@ -265,9 +319,9 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
                 Interpretar com IA
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Dica: para PDF, abra o arquivo, selecione tudo (Ctrl+A), copie e cole aqui.</p>
           </TabsContent>
         </Tabs>
+
 
         {ghes.length > 0 && (
           <div className="border rounded-lg p-3 space-y-2 mt-3 bg-muted/30">
