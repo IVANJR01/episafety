@@ -17,7 +17,7 @@ const GRUPO: Record<string, string> = {
 function check(b: boolean) { return b ? "[X]" : "[ ]"; }
 function dt(s?: string | null) { return s ? format(parseISO(s), "dd/MM/yyyy") : "—"; }
 
-export async function gerarPdfAso(asoId: string) {
+async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> {
   const { data: aso, error } = await supabase
     .from("asos")
     .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor, matricula, data_admissao), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj, endereco, logo_url)`)
