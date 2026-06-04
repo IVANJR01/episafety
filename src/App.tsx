@@ -35,6 +35,7 @@ import CentralPPP from "@/pages/CentralPPP";
 import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
+import PortalRH from "@/pages/rh/PortalRH";
 
 import Faturas from "@/pages/Faturas";
 import AsoModule from "@/pages/aso/AsoModule";
