@@ -33,8 +33,11 @@ function aptidaoBadge(a?: string | null) {
   return <Badge variant="outline">—</Badge>;
 }
 
+import { usePermissions } from "@/hooks/usePermissions";
+
 export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
   const { empresaScopeIds, isSuperAdmin } = useAuth();
+  const { canEdit, canDelete } = usePermissions("aso");
   const qc = useQueryClient();
   const [filter, setFilter] = useState("");
   const [tipo, setTipo] = useState<string>("all");
