@@ -37,6 +37,7 @@ const gestaoDocItems: NavItem[] = [
   { path: "/treinamentos", label: "Documentos", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/exames", label: "Exames", icon: Stethoscope, moduleKey: "exames" },
   { path: "/aso", label: "Gestão de ASO", icon: FileText, moduleKey: "aso" },
+  { path: "/rh/asos", label: "Portal RH — Consulta ASO", icon: FileText, moduleKey: "rh" },
   { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "treinamentos" },
 ];
 
@@ -97,7 +98,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     checkFaturas();
   }, [isSuperAdmin, isPrincipal]);
 
-  const canAccess = (moduleKey: string) => isSuperAdmin || canAccessModule(modulosPermitidos, moduleKey);
+  const canAccess = (moduleKey: string) => {
+    if (isSuperAdmin || isPrincipal) return true;
+    // Portal RH is also available to anyone who can view ASOs
+    if (moduleKey === "rh" && canAccessModule(modulosPermitidos, "aso")) return true;
+    return canAccessModule(modulosPermitidos, moduleKey);
+  };
 
   const visibleMainItems = mainNavItems.filter((i) => canAccess(i.moduleKey));
   const visibleEpiItems = epiItems.filter((i) => canAccess(i.moduleKey));
