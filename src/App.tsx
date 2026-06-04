@@ -37,6 +37,8 @@ import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
 
 import Faturas from "@/pages/Faturas";
+import AsoModule from "@/pages/aso/AsoModule";
+import VerificarAso from "@/pages/VerificarAso";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
@@ -177,6 +179,7 @@ function ProtectedRoute() {
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
         <Route path="/treinamentos" element={<Treinamentos />} />
         <Route path="/exames" element={<ExamesModule />} />
+        <Route path="/aso" element={<AsoModule />} />
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
@@ -210,6 +213,7 @@ const App = () => (
             <Route path="/install" element={<Install />} />
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
             <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
             <Route path="/admin/empresas" element={<AdminLayout><AdminEmpresas /></AdminLayout>} />
             <Route path="/admin/usuarios" element={<AdminLayout><UsuariosLiberados /></AdminLayout>} />

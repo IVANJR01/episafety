@@ -36,6 +36,7 @@ const epiItems: NavItem[] = [
 const gestaoDocItems: NavItem[] = [
   { path: "/treinamentos", label: "Documentos", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/exames", label: "Exames", icon: Stethoscope, moduleKey: "exames" },
+  { path: "/aso", label: "Gestão de ASO", icon: FileText, moduleKey: "aso" },
   { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "treinamentos" },
 ];
 

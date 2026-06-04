@@ -65,6 +65,391 @@ export type Database = {
           },
         ]
       }
+      aso_assinaturas: {
+        Row: {
+          aso_id: string
+          assinatura_url: string | null
+          created_at: string
+          data_assinatura: string
+          id: string
+          ip: string | null
+          nome: string | null
+          tipo: string
+        }
+        Insert: {
+          aso_id: string
+          assinatura_url?: string | null
+          created_at?: string
+          data_assinatura?: string
+          id?: string
+          ip?: string | null
+          nome?: string | null
+          tipo: string
+        }
+        Update: {
+          aso_id?: string
+          assinatura_url?: string | null
+          created_at?: string
+          data_assinatura?: string
+          id?: string
+          ip?: string | null
+          nome?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_assinaturas_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_exames: {
+        Row: {
+          aso_id: string
+          created_at: string
+          data_realizacao: string | null
+          exame_id: string | null
+          id: string
+          nome_exame: string
+          observacao: string | null
+          realizado: boolean
+          resultado: string | null
+        }
+        Insert: {
+          aso_id: string
+          created_at?: string
+          data_realizacao?: string | null
+          exame_id?: string | null
+          id?: string
+          nome_exame: string
+          observacao?: string | null
+          realizado?: boolean
+          resultado?: string | null
+        }
+        Update: {
+          aso_id?: string
+          created_at?: string
+          data_realizacao?: string | null
+          exame_id?: string | null
+          id?: string
+          nome_exame?: string
+          observacao?: string | null
+          realizado?: boolean
+          resultado?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_exames_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_exames_exame_id_fkey"
+            columns: ["exame_id"]
+            isOneToOne: false
+            referencedRelation: "aso_exames_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_exames_catalogo: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string | null
+          id: string
+          nome: string
+          obrigatorio: boolean
+          periodicidade: string | null
+          risco_relacionado: string | null
+          tipo: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          obrigatorio?: boolean
+          periodicidade?: string | null
+          risco_relacionado?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          obrigatorio?: boolean
+          periodicidade?: string | null
+          risco_relacionado?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_exames_catalogo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_medicos: {
+        Row: {
+          assinatura_url: string | null
+          ativo: boolean
+          carimbo_url: string | null
+          cpf: string | null
+          created_at: string
+          created_by: string | null
+          crm: string
+          email: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+          responsavel_pcmso: boolean
+          telefone: string | null
+          uf_crm: string | null
+          updated_at: string
+        }
+        Insert: {
+          assinatura_url?: string | null
+          ativo?: boolean
+          carimbo_url?: string | null
+          cpf?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm: string
+          email?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          responsavel_pcmso?: boolean
+          telefone?: string | null
+          uf_crm?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assinatura_url?: string | null
+          ativo?: boolean
+          carimbo_url?: string | null
+          cpf?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm?: string
+          email?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          responsavel_pcmso?: boolean
+          telefone?: string | null
+          uf_crm?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_medicos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_numeracao: {
+        Row: {
+          ano: number
+          empresa_id: string
+          ultimo_seq: number
+        }
+        Insert: {
+          ano: number
+          empresa_id: string
+          ultimo_seq?: number
+        }
+        Update: {
+          ano?: number
+          empresa_id?: string
+          ultimo_seq?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_numeracao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_riscos: {
+        Row: {
+          aso_id: string
+          created_at: string
+          descricao: string
+          grupo: string
+          id: string
+        }
+        Insert: {
+          aso_id: string
+          created_at?: string
+          descricao: string
+          grupo: string
+          id?: string
+        }
+        Update: {
+          aso_id?: string
+          created_at?: string
+          descricao?: string
+          grupo?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_riscos_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aso_verificacao: {
+        Row: {
+          aso_id: string
+          created_at: string
+          hash: string
+        }
+        Insert: {
+          aso_id: string
+          created_at?: string
+          hash: string
+        }
+        Update: {
+          aso_id?: string
+          created_at?: string
+          hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aso_verificacao_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asos: {
+        Row: {
+          apto_cargo: boolean | null
+          apto_nr35: boolean | null
+          apto_restricao: boolean | null
+          created_at: string
+          created_by: string | null
+          data_emissao: string
+          data_vencimento: string | null
+          empresa_id: string
+          funcionario_id: string
+          id: string
+          inapto_cargo: boolean | null
+          inapto_nr35: boolean | null
+          local_emissao: string | null
+          medico_id: string | null
+          nr35_nao_aplica: boolean | null
+          numero_aso: string
+          observacoes: string | null
+          pdf_url: string | null
+          status: string
+          status_aptidao: string | null
+          tipo_exame: string
+          updated_at: string
+          validade_tipo: string | null
+        }
+        Insert: {
+          apto_cargo?: boolean | null
+          apto_nr35?: boolean | null
+          apto_restricao?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string
+          data_vencimento?: string | null
+          empresa_id: string
+          funcionario_id: string
+          id?: string
+          inapto_cargo?: boolean | null
+          inapto_nr35?: boolean | null
+          local_emissao?: string | null
+          medico_id?: string | null
+          nr35_nao_aplica?: boolean | null
+          numero_aso: string
+          observacoes?: string | null
+          pdf_url?: string | null
+          status?: string
+          status_aptidao?: string | null
+          tipo_exame: string
+          updated_at?: string
+          validade_tipo?: string | null
+        }
+        Update: {
+          apto_cargo?: boolean | null
+          apto_nr35?: boolean | null
+          apto_restricao?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string
+          data_vencimento?: string | null
+          empresa_id?: string
+          funcionario_id?: string
+          id?: string
+          inapto_cargo?: boolean | null
+          inapto_nr35?: boolean | null
+          local_emissao?: string | null
+          medico_id?: string | null
+          nr35_nao_aplica?: boolean | null
+          numero_aso?: string
+          observacoes?: string | null
+          pdf_url?: string | null
+          status?: string
+          status_aptidao?: string | null
+          tipo_exame?: string
+          updated_at?: string
+          validade_tipo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asos_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asos_medico_id_fkey"
+            columns: ["medico_id"]
+            isOneToOne: false
+            referencedRelation: "aso_medicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conferencia_itens: {
         Row: {
           conferencia_id: string
@@ -2367,6 +2752,7 @@ export type Database = {
         }
         Returns: Json
       }
+      gerar_numero_aso: { Args: { _empresa_id: string }; Returns: string }
       get_consolidated_epi_stock: { Args: never; Returns: Json }
       get_filial_epis: { Args: { _filial_id: string }; Returns: Json }
       get_my_funcionario_ids: { Args: never; Returns: string[] }
