@@ -6,7 +6,7 @@ import { format, parseISO } from "date-fns";
 
 const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno ao Trabalho",
-  mudanca_risco: "Mudança de Risco", demissional: "Demissional",
+  mudanca_risco: "Mudança de Risco", mudanca_funcao: "Mudança de Função", demissional: "Demissional",
 };
 
 const GRUPO: Record<string, string> = {
