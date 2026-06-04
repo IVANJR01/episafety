@@ -12,9 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, Users, FileText, AlertTriangle, Stethoscope, Briefcase } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, FileText, AlertTriangle, Stethoscope, Briefcase, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { GRUPOS_RISCO } from "@/lib/asoFromGhe";
+import PcmsoImportDialog from "@/components/aso/PcmsoImportDialog";
 
 const TIPO_EXAME_FLAGS = [
   { k: "admissional", l: "Admissional" },
