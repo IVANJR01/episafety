@@ -188,7 +188,9 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
       toast.error("Falha ao interpretar: " + (e?.message || e));
     } finally {
       setLoading(false);
+    }
   };
+
 
 
   const importar = async () => {
