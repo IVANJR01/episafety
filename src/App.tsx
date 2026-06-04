@@ -37,6 +37,8 @@ import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
 
 import Faturas from "@/pages/Faturas";
+import AsoModule from "@/pages/aso/AsoModule";
+import VerificarAso from "@/pages/VerificarAso";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
