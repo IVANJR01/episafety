@@ -30,6 +30,7 @@ export const MODULOS = [
   { key: "inspecoes_se", label: "Inspeções SE", path: "/inspecoes-se" },
   { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
   { key: "exames", label: "Exames", path: "/exames" },
+  { key: "aso", label: "Gestão e Emissão de ASO", path: "/aso" },
   { key: "video_treinamentos", label: "Treinamentos em Vídeo", path: "/video-treinamentos" },
 ] as const;
 
