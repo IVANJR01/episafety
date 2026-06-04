@@ -99,6 +99,7 @@ export default function Funcionarios() {
   // Unidades and Contratos for selects
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [ghes, setGhes] = useState<{ id: string; codigo: string; nome: string }[]>([]);
   const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj: string | null }>({ nome: "", cnpj: null });
 
   const fetchUnidadesContratos = async () => {
