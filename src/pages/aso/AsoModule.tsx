@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { LayoutDashboard, FileText, Users, Stethoscope, Plus, ListChecks, Briefcase, Upload, Layers, BarChart3 } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Stethoscope, Plus, ListChecks, Briefcase, Upload, Layers, BarChart3, Shield } from "lucide-react";
 import AsoDashboard from "./AsoDashboard";
 import AsoList from "./AsoList";
 import AsoMedicos from "./AsoMedicos";
@@ -10,6 +10,7 @@ import AsoFuncoes from "./AsoFuncoes";
 import AsoImport from "./AsoImport";
 import AsoLote from "./AsoLote";
 import AsoRelatorios from "./AsoRelatorios";
+import PcmsoGhe from "./PcmsoGhe";
 
 export default function AsoModule() {
   const [tab, setTab] = useState("dashboard");
