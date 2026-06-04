@@ -33,8 +33,11 @@ function aptidaoBadge(a?: string | null) {
   return <Badge variant="outline">—</Badge>;
 }
 
+import { usePermissions } from "@/hooks/usePermissions";
+
 export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
   const { empresaScopeIds, isSuperAdmin } = useAuth();
+  const { canEdit, canDelete } = usePermissions("aso");
   const qc = useQueryClient();
   const [filter, setFilter] = useState("");
   const [tipo, setTipo] = useState<string>("all");
@@ -152,8 +155,8 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button size="icon" variant="ghost" onClick={() => gerarPdf(a.id)} title="Gerar PDF"><FileDown className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => onEdit?.(a.id)} title="Editar"><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove(a.id)} title="Cancelar"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      {canEdit && <Button size="icon" variant="ghost" onClick={() => onEdit?.(a.id)} title="Editar"><Pencil className="h-4 w-4" /></Button>}
+                      {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(a.id)} title="Cancelar"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                     </TableCell>
                   </TableRow>
                 );

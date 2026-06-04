@@ -35,6 +35,7 @@ import CentralPPP from "@/pages/CentralPPP";
 import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
+import PortalRH from "@/pages/rh/PortalRH";
 
 import Faturas from "@/pages/Faturas";
 import AsoModule from "@/pages/aso/AsoModule";
@@ -160,6 +161,20 @@ function ProtectedRoute() {
     );
   }
 
+  // RH-only profile: render the standalone Portal RH (no AppLayout sidebar)
+  const isRhOnly = !isSuperAdmin && !isPrincipal && modulosPermitidos.length > 0 &&
+    modulosPermitidos.every(p => p === "rh" || p.startsWith("rh:"));
+
+  if (isRhOnly) {
+    return (
+      <Routes>
+        <Route path="/rh/asos" element={<PortalRH />} />
+        <Route path="/*" element={<Navigate to="/rh/asos" replace />} />
+      </Routes>
+    );
+  }
+
+
   return (
     <AppLayout>
       <EmpresaQuerySync />
@@ -180,6 +195,7 @@ function ProtectedRoute() {
         <Route path="/treinamentos" element={<Treinamentos />} />
         <Route path="/exames" element={<ExamesModule />} />
         <Route path="/aso" element={<AsoModule />} />
+        <Route path="/rh/asos" element={<PortalRH />} />
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
