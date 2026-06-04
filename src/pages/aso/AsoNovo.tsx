@@ -281,6 +281,17 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
                   <div>Cargo: <strong>{funcSel.cargo || "—"}</strong></div>
                   <div>Setor: <strong>{funcSel.setor || "—"}</strong></div>
                   <div>Admissão: <strong>{funcSel.data_admissao || "—"}</strong></div>
+                  {gheVinculado ? (
+                    <div className="mt-1 p-2 rounded bg-primary/10 border border-primary/20">
+                      <strong>GHE/GES:</strong> {gheVinculado.codigo} — {gheVinculado.nome}
+                      {gheVinculado.setor && <span className="text-muted-foreground"> ({gheVinculado.setor})</span>}
+                      <div className="text-[11px] text-muted-foreground mt-0.5">Riscos e exames serão preenchidos automaticamente conforme o PCMSO.</div>
+                    </div>
+                  ) : (
+                    <div className="mt-1 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive">
+                      Colaborador sem GHE/GES vinculado. Vá em <strong>PCMSO / GHE</strong> ou no cadastro do colaborador para vincular.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
