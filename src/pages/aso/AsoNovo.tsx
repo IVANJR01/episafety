@@ -138,6 +138,25 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
 
   const funcSel = useMemo(() => funcionarios.find((f: any) => f.id === funcionarioId), [funcionarios, funcionarioId]);
   const empSel = useMemo(() => empresas.find((e: any) => e.id === empresaSel), [empresas, empresaSel]);
+  const gheVinculado = (funcSel as any)?.ghe_ges;
+
+  // Auto-carregar riscos e exames do GHE quando funcionário ou tipo mudar (apenas se não estiver editando)
+  useEffect(() => {
+    if (editingId) return;
+    const gheId = (funcSel as any)?.ghe_id;
+    if (!gheId || !tipoExame) return;
+    (async () => {
+      try {
+        const { riscos: r, exames: ex } = await loadGheRiscosExames(gheId, tipoExame);
+        if (r.length || ex.length) {
+          setRiscos(r);
+          setExames(ex.map((e) => ({ nome_exame: e.nome_exame, realizado: true, data_realizacao: dataEmissao })));
+          toast.success(`Carregados ${r.length} risco(s) e ${ex.length} exame(s) do GHE`);
+        }
+      } catch (e) { /* silent */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funcionarioId, tipoExame]);
 
   const addRisco = (grupo: string) => setRiscos((r) => [...r, { grupo, descricao: "" }]);
   const updRisco = (i: number, descricao: string) => setRiscos((r) => r.map((x, idx) => idx === i ? { ...x, descricao } : x));
