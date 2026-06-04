@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { LayoutDashboard, FileText, Users, Stethoscope, Plus, ListChecks, Briefcase, Upload, Layers, BarChart3 } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Stethoscope, Plus, ListChecks, Briefcase, Upload, Layers, BarChart3, Shield } from "lucide-react";
 import AsoDashboard from "./AsoDashboard";
 import AsoList from "./AsoList";
 import AsoMedicos from "./AsoMedicos";
@@ -10,6 +10,7 @@ import AsoFuncoes from "./AsoFuncoes";
 import AsoImport from "./AsoImport";
 import AsoLote from "./AsoLote";
 import AsoRelatorios from "./AsoRelatorios";
+import PcmsoGhe from "./PcmsoGhe";
 
 export default function AsoModule() {
   const [tab, setTab] = useState("dashboard");
@@ -35,6 +36,7 @@ export default function AsoModule() {
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="dashboard" className="gap-1"><LayoutDashboard className="h-4 w-4" />Dashboard</TabsTrigger>
+          <TabsTrigger value="pcmso" className="gap-1"><Shield className="h-4 w-4" />PCMSO / GHE</TabsTrigger>
           <TabsTrigger value="lista" className="gap-1"><ListChecks className="h-4 w-4" />ASOs</TabsTrigger>
           <TabsTrigger value="novo" className="gap-1"><Plus className="h-4 w-4" />Novo ASO</TabsTrigger>
           <TabsTrigger value="lote" className="gap-1"><Layers className="h-4 w-4" />Em lote</TabsTrigger>
@@ -46,6 +48,7 @@ export default function AsoModule() {
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4"><AsoDashboard /></TabsContent>
+        <TabsContent value="pcmso" className="mt-4"><PcmsoGhe /></TabsContent>
         <TabsContent value="lista" className="mt-4"><AsoList onEdit={openNovo} /></TabsContent>
         <TabsContent value="novo" className="mt-4"><AsoNovo editingId={editingId} onSaved={() => { setEditingId(null); setTab("lista"); }} /></TabsContent>
         <TabsContent value="lote" className="mt-4"><AsoLote /></TabsContent>

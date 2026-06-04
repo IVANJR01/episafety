@@ -544,7 +544,9 @@ export type Database = {
           data_emissao: string
           data_vencimento: string | null
           empresa_id: string
+          exames_snapshot: Json | null
           funcionario_id: string
+          ghe_id: string | null
           id: string
           inapto_cargo: boolean | null
           inapto_nr35: boolean | null
@@ -553,7 +555,9 @@ export type Database = {
           nr35_nao_aplica: boolean | null
           numero_aso: string
           observacoes: string | null
+          pcmso_id: string | null
           pdf_url: string | null
+          riscos_snapshot: Json | null
           status: string
           status_aptidao: string | null
           tipo_exame: string
@@ -569,7 +573,9 @@ export type Database = {
           data_emissao?: string
           data_vencimento?: string | null
           empresa_id: string
+          exames_snapshot?: Json | null
           funcionario_id: string
+          ghe_id?: string | null
           id?: string
           inapto_cargo?: boolean | null
           inapto_nr35?: boolean | null
@@ -578,7 +584,9 @@ export type Database = {
           nr35_nao_aplica?: boolean | null
           numero_aso: string
           observacoes?: string | null
+          pcmso_id?: string | null
           pdf_url?: string | null
+          riscos_snapshot?: Json | null
           status?: string
           status_aptidao?: string | null
           tipo_exame: string
@@ -594,7 +602,9 @@ export type Database = {
           data_emissao?: string
           data_vencimento?: string | null
           empresa_id?: string
+          exames_snapshot?: Json | null
           funcionario_id?: string
+          ghe_id?: string | null
           id?: string
           inapto_cargo?: boolean | null
           inapto_nr35?: boolean | null
@@ -603,7 +613,9 @@ export type Database = {
           nr35_nao_aplica?: boolean | null
           numero_aso?: string
           observacoes?: string | null
+          pcmso_id?: string | null
           pdf_url?: string | null
+          riscos_snapshot?: Json | null
           status?: string
           status_aptidao?: string | null
           tipo_exame?: string
@@ -626,10 +638,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "asos_ghe_id_fkey"
+            columns: ["ghe_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "asos_medico_id_fkey"
             columns: ["medico_id"]
             isOneToOne: false
             referencedRelation: "aso_medicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asos_pcmso_id_fkey"
+            columns: ["pcmso_id"]
+            isOneToOne: false
+            referencedRelation: "pcmso"
             referencedColumns: ["id"]
           },
         ]
@@ -1825,6 +1851,7 @@ export type Database = {
           data_admissao: string | null
           data_demissao: string | null
           empresa_id: string | null
+          ghe_id: string | null
           id: string
           matricula: string | null
           nome: string
@@ -1843,6 +1870,7 @@ export type Database = {
           data_admissao?: string | null
           data_demissao?: string | null
           empresa_id?: string | null
+          ghe_id?: string | null
           id?: string
           matricula?: string | null
           nome: string
@@ -1861,6 +1889,7 @@ export type Database = {
           data_admissao?: string | null
           data_demissao?: string | null
           empresa_id?: string | null
+          ghe_id?: string | null
           id?: string
           matricula?: string | null
           nome?: string
@@ -1886,10 +1915,263 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "funcionarios_ghe_id_fkey"
+            columns: ["ghe_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "funcionarios_unidade_id_fkey"
             columns: ["unidade_id"]
             isOneToOne: false
             referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghe_exames: {
+        Row: {
+          admissional: boolean
+          aparece_aso: boolean
+          codigo_exame: string | null
+          created_at: string
+          demissional: boolean
+          empresa_id: string
+          ghe_id: string
+          id: string
+          mudanca_funcao: boolean
+          mudanca_risco: boolean
+          nome_exame: string
+          obrigatorio: boolean
+          observacao: string | null
+          periodico: boolean
+          retorno_trabalho: boolean
+          tipo_exame: string | null
+          updated_at: string
+        }
+        Insert: {
+          admissional?: boolean
+          aparece_aso?: boolean
+          codigo_exame?: string | null
+          created_at?: string
+          demissional?: boolean
+          empresa_id: string
+          ghe_id: string
+          id?: string
+          mudanca_funcao?: boolean
+          mudanca_risco?: boolean
+          nome_exame: string
+          obrigatorio?: boolean
+          observacao?: string | null
+          periodico?: boolean
+          retorno_trabalho?: boolean
+          tipo_exame?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admissional?: boolean
+          aparece_aso?: boolean
+          codigo_exame?: string | null
+          created_at?: string
+          demissional?: boolean
+          empresa_id?: string
+          ghe_id?: string
+          id?: string
+          mudanca_funcao?: boolean
+          mudanca_risco?: boolean
+          nome_exame?: string
+          obrigatorio?: boolean
+          observacao?: string | null
+          periodico?: boolean
+          retorno_trabalho?: boolean
+          tipo_exame?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghe_exames_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ghe_exames_ghe_id_fkey"
+            columns: ["ghe_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghe_funcoes: {
+        Row: {
+          cbo: string | null
+          created_at: string
+          descricao_atividade: string | null
+          empresa_id: string
+          ghe_id: string
+          id: string
+          nome_funcao: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cbo?: string | null
+          created_at?: string
+          descricao_atividade?: string | null
+          empresa_id: string
+          ghe_id: string
+          id?: string
+          nome_funcao: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cbo?: string | null
+          created_at?: string
+          descricao_atividade?: string | null
+          empresa_id?: string
+          ghe_id?: string
+          id?: string
+          nome_funcao?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghe_funcoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ghe_funcoes_ghe_id_fkey"
+            columns: ["ghe_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghe_ges: {
+        Row: {
+          codigo: string
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          pcmso_id: string | null
+          setor: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+          pcmso_id?: string | null
+          setor?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          pcmso_id?: string | null
+          setor?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghe_ges_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ghe_ges_pcmso_id_fkey"
+            columns: ["pcmso_id"]
+            isOneToOne: false
+            referencedRelation: "pcmso"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghe_riscos: {
+        Row: {
+          aparece_aso: boolean
+          created_at: string
+          empresa_id: string
+          exposicao: string | null
+          ghe_id: string
+          grupo: string
+          id: string
+          limite_exposicao: string | null
+          perigo_fonte: string | null
+          possiveis_lesoes: string | null
+          texto_aso: string | null
+          tipo_agente: string | null
+          updated_at: string
+        }
+        Insert: {
+          aparece_aso?: boolean
+          created_at?: string
+          empresa_id: string
+          exposicao?: string | null
+          ghe_id: string
+          grupo: string
+          id?: string
+          limite_exposicao?: string | null
+          perigo_fonte?: string | null
+          possiveis_lesoes?: string | null
+          texto_aso?: string | null
+          tipo_agente?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aparece_aso?: boolean
+          created_at?: string
+          empresa_id?: string
+          exposicao?: string | null
+          ghe_id?: string
+          grupo?: string
+          id?: string
+          limite_exposicao?: string | null
+          perigo_fonte?: string | null
+          possiveis_lesoes?: string | null
+          texto_aso?: string | null
+          tipo_agente?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghe_riscos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ghe_riscos_ghe_id_fkey"
+            columns: ["ghe_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
             referencedColumns: ["id"]
           },
         ]
@@ -2216,6 +2498,63 @@ export type Database = {
             columns: ["funcionario_id"]
             isOneToOne: false
             referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pcmso: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_elaboracao: string | null
+          data_validade: string | null
+          empresa_id: string
+          id: string
+          medico_responsavel_id: string | null
+          observacoes: string | null
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_elaboracao?: string | null
+          data_validade?: string | null
+          empresa_id: string
+          id?: string
+          medico_responsavel_id?: string | null
+          observacoes?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_elaboracao?: string | null
+          data_validade?: string | null
+          empresa_id?: string
+          id?: string
+          medico_responsavel_id?: string | null
+          observacoes?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pcmso_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pcmso_medico_responsavel_id_fkey"
+            columns: ["medico_responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "aso_medicos"
             referencedColumns: ["id"]
           },
         ]

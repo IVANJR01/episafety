@@ -15,12 +15,14 @@ import { ChevronLeft, ChevronRight, Save, FileDown, Trash2, Plus } from "lucide-
 import { toast } from "sonner";
 import { addDays, addMonths, addYears, format } from "date-fns";
 import { gerarPdfAso } from "@/lib/asoPdf";
+import { loadGheRiscosExames } from "@/lib/asoFromGhe";
 
 const TIPO_EXAMES = [
   { v: "admissional", l: "Admissional" },
   { v: "periodico", l: "Periódico" },
   { v: "retorno", l: "Retorno ao Trabalho" },
   { v: "mudanca_risco", l: "Mudança de Risco" },
+  { v: "mudanca_funcao", l: "Mudança de Função" },
   { v: "demissional", l: "Demissional" },
 ];
 
@@ -83,7 +85,7 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
     queryKey: ["aso-funcionarios", empresaSel],
     enabled: !!empresaSel,
     queryFn: async () => {
-      const { data, error } = await supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_admissao, matricula").eq("empresa_id", empresaSel).order("nome");
+      const { data, error } = await supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_admissao, matricula, ghe_id, ghe_ges(id, codigo, nome, setor)").eq("empresa_id", empresaSel).order("nome");
       if (error) throw error;
       return data || [];
     },
@@ -136,6 +138,25 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
 
   const funcSel = useMemo(() => funcionarios.find((f: any) => f.id === funcionarioId), [funcionarios, funcionarioId]);
   const empSel = useMemo(() => empresas.find((e: any) => e.id === empresaSel), [empresas, empresaSel]);
+  const gheVinculado = (funcSel as any)?.ghe_ges;
+
+  // Auto-carregar riscos e exames do GHE quando funcionário ou tipo mudar (apenas se não estiver editando)
+  useEffect(() => {
+    if (editingId) return;
+    const gheId = (funcSel as any)?.ghe_id;
+    if (!gheId || !tipoExame) return;
+    (async () => {
+      try {
+        const { riscos: r, exames: ex } = await loadGheRiscosExames(gheId, tipoExame);
+        if (r.length || ex.length) {
+          setRiscos(r);
+          setExames(ex.map((e) => ({ nome_exame: e.nome_exame, realizado: true, data_realizacao: dataEmissao })));
+          toast.success(`Carregados ${r.length} risco(s) e ${ex.length} exame(s) do GHE`);
+        }
+      } catch (e) { /* silent */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funcionarioId, tipoExame]);
 
   const addRisco = (grupo: string) => setRiscos((r) => [...r, { grupo, descricao: "" }]);
   const updRisco = (i: number, descricao: string) => setRiscos((r) => r.map((x, idx) => idx === i ? { ...x, descricao } : x));
@@ -179,6 +200,9 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
         observacoes,
         local_emissao: localEmissao,
         status: "emitido",
+        ghe_id: (funcSel as any)?.ghe_id || null,
+        riscos_snapshot: riscos.filter(r => r.descricao.trim()),
+        exames_snapshot: exames.filter(e => e.nome_exame.trim()).map(e => ({ nome_exame: e.nome_exame })),
       };
 
       if (!asoId) {
@@ -257,6 +281,17 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
                   <div>Cargo: <strong>{funcSel.cargo || "—"}</strong></div>
                   <div>Setor: <strong>{funcSel.setor || "—"}</strong></div>
                   <div>Admissão: <strong>{funcSel.data_admissao || "—"}</strong></div>
+                  {gheVinculado ? (
+                    <div className="mt-1 p-2 rounded bg-primary/10 border border-primary/20">
+                      <strong>GHE/GES:</strong> {gheVinculado.codigo} — {gheVinculado.nome}
+                      {gheVinculado.setor && <span className="text-muted-foreground"> ({gheVinculado.setor})</span>}
+                      <div className="text-[11px] text-muted-foreground mt-0.5">Riscos e exames serão preenchidos automaticamente conforme o PCMSO.</div>
+                    </div>
+                  ) : (
+                    <div className="mt-1 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive">
+                      Colaborador sem GHE/GES vinculado. Vá em <strong>PCMSO / GHE</strong> ou no cadastro do colaborador para vincular.
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -34,7 +34,7 @@ interface ImportRow {
   valid: boolean; error?: string; action?: "insert" | "update"; existingId?: string;
 }
 
-const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "", data_demissao: "", unidade_id: "", contrato_id: "" };
+const emptyForm = { nome: "", matricula: "", setor: "", cargo: "", data_admissao: "", cpf: "", data_demissao: "", unidade_id: "", contrato_id: "", ghe_id: "" };
 
 function formatCPF(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -99,6 +99,7 @@ export default function Funcionarios() {
   // Unidades and Contratos for selects
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [ghes, setGhes] = useState<{ id: string; codigo: string; nome: string }[]>([]);
   const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj: string | null }>({ nome: "", cnpj: null });
 
   const fetchUnidadesContratos = async () => {
@@ -117,11 +118,14 @@ export default function Funcionarios() {
   // Load unidades/contratos on mount for display in table
   useEffect(() => { fetchUnidadesContratos(); }, []);
 
-  // Load empresa info
+  // Load empresa info + GHEs
   useEffect(() => {
     if (!empresaId) return;
     supabase.from("empresa_config").select("nome, cnpj").eq("id", empresaId).single().then(({ data }) => {
       if (data) setEmpresaInfo({ nome: data.nome, cnpj: data.cnpj });
+    });
+    supabase.from("ghe_ges").select("id, codigo, nome").eq("empresa_id", empresaId).eq("status", "ativo").order("codigo").then(({ data }) => {
+      setGhes(data || []);
     });
   }, [empresaId]);
 
@@ -142,14 +146,14 @@ export default function Funcionarios() {
   const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); fetchUnidadesContratos(); setOpen(true); };
   const openEdit = (f: Funcionario) => {
     setEditing(f);
-    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "", data_demissao: f.data_demissao || "", unidade_id: f.unidade_id || "", contrato_id: f.contrato_id || "" });
+    resetForm({ nome: f.nome, matricula: f.matricula || "", setor: f.setor || "", cargo: f.cargo || "", data_admissao: f.data_admissao || "", cpf: f.cpf || "", data_demissao: f.data_demissao || "", unidade_id: f.unidade_id || "", contrato_id: f.contrato_id || "", ghe_id: (f as any).ghe_id || "" });
     fetchUnidadesContratos();
     setOpen(true);
   };
 
   const handleSave = async () => {
     if (!form.nome.trim()) return;
-    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null, unidade_id: form.unidade_id || null, contrato_id: form.contrato_id || null };
+    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null, unidade_id: form.unidade_id || null, contrato_id: form.contrato_id || null, ghe_id: form.ghe_id || null };
     if (editing) await update(editing.id, data);
     else await add(data);
     resetForm();
@@ -653,6 +657,17 @@ export default function Funcionarios() {
             </div>
             <div>
               <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
+            </div>
+            <div>
+              <Label>GHE/GES (PCMSO)</Label>
+              <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione o GHE/GES" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {ghes.map(g => <SelectItem key={g.id} value={g.id}>{g.codigo} — {g.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">Define automaticamente os riscos e exames no ASO.</p>
             </div>
             {editing && (
               <div className="grid grid-cols-2 gap-4">

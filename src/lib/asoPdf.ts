@@ -6,7 +6,7 @@ import { format, parseISO } from "date-fns";
 
 const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno ao Trabalho",
-  mudanca_risco: "Mudança de Risco", demissional: "Demissional",
+  mudanca_risco: "Mudança de Risco", mudanca_funcao: "Mudança de Função", demissional: "Demissional",
 };
 
 const GRUPO: Record<string, string> = {
@@ -20,7 +20,7 @@ function dt(s?: string | null) { return s ? format(parseISO(s), "dd/MM/yyyy") : 
 async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> {
   const { data: aso, error } = await supabase
     .from("asos")
-    .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor, matricula, data_admissao), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj, endereco, logo_url)`)
+    .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor, matricula, data_admissao), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj, endereco, logo_url), ghe_ges:ghe_id (codigo, nome, setor)`)
     .eq("id", asoId).single();
   if (error || !aso) throw error || new Error("ASO não encontrado");
 
@@ -75,13 +75,20 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> 
   doc.text(`Matrícula: ${f?.matricula || "—"}`, M + 90, y); y += 5;
   doc.text(`Função: ${f?.cargo || "—"}`, M + 2, y);
   doc.text(`Setor: ${f?.setor || "—"}`, M + 90, y); y += 5;
-  doc.text(`Data de admissão: ${dt(f?.data_admissao)}`, M + 2, y); y += 6;
+  doc.text(`Data de admissão: ${dt(f?.data_admissao)}`, M + 2, y); y += 5;
+  if ((aso as any).ghe_ges) {
+    const g: any = (aso as any).ghe_ges;
+    doc.setFont("helvetica", "bold"); doc.text("GHE/GES:", M + 2, y);
+    doc.setFont("helvetica", "normal"); doc.text(`${g.codigo} — ${g.nome}${g.setor ? " (" + g.setor + ")" : ""}`, M + 24, y);
+    y += 5;
+  }
+  y += 1;
   doc.line(M, y, W - M, y); y += 4;
 
   // Tipo de exame
   doc.setFont("helvetica", "bold"); doc.text("TIPO DE EXAME OCUPACIONAL", M + 2, y); y += 5;
   doc.setFont("helvetica", "normal");
-  const tipos = ["admissional", "periodico", "retorno", "mudanca_risco", "demissional"];
+  const tipos = ["admissional", "periodico", "retorno", "mudanca_risco", "mudanca_funcao", "demissional"];
   let tx = M + 2;
   tipos.forEach((t) => {
     const s = `${check(aso.tipo_exame === t)} ${TIPO[t]}`;
