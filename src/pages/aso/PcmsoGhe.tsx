@@ -155,9 +155,10 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
   const [form, setForm] = useState({ codigo: "", nome: "", setor: "", descricao: "" });
   const [saving, setSaving] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     if (editing) setForm({ codigo: editing.codigo || "", nome: editing.nome || "", setor: editing.setor || "", descricao: editing.descricao || "" });
-  });
+    else setForm({ codigo: "", nome: "", setor: "", descricao: "" });
+  }, [editing, open]);
 
   const save = async () => {
     if (!form.codigo || !form.nome) return toast.error("Código e nome são obrigatórios");
