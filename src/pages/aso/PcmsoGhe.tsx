@@ -105,6 +105,7 @@ export default function PcmsoGhe() {
                 <SelectTrigger className="w-[240px]"><SelectValue placeholder="Empresa" /></SelectTrigger>
                 <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}</SelectContent>
               </Select>
+              <Button variant="outline" onClick={() => setOpenImport(true)} disabled={!empresaSel}><Upload className="h-4 w-4 mr-1" />Importar PCMSO</Button>
               <Button onClick={novoGhe} disabled={!empresaSel}><Plus className="h-4 w-4 mr-1" />Novo GHE/GES</Button>
             </div>
           </div>
