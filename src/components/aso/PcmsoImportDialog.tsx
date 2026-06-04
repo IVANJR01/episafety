@@ -188,36 +188,8 @@ export default function PcmsoImportDialog({ open, onOpenChange, empresaId, onImp
       toast.error("Falha ao interpretar: " + (e?.message || e));
     } finally {
       setLoading(false);
-    }
-    return;
-    // legacy inline mapping (unused)
-    try {
-      const data: any = {};
-      const parsed: ParsedGhe[] = (data?.ghes || []).map((g: any) => ({
-        codigo: String(g.codigo || "").trim(),
-        nome: String(g.nome || g.codigo || "").trim(),
-        setor: g.setor || "",
-        descricao: g.descricao || "",
-        funcoes: Array.isArray(g.funcoes) ? g.funcoes.filter(Boolean) : [],
-        riscos: (Array.isArray(g.riscos) ? g.riscos : []).map((r: any) => ({
-          grupo: normGrupo(r.grupo), tipo_agente: String(r.tipo_agente || "").trim(),
-          texto_aso: String(r.texto_aso || r.tipo_agente || "").trim(),
-        })).filter((r: any) => r.tipo_agente),
-        exames: (Array.isArray(g.exames) ? g.exames : []).map((e: any) => ({
-          nome_exame: String(e.nome_exame || "").trim(),
-          codigo_exame: e.codigo_exame || null,
-          admissional: !!e.admissional, periodico: !!e.periodico, retorno_trabalho: !!e.retorno_trabalho,
-          mudanca_risco: !!e.mudanca_risco, mudanca_funcao: !!e.mudanca_funcao, demissional: !!e.demissional,
-        })).filter((e: any) => e.nome_exame),
-      })).filter((g: ParsedGhe) => g.codigo || g.nome);
-      setGhes(parsed);
-      toast.success(`IA identificou ${parsed.length} GHEs`);
-    } catch (e: any) {
-      toast.error("Falha ao interpretar: " + (e?.message || e));
-    } finally {
-      setLoading(false);
-    }
   };
+
 
   const importar = async () => {
     if (!ghes.length || !empresaId) return;
