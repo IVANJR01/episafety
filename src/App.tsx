@@ -161,6 +161,20 @@ function ProtectedRoute() {
     );
   }
 
+  // RH-only profile: render the standalone Portal RH (no AppLayout sidebar)
+  const isRhOnly = !isSuperAdmin && !isPrincipal && modulosPermitidos.length > 0 &&
+    modulosPermitidos.every(p => p === "rh" || p.startsWith("rh:"));
+
+  if (isRhOnly) {
+    return (
+      <Routes>
+        <Route path="/rh/asos" element={<PortalRH />} />
+        <Route path="/*" element={<Navigate to="/rh/asos" replace />} />
+      </Routes>
+    );
+  }
+
+
   return (
     <AppLayout>
       <EmpresaQuerySync />
