@@ -104,8 +104,9 @@ export default function CadastroGhe() {
                     <TableHead className="w-[120px]">Código</TableHead>
                     <TableHead>Setor</TableHead>
                     <TableHead>Descrição</TableHead>
+                    <TableHead className="w-[110px] text-center">Funções</TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="w-[140px] text-right">Ações</TableHead>
+                    <TableHead className="w-[200px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -114,12 +115,16 @@ export default function CadastroGhe() {
                       <TableCell className="font-medium">{g.codigo}</TableCell>
                       <TableCell>{g.setor || g.nome || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground truncate max-w-[300px]">{g.descricao || "—"}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">{g.nFuncoes}</Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={g.status === "ativo" ? "default" : "secondary"}>
                           {g.status === "ativo" ? "Ativo" : "Inativo"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => setOpenFuncoes(g)} title="Gerenciar funções"><Briefcase className="h-4 w-4 mr-1" />Funções</Button>
                         <Button size="icon" variant="ghost" onClick={() => editar(g)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" onClick={() => alternarStatus(g)} title={g.status === "ativo" ? "Inativar" : "Ativar"}>
                           <Power className={`h-4 w-4 ${g.status === "ativo" ? "text-destructive" : "text-primary"}`} />
@@ -141,6 +146,12 @@ export default function CadastroGhe() {
         editing={editing}
         onSaved={() => qc.invalidateQueries({ queryKey: ["cad-ghe-list"] })}
       />
+      {openFuncoes && (
+        <FuncoesDialog
+          ghe={openFuncoes}
+          onClose={() => { setOpenFuncoes(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
+        />
+      )}
     </div>
   );
 }
