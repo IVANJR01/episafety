@@ -430,9 +430,16 @@ export default function Funcionarios() {
     return unique.sort((a, b) => a.localeCompare(b));
   }, [items]);
 
+  // Filter strictly by active empresa to avoid mixing data from other companies
+  // when switching tenants (cached query data may include previous empresa rows).
+  const scopedItems = useMemo(
+    () => empresaId ? items.filter(f => !f.empresa_id || f.empresa_id === empresaId) : items,
+    [items, empresaId]
+  );
+
   // Separate active vs dismissed
-  const ativos = useMemo(() => items.filter(f => !f.data_demissao), [items]);
-  const demitidos = useMemo(() => items.filter(f => !!f.data_demissao), [items]);
+  const ativos = useMemo(() => scopedItems.filter(f => !f.data_demissao), [scopedItems]);
+  const demitidos = useMemo(() => scopedItems.filter(f => !!f.data_demissao), [scopedItems]);
 
   const [activeTab, setActiveTab] = useState("ativos");
 
