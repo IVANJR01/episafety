@@ -551,6 +551,8 @@ export type Database = {
           inapto_cargo: boolean | null
           inapto_nr35: boolean | null
           local_emissao: string | null
+          local_emissao_id: string | null
+          local_emissao_snapshot: string | null
           medico_id: string | null
           nr35_nao_aplica: boolean | null
           numero_aso: string
@@ -580,6 +582,8 @@ export type Database = {
           inapto_cargo?: boolean | null
           inapto_nr35?: boolean | null
           local_emissao?: string | null
+          local_emissao_id?: string | null
+          local_emissao_snapshot?: string | null
           medico_id?: string | null
           nr35_nao_aplica?: boolean | null
           numero_aso: string
@@ -609,6 +613,8 @@ export type Database = {
           inapto_cargo?: boolean | null
           inapto_nr35?: boolean | null
           local_emissao?: string | null
+          local_emissao_id?: string | null
+          local_emissao_snapshot?: string | null
           medico_id?: string | null
           nr35_nao_aplica?: boolean | null
           numero_aso?: string
@@ -642,6 +648,13 @@ export type Database = {
             columns: ["ghe_id"]
             isOneToOne: false
             referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asos_local_emissao_id_fkey"
+            columns: ["local_emissao_id"]
+            isOneToOne: false
+            referencedRelation: "locais_emissao_aso"
             referencedColumns: ["id"]
           },
           {
@@ -2397,6 +2410,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      locais_emissao_aso: {
+        Row: {
+          ativo: boolean
+          cidade: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          endereco: string | null
+          id: string
+          nome: string
+          padrao: boolean
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cidade?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          padrao?: boolean
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cidade?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          padrao?: boolean
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       medicos: {
         Row: {

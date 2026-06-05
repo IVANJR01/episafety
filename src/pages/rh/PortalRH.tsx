@@ -113,7 +113,46 @@ export default function PortalRH() {
     queryFn: async () => (await supabase.from("aso_medicos").select("id, nome, crm, uf_crm").eq("ativo", true).order("nome")).data || [],
   });
 
+  const { data: locaisEmissao = [] } = useQuery({
+    queryKey: ["rh-locais-emissao", empresaScopeIds.join(",")],
+    queryFn: async () => {
+      let q = (supabase.from as any)("locais_emissao_aso")
+        .select("id, empresa_id, nome, cidade, uf, ativo, padrao")
+        .eq("ativo", true)
+        .order("nome");
+      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const [localEmissaoId, setLocalEmissaoId] = useState<string>("");
+
   const funcSel: any = useMemo(() => funcionarios.find((f: any) => f.id === funcionarioId), [funcionarios, funcionarioId]);
+
+  const locaisDisponiveis = useMemo(() => {
+    if (funcSel?.empresa_id) return locaisEmissao.filter((l) => l.empresa_id === funcSel.empresa_id);
+    return locaisEmissao;
+  }, [locaisEmissao, funcSel?.empresa_id]);
+
+  // Auto-seleciona o local: padrão > único disponível
+  useEffect(() => {
+    if (locaisDisponiveis.length === 0) { setLocalEmissaoId(""); return; }
+    if (localEmissaoId && locaisDisponiveis.some((l) => l.id === localEmissaoId)) return;
+    const padrao = locaisDisponiveis.find((l) => l.padrao);
+    if (padrao) { setLocalEmissaoId(padrao.id); return; }
+    if (locaisDisponiveis.length === 1) { setLocalEmissaoId(locaisDisponiveis[0].id); return; }
+    setLocalEmissaoId("");
+  }, [locaisDisponiveis]);
+
+  const localSel = useMemo(() => locaisDisponiveis.find((l) => l.id === localEmissaoId), [locaisDisponiveis, localEmissaoId]);
+  const localSnapshot = useMemo(() => {
+    if (!localSel) return "";
+    const cidUf = [localSel.cidade, localSel.uf].filter(Boolean).join(" - ");
+    return localSel.nome || cidUf || "";
+  }, [localSel]);
+
   const filteredFuncs = useMemo(() => {
     if (!funcSearch) return funcionarios.slice(0, 50);
     const q = funcSearch.toLowerCase();
@@ -144,11 +183,11 @@ export default function PortalRH() {
     return map;
   }, [riscos]);
 
-  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento && !!localEmissao.trim();
+  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento && !!localEmissaoId;
 
   const resetForm = () => {
     setFuncionarioId(""); setFuncSearch(""); setTipoExame("admissional");
-    setMedicoId(""); setObservacoes(""); setLocalEmissao("");
+    setMedicoId(""); setObservacoes(""); setLocalEmissao(""); setLocalEmissaoId("");
     setRiscos([]); setExames([]);
     setDataEmissao(format(new Date(), "yyyy-MM-dd"));
     setDataVencimento(format(addYears(new Date(), 1), "yyyy-MM-dd"));
@@ -158,7 +197,7 @@ export default function PortalRH() {
   const emitirAso = async (alsoPrint = false): Promise<string | null> => {
     if (!funcSel) { toast.error("Selecione um colaborador"); return null; }
     if (!funcSel.ghe_id) { toast.error("Colaborador sem GHE/GES vinculado"); return null; }
-    if (!localEmissao.trim()) { toast.error("Informe o local de emissão do ASO."); return null; }
+    if (!localEmissaoId || !localSnapshot) { toast.error("Selecione o local de emissão do ASO."); return null; }
     setSaving(true);
     try {
       const empresa_id = funcSel.empresa_id;
@@ -169,7 +208,9 @@ export default function PortalRH() {
         validade_tipo: validadeTipoSel, status_aptidao: "apto",
         apto_cargo: false, inapto_cargo: false, apto_restricao: false,
         apto_nr35: false, inapto_nr35: false, nr35_nao_aplica: false,
-        observacoes, local_emissao: localEmissao, status: "emitido",
+        observacoes, local_emissao: localSnapshot,
+        local_emissao_id: localEmissaoId, local_emissao_snapshot: localSnapshot,
+        status: "emitido",
         ghe_id: funcSel.ghe_id,
         riscos_snapshot: riscos.filter((r) => r.descricao.trim()),
         exames_snapshot: exames.filter((e) => e.nome_exame.trim()),
@@ -400,9 +441,25 @@ export default function PortalRH() {
                     </div>
                     <div>
                       <Label>Local de emissão *</Label>
-                      <Input value={localEmissao} onChange={(e) => setLocalEmissao(e.target.value)} placeholder="Cidade — UF (ex.: Alto Santo - CE)" />
-                      {!localEmissao.trim() && (
-                        <p className="text-xs text-destructive mt-1">Informe o local de emissão do ASO.</p>
+                      <Select value={localEmissaoId} onValueChange={setLocalEmissaoId} disabled={locaisDisponiveis.length === 0}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o local de emissão" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locaisDisponiveis.map((l) => (
+                            <SelectItem key={l.id} value={l.id}>
+                              {l.nome}{l.padrao ? " (padrão)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {locaisDisponiveis.length === 0 && (
+                        <p className="text-xs text-destructive mt-1">
+                          Nenhum local de emissão cadastrado para esta empresa. Solicite ao administrador o cadastro do local de emissão.
+                        </p>
+                      )}
+                      {locaisDisponiveis.length > 0 && !localEmissaoId && (
+                        <p className="text-xs text-destructive mt-1">Selecione o local de emissão do ASO.</p>
                       )}
                     </div>
                     <div>

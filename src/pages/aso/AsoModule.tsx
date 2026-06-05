@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { LayoutDashboard, FileText, Users, Stethoscope, Plus, ListChecks, Briefcase, Upload, Layers, BarChart3, Shield } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Stethoscope, Plus, ListChecks, Briefcase, Upload, Layers, BarChart3, Shield, MapPin } from "lucide-react";
 import AsoDashboard from "./AsoDashboard";
 import AsoList from "./AsoList";
 import AsoMedicos from "./AsoMedicos";
@@ -11,6 +11,7 @@ import AsoImport from "./AsoImport";
 import AsoLote from "./AsoLote";
 import AsoRelatorios from "./AsoRelatorios";
 import PcmsoGhe from "./PcmsoGhe";
+import AsoLocaisEmissao from "./AsoLocaisEmissao";
 import AsoDiagnostico from "@/components/aso/AsoDiagnostico";
 
 export default function AsoModule() {
@@ -47,6 +48,7 @@ export default function AsoModule() {
           <TabsTrigger value="funcoes" className="gap-1"><Briefcase className="h-4 w-4" />Funções/Riscos</TabsTrigger>
           <TabsTrigger value="medicos" className="gap-1"><Stethoscope className="h-4 w-4" />Médicos</TabsTrigger>
           <TabsTrigger value="catalogo" className="gap-1"><Users className="h-4 w-4" />Exames</TabsTrigger>
+          <TabsTrigger value="locais" className="gap-1"><MapPin className="h-4 w-4" />Locais</TabsTrigger>
           <TabsTrigger value="relatorios" className="gap-1"><BarChart3 className="h-4 w-4" />Relatórios</TabsTrigger>
         </TabsList>
 
@@ -59,6 +61,7 @@ export default function AsoModule() {
         <TabsContent value="funcoes" className="mt-4"><AsoFuncoes /></TabsContent>
         <TabsContent value="medicos" className="mt-4"><AsoMedicos /></TabsContent>
         <TabsContent value="catalogo" className="mt-4"><AsoCatalogo /></TabsContent>
+        <TabsContent value="locais" className="mt-4"><AsoLocaisEmissao /></TabsContent>
         <TabsContent value="relatorios" className="mt-4"><AsoRelatorios /></TabsContent>
       </Tabs>
     </div>
