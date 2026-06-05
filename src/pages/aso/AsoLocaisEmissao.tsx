@@ -40,7 +40,7 @@ export default function AsoLocaisEmissao() {
     },
   });
 
-  const { data: locais = [], isLoading } = useQuery({
+  const { data: locais = [], isLoading, refetch } = useQuery({
     queryKey: ["aso-locais-emissao", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = (supabase.from as any)("locais_emissao_aso").select("*").order("nome");
@@ -49,6 +49,8 @@ export default function AsoLocaisEmissao() {
       if (error) throw error;
       return (data || []) as Local[];
     },
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const openNovo = () => setEditing({
