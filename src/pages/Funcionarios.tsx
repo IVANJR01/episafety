@@ -511,10 +511,10 @@ export default function Funcionarios() {
         {setores.length > 0 && (
           <Select value={filterSetor} onValueChange={v => setFilterSetor(v === "all" ? "" : v)}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filtrar por setor..." />
+              <SelectValue placeholder="Filtrar por GHE..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os setores</SelectItem>
+              <SelectItem value="all">Todos os GHE</SelectItem>
               {setores.map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
@@ -600,7 +600,7 @@ export default function Funcionarios() {
                     <TableHead>Matrícula</TableHead>
                     <TableHead>Unidade</TableHead>
                     <TableHead>Contrato</TableHead>
-                    <TableHead>Setor</TableHead>
+                    <TableHead>GHE</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Admissão</TableHead>
                     {activeTab === "demitidos" && <TableHead>Demissão</TableHead>}
@@ -687,7 +687,7 @@ export default function Funcionarios() {
               </div>
             </div>
             <div>
-              <Label>GHE/GES (PCMSO/PGR) <span className="text-destructive">*</span></Label>
+              <Label>GHE/GES <span className="text-destructive">*</span></Label>
               <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v, cargo: ""})}>
                 <SelectTrigger><SelectValue placeholder="Selecione o GHE/GES do colaborador" /></SelectTrigger>
                 <SelectContent>
