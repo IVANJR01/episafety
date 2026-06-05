@@ -40,7 +40,7 @@ export default function CadastroGhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ghe_ges")
-        .select("id, codigo, nome, setor, descricao, status, ghe_funcoes(count)")
+        .select("id, empresa_id, codigo, nome, setor, descricao, status, ghe_funcoes(count)")
         .eq("empresa_id", empresaSel)
         .order("codigo");
       if (error) throw error;
