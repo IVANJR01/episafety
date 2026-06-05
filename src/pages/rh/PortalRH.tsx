@@ -73,10 +73,12 @@ export default function PortalRH() {
 
   // Funcionários da empresa
   const { data: funcionarios = [] } = useQuery({
-    queryKey: ["rh-funcionarios", empresaScopeIds.join(",")],
+    queryKey: ["rh-funcionarios-ghe", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("funcionarios")
-        .select("id, nome, cpf, cargo, setor, matricula, data_admissao, empresa_id, ghe_id, ghe_ges(id, codigo, nome, setor), empresa_config:empresa_id(id, nome, cnpj)")
+        .select("id, nome, cpf, cargo, setor, matricula, data_admissao, empresa_id, ghe_id, ghe_ges!inner(id, codigo, nome, setor), empresa_config:empresa_id(id, nome, cnpj)")
+        .not("ghe_id", "is", null)
+        .is("data_demissao", null)
         .order("nome");
       if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
       const { data, error } = await q;
@@ -274,8 +276,13 @@ export default function PortalRH() {
           {/* ============ EMITIR ============ */}
           <TabsContent value="emitir" className="space-y-4 mt-4">
             {funcionarios.length === 0 && (
-              <Card><CardContent className="p-6 text-center text-muted-foreground text-sm">
-                Nenhum colaborador encontrado para esta empresa.
+              <Card><CardContent className="p-6 text-center text-sm space-y-2">
+                <AlertTriangle className="h-6 w-6 mx-auto text-orange-500" />
+                <p className="font-medium">Nenhum colaborador vinculado ao GHE/GES.</p>
+                <p className="text-muted-foreground">
+                  Vincule colaboradores na <b>Gestão de ASO → PCMSO / GHE</b> antes de emitir o ASO.<br />
+                  <span className="text-xs">RH: solicite ao setor de Segurança do Trabalho a vinculação do colaborador ao GHE/GES.</span>
+                </p>
               </CardContent></Card>
             )}
 
