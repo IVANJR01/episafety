@@ -101,7 +101,6 @@ export default function CadastroGhe() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[120px]">Código</TableHead>
-                    <TableHead>Nome</TableHead>
                     <TableHead>Setor</TableHead>
                     <TableHead>Descrição</TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
@@ -112,8 +111,7 @@ export default function CadastroGhe() {
                   {filtrados.map((g: any) => (
                     <TableRow key={g.id}>
                       <TableCell className="font-medium">{g.codigo}</TableCell>
-                      <TableCell>{g.nome}</TableCell>
-                      <TableCell>{g.setor || "—"}</TableCell>
+                      <TableCell>{g.setor || g.nome || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground truncate max-w-[300px]">{g.descricao || "—"}</TableCell>
                       <TableCell>
                         <Badge variant={g.status === "ativo" ? "default" : "secondary"}>
@@ -165,12 +163,12 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
   }, [editing, open]);
 
   const save = async () => {
-    if (!form.codigo.trim() || !form.nome.trim()) return toast.error("Código e nome são obrigatórios");
+    if (!form.codigo.trim() || !form.setor.trim()) return toast.error("Código e setor são obrigatórios");
     setSaving(true);
     const payload: any = {
       codigo: form.codigo.trim(),
-      nome: form.nome.trim(),
-      setor: form.setor.trim() || null,
+      nome: form.setor.trim(),
+      setor: form.setor.trim(),
       descricao: form.descricao.trim() || null,
       status: form.status,
       empresa_id: empresaId,
@@ -196,13 +194,9 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
               <Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="GHE 01" />
             </div>
             <div>
-              <Label>Setor</Label>
+              <Label>Setor *</Label>
               <Input value={form.setor} onChange={(e) => setForm({ ...form, setor: e.target.value })} placeholder="PCP" />
             </div>
-          </div>
-          <div>
-            <Label>Nome *</Label>
-            <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="PCP" />
           </div>
           <div>
             <Label>Descrição</Label>
