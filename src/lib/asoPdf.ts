@@ -138,13 +138,13 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   autoTable(doc, {
     ...tableOpts,
     startY,
-    head: [[{ content: "TIPO DE EXAME", colSpan: 10, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    head: [[{ content: "TIPO DE EXAME", colSpan: 5, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
     body: [[
-      { content: "Admissional" }, { content: chk(tipo === "admissional"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "Periódico" }, { content: chk(tipo === "periodico"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "Retorno ao Trabalho" }, { content: chk(tipo === "retorno"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "Mudança de Risco" }, { content: chk(tipo === "mudanca_risco"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "Demissional" }, { content: chk(tipo === "demissional"), styles: { halign: "center", cellWidth: 8 } },
+      { content: `${chk(tipo === "admissional")} Admissional` },
+      { content: `${chk(tipo === "periodico")} Periódico` },
+      { content: `${chk(tipo === "retorno")} Retorno ao Trabalho` },
+      { content: `${chk(tipo === "mudanca_risco" || tipo === "mudanca_funcao")} Mudança de Risco/Função` },
+      { content: `${chk(tipo === "demissional")} Demissional` },
     ]],
     styles: { ...tableOpts.styles, fontSize: 8 },
   });
@@ -238,12 +238,12 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   autoTable(doc, {
     ...tableOpts,
     startY,
-    head: [[{ content: "VALIDADE DO EXAME", colSpan: 8, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    head: [[{ content: "VALIDADE DO EXAME", colSpan: 4, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
     body: [[
-      { content: "90 Dias" }, { content: chk(validadeTipo === "90dias"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "6 Meses" }, { content: chk(validadeTipo === "6meses"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "1 (um) ano" }, { content: chk(validadeTipo === "1ano"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "2 (dois) anos" }, { content: chk(validadeTipo === "2anos"), styles: { halign: "center", cellWidth: 8 } },
+      { content: `${chk(validadeTipo === "90dias")} 90 Dias` },
+      { content: `${chk(validadeTipo === "6meses")} 6 Meses` },
+      { content: `${chk(validadeTipo === "1ano")} 1 (um) ano` },
+      { content: `${chk(validadeTipo === "2anos")} 2 (dois) anos` },
     ]],
   });
   startY = (doc as any).lastAutoTable.finalY;
