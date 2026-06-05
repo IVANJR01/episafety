@@ -361,7 +361,7 @@ export default function PortalRH() {
                       </div>
                     </div>
                     <div>
-                      <Label>Médico responsável *</Label>
+                      <Label>Médico responsável <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                       <Select value={medicoId} onValueChange={setMedicoId}>
                         <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
                         <SelectContent>
