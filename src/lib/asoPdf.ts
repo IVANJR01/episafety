@@ -64,7 +64,7 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   const cargo = aso.funcionarios?.cargo || "—";
   const numero = formatarNumeroAsoParaPdf(aso.numero_aso);
   const tipo = aso.tipo_exame as string;
-  const local = aso.local_emissao || "—";
+  const local = (aso.local_emissao && String(aso.local_emissao).trim()) || (aso.empresa_config?.endereco && String(aso.empresa_config.endereco).trim()) || "—";
   const med = aso.aso_medicos;
   const validadeTipo = inferValidadeTipo(aso);
   const autoConclusao = !!(aso as any).preencher_conclusao_automaticamente;
