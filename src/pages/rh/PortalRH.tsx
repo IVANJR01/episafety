@@ -141,7 +141,7 @@ export default function PortalRH() {
       const empresa_id = funcSel.empresa_id;
       const { data: num } = await supabase.rpc("gerar_numero_aso", { _empresa_id: empresa_id });
       const payload: any = {
-        empresa_id, funcionario_id: funcSel.id, medico_id: medicoId,
+        empresa_id, funcionario_id: funcSel.id, medico_id: medicoId || null,
         tipo_exame: tipoExame, data_emissao: dataEmissao, data_vencimento: dataVencimento,
         validade_tipo: "1ano", status_aptidao: "apto",
         apto_cargo: true, inapto_cargo: false, apto_restricao: false,
