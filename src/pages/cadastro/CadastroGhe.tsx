@@ -11,7 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Power, ClipboardList, Search } from "lucide-react";
+import { Plus, Pencil, Power, ClipboardList, Search, Briefcase, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CadastroGhe() {
@@ -21,6 +21,7 @@ export default function CadastroGhe() {
   const [busca, setBusca] = useState("");
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [openFuncoes, setOpenFuncoes] = useState<any | null>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["cad-ghe-empresas", empresaScopeIds.join(",")],
@@ -39,11 +40,11 @@ export default function CadastroGhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ghe_ges")
-        .select("id, codigo, nome, setor, descricao, status")
+        .select("id, codigo, nome, setor, descricao, status, ghe_funcoes(count)")
         .eq("empresa_id", empresaSel)
         .order("codigo");
       if (error) throw error;
-      return data || [];
+      return (data || []).map((g: any) => ({ ...g, nFuncoes: g.ghe_funcoes?.[0]?.count || 0 }));
     },
   });
 
@@ -103,8 +104,9 @@ export default function CadastroGhe() {
                     <TableHead className="w-[120px]">Código</TableHead>
                     <TableHead>Setor</TableHead>
                     <TableHead>Descrição</TableHead>
+                    <TableHead className="w-[110px] text-center">Funções</TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="w-[140px] text-right">Ações</TableHead>
+                    <TableHead className="w-[200px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -113,12 +115,16 @@ export default function CadastroGhe() {
                       <TableCell className="font-medium">{g.codigo}</TableCell>
                       <TableCell>{g.setor || g.nome || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground truncate max-w-[300px]">{g.descricao || "—"}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">{g.nFuncoes}</Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={g.status === "ativo" ? "default" : "secondary"}>
                           {g.status === "ativo" ? "Ativo" : "Inativo"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => setOpenFuncoes(g)} title="Gerenciar funções"><Briefcase className="h-4 w-4 mr-1" />Funções</Button>
                         <Button size="icon" variant="ghost" onClick={() => editar(g)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" onClick={() => alternarStatus(g)} title={g.status === "ativo" ? "Inativar" : "Ativar"}>
                           <Power className={`h-4 w-4 ${g.status === "ativo" ? "text-destructive" : "text-primary"}`} />
@@ -140,6 +146,12 @@ export default function CadastroGhe() {
         editing={editing}
         onSaved={() => qc.invalidateQueries({ queryKey: ["cad-ghe-list"] })}
       />
+      {openFuncoes && (
+        <FuncoesDialog
+          ghe={openFuncoes}
+          onClose={() => { setOpenFuncoes(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
+        />
+      )}
     </div>
   );
 }
@@ -214,6 +226,86 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
           </div>
         </div>
         <DialogFooter><Button onClick={save} disabled={saving}>Salvar</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FuncoesDialog({ ghe, onClose }: { ghe: any; onClose: () => void }) {
+  const [nova, setNova] = useState("");
+  const [bulk, setBulk] = useState("");
+  const [itens, setItens] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("ghe_funcoes")
+      .select("id, nome_funcao, cbo")
+      .eq("ghe_id", ghe.id)
+      .order("nome_funcao");
+    setLoading(false);
+    if (error) return toast.error(error.message);
+    setItens(data || []);
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [ghe.id]);
+
+  const add = async () => {
+    const nome = nova.trim();
+    if (!nome) return;
+    const { error } = await supabase.from("ghe_funcoes").insert({
+      ghe_id: ghe.id, empresa_id: ghe.empresa_id || ghe.empresaId, nome_funcao: nome,
+    } as any);
+    if (error) return toast.error(error.message);
+    setNova(""); load();
+  };
+
+  const addBulk = async () => {
+    const lines = bulk.split("\n").map((x) => x.trim()).filter(Boolean);
+    if (!lines.length) return;
+    const payload = lines.map((l) => ({ ghe_id: ghe.id, empresa_id: ghe.empresa_id, nome_funcao: l }));
+    const { error } = await supabase.from("ghe_funcoes").insert(payload as any);
+    if (error) return toast.error(error.message);
+    toast.success(`${lines.length} funções adicionadas`);
+    setBulk(""); load();
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("ghe_funcoes").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Funções — {ghe.codigo} {ghe.setor ? `· ${ghe.setor}` : ""}</DialogTitle>
+          <p className="text-sm text-muted-foreground">Cadastre as funções/cargos vinculados a este GHE. No cadastro do funcionário, ao escolher o GHE, estas funções aparecerão automaticamente.</p>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Input value={nova} onChange={(e) => setNova(e.target.value)} placeholder="Nome da função (ex: Costureiro(a))" onKeyDown={(e) => e.key === "Enter" && add()} />
+            <Button onClick={add}><Plus className="h-4 w-4" /></Button>
+          </div>
+          <div>
+            <Label className="text-xs">Colar várias funções (uma por linha)</Label>
+            <Textarea value={bulk} onChange={(e) => setBulk(e.target.value)} rows={3} placeholder="Supervisor de Produção&#10;Auxiliar Administrativo" />
+            <Button size="sm" variant="outline" onClick={addBulk} className="mt-2" disabled={!bulk.trim()}>Adicionar lista</Button>
+          </div>
+          <div className="border rounded divide-y max-h-[280px] overflow-y-auto">
+            {loading && <p className="text-sm text-muted-foreground p-3">Carregando…</p>}
+            {!loading && itens.length === 0 && <p className="text-sm text-muted-foreground p-3 italic">Nenhuma função cadastrada.</p>}
+            {itens.map((f: any) => (
+              <div key={f.id} className="flex items-center justify-between p-2">
+                <span className="text-sm">{f.nome_funcao}{f.cbo ? <span className="text-xs text-muted-foreground ml-2">CBO {f.cbo}</span> : null}</span>
+                <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Fechar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
