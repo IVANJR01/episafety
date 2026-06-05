@@ -65,7 +65,6 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   const numero = formatarNumeroAsoParaPdf(aso.numero_aso);
   const tipo = aso.tipo_exame as string;
   const local = (aso.local_emissao && String(aso.local_emissao).trim()) || (aso.empresa_config?.endereco && String(aso.empresa_config.endereco).trim()) || "—";
-  const med = aso.aso_medicos;
   const validadeTipo = inferValidadeTipo(aso);
   const autoConclusao = !!(aso as any).preencher_conclusao_automaticamente;
 
@@ -248,18 +247,11 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   });
   startY = (doc as any).lastAutoTable.finalY;
 
-  // Médico — faixa exclusiva, título centralizado + área em branco para preenchimento
-  const medicoLinha = med?.nome
-    ? `Dr(a). ${med.nome}${med.crm ? " — CRM " + med.crm + (med.uf_crm ? "/" + med.uf_crm : "") : ""}`
-    : "";
+  // Médico — apenas faixa/título, sem área em branco abaixo
   autoTable(doc, {
     ...tableOpts,
     startY,
-    head: [[{ content: "Nome do Médico Responsável Pelo Exame", styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
-    body: [[{
-      content: medicoLinha,
-      styles: { halign: "center", minCellHeight: 14, valign: "middle" },
-    }]],
+    body: [[{ content: "Nome do Médico Responsável Pelo Exame", styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230], minCellHeight: 5 } }]],
   });
   startY = (doc as any).lastAutoTable.finalY;
 
@@ -275,17 +267,17 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   });
   startY = (doc as any).lastAutoTable.finalY;
 
-  // Assinaturas — médico responsável vai acima da linha de assinatura do médico
+  // Assinaturas — campo manual somente na linha de assinatura
   autoTable(doc, {
     ...tableOpts,
     startY,
     body: [[
       {
-        content: `\n\n_________________________________________________\n${medicoLinha}\nAssinatura Médico`,
+        content: "\n\n_________________________________________________\nAssinatura Médico",
         styles: { halign: "center", minCellHeight: 26, cellWidth: innerW / 2 },
       },
       {
-        content: "\n\n_________________________________________________\n\nAssinatura Colaborador",
+        content: "\n\n_________________________________________________\nAssinatura Colaborador",
         styles: { halign: "center", minCellHeight: 26 },
       },
     ]],
