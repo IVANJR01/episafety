@@ -89,26 +89,46 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
     margin: { left: M, right: M },
   };
 
-  // Bloco identificação (linha 1 e 2)
+  // Bloco identificação — linha EMPRESA / CNPJ / N°
   autoTable(doc, {
     ...tableOpts,
     startY,
     body: [
       [
         { content: "EMPRESA:", styles: { fontStyle: "bold", cellWidth: 22 } },
-        { content: empresa, styles: { cellWidth: 95 } },
+        { content: empresa, styles: { cellWidth: 92 } },
         { content: "CNPJ:", styles: { fontStyle: "bold", cellWidth: 16 } },
-        { content: cnpj, styles: { cellWidth: 35 } },
+        { content: cnpj, styles: { cellWidth: 38 } },
         { content: "N°", styles: { fontStyle: "bold", cellWidth: 8, halign: "center" } },
         { content: numero, styles: { halign: "center" } },
       ],
+    ],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
+
+  // Linha NOME / CPF
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    body: [
       [
-        { content: "NOME:", styles: { fontStyle: "bold" } },
-        { content: nome },
-        { content: "CPF:", styles: { fontStyle: "bold" } },
+        { content: "NOME:", styles: { fontStyle: "bold", cellWidth: 22 } },
+        { content: nome, styles: { cellWidth: 116 } },
+        { content: "CPF:", styles: { fontStyle: "bold", cellWidth: 16 } },
         { content: cpf },
-        { content: "FUNÇÃO:", styles: { fontStyle: "bold", cellWidth: 8 }, colSpan: 1 },
-        { content: cargo },
+      ],
+    ],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
+
+  // Linha FUNÇÃO (largura total — não quebra em coluna estreita)
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    body: [
+      [
+        { content: "FUNÇÃO:", styles: { fontStyle: "bold", cellWidth: 22 } },
+        { content: cargo, styles: { overflow: "linebreak" } },
       ],
     ],
   });
