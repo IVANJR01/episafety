@@ -62,7 +62,7 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   const local = aso.local_emissao || "—";
   const med = aso.aso_medicos;
   const validadeTipo = inferValidadeTipo(aso);
-  const autoConclusao = !!aso.preencher_conclusao_automaticamente;
+  const autoConclusao = !!(aso as any).preencher_conclusao_automaticamente;
 
   const riscosPorGrupo = (k: string) => {
     const items = riscos.filter((r: any) => r.grupo === k).map((r: any) => (r.descricao || "").trim()).filter(Boolean);
