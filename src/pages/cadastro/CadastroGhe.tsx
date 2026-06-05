@@ -236,6 +236,8 @@ function FuncoesDialog({ ghe, onClose }: { ghe: any; onClose: () => void }) {
   const [bulk, setBulk] = useState("");
   const [itens, setItens] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -277,6 +279,16 @@ function FuncoesDialog({ ghe, onClose }: { ghe: any; onClose: () => void }) {
     load();
   };
 
+  const startEdit = (f: any) => { setEditId(f.id); setEditVal(f.nome_funcao || ""); };
+  const cancelEdit = () => { setEditId(null); setEditVal(""); };
+  const saveEdit = async () => {
+    const nome = editVal.trim();
+    if (!editId || !nome) return cancelEdit();
+    const { error } = await supabase.from("ghe_funcoes").update({ nome_funcao: nome }).eq("id", editId);
+    if (error) return toast.error(error.message);
+    cancelEdit(); load();
+  };
+
   return (
     <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-2xl">
@@ -298,9 +310,26 @@ function FuncoesDialog({ ghe, onClose }: { ghe: any; onClose: () => void }) {
             {loading && <p className="text-sm text-muted-foreground p-3">Carregando…</p>}
             {!loading && itens.length === 0 && <p className="text-sm text-muted-foreground p-3 italic">Nenhuma função cadastrada.</p>}
             {itens.map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between p-2">
-                <span className="text-sm">{f.nome_funcao}{f.cbo ? <span className="text-xs text-muted-foreground ml-2">CBO {f.cbo}</span> : null}</span>
-                <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+              <div key={f.id} className="flex items-center justify-between gap-2 p-2">
+                {editId === f.id ? (
+                  <>
+                    <Input
+                      autoFocus
+                      value={editVal}
+                      onChange={(e) => setEditVal(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveEdit(); if (e.key === "Escape") cancelEdit(); }}
+                      className="h-8"
+                    />
+                    <Button size="sm" onClick={saveEdit}>Salvar</Button>
+                    <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancelar</Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm flex-1">{f.nome_funcao}{f.cbo ? <span className="text-xs text-muted-foreground ml-2">CBO {f.cbo}</span> : null}</span>
+                    <Button size="icon" variant="ghost" onClick={() => startEdit(f)} title="Editar"><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => remove(f.id)} title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </>
+                )}
               </div>
             ))}
           </div>
