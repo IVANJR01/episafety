@@ -20,10 +20,15 @@ function formatarNumeroAsoParaPdf(n?: string | null): string {
 }
 
 function inferValidadeTipo(aso: any): string | null {
+  // Regra automática: demissional => 90 dias; demais => 1 ano
+  const tipo = String(aso.tipo_exame || "").toLowerCase();
+  if (tipo === "demissional") return "90dias";
+  if (["admissional", "periodico", "retorno", "mudanca_risco", "mudanca_funcao"].includes(tipo)) return "1ano";
+  // fallback ao salvo
   if (aso.validade_tipo) {
     const v = String(aso.validade_tipo).toLowerCase();
     if (v.includes("90")) return "90dias";
-    if (v.includes("6m") || v.includes("6 m") || v.includes("semestr")) return "6meses";
+    if (v.includes("6m") || v.includes("semestr")) return "6meses";
     if (v.includes("2")) return "2anos";
     if (v.includes("1")) return "1ano";
   }
