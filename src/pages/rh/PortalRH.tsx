@@ -379,8 +379,12 @@ export default function PortalRH() {
                         <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
                       </div>
                       <div>
-                        <Label>Validade *</Label>
-                        <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
+                        <Label>
+                          Validade * <span className="text-xs text-muted-foreground">(automática — {tipoExame === "demissional" ? "90 dias" : "1 ano"})</span>
+                        </Label>
+                        <Input type="date" value={dataVencimento}
+                          onChange={(e) => setDataVencimento(e.target.value)}
+                          disabled={validadeBloqueada} />
                       </div>
                     </div>
                     <div>
@@ -395,8 +399,11 @@ export default function PortalRH() {
                       </Select>
                     </div>
                     <div>
-                      <Label>Local de emissão</Label>
-                      <Input value={localEmissao} onChange={(e) => setLocalEmissao(e.target.value)} placeholder="Cidade — UF" />
+                      <Label>Local de emissão *</Label>
+                      <Input value={localEmissao} onChange={(e) => setLocalEmissao(e.target.value)} placeholder="Cidade — UF (ex.: Alto Santo - CE)" />
+                      {!localEmissao.trim() && (
+                        <p className="text-xs text-destructive mt-1">Informe o local de emissão do ASO.</p>
+                      )}
                     </div>
                     <div>
                       <Label>Observações</Label>
