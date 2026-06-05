@@ -138,13 +138,13 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   autoTable(doc, {
     ...tableOpts,
     startY,
-    head: [[{ content: "TIPO DE EXAME", colSpan: 10, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    head: [[{ content: "TIPO DE EXAME", colSpan: 5, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
     body: [[
-      { content: "Admissional" }, { content: chk(tipo === "admissional"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "Periódico" }, { content: chk(tipo === "periodico"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "Retorno ao Trabalho" }, { content: chk(tipo === "retorno"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "Mudança de Risco" }, { content: chk(tipo === "mudanca_risco"), styles: { halign: "center", cellWidth: 8 } },
-      { content: "Demissional" }, { content: chk(tipo === "demissional"), styles: { halign: "center", cellWidth: 8 } },
+      { content: `${chk(tipo === "admissional")} Admissional` },
+      { content: `${chk(tipo === "periodico")} Periódico` },
+      { content: `${chk(tipo === "retorno")} Retorno ao Trabalho` },
+      { content: `${chk(tipo === "mudanca_risco" || tipo === "mudanca_funcao")} Mudança de Risco/Função` },
+      { content: `${chk(tipo === "demissional")} Demissional` },
     ]],
     styles: { ...tableOpts.styles, fontSize: 8 },
   });
