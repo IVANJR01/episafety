@@ -376,23 +376,35 @@ export default function PortalRH() {
                 <Card>
                   <CardContent className="p-4 space-y-3">
                     <div>
-                      <Label>Buscar colaborador</Label>
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input className="pl-8" value={funcSearch} onChange={(e) => setFuncSearch(e.target.value)}
-                          placeholder="Nome, CPF ou matrícula…" />
-                      </div>
-                    </div>
-                    <div>
                       <Label>Colaborador *</Label>
-                      <Select value={funcionarioId} onValueChange={setFuncionarioId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                        <SelectContent>
-                          {filteredFuncs.map((f: any) => (
-                            <SelectItem key={f.id} value={f.id}>{f.nome}{f.cpf ? ` — ${f.cpf}` : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                            {funcSel ? `${funcSel.nome}${funcSel.cpf ? ` — ${funcSel.cpf}` : ""}` : "Selecione ou busque por nome, CPF ou matrícula…"}
+                            <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar por nome, CPF ou matrícula…" />
+                            <CommandList>
+                              <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {funcionarios.map((f: any) => (
+                                  <CommandItem
+                                    key={f.id}
+                                    value={`${f.nome} ${f.cpf || ""} ${f.matricula || ""}`}
+                                    onSelect={() => setFuncionarioId(f.id)}
+                                  >
+                                    <Check className={`mr-2 h-4 w-4 ${funcionarioId === f.id ? "opacity-100" : "opacity-0"}`} />
+                                    {f.nome}{f.cpf ? ` — ${f.cpf}` : ""}{f.matricula ? ` (${f.matricula})` : ""}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       {!funcionarioId && (
                         <p className="text-xs text-muted-foreground mt-1">
                           Selecione um colaborador para gerar o ASO com base no GHE/GES vinculado.
