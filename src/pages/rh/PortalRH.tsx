@@ -109,9 +109,28 @@ export default function PortalRH() {
   });
 
   const { data: medicos = [] } = useQuery({
-    queryKey: ["rh-medicos"],
-    queryFn: async () => (await supabase.from("aso_medicos").select("id, nome, crm, uf_crm").eq("ativo", true).order("nome")).data || [],
+    queryKey: ["rh-medicos", empresaScopeIds.join(",")],
+    queryFn: async () => {
+      let q = supabase.from("aso_medicos").select("id, nome, crm, uf_crm, empresa_id").eq("ativo", true).order("nome");
+      if (empresaScopeIds.length > 0) {
+        q = q.or(`empresa_id.in.(${empresaScopeIds.join(",")}),empresa_id.is.null`);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
   });
+
+  const medicosDisponiveis = useMemo(() => {
+    const empId = (funcionarios as any[]).find((f: any) => f.id === funcionarioId)?.empresa_id;
+    if (empId) {
+      const filtered = (medicos as any[]).filter((m) => !m.empresa_id || m.empresa_id === empId);
+      return filtered.length > 0 ? filtered : (medicos as any[]);
+    }
+    return medicos as any[];
+  }, [medicos, funcionarios, funcionarioId]);
 
   const { data: locaisEmissao = [] } = useQuery({
     queryKey: ["rh-locais-emissao", empresaScopeIds.join(",")],
@@ -430,14 +449,19 @@ export default function PortalRH() {
                     </div>
                     <div>
                       <Label>Médico responsável <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-                      <Select value={medicoId} onValueChange={setMedicoId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                      <Select value={medicoId} onValueChange={setMedicoId} disabled={medicosDisponiveis.length === 0}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={medicosDisponiveis.length === 0 ? "Nenhum médico cadastrado" : "Selecione…"} />
+                        </SelectTrigger>
                         <SelectContent>
-                          {medicos.map((m: any) => (
+                          {medicosDisponiveis.map((m: any) => (
                             <SelectItem key={m.id} value={m.id}>{m.nome} — CRM {m.crm}{m.uf_crm ? "/" + m.uf_crm : ""}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {medicosDisponiveis.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">Solicite ao administrador o cadastro do médico. O ASO pode ser gerado sem médico.</p>
+                      )}
                     </div>
                     <div>
                       <Label>Local de emissão *</Label>
