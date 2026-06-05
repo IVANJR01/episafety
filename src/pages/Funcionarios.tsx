@@ -23,6 +23,7 @@ interface Funcionario {
   id: string; nome: string; matricula: string | null; setor: string | null;
   cargo: string | null; data_admissao: string | null; cpf: string | null;
   data_demissao: string | null; unidade_id: string | null; contrato_id: string | null;
+  empresa_id: string | null;
 }
 
 interface Unidade { id: string; nome: string; tipo: string; }
@@ -429,9 +430,16 @@ export default function Funcionarios() {
     return unique.sort((a, b) => a.localeCompare(b));
   }, [items]);
 
+  // Filter strictly by active empresa to avoid mixing data from other companies
+  // when switching tenants (cached query data may include previous empresa rows).
+  const scopedItems = useMemo(
+    () => empresaId ? items.filter(f => !f.empresa_id || f.empresa_id === empresaId) : items,
+    [items, empresaId]
+  );
+
   // Separate active vs dismissed
-  const ativos = useMemo(() => items.filter(f => !f.data_demissao), [items]);
-  const demitidos = useMemo(() => items.filter(f => !!f.data_demissao), [items]);
+  const ativos = useMemo(() => scopedItems.filter(f => !f.data_demissao), [scopedItems]);
+  const demitidos = useMemo(() => scopedItems.filter(f => !!f.data_demissao), [scopedItems]);
 
   const [activeTab, setActiveTab] = useState("ativos");
 
