@@ -135,6 +135,20 @@ export default function Funcionarios() {
   const contratoMap = useMemo(() => new Map(contratos.map(c => [c.id, c.nome])), [contratos]);
 
   const contratosFiltrados = form.unidade_id ? contratos.filter(c => c.unidade_id === form.unidade_id) : contratos;
+  const selectedGhe = useMemo(() => ghes.find(g => g.id === form.ghe_id) || null, [ghes, form.ghe_id]);
+
+  // Carrega funções do GHE selecionado e sincroniza setor automaticamente
+  useEffect(() => {
+    if (!form.ghe_id) { setGheFuncoes([]); return; }
+    supabase.from("ghe_funcoes").select("id, nome_funcao").eq("ghe_id", form.ghe_id).eq("status", "ativo").order("nome_funcao").then(({ data }) => {
+      setGheFuncoes((data as any) || []);
+    });
+    const ghe = ghes.find(g => g.id === form.ghe_id);
+    if (ghe && ghe.setor && form.setor !== ghe.setor) {
+      setForm(f => ({ ...f, setor: ghe.setor || "" }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.ghe_id, ghes]);
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
