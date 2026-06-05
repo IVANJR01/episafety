@@ -35,8 +35,6 @@ export default function AsoModule() {
         </div>
       </div>
 
-      <AsoDiagnostico />
-
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="dashboard" className="gap-1"><LayoutDashboard className="h-4 w-4" />Dashboard</TabsTrigger>
