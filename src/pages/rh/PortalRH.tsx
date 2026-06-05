@@ -22,6 +22,16 @@ const TIPO: Record<string, string> = {
   mudanca_risco: "Mudança de Risco", mudanca_funcao: "Mudança de Função", demissional: "Demissional",
 };
 
+// Regra de validade automática por tipo de exame
+// Demissional = 90 dias; demais = 1 ano
+function calcularValidade(tipo: string, emissao: string): { vencimento: string; validade_tipo: string } {
+  const base = parseISO(emissao);
+  if (tipo === "demissional") {
+    return { vencimento: format(addDays(base, 90), "yyyy-MM-dd"), validade_tipo: "90dias" };
+  }
+  return { vencimento: format(addYears(base, 1), "yyyy-MM-dd"), validade_tipo: "1ano" };
+}
+
 function statusValidade(dv?: string | null) {
   if (!dv) return { label: "—", cls: "bg-muted text-muted-foreground" };
   const d = differenceInDays(parseISO(dv), new Date());
