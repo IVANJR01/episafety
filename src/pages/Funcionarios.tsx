@@ -660,9 +660,9 @@ export default function Funcionarios() {
               <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm({...form, cpf: formatCPF(e.target.value)})} placeholder="000.000.000-00" maxLength={14} /></div>
               <div><Label>Matrícula</Label><Input value={form.matricula} onChange={e => setForm({...form, matricula: e.target.value})} placeholder="Nº matrícula" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Data Admissão</Label><Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} /></div>
-              <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({...form, setor: e.target.value})} placeholder="Ex: Produção" /></div>
+            <div>
+              <Label>Data Admissão</Label>
+              <Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -687,17 +687,34 @@ export default function Funcionarios() {
               </div>
             </div>
             <div>
-              <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
-            </div>
-            <div>
-              <Label>GHE/GES (PCMSO)</Label>
-              <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v})}>
-                <SelectTrigger><SelectValue placeholder="Selecione o GHE/GES" /></SelectTrigger>
+              <Label>GHE/GES (PCMSO/PGR) <span className="text-destructive">*</span></Label>
+              <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v, cargo: ""})}>
+                <SelectTrigger><SelectValue placeholder="Selecione o GHE/GES do colaborador" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
                   {ghes.map(g => <SelectItem key={g.id} value={g.id}>{g.codigo} — {g.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {selectedGhe?.setor ? (
+                <p className="text-[11px] text-muted-foreground mt-1">Setor vinculado: <span className="font-medium text-foreground">{selectedGhe.setor}</span> · Define automaticamente os riscos e exames no ASO.</p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground mt-1">Define automaticamente o setor, riscos e exames no ASO.</p>
+              )}
+            </div>
+            <div>
+              <Label>Cargo/Função <span className="text-destructive">*</span></Label>
+              {form.ghe_id && gheFuncoes.length > 0 ? (
+                <Select value={form.cargo || ""} onValueChange={v => setForm({...form, cargo: v})}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a função do GHE" /></SelectTrigger>
+                  <SelectContent>
+                    {gheFuncoes.map(fn => <SelectItem key={fn.id} value={fn.nome_funcao}>{fn.nome_funcao}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder={form.ghe_id ? "Ex: Operador (GHE sem funções cadastradas)" : "Selecione um GHE/GES primeiro"} disabled={!form.ghe_id} />
+              )}
+            </div>
+
               <p className="text-[11px] text-muted-foreground mt-1">Define automaticamente os riscos e exames no ASO.</p>
             </div>
             {editing && (
