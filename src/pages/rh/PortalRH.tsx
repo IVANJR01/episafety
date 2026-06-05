@@ -63,7 +63,7 @@ async function logAcao(opts: { empresa_id: string; aso_id: string; funcionario_i
 }
 
 export default function PortalRH() {
-  const { user, signOut, empresaScopeIds } = useAuth();
+  const { user, signOut, empresaScopeIds, isSuperAdmin } = useAuth() as any;
   const qc = useQueryClient();
   const [tab, setTab] = useState<"emitir" | "historico">("emitir");
 
