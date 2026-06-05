@@ -48,6 +48,7 @@ export default function AsoModule() {
           <TabsTrigger value="funcoes" className="gap-1"><Briefcase className="h-4 w-4" />Funções/Riscos</TabsTrigger>
           <TabsTrigger value="medicos" className="gap-1"><Stethoscope className="h-4 w-4" />Médicos</TabsTrigger>
           <TabsTrigger value="catalogo" className="gap-1"><Users className="h-4 w-4" />Exames</TabsTrigger>
+          <TabsTrigger value="locais" className="gap-1"><MapPin className="h-4 w-4" />Locais</TabsTrigger>
           <TabsTrigger value="relatorios" className="gap-1"><BarChart3 className="h-4 w-4" />Relatórios</TabsTrigger>
         </TabsList>
 
