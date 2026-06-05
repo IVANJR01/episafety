@@ -99,7 +99,8 @@ export default function Funcionarios() {
   // Unidades and Contratos for selects
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
-  const [ghes, setGhes] = useState<{ id: string; codigo: string; nome: string }[]>([]);
+  const [ghes, setGhes] = useState<{ id: string; codigo: string; nome: string; setor: string | null }[]>([]);
+  const [gheFuncoes, setGheFuncoes] = useState<{ id: string; nome_funcao: string }[]>([]);
   const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj: string | null }>({ nome: "", cnpj: null });
 
   const fetchUnidadesContratos = async () => {
@@ -124,8 +125,8 @@ export default function Funcionarios() {
     supabase.from("empresa_config").select("nome, cnpj").eq("id", empresaId).single().then(({ data }) => {
       if (data) setEmpresaInfo({ nome: data.nome, cnpj: data.cnpj });
     });
-    supabase.from("ghe_ges").select("id, codigo, nome").eq("empresa_id", empresaId).eq("status", "ativo").order("codigo").then(({ data }) => {
-      setGhes(data || []);
+    supabase.from("ghe_ges").select("id, codigo, nome, setor").eq("empresa_id", empresaId).eq("status", "ativo").order("codigo").then(({ data }) => {
+      setGhes((data as any) || []);
     });
   }, [empresaId]);
 
@@ -134,6 +135,20 @@ export default function Funcionarios() {
   const contratoMap = useMemo(() => new Map(contratos.map(c => [c.id, c.nome])), [contratos]);
 
   const contratosFiltrados = form.unidade_id ? contratos.filter(c => c.unidade_id === form.unidade_id) : contratos;
+  const selectedGhe = useMemo(() => ghes.find(g => g.id === form.ghe_id) || null, [ghes, form.ghe_id]);
+
+  // Carrega funções do GHE selecionado e sincroniza setor automaticamente
+  useEffect(() => {
+    if (!form.ghe_id) { setGheFuncoes([]); return; }
+    supabase.from("ghe_funcoes").select("id, nome_funcao").eq("ghe_id", form.ghe_id).eq("status", "ativo").order("nome_funcao").then(({ data }) => {
+      setGheFuncoes((data as any) || []);
+    });
+    const ghe = ghes.find(g => g.id === form.ghe_id);
+    if (ghe && ghe.setor && form.setor !== ghe.setor) {
+      setForm(f => ({ ...f, setor: ghe.setor || "" }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.ghe_id, ghes]);
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
@@ -152,8 +167,24 @@ export default function Funcionarios() {
   };
 
   const handleSave = async () => {
-    if (!form.nome.trim()) return;
-    const data = { nome: form.nome, matricula: form.matricula || null, setor: form.setor || null, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null, unidade_id: form.unidade_id || null, contrato_id: form.contrato_id || null, ghe_id: form.ghe_id || null };
+    if (!form.nome.trim()) {
+      toast({ title: "Nome obrigatório", variant: "destructive" });
+      return;
+    }
+    if (!form.cpf.trim()) {
+      toast({ title: "CPF obrigatório", variant: "destructive" });
+      return;
+    }
+    if (!form.ghe_id) {
+      toast({ title: "GHE/GES obrigatório", description: "Selecione o GHE/GES do colaborador. Esse vínculo é necessário para gerar o ASO automaticamente.", variant: "destructive" });
+      return;
+    }
+    if (!form.cargo.trim()) {
+      toast({ title: "Cargo/Função obrigatório", variant: "destructive" });
+      return;
+    }
+    const setorAuto = selectedGhe?.setor || form.setor || null;
+    const data = { nome: form.nome, matricula: form.matricula || null, setor: setorAuto, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null, unidade_id: form.unidade_id || null, contrato_id: form.contrato_id || null, ghe_id: form.ghe_id || null };
     if (editing) await update(editing.id, data);
     else await add(data);
     resetForm();
@@ -629,9 +660,9 @@ export default function Funcionarios() {
               <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm({...form, cpf: formatCPF(e.target.value)})} placeholder="000.000.000-00" maxLength={14} /></div>
               <div><Label>Matrícula</Label><Input value={form.matricula} onChange={e => setForm({...form, matricula: e.target.value})} placeholder="Nº matrícula" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Data Admissão</Label><Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} /></div>
-              <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({...form, setor: e.target.value})} placeholder="Ex: Produção" /></div>
+            <div>
+              <Label>Data Admissão</Label>
+              <Input type="date" value={form.data_admissao} onChange={e => setForm({...form, data_admissao: e.target.value})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -656,19 +687,35 @@ export default function Funcionarios() {
               </div>
             </div>
             <div>
-              <Label>Cargo</Label><Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
-            </div>
-            <div>
-              <Label>GHE/GES (PCMSO)</Label>
-              <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v})}>
-                <SelectTrigger><SelectValue placeholder="Selecione o GHE/GES" /></SelectTrigger>
+              <Label>GHE/GES (PCMSO/PGR) <span className="text-destructive">*</span></Label>
+              <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v, cargo: ""})}>
+                <SelectTrigger><SelectValue placeholder="Selecione o GHE/GES do colaborador" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
                   {ghes.map(g => <SelectItem key={g.id} value={g.id}>{g.codigo} — {g.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-muted-foreground mt-1">Define automaticamente os riscos e exames no ASO.</p>
+              {selectedGhe?.setor ? (
+                <p className="text-[11px] text-muted-foreground mt-1">Setor vinculado: <span className="font-medium text-foreground">{selectedGhe.setor}</span> · Define automaticamente os riscos e exames no ASO.</p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground mt-1">Define automaticamente o setor, riscos e exames no ASO.</p>
+              )}
             </div>
+            <div>
+              <Label>Cargo/Função <span className="text-destructive">*</span></Label>
+              {form.ghe_id && gheFuncoes.length > 0 ? (
+                <Select value={form.cargo || ""} onValueChange={v => setForm({...form, cargo: v})}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a função do GHE" /></SelectTrigger>
+                  <SelectContent>
+                    {gheFuncoes.map(fn => <SelectItem key={fn.id} value={fn.nome_funcao}>{fn.nome_funcao}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder={form.ghe_id ? "Ex: Operador (GHE sem funções cadastradas)" : "Selecione um GHE/GES primeiro"} disabled={!form.ghe_id} />
+              )}
+            </div>
+
+
             {editing && (
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Data Demissão</Label><Input type="date" value={form.data_demissao} onChange={e => setForm({...form, data_demissao: e.target.value})} /></div>
