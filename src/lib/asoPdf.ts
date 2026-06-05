@@ -1,183 +1,271 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
 
-const TIPO: Record<string, string> = {
-  admissional: "Admissional", periodico: "Periódico", retorno: "Retorno ao Trabalho",
-  mudanca_risco: "Mudança de Risco", mudanca_funcao: "Mudança de Função", demissional: "Demissional",
-};
+const GRUPOS: { k: string; l: string }[] = [
+  { k: "fisico", l: "Físicos" },
+  { k: "quimico", l: "Químicos" },
+  { k: "biologico", l: "Biológicos" },
+  { k: "ergonomico", l: "Ergonômicos" },
+  { k: "acidente", l: "Acidentes" },
+];
 
-const GRUPO: Record<string, string> = {
-  fisico: "Físicos", quimico: "Químicos", biologico: "Biológicos",
-  ergonomico: "Ergonômicos", acidente: "Acidentes/Mecânicos", outro: "Outros",
-};
+function chk(b: boolean) { return b ? "(X)" : "( )"; }
 
-function check(b: boolean) { return b ? "[X]" : "[ ]"; }
-function dt(s?: string | null) { return s ? format(parseISO(s), "dd/MM/yyyy") : "—"; }
+function formatarNumeroAsoParaPdf(n?: string | null): string {
+  if (!n) return "—";
+  const m = String(n).match(/(\d+)\s*$/);
+  return m ? m[1] : String(n);
+}
 
-async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> {
+function inferValidadeTipo(aso: any): string | null {
+  if (aso.validade_tipo) {
+    const v = String(aso.validade_tipo).toLowerCase();
+    if (v.includes("90")) return "90dias";
+    if (v.includes("6m") || v.includes("6 m") || v.includes("semestr")) return "6meses";
+    if (v.includes("2")) return "2anos";
+    if (v.includes("1")) return "1ano";
+  }
+  if (aso.data_emissao && aso.data_vencimento) {
+    const d = differenceInDays(parseISO(aso.data_vencimento), parseISO(aso.data_emissao));
+    if (d <= 100) return "90dias";
+    if (d <= 200) return "6meses";
+    if (d <= 400) return "1ano";
+    return "2anos";
+  }
+  return null;
+}
+
+async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; nomeFunc: string }> {
   const { data: aso, error } = await supabase
     .from("asos")
-    .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor, matricula, data_admissao), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj, endereco, logo_url), ghe_ges:ghe_id (codigo, nome, setor)`)
+    .select(`*, funcionarios:funcionario_id (nome, cpf, cargo), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj, endereco)`)
     .eq("id", asoId).single();
   if (error || !aso) throw error || new Error("ASO não encontrado");
 
-  const [{ data: riscos = [] }, { data: exames = [] }, { data: verif = [] }] = await Promise.all([
+  const [{ data: riscos = [] }] = await Promise.all([
     supabase.from("aso_riscos").select("*").eq("aso_id", asoId),
-    supabase.from("aso_exames").select("*").eq("aso_id", asoId),
-    supabase.from("aso_verificacao").select("hash").eq("aso_id", asoId).limit(1),
   ]);
 
-  const hash = verif?.[0]?.hash;
-  const url = hash ? `${window.location.origin}/verificar-aso/${hash}` : window.location.origin;
-  const qrData = await QRCode.toDataURL(url, { width: 120, margin: 1 });
-
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const W = 210, M = 12;
-  let y = M;
+  const W = 210, M = 10;
+  const innerW = W - 2 * M;
 
-  // Borda
-  doc.setDrawColor(0); doc.setLineWidth(0.5);
-  doc.rect(M, M, W - 2 * M, 297 - 2 * M);
+  const empresa = aso.empresa_config?.nome || "—";
+  const cnpj = aso.empresa_config?.cnpj || "—";
+  const nome = aso.funcionarios?.nome || "—";
+  const cpf = aso.funcionarios?.cpf || "—";
+  const cargo = aso.funcionarios?.cargo || "—";
+  const numero = formatarNumeroAsoParaPdf(aso.numero_aso);
+  const tipo = aso.tipo_exame as string;
+  const local = aso.local_emissao || "—";
+  const med = aso.aso_medicos;
+  const validadeTipo = inferValidadeTipo(aso);
+  const autoConclusao = !!aso.preencher_conclusao_automaticamente;
+
+  const riscosPorGrupo = (k: string) => {
+    const items = riscos.filter((r: any) => r.grupo === k).map((r: any) => (r.descricao || "").trim()).filter(Boolean);
+    return items.length ? items.join(", ") : "N.A (Não se Aplica)";
+  };
+  const outrosTxt = (() => {
+    const items = riscos.filter((r: any) => r.grupo === "outro").map((r: any) => (r.descricao || "").trim()).filter(Boolean);
+    return items.length ? items.join(", ") : "";
+  })();
 
   // Título
-  doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-  doc.text("ATESTADO DE SAÚDE OCUPACIONAL — ASO", W / 2, y + 7, { align: "center" });
-  y += 12;
-  doc.setLineWidth(0.2); doc.line(M, y, W - M, y);
-  y += 4;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+  doc.text("Atestado de Saúde Ocupacional (ASO)", W / 2, M + 6, { align: "center" });
 
-  // Cabeçalho empresa
-  doc.setFontSize(9); doc.setFont("helvetica", "bold");
-  doc.text("EMPRESA:", M + 2, y + 4);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${aso.empresa_config?.nome || "—"}`, M + 24, y + 4);
-  doc.setFont("helvetica", "bold"); doc.text("CNPJ:", M + 2, y + 9);
-  doc.setFont("helvetica", "normal"); doc.text(`${aso.empresa_config?.cnpj || "—"}`, M + 24, y + 9);
-  doc.setFont("helvetica", "bold"); doc.text("Nº ASO:", W - M - 50, y + 4);
-  doc.setFont("helvetica", "normal"); doc.text(`${aso.numero_aso}`, W - M - 30, y + 4);
-  if (aso.empresa_config?.endereco) {
-    doc.setFont("helvetica", "bold"); doc.text("Endereço:", M + 2, y + 14);
-    doc.setFont("helvetica", "normal"); doc.text(`${aso.empresa_config.endereco}`.slice(0, 90), M + 24, y + 14);
-  }
-  y += 18;
-  doc.line(M, y, W - M, y); y += 4;
+  let startY = M + 9;
+  const tableOpts: any = {
+    theme: "grid",
+    styles: { fontSize: 8.5, cellPadding: 1.4, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: 20, valign: "middle" },
+    margin: { left: M, right: M },
+  };
 
-  // Dados trabalhador
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-  doc.text("DADOS DO TRABALHADOR", M + 2, y + 4); y += 7;
-  doc.setFontSize(9); doc.setFont("helvetica", "normal");
-  const f = aso.funcionarios;
-  doc.text(`Nome: ${f?.nome || "—"}`, M + 2, y); y += 5;
-  doc.text(`CPF: ${f?.cpf || "—"}`, M + 2, y);
-  doc.text(`Matrícula: ${f?.matricula || "—"}`, M + 90, y); y += 5;
-  doc.text(`Função: ${f?.cargo || "—"}`, M + 2, y);
-  doc.text(`Setor: ${f?.setor || "—"}`, M + 90, y); y += 5;
-  doc.text(`Data de admissão: ${dt(f?.data_admissao)}`, M + 2, y); y += 5;
-  if ((aso as any).ghe_ges) {
-    const g: any = (aso as any).ghe_ges;
-    doc.setFont("helvetica", "bold"); doc.text("GHE/GES:", M + 2, y);
-    doc.setFont("helvetica", "normal"); doc.text(`${g.codigo} — ${g.nome}${g.setor ? " (" + g.setor + ")" : ""}`, M + 24, y);
-    y += 5;
-  }
-  y += 1;
-  doc.line(M, y, W - M, y); y += 4;
+  // Bloco identificação (linha 1 e 2)
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    body: [
+      [
+        { content: "EMPRESA:", styles: { fontStyle: "bold", cellWidth: 22 } },
+        { content: empresa, styles: { cellWidth: 95 } },
+        { content: "CNPJ:", styles: { fontStyle: "bold", cellWidth: 16 } },
+        { content: cnpj, styles: { cellWidth: 35 } },
+        { content: "N°", styles: { fontStyle: "bold", cellWidth: 8, halign: "center" } },
+        { content: numero, styles: { halign: "center" } },
+      ],
+      [
+        { content: "NOME:", styles: { fontStyle: "bold" } },
+        { content: nome },
+        { content: "CPF:", styles: { fontStyle: "bold" } },
+        { content: cpf },
+        { content: "FUNÇÃO:", styles: { fontStyle: "bold", cellWidth: 8 }, colSpan: 1 },
+        { content: cargo },
+      ],
+    ],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
 
   // Tipo de exame
-  doc.setFont("helvetica", "bold"); doc.text("TIPO DE EXAME OCUPACIONAL", M + 2, y); y += 5;
-  doc.setFont("helvetica", "normal");
-  const tipos = ["admissional", "periodico", "retorno", "mudanca_risco", "mudanca_funcao", "demissional"];
-  let tx = M + 2;
-  tipos.forEach((t) => {
-    const s = `${check(aso.tipo_exame === t)} ${TIPO[t]}`;
-    doc.text(s, tx, y);
-    tx += doc.getTextWidth(s) + 5;
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    head: [[{ content: "TIPO DE EXAME", colSpan: 10, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    body: [[
+      { content: "Admissional" }, { content: chk(tipo === "admissional"), styles: { halign: "center", cellWidth: 8 } },
+      { content: "Periódico" }, { content: chk(tipo === "periodico"), styles: { halign: "center", cellWidth: 8 } },
+      { content: "Retorno ao Trabalho" }, { content: chk(tipo === "retorno"), styles: { halign: "center", cellWidth: 8 } },
+      { content: "Mudança de Risco" }, { content: chk(tipo === "mudanca_risco"), styles: { halign: "center", cellWidth: 8 } },
+      { content: "Demissional" }, { content: chk(tipo === "demissional"), styles: { halign: "center", cellWidth: 8 } },
+    ]],
+    styles: { ...tableOpts.styles, fontSize: 8 },
   });
-  y += 6; doc.line(M, y, W - M, y); y += 4;
+  startY = (doc as any).lastAutoTable.finalY;
 
   // Riscos
-  doc.setFont("helvetica", "bold"); doc.text("FATORES DE RISCO / PERIGO", M + 2, y); y += 5;
-  doc.setFont("helvetica", "normal");
-  Object.entries(GRUPO).forEach(([k, label]) => {
-    const itens = riscos.filter((r: any) => r.grupo === k).map((r: any) => r.descricao).filter(Boolean);
-    const txt = `${label}: ${itens.length ? itens.join("; ") : "N.A. (Não se aplica)"}`;
-    const lines = doc.splitTextToSize(txt, W - 2 * M - 4);
-    doc.text(lines, M + 2, y);
-    y += 4 * lines.length + 1;
-  });
-  y += 2; doc.line(M, y, W - M, y); y += 4;
-
-  // Exames realizados
-  doc.setFont("helvetica", "bold"); doc.text("PROCEDIMENTOS REALIZADOS", M + 2, y); y += 3;
-  const rows = exames.map((e: any) => [e.nome_exame, dt(e.data_realizacao), e.resultado || "—"]);
-  if (rows.length === 0) rows.push(["—", "—", "—"]);
+  const riscoRows: any[] = GRUPOS.map((g) => [
+    { content: g.l, styles: { fontStyle: "bold", cellWidth: 28 } },
+    { content: riscosPorGrupo(g.k) },
+  ]);
+  riscoRows.push([
+    { content: "Outros:", styles: { fontStyle: "bold" } },
+    { content: outrosTxt },
+  ]);
   autoTable(doc, {
-    startY: y + 1,
-    head: [["Exame", "Data", "Resultado"]],
-    body: rows,
-    styles: { fontSize: 8, cellPadding: 1.5 },
-    headStyles: { fillColor: [240, 240, 240], textColor: 20 },
-    margin: { left: M + 2, right: M + 2 },
-    theme: "grid",
+    ...tableOpts,
+    startY,
+    head: [[{ content: "FATORES DE RISCO/PERIGO:", colSpan: 2, styles: { halign: "left", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    body: riscoRows,
   });
-  y = (doc as any).lastAutoTable.finalY + 4;
+  startY = (doc as any).lastAutoTable.finalY;
+
+  // Procedimentos
+  const linha = "____/____/____";
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    head: [
+      [{ content: "PROCEDIMENTOS REALIZADOS", colSpan: 6, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }],
+      [{ content: "Exames Complementares", colSpan: 6, styles: { halign: "center", fontStyle: "bold", fillColor: [245, 245, 245] } }],
+    ],
+    body: [
+      [
+        { content: "Anamnese" }, { content: linha, styles: { halign: "center" } },
+        { content: "Eletrocardiograma" }, { content: linha, styles: { halign: "center" } },
+        { content: "Espirometria" }, { content: linha, styles: { halign: "center" } },
+      ],
+      [
+        { content: "Glicemia" }, { content: linha, styles: { halign: "center" } },
+        { content: "Eletroencefalograma" }, { content: linha, styles: { halign: "center" } },
+        { content: "PA _______mmHg" }, { content: linha, styles: { halign: "center" } },
+      ],
+      [
+        { content: "Urina" }, { content: linha, styles: { halign: "center" } },
+        { content: "Audiometria" }, { content: linha, styles: { halign: "center" } },
+        { content: "Hemograma" }, { content: linha, styles: { halign: "center" } },
+      ],
+    ],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
 
   // Conclusão
-  doc.setFont("helvetica", "bold"); doc.text("CONCLUSÃO SOBRE A CAPACIDADE LABORATIVA", M + 2, y); y += 5;
-  doc.setFont("helvetica", "normal");
-  doc.text(`${check(!!aso.apto_cargo)} Apto para as atividades do cargo`, M + 2, y); y += 4;
-  doc.text(`${check(!!aso.apto_restricao)} Apto com restrições`, M + 2, y); y += 4;
-  doc.text(`${check(!!aso.inapto_cargo)} Inapto para as atividades do cargo`, M + 2, y); y += 4;
-  doc.text(`${check(!!aso.apto_nr35)} Apto trabalho em altura NR-35   ${check(!!aso.inapto_nr35)} Inapto NR-35   ${check(!!aso.nr35_nao_aplica)} Não se aplica`, M + 2, y); y += 6;
+  const aC = autoConclusao;
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    head: [[{ content: "Conclusão sobre a Capacidade Laborativa", colSpan: 2, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    body: [[
+      {
+        content:
+          `${aC ? chk(!!aso.apto_cargo) : "( )"} APTO para as atividades do cargo\n` +
+          `${aC ? chk(!!aso.apto_nr35) : "( )"} APTO para trabalho em altura (NR-35)\n` +
+          `${aC ? chk(!!aso.apto_restricao) : "( )"} APTO para as atividades do cargo com restrições`,
+        styles: { cellWidth: innerW / 2 },
+      },
+      {
+        content:
+          `${aC ? chk(!!aso.inapto_cargo) : "( )"} INAPTO para as atividades do cargo\n` +
+          `${aC ? chk(!!aso.inapto_nr35) : "( )"} INAPTO para trabalho em altura (NR-35)\n` +
+          `${aC ? chk(!!aso.nr35_nao_aplica) : "( )"} Não se aplica (NR-35)`,
+      },
+    ]],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
 
-  if (aso.observacoes) {
-    doc.setFont("helvetica", "bold"); doc.text("Observações:", M + 2, y); y += 4;
-    doc.setFont("helvetica", "normal");
-    const obs = doc.splitTextToSize(aso.observacoes, W - 2 * M - 4);
-    doc.text(obs, M + 2, y); y += 4 * obs.length + 2;
-  }
+  // Obs padrão + observações livres
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    body: [
+      [{
+        content: "Obs.: Em caso de transferência o ASO deverá ser refeito e adaptado aos agentes de risco do local de trabalho",
+        styles: { halign: "center", fillColor: [225, 225, 225], fontStyle: "italic", fontSize: 8 },
+      }],
+      [{ content: "OBSERVAÇÕES:\n" + (aso.observacoes || "") + "\n\n", styles: { minCellHeight: 14 } }],
+    ],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
 
   // Validade
-  doc.line(M, y, W - M, y); y += 4;
-  doc.setFont("helvetica", "bold"); doc.text(`Validade do exame: ${dt(aso.data_vencimento)}`, M + 2, y); y += 6;
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    head: [[{ content: "VALIDADE DO EXAME", colSpan: 8, styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    body: [[
+      { content: "90 Dias" }, { content: chk(validadeTipo === "90dias"), styles: { halign: "center", cellWidth: 8 } },
+      { content: "6 Meses" }, { content: chk(validadeTipo === "6meses"), styles: { halign: "center", cellWidth: 8 } },
+      { content: "1 (um) ano" }, { content: chk(validadeTipo === "1ano"), styles: { halign: "center", cellWidth: 8 } },
+      { content: "2 (dois) anos" }, { content: chk(validadeTipo === "2anos"), styles: { halign: "center", cellWidth: 8 } },
+    ]],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
 
-  // Médico e assinaturas
-  doc.line(M, y, W - M, y); y += 6;
-  const med = aso.aso_medicos;
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-  doc.text(`${aso.local_emissao || ""}, ${dt(aso.data_emissao)}`, M + 2, y); y += 10;
+  // Médico
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    head: [[{ content: "Nome do Médico Responsável Pelo Exame", styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    body: [[{
+      content: med?.nome ? `${med.nome}${med.crm ? "  —  CRM " + med.crm + (med.uf_crm ? "/" + med.uf_crm : "") : ""}` : " ",
+      styles: { minCellHeight: 8 },
+    }]],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
 
-  doc.line(M + 10, y, M + 80, y);
-  doc.line(W - M - 80, y, W - M - 10, y);
-  y += 4;
-  doc.text(med?.nome ? `${med.nome}` : "Nome do Médico Responsável Pelo Exame", M + 45, y, { align: "center" });
-  doc.text("Assinatura do colaborador", W - M - 45, y, { align: "center" });
-  y += 4;
-  if (med?.crm) doc.text(`CRM ${med.crm}${med.uf_crm ? "/" + med.uf_crm : ""}`, M + 45, y, { align: "center" });
-  y += 8;
+  // Local e data
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    head: [[{ content: "LOCAL E DATA", styles: { halign: "left", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
+    body: [[{
+      content: `Local: ${local}` + " ".repeat(120) + "...... / ...... / ......",
+    }]],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
 
-  // Rodapé NR
-  doc.setFontSize(7); doc.setFont("helvetica", "italic");
-  const foot = "Em caso de transferência, mudança de função, alteração dos riscos ocupacionais ou mudança de risco, o ASO deverá ser reavaliado conforme PCMSO e PGR da organização.";
-  const footLines = doc.splitTextToSize(foot, W - 2 * M - 35);
-  doc.text(footLines, M + 2, 297 - M - 8);
+  // Assinaturas
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    body: [[
+      { content: "\n\n_________________________________________________\nAssinatura Médico", styles: { halign: "center", minCellHeight: 22, cellWidth: innerW / 2 } },
+      { content: "\n\n_________________________________________________\nAssinatura Colaborador", styles: { halign: "center", minCellHeight: 22 } },
+    ]],
+  });
 
-  // QR code
-  doc.addImage(qrData, "PNG", W - M - 28, 297 - M - 30, 22, 22);
-  doc.setFontSize(6); doc.text("Verificação", W - M - 17, 297 - M - 6, { align: "center" });
-
-  return { doc, numero: aso.numero_aso };
+  return { doc, numero, nomeFunc: nome };
 }
 
 export async function gerarPdfAso(asoId: string) {
-  const { doc, numero } = await buildPdf(asoId);
-  doc.save(`ASO-${numero}.pdf`);
+  const { doc, numero, nomeFunc } = await buildPdf(asoId);
+  const slug = (nomeFunc || "FUNCIONARIO").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "_").toUpperCase();
+  doc.save(`ASO_${slug}_${numero}.pdf`);
 }
 
 export async function gerarPdfAsoBlob(asoId: string): Promise<Blob> {
   const { doc } = await buildPdf(asoId);
   return doc.output("blob");
 }
-
