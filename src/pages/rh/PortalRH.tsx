@@ -74,12 +74,24 @@ export default function PortalRH() {
   const [medicoId, setMedicoId] = useState<string>("");
   const [dataEmissao, setDataEmissao] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dataVencimento, setDataVencimento] = useState(format(addYears(new Date(), 1), "yyyy-MM-dd"));
+  const [validadeTipoSel, setValidadeTipoSel] = useState<string>("1ano");
   const [observacoes, setObservacoes] = useState("");
   const [localEmissao, setLocalEmissao] = useState("");
   const [riscos, setRiscos] = useState<{ grupo: string; descricao: string }[]>([]);
   const [exames, setExames] = useState<{ nome_exame: string }[]>([]);
   const [loadingGhe, setLoadingGhe] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const { isSuperAdmin } = useAuth() as any;
+  const validadeBloqueada = !isSuperAdmin; // RH: bloqueado; Admin/TST: pode alterar
+
+  // Recalcula validade automaticamente ao mudar tipo de exame ou emissão
+  useEffect(() => {
+    if (!dataEmissao) return;
+    const { vencimento, validade_tipo } = calcularValidade(tipoExame, dataEmissao);
+    setDataVencimento(vencimento);
+    setValidadeTipoSel(validade_tipo);
+  }, [tipoExame, dataEmissao]);
 
   // Funcionários da empresa
   const { data: funcionarios = [] } = useQuery({
