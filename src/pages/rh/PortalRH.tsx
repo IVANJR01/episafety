@@ -500,12 +500,9 @@ export default function PortalRH() {
                         <p className="text-xs text-destructive mt-1">Selecione o local de emissão do ASO.</p>
                       )}
                     </div>
-                    <div>
-                      <Label>Observações</Label>
-                      <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
-                    </div>
                   </CardContent>
                 </Card>
+
 
                 {/* Coluna 2: Prévia do PCMSO/GHE */}
                 <Card>
