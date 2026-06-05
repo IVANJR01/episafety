@@ -82,7 +82,6 @@ export default function PortalRH() {
   const [loadingGhe, setLoadingGhe] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const { isSuperAdmin } = useAuth() as any;
   const validadeBloqueada = !isSuperAdmin; // RH: bloqueado; Admin/TST: pode alterar
 
   // Recalcula validade automaticamente ao mudar tipo de exame ou emissão
