@@ -449,14 +449,19 @@ export default function PortalRH() {
                     </div>
                     <div>
                       <Label>Médico responsável <span className="text-xs text-muted-foreground">(opcional)</span></Label>
-                      <Select value={medicoId} onValueChange={setMedicoId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                      <Select value={medicoId} onValueChange={setMedicoId} disabled={medicosDisponiveis.length === 0}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={medicosDisponiveis.length === 0 ? "Nenhum médico cadastrado" : "Selecione…"} />
+                        </SelectTrigger>
                         <SelectContent>
-                          {medicos.map((m: any) => (
+                          {medicosDisponiveis.map((m: any) => (
                             <SelectItem key={m.id} value={m.id}>{m.nome} — CRM {m.crm}{m.uf_crm ? "/" + m.uf_crm : ""}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {medicosDisponiveis.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">Solicite ao administrador o cadastro do médico. O ASO pode ser gerado sem médico.</p>
+                      )}
                     </div>
                     <div>
                       <Label>Local de emissão *</Label>
