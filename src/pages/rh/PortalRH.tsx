@@ -130,6 +130,29 @@ export default function PortalRH() {
   const [localEmissaoId, setLocalEmissaoId] = useState<string>("");
 
   const funcSel: any = useMemo(() => funcionarios.find((f: any) => f.id === funcionarioId), [funcionarios, funcionarioId]);
+
+  const locaisDisponiveis = useMemo(() => {
+    if (funcSel?.empresa_id) return locaisEmissao.filter((l) => l.empresa_id === funcSel.empresa_id);
+    return locaisEmissao;
+  }, [locaisEmissao, funcSel?.empresa_id]);
+
+  // Auto-seleciona o local: padrão > único disponível
+  useEffect(() => {
+    if (locaisDisponiveis.length === 0) { setLocalEmissaoId(""); return; }
+    if (localEmissaoId && locaisDisponiveis.some((l) => l.id === localEmissaoId)) return;
+    const padrao = locaisDisponiveis.find((l) => l.padrao);
+    if (padrao) { setLocalEmissaoId(padrao.id); return; }
+    if (locaisDisponiveis.length === 1) { setLocalEmissaoId(locaisDisponiveis[0].id); return; }
+    setLocalEmissaoId("");
+  }, [locaisDisponiveis]);
+
+  const localSel = useMemo(() => locaisDisponiveis.find((l) => l.id === localEmissaoId), [locaisDisponiveis, localEmissaoId]);
+  const localSnapshot = useMemo(() => {
+    if (!localSel) return "";
+    const cidUf = [localSel.cidade, localSel.uf].filter(Boolean).join(" - ");
+    return localSel.nome || cidUf || "";
+  }, [localSel]);
+
   const filteredFuncs = useMemo(() => {
     if (!funcSearch) return funcionarios.slice(0, 50);
     const q = funcSearch.toLowerCase();
