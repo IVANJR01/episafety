@@ -183,11 +183,11 @@ export default function PortalRH() {
     return map;
   }, [riscos]);
 
-  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento && !!localEmissao.trim();
+  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento && !!localEmissaoId;
 
   const resetForm = () => {
     setFuncionarioId(""); setFuncSearch(""); setTipoExame("admissional");
-    setMedicoId(""); setObservacoes(""); setLocalEmissao("");
+    setMedicoId(""); setObservacoes(""); setLocalEmissao(""); setLocalEmissaoId("");
     setRiscos([]); setExames([]);
     setDataEmissao(format(new Date(), "yyyy-MM-dd"));
     setDataVencimento(format(addYears(new Date(), 1), "yyyy-MM-dd"));
@@ -197,7 +197,7 @@ export default function PortalRH() {
   const emitirAso = async (alsoPrint = false): Promise<string | null> => {
     if (!funcSel) { toast.error("Selecione um colaborador"); return null; }
     if (!funcSel.ghe_id) { toast.error("Colaborador sem GHE/GES vinculado"); return null; }
-    if (!localEmissao.trim()) { toast.error("Informe o local de emissão do ASO."); return null; }
+    if (!localEmissaoId || !localSnapshot) { toast.error("Selecione o local de emissão do ASO."); return null; }
     setSaving(true);
     try {
       const empresa_id = funcSel.empresa_id;
@@ -208,7 +208,9 @@ export default function PortalRH() {
         validade_tipo: validadeTipoSel, status_aptidao: "apto",
         apto_cargo: false, inapto_cargo: false, apto_restricao: false,
         apto_nr35: false, inapto_nr35: false, nr35_nao_aplica: false,
-        observacoes, local_emissao: localEmissao, status: "emitido",
+        observacoes, local_emissao: localSnapshot,
+        local_emissao_id: localEmissaoId, local_emissao_snapshot: localSnapshot,
+        status: "emitido",
         ghe_id: funcSel.ghe_id,
         riscos_snapshot: riscos.filter((r) => r.descricao.trim()),
         exames_snapshot: exames.filter((e) => e.nome_exame.trim()),
