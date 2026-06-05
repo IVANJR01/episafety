@@ -113,6 +113,22 @@ export default function PortalRH() {
     queryFn: async () => (await supabase.from("aso_medicos").select("id, nome, crm, uf_crm").eq("ativo", true).order("nome")).data || [],
   });
 
+  const { data: locaisEmissao = [] } = useQuery({
+    queryKey: ["rh-locais-emissao", empresaScopeIds.join(",")],
+    queryFn: async () => {
+      let q = (supabase.from as any)("locais_emissao_aso")
+        .select("id, empresa_id, nome, cidade, uf, ativo, padrao")
+        .eq("ativo", true)
+        .order("nome");
+      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const [localEmissaoId, setLocalEmissaoId] = useState<string>("");
+
   const funcSel: any = useMemo(() => funcionarios.find((f: any) => f.id === funcionarioId), [funcionarios, funcionarioId]);
   const filteredFuncs = useMemo(() => {
     if (!funcSearch) return funcionarios.slice(0, 50);
