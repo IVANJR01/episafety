@@ -40,11 +40,15 @@ export default function CadastroGhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ghe_ges")
-        .select("id, empresa_id, codigo, nome, setor, descricao, status, ghe_funcoes(count)")
+        .select("id, empresa_id, codigo, nome, setor, descricao, status, ghe_funcoes(nome_funcao)")
         .eq("empresa_id", empresaSel)
         .order("codigo");
       if (error) throw error;
-      return (data || []).map((g: any) => ({ ...g, nFuncoes: g.ghe_funcoes?.[0]?.count || 0 }));
+      return (data || []).map((g: any) => ({
+        ...g,
+        funcoesList: (g.ghe_funcoes || []).map((f: any) => f.nome_funcao).filter(Boolean).sort(),
+        nFuncoes: (g.ghe_funcoes || []).length,
+      }));
     },
   });
 
@@ -101,29 +105,41 @@ export default function CadastroGhe() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">Código</TableHead>
-                    <TableHead>Setor</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="w-[110px] text-center">Funções</TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
+                    <TableHead className="w-[110px]">Código</TableHead>
+                    <TableHead className="w-[180px]">Setor</TableHead>
+                    <TableHead>Funções ({"#"})</TableHead>
+                    <TableHead className="w-[90px]">Status</TableHead>
                     <TableHead className="w-[200px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtrados.map((g: any) => (
                     <TableRow key={g.id}>
-                      <TableCell className="font-medium">{g.codigo}</TableCell>
-                      <TableCell>{g.setor || g.nome || "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground truncate max-w-[300px]">{g.descricao || "—"}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline">{g.nFuncoes}</Badge>
+                      <TableCell className="font-medium align-top">{g.codigo}</TableCell>
+                      <TableCell className="align-top">{g.setor || g.nome || "—"}</TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline">{g.nFuncoes}</Badge>
+                          {g.descricao && (
+                            <span className="text-xs text-muted-foreground truncate max-w-[260px]" title={g.descricao}>{g.descricao}</span>
+                          )}
+                        </div>
+                        {g.funcoesList?.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {g.funcoesList.map((nf: string, i: number) => (
+                              <Badge key={i} variant="secondary" className="font-normal text-xs">{nf}</Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs italic text-muted-foreground">Sem funções</span>
+                        )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="align-top">
                         <Badge variant={g.status === "ativo" ? "default" : "secondary"}>
                           {g.status === "ativo" ? "Ativo" : "Inativo"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right align-top">
                         <Button size="sm" variant="outline" onClick={() => setOpenFuncoes(g)} title="Gerenciar funções"><Briefcase className="h-4 w-4 mr-1" />Funções</Button>
                         <Button size="icon" variant="ghost" onClick={() => editar(g)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" onClick={() => alternarStatus(g)} title={g.status === "ativo" ? "Inativar" : "Ativar"}>
