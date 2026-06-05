@@ -144,7 +144,7 @@ export default function PortalRH() {
     return map;
   }, [riscos]);
 
-  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento;
+  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento && !!localEmissao.trim();
 
   const resetForm = () => {
     setFuncionarioId(""); setFuncSearch(""); setTipoExame("admissional");
@@ -152,11 +152,13 @@ export default function PortalRH() {
     setRiscos([]); setExames([]);
     setDataEmissao(format(new Date(), "yyyy-MM-dd"));
     setDataVencimento(format(addYears(new Date(), 1), "yyyy-MM-dd"));
+    setValidadeTipoSel("1ano");
   };
 
   const emitirAso = async (alsoPrint = false): Promise<string | null> => {
     if (!funcSel) { toast.error("Selecione um colaborador"); return null; }
     if (!funcSel.ghe_id) { toast.error("Colaborador sem GHE/GES vinculado"); return null; }
+    if (!localEmissao.trim()) { toast.error("Informe o local de emissão do ASO."); return null; }
     setSaving(true);
     try {
       const empresa_id = funcSel.empresa_id;
@@ -164,7 +166,7 @@ export default function PortalRH() {
       const payload: any = {
         empresa_id, funcionario_id: funcSel.id, medico_id: medicoId || null,
         tipo_exame: tipoExame, data_emissao: dataEmissao, data_vencimento: dataVencimento,
-        validade_tipo: "1ano", status_aptidao: "apto",
+        validade_tipo: validadeTipoSel, status_aptidao: "apto",
         apto_cargo: false, inapto_cargo: false, apto_restricao: false,
         apto_nr35: false, inapto_nr35: false, nr35_nao_aplica: false,
         observacoes, local_emissao: localEmissao, status: "emitido",
