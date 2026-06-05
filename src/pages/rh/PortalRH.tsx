@@ -13,7 +13,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Eye, FileDown, Printer, Search, LogOut, FileText, X, FilePlus2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { differenceInDays, parseISO, format, addYears } from "date-fns";
+import { differenceInDays, parseISO, format, addYears, addDays } from "date-fns";
 import { gerarPdfAso, gerarPdfAsoBlob } from "@/lib/asoPdf";
 import { loadGheRiscosExames, GRUPOS_RISCO } from "@/lib/asoFromGhe";
 
@@ -21,6 +21,16 @@ const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno ao Trabalho",
   mudanca_risco: "Mudança de Risco", mudanca_funcao: "Mudança de Função", demissional: "Demissional",
 };
+
+// Regra de validade automática por tipo de exame
+// Demissional = 90 dias; demais = 1 ano
+function calcularValidade(tipo: string, emissao: string): { vencimento: string; validade_tipo: string } {
+  const base = parseISO(emissao);
+  if (tipo === "demissional") {
+    return { vencimento: format(addDays(base, 90), "yyyy-MM-dd"), validade_tipo: "90dias" };
+  }
+  return { vencimento: format(addYears(base, 1), "yyyy-MM-dd"), validade_tipo: "1ano" };
+}
 
 function statusValidade(dv?: string | null) {
   if (!dv) return { label: "—", cls: "bg-muted text-muted-foreground" };
@@ -53,7 +63,7 @@ async function logAcao(opts: { empresa_id: string; aso_id: string; funcionario_i
 }
 
 export default function PortalRH() {
-  const { user, signOut, empresaScopeIds } = useAuth();
+  const { user, signOut, empresaScopeIds, isSuperAdmin } = useAuth() as any;
   const qc = useQueryClient();
   const [tab, setTab] = useState<"emitir" | "historico">("emitir");
 
@@ -64,12 +74,23 @@ export default function PortalRH() {
   const [medicoId, setMedicoId] = useState<string>("");
   const [dataEmissao, setDataEmissao] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dataVencimento, setDataVencimento] = useState(format(addYears(new Date(), 1), "yyyy-MM-dd"));
+  const [validadeTipoSel, setValidadeTipoSel] = useState<string>("1ano");
   const [observacoes, setObservacoes] = useState("");
   const [localEmissao, setLocalEmissao] = useState("");
   const [riscos, setRiscos] = useState<{ grupo: string; descricao: string }[]>([]);
   const [exames, setExames] = useState<{ nome_exame: string }[]>([]);
   const [loadingGhe, setLoadingGhe] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const validadeBloqueada = !isSuperAdmin; // RH: bloqueado; Admin/TST: pode alterar
+
+  // Recalcula validade automaticamente ao mudar tipo de exame ou emissão
+  useEffect(() => {
+    if (!dataEmissao) return;
+    const { vencimento, validade_tipo } = calcularValidade(tipoExame, dataEmissao);
+    setDataVencimento(vencimento);
+    setValidadeTipoSel(validade_tipo);
+  }, [tipoExame, dataEmissao]);
 
   // Funcionários da empresa
   const { data: funcionarios = [] } = useQuery({
@@ -123,7 +144,7 @@ export default function PortalRH() {
     return map;
   }, [riscos]);
 
-  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento;
+  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento && !!localEmissao.trim();
 
   const resetForm = () => {
     setFuncionarioId(""); setFuncSearch(""); setTipoExame("admissional");
@@ -131,11 +152,13 @@ export default function PortalRH() {
     setRiscos([]); setExames([]);
     setDataEmissao(format(new Date(), "yyyy-MM-dd"));
     setDataVencimento(format(addYears(new Date(), 1), "yyyy-MM-dd"));
+    setValidadeTipoSel("1ano");
   };
 
   const emitirAso = async (alsoPrint = false): Promise<string | null> => {
     if (!funcSel) { toast.error("Selecione um colaborador"); return null; }
     if (!funcSel.ghe_id) { toast.error("Colaborador sem GHE/GES vinculado"); return null; }
+    if (!localEmissao.trim()) { toast.error("Informe o local de emissão do ASO."); return null; }
     setSaving(true);
     try {
       const empresa_id = funcSel.empresa_id;
@@ -143,7 +166,7 @@ export default function PortalRH() {
       const payload: any = {
         empresa_id, funcionario_id: funcSel.id, medico_id: medicoId || null,
         tipo_exame: tipoExame, data_emissao: dataEmissao, data_vencimento: dataVencimento,
-        validade_tipo: "1ano", status_aptidao: "apto",
+        validade_tipo: validadeTipoSel, status_aptidao: "apto",
         apto_cargo: false, inapto_cargo: false, apto_restricao: false,
         apto_nr35: false, inapto_nr35: false, nr35_nao_aplica: false,
         observacoes, local_emissao: localEmissao, status: "emitido",
@@ -356,8 +379,12 @@ export default function PortalRH() {
                         <Input type="date" value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} />
                       </div>
                       <div>
-                        <Label>Validade *</Label>
-                        <Input type="date" value={dataVencimento} onChange={(e) => setDataVencimento(e.target.value)} />
+                        <Label>
+                          Validade * <span className="text-xs text-muted-foreground">(automática — {tipoExame === "demissional" ? "90 dias" : "1 ano"})</span>
+                        </Label>
+                        <Input type="date" value={dataVencimento}
+                          onChange={(e) => setDataVencimento(e.target.value)}
+                          disabled={validadeBloqueada} />
                       </div>
                     </div>
                     <div>
@@ -372,8 +399,11 @@ export default function PortalRH() {
                       </Select>
                     </div>
                     <div>
-                      <Label>Local de emissão</Label>
-                      <Input value={localEmissao} onChange={(e) => setLocalEmissao(e.target.value)} placeholder="Cidade — UF" />
+                      <Label>Local de emissão *</Label>
+                      <Input value={localEmissao} onChange={(e) => setLocalEmissao(e.target.value)} placeholder="Cidade — UF (ex.: Alto Santo - CE)" />
+                      {!localEmissao.trim() && (
+                        <p className="text-xs text-destructive mt-1">Informe o local de emissão do ASO.</p>
+                      )}
                     </div>
                     <div>
                       <Label>Observações</Label>

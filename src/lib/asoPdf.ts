@@ -20,10 +20,15 @@ function formatarNumeroAsoParaPdf(n?: string | null): string {
 }
 
 function inferValidadeTipo(aso: any): string | null {
+  // Regra automática: demissional => 90 dias; demais => 1 ano
+  const tipo = String(aso.tipo_exame || "").toLowerCase();
+  if (tipo === "demissional") return "90dias";
+  if (["admissional", "periodico", "retorno", "mudanca_risco", "mudanca_funcao"].includes(tipo)) return "1ano";
+  // fallback ao salvo
   if (aso.validade_tipo) {
     const v = String(aso.validade_tipo).toLowerCase();
     if (v.includes("90")) return "90dias";
-    if (v.includes("6m") || v.includes("6 m") || v.includes("semestr")) return "6meses";
+    if (v.includes("6m") || v.includes("semestr")) return "6meses";
     if (v.includes("2")) return "2anos";
     if (v.includes("1")) return "1ano";
   }
@@ -59,7 +64,7 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   const cargo = aso.funcionarios?.cargo || "—";
   const numero = formatarNumeroAsoParaPdf(aso.numero_aso);
   const tipo = aso.tipo_exame as string;
-  const local = aso.local_emissao || "—";
+  const local = (aso.local_emissao && String(aso.local_emissao).trim()) || (aso.empresa_config?.endereco && String(aso.empresa_config.endereco).trim()) || "—";
   const med = aso.aso_medicos;
   const validadeTipo = inferValidadeTipo(aso);
   const autoConclusao = !!(aso as any).preencher_conclusao_automaticamente;
@@ -84,26 +89,46 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
     margin: { left: M, right: M },
   };
 
-  // Bloco identificação (linha 1 e 2)
+  // Bloco identificação — linha EMPRESA / CNPJ / N°
   autoTable(doc, {
     ...tableOpts,
     startY,
     body: [
       [
         { content: "EMPRESA:", styles: { fontStyle: "bold", cellWidth: 22 } },
-        { content: empresa, styles: { cellWidth: 95 } },
+        { content: empresa, styles: { cellWidth: 92 } },
         { content: "CNPJ:", styles: { fontStyle: "bold", cellWidth: 16 } },
-        { content: cnpj, styles: { cellWidth: 35 } },
+        { content: cnpj, styles: { cellWidth: 38 } },
         { content: "N°", styles: { fontStyle: "bold", cellWidth: 8, halign: "center" } },
         { content: numero, styles: { halign: "center" } },
       ],
+    ],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
+
+  // Linha NOME / CPF
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    body: [
       [
-        { content: "NOME:", styles: { fontStyle: "bold" } },
-        { content: nome },
-        { content: "CPF:", styles: { fontStyle: "bold" } },
+        { content: "NOME:", styles: { fontStyle: "bold", cellWidth: 22 } },
+        { content: nome, styles: { cellWidth: 116 } },
+        { content: "CPF:", styles: { fontStyle: "bold", cellWidth: 16 } },
         { content: cpf },
-        { content: "FUNÇÃO:", styles: { fontStyle: "bold", cellWidth: 8 }, colSpan: 1 },
-        { content: cargo },
+      ],
+    ],
+  });
+  startY = (doc as any).lastAutoTable.finalY;
+
+  // Linha FUNÇÃO (largura total — não quebra em coluna estreita)
+  autoTable(doc, {
+    ...tableOpts,
+    startY,
+    body: [
+      [
+        { content: "FUNÇÃO:", styles: { fontStyle: "bold", cellWidth: 22 } },
+        { content: cargo, styles: { overflow: "linebreak" } },
       ],
     ],
   });
