@@ -39,11 +39,6 @@ export default function AsoModule() {
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="dashboard" className="gap-1"><LayoutDashboard className="h-4 w-4" />Dashboard</TabsTrigger>
           <TabsTrigger value="pcmso" className="gap-1"><Shield className="h-4 w-4" />PCMSO / GHE</TabsTrigger>
-          <TabsTrigger value="lista" className="gap-1"><ListChecks className="h-4 w-4" />ASOs</TabsTrigger>
-          <TabsTrigger value="novo" className="gap-1"><Plus className="h-4 w-4" />Novo ASO</TabsTrigger>
-          <TabsTrigger value="lote" className="gap-1"><Layers className="h-4 w-4" />Em lote</TabsTrigger>
-          <TabsTrigger value="import" className="gap-1"><Upload className="h-4 w-4" />Importar</TabsTrigger>
-          <TabsTrigger value="funcoes" className="gap-1"><Briefcase className="h-4 w-4" />Funções/Riscos</TabsTrigger>
           <TabsTrigger value="medicos" className="gap-1"><Stethoscope className="h-4 w-4" />Médicos</TabsTrigger>
           <TabsTrigger value="catalogo" className="gap-1"><Users className="h-4 w-4" />Exames</TabsTrigger>
           <TabsTrigger value="locais" className="gap-1"><MapPin className="h-4 w-4" />Locais</TabsTrigger>
@@ -52,11 +47,6 @@ export default function AsoModule() {
 
         <TabsContent value="dashboard" className="mt-4"><AsoDashboard /></TabsContent>
         <TabsContent value="pcmso" className="mt-4"><PcmsoGhe /></TabsContent>
-        <TabsContent value="lista" className="mt-4"><AsoList onEdit={openNovo} /></TabsContent>
-        <TabsContent value="novo" className="mt-4"><AsoNovo editingId={editingId} onSaved={() => { setEditingId(null); setTab("lista"); }} /></TabsContent>
-        <TabsContent value="lote" className="mt-4"><AsoLote /></TabsContent>
-        <TabsContent value="import" className="mt-4"><AsoImport /></TabsContent>
-        <TabsContent value="funcoes" className="mt-4"><AsoFuncoes /></TabsContent>
         <TabsContent value="medicos" className="mt-4"><AsoMedicos /></TabsContent>
         <TabsContent value="catalogo" className="mt-4"><AsoCatalogo /></TabsContent>
         <TabsContent value="locais" className="mt-4"><AsoLocaisEmissao /></TabsContent>
