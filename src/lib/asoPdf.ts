@@ -248,25 +248,29 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   });
   startY = (doc as any).lastAutoTable.finalY;
 
-  // Médico
+  // Médico — faixa exclusiva, título centralizado + área em branco para preenchimento
+  const medicoLinha = med?.nome
+    ? `Dr(a). ${med.nome}${med.crm ? " — CRM " + med.crm + (med.uf_crm ? "/" + med.uf_crm : "") : ""}`
+    : "";
   autoTable(doc, {
     ...tableOpts,
     startY,
     head: [[{ content: "Nome do Médico Responsável Pelo Exame", styles: { halign: "center", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
     body: [[{
-      content: med?.nome ? `${med.nome}${med.crm ? "  —  CRM " + med.crm + (med.uf_crm ? "/" + med.uf_crm : "") : ""}` : " ",
-      styles: { minCellHeight: 8 },
+      content: medicoLinha,
+      styles: { halign: "center", minCellHeight: 14, valign: "middle" },
     }]],
   });
   startY = (doc as any).lastAutoTable.finalY;
 
-  // Local e data
+  // Local e data — título em faixa própria, conteúdo com espaços para preenchimento
   autoTable(doc, {
     ...tableOpts,
     startY,
     head: [[{ content: "LOCAL E DATA", styles: { halign: "left", fontStyle: "bold", fillColor: [230, 230, 230] } }]],
     body: [[{
-      content: `Local: ${local}` + " ".repeat(120) + "...... / ...... / ......",
+      content: `Local: ${local}                              ______/______/______`,
+      styles: { minCellHeight: 10 },
     }]],
   });
   startY = (doc as any).lastAutoTable.finalY;
