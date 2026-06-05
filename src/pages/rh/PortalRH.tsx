@@ -73,10 +73,12 @@ export default function PortalRH() {
 
   // Funcionários da empresa
   const { data: funcionarios = [] } = useQuery({
-    queryKey: ["rh-funcionarios", empresaScopeIds.join(",")],
+    queryKey: ["rh-funcionarios-ghe", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("funcionarios")
-        .select("id, nome, cpf, cargo, setor, matricula, data_admissao, empresa_id, ghe_id, ghe_ges(id, codigo, nome, setor), empresa_config:empresa_id(id, nome, cnpj)")
+        .select("id, nome, cpf, cargo, setor, matricula, data_admissao, empresa_id, ghe_id, ghe_ges!inner(id, codigo, nome, setor), empresa_config:empresa_id(id, nome, cnpj)")
+        .not("ghe_id", "is", null)
+        .is("data_demissao", null)
         .order("nome");
       if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
       const { data, error } = await q;
