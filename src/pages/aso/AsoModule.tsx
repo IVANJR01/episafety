@@ -61,6 +61,7 @@ export default function AsoModule() {
         <TabsContent value="funcoes" className="mt-4"><AsoFuncoes /></TabsContent>
         <TabsContent value="medicos" className="mt-4"><AsoMedicos /></TabsContent>
         <TabsContent value="catalogo" className="mt-4"><AsoCatalogo /></TabsContent>
+        <TabsContent value="locais" className="mt-4"><AsoLocaisEmissao /></TabsContent>
         <TabsContent value="relatorios" className="mt-4"><AsoRelatorios /></TabsContent>
       </Tabs>
     </div>
