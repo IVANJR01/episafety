@@ -189,6 +189,7 @@ function ProtectedRoute() {
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/filiais" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
+        <Route path="/cadastro/ghe" element={<PcmsoGhe />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
         <Route path="/dds" element={<DDS />} />
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
