@@ -136,7 +136,6 @@ export default function PortalRH() {
   const emitirAso = async (alsoPrint = false): Promise<string | null> => {
     if (!funcSel) { toast.error("Selecione um colaborador"); return null; }
     if (!funcSel.ghe_id) { toast.error("Colaborador sem GHE/GES vinculado"); return null; }
-    if (!medicoId) { toast.error("Selecione o médico responsável"); return null; }
     setSaving(true);
     try {
       const empresa_id = funcSel.empresa_id;
