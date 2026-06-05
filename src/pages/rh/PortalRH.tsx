@@ -13,7 +13,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Eye, FileDown, Printer, Search, LogOut, FileText, X, FilePlus2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { differenceInDays, parseISO, format, addYears } from "date-fns";
+import { differenceInDays, parseISO, format, addYears, addDays } from "date-fns";
 import { gerarPdfAso, gerarPdfAsoBlob } from "@/lib/asoPdf";
 import { loadGheRiscosExames, GRUPOS_RISCO } from "@/lib/asoFromGhe";
 
