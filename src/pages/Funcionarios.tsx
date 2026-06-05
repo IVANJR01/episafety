@@ -715,8 +715,7 @@ export default function Funcionarios() {
               )}
             </div>
 
-              <p className="text-[11px] text-muted-foreground mt-1">Define automaticamente os riscos e exames no ASO.</p>
-            </div>
+
             {editing && (
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Data Demissão</Label><Input type="date" value={form.data_demissao} onChange={e => setForm({...form, data_demissao: e.target.value})} /></div>
