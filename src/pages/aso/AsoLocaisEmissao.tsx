@@ -40,7 +40,7 @@ export default function AsoLocaisEmissao() {
     },
   });
 
-  const { data: locais = [], isLoading } = useQuery({
+  const { data: locais = [], isLoading, refetch } = useQuery({
     queryKey: ["aso-locais-emissao", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = (supabase.from as any)("locais_emissao_aso").select("*").order("nome");
@@ -49,6 +49,8 @@ export default function AsoLocaisEmissao() {
       if (error) throw error;
       return (data || []) as Local[];
     },
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const openNovo = () => setEditing({
@@ -86,8 +88,9 @@ export default function AsoLocaisEmissao() {
       }
       toast.success("Local salvo");
       setEditing(null);
-      qc.invalidateQueries({ queryKey: ["aso-locais-emissao"] });
-      qc.invalidateQueries({ queryKey: ["rh-locais-emissao"] });
+      await qc.refetchQueries({ queryKey: ["aso-locais-emissao"] });
+      await qc.refetchQueries({ queryKey: ["rh-locais-emissao"] });
+      await refetch();
     } catch (e: any) {
       toast.error("Erro: " + (e.message || e));
     }
@@ -98,8 +101,8 @@ export default function AsoLocaisEmissao() {
     const { error } = await (supabase.from as any)("locais_emissao_aso").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Excluído");
-    qc.invalidateQueries({ queryKey: ["aso-locais-emissao"] });
-    qc.invalidateQueries({ queryKey: ["rh-locais-emissao"] });
+    await qc.refetchQueries({ queryKey: ["aso-locais-emissao"] });
+    await qc.refetchQueries({ queryKey: ["rh-locais-emissao"] });
   };
 
   return (
