@@ -123,7 +123,7 @@ export default function PortalRH() {
     return map;
   }, [riscos]);
 
-  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!medicoId && !!dataEmissao && !!dataVencimento;
+  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento;
 
   const resetForm = () => {
     setFuncionarioId(""); setFuncSearch(""); setTipoExame("admissional");
@@ -136,13 +136,12 @@ export default function PortalRH() {
   const emitirAso = async (alsoPrint = false): Promise<string | null> => {
     if (!funcSel) { toast.error("Selecione um colaborador"); return null; }
     if (!funcSel.ghe_id) { toast.error("Colaborador sem GHE/GES vinculado"); return null; }
-    if (!medicoId) { toast.error("Selecione o médico responsável"); return null; }
     setSaving(true);
     try {
       const empresa_id = funcSel.empresa_id;
       const { data: num } = await supabase.rpc("gerar_numero_aso", { _empresa_id: empresa_id });
       const payload: any = {
-        empresa_id, funcionario_id: funcSel.id, medico_id: medicoId,
+        empresa_id, funcionario_id: funcSel.id, medico_id: medicoId || null,
         tipo_exame: tipoExame, data_emissao: dataEmissao, data_vencimento: dataVencimento,
         validade_tipo: "1ano", status_aptidao: "apto",
         apto_cargo: true, inapto_cargo: false, apto_restricao: false,
@@ -362,7 +361,7 @@ export default function PortalRH() {
                       </div>
                     </div>
                     <div>
-                      <Label>Médico responsável *</Label>
+                      <Label>Médico responsável <span className="text-xs text-muted-foreground">(opcional)</span></Label>
                       <Select value={medicoId} onValueChange={setMedicoId}>
                         <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
                         <SelectContent>
