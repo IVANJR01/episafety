@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Eye, FileDown, Printer, Search, LogOut, FileText, X, FilePlus2, AlertTriangle } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Eye, FileDown, Printer, Search, LogOut, FileText, X, FilePlus2, AlertTriangle, ChevronsUpDown, Check } from "lucide-react";
 import { toast } from "sonner";
 import { differenceInDays, parseISO, format, addYears, addDays } from "date-fns";
 import { gerarPdfAso, gerarPdfAsoBlob } from "@/lib/asoPdf";
@@ -374,23 +376,35 @@ export default function PortalRH() {
                 <Card>
                   <CardContent className="p-4 space-y-3">
                     <div>
-                      <Label>Buscar colaborador</Label>
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input className="pl-8" value={funcSearch} onChange={(e) => setFuncSearch(e.target.value)}
-                          placeholder="Nome, CPF ou matrícula…" />
-                      </div>
-                    </div>
-                    <div>
                       <Label>Colaborador *</Label>
-                      <Select value={funcionarioId} onValueChange={setFuncionarioId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
-                        <SelectContent>
-                          {filteredFuncs.map((f: any) => (
-                            <SelectItem key={f.id} value={f.id}>{f.nome}{f.cpf ? ` — ${f.cpf}` : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                            {funcSel ? `${funcSel.nome}${funcSel.cpf ? ` — ${funcSel.cpf}` : ""}` : "Selecione ou busque por nome, CPF ou matrícula…"}
+                            <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar por nome, CPF ou matrícula…" />
+                            <CommandList>
+                              <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {funcionarios.map((f: any) => (
+                                  <CommandItem
+                                    key={f.id}
+                                    value={`${f.nome} ${f.cpf || ""} ${f.matricula || ""}`}
+                                    onSelect={() => setFuncionarioId(f.id)}
+                                  >
+                                    <Check className={`mr-2 h-4 w-4 ${funcionarioId === f.id ? "opacity-100" : "opacity-0"}`} />
+                                    {f.nome}{f.cpf ? ` — ${f.cpf}` : ""}{f.matricula ? ` (${f.matricula})` : ""}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       {!funcionarioId && (
                         <p className="text-xs text-muted-foreground mt-1">
                           Selecione um colaborador para gerar o ASO com base no GHE/GES vinculado.
@@ -486,12 +500,9 @@ export default function PortalRH() {
                         <p className="text-xs text-destructive mt-1">Selecione o local de emissão do ASO.</p>
                       )}
                     </div>
-                    <div>
-                      <Label>Observações</Label>
-                      <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
-                    </div>
                   </CardContent>
                 </Card>
+
 
                 {/* Coluna 2: Prévia do PCMSO/GHE */}
                 <Card>
