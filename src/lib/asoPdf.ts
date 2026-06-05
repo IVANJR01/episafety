@@ -275,13 +275,19 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string; no
   });
   startY = (doc as any).lastAutoTable.finalY;
 
-  // Assinaturas
+  // Assinaturas — médico responsável vai acima da linha de assinatura do médico
   autoTable(doc, {
     ...tableOpts,
     startY,
     body: [[
-      { content: "\n\n_________________________________________________\nAssinatura Médico", styles: { halign: "center", minCellHeight: 22, cellWidth: innerW / 2 } },
-      { content: "\n\n_________________________________________________\nAssinatura Colaborador", styles: { halign: "center", minCellHeight: 22 } },
+      {
+        content: `\n\n_________________________________________________\n${medicoLinha}\nAssinatura Médico`,
+        styles: { halign: "center", minCellHeight: 26, cellWidth: innerW / 2 },
+      },
+      {
+        content: "\n\n_________________________________________________\n\nAssinatura Colaborador",
+        styles: { halign: "center", minCellHeight: 26 },
+      },
     ]],
   });
 
