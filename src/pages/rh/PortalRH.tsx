@@ -123,7 +123,7 @@ export default function PortalRH() {
     return map;
   }, [riscos]);
 
-  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!medicoId && !!dataEmissao && !!dataVencimento;
+  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento;
 
   const resetForm = () => {
     setFuncionarioId(""); setFuncSearch(""); setTipoExame("admissional");
