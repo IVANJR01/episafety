@@ -152,10 +152,10 @@ async function buildPdf(asoId: string): Promise<{ doc: jsPDF; numero: string }> 
   doc.line(M + 10, y, M + 80, y);
   doc.line(W - M - 80, y, W - M - 10, y);
   y += 4;
-  doc.text(`${med?.nome || "—"}`, M + 45, y, { align: "center" });
+  doc.text(med?.nome ? `${med.nome}` : "Nome do Médico Responsável Pelo Exame", M + 45, y, { align: "center" });
   doc.text("Assinatura do colaborador", W - M - 45, y, { align: "center" });
   y += 4;
-  doc.text(`CRM ${med?.crm || "—"}${med?.uf_crm ? "/" + med.uf_crm : ""}`, M + 45, y, { align: "center" });
+  if (med?.crm) doc.text(`CRM ${med.crm}${med.uf_crm ? "/" + med.uf_crm : ""}`, M + 45, y, { align: "center" });
   y += 8;
 
   // Rodapé NR
