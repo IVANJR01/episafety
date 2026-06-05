@@ -125,8 +125,8 @@ export default function Funcionarios() {
     supabase.from("empresa_config").select("nome, cnpj").eq("id", empresaId).single().then(({ data }) => {
       if (data) setEmpresaInfo({ nome: data.nome, cnpj: data.cnpj });
     });
-    supabase.from("ghe_ges").select("id, codigo, nome").eq("empresa_id", empresaId).eq("status", "ativo").order("codigo").then(({ data }) => {
-      setGhes(data || []);
+    supabase.from("ghe_ges").select("id, codigo, nome, setor").eq("empresa_id", empresaId).eq("status", "ativo").order("codigo").then(({ data }) => {
+      setGhes((data as any) || []);
     });
   }, [empresaId]);
 
