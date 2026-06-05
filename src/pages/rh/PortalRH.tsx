@@ -124,12 +124,13 @@ export default function PortalRH() {
   });
 
   const medicosDisponiveis = useMemo(() => {
-    if (funcSel?.empresa_id) {
-      const filtered = (medicos as any[]).filter((m) => !m.empresa_id || m.empresa_id === funcSel.empresa_id);
+    const empId = (funcionarios as any[]).find((f: any) => f.id === funcionarioId)?.empresa_id;
+    if (empId) {
+      const filtered = (medicos as any[]).filter((m) => !m.empresa_id || m.empresa_id === empId);
       return filtered.length > 0 ? filtered : (medicos as any[]);
     }
     return medicos as any[];
-  }, [medicos, funcSel?.empresa_id]);
+  }, [medicos, funcionarios, funcionarioId]);
 
   const { data: locaisEmissao = [] } = useQuery({
     queryKey: ["rh-locais-emissao", empresaScopeIds.join(",")],
