@@ -88,8 +88,9 @@ export default function AsoLocaisEmissao() {
       }
       toast.success("Local salvo");
       setEditing(null);
-      qc.invalidateQueries({ queryKey: ["aso-locais-emissao"] });
-      qc.invalidateQueries({ queryKey: ["rh-locais-emissao"] });
+      await qc.refetchQueries({ queryKey: ["aso-locais-emissao"] });
+      await qc.refetchQueries({ queryKey: ["rh-locais-emissao"] });
+      await refetch();
     } catch (e: any) {
       toast.error("Erro: " + (e.message || e));
     }
