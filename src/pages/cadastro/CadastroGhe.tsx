@@ -11,7 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Power, ClipboardList, Search } from "lucide-react";
+import { Plus, Pencil, Power, ClipboardList, Search, Briefcase, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CadastroGhe() {
@@ -21,6 +21,7 @@ export default function CadastroGhe() {
   const [busca, setBusca] = useState("");
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [openFuncoes, setOpenFuncoes] = useState<any | null>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["cad-ghe-empresas", empresaScopeIds.join(",")],
@@ -39,11 +40,11 @@ export default function CadastroGhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ghe_ges")
-        .select("id, codigo, nome, setor, descricao, status")
+        .select("id, codigo, nome, setor, descricao, status, ghe_funcoes(count)")
         .eq("empresa_id", empresaSel)
         .order("codigo");
       if (error) throw error;
-      return data || [];
+      return (data || []).map((g: any) => ({ ...g, nFuncoes: g.ghe_funcoes?.[0]?.count || 0 }));
     },
   });
 
