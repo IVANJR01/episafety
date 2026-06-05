@@ -441,9 +441,25 @@ export default function PortalRH() {
                     </div>
                     <div>
                       <Label>Local de emissão *</Label>
-                      <Input value={localEmissao} onChange={(e) => setLocalEmissao(e.target.value)} placeholder="Cidade — UF (ex.: Alto Santo - CE)" />
-                      {!localEmissao.trim() && (
-                        <p className="text-xs text-destructive mt-1">Informe o local de emissão do ASO.</p>
+                      <Select value={localEmissaoId} onValueChange={setLocalEmissaoId} disabled={locaisDisponiveis.length === 0}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o local de emissão" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locaisDisponiveis.map((l) => (
+                            <SelectItem key={l.id} value={l.id}>
+                              {l.nome}{l.padrao ? " (padrão)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {locaisDisponiveis.length === 0 && (
+                        <p className="text-xs text-destructive mt-1">
+                          Nenhum local de emissão cadastrado para esta empresa. Solicite ao administrador o cadastro do local de emissão.
+                        </p>
+                      )}
+                      {locaisDisponiveis.length > 0 && !localEmissaoId && (
+                        <p className="text-xs text-destructive mt-1">Selecione o local de emissão do ASO.</p>
                       )}
                     </div>
                     <div>
