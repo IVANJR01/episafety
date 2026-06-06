@@ -277,11 +277,18 @@ function FuncoesTab({ ghe }: { ghe: any }) {
   );
 }
 
+const CATALOGO_RISCOS: Record<string, string[]> = {
+  fisico: ["Ruído", "Calor", "Frio", "Vibração", "Radiação ionizante", "Radiação não ionizante", "Umidade", "Pressão anormal"],
+  quimico: ["Poeiras", "Fumos", "Névoas", "Gases", "Vapores", "Produtos químicos em geral", "Sílica", "Solventes"],
+  biologico: ["Vírus", "Bactérias", "Fungos", "Parasitas", "Bacilos"],
+  ergonomico: ["Postura inadequada", "Esforço físico intenso", "Levantamento de peso", "Movimentos repetitivos", "Trabalho em pé", "Trabalho sentado por longos períodos", "Monotonia", "Jornada prolongada"],
+  acidente: ["Máquinas e equipamentos sem proteção", "Ferramentas inadequadas", "Eletricidade", "Trabalho em altura", "Queda de objetos", "Projeção de partículas", "Animais peçonhentos", "Incêndio / explosão"],
+  outro: ["Não aplicável"],
+};
+
 function RiscosTab({ ghe }: { ghe: any }) {
   const [grupo, setGrupo] = useState("ergonomico");
   const [tipoAgente, setTipoAgente] = useState("");
-  const [texto, setTexto] = useState("");
-  const [exposicao, setExposicao] = useState("Intermitente");
 
   const { data = [], refetch } = useQuery({
     queryKey: ["ghe-riscos", ghe.id],
@@ -291,37 +298,45 @@ function RiscosTab({ ghe }: { ghe: any }) {
     },
   });
 
-  const add = async () => {
-    if (!tipoAgente.trim()) return toast.error("Informe o tipo de agente");
+  const add = async (agente?: string) => {
+    const ag = (agente || tipoAgente).trim();
+    if (!ag) return toast.error("Selecione um agente");
     const { error } = await supabase.from("ghe_riscos").insert({
       ghe_id: ghe.id, empresa_id: ghe.empresa_id, grupo,
-      tipo_agente: tipoAgente.trim(), texto_aso: (texto || tipoAgente).trim(), exposicao,
+      tipo_agente: ag, texto_aso: ag, exposicao: "Intermitente",
     });
     if (error) return toast.error(error.message);
-    setTipoAgente(""); setTexto(""); refetch();
+    setTipoAgente(""); refetch();
   };
   const remove = async (id: string) => { await supabase.from("ghe_riscos").delete().eq("id", id); refetch(); };
+
+  const catalogo = CATALOGO_RISCOS[grupo] || [];
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-12 gap-2">
-        <div className="col-span-3">
+        <div className="col-span-4">
           <Label className="text-xs">Grupo</Label>
-          <Select value={grupo} onValueChange={setGrupo}>
+          <Select value={grupo} onValueChange={(v) => { setGrupo(v); setTipoAgente(""); }}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{GRUPOS_RISCO.map((g) => <SelectItem key={g.k} value={g.k}>{g.l}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="col-span-4">
-          <Label className="text-xs">Tipo de agente *</Label>
-          <Input value={tipoAgente} onChange={(e) => setTipoAgente(e.target.value)} placeholder="Postura inadequada" />
-        </div>
-        <div className="col-span-3">
-          <Label className="text-xs">Texto resumido (ASO)</Label>
-          <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="(usa o tipo de agente se vazio)" />
+        <div className="col-span-6">
+          <Label className="text-xs">Agente do catálogo</Label>
+          <Select value={tipoAgente} onValueChange={(v) => add(v)}>
+            <SelectTrigger><SelectValue placeholder="Selecione um agente para adicionar…" /></SelectTrigger>
+            <SelectContent>{catalogo.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
         <div className="col-span-2 flex items-end">
-          <Button onClick={add} className="w-full"><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
+          <Button onClick={() => add()} className="w-full" disabled={!tipoAgente}><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
+        </div>
+      </div>
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <Label className="text-xs">Ou digite um agente personalizado</Label>
+          <Input value={tipoAgente} onChange={(e) => setTipoAgente(e.target.value)} placeholder="Outro agente…" onKeyDown={(e) => e.key === "Enter" && add()} />
         </div>
       </div>
       {GRUPOS_RISCO.map((g) => {
