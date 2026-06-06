@@ -360,6 +360,8 @@ function ExamesTab({ ghe }: { ghe: any }) {
       const { data } = await supabase.from("ghe_exames").select("*").eq("ghe_id", ghe.id).order("nome_exame");
       return data || [];
     },
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: catalogo = [] } = useQuery({
@@ -368,6 +370,8 @@ function ExamesTab({ ghe }: { ghe: any }) {
       const { data } = await supabase.from("aso_exames_catalogo").select("*").eq("empresa_id", ghe.empresa_id).eq("ativo", true).order("nome");
       return data || [];
     },
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const norm = (s: string) => (s || "").trim().toLowerCase();
