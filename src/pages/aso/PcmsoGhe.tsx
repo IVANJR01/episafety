@@ -352,6 +352,7 @@ function ExamesTab({ ghe }: { ghe: any }) {
   const [nome, setNome] = useState("");
   const [codigo, setCodigo] = useState("");
   const [flags, setFlags] = useState<Record<string, boolean>>({ admissional: true, periodico: true, retorno_trabalho: true, mudanca_risco: true, mudanca_funcao: true, demissional: true });
+  const [busca, setBusca] = useState("");
 
   const { data = [], refetch } = useQuery({
     queryKey: ["ghe-exames", ghe.id],
@@ -360,6 +361,17 @@ function ExamesTab({ ghe }: { ghe: any }) {
       return data || [];
     },
   });
+
+  const { data: catalogo = [] } = useQuery({
+    queryKey: ["aso-cat-ghe", ghe.empresa_id],
+    queryFn: async () => {
+      const { data } = await supabase.from("aso_exames_catalogo").select("*").eq("empresa_id", ghe.empresa_id).eq("ativo", true).order("nome");
+      return data || [];
+    },
+  });
+
+  const norm = (s: string) => (s || "").trim().toLowerCase();
+  const vinculadosNomes = new Set(data.map((d: any) => norm(d.nome_exame)));
 
   const add = async () => {
     if (!nome.trim()) return toast.error("Informe o nome do exame");
@@ -376,9 +388,51 @@ function ExamesTab({ ghe }: { ghe: any }) {
   };
   const remove = async (id: string) => { await supabase.from("ghe_exames").delete().eq("id", id); refetch(); };
 
+  const toggleCatalogo = async (cat: any, checked: boolean) => {
+    if (checked) {
+      const existing = data.find((d: any) => norm(d.nome_exame) === norm(cat.nome));
+      if (existing) return;
+      const { error } = await supabase.from("ghe_exames").insert({
+        ghe_id: ghe.id, empresa_id: ghe.empresa_id,
+        nome_exame: cat.nome, codigo_exame: cat.codigo || null,
+        admissional: true, periodico: true, retorno_trabalho: true, mudanca_risco: true, mudanca_funcao: true, demissional: true,
+      });
+      if (error) return toast.error(error.message);
+      refetch();
+    } else {
+      const existing = data.find((d: any) => norm(d.nome_exame) === norm(cat.nome));
+      if (existing) { await supabase.from("ghe_exames").delete().eq("id", existing.id); refetch(); }
+    }
+  };
+
+  const catalogoFiltrado = catalogo.filter((c: any) => !busca.trim() || norm(c.nome).includes(norm(busca)));
+
   return (
     <div className="space-y-3">
       <div className="border rounded p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Catálogo de Exames da empresa</Label>
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar no catálogo…" className="max-w-[240px] h-8" />
+        </div>
+        {catalogo.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">Nenhum exame no catálogo. Cadastre em Exames &gt; Catálogo.</p>
+        ) : (
+          <div className="max-h-[200px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1">
+            {catalogoFiltrado.map((c: any) => {
+              const checked = vinculadosNomes.has(norm(c.nome));
+              return (
+                <label key={c.id} className="flex items-center gap-2 text-sm border rounded px-2 py-1 cursor-pointer hover:bg-muted/50">
+                  <Checkbox checked={checked} onCheckedChange={(v) => toggleCatalogo(c, !!v)} />
+                  <span className="flex-1">{c.codigo ? `[${c.codigo}] ` : ""}{c.nome}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="border rounded p-3 space-y-2">
+        <Label className="text-sm font-medium">Adicionar exame manualmente</Label>
         <div className="grid grid-cols-12 gap-2">
           <div className="col-span-2"><Label className="text-xs">Código</Label><Input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="0295" /></div>
           <div className="col-span-8"><Label className="text-xs">Nome do exame *</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Avaliação Clínica Ocupacional" /></div>
@@ -393,7 +447,9 @@ function ExamesTab({ ghe }: { ghe: any }) {
           ))}
         </div>
       </div>
+
       <div className="border rounded">
+        <div className="px-3 py-2 border-b text-sm font-medium bg-muted/30">Exames vinculados a este GHE</div>
         {data.length === 0 && <p className="text-sm text-muted-foreground p-3">Nenhum exame cadastrado.</p>}
         {data.map((ex: any) => (
           <div key={ex.id} className="p-2 border-b last:border-0">
@@ -415,6 +471,7 @@ function ExamesTab({ ghe }: { ghe: any }) {
     </div>
   );
 }
+
 
 function ColabTab({ ghe }: { ghe: any }) {
   const qc = useQueryClient();
