@@ -56,7 +56,7 @@ export default function Install() {
           <a href="/login" className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </a>
-          <span className="font-semibold text-sm">Instalar EPISafety</span>
+          <span className="font-semibold text-sm">Instalar SafetySoluções</span>
         </div>
       </div>
 
@@ -65,12 +65,12 @@ export default function Install() {
           {/* App icon + name */}
           <div className="text-center space-y-3">
             <img
-              alt="EPISafety"
+              alt="SafetySoluções"
               className="w-20 h-20 rounded-2xl object-contain shadow-lg border border-border mx-auto"
               src="/lovable-uploads/8df588ff-740d-4376-9653-dc6f07556c80.png"
             />
             <div>
-              <h1 className="text-xl font-bold">EPISafety</h1>
+              <h1 className="text-xl font-bold">SafetySoluções</h1>
               <p className="text-sm text-muted-foreground">Segurança do Trabalho</p>
             </div>
             <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
@@ -95,7 +95,7 @@ export default function Install() {
                 </div>
                 <h2 className="text-lg font-bold">Instalado com sucesso!</h2>
                 <p className="text-sm text-muted-foreground">
-                  Procure o ícone <strong>EPISafety</strong> na sua tela inicial.
+                  Procure o ícone <strong>SafetySoluções</strong> na sua tela inicial.
                 </p>
               </CardContent>
             </Card>
@@ -138,7 +138,7 @@ export default function Install() {
                   disabled={!deferredPrompt}
                 >
                   <Download className="w-5 h-5 mr-2" />
-                  Instalar EPISafety
+                  Instalar SafetySoluções
                 </Button>
                 {!promptReady && (
                   <p className="text-xs text-muted-foreground text-center">

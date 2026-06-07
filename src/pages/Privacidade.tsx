@@ -16,14 +16,14 @@ export default function Privacidade() {
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Política de Privacidade — EPISafety</h1>
+          <h1 className="text-2xl font-bold">Política de Privacidade — SafetySoluções</h1>
           <p className="text-sm text-muted-foreground">Última atualização: 09 de março de 2026</p>
         </div>
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">1. Introdução</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            O <strong className="text-foreground">EPISafety</strong> é um sistema de gestão de Equipamentos de Proteção Individual (EPIs) e segurança do trabalho.
+            O <strong className="text-foreground">SafetySoluções</strong> é um sistema de gestão de Equipamentos de Proteção Individual (EPIs) e segurança do trabalho.
             Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e protegemos suas informações pessoais ao utilizar nosso aplicativo.
           </p>
         </section>
@@ -91,7 +91,7 @@ export default function Privacidade() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">7. Cookies e Dados Locais</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            O EPISafety utiliza armazenamento local (localStorage) para permitir o funcionamento offline do aplicativo.
+            O SafetySoluções utiliza armazenamento local (localStorage) para permitir o funcionamento offline do aplicativo.
             Esses dados são armazenados exclusivamente no seu dispositivo e sincronizados com o servidor quando a conexão é restabelecida.
           </p>
         </section>

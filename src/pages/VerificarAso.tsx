@@ -54,7 +54,7 @@ export default function VerificarAso() {
             <ShieldCheck className="h-10 w-10 text-primary" />
             <div>
               <h1 className="text-xl font-bold">Verificação de ASO</h1>
-              <p className="text-xs text-muted-foreground">EPISafety — Atestado de Saúde Ocupacional</p>
+              <p className="text-xs text-muted-foreground">SafetySoluções — Atestado de Saúde Ocupacional</p>
             </div>
           </div>
 

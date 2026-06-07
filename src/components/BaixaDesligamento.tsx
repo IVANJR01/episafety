@@ -297,7 +297,7 @@ export default function BaixaDesligamento({ open, onOpenChange, funcionario, emp
     y += 15;
     doc.setFontSize(6);
     doc.setTextColor(100);
-    doc.text(`Documento gerado em ${new Date().toLocaleDateString("pt-BR")} — EPISafety`, W / 2, y, { align: "center" });
+    doc.text(`Documento gerado em ${new Date().toLocaleDateString("pt-BR")} — SafetySoluções`, W / 2, y, { align: "center" });
 
     doc.save(`Termo_Devolucao_${funcionario.nome.replace(/\s+/g, "_")}_${dataDemissao}.pdf`);
     toast({ title: "Termo de Devolução gerado!", description: "O PDF foi baixado." });

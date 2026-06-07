@@ -180,7 +180,7 @@ export default function Backups() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setValidationResult(data);
-      toast({ title: "✅ Conexão com Google Drive ativa!", description: `Pasta raiz: EPISafety` });
+      toast({ title: "✅ Conexão com Google Drive ativa!", description: `Pasta raiz: SafetySoluções` });
     } catch (err: any) {
       setValidationResult({ success: false, error: err.message });
       toast({ title: "Erro na validação", description: err.message, variant: "destructive" });
@@ -220,7 +220,7 @@ export default function Backups() {
 
       const access = await getDriveAccess("teste-homologacao");
       log.push(`✅ Token obtido. Empresa: ${access.empresaNome}`);
-      log.push(`📁 Pasta criada/encontrada: EPISafety > ${access.empresaNome} > teste-homologacao`);
+      log.push(`📁 Pasta criada/encontrada: SafetySoluções > ${access.empresaNome} > teste-homologacao`);
       setSanityResult({ inProgress: true, log: [...log] });
 
       // Create a small test PDF (minimal valid PDF)
@@ -293,7 +293,7 @@ startxref
         empresaNome: access.empresaNome,
       });
 
-      toast({ title: "✅ Teste de homologação passou!", description: `Pasta EPISafety > ${access.empresaNome} validada com sucesso.` });
+      toast({ title: "✅ Teste de homologação passou!", description: `Pasta SafetySoluções > ${access.empresaNome} validada com sucesso.` });
     } catch (err: any) {
       const errorCode = err.message.includes("401") ? "401 (Token expirado)" :
                         err.message.includes("403") ? "403 (Permissão negada)" :
@@ -608,7 +608,7 @@ startxref
                 </div>
                 {sanityResult.success && sanityResult.empresaNome && (
                   <p className="text-xs text-muted-foreground">
-                    Hierarquia validada: <strong>EPISafety &gt; {sanityResult.empresaNome} &gt; teste-homologacao</strong>
+                    Hierarquia validada: <strong>SafetySoluções &gt; {sanityResult.empresaNome} &gt; teste-homologacao</strong>
                   </p>
                 )}
               </div>
@@ -691,7 +691,7 @@ startxref
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Cron job configurado para executar todo <strong>domingo às 03h</strong>. 
-            Exporta todas as tabelas de todas as empresas para a pasta <strong>EPISafety_SYSTEM_BACKUPS</strong> no Google Drive.
+            Exporta todas as tabelas de todas as empresas para a pasta <strong>SafetySoluções_SYSTEM_BACKUPS</strong> no Google Drive.
             Mantém os 8 backups mais recentes automaticamente.
           </p>
           <Button variant="outline" size="sm" onClick={triggerScheduledBackup} disabled={runningScheduled}>

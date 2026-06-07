@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 
+
 interface EmpresaData {
   nome: string;
   cnpj: string | null;
@@ -194,7 +195,7 @@ function drawFooter(doc: jsPDF) {
   doc.setFontSize(5.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text("Gerado no sistema EPISafety", PAGE_W / 2, footerY, { align: "center" });
+  doc.text("Gerado no sistema SafetySoluções", PAGE_W / 2, footerY, { align: "center" });
   doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, footerY + 3.5, { align: "center" });
 }
 

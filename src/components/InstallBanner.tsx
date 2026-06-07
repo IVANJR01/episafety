@@ -78,11 +78,11 @@ export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: b
       <div className="max-w-lg mx-auto bg-primary text-primary-foreground rounded-xl shadow-lg p-3 flex items-center gap-3">
         <img
           src="/lovable-uploads/8df588ff-740d-4376-9653-dc6f07556c80.png"
-          alt="EPISafety"
+          alt="SafetySoluções"
           className="w-10 h-10 rounded-lg shrink-0"
         />
         <div className="flex-1 min-w-0 cursor-pointer" onClick={installEvent ? handleInstallClick : undefined}>
-          <p className="text-sm font-semibold">Instalar EPISafety</p>
+          <p className="text-sm font-semibold">Instalar SafetySoluções</p>
           <p className="text-xs opacity-80">
             {isIOS
               ? "Toque em Compartilhar → Adicionar à Tela de Início"

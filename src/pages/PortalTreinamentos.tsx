@@ -967,7 +967,7 @@ export default function PortalTreinamentos() {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
-            <img src={logoImg} alt="EPISafety" className="h-7 sm:h-8" />
+            <img src={logoImg} alt="SafetySoluções" className="h-7 sm:h-8" />
             <div>
               <h1 className="font-bold text-foreground text-xs sm:text-sm">Portal de Treinamentos</h1>
               <p className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-none">{userName}</p>
