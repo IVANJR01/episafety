@@ -35,7 +35,7 @@ export default function AdminCloud() {
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">Infraestrutura Cloud</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Visão geral dos componentes de backend usados pelo EPISafety.
+          Visão geral dos componentes de backend usados pelo SafetySoluções.
         </p>
       </div>
 

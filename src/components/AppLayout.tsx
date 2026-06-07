@@ -197,9 +197,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform lg:translate-x-0 flex flex-col ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2.5">
-            <img alt="EPISafety" className="w-8 h-8 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
+            <img alt="SafetySoluções" className="w-8 h-8 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
             <div className="leading-tight">
-              <h1 className="font-bold text-base tracking-tight text-sidebar-primary-foreground">EPISafety</h1>
+              <h1 className="font-bold text-base tracking-tight text-sidebar-primary-foreground">SafetySoluções</h1>
               <p className="text-[10px] text-sidebar-foreground/50 font-medium">Segurança do Trabalho</p>
             </div>
           </div>
@@ -494,8 +494,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Mobile top header */}
         <header className="sticky top-[env(safe-area-inset-top,44px)] z-30 flex items-center justify-between px-4 py-3 bg-background border-b border-border lg:hidden">
           <div className="flex items-center gap-2">
-            <img alt="EPISafety" className="w-7 h-7 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
-            <span className="font-semibold text-sm">EPISafety</span>
+            <img alt="SafetySoluções" className="w-7 h-7 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
+            <span className="font-semibold text-sm">SafetySoluções</span>
           </div>
           <button onClick={signOut} className="p-2 text-muted-foreground hover:text-foreground">
             <LogOut className="w-4 h-4" />
