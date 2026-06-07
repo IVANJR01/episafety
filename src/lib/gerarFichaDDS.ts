@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 
+
 interface EmpresaData {
   nome: string;
   cnpj: string | null;
