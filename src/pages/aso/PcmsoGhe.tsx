@@ -66,7 +66,12 @@ export default function PcmsoGhe() {
         const { data: fs } = await supabase.from("funcionarios").select("ghe_id").in("ghe_id", ids);
         (fs || []).forEach((f: any) => { counts[f.ghe_id] = (counts[f.ghe_id] || 0) + 1; });
       }
-      return (data || []).map((g: any) => ({
+      const rows = data || [];
+      const filtered = (empresaScopeIds && empresaScopeIds.length > 0)
+        ? rows.filter((r: any) => empresaScopeIds.includes(r.empresa_id))
+        : rows;
+
+      return filtered.map((g: any) => ({
         ...g,
         nFuncoes: g.ghe_funcoes?.[0]?.count || 0,
         nRiscos: g.ghe_riscos?.[0]?.count || 0,
