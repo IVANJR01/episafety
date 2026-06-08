@@ -46,7 +46,7 @@ export function hasPermission(
   action: Acao = "view"
 ): boolean {
   // No restrictions = full access
-  if (!modulosPermitidos || modulosPermitidos.length === 0) return true;
+  if (!modulosPermitidos || modulosPermitidos.length === 0) return false;
 
   // Legacy bare key = full access to that module
   if (modulosPermitidos.includes(moduleKey)) return true;
