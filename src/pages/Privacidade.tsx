@@ -109,7 +109,7 @@ export default function Privacidade() {
           <p className="text-sm text-muted-foreground leading-relaxed">
             Para dúvidas, solicitações ou exercício dos seus direitos sobre privacidade, entre em contato pelo e-mail:
           </p>
-          <p className="text-sm font-medium text-primary">contato@episafety.com.br</p>
+          <p className="text-sm font-medium text-primary">contato@safetysolucoes.com.br</p>
         </section>
 
         <div className="border-t border-border pt-6 text-center">

@@ -69,7 +69,7 @@ const queryClient = new QueryClient({
 const storagePersister = typeof window !== "undefined"
   ? createSyncStoragePersister({
       storage: window.localStorage,
-      key: "episafety-react-query-cache",
+      key: "safetysolucoes-react-query-cache",
     })
   : undefined;
 

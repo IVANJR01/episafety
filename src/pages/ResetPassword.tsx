@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, X } from "lucide-react";
-import logoEpiSafety from "@/assets/logo-episafety.png";
+const logoEpiSafety = "/lovable-uploads/8df588ff-740d-4376-9653-dc6f07556c80.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
