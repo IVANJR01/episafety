@@ -32,9 +32,10 @@ function Kpi({ label, value, icon: Icon, color }: any) {
 
 export default function AsoDashboard() {
   const { empresaScopeIds } = useAuth();
+  const scopeKey = (empresaScopeIds || []).join(",");
 
   const { data: asos = [] } = useQuery({
-    queryKey: ["aso-dashboard", (empresaScopeIds || []).join(",")],
+    queryKey: ["aso-dashboard", scopeKey],
     queryFn: async () => {
       let q = supabase.from("asos")
         .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id");

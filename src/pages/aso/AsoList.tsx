@@ -43,16 +43,18 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
   const [tipo, setTipo] = useState<string>("all");
   const [valid, setValid] = useState<string>("all");
 
+  const scopeKey = (empresaScopeIds || []).join(",");
   const { data: asos = [], isLoading } = useQuery({
-    queryKey: ["asos-list", empresaScopeIds.join(",")],
+    queryKey: ["asos-list", scopeKey],
     queryFn: async () => {
       let q = supabase
         .from("asos")
         .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj)`)
         .order("created_at", { ascending: false });
       
-      if (empresaScopeIds.length > 0) {
-        q = q.in("empresa_id", empresaScopeIds);
+      const ids = empresaScopeIds || [];
+      if (ids.length > 0) {
+        q = q.in("empresa_id", ids);
       }
       const { data, error } = await q;
       if (error) throw error;
