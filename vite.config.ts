@@ -110,9 +110,9 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       manifest: {
-        name: "EPISafety - Segurança do Trabalho",
-        short_name: "EPISafety",
-        description: "Sistema de gestão de EPIs e segurança do trabalho v1.2.0",
+        name: "SafetySoluções - Segurança do Trabalho",
+        short_name: "SafetySoluções",
+        description: "Sistema de gestão de EPIs e segurança do trabalho",
         theme_color: "#1A1A1A",
         background_color: "#FFFFFF",
         display: "standalone",
