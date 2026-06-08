@@ -103,7 +103,8 @@ export default function PortalRH() {
         .not("ghe_id", "is", null)
         .is("data_demissao", null)
         .order("nome");
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("empresa_id", ids);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
@@ -143,7 +144,8 @@ export default function PortalRH() {
         .select("id, empresa_id, nome, cidade, uf, ativo, padrao")
         .eq("ativo", true)
         .order("nome");
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("empresa_id", ids);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as any[];
