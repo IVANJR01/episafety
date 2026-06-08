@@ -50,7 +50,10 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
         .from("asos")
         .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj)`)
         .order("created_at", { ascending: false });
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      
+      if (empresaScopeIds.length > 0) {
+        q = q.in("empresa_id", empresaScopeIds);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
