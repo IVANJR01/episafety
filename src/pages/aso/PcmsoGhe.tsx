@@ -351,7 +351,7 @@ function RiscosTab({ ghe }: { ghe: any }) {
 function ExamesTab({ ghe }: { ghe: any }) {
   const [nome, setNome] = useState("");
   const [codigo, setCodigo] = useState("");
-  const [flags, setFlags] = useState<Record<string, boolean>>({ admissional: true, periodico: true, retorno_trabalho: true, mudanca_risco: true, mudanca_funcao: true, demissional: true });
+  const [flags, setFlags] = useState<Record<string, boolean>>({ admissional: false, periodico: false, retorno_trabalho: false, mudanca_risco: false, mudanca_funcao: false, demissional: false });
   const [busca, setBusca] = useState("");
 
   const { data = [], refetch } = useQuery({
