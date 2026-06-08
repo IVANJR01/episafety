@@ -36,8 +36,10 @@ export default function AsoRelatorios() {
   const [to, setTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "all");
 
+  const scopeKey = (empresaScopeIds || []).join(",");
+
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-rel-empresas", (empresaScopeIds || []).join(",")],
+    queryKey: ["aso-rel-empresas", scopeKey],
     queryFn: async () => {
       let q = supabase.from("empresa_config").select("id, nome").order("nome");
       const ids = (empresaScopeIds || []);
@@ -47,7 +49,7 @@ export default function AsoRelatorios() {
   });
 
   const { data: asos = [] } = useQuery({
-    queryKey: ["aso-rel-data", (empresaScopeIds || []).join(",")],
+    queryKey: ["aso-rel-data", scopeKey],
     queryFn: async () => {
       let q = supabase.from("asos").select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), empresa_config:empresa_id (nome)`);
       const ids = (empresaScopeIds || []);
@@ -57,7 +59,7 @@ export default function AsoRelatorios() {
   });
 
   const { data: funcs = [] } = useQuery({
-    queryKey: ["aso-rel-funcs", (empresaScopeIds || []).join(",")],
+    queryKey: ["aso-rel-funcs", scopeKey],
     queryFn: async () => {
       let q = supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, empresa_id, ativo, empresa_config:empresa_id (nome)");
       const ids = (empresaScopeIds || []);
@@ -67,7 +69,15 @@ export default function AsoRelatorios() {
   });
 
   const dados = useMemo(() => {
-    const empScope = (a: any) => empresaSel === "all" || a.empresa_id === empresaSel;
+    // FILTRO EXTRA DE SEGURANÇA NO FRONTEND
+    const empScope = (a: any) => {
+      if (empresaSel !== "all" && a.empresa_id !== empresaSel) return false;
+      if (empresaScopeIds && empresaScopeIds.length > 0) {
+        return empresaScopeIds.includes(a.empresa_id);
+      }
+      return true;
+    };
+    
     const today = new Date();
     let ativos = asos.filter((a: any) => a.status !== "cancelado" && empScope(a));
 
@@ -99,10 +109,14 @@ export default function AsoRelatorios() {
     }
     if (tipoRel === "sem_aso") {
       const comAso = new Set(ativos.map((a: any) => a.funcionario_id));
-      return funcs.filter((f: any) => (empresaSel === "all" || f.empresa_id === empresaSel) && f.ativo !== false && !comAso.has(f.id));
+      return funcs.filter((f: any) => {
+        if (empresaSel !== "all" && f.empresa_id !== empresaSel) return false;
+        if (empresaScopeIds && empresaScopeIds.length > 0 && !empresaScopeIds.includes(f.empresa_id)) return false;
+        return f.ativo !== false && !comAso.has(f.id);
+      });
     }
     return [];
-  }, [asos, funcs, tipoRel, from, to, empresaSel]);
+  }, [asos, funcs, tipoRel, from, to, empresaSel, empresaScopeIds]);
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(dados as any[]);
