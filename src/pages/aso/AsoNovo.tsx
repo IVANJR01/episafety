@@ -71,11 +71,12 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
   }, [validadeTipo, dataEmissao]);
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-empresas", empresaScopeIds.join(",")],
+    queryKey: ["aso-empresas", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("empresa_config").select("id, nome, cnpj").order("nome");
-      if (empresaScopeIds.length > 0) {
-        q = q.in("id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) {
+        q = q.in("id", ids);
       }
       const { data, error } = await q;
       if (error) throw error;

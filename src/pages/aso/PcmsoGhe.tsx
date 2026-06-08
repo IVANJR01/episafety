@@ -36,11 +36,12 @@ export default function PcmsoGhe() {
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["pcmso-empresas", empresaScopeIds.join(",")],
+    queryKey: ["pcmso-empresas", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (empresaScopeIds.length > 0) {
-        q = q.in("id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) {
+        q = q.in("id", ids);
       }
       const { data, error } = await q;
       if (error) throw error;
