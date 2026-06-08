@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Eye, Pencil, FileDown, Trash2, Search } from "lucide-react";
+import { Pencil, FileDown, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { gerarPdfAso } from "@/lib/asoPdf";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno",
@@ -32,8 +33,6 @@ function aptidaoBadge(a?: string | null) {
   if (a === "apto_restricao") return <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">Apto c/ restrição</Badge>;
   return <Badge variant="outline">—</Badge>;
 }
-
-import { usePermissions } from "@/hooks/usePermissions";
 
 export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
   const { empresaScopeIds } = useAuth();
