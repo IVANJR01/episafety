@@ -298,7 +298,12 @@ export default function PortalRH() {
       q = q.order("created_at", { ascending: false });
       const { data, error } = await q;
       if (error) throw error;
-      return data || [];
+      const rows = data || [];
+      // Filtro extra de segurança client-side
+      if (empresaScopeIds && empresaScopeIds.length > 0) {
+        return rows.filter((a: any) => empresaScopeIds.includes(a.empresa_id));
+      }
+      return rows;
     },
   });
 
