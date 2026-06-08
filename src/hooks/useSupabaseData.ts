@@ -38,7 +38,6 @@ const getSupabaseQueryKey = (
 
 // Tabelas que NÃO possuem coluna empresa_id — não aplicar filtro client-side.
 const TABLES_WITHOUT_EMPRESA_ID = new Set<string>([
-  "conferencia_itens",
 ]);
 
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
