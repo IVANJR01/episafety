@@ -131,7 +131,7 @@ export default function ResetPassword() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          <img src={logoEpiSafety} alt="SafetySoluções" className="mx-auto w-16 h-16 object-contain" />
+          <img src="https://api.freelovable.com.br/storage/v1/object/public/anexos/a1a944b5-c12a-4422-a110-75aeac37d6ee.png" alt="SafetySoluções" className="mx-auto w-16 h-16 object-contain" />
           <div>
             <CardTitle className="text-2xl">Nova Senha</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">Digite sua nova senha</p>
