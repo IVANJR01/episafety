@@ -38,7 +38,7 @@ const GRUPOS_RISCO = [
 const STEPS = ["Funcionário", "Tipo", "Riscos", "Exames", "Aptidão", "Validade", "Médico", "Revisão"];
 
 export default function AsoNovo({ editingId, onSaved }: { editingId: string | null; onSaved: () => void }) {
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId, empresaScopeIds } = useAuth();
   const qc = useQueryClient();
   const [step, setStep] = useState(0);
 

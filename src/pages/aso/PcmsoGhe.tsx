@@ -27,7 +27,7 @@ const TIPO_EXAME_FLAGS = [
 ];
 
 export default function PcmsoGhe() {
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId, empresaScopeIds } = useAuth();
   const qc = useQueryClient();
   const [openGhe, setOpenGhe] = useState<any | null>(null);
   const [openForm, setOpenForm] = useState(false);

@@ -115,7 +115,7 @@ export default function PortalRH() {
     queryFn: async () => {
       let q = supabase.from("aso_medicos").select("id, nome, crm, uf_crm, empresa_id").eq("ativo", true).order("nome");
       if (empresaScopeIds.length > 0) {
-        q = q.in("empresa_id", empresaScopeIds);
+        q = q.or(`empresa_id.in.(${empresaScopeIds.map(id => `"${id}"`).join(",")}),empresa_id.is.null`);
       }
       const { data, error } = await q;
       if (error) throw error;
