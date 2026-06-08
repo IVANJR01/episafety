@@ -52,7 +52,10 @@ export default function AsoDashboard() {
 
   const stats = useMemo(() => {
     const today = new Date();
-    const ativos = asos.filter((a: any) => a.status !== "cancelado");
+    const rows = empresaScopeIds && empresaScopeIds.length > 0
+      ? asos.filter((a: any) => empresaScopeIds.includes(a.empresa_id))
+      : asos;
+    const ativos = rows.filter((a: any) => a.status !== "cancelado");
     const aptos = ativos.filter((a: any) => a.status_aptidao === "apto").length;
     const inaptos = ativos.filter((a: any) => a.status_aptidao === "inapto").length;
     const restricao = ativos.filter((a: any) => a.status_aptidao === "apto_restricao").length;
