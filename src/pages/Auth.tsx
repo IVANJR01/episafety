@@ -88,7 +88,7 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          <img alt="SafetySoluções" className="mx-auto w-32 h-32 object-contain" src="https://api.freelovable.com.br/storage/v1/object/public/anexos/a1a944b5-c12a-4422-a110-75aeac37d6ee.png" />
+          <img alt="SafetySoluções" className="mx-auto w-32 h-32 object-contain" src="/lovable-uploads/8df588ff-740d-4376-9653-dc6f07556c80.png" />
           <div>
             <CardTitle className="text-2xl">SafetySoluções</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">Segurança do Trabalho</p>
