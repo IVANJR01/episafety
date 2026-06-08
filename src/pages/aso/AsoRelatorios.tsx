@@ -37,28 +37,31 @@ export default function AsoRelatorios() {
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "all");
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-rel-empresas", empresaScopeIds.join(",")],
+    queryKey: ["aso-rel-empresas", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("id", ids);
       return (await q).data || [];
     },
   });
 
   const { data: asos = [] } = useQuery({
-    queryKey: ["aso-rel-data", empresaScopeIds.join(",")],
+    queryKey: ["aso-rel-data", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("asos").select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), empresa_config:empresa_id (nome)`);
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("empresa_id", ids);
       return (await q).data || [];
     },
   });
 
   const { data: funcs = [] } = useQuery({
-    queryKey: ["aso-rel-funcs", empresaScopeIds.join(",")],
+    queryKey: ["aso-rel-funcs", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, empresa_id, ativo, empresa_config:empresa_id (nome)");
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("empresa_id", ids);
       return (await q).data || [];
     },
   });
