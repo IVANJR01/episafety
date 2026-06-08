@@ -55,6 +55,8 @@ interface EstoqueMovimentacao {
 interface Contrato { id: string; nome: string; unidade_id: string; }
 interface ContratoEpi { id: string; contrato_id: string; epi_id: string; estoque: number; empresa_id: string | null; }
 interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: string | null; }
+interface Aso { id: string; status: string; data_emissao: string; created_at: string; empresa_id: string; }
+interface Treinamento { id: string; status: string; data_treinamento: string; empresa_id: string; }
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
@@ -62,6 +64,9 @@ export default function Dashboard() {
   const { data: allEpis } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
   const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome");
   const { data: allEntregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
+
+  const { data: allAsos } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
+  const { data: allTreinamentos } = useSupabaseQuery<Treinamento>("treinamentos", "data_treinamento", undefined, "id, status, data_treinamento, empresa_id");
 
   const [allMovimentacoes, setAllMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [allContratos, setAllContratos] = useState<Contrato[]>([]);
@@ -181,6 +186,16 @@ export default function Dashboard() {
     if (!empresaId) return allEstoqueMovimentacoes;
     return allEstoqueMovimentacoes.filter(m => m.empresa_id && companyTreeIds.has(m.empresa_id));
   }, [allEstoqueMovimentacoes, empresaId, companyTreeIds]);
+
+  const asos = useMemo(() => {
+    if (!empresaId) return allAsos;
+    return allAsos.filter(a => a.empresa_id && companyTreeIds.has(a.empresa_id));
+  }, [allAsos, empresaId, companyTreeIds]);
+
+  const treinamentos = useMemo(() => {
+    if (!empresaId) return allTreinamentos;
+    return allTreinamentos.filter(t => t.empresa_id && companyTreeIds.has(t.empresa_id));
+  }, [allTreinamentos, empresaId, companyTreeIds]);
 
   // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
   const { valorEstoqueConsolidado, estoqueConsolidadoPorEpi, valorEstoqueMatriz, valorDistribuido } = useMemo(() => {
@@ -555,6 +570,22 @@ export default function Dashboard() {
       textColor: "text-white",
     },
     {
+      label: "ASOs Emitidos",
+      value: asos.length,
+      icon: FileBarChart,
+      gradient: "from-blue-600 to-blue-800",
+      iconBg: "bg-white/20",
+      textColor: "text-white",
+    },
+    {
+      label: "Treinamentos",
+      value: treinamentos.length,
+      icon: ShieldCheck,
+      gradient: "from-purple-600 to-purple-800",
+      iconBg: "bg-white/20",
+      textColor: "text-white",
+    },
+    {
       label: "Alertas de Estoque",
       value: alertasEstoque.length,
       icon: AlertTriangle,
@@ -604,7 +635,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Hero Stats */}
-      <motion.div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4" variants={staggerContainer}>
+      <motion.div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" variants={staggerContainer}>
         {heroStats.map((s, i) => (
           <MotionCard
             key={s.label}
