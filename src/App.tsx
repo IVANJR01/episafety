@@ -29,7 +29,7 @@ import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
 import InspecoesDashboard from "@/pages/InspecoesDashboard";
 import Treinamentos from "@/pages/Treinamentos";
-import ExamesModule from "@/pages/ExamesModule";
+
 import CadastroDashboard from "@/pages/CadastroDashboard";
 import PcmsoGhe from "@/pages/aso/PcmsoGhe";
 import CadastroGhe from "@/pages/cadastro/CadastroGhe";
