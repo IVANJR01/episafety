@@ -197,7 +197,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-foreground transform transition-transform lg:translate-x-0 flex flex-col ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2.5">
-            <img alt="SafetySoluções" className="w-8 h-8 object-contain" src="https://api.freelovable.com.br/storage/v1/object/public/anexos/fceb5c8f-7aa0-4b1a-8be0-67008038fa6e.png" />
+            <img alt="SafetySoluções" className="w-12 h-12 object-contain" src="https://api.freelovable.com.br/storage/v1/object/public/anexos/fceb5c8f-7aa0-4b1a-8be0-67008038fa6e.png" />
             <div className="leading-tight">
               <h1 className="font-bold text-base tracking-tight text-sidebar-primary-foreground">SafetySoluções</h1>
               <p className="text-[10px] text-sidebar-foreground/50 font-medium">Segurança do Trabalho</p>
