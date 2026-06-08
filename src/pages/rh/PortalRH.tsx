@@ -280,8 +280,9 @@ export default function PortalRH() {
     queryFn: async () => {
       let q = supabase.from("asos")
         .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor, matricula), aso_medicos:medico_id (nome, crm, uf_crm), ghe_ges:ghe_id (codigo, nome)`)
-        .neq("status", "cancelado").order("created_at", { ascending: false });
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+        .neq("status", "cancelado")
+        .in("empresa_id", empresaScopeIds)
+        .order("created_at", { ascending: false });
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
