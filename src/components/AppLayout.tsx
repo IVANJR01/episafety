@@ -492,14 +492,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="sticky top-0 z-40 h-[env(safe-area-inset-top,44px)] min-h-[44px] bg-primary lg:hidden" />
 
         {/* Mobile top header */}
-        <header className="sticky top-[env(safe-area-inset-top,44px)] z-30 flex items-center justify-between px-4 py-3 bg-background border-b border-border lg:hidden">
-          <div className="flex items-center gap-2">
-            <img alt="SafetySoluções" className="w-7 h-7 object-contain" src="/lovable-uploads/ce69cec9-5062-4eb6-b0a8-e14b196a1ae3.png" />
-            <span className="font-semibold text-sm">SafetySoluções</span>
+        <header className="sticky top-[env(safe-area-inset-top,44px)] z-30 flex items-center justify-between px-4 py-2 bg-background border-b border-border lg:hidden">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setMobileOpen(true)} className="p-1 -ml-1">
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <img alt="SafetySoluções" className="w-8 h-8 object-contain" src="https://api.freelovable.com.br/storage/v1/object/public/anexos/fceb5c8f-7aa0-4b1a-8be0-67008038fa6e.png" />
+              <div className="flex flex-col">
+                <span className="font-bold text-xs leading-none">SafetySoluções</span>
+                <span className="text-[10px] text-muted-foreground">Multiempresa</span>
+              </div>
+            </div>
           </div>
-          <button onClick={signOut} className="p-2 text-muted-foreground hover:text-foreground">
-            <LogOut className="w-4 h-4" />
-          </button>
+          
+          <div className="flex items-center gap-1">
+            {showEmpresaSwitcher && (
+              <select
+                value={empresaId || ""}
+                onChange={(e) => setActiveEmpresaId(e.target.value)}
+                className="text-[10px] bg-muted border-none rounded-md px-1.5 py-1 focus:ring-1 focus:ring-primary max-w-[100px] truncate"
+              >
+                {empresasIds.map(id => (
+                  <option key={id} value={id}>
+                    {empresasNomes[id] || "..."}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button onClick={signOut} className="p-2 text-muted-foreground hover:text-foreground">
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
         <div className="p-4 lg:p-8 max-w-7xl mx-auto">{children}</div>
