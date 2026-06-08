@@ -125,7 +125,7 @@ interface Medico {
   especialidade: string | null;
 }
 
-export default function ExamesModule() {
+export default function AsoExames() {
   const { empresaId } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<Exame[]>([]);

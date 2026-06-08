@@ -29,7 +29,7 @@ import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
 import InspecoesDashboard from "@/pages/InspecoesDashboard";
 import Treinamentos from "@/pages/Treinamentos";
-import ExamesModule from "@/pages/ExamesModule";
+
 import CadastroDashboard from "@/pages/CadastroDashboard";
 import PcmsoGhe from "@/pages/aso/PcmsoGhe";
 import CadastroGhe from "@/pages/cadastro/CadastroGhe";
@@ -196,7 +196,7 @@ function ProtectedRoute() {
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
         <Route path="/treinamentos" element={<Treinamentos />} />
-        <Route path="/exames" element={<ExamesModule />} />
+        <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
         <Route path="/rh/asos" element={<PortalRH />} />
         <Route path="/central-ppp" element={<CentralPPP />} />
