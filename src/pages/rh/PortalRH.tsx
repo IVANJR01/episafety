@@ -117,6 +117,7 @@ export default function PortalRH() {
       let q = supabase.from("aso_medicos").select("id, nome, crm, uf_crm, empresa_id").eq("ativo", true).order("nome");
       const ids = (empresaScopeIds || []);
       if (ids.length > 0) {
+        // Correcting the filter for médicos: linked to scope OR global (empresa_id is null)
         const idsString = ids.join(",");
         q = q.or(`empresa_id.in.(${idsString}),empresa_id.is.null`);
       }
