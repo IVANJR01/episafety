@@ -38,7 +38,9 @@ export default function AsoDashboard() {
     queryFn: async () => {
       let q = supabase.from("asos")
         .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id");
-      if (empresaScopeIds.length > 0) {
+      
+      // Aplicar filtro de empresa_id se houver escopo definido
+      if (empresaScopeIds && empresaScopeIds.length > 0) {
         q = q.in("empresa_id", empresaScopeIds);
       }
       const { data, error } = await q;
