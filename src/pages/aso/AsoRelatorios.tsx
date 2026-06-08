@@ -40,7 +40,7 @@ export default function AsoRelatorios() {
     queryKey: ["aso-rel-empresas", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
+      if (empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
       return (await q).data || [];
     },
   });
@@ -49,7 +49,7 @@ export default function AsoRelatorios() {
     queryKey: ["aso-rel-data", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("asos").select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), empresa_config:empresa_id (nome)`);
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
       return (await q).data || [];
     },
   });
@@ -58,7 +58,7 @@ export default function AsoRelatorios() {
     queryKey: ["aso-rel-funcs", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, empresa_id, ativo, empresa_config:empresa_id (nome)");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
       return (await q).data || [];
     },
   });
