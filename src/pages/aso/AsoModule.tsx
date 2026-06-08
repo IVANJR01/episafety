@@ -31,13 +31,13 @@ export default function AsoModule() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <FileText className="h-7 w-7 text-primary" />
-            Gestão e Emissão de ASO
+            Gestão de ASO
           </h1>
           <p className="text-sm text-muted-foreground">Atestado de Saúde Ocupacional — multiempresa</p>
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
+      <Tabs value={tab === "novo" ? "asos" : tab} onValueChange={setTab} className="w-full">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="dashboard" className="gap-1"><LayoutDashboard className="h-4 w-4" />Dashboard</TabsTrigger>
           <TabsTrigger value="asos" className="gap-1"><FileText className="h-4 w-4" />ASOs</TabsTrigger>
@@ -52,7 +52,7 @@ export default function AsoModule() {
         <TabsContent value="dashboard" className="mt-4"><AsoDashboard /></TabsContent>
         <TabsContent value="asos" className="mt-4">
           {tab === "novo" ? (
-            <AsoNovo id={editingId} onBack={() => setTab("asos")} />
+            <AsoNovo editingId={editingId} onSaved={() => setTab("asos")} />
           ) : (
             <div className="space-y-4">
               <div className="flex justify-end">
