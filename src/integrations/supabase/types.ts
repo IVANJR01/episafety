@@ -71,6 +71,7 @@ export type Database = {
           assinatura_url: string | null
           created_at: string
           data_assinatura: string
+          empresa_id: string | null
           id: string
           ip: string | null
           nome: string | null
@@ -81,6 +82,7 @@ export type Database = {
           assinatura_url?: string | null
           created_at?: string
           data_assinatura?: string
+          empresa_id?: string | null
           id?: string
           ip?: string | null
           nome?: string | null
@@ -91,6 +93,7 @@ export type Database = {
           assinatura_url?: string | null
           created_at?: string
           data_assinatura?: string
+          empresa_id?: string | null
           id?: string
           ip?: string | null
           nome?: string | null
@@ -102,6 +105,13 @@ export type Database = {
             columns: ["aso_id"]
             isOneToOne: false
             referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_assinaturas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
             referencedColumns: ["id"]
           },
         ]
@@ -165,6 +175,7 @@ export type Database = {
           aso_id: string
           created_at: string
           data_realizacao: string | null
+          empresa_id: string | null
           exame_id: string | null
           id: string
           nome_exame: string
@@ -176,6 +187,7 @@ export type Database = {
           aso_id: string
           created_at?: string
           data_realizacao?: string | null
+          empresa_id?: string | null
           exame_id?: string | null
           id?: string
           nome_exame: string
@@ -187,6 +199,7 @@ export type Database = {
           aso_id?: string
           created_at?: string
           data_realizacao?: string | null
+          empresa_id?: string | null
           exame_id?: string | null
           id?: string
           nome_exame?: string
@@ -200,6 +213,13 @@ export type Database = {
             columns: ["aso_id"]
             isOneToOne: false
             referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_exames_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
             referencedColumns: ["id"]
           },
           {
@@ -404,6 +424,7 @@ export type Database = {
           aso_id: string
           created_at: string
           descricao: string
+          empresa_id: string | null
           grupo: string
           id: string
         }
@@ -411,6 +432,7 @@ export type Database = {
           aso_id: string
           created_at?: string
           descricao: string
+          empresa_id?: string | null
           grupo: string
           id?: string
         }
@@ -418,6 +440,7 @@ export type Database = {
           aso_id?: string
           created_at?: string
           descricao?: string
+          empresa_id?: string | null
           grupo?: string
           id?: string
         }
@@ -427,6 +450,13 @@ export type Database = {
             columns: ["aso_id"]
             isOneToOne: false
             referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_riscos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
             referencedColumns: ["id"]
           },
         ]
@@ -512,16 +542,19 @@ export type Database = {
         Row: {
           aso_id: string
           created_at: string
+          empresa_id: string | null
           hash: string
         }
         Insert: {
           aso_id: string
           created_at?: string
+          empresa_id?: string | null
           hash: string
         }
         Update: {
           aso_id?: string
           created_at?: string
+          empresa_id?: string | null
           hash?: string
         }
         Relationships: [
@@ -530,6 +563,13 @@ export type Database = {
             columns: ["aso_id"]
             isOneToOne: false
             referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aso_verificacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
             referencedColumns: ["id"]
           },
         ]
@@ -680,6 +720,7 @@ export type Database = {
           contrato_epi_id: string
           created_at: string
           divergencia: number | null
+          empresa_id: string | null
           epi_id: string
           estoque_sistema: number
           id: string
@@ -691,6 +732,7 @@ export type Database = {
           contrato_epi_id: string
           created_at?: string
           divergencia?: number | null
+          empresa_id?: string | null
           epi_id: string
           estoque_sistema?: number
           id?: string
@@ -702,6 +744,7 @@ export type Database = {
           contrato_epi_id?: string
           created_at?: string
           divergencia?: number | null
+          empresa_id?: string | null
           epi_id?: string
           estoque_sistema?: number
           id?: string
@@ -720,6 +763,13 @@ export type Database = {
             columns: ["contrato_epi_id"]
             isOneToOne: false
             referencedRelation: "contrato_epis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conferencia_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
             referencedColumns: ["id"]
           },
           {
