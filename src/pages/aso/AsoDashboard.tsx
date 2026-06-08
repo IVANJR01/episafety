@@ -31,7 +31,7 @@ function Kpi({ label, value, icon: Icon, color }: any) {
 }
 
 export default function AsoDashboard() {
-  const { empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaScopeIds } = useAuth();
 
   const { data: asos = [] } = useQuery({
     queryKey: ["aso-dashboard", empresaScopeIds.join(",")],
