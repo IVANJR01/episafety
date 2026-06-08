@@ -114,9 +114,9 @@ export default function PortalRH() {
     queryKey: ["rh-medicos", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("aso_medicos").select("id, nome, crm, uf_crm, empresa_id").eq("ativo", true).order("nome");
-      if (empresaScopeIds.length > 0) {
-        // Correcting the string formatting for the .or filter
-        const idsString = empresaScopeIds.join(",");
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) {
+        const idsString = ids.join(",");
         q = q.or(`empresa_id.in.(${idsString}),empresa_id.is.null`);
       }
       const { data, error } = await q;
@@ -282,13 +282,17 @@ export default function PortalRH() {
   const [previewBlob, setPreviewBlob] = useState<{ url: string; nome: string; aso: any } | null>(null);
 
   const { data: asos = [], isLoading: hLoading } = useQuery({
-    queryKey: ["portal-rh-asos", empresaScopeIds.join(",")],
+    queryKey: ["portal-rh-asos", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("asos")
         .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor, matricula), aso_medicos:medico_id (nome, crm, uf_crm), ghe_ges:ghe_id (codigo, nome)`)
-        .neq("status", "cancelado")
-        .in("empresa_id", empresaScopeIds)
-        .order("created_at", { ascending: false });
+        .neq("status", "cancelado");
+      
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) {
+        q = q.in("empresa_id", ids);
+      }
+      q = q.order("created_at", { ascending: false });
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
