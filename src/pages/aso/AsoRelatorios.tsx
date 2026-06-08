@@ -30,7 +30,7 @@ const TIPO: Record<string, string> = {
 };
 
 export default function AsoRelatorios() {
-  const { empresaScopeIds, isSuperAdmin, empresaId } = useAuth();
+  const { empresaScopeIds, empresaId } = useAuth();
   const [tipoRel, setTipoRel] = useState("emitidos");
   const [from, setFrom] = useState(format(new Date(Date.now() - 90 * 86400000), "yyyy-MM-dd"));
   const [to, setTo] = useState(format(new Date(), "yyyy-MM-dd"));
