@@ -34,14 +34,14 @@ export default function AsoDashboard() {
   const { empresaScopeIds } = useAuth();
 
   const { data: asos = [] } = useQuery({
-    queryKey: ["aso-dashboard", empresaScopeIds.join(",")],
+    queryKey: ["aso-dashboard", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("asos")
         .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id");
       
-      // Aplicar filtro de empresa_id se houver escopo definido
-      if (empresaScopeIds && empresaScopeIds.length > 0) {
-        q = q.in("empresa_id", empresaScopeIds);
+      const ids = empresaScopeIds || [];
+      if (ids.length > 0) {
+        q = q.in("empresa_id", ids);
       }
       const { data, error } = await q;
       if (error) throw error;
