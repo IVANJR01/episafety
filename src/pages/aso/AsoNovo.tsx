@@ -74,7 +74,7 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
     queryKey: ["aso-empresas", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("empresa_config").select("id, nome, cnpj").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
+      if (empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];

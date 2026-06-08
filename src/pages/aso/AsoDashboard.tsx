@@ -37,8 +37,8 @@ export default function AsoDashboard() {
     queryKey: ["aso-dashboard", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("asos")
-        .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id")
-        .in("empresa_id", empresaScopeIds);
+        .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id");
+      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
