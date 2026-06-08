@@ -84,7 +84,7 @@ export default function AsoDashboard() {
       { name: "Inapto", value: inaptos, color: "hsl(var(--destructive))" },
     ];
     return { total: ativos.length, aptos, inaptos, restricao, vencidos, vencendo, porTipo, meses, statusPie };
-  }, [asos]);
+  }, [asos, empresaScopeIds]);
 
   return (
     <div className="space-y-4">
