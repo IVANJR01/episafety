@@ -115,7 +115,7 @@ export default function PortalRH() {
     queryFn: async () => {
       let q = supabase.from("aso_medicos").select("id, nome, crm, uf_crm, empresa_id").eq("ativo", true).order("nome");
       if (empresaScopeIds.length > 0) {
-        q = q.or(`empresa_id.in.(${empresaScopeIds.join(",")}),empresa_id.is.null`);
+        q = q.in("empresa_id", empresaScopeIds);
       }
       const { data, error } = await q;
       if (error) throw error;
@@ -153,7 +153,11 @@ export default function PortalRH() {
   const funcSel: any = useMemo(() => funcionarios.find((f: any) => f.id === funcionarioId), [funcionarios, funcionarioId]);
 
   const locaisDisponiveis = useMemo(() => {
-    if (funcSel?.empresa_id) return locaisEmissao.filter((l) => l.empresa_id === funcSel.empresa_id);
+    // Agora o RLS e o filtro inicial já trazem apenas os permitidos, 
+    // mas reforçamos o filtro pela empresa do funcionário selecionado
+    if (funcSel?.empresa_id) {
+      return locaisEmissao.filter((l) => l.empresa_id === funcSel.empresa_id);
+    }
     return locaisEmissao;
   }, [locaisEmissao, funcSel?.empresa_id]);
 
