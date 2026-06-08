@@ -27,7 +27,7 @@ const TIPO_EXAME_FLAGS = [
 ];
 
 export default function PcmsoGhe() {
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId, empresaScopeIds } = useAuth();
   const qc = useQueryClient();
   const [openGhe, setOpenGhe] = useState<any | null>(null);
   const [openForm, setOpenForm] = useState(false);
@@ -36,10 +36,13 @@ export default function PcmsoGhe() {
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["pcmso-empresas", empresaScopeIds.join(",")],
+    queryKey: ["pcmso-empresas", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) {
+        q = q.in("id", ids);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
@@ -63,7 +66,12 @@ export default function PcmsoGhe() {
         const { data: fs } = await supabase.from("funcionarios").select("ghe_id").in("ghe_id", ids);
         (fs || []).forEach((f: any) => { counts[f.ghe_id] = (counts[f.ghe_id] || 0) + 1; });
       }
-      return (data || []).map((g: any) => ({
+      const rows = data || [];
+      const filtered = (empresaScopeIds && empresaScopeIds.length > 0)
+        ? rows.filter((r: any) => empresaScopeIds.includes(r.empresa_id))
+        : rows;
+
+      return filtered.map((g: any) => ({
         ...g,
         nFuncoes: g.ghe_funcoes?.[0]?.count || 0,
         nRiscos: g.ghe_riscos?.[0]?.count || 0,

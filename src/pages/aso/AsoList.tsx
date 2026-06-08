@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Eye, Pencil, FileDown, Trash2, Search } from "lucide-react";
+import { Pencil, FileDown, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { gerarPdfAso } from "@/lib/asoPdf";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno",
@@ -33,24 +34,27 @@ function aptidaoBadge(a?: string | null) {
   return <Badge variant="outline">—</Badge>;
 }
 
-import { usePermissions } from "@/hooks/usePermissions";
-
 export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
-  const { empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaScopeIds } = useAuth();
   const { canEdit, canDelete } = usePermissions("aso");
   const qc = useQueryClient();
   const [filter, setFilter] = useState("");
   const [tipo, setTipo] = useState<string>("all");
   const [valid, setValid] = useState<string>("all");
 
+  const scopeKey = (empresaScopeIds || []).join(",");
   const { data: asos = [], isLoading } = useQuery({
-    queryKey: ["asos-list", empresaScopeIds.join(",")],
+    queryKey: ["asos-list", scopeKey],
     queryFn: async () => {
       let q = supabase
         .from("asos")
         .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), aso_medicos:medico_id (nome, crm, uf_crm), empresa_config:empresa_id (nome, cnpj)`)
         .order("created_at", { ascending: false });
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      
+      const ids = empresaScopeIds || [];
+      if (ids.length > 0) {
+        q = q.in("empresa_id", ids);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
@@ -59,6 +63,11 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
 
   const rows = useMemo(() => {
     return asos.filter((a: any) => {
+      // FILTRO EXTRA DE SEGURANÇA: garante que NADA de outras empresas vaze se a RLS falhar
+      if (empresaScopeIds && empresaScopeIds.length > 0) {
+        if (!empresaScopeIds.includes(a.empresa_id)) return false;
+      }
+      
       if (tipo !== "all" && a.tipo_exame !== tipo) return false;
       const sv = statusValidade(a.data_vencimento).label.toLowerCase();
       if (valid !== "all" && sv !== valid) return false;
@@ -71,7 +80,7 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
         a.empresa_config?.nome?.toLowerCase().includes(f)
       );
     });
-  }, [asos, filter, tipo, valid]);
+  }, [asos, filter, tipo, valid, empresaScopeIds]);
 
   const remove = async (id: string) => {
     if (!confirm("Cancelar este ASO? Ele permanecerá no histórico como cancelado.")) return;

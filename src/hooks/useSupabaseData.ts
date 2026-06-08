@@ -43,10 +43,10 @@ const TABLES_WITHOUT_EMPRESA_ID = new Set<string>([
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
   const { toast } = useToast();
   const { isSuperAdmin, empresaScopeIds } = useAuth();
-  // Apenas para Super Admin aplicamos filtro client-side: a RLS deles libera tudo,
-  // então sem isso o seletor de empresa do painel admin não isola os dados.
-  const applyEmpresaFilter = isSuperAdmin
-    && empresaScopeIds.length > 0
+  // Aplicamos filtro client-side: garante que o seletor de empresa funcione para todos.
+  // Super Admin precisa disso pois a RLS deles libera tudo.
+  // Usuarios Principais também precisam para isolar dados de filiais quando desejarem.
+  const applyEmpresaFilter = empresaScopeIds.length > 0
     && !TABLES_WITHOUT_EMPRESA_ID.has(table);
   const scopeKey = applyEmpresaFilter ? empresaScopeIds.join(",") : "";
 

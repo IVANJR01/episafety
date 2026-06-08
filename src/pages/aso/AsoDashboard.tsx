@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { FileText, CheckCircle2, XCircle, AlertTriangle, Clock, Users } from "lucide-react";
+import { FileText, CheckCircle2, XCircle, AlertTriangle, Clock } from "lucide-react";
 import { differenceInDays, parseISO, format, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -31,14 +31,19 @@ function Kpi({ label, value, icon: Icon, color }: any) {
 }
 
 export default function AsoDashboard() {
-  const { empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaScopeIds } = useAuth();
+  const scopeKey = (empresaScopeIds || []).join(",");
 
   const { data: asos = [] } = useQuery({
-    queryKey: ["aso-dashboard", empresaScopeIds.join(",")],
+    queryKey: ["aso-dashboard", scopeKey],
     queryFn: async () => {
       let q = supabase.from("asos")
-        .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id")
-        .in("empresa_id", empresaScopeIds);
+        .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id");
+      
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) {
+        q = q.in("empresa_id", ids);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
@@ -47,23 +52,24 @@ export default function AsoDashboard() {
 
   const stats = useMemo(() => {
     const today = new Date();
-    const ativos = asos.filter((a: any) => a.status !== "cancelado");
+    const rows = empresaScopeIds && empresaScopeIds.length > 0
+      ? asos.filter((a: any) => empresaScopeIds.includes(a.empresa_id))
+      : asos;
+    const ativos = rows.filter((a: any) => a.status !== "cancelado");
     const aptos = ativos.filter((a: any) => a.status_aptidao === "apto").length;
     const inaptos = ativos.filter((a: any) => a.status_aptidao === "inapto").length;
     const restricao = ativos.filter((a: any) => a.status_aptidao === "apto_restricao").length;
-    let vencidos = 0, vencendo = 0, validos = 0;
+    let vencidos = 0, vencendo = 0;
     ativos.forEach((a: any) => {
       if (!a.data_vencimento) return;
       const d = differenceInDays(parseISO(a.data_vencimento), today);
       if (d < 0) vencidos++;
       else if (d <= 30) vencendo++;
-      else validos++;
     });
     const porTipo = Object.entries(TIPO_LABELS).map(([k, label]) => ({
       tipo: label,
       total: ativos.filter((a: any) => a.tipo_exame === k).length,
     }));
-    // por mês últimos 6
     const meses: any[] = [];
     for (let i = 5; i >= 0; i--) {
       const m = startOfMonth(subMonths(today, i));
@@ -77,8 +83,8 @@ export default function AsoDashboard() {
       { name: "Apto c/ restrição", value: restricao, color: "hsl(45 93% 47%)" },
       { name: "Inapto", value: inaptos, color: "hsl(var(--destructive))" },
     ];
-    return { total: ativos.length, aptos, inaptos, restricao, vencidos, vencendo, validos, porTipo, meses, statusPie };
-  }, [asos]);
+    return { total: ativos.length, aptos, inaptos, restricao, vencidos, vencendo, porTipo, meses, statusPie };
+  }, [asos, empresaScopeIds]);
 
   return (
     <div className="space-y-4">

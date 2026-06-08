@@ -103,7 +103,8 @@ export default function PortalRH() {
         .not("ghe_id", "is", null)
         .is("data_demissao", null)
         .order("nome");
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("empresa_id", ids);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
@@ -114,8 +115,11 @@ export default function PortalRH() {
     queryKey: ["rh-medicos", empresaScopeIds.join(",")],
     queryFn: async () => {
       let q = supabase.from("aso_medicos").select("id, nome, crm, uf_crm, empresa_id").eq("ativo", true).order("nome");
-      if (empresaScopeIds.length > 0) {
-        q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) {
+        // Correcting the filter for médicos: linked to scope OR global (empresa_id is null)
+        const idsString = ids.join(",");
+        q = q.or(`empresa_id.in.(${idsString}),empresa_id.is.null`);
       }
       const { data, error } = await q;
       if (error) throw error;
@@ -141,7 +145,8 @@ export default function PortalRH() {
         .select("id, empresa_id, nome, cidade, uf, ativo, padrao")
         .eq("ativo", true)
         .order("nome");
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("empresa_id", ids);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as any[];
@@ -280,16 +285,25 @@ export default function PortalRH() {
   const [previewBlob, setPreviewBlob] = useState<{ url: string; nome: string; aso: any } | null>(null);
 
   const { data: asos = [], isLoading: hLoading } = useQuery({
-    queryKey: ["portal-rh-asos", empresaScopeIds.join(",")],
+    queryKey: ["portal-rh-asos", (empresaScopeIds || []).join(",")],
     queryFn: async () => {
       let q = supabase.from("asos")
         .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor, matricula), aso_medicos:medico_id (nome, crm, uf_crm), ghe_ges:ghe_id (codigo, nome)`)
-        .neq("status", "cancelado")
-        .in("empresa_id", empresaScopeIds)
-        .order("created_at", { ascending: false });
+        .neq("status", "cancelado");
+      
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) {
+        q = q.in("empresa_id", ids);
+      }
+      q = q.order("created_at", { ascending: false });
       const { data, error } = await q;
       if (error) throw error;
-      return data || [];
+      const rows = data || [];
+      // Filtro extra de segurança client-side
+      if (empresaScopeIds && empresaScopeIds.length > 0) {
+        return rows.filter((a: any) => empresaScopeIds.includes(a.empresa_id));
+      }
+      return rows;
     },
   });
 

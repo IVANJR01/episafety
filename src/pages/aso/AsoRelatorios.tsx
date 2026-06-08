@@ -30,41 +30,54 @@ const TIPO: Record<string, string> = {
 };
 
 export default function AsoRelatorios() {
-  const { empresaScopeIds, isSuperAdmin, empresaId } = useAuth();
+  const { empresaScopeIds, empresaId } = useAuth();
   const [tipoRel, setTipoRel] = useState("emitidos");
   const [from, setFrom] = useState(format(new Date(Date.now() - 90 * 86400000), "yyyy-MM-dd"));
   const [to, setTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "all");
 
+  const scopeKey = (empresaScopeIds || []).join(",");
+
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-rel-empresas", empresaScopeIds.join(",")],
+    queryKey: ["aso-rel-empresas", scopeKey],
     queryFn: async () => {
       let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("id", ids);
       return (await q).data || [];
     },
   });
 
   const { data: asos = [] } = useQuery({
-    queryKey: ["aso-rel-data", empresaScopeIds.join(",")],
+    queryKey: ["aso-rel-data", scopeKey],
     queryFn: async () => {
       let q = supabase.from("asos").select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), empresa_config:empresa_id (nome)`);
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("empresa_id", ids);
       return (await q).data || [];
     },
   });
 
   const { data: funcs = [] } = useQuery({
-    queryKey: ["aso-rel-funcs", empresaScopeIds.join(",")],
+    queryKey: ["aso-rel-funcs", scopeKey],
     queryFn: async () => {
       let q = supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, empresa_id, ativo, empresa_config:empresa_id (nome)");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
+      const ids = (empresaScopeIds || []);
+      if (ids.length > 0) q = q.in("empresa_id", ids);
       return (await q).data || [];
     },
   });
 
   const dados = useMemo(() => {
-    const empScope = (a: any) => empresaSel === "all" || a.empresa_id === empresaSel;
+    // FILTRO EXTRA DE SEGURANÇA NO FRONTEND
+    const empScope = (a: any) => {
+      if (empresaSel !== "all" && a.empresa_id !== empresaSel) return false;
+      if (empresaScopeIds && empresaScopeIds.length > 0) {
+        return empresaScopeIds.includes(a.empresa_id);
+      }
+      return true;
+    };
+    
     const today = new Date();
     let ativos = asos.filter((a: any) => a.status !== "cancelado" && empScope(a));
 
@@ -96,10 +109,14 @@ export default function AsoRelatorios() {
     }
     if (tipoRel === "sem_aso") {
       const comAso = new Set(ativos.map((a: any) => a.funcionario_id));
-      return funcs.filter((f: any) => (empresaSel === "all" || f.empresa_id === empresaSel) && f.ativo !== false && !comAso.has(f.id));
+      return funcs.filter((f: any) => {
+        if (empresaSel !== "all" && f.empresa_id !== empresaSel) return false;
+        if (empresaScopeIds && empresaScopeIds.length > 0 && !empresaScopeIds.includes(f.empresa_id)) return false;
+        return f.ativo !== false && !comAso.has(f.id);
+      });
     }
     return [];
-  }, [asos, funcs, tipoRel, from, to, empresaSel]);
+  }, [asos, funcs, tipoRel, from, to, empresaSel, empresaScopeIds]);
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(dados as any[]);
