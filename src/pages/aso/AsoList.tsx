@@ -63,6 +63,11 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
 
   const rows = useMemo(() => {
     return asos.filter((a: any) => {
+      // FILTRO EXTRA DE SEGURANÇA: garante que NADA de outras empresas vaze se a RLS falhar
+      if (empresaScopeIds && empresaScopeIds.length > 0) {
+        if (!empresaScopeIds.includes(a.empresa_id)) return false;
+      }
+      
       if (tipo !== "all" && a.tipo_exame !== tipo) return false;
       const sv = statusValidade(a.data_vencimento).label.toLowerCase();
       if (valid !== "all" && sv !== valid) return false;
@@ -75,7 +80,7 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
         a.empresa_config?.nome?.toLowerCase().includes(f)
       );
     });
-  }, [asos, filter, tipo, valid]);
+  }, [asos, filter, tipo, valid, empresaScopeIds]);
 
   const remove = async (id: string) => {
     if (!confirm("Cancelar este ASO? Ele permanecerá no histórico como cancelado.")) return;
