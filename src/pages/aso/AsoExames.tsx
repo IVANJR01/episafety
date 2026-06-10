@@ -131,6 +131,7 @@ export default function AsoExames() {
   const [items, setItems] = useState<Exame[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [medicos, setMedicos] = useState<Medico[]>([]);
+  const [catalogo, setCatalogo] = useState<{ nome: string; periodicidade_meses: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Exame | null>(null);
