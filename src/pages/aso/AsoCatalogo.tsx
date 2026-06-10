@@ -92,7 +92,7 @@ export default function AsoCatalogo() {
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.nome}</TableCell>
                   <TableCell>{e.tipo || "—"}</TableCell>
-                  <TableCell>{e.periodicidade || "—"}</TableCell>
+                  <TableCell>{e.periodicidade_meses ? `${e.periodicidade_meses} meses` : e.periodicidade || "—"}</TableCell>
                   <TableCell>{e.risco_relacionado || "—"}</TableCell>
                   <TableCell>{e.ativo ? "Sim" : "Não"}</TableCell>
                   <TableCell className="text-right">
