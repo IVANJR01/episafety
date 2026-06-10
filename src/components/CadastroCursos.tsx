@@ -165,7 +165,7 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
       // If editing a global course (empresa_id is null) and we are not a super admin, 
       // we should create a new company-specific version instead of updating the global one.
       // This avoids RLS errors and allows customization.
-      if (!editing.empresa_id && empresaId) {
+      if (!editing.empresa_id && empresaId && !isSuperAdmin) {
         const { error } = await (supabase.from as any)("cursos_documentos").insert(payload);
         if (error) { toast({ title: "Erro ao criar versão da empresa", description: error.message, variant: "destructive" }); return; }
         toast({ title: "Criada versão específica para sua empresa." });
