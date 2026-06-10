@@ -1060,7 +1060,8 @@ export default function AsoExames() {
               <div>
                 <Label>Data do Exame</Label>
                 <Input type="date" value={form.data} onChange={e => {
-                  const newVenc = calcularVencimento(form.tipo, e.target.value);
+                  const catExame = catalogo.find(c => c.nome === form.nome_exame);
+                  const newVenc = calcularVencimento(form.tipo, e.target.value, catExame?.periodicidade_meses);
                   setForm(f => ({ ...f, data: e.target.value, data_vencimento: newVenc || f.data_vencimento }));
                 }} />
               </div>
