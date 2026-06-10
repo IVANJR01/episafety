@@ -129,7 +129,7 @@ export default function Treinamentos() {
       return;
     }
     const [{ data }, { data: reqData }, { data: dispData }] = await Promise.all([
-      (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome"),
+      (supabase.from as any)("cursos_documentos").select("nome, validade_meses, empresa_id").order("nome"),
       (supabase.from as any)("requisitos_cliente").select("id, curso_nome, funcoes_exigidas, carga_horaria_minima, validade_meses"),
       (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo"),
     ]);
