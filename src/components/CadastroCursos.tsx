@@ -25,7 +25,7 @@ interface CadastroCursosProps {
 }
 
 export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
-  const { empresaId } = useAuth();
+  const { empresaId, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<CursoDocumento[]>([]);
   const [loading, setLoading] = useState(true);
