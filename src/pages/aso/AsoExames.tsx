@@ -104,8 +104,8 @@ function statusOrder(dataVencimento: string | null): number {
   return 2;
 }
 
-function calcularVencimento(tipo: string, dataExame: string): string {
-  const meses = tipoValidade[tipo];
+function calcularVencimento(tipo: string, dataExame: string, mesesCustom?: number): string {
+  const meses = mesesCustom !== undefined ? mesesCustom : (tipoValidade[tipo] || 0);
   if (!meses || meses === 0 || !dataExame) return "";
   const data = parseISO(dataExame);
   return format(addMonths(data, meses), "yyyy-MM-dd");
@@ -131,6 +131,7 @@ export default function AsoExames() {
   const [items, setItems] = useState<Exame[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [medicos, setMedicos] = useState<Medico[]>([]);
+  const [catalogo, setCatalogo] = useState<{ nome: string; periodicidade_meses: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Exame | null>(null);
@@ -163,14 +164,16 @@ export default function AsoExames() {
       return;
     }
     try {
-      const [{ data: exames }, { data: funcs }, { data: meds }] = await Promise.all([
+      const [{ data: exames }, { data: funcs }, { data: meds }, { data: cat }] = await Promise.all([
         supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
         supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, data_demissao"),
         supabase.from("medicos").select("id, nome, crm, especialidade"),
+        supabase.from("aso_exames_catalogo").select("nome, periodicidade_meses").eq("ativo", true),
       ]);
       if (exames) { setItems(exames); setCachedData("exames", exames); }
       if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
       if (meds) { setMedicos(meds); setCachedData("medicos", meds); }
+      if (cat) setCatalogo(cat);
     } catch {
       setItems(getCachedData<Exame>("exames") || []);
       setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
@@ -1010,7 +1013,11 @@ export default function AsoExames() {
             {/* Nome do Exame */}
             <div>
               <Label>Nome do Exame *</Label>
-              <Select value={form.nome_exame} onValueChange={v => setForm(f => ({ ...f, nome_exame: v }))}>
+              <Select value={form.nome_exame} onValueChange={v => {
+                const catExame = catalogo.find(c => c.nome === v);
+                const newVenc = calcularVencimento(form.tipo, form.data, catExame?.periodicidade_meses);
+                setForm(f => ({ ...f, nome_exame: v, data_vencimento: newVenc || f.data_vencimento }));
+              }}>
                 <SelectTrigger><SelectValue placeholder="Selecione o exame..." /></SelectTrigger>
                 <SelectContent>
                   {NOMES_EXAME.map(e => (
@@ -1029,7 +1036,8 @@ export default function AsoExames() {
               <div>
                 <Label>Tipo de Exame</Label>
                 <Select value={form.tipo} onValueChange={v => {
-                  const newVenc = calcularVencimento(v, form.data);
+                  const catExame = catalogo.find(c => c.nome === form.nome_exame);
+                  const newVenc = calcularVencimento(v, form.data, catExame?.periodicidade_meses);
                   setForm(f => ({ ...f, tipo: v, data_vencimento: newVenc || f.data_vencimento }));
                 }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1056,7 +1064,8 @@ export default function AsoExames() {
               <div>
                 <Label>Data do Exame</Label>
                 <Input type="date" value={form.data} onChange={e => {
-                  const newVenc = calcularVencimento(form.tipo, e.target.value);
+                  const catExame = catalogo.find(c => c.nome === form.nome_exame);
+                  const newVenc = calcularVencimento(form.tipo, e.target.value, catExame?.periodicidade_meses);
                   setForm(f => ({ ...f, data: e.target.value, data_vencimento: newVenc || f.data_vencimento }));
                 }} />
               </div>

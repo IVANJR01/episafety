@@ -25,7 +25,7 @@ interface CadastroCursosProps {
 }
 
 export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
-  const { empresaId } = useAuth();
+  const { empresaId, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<CursoDocumento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,28 +162,37 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
 
     if (editing) {
       const oldName = editing.nome;
-      const { error } = await (supabase.from as any)("cursos_documentos").update(payload).eq("id", editing.id);
-      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+      // If editing a global course (empresa_id is null) and we are not a super admin, 
+      // we should create a new company-specific version instead of updating the global one.
+      // This avoids RLS errors and allows customization.
+      if (!editing.empresa_id && empresaId && !isSuperAdmin) {
+        const { error } = await (supabase.from as any)("cursos_documentos").insert(payload);
+        if (error) { toast({ title: "Erro ao criar versão da empresa", description: error.message, variant: "destructive" }); return; }
+        toast({ title: "Criada versão específica para sua empresa." });
+      } else {
+        const { error } = await (supabase.from as any)("cursos_documentos").update(payload).eq("id", editing.id);
+        if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
 
-      // Atualização em cascata: propagar renomeação para tabelas relacionadas
-      if (oldName !== newName) {
-        const cascadeUpdates = [
-          (supabase.from as any)("requisitos_cliente")
-            .update({ curso_nome: newName })
-            .eq("curso_nome", oldName)
-            .eq("empresa_id", empresaId),
-          (supabase.from as any)("controle_treinamentos")
-            .update({ nome_curso: newName })
-            .eq("nome_curso", oldName)
-            .eq("empresa_id", empresaId),
-          (supabase.from as any)("dispensas_requisito")
-            .update({ curso_nome: newName })
-            .eq("curso_nome", oldName)
-            .eq("empresa_id", empresaId),
-        ];
-        await Promise.allSettled(cascadeUpdates);
+        // Atualização em cascata: propagar renomeação para tabelas relacionadas
+        if (oldName !== newName) {
+          const cascadeUpdates = [
+            (supabase.from as any)("requisitos_cliente")
+              .update({ curso_nome: newName })
+              .eq("curso_nome", oldName)
+              .eq("empresa_id", empresaId),
+            (supabase.from as any)("controle_treinamentos")
+              .update({ nome_curso: newName })
+              .eq("nome_curso", oldName)
+              .eq("empresa_id", empresaId),
+            (supabase.from as any)("dispensas_requisito")
+              .update({ curso_nome: newName })
+              .eq("curso_nome", oldName)
+              .eq("empresa_id", empresaId),
+          ];
+          await Promise.allSettled(cascadeUpdates);
+        }
+        toast({ title: "Atualizado com sucesso!", description: oldName !== newName ? "Nome atualizado em todos os módulos." : undefined });
       }
-      toast({ title: "Atualizado com sucesso!", description: oldName !== newName ? "Nome atualizado em todos os módulos." : undefined });
     } else {
       const { error } = await (supabase.from as any)("cursos_documentos").insert(payload);
       if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }

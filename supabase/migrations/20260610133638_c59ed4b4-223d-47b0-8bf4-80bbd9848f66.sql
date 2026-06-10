@@ -1,0 +1,2 @@
+ALTER TABLE public.aso_exames_catalogo ADD COLUMN IF NOT EXISTS periodicidade_meses INTEGER DEFAULT 12;
+COMMENT ON COLUMN public.aso_exames_catalogo.periodicidade_meses IS 'Periodicidade em meses do exame no catálogo';

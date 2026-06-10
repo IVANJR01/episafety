@@ -19,7 +19,7 @@ export const GRUPOS_RISCO = [
 ];
 
 export interface RiscoSnapshot { grupo: string; descricao: string; }
-export interface ExameSnapshot { nome_exame: string; codigo?: string | null; tipo?: string | null; }
+export interface ExameSnapshot { nome_exame: string; codigo?: string | null; tipo?: string | null; periodicidade_meses?: number; }
 
 export async function loadGheRiscosExames(
   gheId: string,
@@ -28,7 +28,7 @@ export async function loadGheRiscosExames(
   const col = TIPO_EXAME_COL[tipoExame] || "periodico";
   const [riscosRes, examesRes] = await Promise.all([
     supabase.from("ghe_riscos").select("grupo, tipo_agente, texto_aso").eq("ghe_id", gheId).eq("aparece_aso", true),
-    supabase.from("ghe_exames").select("nome_exame, codigo_exame, tipo_exame, " + col).eq("ghe_id", gheId).eq("aparece_aso", true),
+    supabase.from("ghe_exames").select("nome_exame, codigo_exame, tipo_exame, periodicidade_meses, " + col).eq("ghe_id", gheId).eq("aparece_aso", true),
   ]);
   const riscos: RiscoSnapshot[] = (riscosRes.data || []).map((r: any) => ({
     grupo: r.grupo,
@@ -36,6 +36,6 @@ export async function loadGheRiscosExames(
   })).filter((r) => r.descricao);
   const exames: ExameSnapshot[] = (examesRes.data || [])
     .filter((e: any) => e[col] === true)
-    .map((e: any) => ({ nome_exame: e.nome_exame, codigo: e.codigo_exame, tipo: e.tipo_exame }));
+    .map((e: any) => ({ nome_exame: e.nome_exame, codigo: e.codigo_exame, tipo: e.tipo_exame, periodicidade_meses: e.periodicidade_meses }));
   return { riscos, exames };
 }

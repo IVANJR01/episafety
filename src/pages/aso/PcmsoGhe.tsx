@@ -360,6 +360,7 @@ function ExamesTab({ ghe }: { ghe: any }) {
   const [nome, setNome] = useState("");
   const [codigo, setCodigo] = useState("");
   const [flags, setFlags] = useState<Record<string, boolean>>({ admissional: false, periodico: false, retorno_trabalho: false, mudanca_risco: false, mudanca_funcao: false, demissional: false });
+  const [periodicidade, setPeriodicidade] = useState<number>(12);
   const [busca, setBusca] = useState("");
 
   const { data = [], refetch } = useQuery({
@@ -389,12 +390,14 @@ function ExamesTab({ ghe }: { ghe: any }) {
     if (!nome.trim()) return toast.error("Informe o nome do exame");
     const { error } = await supabase.from("ghe_exames").insert({
       ghe_id: ghe.id, empresa_id: ghe.empresa_id,
-      nome_exame: nome.trim(), codigo_exame: codigo.trim() || null, ...flags,
+      nome_exame: nome.trim(), codigo_exame: codigo.trim() || null, 
+      periodicidade_meses: periodicidade,
+      ...flags,
     });
     if (error) return toast.error(error.message);
-    setNome(""); setCodigo(""); refetch();
+    setNome(""); setCodigo(""); setPeriodicidade(12); refetch();
   };
-  const toggle = async (id: string, field: string, value: boolean) => {
+  const toggle = async (id: string, field: string, value: any) => {
     await supabase.from("ghe_exames").update({ [field]: value }).eq("id", id);
     refetch();
   };
@@ -447,7 +450,8 @@ function ExamesTab({ ghe }: { ghe: any }) {
         <Label className="text-sm font-medium">Adicionar exame manualmente</Label>
         <div className="grid grid-cols-12 gap-2">
           <div className="col-span-2"><Label className="text-xs">Código</Label><Input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="0295" /></div>
-          <div className="col-span-8"><Label className="text-xs">Nome do exame *</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Avaliação Clínica Ocupacional" /></div>
+          <div className="col-span-6"><Label className="text-xs">Nome do exame *</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Avaliação Clínica Ocupacional" /></div>
+          <div className="col-span-2"><Label className="text-xs">Validade (m)</Label><Input type="number" value={periodicidade} onChange={(e) => setPeriodicidade(parseInt(e.target.value) || 0)} /></div>
           <div className="col-span-2 flex items-end"><Button onClick={add} className="w-full"><Plus className="h-4 w-4 mr-1" />Add</Button></div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -466,7 +470,18 @@ function ExamesTab({ ghe }: { ghe: any }) {
         {data.map((ex: any) => (
           <div key={ex.id} className="p-2 border-b last:border-0">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm">{ex.codigo_exame ? `[${ex.codigo_exame}] ` : ""}{ex.nome_exame}</div>
+              <div className="flex flex-col">
+                <div className="text-sm font-medium">{ex.codigo_exame ? `[${ex.codigo_exame}] ` : ""}{ex.nome_exame}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Label className="text-[10px] text-muted-foreground">Validade (meses):</Label>
+                  <Input 
+                    type="number" 
+                    value={ex.periodicidade_meses ?? 12} 
+                    onChange={(e) => toggle(ex.id, "periodicidade_meses", parseInt(e.target.value) || 0)} 
+                    className="h-6 w-16 text-[10px] px-1"
+                  />
+                </div>
+              </div>
               <Button size="icon" variant="ghost" onClick={() => remove(ex.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             </div>
             <div className="flex flex-wrap gap-1 mt-1">

@@ -102,7 +102,7 @@ export default function Treinamentos() {
   const [showCursoList, setShowCursoList] = useState(false);
 
   // DB-based courses
-  const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
+  const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number; empresa_id?: string | null }[]>([]);
   // Requisitos da Matriz Unificada
   const [requisitos, setRequisitos] = useState<RequisitoCliente[]>([]);
   // Dispensas de requisito por colaborador
@@ -129,7 +129,7 @@ export default function Treinamentos() {
       return;
     }
     const [{ data }, { data: reqData }, { data: dispData }] = await Promise.all([
-      (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome"),
+      (supabase.from as any)("cursos_documentos").select("nome, validade_meses, empresa_id").order("nome"),
       (supabase.from as any)("requisitos_cliente").select("id, curso_nome, funcoes_exigidas, carga_horaria_minima, validade_meses"),
       (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo"),
     ]);
@@ -184,7 +184,14 @@ export default function Treinamentos() {
   // Cursos do banco de dados (editáveis no sub-módulo)
   const cursosValidade = useMemo(() => {
     const m: Record<string, number> = {};
-    dbCursos.forEach(c => { m[c.nome] = c.validade_meses; });
+    // Sort so that global ones (empresa_id is null) come first,
+    // and company-specific ones override them.
+    const sortedCursos = [...dbCursos].sort((a, b) => {
+      if (!a.empresa_id && b.empresa_id) return -1;
+      if (a.empresa_id && !b.empresa_id) return 1;
+      return 0;
+    });
+    sortedCursos.forEach(c => { m[c.nome] = c.validade_meses; });
     return m;
   }, [dbCursos]);
 

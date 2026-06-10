@@ -23,7 +23,7 @@ export default function AsoCatalogo() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState<any>({ nome: "", tipo: "", periodicidade: "", risco_relacionado: "", obrigatorio: false, ativo: true });
+  const [form, setForm] = useState<any>({ nome: "", tipo: "", periodicidade: "", periodicidade_meses: 12, risco_relacionado: "", obrigatorio: false, ativo: true });
 
   const { data: exames = [] } = useQuery({
     queryKey: ["aso-cat", empresaScopeIds.join(",")],
@@ -92,7 +92,7 @@ export default function AsoCatalogo() {
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.nome}</TableCell>
                   <TableCell>{e.tipo || "—"}</TableCell>
-                  <TableCell>{e.periodicidade || "—"}</TableCell>
+                  <TableCell>{e.periodicidade_meses ? `${e.periodicidade_meses} meses` : e.periodicidade || "—"}</TableCell>
                   <TableCell>{e.risco_relacionado || "—"}</TableCell>
                   <TableCell>{e.ativo ? "Sim" : "Não"}</TableCell>
                   <TableCell className="text-right">
@@ -111,7 +111,7 @@ export default function AsoCatalogo() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
               <div><Label>Tipo</Label><Input value={form.tipo || ""} onChange={(e) => setForm({ ...form, tipo: e.target.value })} /></div>
-              <div><Label>Periodicidade</Label><Input value={form.periodicidade || ""} onChange={(e) => setForm({ ...form, periodicidade: e.target.value })} /></div>
+              <div><Label>Validade (meses)</Label><Input type="number" value={form.periodicidade_meses || ""} onChange={(e) => setForm({ ...form, periodicidade_meses: parseInt(e.target.value) || 0 })} /></div>
               <div className="col-span-2"><Label>Risco relacionado</Label><Input value={form.risco_relacionado || ""} onChange={(e) => setForm({ ...form, risco_relacionado: e.target.value })} /></div>
               <div className="flex items-center gap-2"><Switch checked={form.obrigatorio} onCheckedChange={(v) => setForm({ ...form, obrigatorio: v })} /><Label>Obrigatório</Label></div>
               <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} /><Label>Ativo</Label></div>
