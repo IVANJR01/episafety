@@ -102,7 +102,7 @@ export default function Treinamentos() {
   const [showCursoList, setShowCursoList] = useState(false);
 
   // DB-based courses
-  const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number }[]>([]);
+  const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number; empresa_id?: string | null }[]>([]);
   // Requisitos da Matriz Unificada
   const [requisitos, setRequisitos] = useState<RequisitoCliente[]>([]);
   // Dispensas de requisito por colaborador
