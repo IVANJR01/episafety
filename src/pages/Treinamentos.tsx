@@ -184,7 +184,14 @@ export default function Treinamentos() {
   // Cursos do banco de dados (editáveis no sub-módulo)
   const cursosValidade = useMemo(() => {
     const m: Record<string, number> = {};
-    dbCursos.forEach(c => { m[c.nome] = c.validade_meses; });
+    // Sort so that global ones (empresa_id is null) come first,
+    // and company-specific ones override them.
+    const sortedCursos = [...dbCursos].sort((a, b) => {
+      if (!a.empresa_id && b.empresa_id) return -1;
+      if (a.empresa_id && !b.empresa_id) return 1;
+      return 0;
+    });
+    sortedCursos.forEach(c => { m[c.nome] = c.validade_meses; });
     return m;
   }, [dbCursos]);
 
