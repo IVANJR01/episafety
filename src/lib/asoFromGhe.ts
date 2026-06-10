@@ -28,7 +28,7 @@ export async function loadGheRiscosExames(
   const col = TIPO_EXAME_COL[tipoExame] || "periodico";
   const [riscosRes, examesRes] = await Promise.all([
     supabase.from("ghe_riscos").select("grupo, tipo_agente, texto_aso").eq("ghe_id", gheId).eq("aparece_aso", true),
-    supabase.from("ghe_exames").select("nome_exame, codigo_exame, tipo_exame, " + col).eq("ghe_id", gheId).eq("aparece_aso", true),
+    supabase.from("ghe_exames").select("nome_exame, codigo_exame, tipo_exame, periodicidade_meses, " + col).eq("ghe_id", gheId).eq("aparece_aso", true),
   ]);
   const riscos: RiscoSnapshot[] = (riscosRes.data || []).map((r: any) => ({
     grupo: r.grupo,
