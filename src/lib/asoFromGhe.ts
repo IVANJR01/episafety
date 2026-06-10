@@ -36,6 +36,6 @@ export async function loadGheRiscosExames(
   })).filter((r) => r.descricao);
   const exames: ExameSnapshot[] = (examesRes.data || [])
     .filter((e: any) => e[col] === true)
-    .map((e: any) => ({ nome_exame: e.nome_exame, codigo: e.codigo_exame, tipo: e.tipo_exame }));
+    .map((e: any) => ({ nome_exame: e.nome_exame, codigo: e.codigo_exame, tipo: e.tipo_exame, periodicidade_meses: e.periodicidade_meses }));
   return { riscos, exames };
 }
