@@ -390,12 +390,14 @@ function ExamesTab({ ghe }: { ghe: any }) {
     if (!nome.trim()) return toast.error("Informe o nome do exame");
     const { error } = await supabase.from("ghe_exames").insert({
       ghe_id: ghe.id, empresa_id: ghe.empresa_id,
-      nome_exame: nome.trim(), codigo_exame: codigo.trim() || null, ...flags,
+      nome_exame: nome.trim(), codigo_exame: codigo.trim() || null, 
+      periodicidade_meses: periodicidade,
+      ...flags,
     });
     if (error) return toast.error(error.message);
-    setNome(""); setCodigo(""); refetch();
+    setNome(""); setCodigo(""); setPeriodicidade(12); refetch();
   };
-  const toggle = async (id: string, field: string, value: boolean) => {
+  const toggle = async (id: string, field: string, value: any) => {
     await supabase.from("ghe_exames").update({ [field]: value }).eq("id", id);
     refetch();
   };
