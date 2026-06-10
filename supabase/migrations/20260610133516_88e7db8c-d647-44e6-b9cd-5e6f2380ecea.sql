@@ -1,0 +1,2 @@
+ALTER TABLE public.ghe_exames ADD COLUMN IF NOT EXISTS periodicidade_meses INTEGER DEFAULT 12;
+COMMENT ON COLUMN public.ghe_exames.periodicidade_meses IS 'Periodicidade em meses do exame para este GHE';

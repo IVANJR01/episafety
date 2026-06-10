@@ -2008,6 +2008,7 @@ export type Database = {
           nome_exame: string
           obrigatorio: boolean
           observacao: string | null
+          periodicidade_meses: number | null
           periodico: boolean
           retorno_trabalho: boolean
           tipo_exame: string | null
@@ -2027,6 +2028,7 @@ export type Database = {
           nome_exame: string
           obrigatorio?: boolean
           observacao?: string | null
+          periodicidade_meses?: number | null
           periodico?: boolean
           retorno_trabalho?: boolean
           tipo_exame?: string | null
@@ -2046,6 +2048,7 @@ export type Database = {
           nome_exame?: string
           obrigatorio?: boolean
           observacao?: string | null
+          periodicidade_meses?: number | null
           periodico?: boolean
           retorno_trabalho?: boolean
           tipo_exame?: string | null
