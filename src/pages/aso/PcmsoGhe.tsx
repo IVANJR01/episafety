@@ -470,7 +470,18 @@ function ExamesTab({ ghe }: { ghe: any }) {
         {data.map((ex: any) => (
           <div key={ex.id} className="p-2 border-b last:border-0">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm">{ex.codigo_exame ? `[${ex.codigo_exame}] ` : ""}{ex.nome_exame}</div>
+              <div className="flex flex-col">
+                <div className="text-sm font-medium">{ex.codigo_exame ? `[${ex.codigo_exame}] ` : ""}{ex.nome_exame}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Label className="text-[10px] text-muted-foreground">Validade (meses):</Label>
+                  <Input 
+                    type="number" 
+                    value={ex.periodicidade_meses ?? 12} 
+                    onChange={(e) => toggle(ex.id, "periodicidade_meses", parseInt(e.target.value) || 0)} 
+                    className="h-6 w-16 text-[10px] px-1"
+                  />
+                </div>
+              </div>
               <Button size="icon" variant="ghost" onClick={() => remove(ex.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             </div>
             <div className="flex flex-wrap gap-1 mt-1">
