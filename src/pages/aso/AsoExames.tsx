@@ -164,14 +164,16 @@ export default function AsoExames() {
       return;
     }
     try {
-      const [{ data: exames }, { data: funcs }, { data: meds }] = await Promise.all([
+      const [{ data: exames }, { data: funcs }, { data: meds }, { data: cat }] = await Promise.all([
         supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
         supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, data_demissao"),
         supabase.from("medicos").select("id, nome, crm, especialidade"),
+        supabase.from("aso_exames_catalogo").select("nome, periodicidade_meses").eq("ativo", true),
       ]);
       if (exames) { setItems(exames); setCachedData("exames", exames); }
       if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
       if (meds) { setMedicos(meds); setCachedData("medicos", meds); }
+      if (cat) setCatalogo(cat);
     } catch {
       setItems(getCachedData<Exame>("exames") || []);
       setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
