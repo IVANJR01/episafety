@@ -19,7 +19,7 @@ export const GRUPOS_RISCO = [
 ];
 
 export interface RiscoSnapshot { grupo: string; descricao: string; }
-export interface ExameSnapshot { nome_exame: string; codigo?: string | null; tipo?: string | null; }
+export interface ExameSnapshot { nome_exame: string; codigo?: string | null; tipo?: string | null; periodicidade_meses?: number; }
 
 export async function loadGheRiscosExames(
   gheId: string,
