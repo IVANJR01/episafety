@@ -1032,7 +1032,8 @@ export default function AsoExames() {
               <div>
                 <Label>Tipo de Exame</Label>
                 <Select value={form.tipo} onValueChange={v => {
-                  const newVenc = calcularVencimento(v, form.data);
+                  const catExame = catalogo.find(c => c.nome === form.nome_exame);
+                  const newVenc = calcularVencimento(v, form.data, catExame?.periodicidade_meses);
                   setForm(f => ({ ...f, tipo: v, data_vencimento: newVenc || f.data_vencimento }));
                 }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
