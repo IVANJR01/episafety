@@ -360,6 +360,7 @@ function ExamesTab({ ghe }: { ghe: any }) {
   const [nome, setNome] = useState("");
   const [codigo, setCodigo] = useState("");
   const [flags, setFlags] = useState<Record<string, boolean>>({ admissional: false, periodico: false, retorno_trabalho: false, mudanca_risco: false, mudanca_funcao: false, demissional: false });
+  const [periodicidade, setPeriodicidade] = useState<number>(12);
   const [busca, setBusca] = useState("");
 
   const { data = [], refetch } = useQuery({
