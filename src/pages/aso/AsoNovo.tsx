@@ -142,10 +142,11 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
   const funcSel = useMemo(() => funcionarios.find((f: any) => f.id === funcionarioId), [funcionarios, funcionarioId]);
   const empSel = useMemo(() => empresas.find((e: any) => e.id === empresaSel), [empresas, empresaSel]);
   const gheVinculado = (funcSel as any)?.ghe_ges;
+  const [usarGhe, setUsarGhe] = useState(true);
 
-  // Auto-carregar riscos e exames do GHE quando funcionário ou tipo mudar (apenas se não estiver editando)
+  // Auto-carregar riscos e exames do GHE quando funcionário ou tipo mudar (apenas se não estiver editando e usarGhe ativo)
   useEffect(() => {
-    if (editingId) return;
+    if (editingId || !usarGhe) return;
     const gheId = (funcSel as any)?.ghe_id;
     if (!gheId || !tipoExame) return;
     (async () => {
@@ -159,7 +160,7 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
       } catch (e) { /* silent */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [funcionarioId, tipoExame]);
+  }, [funcionarioId, tipoExame, usarGhe]);
 
   const addRisco = (grupo: string) => setRiscos((r) => [...r, { grupo, descricao: "" }]);
   const updRisco = (i: number, descricao: string) => setRiscos((r) => r.map((x, idx) => idx === i ? { ...x, descricao } : x));
@@ -286,9 +287,19 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
                   <div>Admissão: <strong>{funcSel.data_admissao || "—"}</strong></div>
                   {gheVinculado ? (
                     <div className="mt-1 p-2 rounded bg-primary/10 border border-primary/20">
-                      <strong>GHE/GES:</strong> {gheVinculado.codigo} — {gheVinculado.nome}
+                      <div className="flex items-center justify-between mb-1">
+                        <strong>GHE/GES:</strong> {gheVinculado.codigo} — {gheVinculado.nome}
+                        <div className="flex items-center gap-1.5 bg-background/50 px-2 py-1 rounded border">
+                          <Checkbox id="usarGhe" checked={usarGhe} onCheckedChange={(v) => setUsarGhe(!!v)} />
+                          <Label htmlFor="usarGhe" className="text-[10px] cursor-pointer">Usar dados do GHE</Label>
+                        </div>
+                      </div>
                       {gheVinculado.setor && <span className="text-muted-foreground"> ({gheVinculado.setor})</span>}
-                      <div className="text-[11px] text-muted-foreground mt-0.5">Riscos e exames serão preenchidos automaticamente conforme o PCMSO.</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {usarGhe 
+                          ? "Riscos e exames serão preenchidos automaticamente conforme o PCMSO."
+                          : "Preenchimento automático desativado. Você deve informar riscos e exames manualmente."}
+                      </div>
                     </div>
                   ) : (
                     <div className="mt-1 p-2 rounded bg-destructive/10 border border-destructive/20 text-destructive">
