@@ -1013,7 +1013,11 @@ export default function AsoExames() {
             {/* Nome do Exame */}
             <div>
               <Label>Nome do Exame *</Label>
-              <Select value={form.nome_exame} onValueChange={v => setForm(f => ({ ...f, nome_exame: v }))}>
+              <Select value={form.nome_exame} onValueChange={v => {
+                const catExame = catalogo.find(c => c.nome === v);
+                const newVenc = calcularVencimento(form.tipo, form.data, catExame?.periodicidade_meses);
+                setForm(f => ({ ...f, nome_exame: v, data_vencimento: newVenc || f.data_vencimento }));
+              }}>
                 <SelectTrigger><SelectValue placeholder="Selecione o exame..." /></SelectTrigger>
                 <SelectContent>
                   {NOMES_EXAME.map(e => (
