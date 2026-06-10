@@ -590,7 +590,7 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
                             checked={cs.permanente}
                             onCheckedChange={(checked) => {
                               const updated = [...cursosSelecionados];
-                              updated[idx] = { ...updated[idx], permanente: !!checked, validade_meses: checked ? 0 : (cursos.find(c => c.nome === cs.curso_nome)?.validade_meses || 12) };
+                              updated[idx] = { ...updated[idx], permanente: !!checked, validade_meses: checked ? 0 : (updated[idx].validade_meses || cursos.find(c => c.nome === cs.curso_nome)?.validade_meses || 12) };
                               setCursosSelecionados(updated);
                             }}
                           />
