@@ -176,10 +176,12 @@ export default function Funcionarios() {
       toast({ title: "CPF obrigatório", variant: "destructive" });
       return;
     }
+    /* GHE opcional agora
     if (!form.ghe_id) {
       toast({ title: "GHE/GES obrigatório", description: "Selecione o GHE/GES do colaborador. Esse vínculo é necessário para gerar o ASO automaticamente.", variant: "destructive" });
       return;
     }
+    */
     if (!form.cargo.trim()) {
       toast({ title: "Cargo/Função obrigatório", variant: "destructive" });
       return;
