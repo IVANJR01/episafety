@@ -240,6 +240,7 @@ export type Database = {
           nome: string
           obrigatorio: boolean
           periodicidade: string | null
+          periodicidade_meses: number | null
           risco_relacionado: string | null
           tipo: string | null
           updated_at: string
@@ -252,6 +253,7 @@ export type Database = {
           nome: string
           obrigatorio?: boolean
           periodicidade?: string | null
+          periodicidade_meses?: number | null
           risco_relacionado?: string | null
           tipo?: string | null
           updated_at?: string
@@ -264,6 +266,7 @@ export type Database = {
           nome?: string
           obrigatorio?: boolean
           periodicidade?: string | null
+          periodicidade_meses?: number | null
           risco_relacionado?: string | null
           tipo?: string | null
           updated_at?: string
