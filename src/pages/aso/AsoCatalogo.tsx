@@ -23,7 +23,7 @@ export default function AsoCatalogo() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState<any>({ nome: "", tipo: "", periodicidade: "", risco_relacionado: "", obrigatorio: false, ativo: true });
+  const [form, setForm] = useState<any>({ nome: "", tipo: "", periodicidade: "", periodicidade_meses: 12, risco_relacionado: "", obrigatorio: false, ativo: true });
 
   const { data: exames = [] } = useQuery({
     queryKey: ["aso-cat", empresaScopeIds.join(",")],
