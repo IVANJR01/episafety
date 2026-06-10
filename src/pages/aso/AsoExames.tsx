@@ -104,8 +104,8 @@ function statusOrder(dataVencimento: string | null): number {
   return 2;
 }
 
-function calcularVencimento(tipo: string, dataExame: string): string {
-  const meses = tipoValidade[tipo];
+function calcularVencimento(tipo: string, dataExame: string, mesesCustom?: number): string {
+  const meses = mesesCustom !== undefined ? mesesCustom : (tipoValidade[tipo] || 0);
   if (!meses || meses === 0 || !dataExame) return "";
   const data = parseISO(dataExame);
   return format(addMonths(data, meses), "yyyy-MM-dd");
