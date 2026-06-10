@@ -450,7 +450,8 @@ function ExamesTab({ ghe }: { ghe: any }) {
         <Label className="text-sm font-medium">Adicionar exame manualmente</Label>
         <div className="grid grid-cols-12 gap-2">
           <div className="col-span-2"><Label className="text-xs">Código</Label><Input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="0295" /></div>
-          <div className="col-span-8"><Label className="text-xs">Nome do exame *</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Avaliação Clínica Ocupacional" /></div>
+          <div className="col-span-6"><Label className="text-xs">Nome do exame *</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Avaliação Clínica Ocupacional" /></div>
+          <div className="col-span-2"><Label className="text-xs">Validade (m)</Label><Input type="number" value={periodicidade} onChange={(e) => setPeriodicidade(parseInt(e.target.value) || 0)} /></div>
           <div className="col-span-2 flex items-end"><Button onClick={add} className="w-full"><Plus className="h-4 w-4 mr-1" />Add</Button></div>
         </div>
         <div className="flex flex-wrap gap-2">
