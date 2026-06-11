@@ -34,8 +34,7 @@ const epiItems: NavItem[] = [
 ];
 
 const gestaoDocItems: NavItem[] = [
-  { path: "/treinamentos", label: "Documentos", icon: GraduationCap, moduleKey: "treinamentos" },
-  
+  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/aso", label: "Gestão de ASO", icon: FileText, moduleKey: "aso" },
   { path: "/rh/asos", label: "Portal RH — ASO", icon: FileText, moduleKey: "rh" },
   { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "treinamentos" },

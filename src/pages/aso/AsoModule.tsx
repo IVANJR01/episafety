@@ -33,7 +33,7 @@ export default function AsoModule() {
             <FileText className="h-7 w-7 text-primary" />
             Gestão de ASO
           </h1>
-          <p className="text-sm text-muted-foreground">Atestado de Saúde Ocupacional — multiempresa</p>
+          <p className="text-sm text-muted-foreground">Atestado de Saúde Ocupacional e Exames vinculados</p>
         </div>
       </div>
 
