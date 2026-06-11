@@ -1283,7 +1283,7 @@ export default function Treinamentos() {
                               <Badge variant="outline" className="text-[8px] bg-success/10 text-success border-success/30">✓ Conforme</Badge>
                             )}
                           </td>
-                          {matrixData.cursos.flatMap(curso => {
+                          {matrixData.cursos.map(curso => {
                             const cd = row.cursoData[curso];
                             const cursoKey = normalizeCourseName(curso);
                             const isProtocolado = row.protocolados.has(cursoKey);
