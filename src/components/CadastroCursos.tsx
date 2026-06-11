@@ -81,6 +81,22 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
       return;
     }
     const newName = form.nome.trim();
+    
+    // Check for duplicates
+    const isDuplicate = items.some(item => 
+      item.nome.toLowerCase() === newName.toLowerCase() && 
+      (!editing || item.id !== editing.id)
+    );
+
+    if (isDuplicate) {
+      toast({ 
+        title: "Nome duplicado", 
+        description: "Já existe um curso ou documento com este nome.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const payload = { nome: newName, validade_meses: form.validade_meses, empresa_id: empresaId };
 
     if (!isOnline()) {
