@@ -787,7 +787,11 @@ export default function Treinamentos() {
       });
 
       cursos.forEach(curso => {
-        const t = treinosComCurso.find(tr => tr.nome_curso === curso);
+        // find latest training for this course
+        const sortedTreinos = treinosComCurso
+          .filter(tr => tr.nome_curso === curso)
+          .sort((a, b) => (b.data_realizacao || "").localeCompare(a.data_realizacao || ""));
+        const t = sortedTreinos[0];
         if (t) {
           const value = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
           cursoData[curso] = value;
