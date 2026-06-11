@@ -580,26 +580,19 @@ export default function AsoExames() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 p-5 sm:p-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-              <Stethoscope className="w-7 h-7" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Exames</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">PCMSO - Acompanhamento de Exames Ocupacionais</p>
-            </div>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={handleExportExcel} className="border-primary/30 hover:bg-primary/10">
-              <Download className="w-4 h-4 mr-2" />Exportar
-            </Button>
-            <Button onClick={openNew} className="shadow-lg shadow-primary/25">
-              <Plus className="w-4 h-4 mr-2" />Novo Exame
-            </Button>
-          </div>
+      {/* Header simplificado para tab */}
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">Matriz de Exames</h2>
+          <p className="text-xs text-muted-foreground">Acompanhamento de exames ocupacionais do PCMSO.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="hidden md:flex border-primary/30 hover:bg-primary/10" onClick={handleExportExcel}>
+            <Download className="w-4 h-4 mr-2" />Exportar
+          </Button>
+          <Button size="sm" onClick={openNew} className="bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4 mr-2" />Novo Exame
+          </Button>
         </div>
       </div>
 
