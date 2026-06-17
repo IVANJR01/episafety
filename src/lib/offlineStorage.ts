@@ -6,23 +6,26 @@ const CACHE_PREFIX = "offline_cache_";
 const SYNC_QUEUE_KEY = "offline_sync_queue";
 const CACHE_SCOPE_KEY = "offline_cache_scope_uid";
 const LEGACY_PURGE_FLAG = "offline_cache_legacy_purged_v1";
+const CACHE_VERSION_KEY = "offline_cache_schema_version";
+const CACHE_SCHEMA_VERSION = "v2_strict_company_scope";
 
-// One-shot purge of legacy unscoped cache entries left over from before per-user scoping.
+// One-shot purge of stale/unscoped cache entries left over from older editor/preview sessions.
 (function purgeLegacyUnscopedCache() {
   try {
     if (typeof localStorage === "undefined") return;
-    if (localStorage.getItem(LEGACY_PURGE_FLAG)) return;
     const toRemove: string[] = [];
+    const needsVersionPurge = localStorage.getItem(CACHE_VERSION_KEY) !== CACHE_SCHEMA_VERSION;
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k || !k.startsWith(CACHE_PREFIX)) continue;
-      if (k === CACHE_SCOPE_KEY || k === LEGACY_PURGE_FLAG) continue;
+      if (k === CACHE_SCOPE_KEY || k === CACHE_VERSION_KEY) continue;
       const rest = k.slice(CACHE_PREFIX.length);
       // Scoped keys look like "<uuid>__<table>"; legacy keys do not contain "__".
-      if (!rest.includes("__")) toRemove.push(k);
+      if (needsVersionPurge || !rest.includes("__")) toRemove.push(k);
     }
     toRemove.forEach((k) => localStorage.removeItem(k));
     localStorage.setItem(LEGACY_PURGE_FLAG, "1");
+    localStorage.setItem(CACHE_VERSION_KEY, CACHE_SCHEMA_VERSION);
   } catch {
     // ignore
   }
@@ -55,7 +58,7 @@ export function clearAllCachedData() {
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(CACHE_PREFIX) && k !== CACHE_SCOPE_KEY) keys.push(k);
+      if (k && k.startsWith(CACHE_PREFIX) && k !== CACHE_SCOPE_KEY && k !== CACHE_VERSION_KEY) keys.push(k);
     }
     keys.forEach((k) => localStorage.removeItem(k));
   } catch {
@@ -163,9 +166,11 @@ export async function cachedRpc<T = any>(
   fnName: string,
   params?: Record<string, any>,
 ): Promise<{ data: T | null; error: any; offline: boolean }> {
+  const scopedKey = buildKey(`rpc_${cacheKey}`);
+
   if (!isOnline()) {
     try {
-      const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+      const raw = localStorage.getItem(scopedKey);
       if (raw) {
         const { data } = JSON.parse(raw);
         return { data: data as T, error: null, offline: true };
@@ -178,7 +183,7 @@ export async function cachedRpc<T = any>(
     const result = await (supabase.rpc as any)(fnName, params || {});
     if (result.error) {
       try {
-        const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+        const raw = localStorage.getItem(scopedKey);
         if (raw) {
           const { data } = JSON.parse(raw);
           return { data: data as T, error: result.error, offline: true };
@@ -188,12 +193,12 @@ export async function cachedRpc<T = any>(
     }
     // Cache the result
     try {
-      localStorage.setItem(CACHE_PREFIX + cacheKey, JSON.stringify({ data: result.data, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
+      if (getScope()) localStorage.setItem(scopedKey, JSON.stringify({ data: result.data, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
     } catch {}
     return { data: result.data as T, error: null, offline: false };
   } catch (err) {
     try {
-      const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+      const raw = localStorage.getItem(scopedKey);
       if (raw) {
         const { data } = JSON.parse(raw);
         return { data: data as T, error: err, offline: true };
@@ -265,7 +270,7 @@ export async function preCacheAllData(): Promise<{ cached: number; failed: numbe
   try {
     const { data } = await (supabase.rpc as any)("get_consolidated_epi_stock", {});
     if (data) {
-      localStorage.setItem(CACHE_PREFIX + "rpc_consolidated_stock", JSON.stringify({ data, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
+      setCachedData("rpc_consolidated_stock", data as any);
     }
   } catch {}
 

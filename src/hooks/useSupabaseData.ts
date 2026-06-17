@@ -42,15 +42,21 @@ const TABLES_WITHOUT_EMPRESA_ID = new Set<string>([
 
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
   const { toast } = useToast();
-  const { isSuperAdmin, empresaScopeIds } = useAuth();
+  const { empresaScopeIds } = useAuth();
   // Aplicamos filtro client-side: garante que o seletor de empresa funcione para todos.
   // Super Admin precisa disso pois a RLS deles libera tudo.
   // Usuarios Principais também precisam para isolar dados de filiais quando desejarem.
   const applyEmpresaFilter = empresaScopeIds.length > 0
     && !TABLES_WITHOUT_EMPRESA_ID.has(table);
   const scopeKey = applyEmpresaFilter ? empresaScopeIds.join(",") : "";
+  const filterByEmpresaScope = useCallback((rows?: T[] | null) => {
+    if (!rows) return rows;
+    if (!applyEmpresaFilter) return rows;
+    const allowed = new Set(empresaScopeIds);
+    return rows.filter((row: any) => row?.empresa_id && allowed.has(row.empresa_id));
+  }, [applyEmpresaFilter, empresaScopeIds]);
 
-  const cachedData = useMemo(() => getCachedData<T>(table) ?? undefined, [table]);
+  const cachedData = useMemo(() => filterByEmpresaScope(getCachedData<T>(table)) ?? undefined, [filterByEmpresaScope, table]);
   const queryKey = useMemo(
     () => getSupabaseQueryKey(table, orderBy, ascending, columns, scopeKey),
     [table, orderBy, ascending, columns, scopeKey],
@@ -67,7 +73,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const cached = getCachedData<T>(table);
+      const cached = filterByEmpresaScope(getCachedData<T>(table));
 
       if (!isOnline()) {
         return cached || [];
@@ -83,7 +89,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
         const { data: rows, error } = await withTimeout(queryBuilder) as any;
         if (error) throw error;
 
-        const result = (rows as T[]) || [];
+        const result = filterByEmpresaScope((rows as T[]) || []) || [];
         setCachedData(table, result);
         return result;
       } catch (error) {
