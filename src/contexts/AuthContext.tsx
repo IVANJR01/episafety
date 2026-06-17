@@ -347,6 +347,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_OUT") {
         clearCachedSession();
         saveActiveEmpresaId(null);
+        setCacheUserScope(null);
         setLoading(false);
         applySignedOutState();
         return;
@@ -355,6 +356,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (next.session) {
         saveCachedSession(next.session);
       }
+
+      // CRITICAL: scope offline cache to current user to prevent cross-tenant data leaks.
+      setCacheUserScope(next.user?.id ?? null);
 
       setSession(next.session);
       setUser(next.user);
