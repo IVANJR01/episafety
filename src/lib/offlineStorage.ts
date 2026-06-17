@@ -5,6 +5,28 @@ import { supabase } from "@/integrations/supabase/client";
 const CACHE_PREFIX = "offline_cache_";
 const SYNC_QUEUE_KEY = "offline_sync_queue";
 const CACHE_SCOPE_KEY = "offline_cache_scope_uid";
+const LEGACY_PURGE_FLAG = "offline_cache_legacy_purged_v1";
+
+// One-shot purge of legacy unscoped cache entries left over from before per-user scoping.
+(function purgeLegacyUnscopedCache() {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (localStorage.getItem(LEGACY_PURGE_FLAG)) return;
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(CACHE_PREFIX)) continue;
+      if (k === CACHE_SCOPE_KEY || k === LEGACY_PURGE_FLAG) continue;
+      const rest = k.slice(CACHE_PREFIX.length);
+      // Scoped keys look like "<uuid>__<table>"; legacy keys do not contain "__".
+      if (!rest.includes("__")) toRemove.push(k);
+    }
+    toRemove.forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem(LEGACY_PURGE_FLAG, "1");
+  } catch {
+    // ignore
+  }
+})();
 
 // --- Per-user cache scoping (prevents cross-tenant data leaks via localStorage) ---
 let currentUserScope: string | null = null;
