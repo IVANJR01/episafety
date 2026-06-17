@@ -337,6 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cached = loadCachedSession();
 
     if (cached.user) {
+      setCacheUserScope(cached.user.id);
       setSession(cached.session);
       setUser(cached.user);
     }
