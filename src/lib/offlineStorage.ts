@@ -4,6 +4,57 @@ import { supabase } from "@/integrations/supabase/client";
 
 const CACHE_PREFIX = "offline_cache_";
 const SYNC_QUEUE_KEY = "offline_sync_queue";
+const CACHE_SCOPE_KEY = "offline_cache_scope_uid";
+
+// --- Per-user cache scoping (prevents cross-tenant data leaks via localStorage) ---
+let currentUserScope: string | null = null;
+
+const readPersistedScope = (): string | null => {
+  try {
+    return localStorage.getItem(CACHE_SCOPE_KEY);
+  } catch {
+    return null;
+  }
+};
+
+const getScope = (): string | null => {
+  if (currentUserScope) return currentUserScope;
+  currentUserScope = readPersistedScope();
+  return currentUserScope;
+};
+
+const buildKey = (key: string): string => {
+  const scope = getScope();
+  return scope ? `${CACHE_PREFIX}${scope}__${key}` : `${CACHE_PREFIX}__nouser__${key}`;
+};
+
+export function clearAllCachedData() {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_PREFIX) && k !== CACHE_SCOPE_KEY) keys.push(k);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // ignore
+  }
+}
+
+export function setCacheUserScope(userId: string | null) {
+  const next = userId || null;
+  const prev = getScope();
+  if (next === prev) return;
+  // User changed (or signing out): purge all cached tenant data to prevent cross-tenant leaks.
+  clearAllCachedData();
+  currentUserScope = next;
+  try {
+    if (next) localStorage.setItem(CACHE_SCOPE_KEY, next);
+    else localStorage.removeItem(CACHE_SCOPE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export interface SyncOperation {
   id: string;
@@ -31,11 +82,11 @@ const persistQueue = (queue: SyncOperation[]): boolean => {
 // --- Cache ---
 export function getCachedData<T>(key: string): T[] | null {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    const raw = localStorage.getItem(buildKey(key));
     if (!raw) return null;
     const { data, expiry } = JSON.parse(raw);
     if (expiry && Date.now() > expiry) {
-      localStorage.removeItem(CACHE_PREFIX + key);
+      localStorage.removeItem(buildKey(key));
       return null;
     }
     return data as T[];
@@ -45,8 +96,10 @@ export function getCachedData<T>(key: string): T[] | null {
 }
 
 export function setCachedData<T>(key: string, data: T[], ttlMs = 7 * 24 * 60 * 60 * 1000) {
+  // Refuse to write tenant data without a user scope — prevents leaking unscoped cache to another user.
+  if (!getScope()) return;
   try {
-    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ data, expiry: Date.now() + ttlMs }));
+    localStorage.setItem(buildKey(key), JSON.stringify({ data, expiry: Date.now() + ttlMs }));
   } catch {
     // storage full – silently fail
   }
