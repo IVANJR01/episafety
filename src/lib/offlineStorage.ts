@@ -6,23 +6,26 @@ const CACHE_PREFIX = "offline_cache_";
 const SYNC_QUEUE_KEY = "offline_sync_queue";
 const CACHE_SCOPE_KEY = "offline_cache_scope_uid";
 const LEGACY_PURGE_FLAG = "offline_cache_legacy_purged_v1";
+const CACHE_VERSION_KEY = "offline_cache_schema_version";
+const CACHE_SCHEMA_VERSION = "v2_strict_company_scope";
 
-// One-shot purge of legacy unscoped cache entries left over from before per-user scoping.
+// One-shot purge of stale/unscoped cache entries left over from older editor/preview sessions.
 (function purgeLegacyUnscopedCache() {
   try {
     if (typeof localStorage === "undefined") return;
-    if (localStorage.getItem(LEGACY_PURGE_FLAG)) return;
     const toRemove: string[] = [];
+    const needsVersionPurge = localStorage.getItem(CACHE_VERSION_KEY) !== CACHE_SCHEMA_VERSION;
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k || !k.startsWith(CACHE_PREFIX)) continue;
-      if (k === CACHE_SCOPE_KEY || k === LEGACY_PURGE_FLAG) continue;
+      if (k === CACHE_SCOPE_KEY || k === CACHE_VERSION_KEY) continue;
       const rest = k.slice(CACHE_PREFIX.length);
       // Scoped keys look like "<uuid>__<table>"; legacy keys do not contain "__".
-      if (!rest.includes("__")) toRemove.push(k);
+      if (needsVersionPurge || !rest.includes("__")) toRemove.push(k);
     }
     toRemove.forEach((k) => localStorage.removeItem(k));
     localStorage.setItem(LEGACY_PURGE_FLAG, "1");
+    localStorage.setItem(CACHE_VERSION_KEY, CACHE_SCHEMA_VERSION);
   } catch {
     // ignore
   }
@@ -55,7 +58,7 @@ export function clearAllCachedData() {
     const keys: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(CACHE_PREFIX) && k !== CACHE_SCOPE_KEY) keys.push(k);
+      if (k && k.startsWith(CACHE_PREFIX) && k !== CACHE_SCOPE_KEY && k !== CACHE_VERSION_KEY) keys.push(k);
     }
     keys.forEach((k) => localStorage.removeItem(k));
   } catch {
