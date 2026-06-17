@@ -166,9 +166,11 @@ export async function cachedRpc<T = any>(
   fnName: string,
   params?: Record<string, any>,
 ): Promise<{ data: T | null; error: any; offline: boolean }> {
+  const scopedKey = buildKey(`rpc_${cacheKey}`);
+
   if (!isOnline()) {
     try {
-      const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+      const raw = localStorage.getItem(scopedKey);
       if (raw) {
         const { data } = JSON.parse(raw);
         return { data: data as T, error: null, offline: true };
@@ -181,7 +183,7 @@ export async function cachedRpc<T = any>(
     const result = await (supabase.rpc as any)(fnName, params || {});
     if (result.error) {
       try {
-        const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+        const raw = localStorage.getItem(scopedKey);
         if (raw) {
           const { data } = JSON.parse(raw);
           return { data: data as T, error: result.error, offline: true };
@@ -191,12 +193,12 @@ export async function cachedRpc<T = any>(
     }
     // Cache the result
     try {
-      localStorage.setItem(CACHE_PREFIX + cacheKey, JSON.stringify({ data: result.data, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
+      if (getScope()) localStorage.setItem(scopedKey, JSON.stringify({ data: result.data, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
     } catch {}
     return { data: result.data as T, error: null, offline: false };
   } catch (err) {
     try {
-      const raw = localStorage.getItem(CACHE_PREFIX + cacheKey);
+      const raw = localStorage.getItem(scopedKey);
       if (raw) {
         const { data } = JSON.parse(raw);
         return { data: data as T, error: err, offline: true };
@@ -268,7 +270,7 @@ export async function preCacheAllData(): Promise<{ cached: number; failed: numbe
   try {
     const { data } = await (supabase.rpc as any)("get_consolidated_epi_stock", {});
     if (data) {
-      localStorage.setItem(CACHE_PREFIX + "rpc_consolidated_stock", JSON.stringify({ data, expiry: Date.now() + 7 * 24 * 60 * 60 * 1000 }));
+      setCachedData("rpc_consolidated_stock", data as any);
     }
   } catch {}
 
