@@ -385,12 +385,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           saveCachedSession(next.session);
         }
 
+        setCacheUserScope(next.user?.id ?? null);
         setSession(next.session);
         setUser(next.user);
         handleAuthCheck(next.user ?? null);
       })
       .catch(() => {
         const fallback = loadCachedSession();
+        setCacheUserScope(fallback.user?.id ?? null);
         setSession(fallback.session);
         setUser(fallback.user);
         handleAuthCheck(fallback.user ?? null);
@@ -400,6 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.auth.refreshSession().then(({ data: { session } }) => {
         if (session) {
           saveCachedSession(session);
+          setCacheUserScope(session.user?.id ?? null);
           setSession(session);
           setUser(session.user);
           handleAuthCheck(session.user);
@@ -418,6 +421,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     clearCachedSession();
     saveActiveEmpresaId(null);
+    clearAllCachedData();
+    setCacheUserScope(null);
     await supabase.auth.signOut();
   };
 
