@@ -78,6 +78,15 @@ export default function CatDetalhe() {
     },
   });
 
+  const { data: empresa } = useQuery({
+    queryKey: ["cat-detalhe-emp", cat?.empresa_id],
+    enabled: !!cat?.empresa_id,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("empresa_config").select("nome, cnpj").eq("id", cat!.empresa_id).maybeSingle();
+      return data;
+    },
+  });
+
   const { data: testemunhas = [] } = useQuery({
     queryKey: ["cat-detalhe-test", id],
     enabled: !!cat,
