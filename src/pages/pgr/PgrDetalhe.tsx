@@ -176,10 +176,7 @@ export default function PgrDetalhe() {
         </TabsContent>
 
         <TabsContent value="inventario">
-          <Card><CardContent className="p-8 text-center text-muted-foreground">
-            <ClipboardList className="h-10 w-10 mx-auto mb-2 opacity-30" />
-            Inventário de Riscos — disponível na Parte 3.
-          </CardContent></Card>
+          <InventarioTab pgrId={id!} empresaId={doc.empresa_id} status={status} canEdit={perms.canEdit} />
         </TabsContent>
 
         <TabsContent value="acoes">
