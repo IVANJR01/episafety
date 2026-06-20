@@ -534,6 +534,50 @@ export default function CatDetalhe() {
         </CardContent>
       </Card>
 
+      {/* PDF gerencial */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4" /> PDF da CAT (interno)
+            {(cat as any).pdf_versao ? (
+              <Badge variant="outline" className="text-[10px]">v{(cat as any).pdf_versao}</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-[10px]">Não gerado</Badge>
+            )}
+            {(cat as any).pdf_gerado_em && new Date(cat.updated_at).getTime() > new Date((cat as any).pdf_gerado_em).getTime() + 1500 && (
+              <Badge variant="destructive" className="text-[10px]">PDF desatualizado — gerar nova versão</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <Info label="Gerado em" value={(cat as any).pdf_gerado_em ? new Date((cat as any).pdf_gerado_em).toLocaleString("pt-BR") : null} />
+            <Info label="Versão" value={(cat as any).pdf_versao ? `v${(cat as any).pdf_versao}` : null} />
+            <div className="md:col-span-2">
+              <span className="text-xs text-muted-foreground">Hash SHA-256: </span>
+              <span className="font-mono text-[11px] break-all">{(cat as any).pdf_hash || "—"}</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {canEdit && cat.status !== "cancelada" && (
+              <MfaActionButton size="sm" onClick={gerarPdf} disabled={gerandoPdf}>
+                <RefreshCw className={`h-4 w-4 mr-1 ${gerandoPdf ? "animate-spin" : ""}`} />
+                {(cat as any).pdf_versao ? "Gerar nova versão" : "Gerar PDF"}
+              </MfaActionButton>
+            )}
+            {(cat as any).pdf_drive_view_link && (
+              <Button size="sm" variant="outline" onClick={baixarPdf}>
+                <FileDown className="h-4 w-4 mr-1" /> Abrir / baixar PDF
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Documento gerencial interno. Inclui QR Code de validação e hash SHA-256. Não substitui o envio oficial ao eSocial (S-2210), previsto para a Fase 2. Acesso restrito à empresa da CAT.
+          </p>
+        </CardContent>
+      </Card>
+
+
       {/* eSocial (stub) */}
       <Card>
         <CardHeader>
