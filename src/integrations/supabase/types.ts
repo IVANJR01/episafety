@@ -3524,6 +3524,7 @@ export type Database = {
           resolved_epi_id: string
         }[]
       }
+      storage_path_empresa_id: { Args: { _name: string }; Returns: string }
       transfer_epi_between_contracts: {
         Args: {
           _dest_contrato_id: string
