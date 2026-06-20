@@ -360,7 +360,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // CRITICAL: scope offline cache to current user to prevent cross-tenant data leaks.
-      setCacheUserScope(next.user?.id ?? null);
+      const scopeChanged = setCacheUserScope(next.user?.id ?? null);
+      if (scopeChanged) {
+        // New user (or sign-out) — purge React Query cache too.
+        purgeQueryCache();
+      }
 
       setSession(next.session);
       setUser(next.user);
