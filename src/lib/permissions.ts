@@ -13,6 +13,10 @@ export const ACOES = [
 /** Special per-module actions (shown as extra checkboxes) */
 export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> = {
   epis: [{ key: "gestao_estoque", label: "Gestão de Estoque (todas unidades)" }],
+  cat: [
+    { key: "enviar_esocial", label: "Preparar envio eSocial (CAT)" },
+    { key: "cancelar", label: "Cancelar CAT" },
+  ],
 };
 
 export type Acao = typeof ACOES[number]["key"];
@@ -29,6 +33,7 @@ export const MODULOS = [
   { key: "dds", label: "Lista de Presença", path: "/dds" },
   { key: "inspecoes_se", label: "Inspeções SE", path: "/inspecoes-se" },
   { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
+  { key: "cat", label: "CAT — Comunicação de Acidente", path: "/cat" },
   { key: "exames", label: "Exames", path: "/exames" },
   { key: "aso", label: "Gestão e Emissão de ASO", path: "/aso" },
   { key: "rh", label: "Portal RH — ASO", path: "/rh/asos" },
