@@ -2291,6 +2291,317 @@ export type Database = {
           },
         ]
       }
+      esocial_cid10: {
+        Row: {
+          categoria: string | null
+          codigo: string
+          descricao: string
+        }
+        Insert: {
+          categoria?: string | null
+          codigo: string
+          descricao: string
+        }
+        Update: {
+          categoria?: string | null
+          codigo?: string
+          descricao?: string
+        }
+        Relationships: []
+      }
+      esocial_config: {
+        Row: {
+          ativo: boolean
+          certificado_alias: string | null
+          certificado_validade: string | null
+          cnpj_raiz: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          proc_emi: number
+          tp_amb: Database["public"]["Enums"]["esocial_tp_amb"]
+          updated_at: string
+          updated_by: string | null
+          ver_proc: string
+        }
+        Insert: {
+          ativo?: boolean
+          certificado_alias?: string | null
+          certificado_validade?: string | null
+          cnpj_raiz?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          proc_emi?: number
+          tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
+          updated_at?: string
+          updated_by?: string | null
+          ver_proc?: string
+        }
+        Update: {
+          ativo?: boolean
+          certificado_alias?: string | null
+          certificado_validade?: string | null
+          cnpj_raiz?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          proc_emi?: number
+          tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
+          updated_at?: string
+          updated_by?: string | null
+          ver_proc?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_eventos_historico: {
+        Row: {
+          acao: Database["public"]["Enums"]["esocial_acao_hist"]
+          created_at: string
+          empresa_id: string
+          erro_resumo: string | null
+          evento_id: string
+          id: string
+          metadados: Json
+          status_anterior:
+            | Database["public"]["Enums"]["esocial_evento_status"]
+            | null
+          status_novo:
+            | Database["public"]["Enums"]["esocial_evento_status"]
+            | null
+          user_email: string | null
+          user_id: string | null
+          xml_hash_sha256: string | null
+        }
+        Insert: {
+          acao: Database["public"]["Enums"]["esocial_acao_hist"]
+          created_at?: string
+          empresa_id: string
+          erro_resumo?: string | null
+          evento_id: string
+          id?: string
+          metadados?: Json
+          status_anterior?:
+            | Database["public"]["Enums"]["esocial_evento_status"]
+            | null
+          status_novo?:
+            | Database["public"]["Enums"]["esocial_evento_status"]
+            | null
+          user_email?: string | null
+          user_id?: string | null
+          xml_hash_sha256?: string | null
+        }
+        Update: {
+          acao?: Database["public"]["Enums"]["esocial_acao_hist"]
+          created_at?: string
+          empresa_id?: string
+          erro_resumo?: string | null
+          evento_id?: string
+          id?: string
+          metadados?: Json
+          status_anterior?:
+            | Database["public"]["Enums"]["esocial_evento_status"]
+            | null
+          status_novo?:
+            | Database["public"]["Enums"]["esocial_evento_status"]
+            | null
+          user_email?: string | null
+          user_id?: string | null
+          xml_hash_sha256?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_eventos_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_historico_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2210"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_eventos_s2210: {
+        Row: {
+          assinatura_simulada: boolean
+          aviso_nao_enviado: string
+          cat_id: string
+          created_at: string
+          created_by: string | null
+          dh_processamento: string | null
+          empresa_id: string
+          id: string
+          id_evento: string | null
+          ind_retif: Database["public"]["Enums"]["esocial_ind_retif"]
+          nr_protocolo_simulado: string | null
+          nr_recibo_origem: string | null
+          nr_recibo_simulado: string | null
+          status: Database["public"]["Enums"]["esocial_evento_status"]
+          tentativas: number
+          tp_amb: Database["public"]["Enums"]["esocial_tp_amb"]
+          ultimo_erro_resumo: string | null
+          updated_at: string
+          updated_by: string | null
+          versao_layout: string
+          xml_assinado_simulado: string | null
+          xml_gerado: string | null
+          xml_hash_sha256: string | null
+        }
+        Insert: {
+          assinatura_simulada?: boolean
+          aviso_nao_enviado?: string
+          cat_id: string
+          created_at?: string
+          created_by?: string | null
+          dh_processamento?: string | null
+          empresa_id: string
+          id?: string
+          id_evento?: string | null
+          ind_retif?: Database["public"]["Enums"]["esocial_ind_retif"]
+          nr_protocolo_simulado?: string | null
+          nr_recibo_origem?: string | null
+          nr_recibo_simulado?: string | null
+          status?: Database["public"]["Enums"]["esocial_evento_status"]
+          tentativas?: number
+          tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
+          ultimo_erro_resumo?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          versao_layout?: string
+          xml_assinado_simulado?: string | null
+          xml_gerado?: string | null
+          xml_hash_sha256?: string | null
+        }
+        Update: {
+          assinatura_simulada?: boolean
+          aviso_nao_enviado?: string
+          cat_id?: string
+          created_at?: string
+          created_by?: string | null
+          dh_processamento?: string | null
+          empresa_id?: string
+          id?: string
+          id_evento?: string | null
+          ind_retif?: Database["public"]["Enums"]["esocial_ind_retif"]
+          nr_protocolo_simulado?: string | null
+          nr_recibo_origem?: string | null
+          nr_recibo_simulado?: string | null
+          status?: Database["public"]["Enums"]["esocial_evento_status"]
+          tentativas?: number
+          tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
+          ultimo_erro_resumo?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          versao_layout?: string
+          xml_assinado_simulado?: string | null
+          xml_gerado?: string | null
+          xml_hash_sha256?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_eventos_s2210_cat_id_fkey"
+            columns: ["cat_id"]
+            isOneToOne: false
+            referencedRelation: "cat_comunicacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_s2210_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_municipios_ibge: {
+        Row: {
+          codigo: string
+          nome: string
+          uf: string
+        }
+        Insert: {
+          codigo: string
+          nome: string
+          uf: string
+        }
+        Update: {
+          codigo?: string
+          nome?: string
+          uf?: string
+        }
+        Relationships: []
+      }
+      esocial_retorno_ocorrencias: {
+        Row: {
+          codigo: string | null
+          created_at: string
+          descricao: string
+          empresa_id: string
+          evento_id: string
+          id: string
+          localizacao: string | null
+          origem: string
+          tipo: number
+        }
+        Insert: {
+          codigo?: string | null
+          created_at?: string
+          descricao: string
+          empresa_id: string
+          evento_id: string
+          id?: string
+          localizacao?: string | null
+          origem?: string
+          tipo: number
+        }
+        Update: {
+          codigo?: string | null
+          created_at?: string
+          descricao?: string
+          empresa_id?: string
+          evento_id?: string
+          id?: string
+          localizacao?: string | null
+          origem?: string
+          tipo?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_retorno_ocorrencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_retorno_ocorrencias_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2210"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estoque_movimentacoes: {
         Row: {
           created_at: string
@@ -4145,6 +4456,30 @@ export type Database = {
         | "cancelada"
       cat_tipo: "inicial" | "reabertura" | "comunicacao_obito"
       cat_tipo_acidente: "tipico" | "trajeto" | "doenca_ocupacional"
+      esocial_acao_hist:
+        | "gerado"
+        | "validado"
+        | "assinatura_simulada"
+        | "envio_simulado"
+        | "consulta_simulada"
+        | "aceito"
+        | "rejeitado"
+        | "retificado"
+        | "marcado_exclusao"
+        | "erro"
+        | "config_alterada"
+      esocial_evento_status:
+        | "pendente"
+        | "pronto_envio"
+        | "validado_stub"
+        | "homologacao_stub"
+        | "simulado"
+        | "aceito"
+        | "rejeitado"
+        | "retificar"
+        | "excluido"
+      esocial_ind_retif: "original" | "retificacao"
+      esocial_tp_amb: "producao" | "homologacao"
       resultado_exame: "apto" | "inapto" | "apto_com_restricao" | "pendente"
       status_entrega:
         | "ativo"
@@ -4323,6 +4658,32 @@ export const Constants = {
       ],
       cat_tipo: ["inicial", "reabertura", "comunicacao_obito"],
       cat_tipo_acidente: ["tipico", "trajeto", "doenca_ocupacional"],
+      esocial_acao_hist: [
+        "gerado",
+        "validado",
+        "assinatura_simulada",
+        "envio_simulado",
+        "consulta_simulada",
+        "aceito",
+        "rejeitado",
+        "retificado",
+        "marcado_exclusao",
+        "erro",
+        "config_alterada",
+      ],
+      esocial_evento_status: [
+        "pendente",
+        "pronto_envio",
+        "validado_stub",
+        "homologacao_stub",
+        "simulado",
+        "aceito",
+        "rejeitado",
+        "retificar",
+        "excluido",
+      ],
+      esocial_ind_retif: ["original", "retificacao"],
+      esocial_tp_amb: ["producao", "homologacao"],
       resultado_exame: ["apto", "inapto", "apto_com_restricao", "pendente"],
       status_entrega: [
         "ativo",
