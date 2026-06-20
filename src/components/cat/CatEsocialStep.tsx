@@ -42,6 +42,8 @@ export default function CatEsocialStep({ catId, empresaId }: Props) {
 
   const [indRetif, setIndRetif] = useState<"original" | "retificacao">("original");
   const [nrReciboOrigem, setNrReciboOrigem] = useState("");
+  const [hrsTrabAntesAcid, setHrsTrabAntesAcid] = useState<string>("");
+  const [iniciatCat, setIniciatCat] = useState<string>("1");
   const [saving, setSaving] = useState(false);
 
   // CAT atual (fonte da verdade — reaproveita dados já gravados)
@@ -123,6 +125,8 @@ export default function CatEsocialStep({ catId, empresaId }: Props) {
     if (evento) {
       setIndRetif(evento.ind_retif);
       setNrReciboOrigem(evento.nr_recibo_origem || "");
+      setHrsTrabAntesAcid(evento.hrs_trab_antes_acid != null ? String(evento.hrs_trab_antes_acid) : "");
+      setIniciatCat(evento.iniciat_cat ? String(evento.iniciat_cat) : "1");
     }
   }, [evento]);
 
@@ -171,6 +175,7 @@ export default function CatEsocialStep({ catId, empresaId }: Props) {
     }
     setSaving(true);
     try {
+      const hrsNum = hrsTrabAntesAcid.trim() ? parseInt(hrsTrabAntesAcid.trim().replace(/\D/g, ""), 10) : null;
       const payload: any = {
         cat_id: catId,
         empresa_id: empresaId,
@@ -180,6 +185,8 @@ export default function CatEsocialStep({ catId, empresaId }: Props) {
         versao_layout: "1.3",
         status: statusAlvo,
         aviso_nao_enviado: AVISO,
+        hrs_trab_antes_acid: Number.isFinite(hrsNum as any) ? hrsNum : null,
+        iniciat_cat: parseInt(iniciatCat, 10) || 1,
       };
       if (evento?.id) {
         const { error } = await (supabase.from as any)("esocial_eventos_s2210")
@@ -298,6 +305,33 @@ export default function CatEsocialStep({ catId, empresaId }: Props) {
               />
             </div>
           )}
+          <div>
+            <Label>hrsTrabAntesAcid (HHMM)</Label>
+            <Input
+              value={hrsTrabAntesAcid}
+              onChange={(e) => setHrsTrabAntesAcid(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="Ex.: 0430 = 4h30 antes do acidente"
+              disabled={!canEdit}
+              inputMode="numeric"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Deixe vazio se desconhecido — o XML não usará valor fixo.
+            </p>
+          </div>
+          <div>
+            <Label>iniciatCAT</Label>
+            <Select value={iniciatCat} onValueChange={setIniciatCat} disabled={!canEdit}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 — Empregador</SelectItem>
+                <SelectItem value="2">2 — Ordem judicial</SelectItem>
+                <SelectItem value="3">3 — Determinação órgão fiscalizador</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Padrão a partir de <code>emitente_tipo</code>; pode ser ajustado aqui.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
