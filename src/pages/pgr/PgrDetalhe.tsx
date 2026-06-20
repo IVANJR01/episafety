@@ -190,8 +190,8 @@ export default function PgrDetalhe() {
           <PgrPdfTab
             pgr={doc}
             canEdit={perms.canEdit}
-            canExport={perms.has("exportar") || perms.has("editar") || perms.has("revisar") || perms.canEdit}
-            canAssinar={perms.has("assinar")}
+            canExport={perms.canEdit}
+            canAssinar={perms.canEdit}
           />
         </TabsContent>
       </Tabs>
