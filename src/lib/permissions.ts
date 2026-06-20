@@ -18,7 +18,15 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
     { key: "esocial", label: "Módulo eSocial S-2210 (gerar/validar/configurar)" },
     { key: "cancelar", label: "Cancelar CAT" },
   ],
+  pgr: [
+    { key: "visualizar", label: "Visualizar PGR" },
+    { key: "editar", label: "Editar PGR / Inventário / Ações" },
+    { key: "revisar", label: "Abrir revisão e publicar PGR" },
+    { key: "assinar", label: "Assinar PGR (assinatura visual + MFA)" },
+    { key: "exportar", label: "Exportar PDF técnico do PGR" },
+  ],
 };
+
 
 export type Acao = typeof ACOES[number]["key"];
 
