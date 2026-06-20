@@ -43,6 +43,8 @@ export const MODULOS = [
   { key: "inspecoes_se", label: "Inspeções SE", path: "/inspecoes-se" },
   { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
   { key: "cat", label: "CAT — Comunicação de Acidente", path: "/cat" },
+  { key: "pgr", label: "PGR — Gerenciamento de Riscos", path: "/pgr" },
+
   { key: "exames", label: "Exames", path: "/exames" },
   { key: "aso", label: "Gestão e Emissão de ASO", path: "/aso" },
   { key: "rh", label: "Portal RH — ASO", path: "/rh/asos" },
