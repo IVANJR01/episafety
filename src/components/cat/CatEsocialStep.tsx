@@ -44,6 +44,22 @@ export default function CatEsocialStep({ catId, empresaId }: Props) {
   const [nrReciboOrigem, setNrReciboOrigem] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // CAT atual (fonte da verdade — reaproveita dados já gravados)
+  const { data: cat } = useQuery({
+    queryKey: ["esocial-cat-snap", catId],
+    queryFn: async () => {
+      if (!catId) return null;
+      const { data } = await (supabase.from as any)("cat_comunicacoes")
+        .select(
+          "status, data_acidente, hora_acidente, tipo_acidente, local_acidente, municipio, uf, cid_codigo, parte_atingida_id, agente_causador_id, natureza_lesao_id, houve_afastamento, ultimo_dia_trabalhado, obito, data_obito, funcionario_id, cbo"
+        )
+        .eq("id", catId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!catId,
+  });
+
   // esocial_config da empresa (apenas leitura aqui — gerência fica em outra tela)
   const { data: cfg } = useQuery({
     queryKey: ["esocial-config", empresaId],
