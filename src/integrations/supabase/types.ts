@@ -4049,6 +4049,8 @@ export type Database = {
           probabilidade: number
           severidade: number
           tipo_exposicao: Database["public"]["Enums"]["pgr_exposicao_tipo"]
+          trabalhadores_ajuste_manual: boolean
+          trabalhadores_calculados: number | null
           trabalhadores_expostos: number
           updated_at: string
         }
@@ -4077,6 +4079,8 @@ export type Database = {
           probabilidade?: number
           severidade?: number
           tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
+          trabalhadores_ajuste_manual?: boolean
+          trabalhadores_calculados?: number | null
           trabalhadores_expostos?: number
           updated_at?: string
         }
@@ -4105,6 +4109,8 @@ export type Database = {
           probabilidade?: number
           severidade?: number
           tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
+          trabalhadores_ajuste_manual?: boolean
+          trabalhadores_calculados?: number | null
           trabalhadores_expostos?: number
           updated_at?: string
         }
@@ -5053,6 +5059,11 @@ export type Database = {
       pgr_classificar_risco: {
         Args: { _prob: number; _sev: number }
         Returns: Database["public"]["Enums"]["pgr_risco_classe"]
+      }
+      pgr_funcionarios_por_ghe: { Args: { _ghe_id: string }; Returns: number }
+      pgr_importar_ghe: {
+        Args: { _dry_run?: boolean; _pgr_id: string }
+        Returns: Json
       }
       pgr_publicar: { Args: { _pgr_id: string }; Returns: Json }
       resolve_contrato_target_for_entrega: {
