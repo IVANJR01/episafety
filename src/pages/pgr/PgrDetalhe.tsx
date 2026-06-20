@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
+import PgrPdfTab from "@/components/pgr/PgrPdfTab";
 import {
   PgrDocumento, PgrRevisao, PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus, isEditavel,
 } from "@/lib/pgrTypes";
