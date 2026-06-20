@@ -15,6 +15,7 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
   epis: [{ key: "gestao_estoque", label: "Gestão de Estoque (todas unidades)" }],
   cat: [
     { key: "enviar_esocial", label: "Preparar envio eSocial (CAT)" },
+    { key: "esocial", label: "Módulo eSocial S-2210 (gerar/validar/configurar)" },
     { key: "cancelar", label: "Cancelar CAT" },
   ],
 };
