@@ -2576,6 +2576,65 @@ export type Database = {
           },
         ]
       }
+      esocial_import_logs: {
+        Row: {
+          arquivo_nome: string | null
+          base: string
+          created_at: string
+          empresa_id: string | null
+          erros: Json
+          id: string
+          status: string
+          total_atualizados: number
+          total_erros: number
+          total_ignorados: number
+          total_inseridos: number
+          total_linhas: number
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          base: string
+          created_at?: string
+          empresa_id?: string | null
+          erros?: Json
+          id?: string
+          status?: string
+          total_atualizados?: number
+          total_erros?: number
+          total_ignorados?: number
+          total_inseridos?: number
+          total_linhas?: number
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          arquivo_nome?: string | null
+          base?: string
+          created_at?: string
+          empresa_id?: string | null
+          erros?: Json
+          id?: string
+          status?: string
+          total_atualizados?: number
+          total_erros?: number
+          total_ignorados?: number
+          total_inseridos?: number
+          total_linhas?: number
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_import_logs_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esocial_municipios_ibge: {
         Row: {
           codigo: string
@@ -4399,8 +4458,20 @@ export type Database = {
         Returns: boolean
       }
       esocial_config_upsert: { Args: { _payload: Json }; Returns: Json }
+      esocial_import_cid10: {
+        Args: { _arquivo_nome?: string; _rows: Json }
+        Returns: Json
+      }
+      esocial_import_municipios: {
+        Args: { _arquivo_nome?: string; _rows: Json }
+        Returns: Json
+      }
       esocial_iniciar_retificacao: {
         Args: { _evento_id: string }
+        Returns: Json
+      }
+      esocial_production_checklist: {
+        Args: { _empresa: string }
         Returns: Json
       }
       esocial_registrar_download: {

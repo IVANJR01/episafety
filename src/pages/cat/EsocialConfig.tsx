@@ -14,9 +14,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import { toast } from "sonner";
+import EsocialImportTab from "@/components/cat/EsocialImportTab";
+import EsocialChecklistTab from "@/components/cat/EsocialChecklistTab";
 import {
   Settings2, ShieldAlert, AlertTriangle, FileSearch, CheckCircle2,
-  Loader2, Save, Database, MapPin, Stethoscope,
+  Loader2, Save, Database, MapPin, Stethoscope, Upload, ClipboardCheck,
 } from "lucide-react";
 
 const CATALOGOS: { key: string; label: string; table: string }[] = [
@@ -166,6 +168,8 @@ export default function EsocialConfig() {
             {totalPendentes > 0 && <Badge variant="outline" className="ml-2 text-[10px]">{totalPendentes} pend.</Badge>}
           </TabsTrigger>
           <TabsTrigger value="bases"><Database className="h-4 w-4 mr-1" /> Bases</TabsTrigger>
+          <TabsTrigger value="importar"><Upload className="h-4 w-4 mr-1" /> Importar CSV</TabsTrigger>
+          <TabsTrigger value="checklist"><ClipboardCheck className="h-4 w-4 mr-1" /> Checklist Produção</TabsTrigger>
         </TabsList>
 
         {/* CONFIG */}
@@ -341,6 +345,14 @@ export default function EsocialConfig() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="importar" className="space-y-4">
+          <EsocialImportTab />
+        </TabsContent>
+
+        <TabsContent value="checklist" className="space-y-4">
+          <EsocialChecklistTab />
         </TabsContent>
       </Tabs>
     </div>
