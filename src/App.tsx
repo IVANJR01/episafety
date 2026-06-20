@@ -189,6 +189,7 @@ function ProtectedRoute() {
         <Route path="/cat/novo" element={<CatNovo />} />
         <Route path="/cat/:id" element={<CatDetalhe />} />
         <Route path="/cat/:id/editar" element={<CatNovo />} />
+        <Route path="/cat/validar/:id" element={<CatValidar />} />
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
