@@ -891,8 +891,10 @@ export type Database = {
           pais: string | null
           parte_atingida_id: string | null
           pdf_drive_file_id: string | null
+          pdf_drive_view_link: string | null
           pdf_gerado_em: string | null
           pdf_hash: string | null
+          pdf_versao: number
           remuneracao_mensal: number | null
           situacao_geradora_id: string | null
           status: Database["public"]["Enums"]["cat_status"]
@@ -959,8 +961,10 @@ export type Database = {
           pais?: string | null
           parte_atingida_id?: string | null
           pdf_drive_file_id?: string | null
+          pdf_drive_view_link?: string | null
           pdf_gerado_em?: string | null
           pdf_hash?: string | null
+          pdf_versao?: number
           remuneracao_mensal?: number | null
           situacao_geradora_id?: string | null
           status?: Database["public"]["Enums"]["cat_status"]
@@ -1027,8 +1031,10 @@ export type Database = {
           pais?: string | null
           parte_atingida_id?: string | null
           pdf_drive_file_id?: string | null
+          pdf_drive_view_link?: string | null
           pdf_gerado_em?: string | null
           pdf_hash?: string | null
+          pdf_versao?: number
           remuneracao_mensal?: number | null
           situacao_geradora_id?: string | null
           status?: Database["public"]["Enums"]["cat_status"]
@@ -4018,6 +4024,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cat_registrar_pdf: {
+        Args: {
+          _cat_id: string
+          _drive_file_id: string
+          _drive_path: string
+          _drive_view_link: string
+          _nome_arquivo: string
+          _pdf_hash: string
+          _tamanho_bytes: number
+        }
+        Returns: Json
+      }
+      cat_registrar_pdf_download: {
+        Args: { _cat_id: string }
+        Returns: undefined
+      }
       check_rate_limit: {
         Args: { _key: string; _limit: number; _window_seconds: number }
         Returns: boolean
