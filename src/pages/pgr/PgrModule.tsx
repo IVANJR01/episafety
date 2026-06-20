@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Plus, FileWarning, ShieldCheck } from "lucide-react";
+import { Eye, Plus, FileWarning, ShieldCheck, BarChart3 } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 
 export default function PgrModule() {
@@ -92,11 +92,16 @@ export default function PgrModule() {
             Programa de Gerenciamento de Riscos (NR-1). Inventário e Plano de Ação.
           </p>
         </div>
-        {perms.canCreate && (
-          <Button onClick={() => navigate("/pgr/novo")}>
-            <Plus className="h-4 w-4 mr-1" /> Novo PGR
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/pgr/dashboard")}>
+            <BarChart3 className="h-4 w-4 mr-1" /> Dashboard
           </Button>
-        )}
+          {perms.canCreate && (
+            <Button onClick={() => navigate("/pgr/novo")}>
+              <Plus className="h-4 w-4 mr-1" /> Novo PGR
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>

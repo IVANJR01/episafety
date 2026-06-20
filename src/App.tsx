@@ -51,6 +51,7 @@ import PgrModule from "@/pages/pgr/PgrModule";
 import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
 import PgrValidar from "@/pages/pgr/PgrValidar";
+import PgrDashboard from "@/pages/pgr/PgrDashboard";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
@@ -198,6 +199,7 @@ function ProtectedRoute() {
         <Route path="/cat/validar/:id" element={<CatValidar />} />
         <Route path="/cat/esocial/config" element={<EsocialConfig />} />
         <Route path="/pgr" element={<PgrModule />} />
+        <Route path="/pgr/dashboard" element={<PgrDashboard />} />
         <Route path="/pgr/novo" element={<PgrNovo />} />
         <Route path="/pgr/:id" element={<PgrDetalhe />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
