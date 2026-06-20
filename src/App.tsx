@@ -46,6 +46,7 @@ import CatModule from "@/pages/cat/CatModule";
 import CatNovo from "@/pages/cat/CatNovo";
 import CatDetalhe from "@/pages/cat/CatDetalhe";
 import CatValidar from "@/pages/cat/CatValidar";
+import EsocialConfig from "@/pages/cat/EsocialConfig";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
@@ -190,6 +191,7 @@ function ProtectedRoute() {
         <Route path="/cat/:id" element={<CatDetalhe />} />
         <Route path="/cat/:id/editar" element={<CatNovo />} />
         <Route path="/cat/validar/:id" element={<CatValidar />} />
+        <Route path="/cat/esocial/config" element={<EsocialConfig />} />
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
