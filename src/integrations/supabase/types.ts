@@ -765,6 +765,7 @@ export type Database = {
         Row: {
           ativo: boolean
           codigo: string
+          codigo_esocial: string | null
           created_at: string
           descricao: string
           id: string
@@ -772,6 +773,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           codigo: string
+          codigo_esocial?: string | null
           created_at?: string
           descricao: string
           id?: string
@@ -779,6 +781,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           codigo?: string
+          codigo_esocial?: string | null
           created_at?: string
           descricao?: string
           id?: string
@@ -874,7 +877,9 @@ export type Database = {
           hospital: string | null
           houve_afastamento: boolean
           houve_internacao: boolean | null
+          hrs_trab_antes_acid: number | null
           id: string
+          iniciat_cat: number | null
           jornada_semanal_horas: number | null
           lateralidade: string | null
           local_acidente: string | null
@@ -944,7 +949,9 @@ export type Database = {
           hospital?: string | null
           houve_afastamento?: boolean
           houve_internacao?: boolean | null
+          hrs_trab_antes_acid?: number | null
           id?: string
+          iniciat_cat?: number | null
           jornada_semanal_horas?: number | null
           lateralidade?: string | null
           local_acidente?: string | null
@@ -1014,7 +1021,9 @@ export type Database = {
           hospital?: string | null
           houve_afastamento?: boolean
           houve_internacao?: boolean | null
+          hrs_trab_antes_acid?: number | null
           id?: string
+          iniciat_cat?: number | null
           jornada_semanal_horas?: number | null
           lateralidade?: string | null
           local_acidente?: string | null
@@ -1187,6 +1196,7 @@ export type Database = {
         Row: {
           ativo: boolean
           codigo: string
+          codigo_esocial: string | null
           created_at: string
           descricao: string
           id: string
@@ -1194,6 +1204,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           codigo: string
+          codigo_esocial?: string | null
           created_at?: string
           descricao: string
           id?: string
@@ -1201,6 +1212,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           codigo?: string
+          codigo_esocial?: string | null
           created_at?: string
           descricao?: string
           id?: string
@@ -1232,6 +1244,7 @@ export type Database = {
         Row: {
           ativo: boolean
           codigo: string
+          codigo_esocial: string | null
           created_at: string
           descricao: string
           id: string
@@ -1239,6 +1252,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           codigo: string
+          codigo_esocial?: string | null
           created_at?: string
           descricao: string
           id?: string
@@ -1246,6 +1260,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           codigo?: string
+          codigo_esocial?: string | null
           created_at?: string
           descricao?: string
           id?: string
@@ -1256,6 +1271,7 @@ export type Database = {
         Row: {
           ativo: boolean
           codigo: string
+          codigo_esocial: string | null
           created_at: string
           descricao: string
           id: string
@@ -1263,6 +1279,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           codigo: string
+          codigo_esocial?: string | null
           created_at?: string
           descricao: string
           id?: string
@@ -1270,6 +1287,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           codigo?: string
+          codigo_esocial?: string | null
           created_at?: string
           descricao?: string
           id?: string
@@ -2449,15 +2467,19 @@ export type Database = {
           created_by: string | null
           dh_processamento: string | null
           empresa_id: string
+          evento_origem_id: string | null
+          hrs_trab_antes_acid: number | null
           id: string
           id_evento: string | null
           ind_retif: Database["public"]["Enums"]["esocial_ind_retif"]
+          iniciat_cat: number | null
           nr_protocolo_simulado: string | null
           nr_recibo_origem: string | null
           nr_recibo_simulado: string | null
           status: Database["public"]["Enums"]["esocial_evento_status"]
           tentativas: number
           tp_amb: Database["public"]["Enums"]["esocial_tp_amb"]
+          ultima_validacao_em: string | null
           ultimo_erro_resumo: string | null
           updated_at: string
           updated_by: string | null
@@ -2474,15 +2496,19 @@ export type Database = {
           created_by?: string | null
           dh_processamento?: string | null
           empresa_id: string
+          evento_origem_id?: string | null
+          hrs_trab_antes_acid?: number | null
           id?: string
           id_evento?: string | null
           ind_retif?: Database["public"]["Enums"]["esocial_ind_retif"]
+          iniciat_cat?: number | null
           nr_protocolo_simulado?: string | null
           nr_recibo_origem?: string | null
           nr_recibo_simulado?: string | null
           status?: Database["public"]["Enums"]["esocial_evento_status"]
           tentativas?: number
           tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
+          ultima_validacao_em?: string | null
           ultimo_erro_resumo?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -2499,15 +2525,19 @@ export type Database = {
           created_by?: string | null
           dh_processamento?: string | null
           empresa_id?: string
+          evento_origem_id?: string | null
+          hrs_trab_antes_acid?: number | null
           id?: string
           id_evento?: string | null
           ind_retif?: Database["public"]["Enums"]["esocial_ind_retif"]
+          iniciat_cat?: number | null
           nr_protocolo_simulado?: string | null
           nr_recibo_origem?: string | null
           nr_recibo_simulado?: string | null
           status?: Database["public"]["Enums"]["esocial_evento_status"]
           tentativas?: number
           tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
+          ultima_validacao_em?: string | null
           ultimo_erro_resumo?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -2529,6 +2559,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_s2210_evento_origem_id_fkey"
+            columns: ["evento_origem_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2210"
             referencedColumns: ["id"]
           },
         ]
@@ -4354,6 +4391,18 @@ export type Database = {
       check_rate_limit: {
         Args: { _key: string; _limit: number; _window_seconds: number }
         Returns: boolean
+      }
+      esocial_iniciar_retificacao: {
+        Args: { _evento_id: string }
+        Returns: Json
+      }
+      esocial_registrar_download: {
+        Args: { _evento_id: string }
+        Returns: undefined
+      }
+      esocial_registrar_ocorrencias: {
+        Args: { _evento_id: string; _ocorrencias: Json }
+        Returns: Json
       }
       esocial_registrar_xml: {
         Args: {
