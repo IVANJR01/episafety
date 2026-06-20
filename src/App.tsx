@@ -50,6 +50,7 @@ import EsocialConfig from "@/pages/cat/EsocialConfig";
 import PgrModule from "@/pages/pgr/PgrModule";
 import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
+import PgrValidar from "@/pages/pgr/PgrValidar";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
@@ -200,6 +201,7 @@ function ProtectedRoute() {
         <Route path="/pgr/novo" element={<PgrNovo />} />
         <Route path="/pgr/:id" element={<PgrDetalhe />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
+        <Route path="/pgr/validar/:id" element={<PgrValidar />} />
 
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />

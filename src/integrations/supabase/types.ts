@@ -4022,6 +4022,7 @@ export type Database = {
       }
       pgr_documentos: {
         Row: {
+          conteudo_atualizado_em: string
           created_at: string
           created_by: string | null
           data_emissao: string | null
@@ -4047,6 +4048,7 @@ export type Database = {
           versao: number
         }
         Insert: {
+          conteudo_atualizado_em?: string
           created_at?: string
           created_by?: string | null
           data_emissao?: string | null
@@ -4072,6 +4074,7 @@ export type Database = {
           versao?: number
         }
         Update: {
+          conteudo_atualizado_em?: string
           created_at?: string
           created_by?: string | null
           data_emissao?: string | null
@@ -4228,6 +4231,68 @@ export type Database = {
           },
           {
             foreignKeyName: "pgr_inventario_itens_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pgr_pdf_versoes: {
+        Row: {
+          com_marca_dagua: boolean
+          drive_file_id: string
+          drive_path: string | null
+          drive_view_link: string | null
+          empresa_id: string
+          gerado_em: string
+          gerado_por: string | null
+          id: string
+          nome_arquivo: string | null
+          pdf_hash: string
+          pdf_versao: number
+          pgr_id: string
+          pgr_versao: number
+          status_no_momento: Database["public"]["Enums"]["pgr_status"]
+          tamanho_bytes: number | null
+        }
+        Insert: {
+          com_marca_dagua?: boolean
+          drive_file_id: string
+          drive_path?: string | null
+          drive_view_link?: string | null
+          empresa_id: string
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          nome_arquivo?: string | null
+          pdf_hash: string
+          pdf_versao: number
+          pgr_id: string
+          pgr_versao: number
+          status_no_momento: Database["public"]["Enums"]["pgr_status"]
+          tamanho_bytes?: number | null
+        }
+        Update: {
+          com_marca_dagua?: boolean
+          drive_file_id?: string
+          drive_path?: string | null
+          drive_view_link?: string | null
+          empresa_id?: string
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          nome_arquivo?: string | null
+          pdf_hash?: string
+          pdf_versao?: number
+          pgr_id?: string
+          pgr_versao?: number
+          status_no_momento?: Database["public"]["Enums"]["pgr_status"]
+          tamanho_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_pdf_versoes_pgr_id_fkey"
             columns: ["pgr_id"]
             isOneToOne: false
             referencedRelation: "pgr_documentos"
@@ -5163,6 +5228,17 @@ export type Database = {
         }
         Returns: Json
       }
+      pgr_assinar_visual: {
+        Args: {
+          _ip_origem: string
+          _observacao: string
+          _pdf_hash: string
+          _pgr_id: string
+          _responsavel_nome: string
+          _responsavel_registro: string
+        }
+        Returns: Json
+      }
       pgr_classificar_risco: {
         Args: { _prob: number; _sev: number }
         Returns: Database["public"]["Enums"]["pgr_risco_classe"]
@@ -5173,7 +5249,24 @@ export type Database = {
         Returns: Json
       }
       pgr_marcar_atrasadas: { Args: { _pgr_id: string }; Returns: number }
+      pgr_pdf_registrar: {
+        Args: {
+          _com_marca_dagua: boolean
+          _drive_file_id: string
+          _drive_path: string
+          _drive_view_link: string
+          _nome_arquivo: string
+          _pdf_hash: string
+          _pgr_id: string
+          _tamanho_bytes: number
+        }
+        Returns: Json
+      }
       pgr_publicar: { Args: { _pgr_id: string }; Returns: Json }
+      pgr_validar_interno: {
+        Args: { _pdf_versao?: number; _pgr_id: string }
+        Returns: Json
+      }
       resolve_contrato_target_for_entrega: {
         Args: {
           _funcionario_id: string

@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
+import PgrPdfTab from "@/components/pgr/PgrPdfTab";
 import {
   PgrDocumento, PgrRevisao, PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus, isEditavel,
 } from "@/lib/pgrTypes";
@@ -186,10 +187,12 @@ export default function PgrDetalhe() {
         </TabsContent>
 
         <TabsContent value="pdf">
-          <Card><CardContent className="p-8 text-center text-muted-foreground">
-            <FileText className="h-10 w-10 mx-auto mb-2 opacity-30" />
-            PDF técnico interno (assinatura visual + hash SHA-256, sem ICP-Brasil) — disponível na Parte 5.
-          </CardContent></Card>
+          <PgrPdfTab
+            pgr={doc}
+            canEdit={perms.canEdit}
+            canExport={perms.canEdit}
+            canAssinar={perms.canEdit}
+          />
         </TabsContent>
       </Tabs>
 
