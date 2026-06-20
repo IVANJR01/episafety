@@ -505,7 +505,7 @@ export default function CatDetalhe() {
             <p className="text-sm text-muted-foreground">Nenhum anexo enviado.</p>
           ) : (
             <ul className="space-y-1 text-sm">
-              {(anexos as any[]).map((a) => (
+              {(anexos as any[]).filter((a) => a.categoria !== "pdf_cat").map((a) => (
                 <li key={a.id} className="flex items-center gap-2 py-1 border-b last:border-0">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium truncate flex-1">{a.nome_arquivo}</span>
@@ -571,8 +571,51 @@ export default function CatDetalhe() {
               </Button>
             )}
           </div>
+
+          {/* Versões anteriores do PDF */}
+          {(() => {
+            const pdfVersoes = (anexos as any[]).filter((a) => a.categoria === "pdf_cat");
+            if (pdfVersoes.length === 0) return null;
+            return (
+              <div className="border-t pt-3 mt-2">
+                <div className="text-xs font-medium text-muted-foreground mb-2">
+                  Histórico de versões ({pdfVersoes.length})
+                </div>
+                <ul className="space-y-1 text-xs">
+                  {pdfVersoes.map((v, idx) => {
+                    const isVigente = v.drive_file_id === (cat as any).pdf_drive_file_id;
+                    return (
+                      <li key={v.id} className="flex items-center gap-2 py-1 border-b last:border-0">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium truncate flex-1">{v.nome_arquivo}</span>
+                        {isVigente ? (
+                          <Badge className="text-[10px]" variant="default">Vigente</Badge>
+                        ) : (
+                          <Badge className="text-[10px]" variant="secondary">Anterior</Badge>
+                        )}
+                        <span className="text-muted-foreground">{new Date(v.created_at).toLocaleString("pt-BR")}</span>
+                        {v.drive_file_id && (
+                          <a
+                            href={`https://drive.google.com/file/d/${v.drive_file_id}/view`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary hover:underline"
+                            onClick={() => logCatPdfDownload(cat.id).catch(() => {})}
+                          >
+                            Abrir
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })()}
+
           <p className="text-[11px] text-muted-foreground">
-            Documento gerencial interno. Inclui QR Code de validação e hash SHA-256. Não substitui o envio oficial ao eSocial (S-2210), previsto para a Fase 2. Acesso restrito à empresa da CAT.
+            Documento gerencial interno. Inclui QR Code (validação restrita à empresa) e hash SHA-256. Não substitui o envio oficial ao eSocial (S-2210), previsto para a Fase 2.
+            {cat.status === "rascunho" && " PDFs gerados em rascunho recebem marca d'água RASCUNHO."}
           </p>
         </CardContent>
       </Card>

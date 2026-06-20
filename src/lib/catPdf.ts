@@ -58,7 +58,7 @@ interface PdfBuilder {
 }
 
 function ensureSpace(b: PdfBuilder, h: number) {
-  if (b.y + h > 285) {
+  if (b.y + h > 278) {
     b.doc.addPage();
     b.y = 15;
   }
@@ -117,7 +117,7 @@ function row(b: PdfBuilder, items: Array<[string, string | null | undefined]>) {
   b.y = startY + 4 + maxLines * 3.5 + 2;
 }
 
-async function renderPdf(ctx: CatPdfContext, opts: { qrUrl: string; versao: number }): Promise<jsPDF> {
+async function renderPdf(ctx: CatPdfContext, opts: { qrUrl: string; versao: number; validacaoUrl: string }): Promise<jsPDF> {
   const { cat } = ctx;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const b: PdfBuilder = { doc, y: 12 };
@@ -319,22 +319,44 @@ async function renderPdf(ctx: CatPdfContext, opts: { qrUrl: string; versao: numb
     });
   }
 
-  // Rodapé com QR + hash em todas as páginas
+  // Rodapé com QR + hash em todas as páginas + marca d'água (se rascunho)
   const pageCount = doc.getNumberOfPages();
   const qrDataUrl = await QRCode.toDataURL(opts.qrUrl, { margin: 0, width: 200 });
+  const isDraft = cat.status === "rascunho";
   for (let p = 1; p <= pageCount; p++) {
     doc.setPage(p);
+
+    // Marca d'água "RASCUNHO" diagonal, cinza claro
+    if (isDraft) {
+      const anyDoc = doc as any;
+      if (typeof anyDoc.GState === "function" && typeof anyDoc.setGState === "function") {
+        const gs = new anyDoc.GState({ opacity: 0.18 });
+        anyDoc.setGState(gs);
+      }
+      doc.setTextColor(180, 50, 50);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(110);
+      doc.text("RASCUNHO", 105, 160, { align: "center", angle: 35 } as any);
+      if (typeof anyDoc.GState === "function" && typeof anyDoc.setGState === "function") {
+        const gs = new anyDoc.GState({ opacity: 1 });
+        anyDoc.setGState(gs);
+      }
+      doc.setTextColor(0, 0, 0);
+    }
+
     doc.setDrawColor(200);
-    doc.line(10, 287, 200, 287);
-    doc.addImage(qrDataUrl, "PNG", 10, 289, 16, 16);
+    doc.line(10, 283, 200, 283);
+    doc.addImage(qrDataUrl, "PNG", 10, 285, 18, 18);
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(80);
-    doc.text("QR Code de validação interna — abre a CAT no sistema (acesso restrito à empresa).", 28, 292);
-    doc.text(opts.qrUrl, 28, 295);
-    doc.text(`Gerado em ${fmtDT(new Date().toISOString())} · Página ${p}/${pageCount} · Versão v${opts.versao}`, 28, 298);
+    doc.text("QR Code de validação interna — abre a CAT no sistema (acesso restrito à empresa da CAT).", 30, 288);
+    doc.text(opts.qrUrl, 30, 291);
+    doc.text(`Hash SHA-256 conferível em ${opts.validacaoUrl}`, 30, 294);
+    doc.text(`Gerado em ${fmtDT(new Date().toISOString())} · Página ${p}/${pageCount} · Versão v${opts.versao}${isDraft ? " · RASCUNHO" : ""}`, 30, 297);
     doc.setTextColor(0);
   }
+
 
   return doc;
 }
@@ -355,10 +377,11 @@ export async function generateAndUploadCatPdf(ctx: CatPdfContext): Promise<Gener
   // Versão preliminar baseada no que está no banco; a RPC vai incrementar e devolver o oficial.
   const versaoPrev = ((cat as any).pdf_versao ?? 0) + 1;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const qrUrl = `${origin}/cat/${cat.id}?v=${versaoPrev}`;
+  const validacaoUrl = `${origin}/cat/validar/${cat.id}?v=${versaoPrev}`;
+  const qrUrl = validacaoUrl;
 
   // 1. Renderiza PDF
-  const doc = await renderPdf(ctx, { qrUrl, versao: versaoPrev });
+  const doc = await renderPdf(ctx, { qrUrl, versao: versaoPrev, validacaoUrl });
   const blob = doc.output("blob");
   const buffer = await blob.arrayBuffer();
 
