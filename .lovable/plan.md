@@ -1,137 +1,99 @@
-## Objetivo
+## Plano: Hardening de Segurança (Itens 1–10)
 
-Refazer a emissão de ASO para que o RH **não precise digitar riscos**. Todos os riscos e exames são cadastrados uma vez na base do PCMSO por GHE/GES. Quando o colaborador é vinculado a um GHE/GES, o ASO é gerado automaticamente com os riscos e exames daquele grupo.
-
-Fluxo final:
-```
-Empresa → PCMSO → GHE/GES → Funções + Riscos + Exames
-                            ↑
-                       Colaborador vinculado
-                            ↓
-                  RH escolhe colaborador + tipo de exame
-                            ↓
-                     ASO gerado automaticamente (PDF)
-```
+Esse plano é grande e arriscado — toca em RLS de praticamente todas as tabelas, storage, Edge Functions e auth. Vou executar em **fases sequenciais**, cada uma com migration/edit isolada para você revisar antes de seguir. Nada de fazer tudo numa única migration "big bang" (alto risco de quebrar telas em produção).
 
 ---
 
-## 1. Banco de dados (migration)
+### Fase 1 — Auditoria e correção de RLS (itens 1 + 3 do scanner)
+Achados conhecidos:
+- `aso_numeracao`: política `USING (true) WITH CHECK (true)` para `authenticated` → **vazamento de numeração ASO entre empresas**.
+- Múltiplas políticas com `USING (true)` em INSERT/UPDATE/DELETE (scanner aponta padrão `rls_policy_always_true`).
+- `SECURITY DEFINER` functions executáveis por `anon` e `authenticated` sem necessidade (ex.: `gerar_numero_aso`, `get_consolidated_epi_stock`, `transfer_*`, `finalizar_conferencia_estoque`, `get_filial_epis`, `resolve_contrato_target_for_entrega`, etc.).
 
-Criar/ajustar tabelas no Lovable Cloud:
+Ações:
+1. Listar todas as policies com `qual='true'` ou `with_check='true'` via `pg_policies` e gerar migration que substitui por filtro `is_in_user_company_tree(auth.uid(), empresa_id) OR is_super_admin(auth.uid()) OR is_principal(auth.uid())`.
+2. `aso_numeracao`: política específica scoped por `empresa_id` (somente users da própria empresa podem ler/escrever).
+3. `REVOKE EXECUTE ... FROM anon` em todas as SECURITY DEFINER (mantém em `authenticated` apenas as que precisam ser chamadas pelo client; resto fica só para `service_role`).
+4. Adicionar validação `auth.uid() IS NOT NULL` no topo das funções DEFINER expostas.
 
-- **`pcmso`** — cabeçalho do PCMSO da empresa (título, datas, médico responsável, status).
-- **`ghe_ges`** — código, nome, setor, descrição, vinculado a `empresa_id` + `pcmso_id`.
-- **`ghe_funcoes`** — funções dentro do GHE (nome, CBO, descrição).
-- **`ghe_riscos`** — grupo (físico/químico/biológico/ergonômico/acidente/outro), tipo de agente, perigo/fonte, exposição, lesões, texto resumido para ASO, `aparece_aso`.
-- **`ghe_exames`** — código, nome, tipo (clínico/complementar), flags por tipo ocupacional (admissional, periódico, retorno, mudança risco, mudança função, demissional), `aparece_aso`.
-- **`funcionarios`** — adicionar coluna `ghe_id` (FK para `ghe_ges`).
-- **`asos`** — adicionar `ghe_id`, `pcmso_id`, `riscos_snapshot jsonb`, `exames_snapshot jsonb` para preservar histórico imutável.
+### Fase 2 — Storage buckets (item 2)
+Buckets públicos: `logos`, `inspecoes`, `conformidades`, `fotos-reconhecimento`, `videos-treinamento`, `empresa-assets`.
+- Mantém `public=true` (necessário para `<img src>` via Drive proxy e CDN), mas **remove política ampla `SELECT ON storage.objects`** que permite *listar* arquivos.
+- Mantém SELECT por path/objeto individual (acesso direto à URL continua), bloqueia `list()`.
+- Policies de INSERT/UPDATE/DELETE: exigir `auth.uid() IS NOT NULL` e prefixo de path scoped por `empresa_id`.
 
-Todas com RLS por `empresa_id`, GRANTs para `authenticated` + `service_role`, e função `has_role` para distinguir Admin/TST × RH.
+### Fase 3 — CORS das Edge Functions (item 4)
+Substituir `Access-Control-Allow-Origin: *` por allowlist em **todas** as functions (`cleanup-storage`, `gdrive-proxy`, `gdrive-storage`, `gdrive-token`, `nr-chatbot`, `scheduled-backup`, `create-user`, `update-profile`, `analyze-certificate`, `consulta-ca`, `migrate-to-drive`, `parse-pcmso`, `sugerir-nr`).
+Allowlist: `https://safetysolucoes.com`, `https://www.safetysolucoes.com`, `https://episafety.lovable.app`, e wildcard regex para `*.lovable.app` preview. Helper `resolveCors(req)` compartilhado por cópia em cada function (sem subpastas).
 
----
+### Fase 4 — MFA/2FA obrigatório (item 5)
+- Habilitar TOTP MFA via `configure_auth`.
+- Tabela `mfa_enforcement` (lista de roles que exigem MFA: `super_admin`, `principal`).
+- Trigger/edge guard: ao logar, se role exige MFA e `aal != 'aal2'`, redireciona para `/setup-mfa`.
+- Página `/setup-mfa` com QR code (`supabase.auth.mfa.enroll`).
+- Bloqueio em `AuthContext` para rotas sensíveis até `aal2`.
 
-## 2. Nova área: "Configuração PCMSO / GHE"
+### Fase 5 — Audit log imutável (item 6)
+- Tabela `audit_log` (`id`, `user_id`, `user_email`, `action`, `entity_type`, `entity_id`, `empresa_id`, `old_data jsonb`, `new_data jsonb`, `ip`, `user_agent`, `created_at`).
+- RLS: somente `super_admin` lê; `INSERT` apenas via SECURITY DEFINER trigger; **UPDATE/DELETE bloqueados** (policy `USING (false)`) — append-only.
+- Triggers `AFTER INSERT/UPDATE/DELETE` em: `profiles`, `usuarios_liberados`, `user_roles`, `usuario_empresas`, `entregas`, `funcionarios`, `empresa_config`, `contratos`, `faturas`, `epis`, `contrato_epis`.
+- Login/logout logado via edge function `log-auth-event` chamada no `onAuthStateChange`.
 
-Adicionar aba **"PCMSO / GHE"** no `AsoModule.tsx` (apenas para perfil Admin/TST, não para RH).
+### Fase 6 — Cache React Query / localStorage (item 7)
+Já fizemos parte (scope por uid em `offlineStorage.ts`). Falta:
+- `AuthContext.signOut`: chamar `queryClient.clear()` + `clearAllCachedData()` + `clearAllOfflineViewCache()` + `indexedDB` limpeza (`idb-keyval clear`).
+- `onAuthStateChange('SIGNED_IN')`: se `user.id !== previousScope`, `queryClient.clear()` antes de hidratar.
+- `EmpresaQuerySync`: ao trocar `active_empresa_id`, `queryClient.invalidateQueries()` em todas as keys tenant-scoped.
 
-### 2.1 Lista de GHE/GES (cards)
-Cada card mostra: código, setor, nº de funções, nº de riscos, nº de exames, nº de colaboradores, status (Completo / Pendente / Sem riscos).
+### Fase 7 — CSP no frontend (item 8)
+- Meta `<meta http-equiv="Content-Security-Policy">` em `index.html` com:
+  - `default-src 'self'`
+  - `script-src 'self' 'unsafe-inline' https://cdn.gpteng.co` (Lovable script)
+  - `connect-src 'self' https://*.supabase.co https://*.googleapis.com https://generativelanguage.googleapis.com wss://*.supabase.co`
+  - `img-src 'self' data: blob: https:`
+  - `style-src 'self' 'unsafe-inline'` (Tailwind/shadcn precisam)
+  - `frame-ancestors 'none'`
+- Modo `report-only` inicialmente para não quebrar.
 
-### 2.2 Form de GHE/GES
-Empresa, PCMSO vinculado, código, nome, setor, descrição, status.
+### Fase 8 — Rate limiting Edge Functions (item 9)
+**Nota:** o backend não tem primitiva padrão para rate limit. Implementação ad-hoc:
+- Tabela `edge_rate_limit (key text, window_start timestamptz, count int, primary key(key, window_start))`.
+- Helper `checkRateLimit(req, { key, limit, windowSec })` que faz `INSERT ... ON CONFLICT DO UPDATE`.
+- Aplicar em: `create-user` (5/min/IP), `nr-chatbot` (30/min/user), `consulta-ca` (60/min/user), `analyze-certificate` (20/min/user), `parse-pcmso` (10/min/user).
 
-### 2.3 Drawer/Dialog com 4 abas internas
-1. **Funções** — CRUD + colagem em massa (uma função por linha).
-2. **Riscos do PCMSO** — CRUD agrupado por grupo de risco; quando vazio, exibe "N.A.".
-3. **Exames do PCMSO** — CRUD com flags por tipo ocupacional.
-4. **Colaboradores vinculados** — lista + ação para vincular colaboradores ao GHE.
+Por isso esse item exige sua confirmação explícita (regra do sistema).
 
-### 2.4 Importação rápida
-Botão "Colar do PCMSO" que aceita texto e cria GHE + funções + riscos.
+### Fase 9 — Leaked password protection
+Habilitar via `configure_auth` (`password_hibp_enabled: true`). Item bônus do scanner.
 
-### 2.5 Seed inicial
-Migration insere os GHEs do PCMSO Calçados (PCP, RH/SESMT, Costura, Costura 4.1, Fusionadoria, Corte de Viés, Bordado, Eletricista, etc.) como exemplo para a empresa do usuário (opcional via botão "Carregar exemplos").
-
----
-
-## 3. Cadastro de colaborador
-
-Em `Funcionarios.tsx`, adicionar campo obrigatório **GHE/GES** (Select carregado dos `ghe_ges` da empresa). A função deve pertencer ao GHE escolhido (validação no front).
-
----
-
-## 4. Refatorar "Novo ASO" (AsoNovo.tsx)
-
-Simplificar para o RH:
-
-1. Buscar colaborador (autocomplete).
-2. Mostrar cartão com nome, CPF, função, setor, **GHE/GES vinculado**.
-3. Selecionar tipo de exame ocupacional.
-4. Sistema **carrega automaticamente** (e exibe em readonly para RH):
-   - Riscos do GHE (agrupados, com N.A. nos grupos vazios).
-   - Exames previstos para aquele tipo de exame.
-   - Médico padrão e local.
-5. Campos editáveis: data, validade, conclusão (apto / inapto / com restrições / NR-35).
-6. Validações antes de gerar:
-   - Colaborador tem GHE/GES.
-   - GHE tem ao menos uma função.
-   - GHE tem riscos cadastrados ou N.A. definido.
-   - GHE tem exames.
-7. Ao salvar: grava `riscos_snapshot` e `exames_snapshot` no ASO (histórico imutável).
-
-Para perfil Admin/TST manter possibilidade de editar manualmente riscos/exames do ASO antes de gerar.
-
----
-
-## 5. PDF do ASO (asoPdf.ts)
-
-Atualizar layout para incluir o campo **GHE/GES**, listar riscos por grupo do snapshot, listar exames do snapshot, manter QR code de verificação e assinaturas. Layout conforme seção 12 do prompt.
+### Fase 10 — Relatório
+Documento `SECURITY_REPORT_2026-06-20.md` em `/mnt/documents/` com:
+- Diff de policies (antes/depois)
+- Lista de SECURITY DEFINER endurecidas
+- Buckets e seu novo estado
+- CORS allowlist final
+- Cobertura de audit triggers
+- Riscos residuais (ex.: SUPABASE_SERVICE_ROLE_KEY exposto em edge functions — mitigação: scoping)
 
 ---
 
-## 6. Permissões
+### Ordem de execução proposta (commits separados):
+1. Fase 1 RLS + DEFINER (migration grande, alto impacto — revisar com cuidado)
+2. Fase 2 Storage
+3. Fase 3 CORS
+4. Fase 6 Cache (puramente frontend, baixo risco)
+5. Fase 7 CSP report-only
+6. Fase 5 Audit log
+7. Fase 4 MFA (requer UI nova)
+8. Fase 8 Rate limit *(pede confirmação)*
+9. Fase 9 HIBP
+10. Fase 10 Relatório
 
-Atualizar `src/lib/permissions.ts`:
-- `aso:configurar_pcmso` — apenas Admin/TST (Super Admin já tem tudo).
-- RH continua só com `rh` (visualizar/baixar) + agora também `aso:emitir` se o usuário quiser que RH emita (a definir; por padrão segue só consulta).
+### Confirmações que preciso de você antes de começar:
 
-Esconder a aba "PCMSO / GHE" quando o usuário não tiver `aso:configurar_pcmso`.
+1. **MFA obrigatório**: bloqueio total (usuário não consegue usar nada sem TOTP configurado) ou *grace period* de 7 dias? Recomendo grace period para não travar você agora.
+2. **Rate limiting** (item 9): autorizo a implementação ad-hoc com tabela Postgres? (regra do sistema exige confirmação).
+3. **CORS allowlist**: além de `safetysolucoes.com`, `www.safetysolucoes.com`, `episafety.lovable.app` e previews `*.lovable.app`, tem algum outro domínio (mobile Capacitor `capacitor://localhost`, app Android empacotado, etc.)?
+4. **CSP**: posso começar em `Content-Security-Policy-Report-Only` por 1 semana antes de aplicar enforced? Reduz risco de quebrar tela em produção.
 
----
-
-## 7. Histórico do ASO no colaborador
-
-O componente `AsoHistorico.tsx` já existe — ajustar para mostrar GHE/GES do snapshot quando disponível.
-
----
-
-## Arquivos novos / alterados
-
-**Novos**
-- `supabase/migrations/<ts>_pcmso_ghe.sql`
-- `src/pages/aso/PcmsoGhe.tsx` (lista de GHEs)
-- `src/pages/aso/PcmsoGheForm.tsx` (dialog com 4 abas)
-- `src/components/aso/GheFuncoesTab.tsx`
-- `src/components/aso/GheRiscosTab.tsx`
-- `src/components/aso/GheExamesTab.tsx`
-- `src/components/aso/GheColaboradoresTab.tsx`
-- `src/lib/asoFromGhe.ts` (helpers para montar riscos/exames a partir do GHE + tipo de exame)
-
-**Alterados**
-- `src/pages/aso/AsoModule.tsx` — nova aba "PCMSO / GHE"
-- `src/pages/aso/AsoNovo.tsx` — fluxo automático via GHE
-- `src/pages/Funcionarios.tsx` — campo `ghe_id` no form
-- `src/lib/asoPdf.ts` — incluir GHE/GES e usar snapshots
-- `src/lib/permissions.ts` — permissão `aso:configurar_pcmso`
-- `src/components/aso/AsoHistorico.tsx` — exibir GHE do snapshot
-
----
-
-## Confirmações antes de implementar
-
-1. **Seed de exemplo:** crio um botão "Carregar GHEs de exemplo (PCMSO Calçados)" que insere os 8 GHEs do prompt, ou começo a base vazia?
-2. **RH pode emitir ASO ou apenas consultar?** Pelo prompt antigo, RH só consulta. Neste prompt aparece "RH escolhe colaborador e gera ASO". Mantenho **RH = somente consulta** e crio nova permissão `aso:emitir` para TST/Admin? Ou habilito RH para emitir também?
-3. **Compatibilidade:** mantenho as tabelas atuais `aso_setores`, `aso_funcoes`, `aso_riscos_funcao` (criadas antes) ou removo já que agora tudo passa por GHE?
-
-Sem essas respostas, vou assumir: (1) botão de seed disponível, (2) RH continua só consulta + criar permissão `aso:emitir` para Admin/TST, (3) **manter** tabelas antigas para não quebrar nada já cadastrado, mas o novo fluxo usa exclusivamente as tabelas GHE.
+Assim que você responder essas 4, começo pela **Fase 1 (RLS)** que é a mais crítica.
