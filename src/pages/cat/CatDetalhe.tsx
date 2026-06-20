@@ -58,6 +58,7 @@ export default function CatDetalhe() {
   const [cancelMotivo, setCancelMotivo] = useState("");
   const [novaCategoria, setNovaCategoria] = useState<string>("outros");
   const [uploading, setUploading] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   const { data: cat, isLoading, error } = useQuery({
     queryKey: ["cat-detalhe", id],
