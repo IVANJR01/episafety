@@ -41,6 +41,7 @@ const STEPS = [
   "Afastamento/Óbito",
   "Testemunhas",
   "Anexos",
+  "Dados eSocial S-2210",
   "Revisão",
 ] as const;
 
