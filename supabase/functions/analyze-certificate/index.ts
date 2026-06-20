@@ -2,12 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
+import { resolveCors } from "../_shared/cors.ts";
 function buildSystemPrompt(requisitosContext: string, funcionarioContext: string): string {
   return `=== PERSONAGEM ===
 Atue como um Engenheiro de Qualidade e Auditor de Conformidade de SST padrão Bernhoeft — a maior empresa de auditoria de documentação de SST do Brasil. Sua missão é validar certificados de treinamento para a contratante Neoenergia com TOLERÂNCIA ZERO para erros.
@@ -254,6 +249,7 @@ function extractAnalysis(aiResult: any): any {
 }
 
 serve(async (req) => {
+  const corsHeaders = resolveCors(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
