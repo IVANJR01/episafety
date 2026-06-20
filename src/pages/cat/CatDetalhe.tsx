@@ -33,6 +33,7 @@ import {
   Trash2,
 } from "lucide-react";
 import MfaActionButton from "@/components/cat/MfaActionButton";
+import CatEsocialCard from "@/components/cat/CatEsocialCard";
 import {
   CatRow,
   STATUS_LABEL,
@@ -621,21 +622,9 @@ export default function CatDetalhe() {
       </Card>
 
 
-      {/* eSocial (stub) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Upload className="h-4 w-4" /> eSocial S-2210
-            <Badge variant="outline" className="text-[10px] ml-2">Fase 2 — envio real ainda não disponível</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm grid grid-cols-2 gap-2">
-          <Info label="Status eSocial" value={cat.esocial_status || "Não enviado"} />
-          <Info label="Recibo" value={cat.esocial_recibo} />
-          <Info label="Protocolo" value={cat.esocial_protocolo} />
-          <Info label="Enviado em" value={cat.esocial_enviado_em ? new Date(cat.esocial_enviado_em).toLocaleString("pt-BR") : null} />
-        </CardContent>
-      </Card>
+      {/* eSocial S-2210 — validação técnica (stub) */}
+      <CatEsocialCard catId={cat.id} empresaId={cat.empresa_id} />
+
 
       {/* Histórico */}
       <Card>
