@@ -200,6 +200,7 @@ function ProtectedRoute() {
         <Route path="/pgr/novo" element={<PgrNovo />} />
         <Route path="/pgr/:id" element={<PgrDetalhe />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
+        <Route path="/pgr/validar/:id" element={<PgrValidar />} />
 
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
