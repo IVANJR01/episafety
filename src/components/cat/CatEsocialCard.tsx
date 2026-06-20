@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import {
   AlertTriangle, CheckCircle2, FileCode2, Loader2, Download, Eye,
-  ShieldAlert, Info, ListChecks, RefreshCcw,
+  ShieldAlert, Info, ListChecks, RefreshCcw, Settings2,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import {
   gerarSalvarXmlS2210, validarXmlS2210, iniciarRetificacaoS2210,
