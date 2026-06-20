@@ -44,8 +44,10 @@ async function getDriveToken(folder: string): Promise<TokenResponse> {
 export async function uploadToDrive(
   file: File | Blob,
   folder: string,
-  fileName?: string
+  fileName?: string,
+  options?: { makePublic?: boolean }
 ): Promise<DriveUploadResult> {
+  const makePublic = options?.makePublic !== false; // default true (backward compat)
   // Step 1: Get token + folder ID from lightweight edge function (~1KB network)
   const { accessToken, folderId } = await getDriveToken(folder);
 
@@ -80,19 +82,23 @@ export async function uploadToDrive(
     throw new Error(`Drive upload failed: ${uploadData?.error?.message || JSON.stringify(uploadData)}`);
   }
 
-  // Step 3: Set file as public (small request)
-  await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ role: "reader", type: "anyone" }),
-  });
+  // Step 3: (opcional) Set file as public — desligado para evidências sigilosas (PGR)
+  if (makePublic) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ role: "reader", type: "anyone" }),
+    });
+  }
 
   return {
     fileId: uploadData.id,
-    publicUrl: `https://drive.google.com/uc?export=view&id=${uploadData.id}`,
+    publicUrl: makePublic
+      ? `https://drive.google.com/uc?export=view&id=${uploadData.id}`
+      : `https://drive.google.com/file/d/${uploadData.id}/view`,
     webViewLink: uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`,
   };
 }
