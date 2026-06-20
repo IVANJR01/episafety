@@ -47,6 +47,10 @@ import CatNovo from "@/pages/cat/CatNovo";
 import CatDetalhe from "@/pages/cat/CatDetalhe";
 import CatValidar from "@/pages/cat/CatValidar";
 import EsocialConfig from "@/pages/cat/EsocialConfig";
+import PgrModule from "@/pages/pgr/PgrModule";
+import PgrNovo from "@/pages/pgr/PgrNovo";
+import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
+
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
