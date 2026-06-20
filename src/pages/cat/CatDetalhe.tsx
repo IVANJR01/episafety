@@ -505,7 +505,7 @@ export default function CatDetalhe() {
             <p className="text-sm text-muted-foreground">Nenhum anexo enviado.</p>
           ) : (
             <ul className="space-y-1 text-sm">
-              {(anexos as any[]).map((a) => (
+              {(anexos as any[]).filter((a) => a.categoria !== "pdf_cat").map((a) => (
                 <li key={a.id} className="flex items-center gap-2 py-1 border-b last:border-0">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium truncate flex-1">{a.nome_arquivo}</span>
