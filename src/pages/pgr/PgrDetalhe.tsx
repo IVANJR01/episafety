@@ -16,6 +16,7 @@ import { ArrowLeft, Pencil, GitBranch, Send, FileText, ListChecks } from "lucide
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import InventarioTab from "@/components/pgr/InventarioTab";
+import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
 import {
   PgrDocumento, PgrRevisao, PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus, isEditavel,
 } from "@/lib/pgrTypes";
@@ -179,12 +180,8 @@ export default function PgrDetalhe() {
           <InventarioTab pgrId={id!} empresaId={doc.empresa_id} status={status} canEdit={perms.canEdit} />
         </TabsContent>
 
-        <TabsContent value="acoes">
-          <Card><CardContent className="p-8 text-center text-muted-foreground">
-            <ListChecks className="h-10 w-10 mx-auto mb-2 opacity-30" />
-            Plano de Ação — disponível na Parte 4.
-          </CardContent></Card>
-        </TabsContent>
+          <PlanoAcaoTab pgrId={id!} empresaId={doc.empresa_id} pgrVersao={doc.versao}
+            status={status} canEdit={perms.canEdit} pgr={doc} />
 
         <TabsContent value="pdf">
           <Card><CardContent className="p-8 text-center text-muted-foreground">
