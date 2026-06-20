@@ -31,6 +31,7 @@ import {
   CatTipoAcidente,
   CatEmitenteTipo,
 } from "@/lib/catTypes";
+import CatEsocialStep from "@/components/cat/CatEsocialStep";
 
 const STEPS = [
   "Dados Iniciais",
