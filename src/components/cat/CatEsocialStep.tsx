@@ -56,7 +56,10 @@ export default function CatEsocialStep({ catId, empresaId, cat }: Props) {
   const mfa = useMfaStatus();
 
   const canEdit =
-    isSuperAdmin || isPrincipal || hasPermission(modulosPermitidos, "cat", "esocial");
+    isSuperAdmin ||
+    isPrincipal ||
+    modulosPermitidos.includes("cat:esocial") ||
+    modulosPermitidos.includes("cat");
 
   const [indRetif, setIndRetif] = useState<"original" | "retificacao">("original");
   const [nrReciboOrigem, setNrReciboOrigem] = useState("");
