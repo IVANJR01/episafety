@@ -4355,6 +4355,15 @@ export type Database = {
         Args: { _key: string; _limit: number; _window_seconds: number }
         Returns: boolean
       }
+      esocial_registrar_xml: {
+        Args: {
+          _evento_id: string
+          _hash: string
+          _versao_layout?: string
+          _xml: string
+        }
+        Returns: Json
+      }
       finalizar_conferencia_estoque: {
         Args: {
           _contrato_id: string
