@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import {
   AlertTriangle, CheckCircle2, FileCode2, Loader2, Download, Eye,
-  ShieldAlert, Info, ListChecks, RefreshCcw,
+  ShieldAlert, Info, ListChecks, RefreshCcw, Settings2,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import {
   gerarSalvarXmlS2210, validarXmlS2210, iniciarRetificacaoS2210,
@@ -216,6 +217,9 @@ export default function CatEsocialCard({ catId }: Props) {
               Iniciar retificação
             </MfaActionButton>
           )}
+          <Button asChild size="sm" variant="ghost" className="ml-auto">
+            <Link to="/cat/esocial/config"><Settings2 className="h-4 w-4 mr-1" /> Configurar eSocial</Link>
+          </Button>
         </div>
 
         <Dialog open={openXml} onOpenChange={setOpenXml}>

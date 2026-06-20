@@ -2337,9 +2337,11 @@ export type Database = {
           created_by: string | null
           empresa_id: string
           id: string
+          nr_insc: string | null
           observacoes: string | null
           proc_emi: number
           tp_amb: Database["public"]["Enums"]["esocial_tp_amb"]
+          tp_insc: number | null
           updated_at: string
           updated_by: string | null
           ver_proc: string
@@ -2353,9 +2355,11 @@ export type Database = {
           created_by?: string | null
           empresa_id: string
           id?: string
+          nr_insc?: string | null
           observacoes?: string | null
           proc_emi?: number
           tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
+          tp_insc?: number | null
           updated_at?: string
           updated_by?: string | null
           ver_proc?: string
@@ -2369,9 +2373,11 @@ export type Database = {
           created_by?: string | null
           empresa_id?: string
           id?: string
+          nr_insc?: string | null
           observacoes?: string | null
           proc_emi?: number
           tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
+          tp_insc?: number | null
           updated_at?: string
           updated_by?: string | null
           ver_proc?: string
@@ -4392,6 +4398,7 @@ export type Database = {
         Args: { _key: string; _limit: number; _window_seconds: number }
         Returns: boolean
       }
+      esocial_config_upsert: { Args: { _payload: Json }; Returns: Json }
       esocial_iniciar_retificacao: {
         Args: { _evento_id: string }
         Returns: Json
