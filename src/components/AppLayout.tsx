@@ -38,8 +38,10 @@ const gestaoDocItems: NavItem[] = [
   { path: "/aso", label: "Gestão de ASO", icon: FileText, moduleKey: "aso" },
   { path: "/rh/asos", label: "Portal RH — ASO", icon: FileText, moduleKey: "rh" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
+  { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: ShieldCheck, moduleKey: "pgr" },
   { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "treinamentos" },
 ];
+
 
 const afterCadastroItems: NavItem[] = [
   { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
