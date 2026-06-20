@@ -33,6 +33,7 @@ import {
   Trash2,
 } from "lucide-react";
 import MfaActionButton from "@/components/cat/MfaActionButton";
+import CatEsocialCard from "@/components/cat/CatEsocialCard";
 import {
   CatRow,
   STATUS_LABEL,
