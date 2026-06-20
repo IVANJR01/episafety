@@ -3732,6 +3732,79 @@ export type Database = {
           },
         ]
       }
+      pgr_acao_evidencias: {
+        Row: {
+          acao_id: string
+          created_at: string
+          descricao: string | null
+          drive_file_id: string
+          drive_path: string | null
+          drive_view_link: string | null
+          empresa_id: string
+          id: string
+          mime_type: string | null
+          nome_arquivo: string
+          pgr_id: string
+          tamanho_bytes: number | null
+          uploaded_by: string | null
+          uploaded_by_email: string | null
+        }
+        Insert: {
+          acao_id: string
+          created_at?: string
+          descricao?: string | null
+          drive_file_id: string
+          drive_path?: string | null
+          drive_view_link?: string | null
+          empresa_id: string
+          id?: string
+          mime_type?: string | null
+          nome_arquivo: string
+          pgr_id: string
+          tamanho_bytes?: number | null
+          uploaded_by?: string | null
+          uploaded_by_email?: string | null
+        }
+        Update: {
+          acao_id?: string
+          created_at?: string
+          descricao?: string | null
+          drive_file_id?: string
+          drive_path?: string | null
+          drive_view_link?: string | null
+          empresa_id?: string
+          id?: string
+          mime_type?: string | null
+          nome_arquivo?: string
+          pgr_id?: string
+          tamanho_bytes?: number | null
+          uploaded_by?: string | null
+          uploaded_by_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_acao_evidencias_acao_id_fkey"
+            columns: ["acao_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_acoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pgr_acao_evidencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pgr_acao_evidencias_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pgr_acao_historico: {
         Row: {
           acao_id: string
@@ -3794,6 +3867,7 @@ export type Database = {
       }
       pgr_acoes: {
         Row: {
+          concluida_por: string | null
           created_at: string
           created_by: string | null
           custo_estimado: number | null
@@ -3801,10 +3875,14 @@ export type Database = {
           descricao: string
           empresa_id: string
           evidencia_url: string | null
+          how: string | null
           id: string
           inventario_item_id: string | null
+          motivo_cancelamento: string | null
+          motivo_prorrogacao: string | null
           pgr_id: string
           prazo: string | null
+          prazo_original: string | null
           prioridade: number
           responsavel_id: string | null
           responsavel_nome: string | null
@@ -3812,8 +3890,12 @@ export type Database = {
           tipo: Database["public"]["Enums"]["pgr_medida_tipo"]
           updated_at: string
           updated_by: string | null
+          what: string | null
+          where_local: string | null
+          why: string | null
         }
         Insert: {
+          concluida_por?: string | null
           created_at?: string
           created_by?: string | null
           custo_estimado?: number | null
@@ -3821,10 +3903,14 @@ export type Database = {
           descricao: string
           empresa_id: string
           evidencia_url?: string | null
+          how?: string | null
           id?: string
           inventario_item_id?: string | null
+          motivo_cancelamento?: string | null
+          motivo_prorrogacao?: string | null
           pgr_id: string
           prazo?: string | null
+          prazo_original?: string | null
           prioridade?: number
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -3832,8 +3918,12 @@ export type Database = {
           tipo?: Database["public"]["Enums"]["pgr_medida_tipo"]
           updated_at?: string
           updated_by?: string | null
+          what?: string | null
+          where_local?: string | null
+          why?: string | null
         }
         Update: {
+          concluida_por?: string | null
           created_at?: string
           created_by?: string | null
           custo_estimado?: number | null
@@ -3841,10 +3931,14 @@ export type Database = {
           descricao?: string
           empresa_id?: string
           evidencia_url?: string | null
+          how?: string | null
           id?: string
           inventario_item_id?: string | null
+          motivo_cancelamento?: string | null
+          motivo_prorrogacao?: string | null
           pgr_id?: string
           prazo?: string | null
+          prazo_original?: string | null
           prioridade?: number
           responsavel_id?: string | null
           responsavel_nome?: string | null
@@ -3852,6 +3946,9 @@ export type Database = {
           tipo?: Database["public"]["Enums"]["pgr_medida_tipo"]
           updated_at?: string
           updated_by?: string | null
+          what?: string | null
+          where_local?: string | null
+          why?: string | null
         }
         Relationships: [
           {
@@ -5056,6 +5153,16 @@ export type Database = {
         Args: { _motivo: string; _pgr_id: string }
         Returns: Json
       }
+      pgr_acao_set_status: {
+        Args: {
+          _acao_id: string
+          _data_conclusao?: string
+          _motivo?: string
+          _novo_prazo?: string
+          _novo_status: string
+        }
+        Returns: Json
+      }
       pgr_classificar_risco: {
         Args: { _prob: number; _sev: number }
         Returns: Database["public"]["Enums"]["pgr_risco_classe"]
@@ -5065,6 +5172,7 @@ export type Database = {
         Args: { _dry_run?: boolean; _pgr_id: string }
         Returns: Json
       }
+      pgr_marcar_atrasadas: { Args: { _pgr_id: string }; Returns: number }
       pgr_publicar: { Args: { _pgr_id: string }; Returns: Json }
       resolve_contrato_target_for_entrega: {
         Args: {
