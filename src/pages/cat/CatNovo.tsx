@@ -809,8 +809,13 @@ export default function CatNovo() {
             </div>
           )}
 
-          {/* STEP 8 — Revisão */}
+          {/* STEP 8 — Dados eSocial S-2210 */}
           {step === 8 && (
+            <CatEsocialStep catId={editId || null} empresaId={empresaId} />
+          )}
+
+          {/* STEP 9 — Revisão */}
+          {step === 9 && (
             <div className="space-y-3 text-sm">
               <div className="rounded-md bg-muted p-3 grid grid-cols-2 gap-2">
                 <div><strong>Tipo:</strong> {TIPO_LABEL[form.tipo_cat]}</div>
