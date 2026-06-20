@@ -18,6 +18,8 @@ import MfaActionButton from "@/components/cat/MfaActionButton";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
+import PgrChecklistTab from "@/components/pgr/PgrChecklistTab";
+import PgrResumoCards from "@/components/pgr/PgrResumoCards";
 import {
   PgrDocumento, PgrRevisao, PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus, isEditavel,
 } from "@/lib/pgrTypes";
@@ -118,13 +120,16 @@ export default function PgrDetalhe() {
         </div>
       </div>
 
+      <PgrResumoCards pgr={doc} />
+
       <Tabs defaultValue="resumo">
-        <TabsList>
+        <TabsList className="flex flex-wrap">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
           <TabsTrigger value="inventario">Inventário</TabsTrigger>
           <TabsTrigger value="acoes">Plano de Ação</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
+          <TabsTrigger value="checklist">Checklist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-3">
@@ -193,6 +198,10 @@ export default function PgrDetalhe() {
             canExport={perms.canEdit}
             canAssinar={perms.canEdit}
           />
+        </TabsContent>
+
+        <TabsContent value="checklist">
+          <PgrChecklistTab pgr={doc} />
         </TabsContent>
       </Tabs>
 
