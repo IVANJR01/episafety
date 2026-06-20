@@ -44,6 +44,8 @@ import {
 } from "@/lib/catTypes";
 import { usePermissions } from "@/hooks/usePermissions";
 import { uploadToDrive } from "@/lib/googleDriveStorage";
+import { generateAndUploadCatPdf, logCatPdfDownload } from "@/lib/catPdf";
+import { FileDown, RefreshCw } from "lucide-react";
 
 export default function CatDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -56,6 +58,7 @@ export default function CatDetalhe() {
   const [cancelMotivo, setCancelMotivo] = useState("");
   const [novaCategoria, setNovaCategoria] = useState<string>("outros");
   const [uploading, setUploading] = useState(false);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
 
   const { data: cat, isLoading, error } = useQuery({
     queryKey: ["cat-detalhe", id],
@@ -71,6 +74,15 @@ export default function CatDetalhe() {
     enabled: !!cat?.funcionario_id,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("funcionarios").select("nome, cpf, cargo").eq("id", cat!.funcionario_id).maybeSingle();
+      return data;
+    },
+  });
+
+  const { data: empresa } = useQuery({
+    queryKey: ["cat-detalhe-emp", cat?.empresa_id],
+    enabled: !!cat?.empresa_id,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("empresa_config").select("nome, cnpj").eq("id", cat!.empresa_id).maybeSingle();
       return data;
     },
   });
@@ -274,6 +286,53 @@ export default function CatDetalhe() {
     toast.success("Anexo removido (metadado). Arquivo no Drive permanece.");
   };
 
+  const gerarPdf = async () => {
+    if (cat.status === "cancelada") {
+      toast.error("CAT cancelada — não é possível gerar PDF");
+      return;
+    }
+    setGerandoPdf(true);
+    try {
+      const find = (idVal: string | null) => (catalogo as any[]).find((c) => c.id === idVal)?.descricao;
+      const res = await generateAndUploadCatPdf({
+        cat,
+        empresaNome: empresa?.nome,
+        empresaCnpj: empresa?.cnpj,
+        funcionarioNome: funcionario?.nome,
+        funcionarioCpf: funcionario?.cpf,
+        funcionarioCargo: funcionario?.cargo,
+        situacaoGeradora: find(cat.situacao_geradora_id),
+        agenteCausador: find(cat.agente_causador_id),
+        parteAtingida: find(cat.parte_atingida_id),
+        naturezaLesao: find(cat.natureza_lesao_id),
+        testemunhas: testemunhas as any[],
+        historico: historico as any[],
+        anexos: anexos as any[],
+      });
+      toast.success(`PDF v${res.versao} gerado e enviado ao Google Drive`);
+      qc.invalidateQueries({ queryKey: ["cat-detalhe", id] });
+      qc.invalidateQueries({ queryKey: ["cat-detalhe-anx", id] });
+      qc.invalidateQueries({ queryKey: ["cat-detalhe-hist", id] });
+    } catch (e: any) {
+      toast.error(`Erro ao gerar PDF: ${e?.message || e}`);
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
+
+  const baixarPdf = async () => {
+    const link = (cat as any).pdf_drive_view_link;
+    if (!link) return;
+    try {
+      await logCatPdfDownload(cat.id);
+    } catch (e) {
+      console.warn("[cat-pdf] log download falhou", e);
+    }
+    window.open(link, "_blank", "noopener");
+    qc.invalidateQueries({ queryKey: ["cat-detalhe-hist", id] });
+  };
+
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-[1200px] mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -474,6 +533,50 @@ export default function CatDetalhe() {
           )}
         </CardContent>
       </Card>
+
+      {/* PDF gerencial */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4" /> PDF da CAT (interno)
+            {(cat as any).pdf_versao ? (
+              <Badge variant="outline" className="text-[10px]">v{(cat as any).pdf_versao}</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-[10px]">Não gerado</Badge>
+            )}
+            {(cat as any).pdf_gerado_em && new Date(cat.updated_at).getTime() > new Date((cat as any).pdf_gerado_em).getTime() + 1500 && (
+              <Badge variant="destructive" className="text-[10px]">PDF desatualizado — gerar nova versão</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <Info label="Gerado em" value={(cat as any).pdf_gerado_em ? new Date((cat as any).pdf_gerado_em).toLocaleString("pt-BR") : null} />
+            <Info label="Versão" value={(cat as any).pdf_versao ? `v${(cat as any).pdf_versao}` : null} />
+            <div className="md:col-span-2">
+              <span className="text-xs text-muted-foreground">Hash SHA-256: </span>
+              <span className="font-mono text-[11px] break-all">{(cat as any).pdf_hash || "—"}</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {canEdit && cat.status !== "cancelada" && (
+              <MfaActionButton size="sm" onClick={gerarPdf} disabled={gerandoPdf}>
+                <RefreshCw className={`h-4 w-4 mr-1 ${gerandoPdf ? "animate-spin" : ""}`} />
+                {(cat as any).pdf_versao ? "Gerar nova versão" : "Gerar PDF"}
+              </MfaActionButton>
+            )}
+            {(cat as any).pdf_drive_view_link && (
+              <Button size="sm" variant="outline" onClick={baixarPdf}>
+                <FileDown className="h-4 w-4 mr-1" /> Abrir / baixar PDF
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Documento gerencial interno. Inclui QR Code de validação e hash SHA-256. Não substitui o envio oficial ao eSocial (S-2210), previsto para a Fase 2. Acesso restrito à empresa da CAT.
+          </p>
+        </CardContent>
+      </Card>
+
 
       {/* eSocial (stub) */}
       <Card>
