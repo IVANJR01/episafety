@@ -18,7 +18,15 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
     { key: "esocial", label: "Módulo eSocial S-2210 (gerar/validar/configurar)" },
     { key: "cancelar", label: "Cancelar CAT" },
   ],
+  pgr: [
+    { key: "visualizar", label: "Visualizar PGR" },
+    { key: "editar", label: "Editar PGR / Inventário / Ações" },
+    { key: "revisar", label: "Abrir revisão e publicar PGR" },
+    { key: "assinar", label: "Assinar PGR (assinatura visual + MFA)" },
+    { key: "exportar", label: "Exportar PDF técnico do PGR" },
+  ],
 };
+
 
 export type Acao = typeof ACOES[number]["key"];
 
@@ -35,6 +43,8 @@ export const MODULOS = [
   { key: "inspecoes_se", label: "Inspeções SE", path: "/inspecoes-se" },
   { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
   { key: "cat", label: "CAT — Comunicação de Acidente", path: "/cat" },
+  { key: "pgr", label: "PGR — Gerenciamento de Riscos", path: "/pgr" },
+
   { key: "exames", label: "Exames", path: "/exames" },
   { key: "aso", label: "Gestão e Emissão de ASO", path: "/aso" },
   { key: "rh", label: "Portal RH — ASO", path: "/rh/asos" },
