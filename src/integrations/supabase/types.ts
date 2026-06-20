@@ -3732,6 +3732,521 @@ export type Database = {
           },
         ]
       }
+      pgr_acao_historico: {
+        Row: {
+          acao_id: string
+          campo_alterado: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          motivo: string | null
+          pgr_id: string
+          status_anterior: Database["public"]["Enums"]["pgr_acao_status"] | null
+          status_novo: Database["public"]["Enums"]["pgr_acao_status"] | null
+          user_email: string | null
+          user_id: string | null
+          valor_anterior: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          acao_id: string
+          campo_alterado?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          motivo?: string | null
+          pgr_id: string
+          status_anterior?:
+            | Database["public"]["Enums"]["pgr_acao_status"]
+            | null
+          status_novo?: Database["public"]["Enums"]["pgr_acao_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          acao_id?: string
+          campo_alterado?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          motivo?: string | null
+          pgr_id?: string
+          status_anterior?:
+            | Database["public"]["Enums"]["pgr_acao_status"]
+            | null
+          status_novo?: Database["public"]["Enums"]["pgr_acao_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_acao_historico_acao_id_fkey"
+            columns: ["acao_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_acoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pgr_acoes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          custo_estimado: number | null
+          data_conclusao: string | null
+          descricao: string
+          empresa_id: string
+          evidencia_url: string | null
+          id: string
+          inventario_item_id: string | null
+          pgr_id: string
+          prazo: string | null
+          prioridade: number
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          status: Database["public"]["Enums"]["pgr_acao_status"]
+          tipo: Database["public"]["Enums"]["pgr_medida_tipo"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          custo_estimado?: number | null
+          data_conclusao?: string | null
+          descricao: string
+          empresa_id: string
+          evidencia_url?: string | null
+          id?: string
+          inventario_item_id?: string | null
+          pgr_id: string
+          prazo?: string | null
+          prioridade?: number
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: Database["public"]["Enums"]["pgr_acao_status"]
+          tipo?: Database["public"]["Enums"]["pgr_medida_tipo"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          custo_estimado?: number | null
+          data_conclusao?: string | null
+          descricao?: string
+          empresa_id?: string
+          evidencia_url?: string | null
+          id?: string
+          inventario_item_id?: string | null
+          pgr_id?: string
+          prazo?: string | null
+          prioridade?: number
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: Database["public"]["Enums"]["pgr_acao_status"]
+          tipo?: Database["public"]["Enums"]["pgr_medida_tipo"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_acoes_inventario_item_id_fkey"
+            columns: ["inventario_item_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_inventario_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pgr_acoes_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pgr_assinaturas: {
+        Row: {
+          assinado_em: string
+          empresa_id: string
+          id: string
+          ip_origem: string | null
+          mfa_verificado: boolean
+          observacao: string | null
+          pdf_hash: string
+          pdf_versao: number
+          pgr_id: string
+          responsavel_nome: string
+          responsavel_registro: string | null
+          responsavel_user_id: string | null
+        }
+        Insert: {
+          assinado_em?: string
+          empresa_id: string
+          id?: string
+          ip_origem?: string | null
+          mfa_verificado?: boolean
+          observacao?: string | null
+          pdf_hash: string
+          pdf_versao: number
+          pgr_id: string
+          responsavel_nome: string
+          responsavel_registro?: string | null
+          responsavel_user_id?: string | null
+        }
+        Update: {
+          assinado_em?: string
+          empresa_id?: string
+          id?: string
+          ip_origem?: string | null
+          mfa_verificado?: boolean
+          observacao?: string | null
+          pdf_hash?: string
+          pdf_versao?: number
+          pgr_id?: string
+          responsavel_nome?: string
+          responsavel_registro?: string | null
+          responsavel_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_assinaturas_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pgr_documentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_emissao: string | null
+          data_vigencia_fim: string | null
+          data_vigencia_inicio: string | null
+          documento_origem_id: string | null
+          empresa_id: string
+          escopo: string | null
+          id: string
+          metodologia_avaliacao: string | null
+          observacoes: string | null
+          pdf_drive_file_id: string | null
+          pdf_drive_view_link: string | null
+          pdf_gerado_em: string | null
+          pdf_hash: string | null
+          resp_tec_nome: string | null
+          resp_tec_registro: string | null
+          responsavel_tecnico_id: string | null
+          status: Database["public"]["Enums"]["pgr_status"]
+          unidade_id: string | null
+          updated_at: string
+          updated_by: string | null
+          versao: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          data_vigencia_fim?: string | null
+          data_vigencia_inicio?: string | null
+          documento_origem_id?: string | null
+          empresa_id: string
+          escopo?: string | null
+          id?: string
+          metodologia_avaliacao?: string | null
+          observacoes?: string | null
+          pdf_drive_file_id?: string | null
+          pdf_drive_view_link?: string | null
+          pdf_gerado_em?: string | null
+          pdf_hash?: string | null
+          resp_tec_nome?: string | null
+          resp_tec_registro?: string | null
+          responsavel_tecnico_id?: string | null
+          status?: Database["public"]["Enums"]["pgr_status"]
+          unidade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          data_vigencia_fim?: string | null
+          data_vigencia_inicio?: string | null
+          documento_origem_id?: string | null
+          empresa_id?: string
+          escopo?: string | null
+          id?: string
+          metodologia_avaliacao?: string | null
+          observacoes?: string | null
+          pdf_drive_file_id?: string | null
+          pdf_drive_view_link?: string | null
+          pdf_gerado_em?: string | null
+          pdf_hash?: string | null
+          resp_tec_nome?: string | null
+          resp_tec_registro?: string | null
+          responsavel_tecnico_id?: string | null
+          status?: Database["public"]["Enums"]["pgr_status"]
+          unidade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_documentos_documento_origem_id_fkey"
+            columns: ["documento_origem_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pgr_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pgr_documentos_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pgr_inventario_itens: {
+        Row: {
+          avaliacao_tipo: Database["public"]["Enums"]["pgr_avaliacao_tipo"]
+          classificacao: Database["public"]["Enums"]["pgr_risco_classe"] | null
+          controles_existentes: string[] | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          excedente: boolean | null
+          fonte_geradora: string | null
+          ghe_id: string | null
+          grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
+          id: string
+          justificativa: string | null
+          limite_tolerancia: string | null
+          medicao_unidade: string | null
+          medicao_valor: number | null
+          meio_propagacao: string | null
+          necessita_acao: boolean
+          nivel_risco: number | null
+          perigo_descricao: string
+          perigo_id: string | null
+          pgr_id: string
+          probabilidade: number
+          severidade: number
+          tipo_exposicao: Database["public"]["Enums"]["pgr_exposicao_tipo"]
+          trabalhadores_expostos: number
+          updated_at: string
+        }
+        Insert: {
+          avaliacao_tipo?: Database["public"]["Enums"]["pgr_avaliacao_tipo"]
+          classificacao?: Database["public"]["Enums"]["pgr_risco_classe"] | null
+          controles_existentes?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          excedente?: boolean | null
+          fonte_geradora?: string | null
+          ghe_id?: string | null
+          grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
+          id?: string
+          justificativa?: string | null
+          limite_tolerancia?: string | null
+          medicao_unidade?: string | null
+          medicao_valor?: number | null
+          meio_propagacao?: string | null
+          necessita_acao?: boolean
+          nivel_risco?: number | null
+          perigo_descricao: string
+          perigo_id?: string | null
+          pgr_id: string
+          probabilidade?: number
+          severidade?: number
+          tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
+          trabalhadores_expostos?: number
+          updated_at?: string
+        }
+        Update: {
+          avaliacao_tipo?: Database["public"]["Enums"]["pgr_avaliacao_tipo"]
+          classificacao?: Database["public"]["Enums"]["pgr_risco_classe"] | null
+          controles_existentes?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          excedente?: boolean | null
+          fonte_geradora?: string | null
+          ghe_id?: string | null
+          grupo?: Database["public"]["Enums"]["pgr_perigo_grupo"]
+          id?: string
+          justificativa?: string | null
+          limite_tolerancia?: string | null
+          medicao_unidade?: string | null
+          medicao_valor?: number | null
+          meio_propagacao?: string | null
+          necessita_acao?: boolean
+          nivel_risco?: number | null
+          perigo_descricao?: string
+          perigo_id?: string | null
+          pgr_id?: string
+          probabilidade?: number
+          severidade?: number
+          tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
+          trabalhadores_expostos?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_inventario_itens_ghe_id_fkey"
+            columns: ["ghe_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pgr_inventario_itens_perigo_id_fkey"
+            columns: ["perigo_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_perigos_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pgr_inventario_itens_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pgr_perigos_catalogo: {
+        Row: {
+          ativo: boolean
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string | null
+          grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
+          id: string
+          limite_tolerancia: string | null
+          nome: string
+          norma_referencia: string | null
+          possiveis_lesoes: string | null
+          unidade_medida: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
+          id?: string
+          limite_tolerancia?: string | null
+          nome: string
+          norma_referencia?: string | null
+          possiveis_lesoes?: string | null
+          unidade_medida?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string | null
+          grupo?: Database["public"]["Enums"]["pgr_perigo_grupo"]
+          id?: string
+          limite_tolerancia?: string | null
+          nome?: string
+          norma_referencia?: string | null
+          possiveis_lesoes?: string | null
+          unidade_medida?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_perigos_catalogo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pgr_revisoes: {
+        Row: {
+          acao: string
+          created_at: string
+          empresa_id: string
+          id: string
+          motivo: string | null
+          pgr_id: string
+          snapshot: Json | null
+          status_anterior: Database["public"]["Enums"]["pgr_status"] | null
+          status_novo: Database["public"]["Enums"]["pgr_status"] | null
+          user_email: string | null
+          user_id: string | null
+          versao_anterior: number | null
+          versao_nova: number | null
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          motivo?: string | null
+          pgr_id: string
+          snapshot?: Json | null
+          status_anterior?: Database["public"]["Enums"]["pgr_status"] | null
+          status_novo?: Database["public"]["Enums"]["pgr_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+          versao_anterior?: number | null
+          versao_nova?: number | null
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          motivo?: string | null
+          pgr_id?: string
+          snapshot?: Json | null
+          status_anterior?: Database["public"]["Enums"]["pgr_status"] | null
+          status_novo?: Database["public"]["Enums"]["pgr_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+          versao_anterior?: number | null
+          versao_nova?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_revisoes_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ppp_responsaveis: {
         Row: {
           created_at: string
@@ -4531,6 +5046,15 @@ export type Database = {
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       mfa_required_for_current_user: { Args: never; Returns: Json }
+      pgr_abrir_revisao: {
+        Args: { _motivo: string; _pgr_id: string }
+        Returns: Json
+      }
+      pgr_classificar_risco: {
+        Args: { _prob: number; _sev: number }
+        Returns: Database["public"]["Enums"]["pgr_risco_classe"]
+      }
+      pgr_publicar: { Args: { _pgr_id: string }; Returns: Json }
       resolve_contrato_target_for_entrega: {
         Args: {
           _funcionario_id: string
@@ -4616,6 +5140,39 @@ export type Database = {
         | "excluido"
       esocial_ind_retif: "original" | "retificacao"
       esocial_tp_amb: "producao" | "homologacao"
+      pgr_acao_status:
+        | "pendente"
+        | "em_andamento"
+        | "concluida"
+        | "atrasada"
+        | "cancelada"
+      pgr_avaliacao_tipo: "qualitativa" | "quantitativa"
+      pgr_exposicao_tipo:
+        | "continua"
+        | "intermitente"
+        | "eventual"
+        | "nao_aplicavel"
+      pgr_medida_tipo:
+        | "eliminacao"
+        | "substituicao"
+        | "engenharia"
+        | "administrativa"
+        | "epi"
+      pgr_perigo_grupo:
+        | "fisico"
+        | "quimico"
+        | "biologico"
+        | "ergonomico"
+        | "acidente"
+        | "psicossocial"
+        | "outro"
+      pgr_risco_classe: "baixo" | "moderado" | "alto" | "critico"
+      pgr_status:
+        | "rascunho"
+        | "em_revisao"
+        | "vigente"
+        | "substituido"
+        | "arquivado"
       resultado_exame: "apto" | "inapto" | "apto_com_restricao" | "pendente"
       status_entrega:
         | "ativo"
@@ -4820,6 +5377,44 @@ export const Constants = {
       ],
       esocial_ind_retif: ["original", "retificacao"],
       esocial_tp_amb: ["producao", "homologacao"],
+      pgr_acao_status: [
+        "pendente",
+        "em_andamento",
+        "concluida",
+        "atrasada",
+        "cancelada",
+      ],
+      pgr_avaliacao_tipo: ["qualitativa", "quantitativa"],
+      pgr_exposicao_tipo: [
+        "continua",
+        "intermitente",
+        "eventual",
+        "nao_aplicavel",
+      ],
+      pgr_medida_tipo: [
+        "eliminacao",
+        "substituicao",
+        "engenharia",
+        "administrativa",
+        "epi",
+      ],
+      pgr_perigo_grupo: [
+        "fisico",
+        "quimico",
+        "biologico",
+        "ergonomico",
+        "acidente",
+        "psicossocial",
+        "outro",
+      ],
+      pgr_risco_classe: ["baixo", "moderado", "alto", "critico"],
+      pgr_status: [
+        "rascunho",
+        "em_revisao",
+        "vigente",
+        "substituido",
+        "arquivado",
+      ],
       resultado_exame: ["apto", "inapto", "apto_com_restricao", "pendente"],
       status_entrega: [
         "ativo",
