@@ -180,8 +180,10 @@ export default function PgrDetalhe() {
           <InventarioTab pgrId={id!} empresaId={doc.empresa_id} status={status} canEdit={perms.canEdit} />
         </TabsContent>
 
+        <TabsContent value="acoes">
           <PlanoAcaoTab pgrId={id!} empresaId={doc.empresa_id} pgrVersao={doc.versao}
             status={status} canEdit={perms.canEdit} pgr={doc} />
+        </TabsContent>
 
         <TabsContent value="pdf">
           <Card><CardContent className="p-8 text-center text-muted-foreground">
