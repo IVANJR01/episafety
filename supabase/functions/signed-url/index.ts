@@ -24,7 +24,7 @@ function isUuid(s: string): boolean {
 }
 
 Deno.serve(async (req) => {
-  const cors = resolveCorsHeaders(req);
+  const cors = resolveCors(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     const userId = userRes.user.id;
 
     // Rate limit por usuário
-    const rl = await checkRateLimit(`signed-url:${userId}`, RATE_LIMIT, RATE_WINDOW);
+    const rl = await checkRateLimit({ key: `signed-url:${userId}`, limit: RATE_LIMIT, windowSeconds: RATE_WINDOW });
     if (!rl) {
       return new Response(JSON.stringify({ error: "rate_limited" }), {
         status: 429,
