@@ -58,7 +58,7 @@ interface PdfBuilder {
 }
 
 function ensureSpace(b: PdfBuilder, h: number) {
-  if (b.y + h > 285) {
+  if (b.y + h > 278) {
     b.doc.addPage();
     b.y = 15;
   }
