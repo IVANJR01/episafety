@@ -1,7 +1,7 @@
 // supabase/functions/signed-url/index.ts
 // Emite Signed URLs para buckets sensíveis, validando auth + tenant + bucket allowlist + rate limit + TTL curto.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { resolveCorsHeaders } from "../_shared/cors.ts";
+import { resolveCors } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rateLimit.ts";
 
 const ALLOWED_BUCKETS = new Set([
