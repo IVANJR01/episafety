@@ -5,6 +5,7 @@ import { preCacheAllData, setCacheUserScope, clearAllCachedData } from "@/lib/of
 import { clearCachedSession, loadCachedSession, saveCachedSession } from "@/lib/authSessionCache";
 import { resolveOfflineSession } from "@/lib/authState";
 import { prefetchDashboardOfflineData, prefetchStockOfflineData } from "@/lib/stockOfflinePrefetch";
+import { purgeQueryCache } from "@/lib/queryClient";
 
 interface AuthContextType {
   user: User | null;
@@ -422,6 +423,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearCachedSession();
     saveActiveEmpresaId(null);
     clearAllCachedData();
+    purgeQueryCache();
     setCacheUserScope(null);
     await supabase.auth.signOut();
   };

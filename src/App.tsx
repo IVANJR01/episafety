@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { queryClient, storagePersister, QUERY_PERSIST_MAX_AGE } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { canAccessModule } from "@/lib/permissions";
@@ -49,29 +49,6 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminCloud from "@/pages/admin/AdminCloud";
 import EmpresaQuerySync from "@/components/EmpresaQuerySync";
 
-const QUERY_PERSIST_MAX_AGE = 24 * 60 * 60 * 1000;
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: Infinity,
-      gcTime: QUERY_PERSIST_MAX_AGE,
-      retry: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
-    mutations: {
-      retry: false,
-    },
-  },
-});
-
-const storagePersister = typeof window !== "undefined"
-  ? createSyncStoragePersister({
-      storage: window.localStorage,
-      key: "safetysolucoes-react-query-cache",
-    })
-  : undefined;
 
 function QueryProvider({ children }: { children: ReactNode }) {
   if (!storagePersister) {
