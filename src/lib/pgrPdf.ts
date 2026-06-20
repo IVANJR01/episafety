@@ -5,8 +5,8 @@ import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadToDrive } from "@/lib/googleDriveStorage";
 import { PgrDocumento, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
-import { CLASSIF_LABEL, CLASSIF_COLOR, classificarMatriz } from "@/lib/pgrMatriz";
-import { CLASSE_LABEL as ACAO_CLASSE_LABEL } from "@/lib/pgrAcoes";
+import { CLASSE_LABEL as CLASSIF_LABEL, classificarRisco as classificarMatriz, PgrClasse } from "@/lib/pgrMatriz";
+const ACAO_CLASSE_LABEL = CLASSIF_LABEL;
 
 export interface PgrInventarioItem {
   id: string;
