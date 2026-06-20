@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Pencil, GitBranch, Send, FileText, ListChecks, ClipboardList } from "lucide-react";
+import { ArrowLeft, Pencil, GitBranch, Send, FileText, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
+import InventarioTab from "@/components/pgr/InventarioTab";
 import {
   PgrDocumento, PgrRevisao, PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus, isEditavel,
 } from "@/lib/pgrTypes";
