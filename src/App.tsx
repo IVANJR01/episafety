@@ -196,6 +196,11 @@ function ProtectedRoute() {
         <Route path="/cat/:id/editar" element={<CatNovo />} />
         <Route path="/cat/validar/:id" element={<CatValidar />} />
         <Route path="/cat/esocial/config" element={<EsocialConfig />} />
+        <Route path="/pgr" element={<PgrModule />} />
+        <Route path="/pgr/novo" element={<PgrNovo />} />
+        <Route path="/pgr/:id" element={<PgrDetalhe />} />
+        <Route path="/pgr/:id/editar" element={<PgrNovo />} />
+
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
