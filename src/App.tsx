@@ -50,6 +50,7 @@ import EsocialConfig from "@/pages/cat/EsocialConfig";
 import PgrModule from "@/pages/pgr/PgrModule";
 import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
+import PgrValidar from "@/pages/pgr/PgrValidar";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
