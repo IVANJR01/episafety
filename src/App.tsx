@@ -42,6 +42,9 @@ import PortalRH from "@/pages/rh/PortalRH";
 import Faturas from "@/pages/Faturas";
 import AsoModule from "@/pages/aso/AsoModule";
 import VerificarAso from "@/pages/VerificarAso";
+import CatModule from "@/pages/cat/CatModule";
+import CatNovo from "@/pages/cat/CatNovo";
+import CatDetalhe from "@/pages/cat/CatDetalhe";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
@@ -181,6 +184,10 @@ function ProtectedRoute() {
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
         <Route path="/rh/asos" element={<PortalRH />} />
+        <Route path="/cat" element={<CatModule />} />
+        <Route path="/cat/novo" element={<CatNovo />} />
+        <Route path="/cat/:id" element={<CatDetalhe />} />
+        <Route path="/cat/:id/editar" element={<CatNovo />} />
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
