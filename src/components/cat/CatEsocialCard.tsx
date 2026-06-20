@@ -217,6 +217,9 @@ export default function CatEsocialCard({ catId }: Props) {
               Iniciar retificação
             </MfaActionButton>
           )}
+          <Button asChild size="sm" variant="ghost" className="ml-auto">
+            <Link to="/cat/esocial/config"><Settings2 className="h-4 w-4 mr-1" /> Configurar eSocial</Link>
+          </Button>
         </div>
 
         <Dialog open={openXml} onOpenChange={setOpenXml}>
