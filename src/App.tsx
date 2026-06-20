@@ -50,6 +50,7 @@ import AdminCloud from "@/pages/admin/AdminCloud";
 import EmpresaQuerySync from "@/components/EmpresaQuerySync";
 import SetupMfa from "@/pages/SetupMfa";
 import MfaBanner from "@/components/MfaBanner";
+import MfaGate from "@/components/MfaGate";
 
 
 function QueryProvider({ children }: { children: ReactNode }) {
@@ -160,6 +161,7 @@ function ProtectedRoute() {
     <AppLayout>
       <EmpresaQuerySync />
       <MfaBanner />
+      <MfaGate>
       <Routes>
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
         <Route path="/epis" element={<EPIs />} />
@@ -188,6 +190,7 @@ function ProtectedRoute() {
         <Route path="/funcionarios" element={<Navigate to="/cadastro/funcionarios" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </MfaGate>
     </AppLayout>
   );
 }
