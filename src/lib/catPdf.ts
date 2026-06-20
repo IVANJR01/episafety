@@ -117,7 +117,7 @@ function row(b: PdfBuilder, items: Array<[string, string | null | undefined]>) {
   b.y = startY + 4 + maxLines * 3.5 + 2;
 }
 
-async function renderPdf(ctx: CatPdfContext, opts: { qrUrl: string; versao: number }): Promise<jsPDF> {
+async function renderPdf(ctx: CatPdfContext, opts: { qrUrl: string; versao: number; validacaoUrl: string }): Promise<jsPDF> {
   const { cat } = ctx;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const b: PdfBuilder = { doc, y: 12 };
