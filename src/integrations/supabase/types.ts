@@ -716,6 +716,51 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          empresa_id: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          new_data: Json | null
+          occurred_at: string
+          old_data: Json | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          empresa_id?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          occurred_at?: string
+          old_data?: Json | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          empresa_id?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          occurred_at?: string
+          old_data?: Json | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       conferencia_itens: {
         Row: {
           conferencia_id: string
@@ -1467,6 +1512,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      edge_rate_limit: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
       }
       empresa_config: {
         Row: {
@@ -2547,6 +2610,36 @@ export type Database = {
           },
         ]
       }
+      mfa_enforcement: {
+        Row: {
+          created_at: string
+          enforced_at: string | null
+          grace_days: number
+          grace_started_at: string
+          updated_at: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enforced_at?: string | null
+          grace_days?: number
+          grace_started_at?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enforced_at?: string | null
+          grace_days?: number
+          grace_started_at?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ordens_servico: {
         Row: {
           created_at: string
@@ -3375,6 +3468,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: { _key: string; _limit: number; _window_seconds: number }
+        Returns: boolean
+      }
       finalizar_conferencia_estoque: {
         Args: {
           _contrato_id: string
@@ -3413,6 +3510,7 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      mfa_required_for_current_user: { Args: never; Returns: Json }
       resolve_contrato_target_for_entrega: {
         Args: {
           _funcionario_id: string

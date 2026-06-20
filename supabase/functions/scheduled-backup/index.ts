@@ -1,11 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
+import { resolveCors } from "../_shared/cors.ts";
 const ROOT_FOLDER_NAME = "EPISafety";
 const BACKUP_FOLDER_NAME = "EPISafety_SYSTEM_BACKUPS";
 
@@ -131,6 +126,7 @@ async function cleanupOldBackups(token: string, folderId: string) {
 
 // ── Main handler ───────────────────────────────────────────────────
 Deno.serve(async (req) => {
+  const corsHeaders = resolveCors(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

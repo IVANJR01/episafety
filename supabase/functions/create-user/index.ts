@@ -1,15 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
+import { resolveCors } from "../_shared/cors.ts";
+import { checkRateLimit, clientKey } from "../_shared/rateLimit.ts";
 Deno.serve(async (req) => {
+  const corsHeaders = resolveCors(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+
+  const __rl_ok = await checkRateLimit({ key: clientKey(req, null, "create-user"), limit: 5, windowSeconds: 60 });
+  if (!__rl_ok) {
+    return new Response(JSON.stringify({ error: "Rate limit excedido. Aguarde alguns segundos e tente novamente." }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   try {
     const { email, password, nome, empresa_id } = await req.json();
 

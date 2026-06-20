@@ -5,6 +5,7 @@ import { preCacheAllData, setCacheUserScope, clearAllCachedData } from "@/lib/of
 import { clearCachedSession, loadCachedSession, saveCachedSession } from "@/lib/authSessionCache";
 import { resolveOfflineSession } from "@/lib/authState";
 import { prefetchDashboardOfflineData, prefetchStockOfflineData } from "@/lib/stockOfflinePrefetch";
+import { purgeQueryCache } from "@/lib/queryClient";
 
 interface AuthContextType {
   user: User | null;
@@ -359,7 +360,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // CRITICAL: scope offline cache to current user to prevent cross-tenant data leaks.
-      setCacheUserScope(next.user?.id ?? null);
+      const scopeChanged = setCacheUserScope(next.user?.id ?? null);
+      if (scopeChanged) {
+        // New user (or sign-out) — purge React Query cache too.
+        purgeQueryCache();
+      }
 
       setSession(next.session);
       setUser(next.user);
@@ -422,6 +427,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearCachedSession();
     saveActiveEmpresaId(null);
     clearAllCachedData();
+    purgeQueryCache();
     setCacheUserScope(null);
     await supabase.auth.signOut();
   };

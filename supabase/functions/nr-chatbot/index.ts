@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
+import { resolveCors } from "../_shared/cors.ts";
+import { checkRateLimit, clientKey } from "../_shared/rateLimit.ts";
 const SYSTEM_PROMPT = `Você é o **Assistente de SST do EPISafety** — um especialista em Segurança e Saúde no Trabalho com profundo conhecimento das Normas Regulamentadoras (NRs) do Ministério do Trabalho e Emprego do Brasil.
 
 === SUA MISSÃO ===
@@ -72,10 +68,19 @@ Responder dúvidas sobre NRs, procedimentos de SST, documentação obrigatória 
 Responda sempre em português do Brasil. Seja prestativo e educativo.`;
 
 serve(async (req) => {
+  const corsHeaders = resolveCors(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+
+  const __rl_ok = await checkRateLimit({ key: clientKey(req, null, "nr-chatbot"), limit: 30, windowSeconds: 60 });
+  if (!__rl_ok) {
+    return new Response(JSON.stringify({ error: "Rate limit excedido. Aguarde alguns segundos e tente novamente." }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   try {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

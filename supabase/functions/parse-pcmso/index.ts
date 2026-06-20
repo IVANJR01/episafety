@@ -1,10 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
+import { resolveCors } from "../_shared/cors.ts";
+import { checkRateLimit, clientKey } from "../_shared/rateLimit.ts";
 const systemPrompt = `Você é um especialista em Medicina do Trabalho e PCMSO (NR-07). Receba um PCMSO (texto livre, tabela copiada, lista por GHE/GES, Quadro Laboral, ou PDF completo) e estruture o conteúdo em JSON.
 
 Retorne APENAS JSON válido no formato:
@@ -35,7 +32,17 @@ Regras:
 - Se houver vários GHEs/GES no documento, retorne TODOS.`;
 
 serve(async (req) => {
+  const corsHeaders = resolveCors(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const __rl_ok = await checkRateLimit({ key: clientKey(req, null, "parse-pcmso"), limit: 10, windowSeconds: 60 });
+  if (!__rl_ok) {
+    return new Response(JSON.stringify({ error: "Rate limit excedido. Aguarde alguns segundos e tente novamente." }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
 
   try {
     const body = await req.json();

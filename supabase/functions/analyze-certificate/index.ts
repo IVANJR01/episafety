@@ -2,12 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
+import { resolveCors } from "../_shared/cors.ts";
+import { checkRateLimit, clientKey } from "../_shared/rateLimit.ts";
 function buildSystemPrompt(requisitosContext: string, funcionarioContext: string): string {
   return `=== PERSONAGEM ===
 Atue como um Engenheiro de Qualidade e Auditor de Conformidade de SST padrão Bernhoeft — a maior empresa de auditoria de documentação de SST do Brasil. Sua missão é validar certificados de treinamento para a contratante Neoenergia com TOLERÂNCIA ZERO para erros.
@@ -254,10 +250,19 @@ function extractAnalysis(aiResult: any): any {
 }
 
 serve(async (req) => {
+  const corsHeaders = resolveCors(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+
+  const __rl_ok = await checkRateLimit({ key: clientKey(req, null, "analyze-certificate"), limit: 20, windowSeconds: 60 });
+  if (!__rl_ok) {
+    return new Response(JSON.stringify({ error: "Rate limit excedido. Aguarde alguns segundos e tente novamente." }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   try {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

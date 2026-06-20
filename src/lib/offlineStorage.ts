@@ -66,10 +66,10 @@ export function clearAllCachedData() {
   }
 }
 
-export function setCacheUserScope(userId: string | null) {
+export function setCacheUserScope(userId: string | null): boolean {
   const next = userId || null;
   const prev = getScope();
-  if (next === prev) return;
+  if (next === prev) return false;
   // User changed (or signing out): purge all cached tenant data to prevent cross-tenant leaks.
   clearAllCachedData();
   currentUserScope = next;
@@ -79,6 +79,7 @@ export function setCacheUserScope(userId: string | null) {
   } catch {
     // ignore
   }
+  return true;
 }
 
 export interface SyncOperation {
