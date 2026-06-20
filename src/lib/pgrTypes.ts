@@ -35,6 +35,7 @@ export interface PgrDocumento {
   pdf_hash: string | null;
   pdf_drive_view_link: string | null;
   pdf_gerado_em: string | null;
+  conteudo_atualizado_em?: string | null;
   created_at: string;
   updated_at: string;
 }
