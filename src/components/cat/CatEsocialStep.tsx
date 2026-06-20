@@ -22,36 +22,15 @@ import {
   FileLock2,
 } from "lucide-react";
 
-interface CatSnapshot {
-  status: string;
-  data_acidente: string;
-  hora_acidente: string | null;
-  tipo_acidente: string;
-  local_acidente: string | null;
-  municipio: string | null;
-  uf: string | null;
-  cid_codigo: string | null;
-  parte_atingida_id: string | null;
-  agente_causador_id: string | null;
-  natureza_lesao_id: string | null;
-  houve_afastamento: boolean;
-  ultimo_dia_trabalhado: string | null;
-  obito: boolean;
-  data_obito: string | null;
-  funcionario_id: string;
-  cbo: string | null;
-}
-
 interface Props {
   catId: string | null; // null = ainda não salva
   empresaId: string | null;
-  cat: CatSnapshot | null;
 }
 
 const AVISO =
   "Não enviado ao Ambiente Nacional. Assinatura ICP-Brasil ainda não implementada. XML será gerado apenas para validação técnica.";
 
-export default function CatEsocialStep({ catId, empresaId, cat }: Props) {
+export default function CatEsocialStep({ catId, empresaId }: Props) {
   const { modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
   const mfa = useMfaStatus();
 
