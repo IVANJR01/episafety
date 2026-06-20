@@ -44,6 +44,8 @@ import {
 } from "@/lib/catTypes";
 import { usePermissions } from "@/hooks/usePermissions";
 import { uploadToDrive } from "@/lib/googleDriveStorage";
+import { generateAndUploadCatPdf, logCatPdfDownload } from "@/lib/catPdf";
+import { FileDown, RefreshCw } from "lucide-react";
 
 export default function CatDetalhe() {
   const { id } = useParams<{ id: string }>();
