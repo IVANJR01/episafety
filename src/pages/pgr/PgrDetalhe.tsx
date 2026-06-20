@@ -187,10 +187,12 @@ export default function PgrDetalhe() {
         </TabsContent>
 
         <TabsContent value="pdf">
-          <Card><CardContent className="p-8 text-center text-muted-foreground">
-            <FileText className="h-10 w-10 mx-auto mb-2 opacity-30" />
-            PDF técnico interno (assinatura visual + hash SHA-256, sem ICP-Brasil) — disponível na Parte 5.
-          </CardContent></Card>
+          <PgrPdfTab
+            pgr={doc}
+            canEdit={perms.canEdit}
+            canExport={perms.has("exportar") || perms.has("editar") || perms.has("revisar") || perms.canEdit}
+            canAssinar={perms.has("assinar")}
+          />
         </TabsContent>
       </Tabs>
 
