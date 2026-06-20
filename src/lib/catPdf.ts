@@ -377,10 +377,11 @@ export async function generateAndUploadCatPdf(ctx: CatPdfContext): Promise<Gener
   // Versão preliminar baseada no que está no banco; a RPC vai incrementar e devolver o oficial.
   const versaoPrev = ((cat as any).pdf_versao ?? 0) + 1;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const qrUrl = `${origin}/cat/${cat.id}?v=${versaoPrev}`;
+  const validacaoUrl = `${origin}/cat/validar/${cat.id}?v=${versaoPrev}`;
+  const qrUrl = validacaoUrl;
 
   // 1. Renderiza PDF
-  const doc = await renderPdf(ctx, { qrUrl, versao: versaoPrev });
+  const doc = await renderPdf(ctx, { qrUrl, versao: versaoPrev, validacaoUrl });
   const blob = doc.output("blob");
   const buffer = await blob.arrayBuffer();
 
