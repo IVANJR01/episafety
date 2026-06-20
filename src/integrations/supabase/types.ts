@@ -761,6 +761,556 @@ export type Database = {
         }
         Relationships: []
       }
+      cat_agentes_causadores: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          id: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          id?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      cat_anexos: {
+        Row: {
+          cat_id: string
+          categoria: string
+          created_at: string
+          drive_file_id: string | null
+          drive_path: string | null
+          empresa_id: string
+          id: string
+          mime_type: string | null
+          nome_arquivo: string
+          tamanho_bytes: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          cat_id: string
+          categoria: string
+          created_at?: string
+          drive_file_id?: string | null
+          drive_path?: string | null
+          empresa_id: string
+          id?: string
+          mime_type?: string | null
+          nome_arquivo: string
+          tamanho_bytes?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          cat_id?: string
+          categoria?: string
+          created_at?: string
+          drive_file_id?: string | null
+          drive_path?: string | null
+          empresa_id?: string
+          id?: string
+          mime_type?: string | null
+          nome_arquivo?: string
+          tamanho_bytes?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_anexos_cat_id_fkey"
+            columns: ["cat_id"]
+            isOneToOne: false
+            referencedRelation: "cat_comunicacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cat_comunicacoes: {
+        Row: {
+          agente_causador_id: string | null
+          aso_id: string | null
+          cancelada_em: string | null
+          cancelada_por: string | null
+          cat_origem_id: string | null
+          cbo: string | null
+          cep: string | null
+          cid_codigo: string | null
+          cid_descricao: string | null
+          concluida_em: string | null
+          concluida_por: string | null
+          contrato_id: string | null
+          created_at: string
+          created_by: string | null
+          data_acidente: string
+          data_atendimento: string | null
+          data_obito: string | null
+          descricao_lesao: string | null
+          emitente_cargo: string | null
+          emitente_cpf: string | null
+          emitente_nome: string | null
+          emitente_tipo: Database["public"]["Enums"]["cat_emitente_tipo"]
+          empresa_id: string
+          endereco_local: string | null
+          esocial_enviado_em: string | null
+          esocial_erro: Json | null
+          esocial_event_id: string
+          esocial_protocolo: string | null
+          esocial_recibo: string | null
+          esocial_status: string | null
+          exame_id: string | null
+          funcionario_id: string
+          hora_acidente: string | null
+          hora_atendimento: string | null
+          hospital: string | null
+          houve_afastamento: boolean
+          houve_internacao: boolean | null
+          id: string
+          jornada_semanal_horas: number | null
+          lateralidade: string | null
+          local_acidente: string | null
+          medico_crm: string | null
+          medico_id: string | null
+          medico_nome: string | null
+          medico_uf: string | null
+          motivo_cancelamento: string | null
+          municipio: string | null
+          natureza_lesao_id: string | null
+          numero_cat: string | null
+          obito: boolean
+          observacoes: string | null
+          pais: string | null
+          parte_atingida_id: string | null
+          pdf_drive_file_id: string | null
+          pdf_gerado_em: string | null
+          pdf_hash: string | null
+          remuneracao_mensal: number | null
+          situacao_geradora_id: string | null
+          status: Database["public"]["Enums"]["cat_status"]
+          tipo_acidente: Database["public"]["Enums"]["cat_tipo_acidente"]
+          tipo_cat: Database["public"]["Enums"]["cat_tipo"]
+          uf: string | null
+          ultimo_dia_trabalhado: string | null
+          unidade_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agente_causador_id?: string | null
+          aso_id?: string | null
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          cat_origem_id?: string | null
+          cbo?: string | null
+          cep?: string | null
+          cid_codigo?: string | null
+          cid_descricao?: string | null
+          concluida_em?: string | null
+          concluida_por?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_acidente: string
+          data_atendimento?: string | null
+          data_obito?: string | null
+          descricao_lesao?: string | null
+          emitente_cargo?: string | null
+          emitente_cpf?: string | null
+          emitente_nome?: string | null
+          emitente_tipo?: Database["public"]["Enums"]["cat_emitente_tipo"]
+          empresa_id: string
+          endereco_local?: string | null
+          esocial_enviado_em?: string | null
+          esocial_erro?: Json | null
+          esocial_event_id?: string
+          esocial_protocolo?: string | null
+          esocial_recibo?: string | null
+          esocial_status?: string | null
+          exame_id?: string | null
+          funcionario_id: string
+          hora_acidente?: string | null
+          hora_atendimento?: string | null
+          hospital?: string | null
+          houve_afastamento?: boolean
+          houve_internacao?: boolean | null
+          id?: string
+          jornada_semanal_horas?: number | null
+          lateralidade?: string | null
+          local_acidente?: string | null
+          medico_crm?: string | null
+          medico_id?: string | null
+          medico_nome?: string | null
+          medico_uf?: string | null
+          motivo_cancelamento?: string | null
+          municipio?: string | null
+          natureza_lesao_id?: string | null
+          numero_cat?: string | null
+          obito?: boolean
+          observacoes?: string | null
+          pais?: string | null
+          parte_atingida_id?: string | null
+          pdf_drive_file_id?: string | null
+          pdf_gerado_em?: string | null
+          pdf_hash?: string | null
+          remuneracao_mensal?: number | null
+          situacao_geradora_id?: string | null
+          status?: Database["public"]["Enums"]["cat_status"]
+          tipo_acidente?: Database["public"]["Enums"]["cat_tipo_acidente"]
+          tipo_cat?: Database["public"]["Enums"]["cat_tipo"]
+          uf?: string | null
+          ultimo_dia_trabalhado?: string | null
+          unidade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agente_causador_id?: string | null
+          aso_id?: string | null
+          cancelada_em?: string | null
+          cancelada_por?: string | null
+          cat_origem_id?: string | null
+          cbo?: string | null
+          cep?: string | null
+          cid_codigo?: string | null
+          cid_descricao?: string | null
+          concluida_em?: string | null
+          concluida_por?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_acidente?: string
+          data_atendimento?: string | null
+          data_obito?: string | null
+          descricao_lesao?: string | null
+          emitente_cargo?: string | null
+          emitente_cpf?: string | null
+          emitente_nome?: string | null
+          emitente_tipo?: Database["public"]["Enums"]["cat_emitente_tipo"]
+          empresa_id?: string
+          endereco_local?: string | null
+          esocial_enviado_em?: string | null
+          esocial_erro?: Json | null
+          esocial_event_id?: string
+          esocial_protocolo?: string | null
+          esocial_recibo?: string | null
+          esocial_status?: string | null
+          exame_id?: string | null
+          funcionario_id?: string
+          hora_acidente?: string | null
+          hora_atendimento?: string | null
+          hospital?: string | null
+          houve_afastamento?: boolean
+          houve_internacao?: boolean | null
+          id?: string
+          jornada_semanal_horas?: number | null
+          lateralidade?: string | null
+          local_acidente?: string | null
+          medico_crm?: string | null
+          medico_id?: string | null
+          medico_nome?: string | null
+          medico_uf?: string | null
+          motivo_cancelamento?: string | null
+          municipio?: string | null
+          natureza_lesao_id?: string | null
+          numero_cat?: string | null
+          obito?: boolean
+          observacoes?: string | null
+          pais?: string | null
+          parte_atingida_id?: string | null
+          pdf_drive_file_id?: string | null
+          pdf_gerado_em?: string | null
+          pdf_hash?: string | null
+          remuneracao_mensal?: number | null
+          situacao_geradora_id?: string | null
+          status?: Database["public"]["Enums"]["cat_status"]
+          tipo_acidente?: Database["public"]["Enums"]["cat_tipo_acidente"]
+          tipo_cat?: Database["public"]["Enums"]["cat_tipo"]
+          uf?: string | null
+          ultimo_dia_trabalhado?: string | null
+          unidade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_comunicacoes_agente_causador_id_fkey"
+            columns: ["agente_causador_id"]
+            isOneToOne: false
+            referencedRelation: "cat_agentes_causadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_cat_origem_id_fkey"
+            columns: ["cat_origem_id"]
+            isOneToOne: false
+            referencedRelation: "cat_comunicacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_exame_id_fkey"
+            columns: ["exame_id"]
+            isOneToOne: false
+            referencedRelation: "exames"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_medico_id_fkey"
+            columns: ["medico_id"]
+            isOneToOne: false
+            referencedRelation: "aso_medicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_natureza_lesao_id_fkey"
+            columns: ["natureza_lesao_id"]
+            isOneToOne: false
+            referencedRelation: "cat_naturezas_lesao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_parte_atingida_id_fkey"
+            columns: ["parte_atingida_id"]
+            isOneToOne: false
+            referencedRelation: "cat_partes_atingidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_situacao_geradora_id_fkey"
+            columns: ["situacao_geradora_id"]
+            isOneToOne: false
+            referencedRelation: "cat_situacoes_geradoras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cat_comunicacoes_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cat_historico: {
+        Row: {
+          acao: string
+          cat_id: string
+          created_at: string
+          empresa_id: string
+          id: string
+          metadata: Json | null
+          motivo: string | null
+          status_anterior: Database["public"]["Enums"]["cat_status"] | null
+          status_novo: Database["public"]["Enums"]["cat_status"] | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acao: string
+          cat_id: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          metadata?: Json | null
+          motivo?: string | null
+          status_anterior?: Database["public"]["Enums"]["cat_status"] | null
+          status_novo?: Database["public"]["Enums"]["cat_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acao?: string
+          cat_id?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          metadata?: Json | null
+          motivo?: string | null
+          status_anterior?: Database["public"]["Enums"]["cat_status"] | null
+          status_novo?: Database["public"]["Enums"]["cat_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_historico_cat_id_fkey"
+            columns: ["cat_id"]
+            isOneToOne: false
+            referencedRelation: "cat_comunicacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cat_naturezas_lesao: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          id: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          id?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      cat_numeracao: {
+        Row: {
+          ano: number
+          empresa_id: string
+          ultimo_seq: number
+          updated_at: string
+        }
+        Insert: {
+          ano: number
+          empresa_id: string
+          ultimo_seq?: number
+          updated_at?: string
+        }
+        Update: {
+          ano?: number
+          empresa_id?: string
+          ultimo_seq?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cat_partes_atingidas: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          id: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          id?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      cat_situacoes_geradoras: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          id: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          id?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      cat_testemunhas: {
+        Row: {
+          cargo: string | null
+          cat_id: string
+          cpf: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          nome: string
+          telefone: string | null
+        }
+        Insert: {
+          cargo?: string | null
+          cat_id: string
+          cpf?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nome: string
+          telefone?: string | null
+        }
+        Update: {
+          cargo?: string | null
+          cat_id?: string
+          cpf?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_testemunhas_cat_id_fkey"
+            columns: ["cat_id"]
+            isOneToOne: false
+            referencedRelation: "cat_comunicacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conferencia_itens: {
         Row: {
           conferencia_id: string
@@ -3484,6 +4034,7 @@ export type Database = {
         Returns: Json
       }
       gerar_numero_aso: { Args: { _empresa_id: string }; Returns: string }
+      gerar_numero_cat: { Args: { _empresa_id: string }; Returns: string }
       get_consolidated_epi_stock: { Args: never; Returns: Json }
       get_filial_epis: { Args: { _filial_id: string }; Returns: Json }
       get_my_funcionario_ids: { Args: never; Returns: string[] }
@@ -3556,6 +4107,22 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "tecnico" | "usuario" | "super_admin"
+      cat_emitente_tipo:
+        | "empregador"
+        | "sindicato"
+        | "medico"
+        | "autoridade"
+        | "segurado"
+        | "dependente"
+      cat_status:
+        | "rascunho"
+        | "pronto_para_envio"
+        | "concluida"
+        | "enviada_esocial"
+        | "rejeitada_esocial"
+        | "cancelada"
+      cat_tipo: "inicial" | "reabertura" | "comunicacao_obito"
+      cat_tipo_acidente: "tipico" | "trajeto" | "doenca_ocupacional"
       resultado_exame: "apto" | "inapto" | "apto_com_restricao" | "pendente"
       status_entrega:
         | "ativo"
@@ -3716,6 +4283,24 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "tecnico", "usuario", "super_admin"],
+      cat_emitente_tipo: [
+        "empregador",
+        "sindicato",
+        "medico",
+        "autoridade",
+        "segurado",
+        "dependente",
+      ],
+      cat_status: [
+        "rascunho",
+        "pronto_para_envio",
+        "concluida",
+        "enviada_esocial",
+        "rejeitada_esocial",
+        "cancelada",
+      ],
+      cat_tipo: ["inicial", "reabertura", "comunicacao_obito"],
+      cat_tipo_acidente: ["tipico", "trajeto", "doenca_ocupacional"],
       resultado_exame: ["apto", "inapto", "apto_com_restricao", "pendente"],
       status_entrega: [
         "ativo",
