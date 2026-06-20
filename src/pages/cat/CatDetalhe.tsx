@@ -286,6 +286,53 @@ export default function CatDetalhe() {
     toast.success("Anexo removido (metadado). Arquivo no Drive permanece.");
   };
 
+  const gerarPdf = async () => {
+    if (cat.status === "cancelada") {
+      toast.error("CAT cancelada — não é possível gerar PDF");
+      return;
+    }
+    setGerandoPdf(true);
+    try {
+      const find = (idVal: string | null) => (catalogo as any[]).find((c) => c.id === idVal)?.descricao;
+      const res = await generateAndUploadCatPdf({
+        cat,
+        empresaNome: empresa?.nome,
+        empresaCnpj: empresa?.cnpj,
+        funcionarioNome: funcionario?.nome,
+        funcionarioCpf: funcionario?.cpf,
+        funcionarioCargo: funcionario?.cargo,
+        situacaoGeradora: find(cat.situacao_geradora_id),
+        agenteCausador: find(cat.agente_causador_id),
+        parteAtingida: find(cat.parte_atingida_id),
+        naturezaLesao: find(cat.natureza_lesao_id),
+        testemunhas: testemunhas as any[],
+        historico: historico as any[],
+        anexos: anexos as any[],
+      });
+      toast.success(`PDF v${res.versao} gerado e enviado ao Google Drive`);
+      qc.invalidateQueries({ queryKey: ["cat-detalhe", id] });
+      qc.invalidateQueries({ queryKey: ["cat-detalhe-anx", id] });
+      qc.invalidateQueries({ queryKey: ["cat-detalhe-hist", id] });
+    } catch (e: any) {
+      toast.error(`Erro ao gerar PDF: ${e?.message || e}`);
+    } finally {
+      setGerandoPdf(false);
+    }
+  };
+
+  const baixarPdf = async () => {
+    const link = (cat as any).pdf_drive_view_link;
+    if (!link) return;
+    try {
+      await logCatPdfDownload(cat.id);
+    } catch (e) {
+      console.warn("[cat-pdf] log download falhou", e);
+    }
+    window.open(link, "_blank", "noopener");
+    qc.invalidateQueries({ queryKey: ["cat-detalhe-hist", id] });
+  };
+
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-[1200px] mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-2">
