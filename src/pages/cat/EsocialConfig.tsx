@@ -27,14 +27,12 @@ const CATALOGOS: { key: string; label: string; table: string }[] = [
 ];
 
 export default function EsocialConfig() {
-  const { isSuperAdmin, isPrincipal, modulosPermitidos, activeEmpresaId } = useAuth() as any;
+  const { isSuperAdmin, isPrincipal, modulosPermitidos, empresaId } = useAuth() as any;
   const qc = useQueryClient();
   const canEdit =
     isSuperAdmin || isPrincipal ||
     modulosPermitidos.includes("cat:esocial") ||
     modulosPermitidos.includes("cat");
-
-  const empresaId = activeEmpresaId;
 
   // ---------------- config ----------------
   const [form, setForm] = useState({
