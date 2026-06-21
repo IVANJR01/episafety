@@ -5408,6 +5408,477 @@ export type Database = {
           },
         ]
       }
+      ppp_assinaturas: {
+        Row: {
+          assinado_em: string
+          assinado_por: string | null
+          auth_aal: string | null
+          created_at: string
+          drive_id: string | null
+          empresa_id: string
+          id: string
+          imagem_link: string | null
+          nome: string
+          papel: string | null
+          ppp_id: string
+        }
+        Insert: {
+          assinado_em?: string
+          assinado_por?: string | null
+          auth_aal?: string | null
+          created_at?: string
+          drive_id?: string | null
+          empresa_id: string
+          id?: string
+          imagem_link?: string | null
+          nome: string
+          papel?: string | null
+          ppp_id: string
+        }
+        Update: {
+          assinado_em?: string
+          assinado_por?: string | null
+          auth_aal?: string | null
+          created_at?: string
+          drive_id?: string | null
+          empresa_id?: string
+          id?: string
+          imagem_link?: string | null
+          nome?: string
+          papel?: string | null
+          ppp_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_assinaturas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_assinaturas_ppp_id_fkey"
+            columns: ["ppp_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_documentos: {
+        Row: {
+          cbo_consolidado: string | null
+          conclusao_consolidada:
+            | Database["public"]["Enums"]["ppp_conclusao_aposentadoria"]
+            | null
+          conteudo_atualizado_em: string
+          created_at: string
+          created_by: string | null
+          data_emissao: string | null
+          descricao_atividade_consolidada: string | null
+          empresa_id: string
+          funcionario_id: string
+          id: string
+          motivo_emissao: Database["public"]["Enums"]["ppp_motivo_emissao"]
+          observacoes: string | null
+          publicado_em: string | null
+          publicado_por: string | null
+          status: Database["public"]["Enums"]["ppp_status"]
+          updated_at: string
+          updated_by: string | null
+          versao: number
+          versao_pai_id: string | null
+        }
+        Insert: {
+          cbo_consolidado?: string | null
+          conclusao_consolidada?:
+            | Database["public"]["Enums"]["ppp_conclusao_aposentadoria"]
+            | null
+          conteudo_atualizado_em?: string
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          descricao_atividade_consolidada?: string | null
+          empresa_id: string
+          funcionario_id: string
+          id?: string
+          motivo_emissao?: Database["public"]["Enums"]["ppp_motivo_emissao"]
+          observacoes?: string | null
+          publicado_em?: string | null
+          publicado_por?: string | null
+          status?: Database["public"]["Enums"]["ppp_status"]
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+          versao_pai_id?: string | null
+        }
+        Update: {
+          cbo_consolidado?: string | null
+          conclusao_consolidada?:
+            | Database["public"]["Enums"]["ppp_conclusao_aposentadoria"]
+            | null
+          conteudo_atualizado_em?: string
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          descricao_atividade_consolidada?: string | null
+          empresa_id?: string
+          funcionario_id?: string
+          id?: string
+          motivo_emissao?: Database["public"]["Enums"]["ppp_motivo_emissao"]
+          observacoes?: string | null
+          publicado_em?: string | null
+          publicado_por?: string | null
+          status?: Database["public"]["Enums"]["ppp_status"]
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+          versao_pai_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_documentos_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_documentos_versao_pai_id_fkey"
+            columns: ["versao_pai_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_exames_referenciados: {
+        Row: {
+          aso_id: string | null
+          created_at: string
+          data: string | null
+          empresa_id: string
+          id: string
+          ppp_id: string
+          resultado_resumo: string | null
+          tipo: string | null
+          updated_at: string
+        }
+        Insert: {
+          aso_id?: string | null
+          created_at?: string
+          data?: string | null
+          empresa_id: string
+          id?: string
+          ppp_id: string
+          resultado_resumo?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aso_id?: string | null
+          created_at?: string
+          data?: string | null
+          empresa_id?: string
+          id?: string
+          ppp_id?: string
+          resultado_resumo?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_exames_referenciados_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_exames_referenciados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_exames_referenciados_ppp_id_fkey"
+            columns: ["ppp_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_exposicoes: {
+        Row: {
+          acima_limite: boolean | null
+          agente_nome: string
+          agente_tipo: Database["public"]["Enums"]["ppp_agente_grupo"] | null
+          codigo_esocial: string | null
+          created_at: string
+          empresa_id: string
+          enquadramento: Database["public"]["Enums"]["ppp_enquadramento"] | null
+          epc_descricao: string | null
+          epi_ca: string | null
+          epi_descricao: string | null
+          epi_eficacia: Database["public"]["Enums"]["ppp_epi_eficacia"] | null
+          fundamento_legal: string | null
+          id: string
+          intensidade: number | null
+          limite_tolerancia: number | null
+          observacoes: string | null
+          origem_ltcat_aval_id: string | null
+          percentual_jornada: number | null
+          periodo_id: string
+          ppp_id: string
+          tecnica: Database["public"]["Enums"]["ppp_tecnica_avaliacao"] | null
+          tempo_exposicao_horas: number | null
+          unidade_medida: string | null
+          updated_at: string
+        }
+        Insert: {
+          acima_limite?: boolean | null
+          agente_nome: string
+          agente_tipo?: Database["public"]["Enums"]["ppp_agente_grupo"] | null
+          codigo_esocial?: string | null
+          created_at?: string
+          empresa_id: string
+          enquadramento?:
+            | Database["public"]["Enums"]["ppp_enquadramento"]
+            | null
+          epc_descricao?: string | null
+          epi_ca?: string | null
+          epi_descricao?: string | null
+          epi_eficacia?: Database["public"]["Enums"]["ppp_epi_eficacia"] | null
+          fundamento_legal?: string | null
+          id?: string
+          intensidade?: number | null
+          limite_tolerancia?: number | null
+          observacoes?: string | null
+          origem_ltcat_aval_id?: string | null
+          percentual_jornada?: number | null
+          periodo_id: string
+          ppp_id: string
+          tecnica?: Database["public"]["Enums"]["ppp_tecnica_avaliacao"] | null
+          tempo_exposicao_horas?: number | null
+          unidade_medida?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acima_limite?: boolean | null
+          agente_nome?: string
+          agente_tipo?: Database["public"]["Enums"]["ppp_agente_grupo"] | null
+          codigo_esocial?: string | null
+          created_at?: string
+          empresa_id?: string
+          enquadramento?:
+            | Database["public"]["Enums"]["ppp_enquadramento"]
+            | null
+          epc_descricao?: string | null
+          epi_ca?: string | null
+          epi_descricao?: string | null
+          epi_eficacia?: Database["public"]["Enums"]["ppp_epi_eficacia"] | null
+          fundamento_legal?: string | null
+          id?: string
+          intensidade?: number | null
+          limite_tolerancia?: number | null
+          observacoes?: string | null
+          origem_ltcat_aval_id?: string | null
+          percentual_jornada?: number | null
+          periodo_id?: string
+          ppp_id?: string
+          tecnica?: Database["public"]["Enums"]["ppp_tecnica_avaliacao"] | null
+          tempo_exposicao_horas?: number | null
+          unidade_medida?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_exposicoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_exposicoes_origem_ltcat_aval_id_fkey"
+            columns: ["origem_ltcat_aval_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_exposicoes_periodo_id_fkey"
+            columns: ["periodo_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_periodos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_exposicoes_ppp_id_fkey"
+            columns: ["ppp_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_pdf_versoes: {
+        Row: {
+          created_at: string
+          drive_id: string | null
+          drive_link: string | null
+          empresa_id: string
+          gerado_em: string
+          gerado_por: string | null
+          id: string
+          ppp_id: string
+          sha256: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          drive_id?: string | null
+          drive_link?: string | null
+          empresa_id: string
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          ppp_id: string
+          sha256: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          drive_id?: string | null
+          drive_link?: string | null
+          empresa_id?: string
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          ppp_id?: string
+          sha256?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_pdf_versoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_pdf_versoes_ppp_id_fkey"
+            columns: ["ppp_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_periodos: {
+        Row: {
+          cbo: string | null
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          descricao_atividade: string | null
+          empresa_id: string
+          funcao_id: string | null
+          funcao_nome: string | null
+          ghe_codigo: string | null
+          ghe_descricao: string | null
+          ghe_id: string | null
+          id: string
+          ltcat_id: string | null
+          motivo_encerramento: string | null
+          observacoes: string | null
+          ordem: number
+          pgr_id: string | null
+          ppp_id: string
+          setor_id: string | null
+          setor_nome: string | null
+          updated_at: string
+        }
+        Insert: {
+          cbo?: string | null
+          created_at?: string
+          data_fim?: string | null
+          data_inicio: string
+          descricao_atividade?: string | null
+          empresa_id: string
+          funcao_id?: string | null
+          funcao_nome?: string | null
+          ghe_codigo?: string | null
+          ghe_descricao?: string | null
+          ghe_id?: string | null
+          id?: string
+          ltcat_id?: string | null
+          motivo_encerramento?: string | null
+          observacoes?: string | null
+          ordem?: number
+          pgr_id?: string | null
+          ppp_id: string
+          setor_id?: string | null
+          setor_nome?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cbo?: string | null
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          descricao_atividade?: string | null
+          empresa_id?: string
+          funcao_id?: string | null
+          funcao_nome?: string | null
+          ghe_codigo?: string | null
+          ghe_descricao?: string | null
+          ghe_id?: string | null
+          id?: string
+          ltcat_id?: string | null
+          motivo_encerramento?: string | null
+          observacoes?: string | null
+          ordem?: number
+          pgr_id?: string | null
+          ppp_id?: string
+          setor_id?: string | null
+          setor_nome?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_periodos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_periodos_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_periodos_ppp_id_fkey"
+            columns: ["ppp_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ppp_responsaveis: {
         Row: {
           created_at: string
@@ -5454,6 +5925,185 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_responsaveis_ambientais: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          formacao: string | null
+          id: string
+          nome: string
+          origem_ltcat_rt_id: string | null
+          periodo_id: string | null
+          ppp_id: string
+          registro_profissional: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          formacao?: string | null
+          id?: string
+          nome: string
+          origem_ltcat_rt_id?: string | null
+          periodo_id?: string | null
+          ppp_id: string
+          registro_profissional?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          formacao?: string | null
+          id?: string
+          nome?: string
+          origem_ltcat_rt_id?: string | null
+          periodo_id?: string | null
+          ppp_id?: string
+          registro_profissional?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_responsaveis_ambientais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_responsaveis_ambientais_origem_ltcat_rt_id_fkey"
+            columns: ["origem_ltcat_rt_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_responsaveis_tecnicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_responsaveis_ambientais_periodo_id_fkey"
+            columns: ["periodo_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_periodos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_responsaveis_ambientais_ppp_id_fkey"
+            columns: ["ppp_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_responsaveis_medicos: {
+        Row: {
+          created_at: string
+          crm: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          origem_aso_medico_id: string | null
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          ppp_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          crm?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+          origem_aso_medico_id?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          ppp_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          crm?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          origem_aso_medico_id?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          ppp_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_responsaveis_medicos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_responsaveis_medicos_ppp_id_fkey"
+            columns: ["ppp_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ppp_revisoes: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          motivo: string
+          ppp_id: string
+          status_anterior: Database["public"]["Enums"]["ppp_status"] | null
+          status_novo: Database["public"]["Enums"]["ppp_status"] | null
+          user_email: string | null
+          user_id: string | null
+          versao_anterior: number | null
+          versao_nova: number | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          motivo: string
+          ppp_id: string
+          status_anterior?: Database["public"]["Enums"]["ppp_status"] | null
+          status_novo?: Database["public"]["Enums"]["ppp_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+          versao_anterior?: number | null
+          versao_nova?: number | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          motivo?: string
+          ppp_id?: string
+          status_anterior?: Database["public"]["Enums"]["ppp_status"] | null
+          status_novo?: Database["public"]["Enums"]["ppp_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+          versao_anterior?: number | null
+          versao_nova?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ppp_revisoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ppp_revisoes_ppp_id_fkey"
+            columns: ["ppp_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
             referencedColumns: ["id"]
           },
         ]
@@ -6297,6 +6947,10 @@ export type Database = {
         Args: { _pdf_versao?: number; _pgr_id: string }
         Returns: Json
       }
+      ppp_doc_status: {
+        Args: { _ppp_id: string }
+        Returns: Database["public"]["Enums"]["ppp_status"]
+      }
       resolve_contrato_target_for_entrega: {
         Args: {
           _funcionario_id: string
@@ -6445,6 +7099,33 @@ export type Database = {
         | "vigente"
         | "substituido"
         | "arquivado"
+      ppp_agente_grupo:
+        | "fisico"
+        | "quimico"
+        | "biologico"
+        | "ergonomico"
+        | "acidente"
+      ppp_conclusao_aposentadoria:
+        | "nao_especial"
+        | "especial_15"
+        | "especial_20"
+        | "especial_25"
+        | "inconclusivo"
+      ppp_enquadramento:
+        | "nao_aplicavel"
+        | "habitual_permanente"
+        | "intermitente"
+        | "eventual"
+        | "neutralizado_epi"
+      ppp_epi_eficacia: "sim" | "nao" | "parcial"
+      ppp_motivo_emissao: "inicial" | "atualizacao" | "correcao" | "demissao"
+      ppp_status:
+        | "rascunho"
+        | "em_revisao"
+        | "vigente"
+        | "substituido"
+        | "arquivado"
+      ppp_tecnica_avaliacao: "quantitativa" | "qualitativa"
       resultado_exame: "apto" | "inapto" | "apto_com_restricao" | "pendente"
       status_entrega:
         | "ativo"
@@ -6722,6 +7403,37 @@ export const Constants = {
         "substituido",
         "arquivado",
       ],
+      ppp_agente_grupo: [
+        "fisico",
+        "quimico",
+        "biologico",
+        "ergonomico",
+        "acidente",
+      ],
+      ppp_conclusao_aposentadoria: [
+        "nao_especial",
+        "especial_15",
+        "especial_20",
+        "especial_25",
+        "inconclusivo",
+      ],
+      ppp_enquadramento: [
+        "nao_aplicavel",
+        "habitual_permanente",
+        "intermitente",
+        "eventual",
+        "neutralizado_epi",
+      ],
+      ppp_epi_eficacia: ["sim", "nao", "parcial"],
+      ppp_motivo_emissao: ["inicial", "atualizacao", "correcao", "demissao"],
+      ppp_status: [
+        "rascunho",
+        "em_revisao",
+        "vigente",
+        "substituido",
+        "arquivado",
+      ],
+      ppp_tecnica_avaliacao: ["quantitativa", "qualitativa"],
       resultado_exame: ["apto", "inapto", "apto_com_restricao", "pendente"],
       status_entrega: [
         "ativo",
