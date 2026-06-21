@@ -150,7 +150,8 @@ export default function LtcatDetalhe() {
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="rt">Responsáveis Técnicos</TabsTrigger>
-          <TabsTrigger value="setores">Setores / GHE / Funções</TabsTrigger>
+          <TabsTrigger value="setores">Setores / GHE</TabsTrigger>
+          <TabsTrigger value="funcoes">Funções</TabsTrigger>
           <TabsTrigger value="agentes">Agentes e Avaliações</TabsTrigger>
           <TabsTrigger value="conclusoes">Conclusões Previdenciárias</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
