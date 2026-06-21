@@ -17,6 +17,7 @@ import PppExposicoesTab from "@/components/ppp/PppExposicoesTab";
 import PppResponsaveisTab from "@/components/ppp/PppResponsaveisTab";
 import PppExamesTab from "@/components/ppp/PppExamesTab";
 import PppPdfTab from "@/components/ppp/PppPdfTab";
+import PppChecklistTab from "@/components/ppp/PppChecklistTab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
@@ -77,6 +78,32 @@ export default function PppDetalhe() {
     enabled: !!id,
   });
 
+  const { data: resumo } = useQuery({
+    queryKey: ["ppp-detalhe-resumo", id, ppp?.conteudo_atualizado_em, ppp?.status],
+    queryFn: async () => {
+      const [per, exp, ra, rm, pdfs, ass] = await Promise.all([
+        (supabase.from as any)("ppp_periodos").select("id").eq("ppp_id", id),
+        (supabase.from as any)("ppp_exposicoes").select("id, conclusao_previdenciaria").eq("ppp_id", id),
+        (supabase.from as any)("ppp_responsaveis_ambientais").select("id").eq("ppp_id", id),
+        (supabase.from as any)("ppp_responsaveis_medicos").select("id").eq("ppp_id", id),
+        (supabase.from as any)("ppp_pdf_versoes")
+          .select("id, pdf_versao, sha256, gerado_em, com_marca_dagua")
+          .eq("ppp_id", id).order("pdf_versao", { ascending: false }),
+        (supabase.from as any)("ppp_assinaturas").select("id, pdf_hash").eq("ppp_id", id),
+      ]);
+      return {
+        periodos: (per.data || []).length,
+        exposicoes: (exp.data || []).length,
+        enquadramentos: Array.from(new Set(((exp.data || []) as any[]).map((e) => e.conclusao_previdenciaria).filter(Boolean))),
+        respAmb: (ra.data || []).length,
+        respMed: (rm.data || []).length,
+        pdfs: pdfs.data || [],
+        assins: ass.data || [],
+      };
+    },
+    enabled: !!id && !!ppp,
+  });
+
   if (!perms.canView) {
     return <Card><CardContent className="p-8 text-center text-muted-foreground">Sem permissão.</CardContent></Card>;
   }
@@ -130,6 +157,32 @@ export default function PppDetalhe() {
           <div className="text-xs font-mono">v{ppp.versao}</div>
         </CardContent>
       </Card>
+
+      {/* Cards resumidos */}
+      {resumo && (() => {
+        const ult = resumo.pdfs[0];
+        const pdfFinal = resumo.pdfs.find((p: any) => !p.com_marca_dagua);
+        const desat = ult && new Date(ppp.conteudo_atualizado_em).getTime() > new Date(ult.gerado_em).getTime() + 500;
+        const assinOk = pdfFinal && (resumo.assins as any[]).some((a) => a.pdf_hash === pdfFinal.sha256);
+        const pendencias: string[] = [];
+        if (resumo.periodos === 0) pendencias.push("sem período laboral");
+        if (resumo.exposicoes === 0 && !(ppp.observacoes && ppp.observacoes.trim().length >= 20)) pendencias.push("sem exposição/justificativa");
+        if (resumo.respAmb === 0) pendencias.push("sem responsável ambiental");
+        if (!pdfFinal) pendencias.push("PDF final ausente");
+        if (desat) pendencias.push("PDF desatualizado");
+        if (pdfFinal && !assinOk) pendencias.push("PDF final sem assinatura");
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+            <ResumoCard label="Status PPP" value={PPP_STATUS_LABEL[ppp.status]} />
+            <ResumoCard label="PDF" value={ult ? `v${ult.pdf_versao}${pdfFinal ? " (final)" : " (rascunho)"}` : "—"} tone={ult ? (pdfFinal ? "ok" : "warn") : "bad"} />
+            <ResumoCard label="Assinatura" value={assinOk ? "OK" : "Pendente"} tone={assinOk ? "ok" : "warn"} />
+            <ResumoCard label="Períodos" value={String(resumo.periodos)} tone={resumo.periodos ? "ok" : "bad"} />
+            <ResumoCard label="Exposições" value={String(resumo.exposicoes)} tone={resumo.exposicoes ? "ok" : "warn"} />
+            <ResumoCard label="Enquadramentos" value={resumo.enquadramentos.length ? resumo.enquadramentos.join(", ") : "—"} />
+            <ResumoCard label="Pendências p/ publicar" value={pendencias.length ? `${pendencias.length}` : "0"} tone={pendencias.length ? "bad" : "ok"} hint={pendencias.join(" • ")} />
+          </div>
+        );
+      })()}
 
       <Tabs defaultValue="resumo">
         <TabsList className="flex-wrap h-auto">
