@@ -6210,11 +6210,39 @@ export type Database = {
         Args: { _ltcat_id: string; _motivo: string }
         Returns: Json
       }
+      ltcat_assinar_visual: {
+        Args: {
+          _ip_origem: string
+          _ltcat_id: string
+          _observacao: string
+          _pdf_hash: string
+          _responsavel_nome: string
+          _responsavel_registro: string
+        }
+        Returns: Json
+      }
       ltcat_importar_avaliacoes_pgr: {
         Args: { _item_ids?: string[]; _ltcat_id: string; _pgr_id: string }
         Returns: Json
       }
+      ltcat_pdf_registrar: {
+        Args: {
+          _com_marca_dagua: boolean
+          _drive_file_id: string
+          _drive_path: string
+          _drive_view_link: string
+          _ltcat_id: string
+          _nome_arquivo: string
+          _pdf_hash: string
+          _tamanho_bytes: number
+        }
+        Returns: Json
+      }
       ltcat_publicar: { Args: { _ltcat_id: string }; Returns: Json }
+      ltcat_validar_interno: {
+        Args: { _ltcat_id: string; _pdf_versao?: number }
+        Returns: Json
+      }
       mfa_required_for_current_user: { Args: never; Returns: Json }
       pgr_abrir_revisao: {
         Args: { _motivo: string; _pgr_id: string }
