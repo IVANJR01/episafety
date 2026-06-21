@@ -254,6 +254,20 @@ function AuthPage() {
   return <Auth />;
 }
 
+// P0 #4 — /setup-mfa exige usuário autenticado. Deslogado vai para /login.
+function SetupMfaGuarded() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  return <SetupMfa />;
+}
+
 const App = () => (
   <QueryProvider>
     <TooltipProvider>
@@ -269,7 +283,7 @@ const App = () => (
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
-            <Route path="/setup-mfa" element={<SetupMfa />} />
+            <Route path="/setup-mfa" element={<SetupMfaGuarded />} />
             <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
             <Route path="/admin/empresas" element={<AdminLayout><AdminEmpresas /></AdminLayout>} />
             <Route path="/admin/usuarios" element={<AdminLayout><UsuariosLiberados /></AdminLayout>} />
