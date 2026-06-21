@@ -211,6 +211,7 @@ export default function PppDetalhe() {
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
           <TabsTrigger value="checklist">Checklist & Publicar</TabsTrigger>
+          <TabsTrigger value="s2240">eSocial S-2240</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-3">
