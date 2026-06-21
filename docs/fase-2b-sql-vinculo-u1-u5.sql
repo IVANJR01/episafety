@@ -27,14 +27,20 @@
 BEGIN;
 
 -- ----------------------------------------------------------------------------
--- PARÂMETROS — preencher os 5 e-mails reais antes de executar
+-- PARÂMETROS — e-mails escolhidos para a Fase 2B
 -- ----------------------------------------------------------------------------
--- Dica: para preencher rapidamente, use Find & Replace:
---   <EMAIL_REAL_U1>  ->  superadmin@suaempresa.com
---   <EMAIL_REAL_U2>  ->  principal.a@suaempresa.com
---   <EMAIL_REAL_U3>  ->  sst.a@suaempresa.com
---   <EMAIL_REAL_U4>  ->  operacional.b@suaempresa.com
---   <EMAIL_REAL_U5>  ->  semacesso@suaempresa.com
+-- Decisão do solicitante (opção A — contas dedicadas de homologação):
+--   <EMAIL_REAL_U1>  ->  ivanjr.tstconsultoria@gmail.com   (real, já existe em auth.users)
+--   <EMAIL_REAL_U2>  ->  homolog.u2@gmail.com              (dedicado, aguardando signup)
+--   <EMAIL_REAL_U3>  ->  homolog.u3@gmail.com              (dedicado, aguardando signup)
+--   <EMAIL_REAL_U4>  ->  homolog.u4@gmail.com              (dedicado, aguardando signup)
+--   <EMAIL_REAL_U5>  ->  homolog.u5@gmail.com              (dedicado, aguardando signup)
+--
+-- PRÉ-REQUISITO: U2–U5 precisam fazer signup em /auth ANTES de rodar este script.
+-- Sem o signup, o bloco user_roles não cria nada (filtra por auth.users.email).
+--
+-- PROIBIDO: NÃO usar os e-mails reais de produção como U2–U5:
+--   admg91nordeste@gmail.com, admg91@gmail.com, emilly@cg3.com.br, encarregado@gmail.com
 
 -- ----------------------------------------------------------------------------
 -- 1) usuarios_liberados — whitelist + módulos permitidos
