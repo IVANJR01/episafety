@@ -67,6 +67,7 @@ export const MODULOS = [
   { key: "pgr", label: "PGR — Gerenciamento de Riscos", path: "/pgr" },
   { key: "ltcat", label: "LTCAT — Laudo Técnico Previdenciário", path: "/ltcat" },
   { key: "ppp", label: "PPP — Perfil Profissiográfico Previdenciário", path: "/ppp" },
+  { key: "esocial", label: "eSocial — S-2240 (stub interno)", path: "/esocial/s2240/mapeamentos" },
 
   { key: "exames", label: "Exames", path: "/exames" },
   { key: "aso", label: "Gestão e Emissão de ASO", path: "/aso" },
