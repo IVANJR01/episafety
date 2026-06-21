@@ -173,10 +173,7 @@ export default function PppDetalhe() {
         </TabsContent>
 
         <TabsContent value="historico">
-          <Placeholder
-            titulo="Histórico laboral"
-            descricao="Será implementado na Parte 3 — Histórico Laboral e Períodos de Exposição."
-          />
+          <PppHistoricoTab ppp={ppp} funcionario={funcionario} />
         </TabsContent>
         <TabsContent value="exposicoes">
           <Placeholder titulo="Exposições a agentes nocivos" descricao="Disponível em fase futura (Parte 4)." />
