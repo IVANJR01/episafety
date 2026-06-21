@@ -14,7 +14,9 @@ import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import {
   obterOuCriarEventoS2240PorPeriodo, validarEventoS2240, gerarXmlS2240,
+  validarXmlS2240Tecnico,
   ESOCIAL_S2240_AVISO, ESOCIAL_S2240_VERSAO_LAYOUT,
+  type Ocorrencia,
 } from "@/lib/esocialS2240Xml";
 
 interface Props { ppp: any; }
@@ -44,6 +46,7 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
   const qc = useQueryClient();
   const { modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [xmlValByEvento, setXmlValByEvento] = useState<Record<string, { erros: number; alertas: number; ocorrencias: Ocorrencia[]; hashOk: boolean; quando: string }>>({});
 
   const canView = hasPerm(modulosPermitidos, isSuperAdmin, isPrincipal, "esocial:s2240:visualizar");
   const canPreparar = hasPerm(modulosPermitidos, isSuperAdmin, isPrincipal, "esocial:s2240:preparar");
@@ -127,6 +130,28 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
     } catch (e: any) { toast.error(e?.message || "Falha ao gerar XML", { duration: 8000 }); }
     finally { setBusyKey(null); }
   };
+
+  const handleValidarXml = async (periodoId: string, eventoId: string) => {
+    setBusyKey(periodoId + ":xml");
+    try {
+      const r = await validarXmlS2240Tecnico(eventoId);
+      setXmlValByEvento((s) => ({
+        ...s,
+        [eventoId]: {
+          erros: r.erros, alertas: r.alertas, ocorrencias: r.ocorrencias,
+          hashOk: r.hashOk, quando: new Date().toISOString(),
+        },
+      }));
+      const msg = `${r.erros} erro(s), ${r.alertas} alerta(s) · hash ${r.hashOk ? "ok" : "divergente"}`;
+      r.erros > 0
+        ? toast.error("Validação técnica falhou — " + msg, { duration: 8000 })
+        : toast.success("Validação técnica OK — " + msg);
+      refresh();
+    } catch (e: any) { toast.error(e?.message || "Falha ao validar XML técnico", { duration: 8000 }); }
+    finally { setBusyKey(null); }
+  };
+
+
 
   if (!canView) {
     return (
@@ -248,6 +273,18 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
                       {busyGen ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileCode2 className="h-4 w-4 mr-1" />}
                       Gerar XML técnico
                     </MfaActionButton>
+                    {ev?.xml_drive_id && (
+                      <MfaActionButton
+                        size="sm" variant="secondary"
+                        disabled={!canValidar || !!busyKey}
+                        onClick={() => handleValidarXml(per.id, ev.id)}
+                      >
+                        {busyKey === per.id + ":xml"
+                          ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          : <ShieldAlert className="h-4 w-4 mr-1" />}
+                        Validar XML técnico
+                      </MfaActionButton>
+                    )}
                     {ev?.xml_drive_link && (
                       <>
                         <Button asChild size="sm" variant="outline">
@@ -263,9 +300,44 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
                       </>
                     )}
                   </div>
+
+                  {ev?.validado_em && (
+                    <div className="text-[11px] text-muted-foreground flex flex-wrap gap-2 items-center pt-1">
+                      <Badge variant="default" className="text-[10px]">Validação local</Badge>
+                      <span>Última validação: {new Date(ev.validado_em).toLocaleString("pt-BR")}</span>
+                    </div>
+                  )}
+
+                  {ev && xmlValByEvento[ev.id] && (
+                    <div className={`rounded p-2 text-xs border ${xmlValByEvento[ev.id].erros > 0 ? "border-destructive/40 bg-destructive/5" : "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30"}`}>
+                      <div className="font-semibold flex items-center gap-1.5">
+                        {xmlValByEvento[ev.id].erros > 0
+                          ? <AlertTriangle className="h-3.5 w-3.5" />
+                          : <CheckCircle2 className="h-3.5 w-3.5" />}
+                        Resultado da validação técnica · {xmlValByEvento[ev.id].erros} erro(s), {xmlValByEvento[ev.id].alertas} alerta(s) · hash {xmlValByEvento[ev.id].hashOk ? "ok" : "divergente"}
+                      </div>
+                      {xmlValByEvento[ev.id].ocorrencias.length > 0 && (
+                        <ul className="mt-1 space-y-0.5 max-h-44 overflow-auto">
+                          {xmlValByEvento[ev.id].ocorrencias.slice(0, 30).map((o, i) => (
+                            <li key={i} className="flex gap-1.5">
+                              <Badge variant={o.tipo === "erro" ? "destructive" : "outline"} className="text-[9px] uppercase shrink-0">
+                                {o.tipo}
+                              </Badge>
+                              <span className="font-mono opacity-70 shrink-0">{o.codigo}</span>
+                              <span className="opacity-90">{o.mensagem}</span>
+                            </li>
+                          ))}
+                          {xmlValByEvento[ev.id].ocorrencias.length > 30 && (
+                            <li className="opacity-60">… +{xmlValByEvento[ev.id].ocorrencias.length - 30}</li>
+                          )}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
+
           </div>
         </CardContent>
       </Card>

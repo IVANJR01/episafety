@@ -12,6 +12,25 @@ export const ESOCIAL_S2240_AVISO =
   "XML gerado apenas para validação técnica. Não enviado ao Ambiente Nacional.";
 export const ESOCIAL_S2240_VERSAO_LAYOUT = "S-1.3";
 
+// ---------- Drive download (XML completo nunca é gravado no banco) ----------
+async function getDriveAccessToken(folder: string): Promise<string> {
+  await supabase.auth.refreshSession();
+  const { data, error } = await supabase.functions.invoke("gdrive-token", { body: { folder } });
+  if (error) throw new Error(error.message || "Falha ao obter token Drive");
+  if (!data?.accessToken) throw new Error("Token Drive ausente");
+  return data.accessToken as string;
+}
+export async function downloadXmlFromDrive(fileId: string, pppId: string): Promise<string> {
+  const token = await getDriveAccessToken(`eSocial/S2240/${pppId}`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`Drive ${res.status}: não foi possível baixar o XML`);
+  return await res.text();
+}
+
+
 export type OcorrenciaTipo = "erro" | "alerta";
 export interface Ocorrencia {
   tipo: OcorrenciaTipo;
@@ -447,3 +466,184 @@ export async function gerarXmlS2240(eventoId: string): Promise<{
 
   return { hash, idEvento, driveId: up.fileId, driveLink: up.webViewLink, warnings };
 }
+
+// ============================================================================
+// Validação estrutural do XML técnico (Parte 4)
+// - Parse via DOMParser
+// - Verifica elementos mínimos do layout S-2240
+// - Reconfere CPF/CNPJ/datas/CBO presentes no XML
+// - Recalcula SHA-256 e compara com o hash armazenado
+// - NÃO grava XML no banco. XML completo só permanece no Drive BYOK privado.
+// ============================================================================
+export interface XmlValidacaoResultado {
+  hashOk: boolean;
+  hashCalculado: string;
+  hashEsperado: string | null;
+  ocorrencias: Ocorrencia[];
+  erros: number;
+  alertas: number;
+  driveId: string;
+  driveLink: string | null;
+  tamanho: number;
+  versaoLayout: string;
+}
+
+export function validarXmlEstrutural(xml: string): Ocorrencia[] {
+  const out: Ocorrencia[] = [];
+  const E = (codigo: string, campo: string, mensagem: string) =>
+    out.push({ tipo: "erro", codigo, campo, mensagem });
+  const W = (codigo: string, campo: string, mensagem: string) =>
+    out.push({ tipo: "alerta", codigo, campo, mensagem });
+
+  if (!xml || !xml.trim().startsWith("<?xml")) {
+    E("XML-DEC", "xml", "Declaração <?xml ...?> ausente");
+    return out;
+  }
+  let doc: Document;
+  try {
+    doc = new DOMParser().parseFromString(xml, "application/xml");
+  } catch {
+    E("XML-PARSE", "xml", "Falha ao interpretar XML");
+    return out;
+  }
+  const parserErr = doc.getElementsByTagName("parsererror")[0];
+  if (parserErr) {
+    E("XML-PARSE", "xml", `XML inválido: ${(parserErr.textContent || "").slice(0, 200)}`);
+    return out;
+  }
+
+  const root = doc.documentElement;
+  if (!root || root.localName !== "eSocial")
+    E("XML-ROOT", "eSocial", "Elemento raiz <eSocial> ausente");
+
+  const get = (tag: string) => doc.getElementsByTagNameNS("*", tag)[0]?.textContent?.trim() || "";
+  const getAll = (tag: string) => Array.from(doc.getElementsByTagNameNS("*", tag));
+
+  const evt = getAll("evtExpRisco")[0] as Element | undefined;
+  if (!evt) E("XML-EVT", "evtExpRisco", "Bloco <evtExpRisco> ausente");
+  else if (!evt.getAttribute("Id")) E("XML-EVT-ID", "evtExpRisco@Id", "Atributo Id obrigatório no <evtExpRisco>");
+
+  const tpAmb = get("tpAmb");
+  if (!tpAmb) E("XML-AMB", "tpAmb", "<tpAmb> obrigatório");
+  else if (!["1", "2"].includes(tpAmb)) E("XML-AMB", "tpAmb", "tpAmb deve ser 1 (produção) ou 2 (homologação)");
+
+  const nrInsc = get("nrInsc");
+  if (!nrInsc) E("XML-CNPJ", "nrInsc", "<nrInsc> do empregador obrigatório");
+  else if (!/^\d{8}$/.test(nrInsc) && !/^\d{14}$/.test(nrInsc))
+    E("XML-CNPJ", "nrInsc", "nrInsc deve ter 8 ou 14 dígitos");
+
+  const cpf = get("cpfTrab");
+  if (!cpf) E("XML-CPF", "cpfTrab", "<cpfTrab> obrigatório");
+  else if (!/^\d{11}$/.test(cpf)) E("XML-CPF", "cpfTrab", "cpfTrab deve ter 11 dígitos");
+  else if (!isValidCpf(cpf)) E("XML-CPF", "cpfTrab", "CPF inválido (dígito verificador)");
+
+  const mat = get("matricula");
+  if (!mat) W("XML-MAT", "matricula", "<matricula> não informada");
+
+  const dtIni = get("dtIniCondicao");
+  if (!dtIni) E("XML-DTI", "dtIniCondicao", "<dtIniCondicao> obrigatória");
+  else if (!isDateISO(dtIni)) E("XML-DTI", "dtIniCondicao", "Formato de data inválido (AAAA-MM-DD)");
+
+  const dtFim = get("dtFimCondicao");
+  if (dtFim && !isDateISO(dtFim)) E("XML-DTF", "dtFimCondicao", "Formato de data inválido (AAAA-MM-DD)");
+  if (dtIni && dtFim && isDateISO(dtIni) && isDateISO(dtFim) && dtFim < dtIni)
+    E("XML-PER", "dtFimCondicao", "dtFimCondicao anterior a dtIniCondicao");
+
+  const agentes = getAll("agNoc");
+  if (!agentes.length) W("XML-AGV", "agNoc", "Nenhum <agNoc> no XML — verifique se o período tem exposições");
+  for (const ag of agentes as Element[]) {
+    const cod = ag.getElementsByTagNameNS("*", "codAgNoc")[0]?.textContent?.trim() || "";
+    if (!cod || cod === "MAP-PENDENTE")
+      E("XML-T24", "codAgNoc", "<codAgNoc> ausente ou mapeamento Tabela 24 pendente");
+    const apos = ag.getElementsByTagNameNS("*", "aposentEsp")[0]?.textContent?.trim() || "";
+    if (!["S", "N"].includes(apos)) E("XML-APOS", "aposentEsp", "<aposentEsp> deve ser S ou N");
+    const utilizEPI = ag.getElementsByTagNameNS("*", "utilizEPI")[0]?.textContent?.trim() || "";
+    const epiBlock = ag.getElementsByTagNameNS("*", "epi")[0];
+    if (utilizEPI === "1" && !epiBlock) W("XML-EPI", "epi", `Agente '${cod}' indica EPI mas não traz bloco <epi>`);
+  }
+
+  return out;
+}
+
+export async function validarXmlS2240Tecnico(eventoId: string): Promise<XmlValidacaoResultado> {
+  const { data: evento, error: evErr } = await (supabase.from as any)("esocial_eventos_s2240")
+    .select("id, empresa_id, ppp_documento_id, xml_drive_id, xml_drive_link, xml_sha256, status")
+    .eq("id", eventoId).maybeSingle();
+  if (evErr || !evento) throw new Error("Evento S-2240 não encontrado ou fora do tenant");
+  if (!evento.xml_drive_id) throw new Error("Nenhum XML gerado ainda — execute 'Gerar XML técnico' antes.");
+
+  const xml = await downloadXmlFromDrive(evento.xml_drive_id, evento.ppp_documento_id);
+  const tamanho = new TextEncoder().encode(xml).length;
+
+  const hashCalculado = await sha256Hex(xml);
+  const hashEsperado: string | null = evento.xml_sha256 || null;
+  const hashOk = !!hashEsperado && hashCalculado === hashEsperado;
+
+  const estruturais = validarXmlEstrutural(xml);
+  let negocio: Ocorrencia[] = [];
+  try {
+    const input = await coletarInput(eventoId);
+    negocio = validarS2240(input);
+  } catch (e: any) {
+    estruturais.push({ tipo: "alerta", codigo: "INP-COL", mensagem: `Não foi possível recoletar contexto: ${e?.message || e}` });
+  }
+  const ocorrencias: Ocorrencia[] = [...estruturais, ...negocio];
+
+  if (!hashOk && hashEsperado) {
+    ocorrencias.unshift({
+      tipo: "erro",
+      codigo: "HASH-MISMATCH",
+      campo: "xml_sha256",
+      mensagem: `Hash do XML no Drive (${hashCalculado.slice(0, 12)}…) difere do hash armazenado (${hashEsperado.slice(0, 12)}…).`,
+    });
+  } else if (!hashEsperado) {
+    ocorrencias.unshift({
+      tipo: "alerta",
+      codigo: "HASH-MISSING",
+      campo: "xml_sha256",
+      mensagem: "Nenhum hash armazenado para comparação.",
+    });
+  }
+
+  const erros = ocorrencias.filter((o) => o.tipo === "erro").length;
+  const alertas = ocorrencias.filter((o) => o.tipo === "alerta").length;
+  const resultado: "ok" | "aviso" | "erro" = erros > 0 ? "erro" : alertas > 0 ? "aviso" : "ok";
+  const novoStatus = erros > 0 ? "rejeitado_local" : "validado_stub";
+
+  await (supabase.rpc as any)("s2240_registrar_ocorrencia", {
+    _evento_id: eventoId,
+    _tipo: "validacao_local",
+    _resultado: resultado,
+    _mensagens: ocorrencias as any,
+    _xml_sha256: hashCalculado,
+    _erro_resumido: erros > 0 ? `${erros} erro(s) estruturais/negócio` : null,
+  });
+  await (supabase.rpc as any)("s2240_marcar_validacao_xml", {
+    _evento_id: eventoId,
+    _xml_sha256: hashCalculado,
+    _resultado: resultado,
+    _novo_status: novoStatus,
+  });
+  await (supabase.rpc as any)("s2240_registrar_audit", {
+    _action: "validar_xml_tecnico",
+    _evento_id: eventoId,
+    _ppp_id: evento.ppp_documento_id,
+    _funcionario_id: null,
+    _hash: hashCalculado,
+    _status: novoStatus,
+    _metadados: {
+      resumo: `XML técnico validado: ${erros} erro(s) / ${alertas} alerta(s)`,
+      hash_match: hashOk,
+      tamanho_bytes: tamanho,
+      versao_layout: ESOCIAL_S2240_VERSAO_LAYOUT,
+      drive_id: evento.xml_drive_id,
+    },
+  });
+
+  return {
+    hashOk, hashCalculado, hashEsperado, ocorrencias, erros, alertas,
+    driveId: evento.xml_drive_id, driveLink: evento.xml_drive_link || null,
+    tamanho, versaoLayout: ESOCIAL_S2240_VERSAO_LAYOUT,
+  };
+}
+
