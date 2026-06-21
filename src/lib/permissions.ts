@@ -59,6 +59,7 @@ export const MODULOS = [
   { key: "cat", label: "CAT — Comunicação de Acidente", path: "/cat" },
   { key: "pgr", label: "PGR — Gerenciamento de Riscos", path: "/pgr" },
   { key: "ltcat", label: "LTCAT — Laudo Técnico Previdenciário", path: "/ltcat" },
+  { key: "ppp", label: "PPP — Perfil Profissiográfico Previdenciário", path: "/ppp" },
 
   { key: "exames", label: "Exames", path: "/exames" },
   { key: "aso", label: "Gestão e Emissão de ASO", path: "/aso" },
