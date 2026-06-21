@@ -249,8 +249,8 @@ export default function LtcatDetalhe() {
         <TabsContent value="pdf">
           <LtcatPdfTab
             ltcat={doc}
-            canExport={perms.canEdit || (perms as any).canExport}
-            canAssinar={(perms as any).canAssinar || perms.canEdit}
+            canExport={perms.canEdit}
+            canAssinar={perms.canEdit}
           />
         </TabsContent>
       </Tabs>
