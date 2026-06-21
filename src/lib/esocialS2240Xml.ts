@@ -12,6 +12,25 @@ export const ESOCIAL_S2240_AVISO =
   "XML gerado apenas para validação técnica. Não enviado ao Ambiente Nacional.";
 export const ESOCIAL_S2240_VERSAO_LAYOUT = "S-1.3";
 
+// ---------- Drive download (XML completo nunca é gravado no banco) ----------
+async function getDriveAccessToken(folder: string): Promise<string> {
+  await supabase.auth.refreshSession();
+  const { data, error } = await supabase.functions.invoke("gdrive-token", { body: { folder } });
+  if (error) throw new Error(error.message || "Falha ao obter token Drive");
+  if (!data?.accessToken) throw new Error("Token Drive ausente");
+  return data.accessToken as string;
+}
+export async function downloadXmlFromDrive(fileId: string, pppId: string): Promise<string> {
+  const token = await getDriveAccessToken(`eSocial/S2240/${pppId}`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`Drive ${res.status}: não foi possível baixar o XML`);
+  return await res.text();
+}
+
+
 export type OcorrenciaTipo = "erro" | "alerta";
 export interface Ocorrencia {
   tipo: OcorrenciaTipo;
