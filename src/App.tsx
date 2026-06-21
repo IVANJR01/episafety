@@ -62,6 +62,7 @@ import PppNovo from "@/pages/ppp/PppNovo";
 import PppDetalhe from "@/pages/ppp/PppDetalhe";
 import PppValidar from "@/pages/ppp/PppValidar";
 import PppDashboard from "@/pages/ppp/PppDashboard";
+import S2240Mapeamentos from "@/pages/esocial/S2240Mapeamentos";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
@@ -227,6 +228,8 @@ function ProtectedRoute() {
         <Route path="/ppp/:id" element={<PppDetalhe />} />
         <Route path="/ppp/:id/editar" element={<PppNovo />} />
         <Route path="/ppp/validar/:id" element={<PppValidar />} />
+
+        <Route path="/esocial/s2240/mapeamentos" element={<S2240Mapeamentos />} />
 
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
