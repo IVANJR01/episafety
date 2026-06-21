@@ -21,6 +21,7 @@ import LtcatAgentesAvaliacoesTab from "@/components/ltcat/LtcatAgentesAvaliacoes
 import LtcatFuncoesTab from "@/components/ltcat/LtcatFuncoesTab";
 import LtcatConclusoesTab from "@/components/ltcat/LtcatConclusoesTab";
 import LtcatPdfTab from "@/components/ltcat/LtcatPdfTab";
+import LtcatChecklistTab from "@/components/ltcat/LtcatChecklistTab";
 import {
   LtcatDocumento, LtcatRevisao,
   LTCAT_STATUS_LABEL, LTCAT_STATUS_COLOR, LTCAT_MOTIVO_LABEL,
@@ -157,6 +158,7 @@ export default function LtcatDetalhe() {
           <TabsTrigger value="conclusoes">Conclusões Previdenciárias</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
+          <TabsTrigger value="checklist">Checklist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-3">
@@ -252,6 +254,10 @@ export default function LtcatDetalhe() {
             canExport={perms.canEdit}
             canAssinar={perms.canEdit}
           />
+        </TabsContent>
+
+        <TabsContent value="checklist">
+          <LtcatChecklistTab ltcat={doc} />
         </TabsContent>
       </Tabs>
 

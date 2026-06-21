@@ -56,6 +56,7 @@ import LtcatModule from "@/pages/ltcat/LtcatModule";
 import LtcatNovo from "@/pages/ltcat/LtcatNovo";
 import LtcatDetalhe from "@/pages/ltcat/LtcatDetalhe";
 import LtcatValidar from "@/pages/ltcat/LtcatValidar";
+import LtcatDashboard from "@/pages/ltcat/LtcatDashboard";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
@@ -209,6 +210,7 @@ function ProtectedRoute() {
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
         <Route path="/pgr/validar/:id" element={<PgrValidar />} />
         <Route path="/ltcat" element={<LtcatModule />} />
+        <Route path="/ltcat/dashboard" element={<LtcatDashboard />} />
         <Route path="/ltcat/novo" element={<LtcatNovo />} />
         <Route path="/ltcat/:id" element={<LtcatDetalhe />} />
         <Route path="/ltcat/:id/editar" element={<LtcatNovo />} />
