@@ -18,6 +18,7 @@ import PppResponsaveisTab from "@/components/ppp/PppResponsaveisTab";
 import PppExamesTab from "@/components/ppp/PppExamesTab";
 import PppPdfTab from "@/components/ppp/PppPdfTab";
 import PppChecklistTab from "@/components/ppp/PppChecklistTab";
+import PppEsocialS2240Tab from "@/components/ppp/PppEsocialS2240Tab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
@@ -210,6 +211,7 @@ export default function PppDetalhe() {
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
           <TabsTrigger value="checklist">Checklist & Publicar</TabsTrigger>
+          <TabsTrigger value="s2240">eSocial S-2240</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-3">
@@ -293,6 +295,10 @@ export default function PppDetalhe() {
 
         <TabsContent value="checklist">
           <PppChecklistTab ppp={ppp} funcionario={funcionario} canPublicar={perms.canEdit} />
+        </TabsContent>
+
+        <TabsContent value="s2240">
+          <PppEsocialS2240Tab ppp={ppp} />
         </TabsContent>
       </Tabs>
     </div>
