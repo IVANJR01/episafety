@@ -256,17 +256,13 @@ export default function S2240Mapeamentos() {
         .upsert(row, { onConflict: "empresa_id,agente_nome" });
       if (error) throw error;
 
-      // Audit log (sem binário, só metadados)
+      // P0 #6 — Audit log via RPC SECURITY DEFINER (sem insert direto do cliente).
       try {
-        await (supabase.from as any)("audit_log").insert({
-          empresa_id: empresaId,
-          tabela: "esocial_s2240_mapeamentos",
-          acao: "upsert",
-          dados_novos: {
-            agente: payload.agente.nome,
-            codigo_t24: payload.codigo_t24,
-            status,
-          },
+        await (supabase.rpc as any)("s2240_registrar_mapeamento_audit", {
+          _empresa_id: empresaId,
+          _agente: payload.agente.nome,
+          _codigo_t24: payload.codigo_t24,
+          _status: status,
         });
       } catch { /* audit não-fatal */ }
     },

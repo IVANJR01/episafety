@@ -1,10 +1,27 @@
 // ============================================================================
 // eSocial S-2210 — Geração + Validação local (STUB)
 // ----------------------------------------------------------------------------
-// NÃO transmite ao Ambiente Nacional, NÃO assina ICP-Brasil,
-// NÃO gera recibo/protocolo reais. Apenas validação técnica interna.
+// XML completo armazenado SOMENTE no Google Drive BYOK privado.
+// Banco guarda apenas hash, drive_file_id, drive_link, tamanho e metadados.
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
+
+// Baixa o XML do Drive sob demanda (não fica no banco).
+export async function downloadXmlS2210FromDrive(driveFileId: string): Promise<string> {
+  await supabase.auth.refreshSession();
+  const { data, error } = await supabase.functions.invoke("gdrive-token", {
+    body: { folder: "eSocial/S2210" },
+  });
+  if (error) throw new Error(error.message || "Falha ao obter token Drive");
+  const token = (data as any)?.accessToken;
+  if (!token) throw new Error("Token Drive ausente");
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveFileId)}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`Drive ${res.status}: não foi possível baixar o XML`);
+  return await res.text();
+}
 
 export const ESOCIAL_S2210_AVISO =
   "XML não assinado digitalmente. Assinatura ICP-Brasil ainda não implementada.";
@@ -342,8 +359,11 @@ export async function validarXmlS2210(eventoId: string): Promise<{
 }
 
 // ---------- gerar XML técnico (após validação OK) ----------
+// P0 #7 — XML completo NUNCA é gravado no banco. Upload para Google Drive BYOK
+// privado; banco recebe apenas hash, drive_file_id, drive_link, tamanho e metadados.
 export async function gerarSalvarXmlS2210(eventoId: string): Promise<{
   xml: string; hash: string; warnings: string[]; idEvento: string;
+  driveFileId: string; driveLink: string | null;
 }> {
   const input = await coletarInput(eventoId);
 
@@ -357,19 +377,30 @@ export async function gerarSalvarXmlS2210(eventoId: string): Promise<{
 
   const { xml, idEvento, warnings } = buildS2210Xml(input);
   const hash = await sha256Hex(xml);
+  const tamanho = new TextEncoder().encode(xml).length;
 
-  const { error: rpcErr } = await (supabase.rpc as any)("esocial_registrar_xml", {
+  // Upload para Drive BYOK privado (mesmo padrão do S-2240).
+  await supabase.auth.refreshSession();
+  const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+  const folder = `eSocial/S2210/${input.evento.empresa_id}`;
+  const fileName = `S2210_${idEvento}_${hash.slice(0, 8)}.xml`;
+  const blob = new Blob([xml], { type: "application/xml" });
+  const up = await uploadToDrive(blob, folder, fileName, { makePublic: false });
+
+  const { error: rpcErr } = await (supabase.rpc as any)("esocial_registrar_xml_meta", {
     _evento_id: eventoId,
-    _xml: xml,
     _hash: hash,
     _versao_layout: input.evento.versao_layout || "1.3",
+    _tamanho_bytes: tamanho,
+    _drive_file_id: up.fileId,
+    _drive_link: up.webViewLink || null,
   });
   if (rpcErr) throw new Error(rpcErr.message);
 
   // grava alertas pós-geração
   await (supabase.rpc as any)("esocial_registrar_ocorrencias", { _evento_id: eventoId, _ocorrencias: ocorrencias });
 
-  return { xml, hash, warnings, idEvento };
+  return { xml, hash, warnings, idEvento, driveFileId: up.fileId, driveLink: up.webViewLink || null };
 }
 
 // ---------- retificação ----------
