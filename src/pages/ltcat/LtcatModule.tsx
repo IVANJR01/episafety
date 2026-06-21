@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Plus, FileWarning, Activity } from "lucide-react";
+import { Eye, Plus, FileWarning, Activity, BarChart3 } from "lucide-react";
 import {
   LTCAT_STATUS_LABEL, LTCAT_STATUS_COLOR, LTCAT_MOTIVO_LABEL,
   LtcatDocumento, LtcatStatus,
