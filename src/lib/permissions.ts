@@ -32,6 +32,13 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
     { key: "assinar", label: "Assinar LTCAT (assinatura visual + MFA)" },
     { key: "exportar", label: "Exportar PDF técnico do LTCAT" },
   ],
+  ppp: [
+    { key: "visualizar", label: "Visualizar PPP" },
+    { key: "editar", label: "Editar PPP / Períodos / Exposições" },
+    { key: "revisar", label: "Abrir revisão e publicar PPP" },
+    { key: "assinar", label: "Assinar PPP (assinatura visual + MFA)" },
+    { key: "exportar", label: "Exportar PDF técnico do PPP" },
+  ],
 };
 
 
