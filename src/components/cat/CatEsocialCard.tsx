@@ -15,7 +15,7 @@ import { Link } from "react-router-dom";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import {
   gerarSalvarXmlS2210, validarXmlS2210, iniciarRetificacaoS2210,
-  registrarDownloadXml, ESOCIAL_S2210_AVISO,
+  registrarDownloadXml, ESOCIAL_S2210_AVISO, downloadXmlS2210FromDrive,
 } from "@/lib/esocialS2210Xml";
 
 interface Props { catId: string; empresaId: string | null; }
@@ -106,10 +106,30 @@ export default function CatEsocialCard({ catId }: Props) {
     finally { setBusy(null); }
   };
 
+  // P0 #7 — XML completo vive apenas no Drive BYOK. Baixa sob demanda.
+  const [xmlContent, setXmlContent] = useState<string | null>(null);
+  const [xmlLoading, setXmlLoading] = useState(false);
+
+  const ensureXml = async (): Promise<string | null> => {
+    if (xmlContent) return xmlContent;
+    if (!evento?.xml_drive_id) return null;
+    setXmlLoading(true);
+    try {
+      const txt = await downloadXmlS2210FromDrive(evento.xml_drive_id);
+      setXmlContent(txt);
+      return txt;
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao baixar XML do Drive");
+      return null;
+    } finally { setXmlLoading(false); }
+  };
+
   const download = async () => {
-    if (!evento?.xml_gerado) return;
-    try { await registrarDownloadXml(evento.id); } catch {/* não bloqueia download */}
-    const blob = new Blob([evento.xml_gerado], { type: "application/xml" });
+    if (!evento?.xml_drive_id) return;
+    const txt = await ensureXml();
+    if (!txt) return;
+    try { await registrarDownloadXml(evento.id); } catch {/* não bloqueia */}
+    const blob = new Blob([txt], { type: "application/xml" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -118,8 +138,13 @@ export default function CatEsocialCard({ catId }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  const openVisualizar = async () => {
+    setOpenXml(true);
+    await ensureXml();
+  };
+
   const status = evento?.status || "não-criado";
-  const temXml = !!evento?.xml_gerado;
+  const temXml = !!evento?.xml_drive_id;
   const podeRetif = evento && ["aceito", "validado_stub", "homologacao_stub", "simulado"].includes(evento.status);
   const erros = ocorrencias.filter((o: any) => o.tipo === 1);
   const alertas = ocorrencias.filter((o: any) => o.tipo === 2);
@@ -162,7 +187,7 @@ export default function CatEsocialCard({ catId }: Props) {
           <Field label="Retificação" value={evento?.ind_retif === "retificacao" ? `Sim (recibo ${evento.nr_recibo_origem || "?"})` : "Não"} />
           <Field label="Origem (evento)" value={evento?.evento_origem_id ? evento.evento_origem_id.slice(0, 8) + "…" : "—"} mono />
           <Field label="Gerado em" value={evento?.dh_processamento ? new Date(evento.dh_processamento).toLocaleString("pt-BR") : "—"} />
-          <Field label="Tamanho XML" value={evento?.xml_gerado ? `${evento.xml_gerado.length} bytes` : "—"} />
+          <Field label="Tamanho XML" value={evento?.xml_tamanho_bytes ? `${evento.xml_tamanho_bytes} bytes (Drive)` : "—"} />
           <Field label="Hash SHA-256" value={evento?.xml_hash_sha256 || "—"} mono />
           <Field label="hrsTrabAntesAcid" value={evento?.hrs_trab_antes_acid ?? "não informado"} />
           <Field label="iniciatCAT" value={evento?.iniciat_cat ?? "—"} />
@@ -230,10 +255,16 @@ export default function CatEsocialCard({ catId }: Props) {
                 <Badge variant="destructive" className="text-[10px]">Não transmitido</Badge>
               </DialogTitle>
             </DialogHeader>
-            <div className="overflow-auto rounded border bg-muted/40 p-3">
-              <pre className="text-[11px] font-mono whitespace-pre-wrap break-all">{evento?.xml_gerado}</pre>
+            <div className="overflow-auto rounded border bg-muted/40 p-3 min-h-[120px]">
+              {xmlLoading ? (
+                <div className="flex items-center justify-center py-8 text-xs text-muted-foreground gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Baixando XML do Google Drive…
+                </div>
+              ) : (
+                <pre className="text-[11px] font-mono whitespace-pre-wrap break-all">{xmlContent || "XML não disponível."}</pre>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">Hash: <span className="font-mono">{evento?.xml_hash_sha256}</span></p>
+            <p className="text-xs text-muted-foreground">Hash: <span className="font-mono">{evento?.xml_hash_sha256}</span> · Drive ID: <span className="font-mono">{evento?.xml_drive_id || "—"}</span></p>
           </DialogContent>
         </Dialog>
       </CardContent>

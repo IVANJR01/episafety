@@ -1,10 +1,27 @@
 // ============================================================================
 // eSocial S-2210 — Geração + Validação local (STUB)
 // ----------------------------------------------------------------------------
-// NÃO transmite ao Ambiente Nacional, NÃO assina ICP-Brasil,
-// NÃO gera recibo/protocolo reais. Apenas validação técnica interna.
+// XML completo armazenado SOMENTE no Google Drive BYOK privado.
+// Banco guarda apenas hash, drive_file_id, drive_link, tamanho e metadados.
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
+
+// Baixa o XML do Drive sob demanda (não fica no banco).
+export async function downloadXmlS2210FromDrive(driveFileId: string): Promise<string> {
+  await supabase.auth.refreshSession();
+  const { data, error } = await supabase.functions.invoke("gdrive-token", {
+    body: { folder: "eSocial/S2210" },
+  });
+  if (error) throw new Error(error.message || "Falha ao obter token Drive");
+  const token = (data as any)?.accessToken;
+  if (!token) throw new Error("Token Drive ausente");
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveFileId)}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`Drive ${res.status}: não foi possível baixar o XML`);
+  return await res.text();
+}
 
 export const ESOCIAL_S2210_AVISO =
   "XML não assinado digitalmente. Assinatura ICP-Brasil ainda não implementada.";
