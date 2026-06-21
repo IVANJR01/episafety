@@ -14,7 +14,9 @@ import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import {
   obterOuCriarEventoS2240PorPeriodo, validarEventoS2240, gerarXmlS2240,
+  validarXmlS2240Tecnico,
   ESOCIAL_S2240_AVISO, ESOCIAL_S2240_VERSAO_LAYOUT,
+  type Ocorrencia,
 } from "@/lib/esocialS2240Xml";
 
 interface Props { ppp: any; }
