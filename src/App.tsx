@@ -229,6 +229,8 @@ function ProtectedRoute() {
         <Route path="/ppp/:id/editar" element={<PppNovo />} />
         <Route path="/ppp/validar/:id" element={<PppValidar />} />
 
+        <Route path="/esocial/s2240/mapeamentos" element={<S2240Mapeamentos />} />
+
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
         <Route path="/admin/empresas" element={<AdminEmpresas />} />
