@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, FileText, FileWarning, Plus } from "lucide-react";
+import { BarChart3, Eye, FileText, FileWarning, Plus } from "lucide-react";
 import {
   PPP_STATUS_LABEL, PPP_STATUS_COLOR, PPP_MOTIVO_LABEL,
   PppDocumento, PppStatus,
@@ -92,11 +92,16 @@ export default function PppModule() {
             Documento interno preparatório (IN PRES/INSS 128/2022). Sem envio eSocial nesta fase.
           </p>
         </div>
-        {perms.canCreate && (
-          <Button onClick={() => navigate("/ppp/novo")}>
-            <Plus className="h-4 w-4 mr-1" /> Novo PPP
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/ppp/dashboard")}>
+            <BarChart3 className="h-4 w-4 mr-1" /> Dashboard
           </Button>
-        )}
+          {perms.canCreate && (
+            <Button onClick={() => navigate("/ppp/novo")}>
+              <Plus className="h-4 w-4 mr-1" /> Novo PPP
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
