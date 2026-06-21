@@ -60,6 +60,7 @@ import LtcatDashboard from "@/pages/ltcat/LtcatDashboard";
 import PppModule from "@/pages/ppp/PppModule";
 import PppNovo from "@/pages/ppp/PppNovo";
 import PppDetalhe from "@/pages/ppp/PppDetalhe";
+import PppValidar from "@/pages/ppp/PppValidar";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
@@ -223,6 +224,7 @@ function ProtectedRoute() {
         <Route path="/ppp/novo" element={<PppNovo />} />
         <Route path="/ppp/:id" element={<PppDetalhe />} />
         <Route path="/ppp/:id/editar" element={<PppNovo />} />
+        <Route path="/ppp/validar/:id" element={<PppValidar />} />
 
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />

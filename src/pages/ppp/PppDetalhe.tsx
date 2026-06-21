@@ -14,6 +14,9 @@ import {
 } from "@/lib/pppTypes";
 import PppHistoricoTab from "@/components/ppp/PppHistoricoTab";
 import PppExposicoesTab from "@/components/ppp/PppExposicoesTab";
+import PppResponsaveisTab from "@/components/ppp/PppResponsaveisTab";
+import PppExamesTab from "@/components/ppp/PppExamesTab";
+import PppPdfTab from "@/components/ppp/PppPdfTab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
@@ -180,10 +183,10 @@ export default function PppDetalhe() {
           <PppExposicoesTab ppp={ppp} />
         </TabsContent>
         <TabsContent value="responsaveis">
-          <Placeholder titulo="Responsáveis ambientais e médicos" descricao="Estrutura básica disponível; gestão na Parte 4." />
+          <PppResponsaveisTab ppp={ppp} />
         </TabsContent>
         <TabsContent value="exames">
-          <Placeholder titulo="Exames referenciados (ASO/PCMSO)" descricao="Disponível em fase futura." />
+          <PppExamesTab ppp={ppp} funcionario={funcionario} />
         </TabsContent>
 
         <TabsContent value="revisoes">
@@ -210,7 +213,13 @@ export default function PppDetalhe() {
         </TabsContent>
 
         <TabsContent value="pdf">
-          <Placeholder titulo="PDF técnico" descricao="Geração de PDF, assinatura visual e QR Code serão entregues em fase futura." />
+          <PppPdfTab
+            ppp={ppp}
+            funcionario={funcionario}
+            empresa={empresa}
+            canExport={perms.canEdit}
+            canAssinar={perms.canEdit}
+          />
         </TabsContent>
       </Tabs>
     </div>
