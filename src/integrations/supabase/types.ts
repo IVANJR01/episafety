@@ -7107,6 +7107,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ppp_publicar: { Args: { _ppp_id: string }; Returns: Json }
       resolve_contrato_target_for_entrega: {
         Args: {
           _funcionario_id: string
