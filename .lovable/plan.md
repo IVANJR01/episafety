@@ -1,194 +1,312 @@
 
-# Plano — Módulo **LTCAT** (Laudo Técnico das Condições Ambientais do Trabalho)
+# Módulo PPP — Perfil Profissiográfico Previdenciário
 
-> Este plano é do **LTCAT** (laudo previdenciário de exposição a agentes nocivos — Lei 8.213/91 art. 58, Decreto 3.048/99 Anexo IV, IN INSS 128/2022).
-> **NÃO** é o módulo CAT (Comunicação de Acidente de Trabalho — Lei 8.213/91 art. 22), que já existe no projeto em `src/pages/cat/*` e não será tocado.
-
-Padrão arquitetural: idêntico ao PGR — documento técnico interno, versionado, PDF com hash SHA-256 + assinatura visual + QR Code de validação interna, binários em Google Drive BYOK, RLS estrito por empresa, audit log append-only. **Sem ICP-Brasil, sem envio S-2240, sem PPP real** — apenas estrutura preparada.
-
----
-
-## 1. Estrutura do laudo LTCAT
-
-Documento por **empresa + unidade** (Matriz pode emitir consolidado; Unidade pode ter o seu). Periodicidade: anual ou em mudança ambiental relevante (art. 58 §3º).
-
-Tabelas:
-
-- `ltcat_documentos` — cabeçalho: empresa_id, unidade_id, versão, status, vigência início/fim, data emissão, motivo emissão, CNAE, grau de risco, `conteudo_atualizado_em`.
-- `ltcat_setores_avaliados` — setores cobertos (lê `aso_setores`).
-- `ltcat_grupos_homogeneos` — **snapshot** de GHE/GES no momento da emissão.
-- `ltcat_funcoes` — funções enquadradas em cada GHE do laudo.
-- `ltcat_agentes` — agentes nocivos por GHE (ocorrência, vindo do catálogo).
-- `ltcat_avaliacoes` — 1 linha por (GHE × agente): técnica, metodologia, instrumento, intensidade, limite, enquadramento, EPI.
-- `ltcat_conclusoes` — conclusão previdenciária por GHE/função.
-- `ltcat_responsaveis_tecnicos` — RT(s) do laudo (Eng. Seg. / Méd. Trab.) + registro + ART.
-- `ltcat_revisoes` — histórico de revisões.
-- `ltcat_assinaturas` — assinatura visual + hash + MFA (append-only).
-- `ltcat_pdf_versoes` — PDFs gerados (append-only).
-- `ltcat_anexos` — laudos de campo, certificados de calibração, fotos (Drive BYOK).
-- `ltcat_catalogo_agentes` — catálogo global de agentes nocivos (Anexo IV / códigos S-2240).
-
-Enums:
-- `ltcat_status`: `rascunho | em_revisao | vigente | substituido | arquivado`
-- `ltcat_motivo_emissao`: `inicial | revisao_periodica | mudanca_ambiental | correcao`
-- `ltcat_tecnica_avaliacao`: `quantitativa | qualitativa`
-- `ltcat_enquadramento`: `nao_aplicavel | habitual_permanente | intermitente | eventual | neutralizado_epi`
-- `ltcat_conclusao_aposentadoria`: `nao_especial | especial_15 | especial_20 | especial_25 | inconclusivo`
-- `ltcat_agente_grupo`: `fisico | quimico | biologico | ergonomico | acidente`
-
-## 2. Relação com PGR, GHE/GES, setores, funções e funcionários
-
-- LTCAT **lê** `ghe_ges`, `ghe_funcoes`, `ghe_riscos`, `ghe_exames` e `aso_setores` da mesma empresa (RLS já isola).
-- Na emissão, copia esses dados como **snapshot** em `ltcat_grupos_homogeneos` / `ltcat_funcoes` / `ltcat_agentes` — mudanças futuras em GHE não alteram laudo já assinado.
-- **Funcionários não são listados nominalmente** no LTCAT (laudo é por ambiente/GHE). O elo com o trabalhador é feito depois pelo PPP, via função/GHE.
-- PGR e LTCAT coexistem e compartilham catálogos.
-
-## 3. Reaproveitamento das avaliações quantitativas do PGR
-
-Botão **"Importar avaliações do PGR"** dentro do LTCAT:
-- Lê `pgr_inventario_itens` da mesma empresa/unidade com `tecnica_avaliacao = 'quantitativa'` e medições preenchidas.
-- Deduplica por (GHE + agente + função).
-- Marca origem (`origem_pgr_item_id`) para rastreabilidade.
-- Técnico pode editar/sobrepor antes de fechar o laudo.
-
-## 4. Cadastro de agentes nocivos previdenciários
-
-Tabela `ltcat_catalogo_agentes` seedada com Anexo IV do Decreto 3.048/99 + códigos eSocial S-2240 (ex.: `01.01.001 Ruído`, `02.01.014 Benzeno`, `03.01.001 Vírus`).
-
-Campos: código eSocial, nome, grupo, unidade de medida padrão (dB(A), ppm, mg/m³, lux, °C, m/s², ufc/m³), limite NR-15 quando aplicável, base normativa, sinônimos.
-
-Catálogo **global** (leitura para `authenticated`); agentes customizados por empresa permitidos (`empresa_id IS NOT NULL`) com RLS por empresa.
-
-## 5. Intensidade/concentração
-
-Numérico + unidade (herda do catálogo, pode ser sobrescrito). Campo `intensidade` + `unidade_medida` em `ltcat_avaliacoes`.
-
-## 6. Técnica e metodologia de avaliação
-
-- **Técnica**: `quantitativa | qualitativa`.
-- **Metodologia**: texto livre + presets (NHO-01 Ruído, NHO-06 Calor, NIOSH 1501, NR-15 Anexos, ACGIH TLV).
-
-## 7. Equipamentos/instrumentos de medição
-
-Por avaliação: marca, modelo, número de série, data de calibração, anexo do **certificado de calibração** (Drive BYOK, em `ltcat_anexos` com `tipo = 'calibracao'`).
-
-## 8. Limites de tolerância
-
-Numérico + base normativa (NR-15 Anexo nº X, ACGIH, Fundacentro). Default vindo do catálogo, editável.
-
-## 9. Enquadramento previdenciário
-
-`habitual_permanente | intermitente | eventual | neutralizado_epi | nao_aplicavel` + tempo de exposição (h/dia, %jornada) + EPI/EPC (descrição, eficácia sim/não/parcial, CA).
-
-## 10. Conclusão sobre aposentadoria especial
-
-`ltcat_conclusoes` por GHE/função:
-- Conclusão: `especial_15 | especial_20 | especial_25 | nao_especial | inconclusivo`.
-- Justificativa técnica obrigatória quando `especial_*` ou `inconclusivo`.
-- **Bloqueio de publicação**: GHE com agente acima do limite + conclusão `nao_especial` sem justificativa de neutralização por EPI eficaz → não fecha.
-
-## 11. Vínculo futuro com PPP
-
-- LTCAT vigente vira fonte de agentes por GHE/função → consumido pelo PPP do funcionário.
-- Campo `ltcat_id` será adicionado em `ppp_riscos_cargo` em migration **futura** (não nesta fase).
-- Nesta fase: apenas RPC de leitura `ltcat_agentes_por_funcao(_funcao_id)` reservada.
-
-## 12. Vínculo futuro com eSocial S-2240
-
-- Catálogo já no padrão MR-400 (`codAgNoc`).
-- Campos preparados: `tpAval`, `intConc`, `limTol`, `tecMedicao`, `epcEpi`.
-- **Sem XML, sem envio, sem ICP-Brasil nesta fase.**
-
-## 13. Responsável técnico
-
-`ltcat_responsaveis_tecnicos` (N por laudo): nome, CPF, profissão (Eng. Seg. / Méd. Trab.), registro (CREA / CRMed), nº ART quando aplicável, e-mail. Mínimo 1 RT para publicar.
-
-## 14. Geração de PDF técnico interno
-
-Lib `src/lib/ltcatPdf.ts` (espelho de `pgrPdf.ts`):
-
-Capa → identificação (empresa, CNPJ, unidade, CNAE, grau de risco) → escopo → setores → GHE/GES → agentes por GHE → tabela de avaliações → conclusões por GHE → RTs → anexos (lista) → assinatura visual (imagem + nome + registro + data + hash).
-
-Watermark "RASCUNHO / EM REVISÃO" quando não final.
-
-Salvo em Drive: `LTCAT/v{versao}/Documento/`. Anexos: `LTCAT/v{versao}/anexos/{tipo}/`.
-
-## 15. Assinatura visual + hash SHA-256
-
-- Hash SHA-256 do binário gravado em `ltcat_pdf_versoes`.
-- RPC `ltcat_assinar_visual` exige permissão `ltcat:assinar` + MFA AAL2.
-- Tabela `ltcat_assinaturas` **append-only** (UPDATE/DELETE `USING (false)`).
-
-## 16. QR Code de validação interna
-
-Rota `/ltcat/validar/:id?v={versao}` — restrita à árvore da empresa emissora via RLS, mesmo padrão do PGR (`PgrValidar.tsx` → `LtcatValidar.tsx`). Mostra hash, status, versão, RT, alerta de PDF desatualizado.
-
-## 17. Versionamento
-
-- Cada publicação cria nova `versao` (snapshot completo).
-- Versão anterior → `substituido`. Histórico imutável.
-- RPC `ltcat_publicar(_id)`: valida PDF atualizado, sem watermark, com RT, com assinatura visual, com MFA AAL2.
-
-## 18. Permissões
-
-`ACOES_ESPECIAIS.ltcat`:
-- `ltcat:visualizar`
-- `ltcat:editar` (rascunho, importar do PGR, lançar avaliações)
-- `ltcat:revisar` (abrir revisão, publicar)
-- `ltcat:assinar` (assinatura visual + MFA)
-- `ltcat:exportar` (gerar PDF)
-
-Super Admin e Principal: acesso total.
-
-## 19. RLS e isolamento por empresa
-
-- Toda `ltcat_*` com `empresa_id NOT NULL`.
-- Policies: `is_in_user_company_tree(auth.uid(), empresa_id) OR is_super_admin OR is_principal`.
-- Tabelas-filhas (`ltcat_avaliacoes`, `ltcat_conclusoes`, `ltcat_anexos`, `ltcat_agentes`, etc.): trigger `inherit_empresa_id` herda do `ltcat_id` pai (padrão `pgr_evid_guard`).
-- GRANTs: `authenticated` (CRUD), `service_role` (ALL). Sem `anon`.
-- Catálogo global: `SELECT` para `authenticated`; mutações só Super Admin ou registros com `empresa_id = caller_empresa`.
-- Drive: pastas isoladas por empresa (já garantido pelo BYOK).
-
-## 20. Audit log
-
-- Triggers `AFTER INSERT/UPDATE/DELETE` em `ltcat_documentos`, `ltcat_avaliacoes`, `ltcat_conclusoes`, `ltcat_assinaturas`, `ltcat_pdf_versoes` → `audit_log`.
-- Histórico próprio em `ltcat_revisoes`.
-- `ltcat_assinaturas` e `ltcat_pdf_versoes` **append-only**.
-
-## 21. Plano de entrega em partes
-
-1. **Parte 1** — Migrations + RLS + permissões + seed do catálogo de agentes (Anexo IV / S-2240). Sem telas.
-2. **Parte 2** — CRUD do LTCAT: listagem, novo laudo, detalhe, revisão/publicação básica.
-3. **Parte 3** — Agentes nocivos + avaliações (quantitativas/qualitativas) + importação do PGR + GHE snapshot + anexos de calibração.
-4. **Parte 4** — Conclusões previdenciárias (15/20/25/não especial) + validações de fechamento + RT/ART.
-5. **Parte 5** — PDF técnico interno + assinatura visual + hash SHA-256 + QR Code + Drive BYOK + `/ltcat/validar/:id`.
-6. **Parte 6** — Dashboard LTCAT + checklist final + exportação CSV + relatório de produção.
-
-## Checklist de testes (Empresa A × Empresa B)
-
-- [ ] Empresa A não lista LTCATs da Empresa B em `/ltcat`.
-- [ ] `/ltcat/:id` cruzado → 404.
-- [ ] QR de validação só abre dentro da árvore da empresa emissora.
-- [ ] PDF Drive da Empresa A não acessível com token da Empresa B.
-- [ ] Importar avaliações do PGR só enxerga itens da própria empresa.
-- [ ] Agentes customizados da Empresa A não aparecem para Empresa B.
-- [ ] Publicar sem RT → bloqueado.
-- [ ] Publicar com agente acima do limite + `nao_especial` sem justificativa → bloqueado.
-- [ ] PDF desatualizado bloqueia publicação.
-- [ ] Assinatura sem MFA AAL2 → bloqueada.
-- [ ] LTCAT vigente bloqueia edição direta (exige revisão).
-- [ ] Audit log registra todas as operações.
-- [ ] Hash do rodapé do PDF bate com SHA-256 do binário.
-
-## Restrições reforçadas
-
-- Sem ICP-Brasil.
-- Sem envio real S-2240 (apenas campos preparados).
-- Sem geração de PPP real (apenas RPC reservada).
-- Todo binário em Google Drive BYOK.
-- Mesmo padrão de segurança/MFA do PGR.
-- **Não toca em nada do módulo CAT existente.**
+Documento técnico **interno preparatório**, alinhado à IN PRES/INSS 128/2022.
+Não envia ao eSocial. Não usa ICP-Brasil. Não concede aposentadoria especial.
+PDF segue o padrão técnico interno dos demais módulos (hash SHA-256, QR Code interno, Drive BYOK, assinatura visual com MFA AAL2).
 
 ---
 
-**Aguardando sua aprovação explícita do plano LTCAT para iniciar a Parte 1.** Nenhuma migration será criada antes disso.
+## 1. Estrutura do PPP
+
+PPP é emitido **por funcionário** e cobre **um ou mais períodos laborais** dentro da empresa. Cada período concentra função, setor, GHE/GES, agentes nocivos, EPI/EPC, RT e conclusão previdenciária.
+
+Cabeçalho (consolidado):
+- empresa (matriz + lotação tributária);
+- funcionário (nome, CPF, NIS/PIS, data nascimento, sexo);
+- período total coberto (mínima admissão → máxima saída);
+- CBO consolidado;
+- conclusão previdenciária consolidada;
+- observações.
+
+Corpo:
+- períodos laborais ordenados;
+- exposições por período;
+- responsáveis ambientais;
+- responsáveis médicos;
+- exames referenciados;
+- assinatura visual + QR Code.
+
+Disclaimer obrigatório no PDF: *"Documento técnico interno. Não constitui concessão de benefício previdenciário e não substitui assinatura ICP-Brasil."*
+
+---
+
+## 2. Tabelas `ppp_*`
+
+```text
+ppp_documentos
+  id, empresa_id, funcionario_id, versao, versao_pai_id,
+  status, motivo_emissao, data_emissao,
+  cbo_consolidado, descricao_atividade_consolidada,
+  conclusao_consolidada, observacoes,
+  publicado_em, publicado_por,
+  conteudo_atualizado_em, created_at, updated_at
+
+ppp_periodos
+  id, ppp_id, empresa_id, ordem,
+  data_inicio, data_fim, motivo_encerramento,
+  funcao_id, funcao_nome, cbo,
+  setor_id, setor_nome,
+  ghe_id, ghe_codigo, ghe_descricao,
+  ltcat_id (origem snapshot), pgr_id (origem snapshot),
+  descricao_atividade, observacoes
+
+ppp_exposicoes
+  id, ppp_id, periodo_id, empresa_id,
+  agente_nome, agente_tipo, codigo_esocial (preparatório, opcional),
+  intensidade, unidade_medida, limite_tolerancia, acima_limite,
+  tecnica, enquadramento,
+  tempo_exposicao_horas, percentual_jornada,
+  epi_descricao, epi_ca, epi_eficacia, epc_descricao,
+  origem_ltcat_aval_id, fundamento_legal, observacoes
+
+ppp_responsaveis_ambientais
+  id, ppp_id, empresa_id, periodo_id (nullable = aplica a todos),
+  nome, registro_profissional, formacao,
+  origem_ltcat_rt_id
+
+ppp_responsaveis_medicos
+  id, ppp_id, empresa_id, nome, crm,
+  periodo_inicio, periodo_fim, origem_aso_medico_id
+
+ppp_exames_referenciados
+  id, ppp_id, empresa_id, aso_id,
+  data, tipo, resultado_resumo
+
+ppp_revisoes            (append-only)
+  id, ppp_id, empresa_id,
+  versao_anterior, versao_nova,
+  motivo, status_anterior, status_novo,
+  user_email, created_at
+
+ppp_pdf_versoes
+  id, ppp_id, empresa_id,
+  tipo (rascunho|final), sha256,
+  drive_id, drive_link,
+  gerado_em, gerado_por
+
+ppp_assinaturas
+  id, ppp_id, empresa_id,
+  nome, papel,
+  drive_id, imagem_link,
+  auth_aal, assinado_em
+```
+
+Enums: `ppp_status` (`rascunho|em_revisao|vigente|substituido|arquivado`), `ppp_motivo_emissao` (`inicial|atualizacao|correcao|demissao`).
+
+---
+
+## 3. Vínculos
+
+- `funcionarios` (CPF, PIS/NIS) — identificação do trabalhador.
+- `empresa_config` (matriz + unidade) — lotação tributária e empregadora.
+- `aso_funcoes` — função e CBO de referência.
+- `ghe_ges` ou `ltcat_grupos_homogeneos` — GHE/GES do período.
+- `aso_setores` ou setor da função — setor do período.
+
+Todos os vínculos respeitam `empresa_id` do funcionário.
+
+---
+
+## 4. Reaproveitamento do LTCAT
+
+- LTCAT **vigente no período** é a fonte oficial de agentes nocivos e responsável técnico ambiental.
+- RPC `ppp_importar_do_ltcat(_ppp_id, _periodo_id, _ltcat_id)` popula `ppp_exposicoes` e `ppp_responsaveis_ambientais` como **snapshot** (congela valores no momento da importação).
+- Cada exposição guarda `origem_ltcat_aval_id` para rastreabilidade.
+- Conclusão previdenciária do período herda a conclusão do LTCAT por GHE × função.
+
+---
+
+## 5. Reaproveitamento do PGR
+
+- PGR do período fornece descrição do risco, controles existentes e hierarquia de controles.
+- Snapshot em `ppp_periodos.pgr_id` apenas como referência.
+- Descrição complementa, não substitui, dados do LTCAT.
+
+---
+
+## 6. Reaproveitamento de ASO/PCMSO/exames
+
+- Lista resumida dos ASOs do funcionário (admissional, periódicos, mudança de função, retorno ao trabalho, demissional) em `ppp_exames_referenciados`.
+- Médicos responsáveis dos ASOs alimentam `ppp_responsaveis_medicos` (sem duplicar — agrupa por CRM e intervalo).
+- Apenas referência: tipo, data e resumo do resultado. PDF do ASO continua no módulo ASO.
+
+---
+
+## 7. Histórico laboral
+
+Períodos montados automaticamente a partir de:
+- admissão e demissão do funcionário;
+- mudanças de função em `aso_funcoes` / `funcionarios`;
+- mudanças de setor;
+- mudanças de GHE em `ghe_funcoes` / `ltcat_funcoes`.
+
+RPC `ppp_importar_historico_funcionario(_ppp_id)` cria os períodos. Em rascunho o usuário pode dividir, juntar, editar ou inserir períodos manualmente. Validação: períodos sem sobreposição e sem furos não justificados.
+
+---
+
+## 8. Períodos de exposição
+
+Dentro de cada `ppp_periodo`, cada `ppp_exposicao` representa um agente nocivo ao qual o trabalhador esteve exposto naquele período. Campos previdenciários: `tecnica`, `enquadramento` (habitual e permanente / intermitente / eventual / neutralizado por EPI), `tempo_exposicao_horas`, `percentual_jornada`.
+
+---
+
+## 9. Agentes nocivos
+
+- Nome, tipo (físico / químico / biológico / ergonômico / acidente), intensidade, unidade, limite de tolerância, `acima_limite` calculado.
+- `codigo_esocial` opcional (campo preparatório para futura integração com a tabela 24 do eSocial — sem validação rígida nesta fase).
+- Fundamento legal por exposição (texto livre, sugerido pelo LTCAT quando importado).
+
+---
+
+## 10. EPI / EPC
+
+Cada exposição registra:
+- EPI: descrição, CA, eficácia (`sim|nao|parcial`);
+- EPC: descrição.
+
+Quando a eficácia do EPI for `sim` e existir exposição acima do LT, o sistema sinaliza alerta visual e exige justificativa adicional.
+
+---
+
+## 11. Responsável técnico
+
+- **Ambiental** (`ppp_responsaveis_ambientais`): engenheiro/técnico de segurança que assina os registros ambientais; pode ser por período.
+- **Médico** (`ppp_responsaveis_medicos`): médico do trabalho responsável pelos exames; agrupado por intervalo.
+
+Ao importar do LTCAT, RTs do LTCAT são copiados como ambientais. Médicos vêm dos ASOs referenciados.
+
+---
+
+## 12. Conclusão previdenciária
+
+- Por período: `nao_especial | especial_15 | especial_20 | especial_25 | inconclusivo`, herdada do LTCAT mas editável.
+- Consolidada no cabeçalho: regra simples — se algum período é especial, o PPP marca exposição especial nos respectivos intervalos; caso contrário, não especial.
+- Disclaimer permanente no PDF e na UI: documento não concede benefício.
+
+---
+
+## 13. PDF técnico interno
+
+Mesmo motor dos módulos atuais (jsPDF client-side):
+- capa com identificação;
+- dados do funcionário;
+- períodos laborais;
+- exposições por período (tabela);
+- EPI / EPC;
+- responsáveis ambientais e médicos;
+- exames referenciados (resumo);
+- conclusão previdenciária consolidada;
+- assinatura visual;
+- QR Code interno;
+- rodapé com hash SHA-256, versão e disclaimer.
+
+Tipos: `rascunho` (com marca d'água, sem MFA) e `final` (limpo, exige MFA AAL2).
+
+---
+
+## 14. Assinatura visual + hash SHA-256
+
+- Hash SHA-256 do binário do PDF calculado via Web Crypto antes do upload ao Drive.
+- Gravado em `ppp_pdf_versoes.sha256`. Banco **não armazena binário**.
+- Assinatura visual em `ppp_assinaturas` com `auth_aal = 'aal2'`, nome, papel, imagem no Drive.
+- Aviso permanente: não substitui ICP-Brasil.
+
+---
+
+## 15. QR Code de validação interna
+
+- QR aponta para `/ppp/validar/:id` — rota **autenticada**, respeita RLS.
+- Página exibe: empresa, funcionário (sem CPF completo — mascarado), versão, status, hash do PDF, RTs e flag "PDF desatualizado" quando `pdf.gerado_em < doc.conteudo_atualizado_em`.
+
+---
+
+## 16. Versionamento
+
+- Fluxo: `rascunho` → `em_revisao` → `vigente` → `substituido` / `arquivado`.
+- `ppp_revisoes` append-only (trigger bloqueia `UPDATE`/`DELETE`).
+- Imutabilidade: trigger `ppp_block_when_imutavel` impede mutação em filhas quando o documento está em `vigente|substituido|arquivado`.
+- Abrir revisão clona snapshot e gera nova versão em rascunho. Publicar nova versão marca a anterior como `substituido`.
+
+---
+
+## 17. Permissões (`ppp:*`)
+
+- `ppp:view`, `ppp:create`, `ppp:edit`, `ppp:delete`;
+- `ppp:publicar`, `ppp:assinar`, `ppp:gerar_pdf_final`.
+
+Registradas em `src/lib/permissions.ts`. Visibilidade adicional: usuário comum só vê PPPs de funcionários dentro do seu escopo (`usuario_empresas` + contrato).
+
+---
+
+## 18. RLS e isolamento por empresa
+
+- Todas as tabelas `ppp_*` com `empresa_id` obrigatório e RLS habilitada.
+- `GRANT SELECT, INSERT, UPDATE, DELETE` apenas a `authenticated`; `GRANT ALL` a `service_role`; **sem `anon`**.
+- Policies usam `usuario_pertence_empresa(auth.uid(), empresa_id)` (já existente no projeto).
+- RPCs `ppp_*` com `SECURITY DEFINER`, `REVOKE EXECUTE ... FROM PUBLIC, anon`.
+- Funcionário pertence a uma única empresa — cross-tenant bloqueado por RLS no join.
+
+---
+
+## 19. Audit log
+
+`audit_log` registra:
+- criação, edição e mudança de status do `ppp_documentos`;
+- importação do LTCAT / histórico;
+- geração de PDF final;
+- assinatura visual;
+- abertura de revisão e publicação.
+
+Apenas metadados e hash — **sem binário**.
+
+---
+
+## 20. Plano de entrega em partes
+
+### Parte 1 — Migrations + RLS + permissões
+- Tabelas `ppp_*`, enums, GRANTs, RLS, policies, triggers (`set_updated_at`, `ppp_revisao_append_only`, `ppp_block_when_imutavel`, `ppp_documento_audit`, `ppp_touch_conteudo`), permissões `ppp:*`.
+
+### Parte 2 — CRUD do PPP + vínculo com funcionário
+- Listagem `/ppp` com filtros (funcionário, status, vigência).
+- Criação `/ppp/novo` (escolher funcionário → cria rascunho v1).
+- Detalhe `/ppp/:id` com abas Resumo + Revisões.
+- Abertura de revisão e publicação simples (validações completas vêm na Parte 5).
+- Audit log e isolamento Empresa A × B funcionando.
+
+### Parte 3 — Histórico laboral + períodos
+- RPC `ppp_importar_historico_funcionario`.
+- Aba Períodos com CRUD manual, divisão, junção, validação de sobreposição e furos.
+
+### Parte 4 — Agentes/exposições reaproveitando LTCAT
+- RPC `ppp_importar_do_ltcat`.
+- Aba Exposições, EPI/EPC, badges "acima do LT" e "EPI sim com exposição acima do LT".
+- Dedupe por `(periodo_id, agente_nome, tecnica, origem_ltcat_aval_id)`.
+- Abas Responsáveis Ambientais, Responsáveis Médicos, Exames Referenciados.
+
+### Parte 5 — PDF + assinatura visual + QR Code
+- PDF rascunho/final com SHA-256, Drive BYOK em `PPP/{cpf}/v{versao}/`.
+- Assinatura visual com MFA AAL2.
+- QR Code interno e página `/ppp/validar/:id`.
+- Validações completas em `ppp_publicar`: ≥1 período, ≥1 exposição OU justificativa de ausência, ≥1 RT ambiental, ≥1 RT médico OU justificativa, PDF final atualizado, ≥1 assinatura, MFA AAL2.
+
+### Parte 6 — Dashboard + checklist + CSV
+- Dashboard `/ppp/dashboard` por empresa/matriz (PPPs por status, funcionários cobertos, exposições críticas, PDFs desatualizados, próximos vencimentos).
+- Aba Checklist no detalhe (espelho das validações).
+- Exportações CSV: PPPs, períodos, exposições.
+- Relatório técnico final do módulo.
+
+---
+
+## Fora do escopo (explícito)
+
+- Geração do XML S-2240.
+- Envio real ao eSocial (SOAP, homologação, recibo, rejeições).
+- Assinatura ICP-Brasil / certificado A1/A3.
+- Decisão ou concessão de aposentadoria especial.
+- Integração com Receita / INSS / DataPrev.
+- Geração de PDF server-side.
+
+---
+
+**Aguardando aprovação explícita deste plano antes de iniciar a Parte 1.**
