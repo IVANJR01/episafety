@@ -28,22 +28,36 @@
 
 ## 1. Signups reais U1–U5 em `/auth`
 
-> Cada titular cadastra a própria conta. Não usar `@homolog.test`.
+> ⚠️ **REGRA CRÍTICA — leia antes de cadastrar qualquer e-mail:**
+>
+> 1. **NÃO usar usuários reais de produção como U2–U5.** Os e-mails abaixo estão vinculados a empresas reais e **não devem** ser usados na Fase 2B:
+>    - `admg91nordeste@gmail.com` (Isadora — Principal real)
+>    - `admg91@gmail.com` (ADM G91 real)
+>    - `emilly@cg3.com.br` (Emilly — operacional real)
+>    - `encarregado@gmail.com` (encarregado real)
+> 2. **Usar contas dedicadas de homologação** (e-mails exclusivos, separados das contas reais).
+> 3. **Não sobrescrever** `usuarios_liberados`, `usuario_empresas`, `user_roles`, `empresa_id`, `is_principal`, `modulos_permitidos` ou nome/perfil de nenhum usuário real.
+> 4. **Não mover** usuários reais para empresas `[HOMOLOG]`.
+> 5. **Não alterar** empresas, permissões ou vínculos reais de produção.
+> 6. **Não avançar para Fase 3** sem aprovação explícita.
+> 7. **Não configurar** certificado digital, ICP-Brasil, SOAP, XMLDSig ou envio real ao eSocial nesta fase.
+> 8. U1 pode permanecer `ivanjr.tstconsultoria@gmail.com` (Super Admin), **desde que nenhum vínculo real dele seja alterado** — apenas adicionar acesso às empresas `[HOMOLOG]` A e B em `usuario_empresas` via `ON CONFLICT DO NOTHING`.
 
-| ID | Perfil | E-mail real (preencher) | Senha definida por |
+| ID | Perfil | E-mail (conta dedicada de homologação) | Senha definida por |
 |---|---|---|---|
-| U1 | Super Admin | ________________________ | titular |
-| U2 | Principal (Empresa A) | ________________________ | titular |
-| U3 | Admin/Técnico SST (Empresa A) | ________________________ | titular |
-| U4 | Operacional (Empresa B) | ________________________ | titular |
-| U5 | Sem permissão | ________________________ | titular |
+| U1 | Super Admin | `ivanjr.tstconsultoria@gmail.com` (real, somente adicionar vínculo `[HOMOLOG]`) | titular |
+| U2 | Principal (Empresa A) | ________________________ (novo, dedicado) | titular |
+| U3 | Admin/Técnico SST (Empresa A) | ________________________ (novo, dedicado) | titular |
+| U4 | Operacional (Empresa B) | ________________________ (novo, dedicado) | titular |
+| U5 | Sem permissão | ________________________ (novo, dedicado) | titular |
 
-- [ ] U1 signup concluído
-- [ ] U2 signup concluído
-- [ ] U3 signup concluído
-- [ ] U4 signup concluído
-- [ ] U5 signup concluído
+- [ ] U1 já existe em `auth.users` (não recriar)
+- [ ] U2 signup dedicado de homologação concluído
+- [ ] U3 signup dedicado de homologação concluído
+- [ ] U4 signup dedicado de homologação concluído
+- [ ] U5 signup dedicado de homologação concluído
 - [ ] E-mails confirmados (link de verificação clicado, se exigido)
+- [ ] Confirmado que nenhum dos 4 e-mails reais de produção foi usado como U2–U5
 
 ---
 
