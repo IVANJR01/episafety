@@ -2576,6 +2576,167 @@ export type Database = {
           },
         ]
       }
+      esocial_eventos_s2240: {
+        Row: {
+          categoria_esocial: string | null
+          cbo: string | null
+          cert_alias: string | null
+          cpf_trabalhador: string
+          created_at: string
+          created_by: string | null
+          data_fim_condicao: string | null
+          data_inicio_condicao: string
+          empresa_id: string
+          evento_origem_id: string | null
+          funcao: string | null
+          funcionario_id: string | null
+          id: string
+          ind_retificacao: number
+          lotacao_tributaria: string | null
+          ltcat_documento_id: string | null
+          matricula: string | null
+          nr_recibo_origem: string | null
+          observacao_complementar: string | null
+          pgr_documento_id: string | null
+          ppp_documento_id: string | null
+          ppp_periodo_id: string | null
+          status: Database["public"]["Enums"]["esocial_s2240_status"]
+          tipo_evento: Database["public"]["Enums"]["esocial_s2240_tipo_evento"]
+          updated_at: string
+          validado_em: string | null
+          validado_por: string | null
+          xml_assinado_drive_id: string | null
+          xml_drive_id: string | null
+          xml_drive_link: string | null
+          xml_gerado_em: string | null
+          xml_gerado_por: string | null
+          xml_sha256: string | null
+          xml_tamanho_bytes: number | null
+        }
+        Insert: {
+          categoria_esocial?: string | null
+          cbo?: string | null
+          cert_alias?: string | null
+          cpf_trabalhador: string
+          created_at?: string
+          created_by?: string | null
+          data_fim_condicao?: string | null
+          data_inicio_condicao: string
+          empresa_id: string
+          evento_origem_id?: string | null
+          funcao?: string | null
+          funcionario_id?: string | null
+          id?: string
+          ind_retificacao?: number
+          lotacao_tributaria?: string | null
+          ltcat_documento_id?: string | null
+          matricula?: string | null
+          nr_recibo_origem?: string | null
+          observacao_complementar?: string | null
+          pgr_documento_id?: string | null
+          ppp_documento_id?: string | null
+          ppp_periodo_id?: string | null
+          status?: Database["public"]["Enums"]["esocial_s2240_status"]
+          tipo_evento?: Database["public"]["Enums"]["esocial_s2240_tipo_evento"]
+          updated_at?: string
+          validado_em?: string | null
+          validado_por?: string | null
+          xml_assinado_drive_id?: string | null
+          xml_drive_id?: string | null
+          xml_drive_link?: string | null
+          xml_gerado_em?: string | null
+          xml_gerado_por?: string | null
+          xml_sha256?: string | null
+          xml_tamanho_bytes?: number | null
+        }
+        Update: {
+          categoria_esocial?: string | null
+          cbo?: string | null
+          cert_alias?: string | null
+          cpf_trabalhador?: string
+          created_at?: string
+          created_by?: string | null
+          data_fim_condicao?: string | null
+          data_inicio_condicao?: string
+          empresa_id?: string
+          evento_origem_id?: string | null
+          funcao?: string | null
+          funcionario_id?: string | null
+          id?: string
+          ind_retificacao?: number
+          lotacao_tributaria?: string | null
+          ltcat_documento_id?: string | null
+          matricula?: string | null
+          nr_recibo_origem?: string | null
+          observacao_complementar?: string | null
+          pgr_documento_id?: string | null
+          ppp_documento_id?: string | null
+          ppp_periodo_id?: string | null
+          status?: Database["public"]["Enums"]["esocial_s2240_status"]
+          tipo_evento?: Database["public"]["Enums"]["esocial_s2240_tipo_evento"]
+          updated_at?: string
+          validado_em?: string | null
+          validado_por?: string | null
+          xml_assinado_drive_id?: string | null
+          xml_drive_id?: string | null
+          xml_drive_link?: string | null
+          xml_gerado_em?: string | null
+          xml_gerado_por?: string | null
+          xml_sha256?: string | null
+          xml_tamanho_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_eventos_s2240_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_s2240_evento_origem_id_fkey"
+            columns: ["evento_origem_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2240"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_s2240_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_s2240_ltcat_documento_id_fkey"
+            columns: ["ltcat_documento_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_s2240_pgr_documento_id_fkey"
+            columns: ["pgr_documento_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_s2240_ppp_documento_id_fkey"
+            columns: ["ppp_documento_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_eventos_s2240_ppp_periodo_id_fkey"
+            columns: ["ppp_periodo_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_periodos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       esocial_import_logs: {
         Row: {
           arquivo_nome: string | null
@@ -2703,6 +2864,497 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      esocial_s2240_agentes: {
+        Row: {
+          agente_nome: string
+          aposentadoria_especial: boolean
+          codigo_t24: string | null
+          created_at: string
+          eficacia_epc: boolean | null
+          eficacia_epi: boolean | null
+          empresa_id: string
+          evento_id: string
+          id: string
+          insalubridade: boolean
+          intensidade_concentracao: number | null
+          justificativa_epi: string | null
+          limite_tolerancia: number | null
+          periculosidade: boolean
+          ppp_exposicao_id: string | null
+          tecnica_medicao: string | null
+          tipo_avaliacao:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida: string | null
+          updated_at: string
+          utiliza_epc: boolean | null
+          utiliza_epi: boolean | null
+        }
+        Insert: {
+          agente_nome: string
+          aposentadoria_especial?: boolean
+          codigo_t24?: string | null
+          created_at?: string
+          eficacia_epc?: boolean | null
+          eficacia_epi?: boolean | null
+          empresa_id: string
+          evento_id: string
+          id?: string
+          insalubridade?: boolean
+          intensidade_concentracao?: number | null
+          justificativa_epi?: string | null
+          limite_tolerancia?: number | null
+          periculosidade?: boolean
+          ppp_exposicao_id?: string | null
+          tecnica_medicao?: string | null
+          tipo_avaliacao?:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida?: string | null
+          updated_at?: string
+          utiliza_epc?: boolean | null
+          utiliza_epi?: boolean | null
+        }
+        Update: {
+          agente_nome?: string
+          aposentadoria_especial?: boolean
+          codigo_t24?: string | null
+          created_at?: string
+          eficacia_epc?: boolean | null
+          eficacia_epi?: boolean | null
+          empresa_id?: string
+          evento_id?: string
+          id?: string
+          insalubridade?: boolean
+          intensidade_concentracao?: number | null
+          justificativa_epi?: string | null
+          limite_tolerancia?: number | null
+          periculosidade?: boolean
+          ppp_exposicao_id?: string | null
+          tecnica_medicao?: string | null
+          tipo_avaliacao?:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida?: string | null
+          updated_at?: string
+          utiliza_epc?: boolean | null
+          utiliza_epi?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_s2240_agentes_codigo_t24_fkey"
+            columns: ["codigo_t24"]
+            isOneToOne: false
+            referencedRelation: "esocial_tabela24_agentes"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_agentes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_agentes_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2240"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_agentes_ppp_exposicao_id_fkey"
+            columns: ["ppp_exposicao_id"]
+            isOneToOne: false
+            referencedRelation: "ppp_exposicoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_s2240_epi: {
+        Row: {
+          agente_evento_id: string | null
+          ca_numero: string | null
+          ca_validade: string | null
+          created_at: string
+          descricao: string
+          eficaz: boolean | null
+          empresa_id: string
+          epi_id: string | null
+          evento_id: string
+          id: string
+          observacao: string | null
+          updated_at: string
+        }
+        Insert: {
+          agente_evento_id?: string | null
+          ca_numero?: string | null
+          ca_validade?: string | null
+          created_at?: string
+          descricao: string
+          eficaz?: boolean | null
+          empresa_id: string
+          epi_id?: string | null
+          evento_id: string
+          id?: string
+          observacao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agente_evento_id?: string | null
+          ca_numero?: string | null
+          ca_validade?: string | null
+          created_at?: string
+          descricao?: string
+          eficaz?: boolean | null
+          empresa_id?: string
+          epi_id?: string | null
+          evento_id?: string
+          id?: string
+          observacao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_s2240_epi_agente_evento_id_fkey"
+            columns: ["agente_evento_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_s2240_agentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_epi_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_epi_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "epis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_epi_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2240"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_s2240_historico: {
+        Row: {
+          acao: string
+          created_at: string
+          empresa_id: string
+          evento_id: string
+          id: string
+          observacao: string | null
+          status_anterior:
+            | Database["public"]["Enums"]["esocial_s2240_status"]
+            | null
+          status_novo: Database["public"]["Enums"]["esocial_s2240_status"]
+          user_id: string | null
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          empresa_id: string
+          evento_id: string
+          id?: string
+          observacao?: string | null
+          status_anterior?:
+            | Database["public"]["Enums"]["esocial_s2240_status"]
+            | null
+          status_novo: Database["public"]["Enums"]["esocial_s2240_status"]
+          user_id?: string | null
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          empresa_id?: string
+          evento_id?: string
+          id?: string
+          observacao?: string | null
+          status_anterior?:
+            | Database["public"]["Enums"]["esocial_s2240_status"]
+            | null
+          status_novo?: Database["public"]["Enums"]["esocial_s2240_status"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_s2240_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_historico_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2240"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_s2240_mapeamentos: {
+        Row: {
+          agente_nome: string
+          aposentadoria_especial: boolean
+          aprovado_em: string | null
+          aprovado_por: string | null
+          codigo_t24: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          ltcat_catalogo_agente_id: string | null
+          observacoes_tecnicas: string | null
+          status: Database["public"]["Enums"]["esocial_s2240_mapeamento_status"]
+          tipo_avaliacao_esperado:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida_padrao: string | null
+          updated_at: string
+        }
+        Insert: {
+          agente_nome: string
+          aposentadoria_especial?: boolean
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          codigo_t24?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          ltcat_catalogo_agente_id?: string | null
+          observacoes_tecnicas?: string | null
+          status?: Database["public"]["Enums"]["esocial_s2240_mapeamento_status"]
+          tipo_avaliacao_esperado?:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida_padrao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agente_nome?: string
+          aposentadoria_especial?: boolean
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          codigo_t24?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          ltcat_catalogo_agente_id?: string | null
+          observacoes_tecnicas?: string | null
+          status?: Database["public"]["Enums"]["esocial_s2240_mapeamento_status"]
+          tipo_avaliacao_esperado?:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida_padrao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_s2240_mapeamentos_codigo_t24_fkey"
+            columns: ["codigo_t24"]
+            isOneToOne: false
+            referencedRelation: "esocial_tabela24_agentes"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_mapeamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_mapeamentos_ltcat_catalogo_agente_id_fkey"
+            columns: ["ltcat_catalogo_agente_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_catalogo_agentes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_s2240_ocorrencias: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          erro_resumido: string | null
+          evento_id: string
+          id: string
+          mensagens: Json
+          resultado: Database["public"]["Enums"]["esocial_s2240_ocorrencia_resultado"]
+          tipo: Database["public"]["Enums"]["esocial_s2240_ocorrencia_tipo"]
+          user_id: string | null
+          xml_sha256: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          erro_resumido?: string | null
+          evento_id: string
+          id?: string
+          mensagens?: Json
+          resultado: Database["public"]["Enums"]["esocial_s2240_ocorrencia_resultado"]
+          tipo: Database["public"]["Enums"]["esocial_s2240_ocorrencia_tipo"]
+          user_id?: string | null
+          xml_sha256?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          erro_resumido?: string | null
+          evento_id?: string
+          id?: string
+          mensagens?: Json
+          resultado?: Database["public"]["Enums"]["esocial_s2240_ocorrencia_resultado"]
+          tipo?: Database["public"]["Enums"]["esocial_s2240_ocorrencia_tipo"]
+          user_id?: string | null
+          xml_sha256?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_s2240_ocorrencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_ocorrencias_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2240"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_s2240_transmissoes: {
+        Row: {
+          ambiente: number | null
+          created_at: string
+          empresa_id: string
+          endpoint: string | null
+          evento_id: string
+          id: string
+          lote_id: string | null
+          observacao: string | null
+          protocolo: string | null
+          recibo: string | null
+          status_transmissao: string | null
+          updated_at: string
+        }
+        Insert: {
+          ambiente?: number | null
+          created_at?: string
+          empresa_id: string
+          endpoint?: string | null
+          evento_id: string
+          id?: string
+          lote_id?: string | null
+          observacao?: string | null
+          protocolo?: string | null
+          recibo?: string | null
+          status_transmissao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ambiente?: number | null
+          created_at?: string
+          empresa_id?: string
+          endpoint?: string | null
+          evento_id?: string
+          id?: string
+          lote_id?: string | null
+          observacao?: string | null
+          protocolo?: string | null
+          recibo?: string | null
+          status_transmissao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "esocial_s2240_transmissoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "esocial_s2240_transmissoes_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "esocial_eventos_s2240"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      esocial_tabela24_agentes: {
+        Row: {
+          aposentadoria_especial: boolean
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          grupo: string | null
+          id: string
+          insalubridade_padrao: boolean
+          observacoes: string | null
+          origem: Database["public"]["Enums"]["esocial_s2240_origem_t24"]
+          periculosidade_padrao: boolean
+          tipo_avaliacao:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida_padrao: string | null
+          updated_at: string
+        }
+        Insert: {
+          aposentadoria_especial?: boolean
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          grupo?: string | null
+          id?: string
+          insalubridade_padrao?: boolean
+          observacoes?: string | null
+          origem?: Database["public"]["Enums"]["esocial_s2240_origem_t24"]
+          periculosidade_padrao?: boolean
+          tipo_avaliacao?:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida_padrao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aposentadoria_especial?: boolean
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          grupo?: string | null
+          id?: string
+          insalubridade_padrao?: boolean
+          observacoes?: string | null
+          origem?: Database["public"]["Enums"]["esocial_s2240_origem_t24"]
+          periculosidade_padrao?: boolean
+          tipo_avaliacao?:
+            | Database["public"]["Enums"]["esocial_s2240_tipo_aval"]
+            | null
+          unidade_medida_padrao?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       estoque_movimentacoes: {
         Row: {
@@ -7192,6 +7844,32 @@ export type Database = {
         | "retificar"
         | "excluido"
       esocial_ind_retif: "original" | "retificacao"
+      esocial_s2240_mapeamento_status: "mapeado" | "pendente" | "divergente"
+      esocial_s2240_ocorrencia_resultado: "ok" | "aviso" | "erro"
+      esocial_s2240_ocorrencia_tipo:
+        | "validacao_local"
+        | "geracao_xml_stub"
+        | "simulacao_envio"
+        | "rejeicao_local"
+        | "retificacao_aberta"
+        | "exclusao_local"
+      esocial_s2240_origem_t24: "oficial" | "referencial" | "pendente_revisao"
+      esocial_s2240_status:
+        | "pendente"
+        | "pronto_envio"
+        | "validado_stub"
+        | "homologacao_stub"
+        | "simulado"
+        | "rejeitado_local"
+        | "retificar"
+        | "excluido_local"
+      esocial_s2240_tipo_aval: "quantitativa" | "qualitativa"
+      esocial_s2240_tipo_evento:
+        | "inicial"
+        | "alteracao"
+        | "fim"
+        | "retificacao"
+        | "exclusao"
       esocial_tp_amb: "producao" | "homologacao"
       ltcat_agente_grupo:
         | "fisico"
@@ -7486,6 +8164,35 @@ export const Constants = {
         "excluido",
       ],
       esocial_ind_retif: ["original", "retificacao"],
+      esocial_s2240_mapeamento_status: ["mapeado", "pendente", "divergente"],
+      esocial_s2240_ocorrencia_resultado: ["ok", "aviso", "erro"],
+      esocial_s2240_ocorrencia_tipo: [
+        "validacao_local",
+        "geracao_xml_stub",
+        "simulacao_envio",
+        "rejeicao_local",
+        "retificacao_aberta",
+        "exclusao_local",
+      ],
+      esocial_s2240_origem_t24: ["oficial", "referencial", "pendente_revisao"],
+      esocial_s2240_status: [
+        "pendente",
+        "pronto_envio",
+        "validado_stub",
+        "homologacao_stub",
+        "simulado",
+        "rejeitado_local",
+        "retificar",
+        "excluido_local",
+      ],
+      esocial_s2240_tipo_aval: ["quantitativa", "qualitativa"],
+      esocial_s2240_tipo_evento: [
+        "inicial",
+        "alteracao",
+        "fim",
+        "retificacao",
+        "exclusao",
+      ],
       esocial_tp_amb: ["producao", "homologacao"],
       ltcat_agente_grupo: [
         "fisico",
