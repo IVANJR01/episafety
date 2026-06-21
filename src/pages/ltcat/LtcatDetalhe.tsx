@@ -158,6 +158,7 @@ export default function LtcatDetalhe() {
           <TabsTrigger value="conclusoes">Conclusões Previdenciárias</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
+          <TabsTrigger value="checklist">Checklist</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-3">
