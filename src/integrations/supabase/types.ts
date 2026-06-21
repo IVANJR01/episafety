@@ -7773,6 +7773,41 @@ export type Database = {
           resolved_epi_id: string
         }[]
       }
+      s2240_assert_tenant: { Args: { _evento_id: string }; Returns: string }
+      s2240_registrar_audit: {
+        Args: {
+          _action: string
+          _evento_id: string
+          _funcionario_id?: string
+          _hash?: string
+          _metadados?: Json
+          _ppp_id?: string
+          _status?: Database["public"]["Enums"]["esocial_s2240_status"]
+        }
+        Returns: string
+      }
+      s2240_registrar_ocorrencia: {
+        Args: {
+          _erro_resumido?: string
+          _evento_id: string
+          _mensagens?: Json
+          _resultado: Database["public"]["Enums"]["esocial_s2240_ocorrencia_resultado"]
+          _tipo: Database["public"]["Enums"]["esocial_s2240_ocorrencia_tipo"]
+          _xml_sha256?: string
+        }
+        Returns: string
+      }
+      s2240_registrar_xml_meta: {
+        Args: {
+          _drive_id: string
+          _drive_link: string
+          _evento_id: string
+          _status?: Database["public"]["Enums"]["esocial_s2240_status"]
+          _tamanho_bytes: number
+          _xml_sha256: string
+        }
+        Returns: undefined
+      }
       storage_path_empresa_id: { Args: { _name: string }; Returns: string }
       transfer_epi_between_contracts: {
         Args: {
