@@ -230,7 +230,7 @@ export default function CatEsocialCard({ catId }: Props) {
             {busy === "gerar" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
             {temXml ? "Regerar XML" : "Gerar XML"}
           </MfaActionButton>
-          <Button size="sm" variant="outline" disabled={!temXml} onClick={() => setOpenXml(true)}>
+          <Button size="sm" variant="outline" disabled={!temXml} onClick={openVisualizar}>
             <Eye className="h-4 w-4 mr-1" /> Visualizar
           </Button>
           <Button size="sm" variant="outline" disabled={!temXml || !canEsocial} onClick={download}>
