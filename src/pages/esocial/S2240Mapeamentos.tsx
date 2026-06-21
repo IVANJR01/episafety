@@ -115,7 +115,7 @@ export default function S2240Mapeamentos() {
     queryFn: async () => {
       if (!empresaId) return [];
       const { data, error } = await (supabase.from as any)("ltcat_agentes")
-        .select("nome_agente, grupo, unidade_medida, catalogo_agente_id")
+        .select("nome, grupo, catalogo_id")
         .eq("empresa_id", empresaId);
       if (error) return [];
       return data || [];
