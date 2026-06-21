@@ -183,10 +183,10 @@ export default function PppDetalhe() {
           <PppExposicoesTab ppp={ppp} />
         </TabsContent>
         <TabsContent value="responsaveis">
-          <Placeholder titulo="Responsáveis ambientais e médicos" descricao="Estrutura básica disponível; gestão na Parte 4." />
+          <PppResponsaveisTab ppp={ppp} />
         </TabsContent>
         <TabsContent value="exames">
-          <Placeholder titulo="Exames referenciados (ASO/PCMSO)" descricao="Disponível em fase futura." />
+          <PppExamesTab ppp={ppp} funcionario={funcionario} />
         </TabsContent>
 
         <TabsContent value="revisoes">
