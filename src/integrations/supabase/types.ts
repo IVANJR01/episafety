@@ -5418,9 +5418,17 @@ export type Database = {
           empresa_id: string
           id: string
           imagem_link: string | null
+          ip_origem: string | null
           nome: string
+          observacao: string | null
           papel: string | null
+          pdf_hash: string | null
+          pdf_versao: number | null
+          pdf_versao_id: string | null
           ppp_id: string
+          responsavel_nome: string | null
+          responsavel_registro: string | null
+          user_email: string | null
         }
         Insert: {
           assinado_em?: string
@@ -5431,9 +5439,17 @@ export type Database = {
           empresa_id: string
           id?: string
           imagem_link?: string | null
+          ip_origem?: string | null
           nome: string
+          observacao?: string | null
           papel?: string | null
+          pdf_hash?: string | null
+          pdf_versao?: number | null
+          pdf_versao_id?: string | null
           ppp_id: string
+          responsavel_nome?: string | null
+          responsavel_registro?: string | null
+          user_email?: string | null
         }
         Update: {
           assinado_em?: string
@@ -5444,9 +5460,17 @@ export type Database = {
           empresa_id?: string
           id?: string
           imagem_link?: string | null
+          ip_origem?: string | null
           nome?: string
+          observacao?: string | null
           papel?: string | null
+          pdf_hash?: string | null
+          pdf_versao?: number | null
+          pdf_versao_id?: string | null
           ppp_id?: string
+          responsavel_nome?: string | null
+          responsavel_registro?: string | null
+          user_email?: string | null
         }
         Relationships: [
           {
@@ -5561,33 +5585,42 @@ export type Database = {
       }
       ppp_exames_referenciados: {
         Row: {
+          aptidao: string | null
           aso_id: string | null
           created_at: string
           data: string | null
           empresa_id: string
           id: string
+          observacoes: string | null
+          origem: string | null
           ppp_id: string
           resultado_resumo: string | null
           tipo: string | null
           updated_at: string
         }
         Insert: {
+          aptidao?: string | null
           aso_id?: string | null
           created_at?: string
           data?: string | null
           empresa_id: string
           id?: string
+          observacoes?: string | null
+          origem?: string | null
           ppp_id: string
           resultado_resumo?: string | null
           tipo?: string | null
           updated_at?: string
         }
         Update: {
+          aptidao?: string | null
           aso_id?: string | null
           created_at?: string
           data?: string | null
           empresa_id?: string
           id?: string
+          observacoes?: string | null
+          origem?: string | null
           ppp_id?: string
           resultado_resumo?: string | null
           tipo?: string | null
@@ -5772,40 +5805,64 @@ export type Database = {
       }
       ppp_pdf_versoes: {
         Row: {
+          com_marca_dagua: boolean
           created_at: string
           drive_id: string | null
           drive_link: string | null
+          drive_path: string | null
           empresa_id: string
           gerado_em: string
           gerado_por: string | null
           id: string
+          nome_arquivo: string | null
+          pdf_hash: string | null
+          pdf_versao: number | null
           ppp_id: string
           sha256: string
+          status_no_momento: string | null
+          tamanho_bytes: number | null
           tipo: string
+          versao_ppp_snapshot: number | null
         }
         Insert: {
+          com_marca_dagua?: boolean
           created_at?: string
           drive_id?: string | null
           drive_link?: string | null
+          drive_path?: string | null
           empresa_id: string
           gerado_em?: string
           gerado_por?: string | null
           id?: string
+          nome_arquivo?: string | null
+          pdf_hash?: string | null
+          pdf_versao?: number | null
           ppp_id: string
           sha256: string
+          status_no_momento?: string | null
+          tamanho_bytes?: number | null
           tipo: string
+          versao_ppp_snapshot?: number | null
         }
         Update: {
+          com_marca_dagua?: boolean
           created_at?: string
           drive_id?: string | null
           drive_link?: string | null
+          drive_path?: string | null
           empresa_id?: string
           gerado_em?: string
           gerado_por?: string | null
           id?: string
+          nome_arquivo?: string | null
+          pdf_hash?: string | null
+          pdf_versao?: number | null
           ppp_id?: string
           sha256?: string
+          status_no_momento?: string | null
+          tamanho_bytes?: number | null
           tipo?: string
+          versao_ppp_snapshot?: number | null
         }
         Relationships: [
           {
@@ -5970,37 +6027,58 @@ export type Database = {
       }
       ppp_responsaveis_ambientais: {
         Row: {
+          cargo: string | null
+          conselho: string | null
+          conselho_uf: string | null
+          cpf: string | null
           created_at: string
           empresa_id: string
           formacao: string | null
           id: string
           nome: string
+          observacoes: string | null
           origem_ltcat_rt_id: string | null
+          periodo_fim: string | null
           periodo_id: string | null
+          periodo_inicio: string | null
           ppp_id: string
           registro_profissional: string | null
           updated_at: string
         }
         Insert: {
+          cargo?: string | null
+          conselho?: string | null
+          conselho_uf?: string | null
+          cpf?: string | null
           created_at?: string
           empresa_id: string
           formacao?: string | null
           id?: string
           nome: string
+          observacoes?: string | null
           origem_ltcat_rt_id?: string | null
+          periodo_fim?: string | null
           periodo_id?: string | null
+          periodo_inicio?: string | null
           ppp_id: string
           registro_profissional?: string | null
           updated_at?: string
         }
         Update: {
+          cargo?: string | null
+          conselho?: string | null
+          conselho_uf?: string | null
+          cpf?: string | null
           created_at?: string
           empresa_id?: string
           formacao?: string | null
           id?: string
           nome?: string
+          observacoes?: string | null
           origem_ltcat_rt_id?: string | null
+          periodo_fim?: string | null
           periodo_id?: string | null
+          periodo_inicio?: string | null
           ppp_id?: string
           registro_profissional?: string | null
           updated_at?: string
@@ -6043,10 +6121,12 @@ export type Database = {
           empresa_id: string
           id: string
           nome: string
+          observacoes: string | null
           origem_aso_medico_id: string | null
           periodo_fim: string | null
           periodo_inicio: string | null
           ppp_id: string
+          uf_crm: string | null
           updated_at: string
         }
         Insert: {
@@ -6055,10 +6135,12 @@ export type Database = {
           empresa_id: string
           id?: string
           nome: string
+          observacoes?: string | null
           origem_aso_medico_id?: string | null
           periodo_fim?: string | null
           periodo_inicio?: string | null
           ppp_id: string
+          uf_crm?: string | null
           updated_at?: string
         }
         Update: {
@@ -6067,10 +6149,12 @@ export type Database = {
           empresa_id?: string
           id?: string
           nome?: string
+          observacoes?: string | null
           origem_aso_medico_id?: string | null
           periodo_fim?: string | null
           periodo_inicio?: string | null
           ppp_id?: string
+          uf_crm?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -6986,9 +7070,33 @@ export type Database = {
         Args: { _pdf_versao?: number; _pgr_id: string }
         Returns: Json
       }
+      ppp_assinar_visual: {
+        Args: {
+          _ip_origem: string
+          _observacao: string
+          _pdf_hash: string
+          _ppp_id: string
+          _responsavel_nome: string
+          _responsavel_registro: string
+        }
+        Returns: Json
+      }
       ppp_doc_status: {
         Args: { _ppp_id: string }
         Returns: Database["public"]["Enums"]["ppp_status"]
+      }
+      ppp_pdf_registrar: {
+        Args: {
+          _com_marca_dagua: boolean
+          _drive_file_id: string
+          _drive_path: string
+          _drive_view_link: string
+          _nome_arquivo: string
+          _pdf_hash: string
+          _ppp_id: string
+          _tamanho_bytes: number
+        }
+        Returns: Json
       }
       resolve_contrato_target_for_entrega: {
         Args: {
