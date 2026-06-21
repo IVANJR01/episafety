@@ -213,7 +213,13 @@ export default function PppDetalhe() {
         </TabsContent>
 
         <TabsContent value="pdf">
-          <Placeholder titulo="PDF técnico" descricao="Geração de PDF, assinatura visual e QR Code serão entregues em fase futura." />
+          <PppPdfTab
+            ppp={ppp}
+            funcionario={funcionario}
+            empresa={empresa}
+            canExport={perms.canEdit}
+            canAssinar={perms.canEdit}
+          />
         </TabsContent>
       </Tabs>
     </div>
