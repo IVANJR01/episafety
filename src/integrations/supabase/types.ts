@@ -7774,6 +7774,15 @@ export type Database = {
         }[]
       }
       s2240_assert_tenant: { Args: { _evento_id: string }; Returns: string }
+      s2240_marcar_validacao_xml: {
+        Args: {
+          _evento_id: string
+          _novo_status?: Database["public"]["Enums"]["esocial_s2240_status"]
+          _resultado: Database["public"]["Enums"]["esocial_s2240_ocorrencia_resultado"]
+          _xml_sha256: string
+        }
+        Returns: undefined
+      }
       s2240_registrar_audit: {
         Args: {
           _action: string
