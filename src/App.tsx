@@ -56,6 +56,7 @@ import LtcatModule from "@/pages/ltcat/LtcatModule";
 import LtcatNovo from "@/pages/ltcat/LtcatNovo";
 import LtcatDetalhe from "@/pages/ltcat/LtcatDetalhe";
 import LtcatValidar from "@/pages/ltcat/LtcatValidar";
+import LtcatDashboard from "@/pages/ltcat/LtcatDashboard";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
