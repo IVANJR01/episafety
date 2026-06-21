@@ -12,6 +12,7 @@ import {
   PPP_STATUS_LABEL, PPP_STATUS_COLOR, PPP_MOTIVO_LABEL,
   PppDocumento, isPppEditavel,
 } from "@/lib/pppTypes";
+import PppHistoricoTab from "@/components/ppp/PppHistoricoTab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
@@ -172,10 +173,7 @@ export default function PppDetalhe() {
         </TabsContent>
 
         <TabsContent value="historico">
-          <Placeholder
-            titulo="Histórico laboral"
-            descricao="Será implementado na Parte 3 — Histórico Laboral e Períodos de Exposição."
-          />
+          <PppHistoricoTab ppp={ppp} funcionario={funcionario} />
         </TabsContent>
         <TabsContent value="exposicoes">
           <Placeholder titulo="Exposições a agentes nocivos" descricao="Disponível em fase futura (Parte 4)." />
