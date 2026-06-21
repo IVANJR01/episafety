@@ -255,6 +255,10 @@ export default function LtcatDetalhe() {
             canAssinar={perms.canEdit}
           />
         </TabsContent>
+
+        <TabsContent value="checklist">
+          <LtcatChecklistTab ltcat={doc} />
+        </TabsContent>
       </Tabs>
 
       <Dialog open={showRev} onOpenChange={setShowRev}>
