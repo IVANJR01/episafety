@@ -146,7 +146,7 @@ export default function PppExamesTab({ ppp, funcionario }: Props) {
                 <SelectContent>
                   <SelectItem value="__none">— Nenhum / manual —</SelectItem>
                   {(asos as any[]).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.data_emissao || ""} · {a.tipo || "—"}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}>{a.data_emissao || a.id.slice(0, 8)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
