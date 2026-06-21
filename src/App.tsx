@@ -235,7 +235,9 @@ function ProtectedRoute() {
 
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
-        <Route path="/admin/empresas" element={<AdminEmpresas />} />
+        {/* P0 #3 — /admin/empresas só pode existir dentro de AdminLayout (guard Super Admin).
+            Rota duplicada removida; aqui apenas redireciona. */}
+        <Route path="/admin/empresas" element={<Navigate to="/admin/empresas" replace />} />
         <Route path="/faturas" element={<Faturas />} />
         <Route path="/backups" element={isSuperAdmin ? <Backups /> : <Navigate to="/" replace />} />
         <Route path="/configuracoes" element={<Navigate to="/cadastro/empresas" replace />} />

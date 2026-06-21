@@ -97,6 +97,14 @@ export function hasPermission(
   // Legacy compat: old "edit" permission (before create was split) grants "create" too
   if (action === "create" && modulosPermitidos.includes(`${moduleKey}:edit`)) return true;
 
+  // P0 #2 — Permissões multi-nível (ex: "esocial:s2240:visualizar"):
+  // qualquer permissão granular do módulo concede pelo menos "view" no módulo,
+  // permitindo que o usuário acesse a rota e a UI faça o gating fino.
+  if (action === "view") {
+    const prefix = `${moduleKey}:`;
+    if (modulosPermitidos.some((p) => p.startsWith(prefix))) return true;
+  }
+
   return false;
 }
 

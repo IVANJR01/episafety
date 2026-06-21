@@ -175,11 +175,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [empresaScopeIds, setEmpresaScopeIds] = useState<string[]>([]);
 
   const setActiveEmpresaId = useCallback((id: string) => {
-    if (empresasIds.includes(id) || isSuperAdmin) {
-      setEmpresaId(id);
-      saveActiveEmpresaId(id);
-    }
-  }, [empresasIds, isSuperAdmin]);
+    if (!(empresasIds.includes(id) || isSuperAdmin)) return;
+    if (id === empresaId) return;
+    // P0 #1 — Troca de empresa DEVE limpar todos os caches tenant-scoped
+    // antes de aplicar o novo escopo, para nunca vazar dados da empresa anterior.
+    try { purgeQueryCache(); } catch {}
+    try { clearAllCachedData(); } catch {}
+    setEmpresaId(id);
+    saveActiveEmpresaId(id);
+  }, [empresasIds, isSuperAdmin, empresaId]);
 
   // Resolve empresa scope (matriz + filiais) for client-side filtering.
   // Necessário porque a RLS de Super Admin libera tudo — sem este filtro,
