@@ -14,6 +14,9 @@ import {
 } from "@/lib/pppTypes";
 import PppHistoricoTab from "@/components/ppp/PppHistoricoTab";
 import PppExposicoesTab from "@/components/ppp/PppExposicoesTab";
+import PppResponsaveisTab from "@/components/ppp/PppResponsaveisTab";
+import PppExamesTab from "@/components/ppp/PppExamesTab";
+import PppPdfTab from "@/components/ppp/PppPdfTab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
