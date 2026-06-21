@@ -52,6 +52,9 @@ import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
 import PgrValidar from "@/pages/pgr/PgrValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
+import LtcatModule from "@/pages/ltcat/LtcatModule";
+import LtcatNovo from "@/pages/ltcat/LtcatNovo";
+import LtcatDetalhe from "@/pages/ltcat/LtcatDetalhe";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
@@ -204,6 +207,10 @@ function ProtectedRoute() {
         <Route path="/pgr/:id" element={<PgrDetalhe />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
         <Route path="/pgr/validar/:id" element={<PgrValidar />} />
+        <Route path="/ltcat" element={<LtcatModule />} />
+        <Route path="/ltcat/novo" element={<LtcatNovo />} />
+        <Route path="/ltcat/:id" element={<LtcatDetalhe />} />
+        <Route path="/ltcat/:id/editar" element={<LtcatNovo />} />
 
         <Route path="/central-ppp" element={<CentralPPP />} />
         <Route path="/video-treinamentos" element={<VideoTreinamentos />} />
