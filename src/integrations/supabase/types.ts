@@ -3541,6 +3541,895 @@ export type Database = {
         }
         Relationships: []
       }
+      ltcat_agentes: {
+        Row: {
+          catalogo_id: string | null
+          codigo_esocial: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          fonte_geradora: string | null
+          grupo: Database["public"]["Enums"]["ltcat_agente_grupo"]
+          grupo_homogeneo_id: string
+          id: string
+          ltcat_id: string
+          meio_propagacao: string | null
+          nome: string
+          observacoes: string | null
+          updated_at: string
+        }
+        Insert: {
+          catalogo_id?: string | null
+          codigo_esocial: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          fonte_geradora?: string | null
+          grupo: Database["public"]["Enums"]["ltcat_agente_grupo"]
+          grupo_homogeneo_id: string
+          id?: string
+          ltcat_id: string
+          meio_propagacao?: string | null
+          nome: string
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          catalogo_id?: string | null
+          codigo_esocial?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          fonte_geradora?: string | null
+          grupo?: Database["public"]["Enums"]["ltcat_agente_grupo"]
+          grupo_homogeneo_id?: string
+          id?: string
+          ltcat_id?: string
+          meio_propagacao?: string | null
+          nome?: string
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_agentes_catalogo_id_fkey"
+            columns: ["catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_catalogo_agentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_agentes_grupo_homogeneo_id_fkey"
+            columns: ["grupo_homogeneo_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_grupos_homogeneos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_agentes_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_anexos: {
+        Row: {
+          avaliacao_id: string | null
+          created_at: string
+          descricao: string | null
+          drive_file_id: string
+          drive_path: string | null
+          drive_view_link: string | null
+          empresa_id: string
+          id: string
+          ltcat_id: string
+          mime_type: string | null
+          nome_arquivo: string
+          tamanho_bytes: number | null
+          tipo: string
+          updated_at: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          drive_file_id: string
+          drive_path?: string | null
+          drive_view_link?: string | null
+          empresa_id: string
+          id?: string
+          ltcat_id: string
+          mime_type?: string | null
+          nome_arquivo: string
+          tamanho_bytes?: number | null
+          tipo: string
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          avaliacao_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          drive_file_id?: string
+          drive_path?: string | null
+          drive_view_link?: string | null
+          empresa_id?: string
+          id?: string
+          ltcat_id?: string
+          mime_type?: string | null
+          nome_arquivo?: string
+          tamanho_bytes?: number | null
+          tipo?: string
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_anexos_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_anexos_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_assinaturas: {
+        Row: {
+          assinado_em: string
+          empresa_id: string
+          id: string
+          ip_origem: string | null
+          ltcat_id: string
+          observacao: string | null
+          pdf_hash: string
+          pdf_versao: number | null
+          responsavel_cpf: string | null
+          responsavel_nome: string
+          responsavel_registro: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assinado_em?: string
+          empresa_id: string
+          id?: string
+          ip_origem?: string | null
+          ltcat_id: string
+          observacao?: string | null
+          pdf_hash: string
+          pdf_versao?: number | null
+          responsavel_cpf?: string | null
+          responsavel_nome: string
+          responsavel_registro?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assinado_em?: string
+          empresa_id?: string
+          id?: string
+          ip_origem?: string | null
+          ltcat_id?: string
+          observacao?: string | null
+          pdf_hash?: string
+          pdf_versao?: number | null
+          responsavel_cpf?: string | null
+          responsavel_nome?: string
+          responsavel_registro?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_assinaturas_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_avaliacoes: {
+        Row: {
+          agente_id: string
+          base_normativa_limite: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          enquadramento: Database["public"]["Enums"]["ltcat_enquadramento"]
+          epc_descricao: string | null
+          epi_ca: string | null
+          epi_descricao: string | null
+          epi_eficacia: string | null
+          grupo_homogeneo_id: string
+          id: string
+          instrumento_calibracao_data: string | null
+          instrumento_marca: string | null
+          instrumento_modelo: string | null
+          instrumento_serie: string | null
+          intensidade: number | null
+          limite_tolerancia: number | null
+          ltcat_id: string
+          metodologia: string | null
+          observacoes: string | null
+          origem_pgr_item_id: string | null
+          percentual_jornada: number | null
+          tecnica: Database["public"]["Enums"]["ltcat_tecnica_avaliacao"]
+          tempo_exposicao_horas: number | null
+          unidade_medida: string | null
+          updated_at: string
+        }
+        Insert: {
+          agente_id: string
+          base_normativa_limite?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          enquadramento?: Database["public"]["Enums"]["ltcat_enquadramento"]
+          epc_descricao?: string | null
+          epi_ca?: string | null
+          epi_descricao?: string | null
+          epi_eficacia?: string | null
+          grupo_homogeneo_id: string
+          id?: string
+          instrumento_calibracao_data?: string | null
+          instrumento_marca?: string | null
+          instrumento_modelo?: string | null
+          instrumento_serie?: string | null
+          intensidade?: number | null
+          limite_tolerancia?: number | null
+          ltcat_id: string
+          metodologia?: string | null
+          observacoes?: string | null
+          origem_pgr_item_id?: string | null
+          percentual_jornada?: number | null
+          tecnica?: Database["public"]["Enums"]["ltcat_tecnica_avaliacao"]
+          tempo_exposicao_horas?: number | null
+          unidade_medida?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agente_id?: string
+          base_normativa_limite?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          enquadramento?: Database["public"]["Enums"]["ltcat_enquadramento"]
+          epc_descricao?: string | null
+          epi_ca?: string | null
+          epi_descricao?: string | null
+          epi_eficacia?: string | null
+          grupo_homogeneo_id?: string
+          id?: string
+          instrumento_calibracao_data?: string | null
+          instrumento_marca?: string | null
+          instrumento_modelo?: string | null
+          instrumento_serie?: string | null
+          intensidade?: number | null
+          limite_tolerancia?: number | null
+          ltcat_id?: string
+          metodologia?: string | null
+          observacoes?: string | null
+          origem_pgr_item_id?: string | null
+          percentual_jornada?: number | null
+          tecnica?: Database["public"]["Enums"]["ltcat_tecnica_avaliacao"]
+          tempo_exposicao_horas?: number | null
+          unidade_medida?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_avaliacoes_agente_id_fkey"
+            columns: ["agente_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_agentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_avaliacoes_grupo_homogeneo_id_fkey"
+            columns: ["grupo_homogeneo_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_grupos_homogeneos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_avaliacoes_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_avaliacoes_origem_pgr_item_id_fkey"
+            columns: ["origem_pgr_item_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_inventario_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_catalogo_agentes: {
+        Row: {
+          ativo: boolean
+          base_normativa: string | null
+          codigo_esocial: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          grupo: Database["public"]["Enums"]["ltcat_agente_grupo"]
+          id: string
+          limite_tolerancia: number | null
+          nome: string
+          observacoes: string | null
+          sinonimos: string[] | null
+          unidade_medida: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          base_normativa?: string | null
+          codigo_esocial: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          grupo: Database["public"]["Enums"]["ltcat_agente_grupo"]
+          id?: string
+          limite_tolerancia?: number | null
+          nome: string
+          observacoes?: string | null
+          sinonimos?: string[] | null
+          unidade_medida?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          base_normativa?: string | null
+          codigo_esocial?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          grupo?: Database["public"]["Enums"]["ltcat_agente_grupo"]
+          id?: string
+          limite_tolerancia?: number | null
+          nome?: string
+          observacoes?: string | null
+          sinonimos?: string[] | null
+          unidade_medida?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_catalogo_agentes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_conclusoes: {
+        Row: {
+          agentes_considerados: Json | null
+          conclusao: Database["public"]["Enums"]["ltcat_conclusao_aposentadoria"]
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          funcao_id: string | null
+          fundamento_legal: string | null
+          grupo_homogeneo_id: string | null
+          id: string
+          justificativa: string | null
+          ltcat_id: string
+          updated_at: string
+        }
+        Insert: {
+          agentes_considerados?: Json | null
+          conclusao?: Database["public"]["Enums"]["ltcat_conclusao_aposentadoria"]
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          funcao_id?: string | null
+          fundamento_legal?: string | null
+          grupo_homogeneo_id?: string | null
+          id?: string
+          justificativa?: string | null
+          ltcat_id: string
+          updated_at?: string
+        }
+        Update: {
+          agentes_considerados?: Json | null
+          conclusao?: Database["public"]["Enums"]["ltcat_conclusao_aposentadoria"]
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          funcao_id?: string | null
+          fundamento_legal?: string | null
+          grupo_homogeneo_id?: string | null
+          id?: string
+          justificativa?: string | null
+          ltcat_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_conclusoes_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_conclusoes_grupo_homogeneo_id_fkey"
+            columns: ["grupo_homogeneo_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_grupos_homogeneos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_conclusoes_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_documentos: {
+        Row: {
+          cnae: string | null
+          conteudo_atualizado_em: string
+          created_at: string
+          created_by: string | null
+          data_emissao: string | null
+          data_vigencia_fim: string | null
+          data_vigencia_inicio: string | null
+          empresa_id: string
+          escopo: string | null
+          grau_risco: number | null
+          id: string
+          metodologia_geral: string | null
+          motivo_emissao: Database["public"]["Enums"]["ltcat_motivo_emissao"]
+          observacoes: string | null
+          publicado_em: string | null
+          publicado_por: string | null
+          status: Database["public"]["Enums"]["ltcat_status"]
+          unidade_id: string | null
+          updated_at: string
+          updated_by: string | null
+          versao: number
+          versao_pai_id: string | null
+        }
+        Insert: {
+          cnae?: string | null
+          conteudo_atualizado_em?: string
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          data_vigencia_fim?: string | null
+          data_vigencia_inicio?: string | null
+          empresa_id: string
+          escopo?: string | null
+          grau_risco?: number | null
+          id?: string
+          metodologia_geral?: string | null
+          motivo_emissao?: Database["public"]["Enums"]["ltcat_motivo_emissao"]
+          observacoes?: string | null
+          publicado_em?: string | null
+          publicado_por?: string | null
+          status?: Database["public"]["Enums"]["ltcat_status"]
+          unidade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+          versao_pai_id?: string | null
+        }
+        Update: {
+          cnae?: string | null
+          conteudo_atualizado_em?: string
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          data_vigencia_fim?: string | null
+          data_vigencia_inicio?: string | null
+          empresa_id?: string
+          escopo?: string | null
+          grau_risco?: number | null
+          id?: string
+          metodologia_geral?: string | null
+          motivo_emissao?: Database["public"]["Enums"]["ltcat_motivo_emissao"]
+          observacoes?: string | null
+          publicado_em?: string | null
+          publicado_por?: string | null
+          status?: Database["public"]["Enums"]["ltcat_status"]
+          unidade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+          versao_pai_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_documentos_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_documentos_versao_pai_id_fkey"
+            columns: ["versao_pai_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_funcoes: {
+        Row: {
+          cbo: string | null
+          created_at: string
+          created_by: string | null
+          descricao_atividade: string | null
+          empresa_id: string
+          funcao_origem_id: string | null
+          grupo_homogeneo_id: string
+          id: string
+          ltcat_id: string
+          nome_funcao: string
+          updated_at: string
+        }
+        Insert: {
+          cbo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao_atividade?: string | null
+          empresa_id: string
+          funcao_origem_id?: string | null
+          grupo_homogeneo_id: string
+          id?: string
+          ltcat_id: string
+          nome_funcao: string
+          updated_at?: string
+        }
+        Update: {
+          cbo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao_atividade?: string | null
+          empresa_id?: string
+          funcao_origem_id?: string | null
+          grupo_homogeneo_id?: string
+          id?: string
+          ltcat_id?: string
+          nome_funcao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_funcoes_funcao_origem_id_fkey"
+            columns: ["funcao_origem_id"]
+            isOneToOne: false
+            referencedRelation: "aso_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_funcoes_grupo_homogeneo_id_fkey"
+            columns: ["grupo_homogeneo_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_grupos_homogeneos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_funcoes_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_grupos_homogeneos: {
+        Row: {
+          codigo: string
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          ghe_origem_id: string | null
+          id: string
+          ltcat_id: string
+          nome: string
+          setor_nome: string | null
+          updated_at: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          ghe_origem_id?: string | null
+          id?: string
+          ltcat_id: string
+          nome: string
+          setor_nome?: string | null
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          ghe_origem_id?: string | null
+          id?: string
+          ltcat_id?: string
+          nome?: string
+          setor_nome?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_grupos_homogeneos_ghe_origem_id_fkey"
+            columns: ["ghe_origem_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_grupos_homogeneos_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_pdf_versoes: {
+        Row: {
+          com_marca_dagua: boolean
+          drive_file_id: string | null
+          drive_path: string | null
+          drive_view_link: string | null
+          empresa_id: string
+          gerado_em: string
+          gerado_por: string | null
+          id: string
+          ltcat_id: string
+          nome_arquivo: string | null
+          pdf_hash: string
+          pdf_versao: number
+          status_no_momento: Database["public"]["Enums"]["ltcat_status"]
+          tamanho_bytes: number | null
+        }
+        Insert: {
+          com_marca_dagua?: boolean
+          drive_file_id?: string | null
+          drive_path?: string | null
+          drive_view_link?: string | null
+          empresa_id: string
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          ltcat_id: string
+          nome_arquivo?: string | null
+          pdf_hash: string
+          pdf_versao: number
+          status_no_momento: Database["public"]["Enums"]["ltcat_status"]
+          tamanho_bytes?: number | null
+        }
+        Update: {
+          com_marca_dagua?: boolean
+          drive_file_id?: string | null
+          drive_path?: string | null
+          drive_view_link?: string | null
+          empresa_id?: string
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          ltcat_id?: string
+          nome_arquivo?: string | null
+          pdf_hash?: string
+          pdf_versao?: number
+          status_no_momento?: Database["public"]["Enums"]["ltcat_status"]
+          tamanho_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_pdf_versoes_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_responsaveis_tecnicos: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          empresa_id: string
+          id: string
+          ltcat_id: string
+          nome: string
+          numero_art: string | null
+          ordem: number
+          profissao: string
+          registro_profissional: string
+          telefone: string | null
+          uf_registro: string | null
+          updated_at: string
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          empresa_id: string
+          id?: string
+          ltcat_id: string
+          nome: string
+          numero_art?: string | null
+          ordem?: number
+          profissao: string
+          registro_profissional: string
+          telefone?: string | null
+          uf_registro?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          empresa_id?: string
+          id?: string
+          ltcat_id?: string
+          nome?: string
+          numero_art?: string | null
+          ordem?: number
+          profissao?: string
+          registro_profissional?: string
+          telefone?: string | null
+          uf_registro?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_responsaveis_tecnicos_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_revisoes: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          ltcat_id: string
+          motivo: string
+          resumo_alteracoes: string | null
+          status_anterior: Database["public"]["Enums"]["ltcat_status"] | null
+          status_novo: Database["public"]["Enums"]["ltcat_status"] | null
+          user_email: string | null
+          user_id: string | null
+          versao_anterior: number | null
+          versao_nova: number | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          ltcat_id: string
+          motivo: string
+          resumo_alteracoes?: string | null
+          status_anterior?: Database["public"]["Enums"]["ltcat_status"] | null
+          status_novo?: Database["public"]["Enums"]["ltcat_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+          versao_anterior?: number | null
+          versao_nova?: number | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          ltcat_id?: string
+          motivo?: string
+          resumo_alteracoes?: string | null
+          status_anterior?: Database["public"]["Enums"]["ltcat_status"] | null
+          status_novo?: Database["public"]["Enums"]["ltcat_status"] | null
+          user_email?: string | null
+          user_id?: string | null
+          versao_anterior?: number | null
+          versao_nova?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_revisoes_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ltcat_setores_avaliados: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          descricao_local: string | null
+          empresa_id: string
+          id: string
+          ltcat_id: string
+          nome_setor: string
+          setor_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          descricao_local?: string | null
+          empresa_id: string
+          id?: string
+          ltcat_id: string
+          nome_setor: string
+          setor_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          descricao_local?: string | null
+          empresa_id?: string
+          id?: string
+          ltcat_id?: string
+          nome_setor?: string
+          setor_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ltcat_setores_avaliados_ltcat_id_fkey"
+            columns: ["ltcat_id"]
+            isOneToOne: false
+            referencedRelation: "ltcat_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_setores_avaliados_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "aso_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medicos: {
         Row: {
           created_at: string
@@ -5213,6 +6102,11 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      ltcat_abrir_revisao: {
+        Args: { _ltcat_id: string; _motivo: string }
+        Returns: Json
+      }
+      ltcat_publicar: { Args: { _ltcat_id: string }; Returns: Json }
       mfa_required_for_current_user: { Args: never; Returns: Json }
       pgr_abrir_revisao: {
         Args: { _motivo: string; _pgr_id: string }
@@ -5352,6 +6246,36 @@ export type Database = {
         | "excluido"
       esocial_ind_retif: "original" | "retificacao"
       esocial_tp_amb: "producao" | "homologacao"
+      ltcat_agente_grupo:
+        | "fisico"
+        | "quimico"
+        | "biologico"
+        | "ergonomico"
+        | "acidente"
+      ltcat_conclusao_aposentadoria:
+        | "nao_especial"
+        | "especial_15"
+        | "especial_20"
+        | "especial_25"
+        | "inconclusivo"
+      ltcat_enquadramento:
+        | "nao_aplicavel"
+        | "habitual_permanente"
+        | "intermitente"
+        | "eventual"
+        | "neutralizado_epi"
+      ltcat_motivo_emissao:
+        | "inicial"
+        | "revisao_periodica"
+        | "mudanca_ambiental"
+        | "correcao"
+      ltcat_status:
+        | "rascunho"
+        | "em_revisao"
+        | "vigente"
+        | "substituido"
+        | "arquivado"
+      ltcat_tecnica_avaliacao: "quantitativa" | "qualitativa"
       pgr_acao_status:
         | "pendente"
         | "em_andamento"
@@ -5589,6 +6513,41 @@ export const Constants = {
       ],
       esocial_ind_retif: ["original", "retificacao"],
       esocial_tp_amb: ["producao", "homologacao"],
+      ltcat_agente_grupo: [
+        "fisico",
+        "quimico",
+        "biologico",
+        "ergonomico",
+        "acidente",
+      ],
+      ltcat_conclusao_aposentadoria: [
+        "nao_especial",
+        "especial_15",
+        "especial_20",
+        "especial_25",
+        "inconclusivo",
+      ],
+      ltcat_enquadramento: [
+        "nao_aplicavel",
+        "habitual_permanente",
+        "intermitente",
+        "eventual",
+        "neutralizado_epi",
+      ],
+      ltcat_motivo_emissao: [
+        "inicial",
+        "revisao_periodica",
+        "mudanca_ambiental",
+        "correcao",
+      ],
+      ltcat_status: [
+        "rascunho",
+        "em_revisao",
+        "vigente",
+        "substituido",
+        "arquivado",
+      ],
+      ltcat_tecnica_avaliacao: ["quantitativa", "qualitativa"],
       pgr_acao_status: [
         "pendente",
         "em_andamento",

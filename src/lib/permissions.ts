@@ -25,6 +25,13 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
     { key: "assinar", label: "Assinar PGR (assinatura visual + MFA)" },
     { key: "exportar", label: "Exportar PDF técnico do PGR" },
   ],
+  ltcat: [
+    { key: "visualizar", label: "Visualizar LTCAT" },
+    { key: "editar", label: "Editar LTCAT / Avaliações / Conclusões" },
+    { key: "revisar", label: "Abrir revisão e publicar LTCAT" },
+    { key: "assinar", label: "Assinar LTCAT (assinatura visual + MFA)" },
+    { key: "exportar", label: "Exportar PDF técnico do LTCAT" },
+  ],
 };
 
 
@@ -44,6 +51,7 @@ export const MODULOS = [
   { key: "treinamentos", label: "Gestão e Controle", path: "/treinamentos" },
   { key: "cat", label: "CAT — Comunicação de Acidente", path: "/cat" },
   { key: "pgr", label: "PGR — Gerenciamento de Riscos", path: "/pgr" },
+  { key: "ltcat", label: "LTCAT — Laudo Técnico Previdenciário", path: "/ltcat" },
 
   { key: "exames", label: "Exames", path: "/exames" },
   { key: "aso", label: "Gestão e Emissão de ASO", path: "/aso" },
