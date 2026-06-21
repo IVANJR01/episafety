@@ -46,6 +46,7 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
   const qc = useQueryClient();
   const { modulosPermitidos, isSuperAdmin, isPrincipal } = useAuth();
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [xmlValByEvento, setXmlValByEvento] = useState<Record<string, { erros: number; alertas: number; ocorrencias: Ocorrencia[]; hashOk: boolean; quando: string }>>({});
 
   const canView = hasPerm(modulosPermitidos, isSuperAdmin, isPrincipal, "esocial:s2240:visualizar");
   const canPreparar = hasPerm(modulosPermitidos, isSuperAdmin, isPrincipal, "esocial:s2240:preparar");
