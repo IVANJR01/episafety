@@ -21,6 +21,7 @@ import LtcatAgentesAvaliacoesTab from "@/components/ltcat/LtcatAgentesAvaliacoes
 import LtcatFuncoesTab from "@/components/ltcat/LtcatFuncoesTab";
 import LtcatConclusoesTab from "@/components/ltcat/LtcatConclusoesTab";
 import LtcatPdfTab from "@/components/ltcat/LtcatPdfTab";
+import LtcatChecklistTab from "@/components/ltcat/LtcatChecklistTab";
 import {
   LtcatDocumento, LtcatRevisao,
   LTCAT_STATUS_LABEL, LTCAT_STATUS_COLOR, LTCAT_MOTIVO_LABEL,
