@@ -13,6 +13,7 @@ import {
   PppDocumento, isPppEditavel,
 } from "@/lib/pppTypes";
 import PppHistoricoTab from "@/components/ppp/PppHistoricoTab";
+import PppExposicoesTab from "@/components/ppp/PppExposicoesTab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
@@ -176,7 +177,7 @@ export default function PppDetalhe() {
           <PppHistoricoTab ppp={ppp} funcionario={funcionario} />
         </TabsContent>
         <TabsContent value="exposicoes">
-          <Placeholder titulo="Exposições a agentes nocivos" descricao="Disponível em fase futura (Parte 4)." />
+          <PppExposicoesTab ppp={ppp} />
         </TabsContent>
         <TabsContent value="responsaveis">
           <Placeholder titulo="Responsáveis ambientais e médicos" descricao="Estrutura básica disponível; gestão na Parte 4." />

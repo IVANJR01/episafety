@@ -5620,83 +5620,122 @@ export type Database = {
       ppp_exposicoes: {
         Row: {
           acima_limite: boolean | null
+          agente_grupo: Database["public"]["Enums"]["ppp_agente_grupo"] | null
+          agente_id: string | null
           agente_nome: string
           agente_tipo: Database["public"]["Enums"]["ppp_agente_grupo"] | null
           codigo_esocial: string | null
+          conclusao_ltcat_id: string | null
+          conclusao_previdenciaria: string | null
           created_at: string
+          data_medicao: string | null
+          duracao: string | null
           empresa_id: string
           enquadramento: Database["public"]["Enums"]["ppp_enquadramento"] | null
           epc_descricao: string | null
+          epc_eficacia: string | null
           epi_ca: string | null
           epi_descricao: string | null
           epi_eficacia: Database["public"]["Enums"]["ppp_epi_eficacia"] | null
+          fonte_geradora: string | null
+          frequencia: string | null
           fundamento_legal: string | null
           id: string
           intensidade: number | null
+          justificativa: string | null
           limite_tolerancia: number | null
+          ltcat_id: string | null
           observacoes: string | null
           origem_ltcat_aval_id: string | null
           percentual_jornada: number | null
           periodo_id: string
           ppp_id: string
           tecnica: Database["public"]["Enums"]["ppp_tecnica_avaliacao"] | null
+          tecnica_avaliacao: string | null
           tempo_exposicao_horas: number | null
+          tipo_exposicao: string | null
           unidade_medida: string | null
           updated_at: string
         }
         Insert: {
           acima_limite?: boolean | null
+          agente_grupo?: Database["public"]["Enums"]["ppp_agente_grupo"] | null
+          agente_id?: string | null
           agente_nome: string
           agente_tipo?: Database["public"]["Enums"]["ppp_agente_grupo"] | null
           codigo_esocial?: string | null
+          conclusao_ltcat_id?: string | null
+          conclusao_previdenciaria?: string | null
           created_at?: string
+          data_medicao?: string | null
+          duracao?: string | null
           empresa_id: string
           enquadramento?:
             | Database["public"]["Enums"]["ppp_enquadramento"]
             | null
           epc_descricao?: string | null
+          epc_eficacia?: string | null
           epi_ca?: string | null
           epi_descricao?: string | null
           epi_eficacia?: Database["public"]["Enums"]["ppp_epi_eficacia"] | null
+          fonte_geradora?: string | null
+          frequencia?: string | null
           fundamento_legal?: string | null
           id?: string
           intensidade?: number | null
+          justificativa?: string | null
           limite_tolerancia?: number | null
+          ltcat_id?: string | null
           observacoes?: string | null
           origem_ltcat_aval_id?: string | null
           percentual_jornada?: number | null
           periodo_id: string
           ppp_id: string
           tecnica?: Database["public"]["Enums"]["ppp_tecnica_avaliacao"] | null
+          tecnica_avaliacao?: string | null
           tempo_exposicao_horas?: number | null
+          tipo_exposicao?: string | null
           unidade_medida?: string | null
           updated_at?: string
         }
         Update: {
           acima_limite?: boolean | null
+          agente_grupo?: Database["public"]["Enums"]["ppp_agente_grupo"] | null
+          agente_id?: string | null
           agente_nome?: string
           agente_tipo?: Database["public"]["Enums"]["ppp_agente_grupo"] | null
           codigo_esocial?: string | null
+          conclusao_ltcat_id?: string | null
+          conclusao_previdenciaria?: string | null
           created_at?: string
+          data_medicao?: string | null
+          duracao?: string | null
           empresa_id?: string
           enquadramento?:
             | Database["public"]["Enums"]["ppp_enquadramento"]
             | null
           epc_descricao?: string | null
+          epc_eficacia?: string | null
           epi_ca?: string | null
           epi_descricao?: string | null
           epi_eficacia?: Database["public"]["Enums"]["ppp_epi_eficacia"] | null
+          fonte_geradora?: string | null
+          frequencia?: string | null
           fundamento_legal?: string | null
           id?: string
           intensidade?: number | null
+          justificativa?: string | null
           limite_tolerancia?: number | null
+          ltcat_id?: string | null
           observacoes?: string | null
           origem_ltcat_aval_id?: string | null
           percentual_jornada?: number | null
           periodo_id?: string
           ppp_id?: string
           tecnica?: Database["public"]["Enums"]["ppp_tecnica_avaliacao"] | null
+          tecnica_avaliacao?: string | null
           tempo_exposicao_horas?: number | null
+          tipo_exposicao?: string | null
           unidade_medida?: string | null
           updated_at?: string
         }
