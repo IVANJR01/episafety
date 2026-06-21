@@ -30,6 +30,21 @@ function Placeholder({ titulo, descricao }: { titulo: string; descricao: string 
   );
 }
 
+function ResumoCard({ label, value, tone, hint }: { label: string; value: string; tone?: "ok" | "warn" | "bad"; hint?: string }) {
+  const cls =
+    tone === "ok" ? "text-emerald-700" :
+    tone === "warn" ? "text-amber-700" :
+    tone === "bad" ? "text-rose-700" : "text-foreground";
+  return (
+    <Card>
+      <CardContent className="p-3" title={hint || undefined}>
+        <div className="text-[11px] text-muted-foreground truncate">{label}</div>
+        <div className={`text-sm font-semibold truncate ${cls}`}>{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PppDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -194,6 +209,7 @@ export default function PppDetalhe() {
           <TabsTrigger value="exames">Exames referenciados</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
+          <TabsTrigger value="checklist">Checklist & Publicar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-3">
