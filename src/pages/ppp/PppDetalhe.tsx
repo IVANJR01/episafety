@@ -13,6 +13,7 @@ import {
   PppDocumento, isPppEditavel,
 } from "@/lib/pppTypes";
 import PppHistoricoTab from "@/components/ppp/PppHistoricoTab";
+import PppExposicoesTab from "@/components/ppp/PppExposicoesTab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
