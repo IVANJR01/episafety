@@ -1,173 +1,95 @@
+# Roteiro de Homologação Interna Controlada — Sistema SST
 
-# Plano de Revisão Geral de QA — Sistema SST
+Objetivo: executar, em ambiente real do projeto, um ciclo completo de uso ponta-a-ponta com **2 empresas teste isoladas**, validando os 20 pontos solicitados sem qualquer envio oficial ao eSocial.
 
-Objetivo: validar, de ponta a ponta, todos os módulos já entregues (Segurança/Hardening, CAT, S-2210 stub, PGR, LTCAT, PPP, S-2240 stub) sem introduzir transmissão real ao eSocial. Resultado final: **Relatório de Prontidão** com pendências priorizadas.
-
----
-
-## Fase 0 — Preparação do ambiente de QA
-
-- Definir 2 empresas de teste: **Empresa A** e **Empresa B**, cada uma com Matriz + Unidade + Contrato + funcionários distintos.
-- Definir 5 usuários de teste:
-  - U1: Super Admin
-  - U2: Principal Empresa A
-  - U3: Operacional Empresa A (sem MFA)
-  - U4: Operacional Empresa A (com MFA)
-  - U5: Principal Empresa B
-- Cada usuário com Google Drive BYOK próprio conectado.
-- Matriz de evidências: planilha única registrando resultado (OK / FALHA / N/A) + screenshot/log por caso.
+Escopo explicitamente excluído: certificado digital, ICP-Brasil, XMLDSig, SOAP, S-3000, transmissão real, consulta de recibo real.
 
 ---
 
-## Fase 1 — Isolamento Multi-Tenant (Empresa A × Empresa B)
+## Fase 0 — Preparação do Ambiente
 
-1. **RLS por tabela sensível** — listar e testar SELECT/INSERT/UPDATE/DELETE cruzados em:
-   - CAT: `cat_comunicacoes`, `cat_anexos`, `cat_testemunhas`, `cat_historico`
-   - S-2210: `esocial_eventos_s2210`, `esocial_eventos_historico`, `esocial_retorno_ocorrencias`
-   - PGR: `pgr_documentos`, `pgr_inventario_itens`, `pgr_acoes`, `pgr_revisoes`
-   - LTCAT: `ltcat_documentos`, `ltcat_agentes`, `ltcat_avaliacoes`, `ltcat_pdf_versoes`
-   - PPP: `ppp_documentos`, `ppp_periodos`, `ppp_exposicoes`, `ppp_pdf_versoes`
-   - S-2240: `esocial_eventos_s2240`, `esocial_s2240_agentes`, `esocial_s2240_mapeamentos`, `esocial_s2240_ocorrencias`, `esocial_s2240_historico`
-   - Suporte: `audit_log`, `usuario_empresas`, `empresa_config`
-2. Tentar acessar IDs da Empresa B autenticado como U2/U3 — esperado: 0 linhas / erro.
-3. Testar RPCs (`s2240_assert_tenant`, `s2240_registrar_*`, `s2240_marcar_validacao_xml`) com IDs de outra empresa — esperado: exceção.
-4. Verificar `active_empresa_id` em localStorage: trocar para empresa não autorizada deve ser bloqueado server-side.
+- **Empresas teste**: Empresa A (Matriz A + Unidade A1 + Contrato A1.1) e Empresa B (Matriz B + Unidade B1 + Contrato B1.1).
+- **Usuários teste**:
+  - U1 Super Admin (global)
+  - U2 Principal Empresa A
+  - U3 Operacional A (sem MFA)
+  - U4 Operacional A (com MFA)
+  - U5 Principal Empresa B
+- **Drive BYOK**: conta Google distinta por empresa.
+- **Matriz de evidências**: planilha única (OK / FALHA / N/A + screenshot/log) — uma linha por caso de teste.
 
-## Fase 2 — Permissões por Perfil
+---
 
-- Matriz Perfil × Ação para cada módulo (visualizar, criar, editar, validar, retificar, excluir, exportar).
-- Casos críticos:
-  - U3 sem `esocial:s2240:validar` não vê botão e RPC nega.
-  - U3 sem `esocial:s2240:preparar` não gera XML.
-  - Apenas Super Admin acessa Infra/Cloud/Backups.
-  - `Principal` edita registros globais (empresa_id null); demais não.
+## Fase 1 — Cadastros Básicos (pontos 1–4)
 
-## Fase 3 — MFA
+1. **Empresa**: criar Matriz A, Unidade A1, Contrato A1.1 — repetir para B. Confirmar `empresa_pai_id`, logo no Drive, config inicial.
+2. **Usuários e permissões**: provisionar U2–U5 via `usuarios_liberados`, vincular `usuario_empresas`, atribuir perfis e ações especiais (`esocial:s2240:*`, `epis:gestao_estoque`, etc.).
+3. **Funcionários**: cadastrar 3 funcionários por contrato (com CPF, CBO, função, unidade responsável obrigatória).
+4. **Setores / Funções / GHE-GES**: cadastrar setor, função, GHE e GES; vincular riscos via catálogo.
 
-- Confirmar `mfa_enforcement` aplicado em: gerar XML S-2240, validar XML S-2240, regenerar XML, ações sensíveis CAT/S-2210, dispensa de funcionário, alterações em Tabela 24, exclusões.
-- Testar: usuário sem MFA é bloqueado; com MFA expirado revalida; cancelamento aborta a ação.
+## Fase 2 — Documentos Técnicos (pontos 5–8)
 
-## Fase 4 — Audit Log
+5. **CAT**: emitir 1 CAT por empresa (típico + trajeto), gerar PDF, conferir numeração isolada por empresa, anexar testemunhas, histórico.
+6. **PGR**: criar documento, importar GHE, montar inventário de riscos, matriz, plano de ação, gerar PDF e revisão.
+7. **LTCAT**: criar, importar do PGR, agentes/avaliações, responsáveis técnicos, conclusões, PDF.
+8. **PPP**: emitir PPP do funcionário, períodos, exposições, responsáveis ambientais/médicos, PDF IN 128/2022, aba S-2240.
 
-- Para cada ação sensível verificar: registro criado com `acao`, `status`, `metadata` mínimo, **sem XML completo**, sem PII desnecessária.
-- Confirmar inexistência de inserts diretos do cliente (somente via RPC/trigger).
-- Cruzar volume esperado × volume real (ex.: 1 geração XML = 1 linha audit + 1 linha histórico + 1 linha xml_meta).
+## Fase 3 — eSocial Stub (pontos 9–10)
 
-## Fase 5 — Cache, Logout e Troca de Empresa
+9. **S-2210 stub**: gerar XML a partir da CAT, validar localmente, conferir hash SHA-256, baixar do Drive BYOK, confirmar que `xml_gerado` **não** existe mais no banco.
+10. **S-2240 stub**: mapear agentes PPP/LTCAT → Tabela 24, gerar XML técnico, validar local, hash, salvar no Drive `eSocial/S2240/`, abrir `/esocial/s2240/dashboard` (KPIs + checklist 21 pontos + filtros + drawer).
 
-- Login U2 (A) → cache TanStack populado → trocar para outra empresa autorizada → confirmar `queryClient.clear()` ou invalidação.
-- Logout limpa: localStorage relevante, idb-keyval, sessão Supabase, tokens Drive.
-- Hard-refresh offline (PWA) mantém dados da empresa ativa apenas.
+## Fase 4 — Artefatos e Integrações (pontos 11–14)
 
-## Fase 6 — Google Drive BYOK
+11. **PDFs**: validar header, dados, assinaturas e versionamento em ASO, PPP, LTCAT, PGR, Ficha de Entrega EPI (paisagem) e CAT.
+12. **QR Codes**: escanear QR de ASO/PPP/Ficha e confirmar URL de verificação válida e tenant correto.
+13. **Drive BYOK**: confirmar `refreshSession` antes de cada upload, hierarquia Matriz>Unidade>Contrato, falha de upload bloqueia gravação, `gdrive-proxy` serve imagens sem CORS, **Empresa B não baixa fileId da Empresa A**.
+14. **MFA**: U3 bloqueado em ações sensíveis (gerar/validar XML, dispensa, alterações Tabela 24); U4 passa; sessão MFA expirada exige revalidação.
 
-- Reautenticação Drive antes de cada upload (`refreshSession`).
-- Upload XML S-2240 vai para pasta privada correta (hierarquia Matriz/Unidade/Contrato/PPP).
-- Falha de upload bloqueia gravação (ex.: inspeções, XML stub).
-- `gdrive-proxy` serve imagens sem CORS; tokens não vazam em logs.
-- Empresa B não consegue baixar fileId da Empresa A (RPC + Drive scope).
+## Fase 5 — Segurança Multi-Tenant (pontos 15–16)
 
-## Fase 7 — PDFs e QR Codes
+15. **Permissões por perfil**: matriz Perfil × Ação (visualizar / criar / editar / validar / retificar / excluir / exportar) por módulo; conferir tokens `esocial:s2240:*` (3 níveis); apenas Super Admin vê Infra/Cloud/Backups.
+16. **Isolamento A × B**:
+    - Logar U2, abrir CAT/PGR/LTCAT/PPP/S-2210/S-2240; trocar para outra empresa autorizada → confirmar `purgeQueryCache` + `clearAllCachedData` (sem dados residuais da A).
+    - Forçar URLs com IDs da B autenticado como U2 → 0 linhas / erro RLS.
+    - RPCs (`s2240_assert_tenant`, `s2240_registrar_*`, `esocial_registrar_xml_meta`) com IDs cruzados → exceção.
+    - `aso_medicos` com `empresa_id IS NULL` invisível para U2/U5.
 
-- Geração: ASO, PPP, LTCAT, PGR, Ficha de Entrega (paisagem), CAT.
-- Validar: header com empresa correta, dados do funcionário, datas, assinaturas, QR Code apontando para URL de verificação válida.
-- Hash/versionamento (`*_pdf_versoes`) coerente.
+## Fase 6 — Saídas e Observabilidade (pontos 17–19)
 
-## Fase 8 — XML Stub S-2210 e S-2240
+17. **Exportações CSV**: S-2240 (eventos, ocorrências, agentes, pendentes/divergentes) + demais módulos; UTF-8 BOM, separador, escape de vírgulas/quebras, filtro respeita empresa ativa.
+18. **Dashboards**: S-2240, EPI/Estoque, Inspeções, Documentos, Pareto, fluxo, consumo — comparar KPIs com queries diretas.
+19. **Audit log**: para cada ação sensível, 1 linha com `acao`/`status`/`metadata` mínimo, **sem XML completo**, sem PII desnecessária; inserts somente via RPC (`s2240_registrar_mapeamento_audit`, `esocial_registrar_xml_meta`, `esocial_registrar_download`).
 
-- Gerar XML para 3 cenários (mínimo, completo, com agentes múltiplos).
-- Validar localmente (sem XSD oficial): estrutura, IDs eSocial, CPF/CNPJ, CBO, Tabela 24, hash SHA-256 confere.
-- Hash divergente é detectado e marca `rejeitado_local`.
-- XML completo **não** aparece em audit_log nem em colunas do banco.
+## Fase 7 — Consolidação (ponto 20)
 
-## Fase 9 — Dashboards
+20. **Lista final de bugs**: triagem dos achados em P0/P1/P2/P3 com módulo, descrição, evidência, esforço.
+- Relatório final salvo em `/mnt/documents/Homologacao_Interna_SST.md`.
+- Recomendação final: liberar uso interno controlado **sim/não**; transmissão real permanece **NO-GO**.
 
-- S-2240 Dashboard (`/esocial/s2240/dashboard`): KPIs por empresa, checklist 21 pontos, filtros, drawer por evento.
-- Dashboards EPI/Estoque/Inspeções/Documentos: filtros, gráficos (Pareto, fluxo, consumo), badges.
-- Verificar contagens cruzando com queries diretas.
+---
 
-## Fase 10 — Exportações CSV
+## Critérios de Aceite
 
-- S-2240: eventos, ocorrências, agentes, pendentes/divergentes.
-- Demais módulos com export existente.
-- Validar encoding (UTF-8 BOM), separador, escape de vírgulas/quebras, nomes de coluna em PT.
-- Confirmar que CSV respeita filtro/empresa ativa.
+- 100% dos 20 pontos executados em A e B, com evidências.
+- Zero vazamento entre A × B.
+- Zero XML completo em banco ou audit log.
+- MFA não contornável em ação sensível.
+- Drive BYOK isolado por empresa.
+- Nenhuma chamada a endpoint real do eSocial.
 
-## Fase 11 — Linter / Warnings
+## Entregáveis
 
-- `supabase--linter`: revisar findings (RLS, GRANTs, search_path, security definer).
-- `security--run_security_scan`: revisar findings e marcar fixed/ignored com justificativa.
-- TS/ESLint warnings: zerar em arquivos novos do S-2240 e do PPP.
+1. Matriz de evidências (planilha/markdown).
+2. Lista P0–P3 com priorização.
+3. Relatório `/mnt/documents/Homologacao_Interna_SST.md` com status final por módulo (Verde/Amarelo/Vermelho).
+4. Recomendação Go/No-Go para uso interno controlado.
 
-## Fase 12 — Rotas
+## Itens Fora de Escopo (não executar)
 
-- Varrer `src/App.tsx` × páginas existentes: nenhuma rota órfã, nenhuma rota sem guard, todas rotas sensíveis com `PermissionGuard` + `MfaGate` quando aplicável.
-- Testar deep-link direto a `/esocial/s2240/dashboard` deslogado → redireciona para login.
-
-## Fase 13 — Performance
-
-- Medir TTI das telas pesadas: S-2240 Dashboard, S2240Mapeamentos, PPP Detalhe, PGR Inventário.
-- Verificar N+1: batch operations com `Promise.all` onde aplicável.
-- Confirmar prefetch deferido e `staleTime: Infinity` onde definido.
-
-## Fase 14 — Mobile / Responsivo
-
-- Testar < 640px em: login, dashboard principal, S-2240 Dashboard, PPP, entregas EPI, inspeções, assinatura digital (44px hit area, 100dvh).
-- Botão voltar Android (Capacitor) minimiza app conforme regra.
-- Vídeos de treinamento: tap-to-play, 30s timeout.
-
-## Fase 15 — Checklists Finais
-
-### 15.1 Pendências Críticas (bloqueiam produção)
-A preencher após execução. Exemplos potenciais:
-- Qualquer falha de RLS cruzada.
-- XML completo persistido indevidamente.
-- MFA contornável em ação sensível.
-
-### 15.2 Pendências Médias (corrigir antes do envio real)
-- Ausência de XSD oficial S-2210/S-2240.
-- Falta de paginação server-side em dashboards muito grandes.
-- Warnings de linter não classificados.
-
-### 15.3 Itens Fora de Escopo (documentar, não corrigir agora)
-- Certificado digital ICP-Brasil (A1/A3).
-- Assinatura XMLDSig + C14N.
-- Cliente SOAP eSocial + fila + retry + recibo.
+- Certificado digital A1/A3, KMS, XMLDSig, C14N.
+- Cliente SOAP, fila de envio, retry, consulta de recibo.
 - S-3000 (exclusão oficial).
-- Consulta de retorno real.
+- Qualquer chamada a ambiente eSocial (produção ou homologação oficial).
 
-## Fase 16 — Plano de Correção por Prioridade
-
-- **P0** (crítico): bloqueia uso → corrigir imediatamente, retestar empresa A×B.
-- **P1** (alto): impacto funcional/UX → corrigir antes do Relatório Final.
-- **P2** (médio): melhoria/refino → backlog endereçado antes da Parte 6.
-- **P3** (baixo): cosmético/documentação → backlog aberto.
-
-Cada item registrado com: módulo, descrição, severidade, evidência, owner sugerido, esforço estimado.
-
-## Fase 17 — Relatório Final de Prontidão
-
-Entregável único contendo:
-- Sumário executivo (status por módulo: Verde/Amarelo/Vermelho).
-- Matriz de evidências consolidada.
-- Lista priorizada P0–P3.
-- Riscos residuais.
-- Itens fora de escopo (explícitos).
-- Recomendação Go / No-Go para iniciar planejamento da Parte 6 (transmissão real).
-
----
-
-## Escopo explicitamente excluído desta revisão
-
-- Implementação de certificado digital, KMS, XMLDSig, C14N, SOAP, fila de envio, retry, consulta de recibo, S-3000.
-- Qualquer chamada a ambiente eSocial (produção ou homologação).
-- Mudanças de arquitetura de transmissão.
-
-## Entregáveis ao final
-
-1. Planilha/Markdown da matriz de evidências.
-2. Lista P0–P3 priorizada.
-3. Relatório Final de Prontidão (markdown em `/mnt/documents`).
-4. Atualização da memória do projeto somente para regras novas descobertas durante o QA.
-
-Após sua aprovação deste plano, executo as fases 1–14 em ondas paralelas (subagents read-only para inspeção de código + execução manual de cenários no preview) e depois consolido as fases 15–17.
+Aguardando aprovação para iniciar a Fase 0.
