@@ -131,6 +131,28 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
     finally { setBusyKey(null); }
   };
 
+  const handleValidarXml = async (periodoId: string, eventoId: string) => {
+    setBusyKey(periodoId + ":xml");
+    try {
+      const r = await validarXmlS2240Tecnico(eventoId);
+      setXmlValByEvento((s) => ({
+        ...s,
+        [eventoId]: {
+          erros: r.erros, alertas: r.alertas, ocorrencias: r.ocorrencias,
+          hashOk: r.hashOk, quando: new Date().toISOString(),
+        },
+      }));
+      const msg = `${r.erros} erro(s), ${r.alertas} alerta(s) · hash ${r.hashOk ? "ok" : "divergente"}`;
+      r.erros > 0
+        ? toast.error("Validação técnica falhou — " + msg, { duration: 8000 })
+        : toast.success("Validação técnica OK — " + msg);
+      refresh();
+    } catch (e: any) { toast.error(e?.message || "Falha ao validar XML técnico", { duration: 8000 }); }
+    finally { setBusyKey(null); }
+  };
+
+
+
   if (!canView) {
     return (
       <Card><CardContent className="p-6 text-sm text-muted-foreground flex gap-2 items-center">
