@@ -4003,6 +4003,7 @@ export type Database = {
           metodologia_geral: string | null
           motivo_emissao: Database["public"]["Enums"]["ltcat_motivo_emissao"]
           observacoes: string | null
+          pgr_id: string | null
           publicado_em: string | null
           publicado_por: string | null
           status: Database["public"]["Enums"]["ltcat_status"]
@@ -4027,6 +4028,7 @@ export type Database = {
           metodologia_geral?: string | null
           motivo_emissao?: Database["public"]["Enums"]["ltcat_motivo_emissao"]
           observacoes?: string | null
+          pgr_id?: string | null
           publicado_em?: string | null
           publicado_por?: string | null
           status?: Database["public"]["Enums"]["ltcat_status"]
@@ -4051,6 +4053,7 @@ export type Database = {
           metodologia_geral?: string | null
           motivo_emissao?: Database["public"]["Enums"]["ltcat_motivo_emissao"]
           observacoes?: string | null
+          pgr_id?: string | null
           publicado_em?: string | null
           publicado_por?: string | null
           status?: Database["public"]["Enums"]["ltcat_status"]
@@ -4066,6 +4069,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_documentos_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
             referencedColumns: ["id"]
           },
           {
