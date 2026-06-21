@@ -20,6 +20,7 @@ import LtcatSetoresTab from "@/components/ltcat/LtcatSetoresTab";
 import LtcatAgentesAvaliacoesTab from "@/components/ltcat/LtcatAgentesAvaliacoesTab";
 import LtcatFuncoesTab from "@/components/ltcat/LtcatFuncoesTab";
 import LtcatConclusoesTab from "@/components/ltcat/LtcatConclusoesTab";
+import LtcatPdfTab from "@/components/ltcat/LtcatPdfTab";
 import {
   LtcatDocumento, LtcatRevisao,
   LTCAT_STATUS_LABEL, LTCAT_STATUS_COLOR, LTCAT_MOTIVO_LABEL,
@@ -246,12 +247,11 @@ export default function LtcatDetalhe() {
         </TabsContent>
 
         <TabsContent value="pdf">
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground space-y-2">
-              <FileText className="h-10 w-10 mx-auto opacity-30" />
-              <p>PDF técnico, assinatura visual e QR Code serão liberados na <strong>Parte 5</strong>.</p>
-            </CardContent>
-          </Card>
+          <LtcatPdfTab
+            ltcat={doc}
+            canExport={perms.canEdit}
+            canAssinar={perms.canEdit}
+          />
         </TabsContent>
       </Tabs>
 
