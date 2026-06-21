@@ -2490,9 +2490,12 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           versao_layout: string
-          xml_assinado_simulado: string | null
-          xml_gerado: string | null
+          xml_drive_id: string | null
+          xml_drive_link: string | null
+          xml_gerado_em: string | null
+          xml_gerado_por: string | null
           xml_hash_sha256: string | null
+          xml_tamanho_bytes: number | null
         }
         Insert: {
           assinatura_simulada?: boolean
@@ -2519,9 +2522,12 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           versao_layout?: string
-          xml_assinado_simulado?: string | null
-          xml_gerado?: string | null
+          xml_drive_id?: string | null
+          xml_drive_link?: string | null
+          xml_gerado_em?: string | null
+          xml_gerado_por?: string | null
           xml_hash_sha256?: string | null
+          xml_tamanho_bytes?: number | null
         }
         Update: {
           assinatura_simulada?: boolean
@@ -2548,9 +2554,12 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           versao_layout?: string
-          xml_assinado_simulado?: string | null
-          xml_gerado?: string | null
+          xml_drive_id?: string | null
+          xml_drive_link?: string | null
+          xml_gerado_em?: string | null
+          xml_gerado_por?: string | null
           xml_hash_sha256?: string | null
+          xml_tamanho_bytes?: number | null
         }
         Relationships: [
           {
@@ -7592,12 +7601,14 @@ export type Database = {
         Args: { _evento_id: string; _ocorrencias: Json }
         Returns: Json
       }
-      esocial_registrar_xml: {
+      esocial_registrar_xml_meta: {
         Args: {
+          _drive_file_id: string
+          _drive_link?: string
           _evento_id: string
           _hash: string
-          _versao_layout?: string
-          _xml: string
+          _tamanho_bytes: number
+          _versao_layout: string
         }
         Returns: Json
       }
@@ -7794,6 +7805,15 @@ export type Database = {
           _status?: Database["public"]["Enums"]["esocial_s2240_status"]
         }
         Returns: string
+      }
+      s2240_registrar_mapeamento_audit: {
+        Args: {
+          _agente: string
+          _codigo_t24: string
+          _empresa_id: string
+          _status: string
+        }
+        Returns: undefined
       }
       s2240_registrar_ocorrencia: {
         Args: {
