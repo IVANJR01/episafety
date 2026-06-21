@@ -52,6 +52,9 @@ import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
 import PgrValidar from "@/pages/pgr/PgrValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
+import LtcatModule from "@/pages/ltcat/LtcatModule";
+import LtcatNovo from "@/pages/ltcat/LtcatNovo";
+import LtcatDetalhe from "@/pages/ltcat/LtcatDetalhe";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
