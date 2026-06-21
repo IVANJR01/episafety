@@ -3988,12 +3988,19 @@ export type Database = {
           created_at: string
           created_by: string | null
           empresa_id: string
+          enquadramento:
+            | Database["public"]["Enums"]["ltcat_enquadramento"]
+            | null
+          epc_considerados: string | null
+          epi_considerados: string | null
           funcao_id: string | null
           fundamento_legal: string | null
           grupo_homogeneo_id: string | null
           id: string
           justificativa: string | null
           ltcat_id: string
+          observacoes: string | null
+          tipo_exposicao: string | null
           updated_at: string
         }
         Insert: {
@@ -4002,12 +4009,19 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           empresa_id: string
+          enquadramento?:
+            | Database["public"]["Enums"]["ltcat_enquadramento"]
+            | null
+          epc_considerados?: string | null
+          epi_considerados?: string | null
           funcao_id?: string | null
           fundamento_legal?: string | null
           grupo_homogeneo_id?: string | null
           id?: string
           justificativa?: string | null
           ltcat_id: string
+          observacoes?: string | null
+          tipo_exposicao?: string | null
           updated_at?: string
         }
         Update: {
@@ -4016,12 +4030,19 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           empresa_id?: string
+          enquadramento?:
+            | Database["public"]["Enums"]["ltcat_enquadramento"]
+            | null
+          epc_considerados?: string | null
+          epi_considerados?: string | null
           funcao_id?: string | null
           fundamento_legal?: string | null
           grupo_homogeneo_id?: string | null
           id?: string
           justificativa?: string | null
           ltcat_id?: string
+          observacoes?: string | null
+          tipo_exposicao?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4167,6 +4188,8 @@ export type Database = {
           id: string
           ltcat_id: string
           nome_funcao: string
+          numero_trabalhadores: number | null
+          observacoes: string | null
           updated_at: string
         }
         Insert: {
@@ -4180,6 +4203,8 @@ export type Database = {
           id?: string
           ltcat_id: string
           nome_funcao: string
+          numero_trabalhadores?: number | null
+          observacoes?: string | null
           updated_at?: string
         }
         Update: {
@@ -4193,6 +4218,8 @@ export type Database = {
           id?: string
           ltcat_id?: string
           nome_funcao?: string
+          numero_trabalhadores?: number | null
+          observacoes?: string | null
           updated_at?: string
         }
         Relationships: [
