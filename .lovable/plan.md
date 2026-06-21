@@ -1,172 +1,173 @@
-# Plano — eSocial S-2240 (Condições Ambientais do Trabalho / Agentes Nocivos)
 
-Documento técnico **interno preparatório**. Reaproveita PPP, LTCAT e PGR. Não envia ao Ambiente Nacional, não usa ICP-Brasil real, não assina XMLDSig real, não fala SOAP real, não emite recibo real. Tudo gerado nesta fase é **stub técnico**, marcado como tal na UI e no banco.
+# Plano de Revisão Geral de QA — Sistema SST
 
----
-
-## 1. Estrutura do evento S-2240
-
-Evento periódico, por trabalhador, que informa início, alteração ou fim de exposição a agentes nocivos.
-
-```text
-evtExpRisco
-├── ideEvento (indRetif, nrRecibo?, tpAmb, procEmi, verProc)
-├── ideEmpregador (tpInsc, nrInsc)
-├── ideVinculo (cpfTrab, matricula, codCateg)
-├── infoExpRisco
-│   ├── dtIniCondicao
-│   ├── infoAmb[] (localAmb, dscSetor)
-│   ├── infoAtiv (dscAtivDes)
-│   ├── agNoc[]
-│   │   ├── codAgNoc (Tabela 24)
-│   │   ├── dscAgNoc
-│   │   ├── tpAval (1 quant / 2 qual)
-│   │   ├── intConc, limTol, unMed, tecMedicao
-│   │   ├── insalubridade, periculosidade, aposentEsp
-│   │   ├── epcEpi (utilizaEPC, eficEpc, utilizaEPI, eficEpi, epi[].docAval/dtValid/...)
-│   ├── respReg[] (cpfResp, ideOC, dscOC, nrOC, ufOC)
-│   └── obsCompl
-└── infoExpRiscoFim (dtFimCondicao) — apenas no encerramento
-```
-
-Tipos suportados: `inicial`, `alteracao`, `fim`, `retificacao`, `exclusao`.
+Objetivo: validar, de ponta a ponta, todos os módulos já entregues (Segurança/Hardening, CAT, S-2210 stub, PGR, LTCAT, PPP, S-2240 stub) sem introduzir transmissão real ao eSocial. Resultado final: **Relatório de Prontidão** com pendências priorizadas.
 
 ---
 
-## 2–5. Reaproveitamento
+## Fase 0 — Preparação do ambiente de QA
 
-- **PPP** → fonte primária. Cada `ppp_periodo` vigente vira candidato a S-2240 (`evento_origem = ppp_periodo_id`). Encerramento de período → evento de fim.
-- **LTCAT** → fonte de agentes, intensidade, técnica e RT ambiental (via `ppp_exposicoes.origem_ltcat_aval_id`).
-- **PGR** → fonte do `dscAtivDes`, controles e justificativas (snapshot referencial).
-- **Funcionário/vínculo** → CPF, `funcionarios.matricula`, categoria eSocial, CBO da função, lotação tributária via `empresa_config`. Histórico laboral do PPP define `dtIniCondicao`/`dtFimCondicao`.
-
----
-
-## 6. Mapeamento Tabela 24
-
-- `esocial_tabela24_agentes`: seed oficial da T24.
-- `esocial_s2240_mapeamento_agentes`: liga `agente_nome` livre ou `ltcat_catalogo_agentes.id` ao `codAgNoc`.
-- UI por empresa: código T24, descrição, `tpAval` esperado, unidade padrão, flag `aposentEsp`, status (`pendente|revisado|aprovado`).
-- Geração do XML bloqueia se algum agente do período estiver sem mapeamento `aprovado`.
+- Definir 2 empresas de teste: **Empresa A** e **Empresa B**, cada uma com Matriz + Unidade + Contrato + funcionários distintos.
+- Definir 5 usuários de teste:
+  - U1: Super Admin
+  - U2: Principal Empresa A
+  - U3: Operacional Empresa A (sem MFA)
+  - U4: Operacional Empresa A (com MFA)
+  - U5: Principal Empresa B
+- Cada usuário com Google Drive BYOK próprio conectado.
+- Matriz de evidências: planilha única registrando resultado (OK / FALHA / N/A) + screenshot/log por caso.
 
 ---
 
-## 7–10. Períodos, intensidade, técnica, EPI/EPC
+## Fase 1 — Isolamento Multi-Tenant (Empresa A × Empresa B)
 
-- Período: `dtIniCondicao` = início do `ppp_periodo`; **alteração** quando muda agente, intensidade, EPI ou função; **fim** quando `periodo.data_fim` é preenchido.
-- Intensidade/concentração: `intConc`, `limTol`, `unMed` herdados de `ppp_exposicoes`. Qualitativo → `tpAval=2` e campos numéricos omitidos.
-- Técnica: `tecMedicao` mapeada de `ppp_exposicoes.tecnica`.
-- EPI/EPC: `utilizaEPC`, `eficEpc`, `utilizaEPI`, `eficEpi`, `epi[]` com CA (`docAval`) e validade. Bloqueia geração se `eficEpi=S` com exposição acima do LT sem justificativa.
+1. **RLS por tabela sensível** — listar e testar SELECT/INSERT/UPDATE/DELETE cruzados em:
+   - CAT: `cat_comunicacoes`, `cat_anexos`, `cat_testemunhas`, `cat_historico`
+   - S-2210: `esocial_eventos_s2210`, `esocial_eventos_historico`, `esocial_retorno_ocorrencias`
+   - PGR: `pgr_documentos`, `pgr_inventario_itens`, `pgr_acoes`, `pgr_revisoes`
+   - LTCAT: `ltcat_documentos`, `ltcat_agentes`, `ltcat_avaliacoes`, `ltcat_pdf_versoes`
+   - PPP: `ppp_documentos`, `ppp_periodos`, `ppp_exposicoes`, `ppp_pdf_versoes`
+   - S-2240: `esocial_eventos_s2240`, `esocial_s2240_agentes`, `esocial_s2240_mapeamentos`, `esocial_s2240_ocorrencias`, `esocial_s2240_historico`
+   - Suporte: `audit_log`, `usuario_empresas`, `empresa_config`
+2. Tentar acessar IDs da Empresa B autenticado como U2/U3 — esperado: 0 linhas / erro.
+3. Testar RPCs (`s2240_assert_tenant`, `s2240_registrar_*`, `s2240_marcar_validacao_xml`) com IDs de outra empresa — esperado: exceção.
+4. Verificar `active_empresa_id` em localStorage: trocar para empresa não autorizada deve ser bloqueado server-side.
+
+## Fase 2 — Permissões por Perfil
+
+- Matriz Perfil × Ação para cada módulo (visualizar, criar, editar, validar, retificar, excluir, exportar).
+- Casos críticos:
+  - U3 sem `esocial:s2240:validar` não vê botão e RPC nega.
+  - U3 sem `esocial:s2240:preparar` não gera XML.
+  - Apenas Super Admin acessa Infra/Cloud/Backups.
+  - `Principal` edita registros globais (empresa_id null); demais não.
+
+## Fase 3 — MFA
+
+- Confirmar `mfa_enforcement` aplicado em: gerar XML S-2240, validar XML S-2240, regenerar XML, ações sensíveis CAT/S-2210, dispensa de funcionário, alterações em Tabela 24, exclusões.
+- Testar: usuário sem MFA é bloqueado; com MFA expirado revalida; cancelamento aborta a ação.
+
+## Fase 4 — Audit Log
+
+- Para cada ação sensível verificar: registro criado com `acao`, `status`, `metadata` mínimo, **sem XML completo**, sem PII desnecessária.
+- Confirmar inexistência de inserts diretos do cliente (somente via RPC/trigger).
+- Cruzar volume esperado × volume real (ex.: 1 geração XML = 1 linha audit + 1 linha histórico + 1 linha xml_meta).
+
+## Fase 5 — Cache, Logout e Troca de Empresa
+
+- Login U2 (A) → cache TanStack populado → trocar para outra empresa autorizada → confirmar `queryClient.clear()` ou invalidação.
+- Logout limpa: localStorage relevante, idb-keyval, sessão Supabase, tokens Drive.
+- Hard-refresh offline (PWA) mantém dados da empresa ativa apenas.
+
+## Fase 6 — Google Drive BYOK
+
+- Reautenticação Drive antes de cada upload (`refreshSession`).
+- Upload XML S-2240 vai para pasta privada correta (hierarquia Matriz/Unidade/Contrato/PPP).
+- Falha de upload bloqueia gravação (ex.: inspeções, XML stub).
+- `gdrive-proxy` serve imagens sem CORS; tokens não vazam em logs.
+- Empresa B não consegue baixar fileId da Empresa A (RPC + Drive scope).
+
+## Fase 7 — PDFs e QR Codes
+
+- Geração: ASO, PPP, LTCAT, PGR, Ficha de Entrega (paisagem), CAT.
+- Validar: header com empresa correta, dados do funcionário, datas, assinaturas, QR Code apontando para URL de verificação válida.
+- Hash/versionamento (`*_pdf_versoes`) coerente.
+
+## Fase 8 — XML Stub S-2210 e S-2240
+
+- Gerar XML para 3 cenários (mínimo, completo, com agentes múltiplos).
+- Validar localmente (sem XSD oficial): estrutura, IDs eSocial, CPF/CNPJ, CBO, Tabela 24, hash SHA-256 confere.
+- Hash divergente é detectado e marca `rejeitado_local`.
+- XML completo **não** aparece em audit_log nem em colunas do banco.
+
+## Fase 9 — Dashboards
+
+- S-2240 Dashboard (`/esocial/s2240/dashboard`): KPIs por empresa, checklist 21 pontos, filtros, drawer por evento.
+- Dashboards EPI/Estoque/Inspeções/Documentos: filtros, gráficos (Pareto, fluxo, consumo), badges.
+- Verificar contagens cruzando com queries diretas.
+
+## Fase 10 — Exportações CSV
+
+- S-2240: eventos, ocorrências, agentes, pendentes/divergentes.
+- Demais módulos com export existente.
+- Validar encoding (UTF-8 BOM), separador, escape de vírgulas/quebras, nomes de coluna em PT.
+- Confirmar que CSV respeita filtro/empresa ativa.
+
+## Fase 11 — Linter / Warnings
+
+- `supabase--linter`: revisar findings (RLS, GRANTs, search_path, security definer).
+- `security--run_security_scan`: revisar findings e marcar fixed/ignored com justificativa.
+- TS/ESLint warnings: zerar em arquivos novos do S-2240 e do PPP.
+
+## Fase 12 — Rotas
+
+- Varrer `src/App.tsx` × páginas existentes: nenhuma rota órfã, nenhuma rota sem guard, todas rotas sensíveis com `PermissionGuard` + `MfaGate` quando aplicável.
+- Testar deep-link direto a `/esocial/s2240/dashboard` deslogado → redireciona para login.
+
+## Fase 13 — Performance
+
+- Medir TTI das telas pesadas: S-2240 Dashboard, S2240Mapeamentos, PPP Detalhe, PGR Inventário.
+- Verificar N+1: batch operations com `Promise.all` onde aplicável.
+- Confirmar prefetch deferido e `staleTime: Infinity` onde definido.
+
+## Fase 14 — Mobile / Responsivo
+
+- Testar < 640px em: login, dashboard principal, S-2240 Dashboard, PPP, entregas EPI, inspeções, assinatura digital (44px hit area, 100dvh).
+- Botão voltar Android (Capacitor) minimiza app conforme regra.
+- Vídeos de treinamento: tap-to-play, 30s timeout.
+
+## Fase 15 — Checklists Finais
+
+### 15.1 Pendências Críticas (bloqueiam produção)
+A preencher após execução. Exemplos potenciais:
+- Qualquer falha de RLS cruzada.
+- XML completo persistido indevidamente.
+- MFA contornável em ação sensível.
+
+### 15.2 Pendências Médias (corrigir antes do envio real)
+- Ausência de XSD oficial S-2210/S-2240.
+- Falta de paginação server-side em dashboards muito grandes.
+- Warnings de linter não classificados.
+
+### 15.3 Itens Fora de Escopo (documentar, não corrigir agora)
+- Certificado digital ICP-Brasil (A1/A3).
+- Assinatura XMLDSig + C14N.
+- Cliente SOAP eSocial + fila + retry + recibo.
+- S-3000 (exclusão oficial).
+- Consulta de retorno real.
+
+## Fase 16 — Plano de Correção por Prioridade
+
+- **P0** (crítico): bloqueia uso → corrigir imediatamente, retestar empresa A×B.
+- **P1** (alto): impacto funcional/UX → corrigir antes do Relatório Final.
+- **P2** (médio): melhoria/refino → backlog endereçado antes da Parte 6.
+- **P3** (baixo): cosmético/documentação → backlog aberto.
+
+Cada item registrado com: módulo, descrição, severidade, evidência, owner sugerido, esforço estimado.
+
+## Fase 17 — Relatório Final de Prontidão
+
+Entregável único contendo:
+- Sumário executivo (status por módulo: Verde/Amarelo/Vermelho).
+- Matriz de evidências consolidada.
+- Lista priorizada P0–P3.
+- Riscos residuais.
+- Itens fora de escopo (explícitos).
+- Recomendação Go / No-Go para iniciar planejamento da Parte 6 (transmissão real).
 
 ---
 
-## 11. Responsável técnico
+## Escopo explicitamente excluído desta revisão
 
-`respReg[]` a partir de `ppp_responsaveis_ambientais` do período: CPF, conselho (`ideOC`), nº registro, UF. Bloqueia geração sem ao menos um RT com conselho válido (CREA/CRM/CRQ).
+- Implementação de certificado digital, KMS, XMLDSig, C14N, SOAP, fila de envio, retry, consulta de recibo, S-3000.
+- Qualquer chamada a ambiente eSocial (produção ou homologação).
+- Mudanças de arquitetura de transmissão.
 
----
+## Entregáveis ao final
 
-## 12. Validações antes do XML
+1. Planilha/Markdown da matriz de evidências.
+2. Lista P0–P3 priorizada.
+3. Relatório Final de Prontidão (markdown em `/mnt/documents`).
+4. Atualização da memória do projeto somente para regras novas descobertas durante o QA.
 
-RPC `s2240_validar(_evento_id)`:
-- PPP vigente com período válido;
-- todos agentes mapeados na T24 (`aprovado`);
-- `tpAval` coerente com presença de `intConc`;
-- CBO presente, matrícula presente, CPF válido (mod 11);
-- RT ambiental com conselho válido;
-- empresa com `empresa_config.cnpj/cpf` e `nrInsc` ok;
-- EPI eficaz × acima do LT → exige justificativa;
-- período sem sobreposição com outro S-2240 vigente do mesmo trabalhador.
-
-Retorna lista estruturada de erros/avisos; UI mostra em checklist.
-
----
-
-## 13–14. Geração de XML stub + hash
-
-- Geração **client-side** em `src/lib/esocialS2240Xml.ts`, espelhando o padrão do S-2210 já existente.
-- Marca d'água: comentário `<!-- STUB TÉCNICO - NÃO ENVIADO AO AMBIENTE NACIONAL -->`.
-- SHA-256 via Web Crypto; grava em `esocial_eventos_s2240.xml_sha256`.
-- Binário salvo no **Drive BYOK** em `eSocial/S-2240/{cpf}/{evento_id}.xml`. Banco guarda só `drive_id`, `drive_link`, `sha256`, `tamanho`.
-
----
-
-## 15–17. Histórico, erros, status
-
-`esocial_s2240_tentativas` (append-only):
-- tipo (`validacao_local|geracao_xml|simulacao_envio`);
-- resultado (`ok|erro|aviso`);
-- mensagens (JSONB), hash XML, user, timestamp.
-
-Enum `esocial_s2240_status`: `pendente`, `pronto_envio`, `validado_stub`, `homologacao_stub`, `simulado`, `rejeitado_local`. **Nunca** `enviado`/`processado` nesta fase.
-
-UI exibe banner permanente: *"XML gerado apenas para validação técnica. Não enviado ao Ambiente Nacional."*
-
----
-
-## 18. Retificação e exclusão (preparação)
-
-Campos `indRetif`, `evento_origem_id`, `nr_recibo_origem` reservados. RPC `s2240_abrir_retificacao` clona evento, mantém origem, gera nova versão em `pendente`. Exclusão lógica via evento `exclusao` — sem deletar histórico.
-
----
-
-## 19–20. Preparação ICP-Brasil e SOAP
-
-- Coluna `xml_assinado_drive_id` (null nesta fase).
-- Coluna `cert_alias` em `esocial_config` (reusar).
-- Tabela `esocial_s2240_transmissoes` criada vazia, com placeholders `endpoint`, `protocolo`, `recibo`, `lote_id`. Sem código de transmissão real — apenas estrutura para a fase futura.
-
----
-
-## 21–22. Permissões e MFA
-
-Em `ACOES_ESPECIAIS.cat` (ou novo grupo `esocial`):
-- `s2240:visualizar`, `s2240:gerar_xml`, `s2240:validar`, `s2240:configurar`, `s2240:simular_envio` (futuro).
-
-MFA AAL2 (`MfaActionButton`) obrigatório para: gerar XML stub, marcar `validado_stub`, abrir retificação, qualquer simulação de envio.
-
----
-
-## 23–24. RLS e audit
-
-- Todas as tabelas `esocial_s2240_*` com `empresa_id` obrigatório, RLS habilitada via `usuario_pertence_empresa(auth.uid(), empresa_id)`.
-- GRANT apenas `authenticated` + `service_role`. Sem `anon`.
-- `audit_log` registra criação, validação, geração de XML, mudança de status — **somente metadados + hash**. Nunca o XML inteiro (replicar redator usado no S-2210).
-
----
-
-## 25. Plano de entrega por partes
-
-### Parte 1 — Migrations + RLS + permissões
-Tabelas `esocial_eventos_s2240`, `esocial_s2240_agentes`, `esocial_s2240_epi`, `esocial_s2240_tentativas`, `esocial_s2240_transmissoes`, `esocial_tabela24_agentes`, `esocial_s2240_mapeamento_agentes`. Enums de status/tipo. GRANTs, RLS, triggers (`set_updated_at`, append-only nas tentativas, audit, imutabilidade após `validado_stub`). Permissões `s2240:*`.
-
-### Parte 2 — Mapeamento Tabela 24 + configurações
-Seed da Tabela 24 oficial. UI `/cat/esocial/s2240/mapeamento` para revisar agentes por empresa. Vínculo com `ltcat_catalogo_agentes`. Configurações específicas em `esocial_config` (versão do layout, ambiente padrão).
-
-### Parte 3 — Geração XML técnico/stub
-RPC `s2240_montar_payload(_ppp_id, _periodo_id)`. Builder `src/lib/esocialS2240Xml.ts`. Hash + upload ao Drive. Aba "S-2240 (stub)" no detalhe do PPP: pré-visualização do payload, botão *Gerar XML stub* (MFA), histórico de tentativas.
-
-### Parte 4 — Validação local do XML
-RPC `s2240_validar`. Validador estrutural client-side (XSD-light, sem XSD oficial). Checklist na UI com erros/avisos clicáveis. Status `validado_stub` só após passar.
-
-### Parte 5 — Dashboard/checklist de prontidão
-`/cat/esocial/s2240/dashboard`: eventos por status, agentes sem mapeamento, RTs incompletos, períodos sem matrícula, EPI sem CA, próximos vencimentos. Checklist global de prontidão por empresa (espelho do `EsocialChecklistTab`).
-
-### Parte 6 — Decisão futura (fora deste plano)
-Certificado ICP-Brasil, XMLDSig real, cliente SOAP, envio real, recibo, S-3000. Apenas **após** aprovação explícita; cada item entra como plano novo.
-
----
-
-## Fora do escopo (explícito)
-
-- Envio ao Ambiente Nacional (qualquer ambiente).
-- Certificado A1/A3 real.
-- Assinatura XMLDSig real.
-- Cliente SOAP real.
-- Recibo, protocolo, S-3000.
-- Marcação de evento como `enviado`/`processado`.
-- XML completo dentro do `audit_log`.
-
----
-
-**Aguardando aprovação explícita deste plano antes de iniciar a Parte 1 do S-2240.**
+Após sua aprovação deste plano, executo as fases 1–14 em ondas paralelas (subagents read-only para inspeção de código + execução manual de cenários no preview) e depois consolido as fases 15–17.
