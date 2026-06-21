@@ -18,6 +18,7 @@ import PppResponsaveisTab from "@/components/ppp/PppResponsaveisTab";
 import PppExamesTab from "@/components/ppp/PppExamesTab";
 import PppPdfTab from "@/components/ppp/PppPdfTab";
 import PppChecklistTab from "@/components/ppp/PppChecklistTab";
+import PppEsocialS2240Tab from "@/components/ppp/PppEsocialS2240Tab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
