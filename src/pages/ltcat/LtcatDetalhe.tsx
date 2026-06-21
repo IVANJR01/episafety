@@ -192,13 +192,12 @@ export default function LtcatDetalhe() {
         </TabsContent>
 
         <TabsContent value="agentes">
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground space-y-2">
-              <FileText className="h-10 w-10 mx-auto opacity-30" />
-              <p>Agentes nocivos e avaliações ambientais serão liberados na <strong>Parte 3</strong>.</p>
-              <p className="text-xs">Catálogo previdenciário já carregado no backend (Anexo IV / S-2240).</p>
-            </CardContent>
-          </Card>
+          <LtcatAgentesAvaliacoesTab
+            ltcatId={doc.id}
+            ltcatVersao={doc.versao}
+            empresaId={doc.empresa_id}
+            editavel={editavel && perms.canEdit}
+          />
         </TabsContent>
 
         <TabsContent value="conclusoes">
