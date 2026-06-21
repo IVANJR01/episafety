@@ -62,6 +62,7 @@ import PppNovo from "@/pages/ppp/PppNovo";
 import PppDetalhe from "@/pages/ppp/PppDetalhe";
 import PppValidar from "@/pages/ppp/PppValidar";
 import PppDashboard from "@/pages/ppp/PppDashboard";
+import S2240Mapeamentos from "@/pages/esocial/S2240Mapeamentos";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
