@@ -3547,8 +3547,15 @@ export type Database = {
           codigo_esocial: string
           created_at: string
           created_by: string | null
+          duracao: string | null
           empresa_id: string
+          epc_descricao: string | null
+          epc_eficacia: string | null
+          epi_ca: string | null
+          epi_descricao: string | null
+          epi_eficacia: string | null
           fonte_geradora: string | null
+          frequencia: string | null
           grupo: Database["public"]["Enums"]["ltcat_agente_grupo"]
           grupo_homogeneo_id: string
           id: string
@@ -3556,6 +3563,8 @@ export type Database = {
           meio_propagacao: string | null
           nome: string
           observacoes: string | null
+          tipo_exposicao: string | null
+          trajetoria: string | null
           updated_at: string
         }
         Insert: {
@@ -3563,8 +3572,15 @@ export type Database = {
           codigo_esocial: string
           created_at?: string
           created_by?: string | null
+          duracao?: string | null
           empresa_id: string
+          epc_descricao?: string | null
+          epc_eficacia?: string | null
+          epi_ca?: string | null
+          epi_descricao?: string | null
+          epi_eficacia?: string | null
           fonte_geradora?: string | null
+          frequencia?: string | null
           grupo: Database["public"]["Enums"]["ltcat_agente_grupo"]
           grupo_homogeneo_id: string
           id?: string
@@ -3572,6 +3588,8 @@ export type Database = {
           meio_propagacao?: string | null
           nome: string
           observacoes?: string | null
+          tipo_exposicao?: string | null
+          trajetoria?: string | null
           updated_at?: string
         }
         Update: {
@@ -3579,8 +3597,15 @@ export type Database = {
           codigo_esocial?: string
           created_at?: string
           created_by?: string | null
+          duracao?: string | null
           empresa_id?: string
+          epc_descricao?: string | null
+          epc_eficacia?: string | null
+          epi_ca?: string | null
+          epi_descricao?: string | null
+          epi_eficacia?: string | null
           fonte_geradora?: string | null
+          frequencia?: string | null
           grupo?: Database["public"]["Enums"]["ltcat_agente_grupo"]
           grupo_homogeneo_id?: string
           id?: string
@@ -3588,6 +3613,8 @@ export type Database = {
           meio_propagacao?: string | null
           nome?: string
           observacoes?: string | null
+          tipo_exposicao?: string | null
+          trajetoria?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3746,8 +3773,11 @@ export type Database = {
         Row: {
           agente_id: string
           base_normativa_limite: string | null
+          certificado_calibracao_drive_id: string | null
+          certificado_calibracao_link: string | null
           created_at: string
           created_by: string | null
+          data_medicao: string | null
           empresa_id: string
           enquadramento: Database["public"]["Enums"]["ltcat_enquadramento"]
           epc_descricao: string | null
@@ -3757,26 +3787,35 @@ export type Database = {
           grupo_homogeneo_id: string
           id: string
           instrumento_calibracao_data: string | null
+          instrumento_calibracao_validade: string | null
           instrumento_marca: string | null
           instrumento_modelo: string | null
           instrumento_serie: string | null
           intensidade: number | null
+          justificativa_qualitativa: string | null
           limite_tolerancia: number | null
           ltcat_id: string
           metodologia: string | null
+          norma_referencia: string | null
           observacoes: string | null
           origem_pgr_item_id: string | null
           percentual_jornada: number | null
+          pgr_id: string | null
+          responsavel_medicao: string | null
           tecnica: Database["public"]["Enums"]["ltcat_tecnica_avaliacao"]
           tempo_exposicao_horas: number | null
+          tempo_medicao_minutos: number | null
           unidade_medida: string | null
           updated_at: string
         }
         Insert: {
           agente_id: string
           base_normativa_limite?: string | null
+          certificado_calibracao_drive_id?: string | null
+          certificado_calibracao_link?: string | null
           created_at?: string
           created_by?: string | null
+          data_medicao?: string | null
           empresa_id: string
           enquadramento?: Database["public"]["Enums"]["ltcat_enquadramento"]
           epc_descricao?: string | null
@@ -3786,26 +3825,35 @@ export type Database = {
           grupo_homogeneo_id: string
           id?: string
           instrumento_calibracao_data?: string | null
+          instrumento_calibracao_validade?: string | null
           instrumento_marca?: string | null
           instrumento_modelo?: string | null
           instrumento_serie?: string | null
           intensidade?: number | null
+          justificativa_qualitativa?: string | null
           limite_tolerancia?: number | null
           ltcat_id: string
           metodologia?: string | null
+          norma_referencia?: string | null
           observacoes?: string | null
           origem_pgr_item_id?: string | null
           percentual_jornada?: number | null
+          pgr_id?: string | null
+          responsavel_medicao?: string | null
           tecnica?: Database["public"]["Enums"]["ltcat_tecnica_avaliacao"]
           tempo_exposicao_horas?: number | null
+          tempo_medicao_minutos?: number | null
           unidade_medida?: string | null
           updated_at?: string
         }
         Update: {
           agente_id?: string
           base_normativa_limite?: string | null
+          certificado_calibracao_drive_id?: string | null
+          certificado_calibracao_link?: string | null
           created_at?: string
           created_by?: string | null
+          data_medicao?: string | null
           empresa_id?: string
           enquadramento?: Database["public"]["Enums"]["ltcat_enquadramento"]
           epc_descricao?: string | null
@@ -3815,18 +3863,24 @@ export type Database = {
           grupo_homogeneo_id?: string
           id?: string
           instrumento_calibracao_data?: string | null
+          instrumento_calibracao_validade?: string | null
           instrumento_marca?: string | null
           instrumento_modelo?: string | null
           instrumento_serie?: string | null
           intensidade?: number | null
+          justificativa_qualitativa?: string | null
           limite_tolerancia?: number | null
           ltcat_id?: string
           metodologia?: string | null
+          norma_referencia?: string | null
           observacoes?: string | null
           origem_pgr_item_id?: string | null
           percentual_jornada?: number | null
+          pgr_id?: string | null
+          responsavel_medicao?: string | null
           tecnica?: Database["public"]["Enums"]["ltcat_tecnica_avaliacao"]
           tempo_exposicao_horas?: number | null
+          tempo_medicao_minutos?: number | null
           unidade_medida?: string | null
           updated_at?: string
         }
@@ -3857,6 +3911,13 @@ export type Database = {
             columns: ["origem_pgr_item_id"]
             isOneToOne: false
             referencedRelation: "pgr_inventario_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ltcat_avaliacoes_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
             referencedColumns: ["id"]
           },
         ]
@@ -4164,11 +4225,13 @@ export type Database = {
           created_at: string
           created_by: string | null
           descricao: string | null
+          descricao_atividade: string | null
           empresa_id: string
           ghe_origem_id: string | null
           id: string
           ltcat_id: string
           nome: string
+          numero_trabalhadores: number
           setor_nome: string | null
           updated_at: string
         }
@@ -4177,11 +4240,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          descricao_atividade?: string | null
           empresa_id: string
           ghe_origem_id?: string | null
           id?: string
           ltcat_id: string
           nome: string
+          numero_trabalhadores?: number
           setor_nome?: string | null
           updated_at?: string
         }
@@ -4190,11 +4255,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          descricao_atividade?: string | null
           empresa_id?: string
           ghe_origem_id?: string | null
           id?: string
           ltcat_id?: string
           nome?: string
+          numero_trabalhadores?: number
           setor_nome?: string | null
           updated_at?: string
         }
@@ -6114,6 +6181,10 @@ export type Database = {
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       ltcat_abrir_revisao: {
         Args: { _ltcat_id: string; _motivo: string }
+        Returns: Json
+      }
+      ltcat_importar_avaliacoes_pgr: {
+        Args: { _item_ids?: string[]; _ltcat_id: string; _pgr_id: string }
         Returns: Json
       }
       ltcat_publicar: { Args: { _ltcat_id: string }; Returns: Json }
