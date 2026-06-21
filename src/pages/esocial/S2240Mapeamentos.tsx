@@ -152,16 +152,15 @@ export default function S2240Mapeamentos() {
       map.set(key, ex);
     }
     for (const row of ltcatAgentes as any[]) {
-      const key = normalize(row.nome_agente);
+      const key = normalize(row.nome);
       if (!key) continue;
       const ex = map.get(key) || {
-        nome: row.nome_agente, origem: [], grupo: row.grupo ?? null,
-        ltcat_catalogo_id: row.catalogo_agente_id ?? null,
-        exemplos_unidade: row.unidade_medida ?? null, ocorrencias: 0,
+        nome: row.nome, origem: [], grupo: row.grupo ?? null,
+        ltcat_catalogo_id: row.catalogo_id ?? null,
+        exemplos_unidade: null, ocorrencias: 0,
       };
       if (!ex.origem.includes("LTCAT")) ex.origem.push("LTCAT");
-      ex.ltcat_catalogo_id = ex.ltcat_catalogo_id || row.catalogo_agente_id;
-      ex.exemplos_unidade = ex.exemplos_unidade || row.unidade_medida;
+      ex.ltcat_catalogo_id = ex.ltcat_catalogo_id || row.catalogo_id;
       ex.ocorrencias += 1;
       map.set(key, ex);
     }
