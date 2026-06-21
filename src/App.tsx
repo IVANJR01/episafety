@@ -60,6 +60,7 @@ import LtcatDashboard from "@/pages/ltcat/LtcatDashboard";
 import PppModule from "@/pages/ppp/PppModule";
 import PppNovo from "@/pages/ppp/PppNovo";
 import PppDetalhe from "@/pages/ppp/PppDetalhe";
+import PppValidar from "@/pages/ppp/PppValidar";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
