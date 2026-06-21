@@ -65,8 +65,6 @@ export default function PppExamesTab({ ppp, funcionario }: Props) {
       ...form,
       aso_id: a.id,
       data: a.data_emissao || form.data,
-      tipo: a.tipo || form.tipo,
-      aptidao: a.conclusao || form.aptidao,
       origem: "ASO",
     });
   }
