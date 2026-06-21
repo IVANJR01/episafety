@@ -25,6 +25,13 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
     { key: "assinar", label: "Assinar PGR (assinatura visual + MFA)" },
     { key: "exportar", label: "Exportar PDF técnico do PGR" },
   ],
+  ltcat: [
+    { key: "visualizar", label: "Visualizar LTCAT" },
+    { key: "editar", label: "Editar LTCAT / Avaliações / Conclusões" },
+    { key: "revisar", label: "Abrir revisão e publicar LTCAT" },
+    { key: "assinar", label: "Assinar LTCAT (assinatura visual + MFA)" },
+    { key: "exportar", label: "Exportar PDF técnico do LTCAT" },
+  ],
 };
 
 
