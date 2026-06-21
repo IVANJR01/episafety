@@ -12,6 +12,7 @@ import {
   PPP_STATUS_LABEL, PPP_STATUS_COLOR, PPP_MOTIVO_LABEL,
   PppDocumento, isPppEditavel,
 } from "@/lib/pppTypes";
+import PppHistoricoTab from "@/components/ppp/PppHistoricoTab";
 
 function Placeholder({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
