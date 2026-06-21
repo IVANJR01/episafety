@@ -47,7 +47,7 @@ export default function PppExamesTab({ ppp, funcionario }: Props) {
     queryFn: async () => {
       if (!funcionario?.id) return [];
       const { data } = await (supabase.from as any)("asos")
-        .select("id, data_emissao, tipo, conclusao, funcionario_id, empresa_id")
+        .select("id, data_emissao, funcionario_id, empresa_id")
         .eq("funcionario_id", funcionario.id).eq("empresa_id", ppp.empresa_id)
         .order("data_emissao", { ascending: false });
       return data || [];
