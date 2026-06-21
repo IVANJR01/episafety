@@ -194,6 +194,10 @@ export default function LtcatDetalhe() {
           <LtcatSetoresTab ltcatId={doc.id} empresaId={doc.empresa_id} editavel={editavel && perms.canEdit} />
         </TabsContent>
 
+        <TabsContent value="funcoes">
+          <LtcatFuncoesTab ltcatId={doc.id} empresaId={doc.empresa_id} editavel={editavel && perms.canEdit} />
+        </TabsContent>
+
         <TabsContent value="agentes">
           <LtcatAgentesAvaliacoesTab
             ltcatId={doc.id}
@@ -204,13 +208,11 @@ export default function LtcatDetalhe() {
         </TabsContent>
 
         <TabsContent value="conclusoes">
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground space-y-2">
-              <FileText className="h-10 w-10 mx-auto opacity-30" />
-              <p>Conclusões previdenciárias serão liberadas na <strong>Parte 4</strong>.</p>
-              <p className="text-xs">Aposentadoria especial 15/20/25 anos, com justificativa técnica obrigatória.</p>
-            </CardContent>
-          </Card>
+          <LtcatConclusoesTab
+            ltcatId={doc.id}
+            empresaId={doc.empresa_id}
+            editavel={editavel && perms.canEdit}
+          />
         </TabsContent>
 
         <TabsContent value="revisoes">
