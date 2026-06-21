@@ -210,6 +210,7 @@ function ProtectedRoute() {
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
         <Route path="/pgr/validar/:id" element={<PgrValidar />} />
         <Route path="/ltcat" element={<LtcatModule />} />
+        <Route path="/ltcat/dashboard" element={<LtcatDashboard />} />
         <Route path="/ltcat/novo" element={<LtcatNovo />} />
         <Route path="/ltcat/:id" element={<LtcatDetalhe />} />
         <Route path="/ltcat/:id/editar" element={<LtcatNovo />} />
