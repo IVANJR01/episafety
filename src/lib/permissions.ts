@@ -17,6 +17,11 @@ export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> =
     { key: "enviar_esocial", label: "Preparar envio eSocial (CAT)" },
     { key: "esocial", label: "Módulo eSocial S-2210 (gerar/validar/configurar)" },
     { key: "cancelar", label: "Cancelar CAT" },
+    { key: "s2240:visualizar", label: "eSocial S-2240 — Visualizar eventos" },
+    { key: "s2240:preparar", label: "eSocial S-2240 — Preparar evento (rascunho)" },
+    { key: "s2240:validar", label: "eSocial S-2240 — Validar localmente (stub)" },
+    { key: "s2240:retificar", label: "eSocial S-2240 — Abrir retificação" },
+    { key: "s2240:excluir", label: "eSocial S-2240 — Excluir localmente" },
   ],
   pgr: [
     { key: "visualizar", label: "Visualizar PGR" },
