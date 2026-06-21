@@ -18,6 +18,8 @@ import MfaActionButton from "@/components/cat/MfaActionButton";
 import LtcatResponsaveisTab from "@/components/ltcat/LtcatResponsaveisTab";
 import LtcatSetoresTab from "@/components/ltcat/LtcatSetoresTab";
 import LtcatAgentesAvaliacoesTab from "@/components/ltcat/LtcatAgentesAvaliacoesTab";
+import LtcatFuncoesTab from "@/components/ltcat/LtcatFuncoesTab";
+import LtcatConclusoesTab from "@/components/ltcat/LtcatConclusoesTab";
 import {
   LtcatDocumento, LtcatRevisao,
   LTCAT_STATUS_LABEL, LTCAT_STATUS_COLOR, LTCAT_MOTIVO_LABEL,
@@ -148,7 +150,8 @@ export default function LtcatDetalhe() {
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="rt">Responsáveis Técnicos</TabsTrigger>
-          <TabsTrigger value="setores">Setores / GHE / Funções</TabsTrigger>
+          <TabsTrigger value="setores">Setores / GHE</TabsTrigger>
+          <TabsTrigger value="funcoes">Funções</TabsTrigger>
           <TabsTrigger value="agentes">Agentes e Avaliações</TabsTrigger>
           <TabsTrigger value="conclusoes">Conclusões Previdenciárias</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
@@ -191,6 +194,10 @@ export default function LtcatDetalhe() {
           <LtcatSetoresTab ltcatId={doc.id} empresaId={doc.empresa_id} editavel={editavel && perms.canEdit} />
         </TabsContent>
 
+        <TabsContent value="funcoes">
+          <LtcatFuncoesTab ltcatId={doc.id} empresaId={doc.empresa_id} editavel={editavel && perms.canEdit} />
+        </TabsContent>
+
         <TabsContent value="agentes">
           <LtcatAgentesAvaliacoesTab
             ltcatId={doc.id}
@@ -201,13 +208,11 @@ export default function LtcatDetalhe() {
         </TabsContent>
 
         <TabsContent value="conclusoes">
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground space-y-2">
-              <FileText className="h-10 w-10 mx-auto opacity-30" />
-              <p>Conclusões previdenciárias serão liberadas na <strong>Parte 4</strong>.</p>
-              <p className="text-xs">Aposentadoria especial 15/20/25 anos, com justificativa técnica obrigatória.</p>
-            </CardContent>
-          </Card>
+          <LtcatConclusoesTab
+            ltcatId={doc.id}
+            empresaId={doc.empresa_id}
+            editavel={editavel && perms.canEdit}
+          />
         </TabsContent>
 
         <TabsContent value="revisoes">
