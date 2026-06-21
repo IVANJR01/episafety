@@ -30,11 +30,11 @@ BEGIN;
 -- PARÂMETROS — e-mails escolhidos para a Fase 2B
 -- ----------------------------------------------------------------------------
 -- Decisão do solicitante (opção A — contas dedicadas de homologação):
---   <EMAIL_REAL_U1>  ->  ivanjr.tstconsultoria@gmail.com   (real, já existe em auth.users)
---   <EMAIL_REAL_U2>  ->  homolog.u2@gmail.com              (dedicado, aguardando signup)
---   <EMAIL_REAL_U3>  ->  homolog.u3@gmail.com              (dedicado, aguardando signup)
---   <EMAIL_REAL_U4>  ->  homolog.u4@gmail.com              (dedicado, aguardando signup)
---   <EMAIL_REAL_U5>  ->  homolog.u5@gmail.com              (dedicado, aguardando signup)
+--   ivanjr.tstconsultoria@gmail.com  ->  ivanjr.tstconsultoria@gmail.com   (real, já existe em auth.users)
+--   homolog.u2@gmail.com  ->  homolog.u2@gmail.com              (dedicado, aguardando signup)
+--   homolog.u3@gmail.com  ->  homolog.u3@gmail.com              (dedicado, aguardando signup)
+--   homolog.u4@gmail.com  ->  homolog.u4@gmail.com              (dedicado, aguardando signup)
+--   homolog.u5@gmail.com  ->  homolog.u5@gmail.com              (dedicado, aguardando signup)
 --
 -- PRÉ-REQUISITO: U2–U5 precisam fazer signup em /auth ANTES de rodar este script.
 -- Sem o signup, o bloco user_roles não cria nada (filtra por auth.users.email).
@@ -48,26 +48,26 @@ BEGIN;
 INSERT INTO usuarios_liberados (email, nome, empresa_id, contrato_id, is_principal, ativo, modulos_permitidos)
 VALUES
   -- U1 Super Admin: empresa_id NULL = global; sem módulos restritos
-  ('<EMAIL_REAL_U1>', '[HOMOLOG] U1 Super Admin',
+  ('ivanjr.tstconsultoria@gmail.com', '[HOMOLOG] U1 Super Admin',
    NULL, NULL, false, true, NULL),
 
   -- U2 Principal Empresa A
-  ('<EMAIL_REAL_U2>', '[HOMOLOG] U2 Principal A',
+  ('homolog.u2@gmail.com', '[HOMOLOG] U2 Principal A',
    'f141f880-b820-4e0d-8958-a410734201fa', NULL, true, true, NULL),
 
   -- U3 Admin/Técnico SST Empresa A — módulos SST e documentos
-  ('<EMAIL_REAL_U3>', '[HOMOLOG] U3 Tecnico SST A',
+  ('homolog.u3@gmail.com', '[HOMOLOG] U3 Tecnico SST A',
    'f141f880-b820-4e0d-8958-a410734201fa', NULL, false, true,
    ARRAY['cat','pgr','ltcat','ppp','aso','exames','pcmso','funcionarios']),
 
   -- U4 Operacional Empresa B — somente leitura/operação básica
-  ('<EMAIL_REAL_U4>', '[HOMOLOG] U4 Operacional B',
+  ('homolog.u4@gmail.com', '[HOMOLOG] U4 Operacional B',
    '8d579cbc-74cf-49d4-a1bf-57026406eb0b',
    'd1c2d18f-0ab1-4898-9160-b53526f35587', false, true,
    ARRAY['funcionarios','entregas','epis']),
 
   -- U5 Sem permissão — registrado mas sem empresa e sem módulos
-  ('<EMAIL_REAL_U5>', '[HOMOLOG] U5 Sem Permissao',
+  ('homolog.u5@gmail.com', '[HOMOLOG] U5 Sem Permissao',
    NULL, NULL, false, true, ARRAY[]::text[])
 ON CONFLICT (email) DO UPDATE
   SET nome = EXCLUDED.nome,
@@ -82,13 +82,13 @@ ON CONFLICT (email) DO UPDATE
 -- ----------------------------------------------------------------------------
 INSERT INTO usuario_empresas (email, empresa_id) VALUES
   -- U1 acessa A e B
-  ('<EMAIL_REAL_U1>', 'f141f880-b820-4e0d-8958-a410734201fa'),
-  ('<EMAIL_REAL_U1>', '8d579cbc-74cf-49d4-a1bf-57026406eb0b'),
+  ('ivanjr.tstconsultoria@gmail.com', 'f141f880-b820-4e0d-8958-a410734201fa'),
+  ('ivanjr.tstconsultoria@gmail.com', '8d579cbc-74cf-49d4-a1bf-57026406eb0b'),
   -- U2 e U3 — apenas Empresa A
-  ('<EMAIL_REAL_U2>', 'f141f880-b820-4e0d-8958-a410734201fa'),
-  ('<EMAIL_REAL_U3>', 'f141f880-b820-4e0d-8958-a410734201fa'),
+  ('homolog.u2@gmail.com', 'f141f880-b820-4e0d-8958-a410734201fa'),
+  ('homolog.u3@gmail.com', 'f141f880-b820-4e0d-8958-a410734201fa'),
   -- U4 — apenas Empresa B
-  ('<EMAIL_REAL_U4>', '8d579cbc-74cf-49d4-a1bf-57026406eb0b')
+  ('homolog.u4@gmail.com', '8d579cbc-74cf-49d4-a1bf-57026406eb0b')
 ON CONFLICT DO NOTHING;
 -- U5: nenhum vínculo — deve ficar sem acesso
 
@@ -98,22 +98,22 @@ ON CONFLICT DO NOTHING;
 -- Resolve user_id pelo e-mail real do auth.users
 INSERT INTO user_roles (user_id, role)
 SELECT u.id, 'super_admin'::app_role
-FROM auth.users u WHERE u.email = '<EMAIL_REAL_U1>'
+FROM auth.users u WHERE u.email = 'ivanjr.tstconsultoria@gmail.com'
 ON CONFLICT (user_id, role) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role)
 SELECT u.id, 'admin'::app_role
-FROM auth.users u WHERE u.email = '<EMAIL_REAL_U2>'
+FROM auth.users u WHERE u.email = 'homolog.u2@gmail.com'
 ON CONFLICT (user_id, role) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role)
 SELECT u.id, 'tecnico'::app_role
-FROM auth.users u WHERE u.email = '<EMAIL_REAL_U3>'
+FROM auth.users u WHERE u.email = 'homolog.u3@gmail.com'
 ON CONFLICT (user_id, role) DO NOTHING;
 
 INSERT INTO user_roles (user_id, role)
 SELECT u.id, 'usuario'::app_role
-FROM auth.users u WHERE u.email = '<EMAIL_REAL_U4>'
+FROM auth.users u WHERE u.email = 'homolog.u4@gmail.com'
 ON CONFLICT (user_id, role) DO NOTHING;
 
 -- U5: NENHUMA role intencional (teste de bloqueio)
@@ -123,17 +123,17 @@ ON CONFLICT (user_id, role) DO NOTHING;
 -- ----------------------------------------------------------------------------
 -- SELECT email, empresa_id, is_principal, ativo, modulos_permitidos
 --   FROM usuarios_liberados
---   WHERE email IN ('<EMAIL_REAL_U1>','<EMAIL_REAL_U2>','<EMAIL_REAL_U3>','<EMAIL_REAL_U4>','<EMAIL_REAL_U5>')
+--   WHERE email IN ('ivanjr.tstconsultoria@gmail.com','homolog.u2@gmail.com','homolog.u3@gmail.com','homolog.u4@gmail.com','homolog.u5@gmail.com')
 --   ORDER BY email;
 --
 -- SELECT email, count(*) AS empresas_vinculadas
 --   FROM usuario_empresas
---   WHERE email IN ('<EMAIL_REAL_U1>','<EMAIL_REAL_U2>','<EMAIL_REAL_U3>','<EMAIL_REAL_U4>','<EMAIL_REAL_U5>')
+--   WHERE email IN ('ivanjr.tstconsultoria@gmail.com','homolog.u2@gmail.com','homolog.u3@gmail.com','homolog.u4@gmail.com','homolog.u5@gmail.com')
 --   GROUP BY email;
 --
 -- SELECT u.email, ur.role
 --   FROM auth.users u JOIN user_roles ur ON ur.user_id = u.id
---   WHERE u.email IN ('<EMAIL_REAL_U1>','<EMAIL_REAL_U2>','<EMAIL_REAL_U3>','<EMAIL_REAL_U4>','<EMAIL_REAL_U5>');
+--   WHERE u.email IN ('ivanjr.tstconsultoria@gmail.com','homolog.u2@gmail.com','homolog.u3@gmail.com','homolog.u4@gmail.com','homolog.u5@gmail.com');
 
 COMMIT;
 -- Em caso de problema: ROLLBACK;
