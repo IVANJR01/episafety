@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import LtcatResponsaveisTab from "@/components/ltcat/LtcatResponsaveisTab";
 import LtcatSetoresTab from "@/components/ltcat/LtcatSetoresTab";
+import LtcatAgentesAvaliacoesTab from "@/components/ltcat/LtcatAgentesAvaliacoesTab";
 import {
   LtcatDocumento, LtcatRevisao,
   LTCAT_STATUS_LABEL, LTCAT_STATUS_COLOR, LTCAT_MOTIVO_LABEL,
