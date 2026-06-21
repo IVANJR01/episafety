@@ -6176,10 +6176,13 @@ export type Database = {
       }
       ppp_revisoes: {
         Row: {
+          acao: string | null
           created_at: string
+          created_by: string | null
+          descricao: string | null
           empresa_id: string
           id: string
-          motivo: string
+          motivo: string | null
           ppp_id: string
           status_anterior: Database["public"]["Enums"]["ppp_status"] | null
           status_novo: Database["public"]["Enums"]["ppp_status"] | null
@@ -6189,10 +6192,13 @@ export type Database = {
           versao_nova: number | null
         }
         Insert: {
+          acao?: string | null
           created_at?: string
+          created_by?: string | null
+          descricao?: string | null
           empresa_id: string
           id?: string
-          motivo: string
+          motivo?: string | null
           ppp_id: string
           status_anterior?: Database["public"]["Enums"]["ppp_status"] | null
           status_novo?: Database["public"]["Enums"]["ppp_status"] | null
@@ -6202,10 +6208,13 @@ export type Database = {
           versao_nova?: number | null
         }
         Update: {
+          acao?: string | null
           created_at?: string
+          created_by?: string | null
+          descricao?: string | null
           empresa_id?: string
           id?: string
-          motivo?: string
+          motivo?: string | null
           ppp_id?: string
           status_anterior?: Database["public"]["Enums"]["ppp_status"] | null
           status_novo?: Database["public"]["Enums"]["ppp_status"] | null
