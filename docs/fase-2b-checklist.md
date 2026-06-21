@@ -46,10 +46,10 @@
 | ID | Perfil | E-mail (conta dedicada de homologação) | Senha definida por |
 |---|---|---|---|
 | U1 | Super Admin | `ivanjr.tstconsultoria@gmail.com` (real, somente adicionar vínculo `[HOMOLOG]`) | titular |
-| U2 | Principal (Empresa A) | ________________________ (novo, dedicado) | titular |
-| U3 | Admin/Técnico SST (Empresa A) | ________________________ (novo, dedicado) | titular |
-| U4 | Operacional (Empresa B) | ________________________ (novo, dedicado) | titular |
-| U5 | Sem permissão | ________________________ (novo, dedicado) | titular |
+| U2 | Principal (Empresa A) | `homolog.u2@gmail.com` (dedicado) | titular |
+| U3 | Admin/Técnico SST (Empresa A) | `homolog.u3@gmail.com` (dedicado) | titular |
+| U4 | Operacional (Empresa B) | `homolog.u4@gmail.com` (dedicado) | titular |
+| U5 | Sem permissão | `homolog.u5@gmail.com` (dedicado) | titular |
 
 - [ ] U1 já existe em `auth.users` (não recriar)
 - [ ] U2 signup dedicado de homologação concluído
