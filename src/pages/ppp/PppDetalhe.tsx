@@ -296,6 +296,10 @@ export default function PppDetalhe() {
         <TabsContent value="checklist">
           <PppChecklistTab ppp={ppp} funcionario={funcionario} canPublicar={perms.canEdit} />
         </TabsContent>
+
+        <TabsContent value="s2240">
+          <PppEsocialS2240Tab ppp={ppp} />
+        </TabsContent>
       </Tabs>
     </div>
   );
