@@ -115,11 +115,16 @@ export default function LtcatModule() {
             Laudo Técnico das Condições Ambientais do Trabalho (Lei 8.213/91 art. 58, Dec. 3.048/99).
           </p>
         </div>
-        {perms.canCreate && (
-          <Button onClick={() => navigate("/ltcat/novo")}>
-            <Plus className="h-4 w-4 mr-1" /> Novo LTCAT
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/ltcat/dashboard")}>
+            <BarChart3 className="h-4 w-4 mr-1" /> Dashboard
           </Button>
-        )}
+          {perms.canCreate && (
+            <Button onClick={() => navigate("/ltcat/novo")}>
+              <Plus className="h-4 w-4 mr-1" /> Novo LTCAT
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
