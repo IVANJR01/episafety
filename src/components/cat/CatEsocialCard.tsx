@@ -258,7 +258,7 @@ export default function CatEsocialCard({ catId }: Props) {
             <div className="overflow-auto rounded border bg-muted/40 p-3 min-h-[120px]">
               {xmlLoading ? (
                 <div className="flex items-center justify-center py-8 text-xs text-muted-foreground gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Baixando XML do Google Drive…
+                  <Loader2 className="h-4 w-4 animate-spin" /> Baixando XML do storage seguro…
                 </div>
               ) : (
                 <pre className="text-[11px] font-mono whitespace-pre-wrap break-all">{xmlContent || "XML não disponível."}</pre>
