@@ -5,9 +5,30 @@
 // Banco guarda apenas hash, drive_file_id, drive_link, tamanho e metadados.
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
+import {
+  getSignedUrlSeguro,
+  parseSupabaseStorageRef,
+  SUPABASE_STORAGE_REF_PREFIX,
+} from "@/lib/secureStorage";
 
-// Baixa o XML do Drive sob demanda (não fica no banco).
+// Baixa o XML do storage seguro sob demanda (não fica no banco).
+// Aceita tanto o sentinel `sb://bucket/path` (Supabase Storage) quanto
+// um fileId real do Google Drive (legado BYOK).
 export async function downloadXmlS2210FromDrive(driveFileId: string): Promise<string> {
+  const storageRef = parseSupabaseStorageRef(driveFileId);
+  if (storageRef || driveFileId?.startsWith(SUPABASE_STORAGE_REF_PREFIX)) {
+    if (!storageRef) throw new Error("Referência Supabase Storage inválida");
+    const url = await getSignedUrlSeguro({
+      bucket: storageRef.bucket,
+      path: storageRef.path,
+      ttl: 120,
+      download: true,
+    });
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Storage ${r.status}: não foi possível baixar o XML`);
+    return await r.text();
+  }
+  // Legado: Google Drive BYOK
   await supabase.auth.refreshSession();
   const { data, error } = await supabase.functions.invoke("gdrive-token", {
     body: { folder: "eSocial/S2210" },
