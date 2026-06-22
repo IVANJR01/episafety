@@ -6,7 +6,7 @@
 // XML salvo em Google Drive BYOK; banco guarda só metadados/hash.
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
-import { uploadToDrive } from "@/lib/googleDriveStorage";
+import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 
 export const ESOCIAL_S2240_AVISO =
   "XML gerado apenas para validação técnica. Não enviado ao Ambiente Nacional.";
@@ -423,18 +423,25 @@ export async function gerarXmlS2240(eventoId: string): Promise<{
   const hash = await sha256Hex(xml);
   const bytes = new TextEncoder().encode(xml).length;
 
-  // Upload para Drive BYOK (privado — não tornar público)
-  const folder = `eSocial/S2240/${input.ppp.id}`;
+  // Upload via storage seguro (Supabase Storage privado por padrão).
   const fileName = `S2240_${input.periodo.id.slice(0, 8)}_${hash.slice(0, 10)}.xml`;
   const blob = new Blob([xml], { type: "application/xml" });
-  const up = await uploadToDrive(blob, folder, fileName, { makePublic: false });
+  const up = await uploadDocumentoSeguro({
+    empresa_id: input.empresa.id,
+    kind: "xml",
+    modulo: "s2240",
+    documento_id: eventoId,
+    fileName,
+    blob,
+    driveFolderFallback: `eSocial/S2240/${input.ppp.id}`,
+  });
 
   const { error } = await (supabase.rpc as any)("s2240_registrar_xml_meta", {
     _evento_id: eventoId,
     _xml_sha256: hash,
     _tamanho_bytes: bytes,
-    _drive_id: up.fileId,
-    _drive_link: up.webViewLink,
+    _drive_id: up.ref,
+    _drive_link: up.viewLink,
     _status: "validado_stub",
   });
   if (error) throw new Error(error.message);
@@ -456,15 +463,16 @@ export async function gerarXmlS2240(eventoId: string): Promise<{
       resumo: `XML stub gerado (${bytes} bytes)`,
       agentes_total: input.exposicoes.length,
       pendencias_t24: input.exposicoes.filter((e) => !e.map_codigo_t24).length,
-      drive_id: up.fileId,
-      drive_link: up.webViewLink,
+      storage_provider: up.provider,
+      storage_bucket: up.bucket,
+      storage_path: up.path,
       versao_layout: ESOCIAL_S2240_VERSAO_LAYOUT,
       id_evento_esocial: idEvento,
       periodo_id: input.periodo.id,
     },
   });
 
-  return { hash, idEvento, driveId: up.fileId, driveLink: up.webViewLink, warnings };
+  return { hash, idEvento, driveId: up.ref, driveLink: up.viewLink || "", warnings };
 }
 
 // ============================================================================

@@ -799,6 +799,9 @@ export type Database = {
           id: string
           mime_type: string | null
           nome_arquivo: string
+          storage_bucket: string | null
+          storage_path: string | null
+          storage_provider: string
           tamanho_bytes: number | null
           uploaded_by: string | null
         }
@@ -812,6 +815,9 @@ export type Database = {
           id?: string
           mime_type?: string | null
           nome_arquivo: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
           tamanho_bytes?: number | null
           uploaded_by?: string | null
         }
@@ -825,6 +831,9 @@ export type Database = {
           id?: string
           mime_type?: string | null
           nome_arquivo?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
           tamanho_bytes?: number | null
           uploaded_by?: string | null
         }
@@ -2117,6 +2126,7 @@ export type Database = {
           logo_url: string | null
           nome: string
           nome_representante_legal: string | null
+          storage_provider: string
           telefone: string | null
           tipo: string
           updated_at: string
@@ -2132,6 +2142,7 @@ export type Database = {
           logo_url?: string | null
           nome?: string
           nome_representante_legal?: string | null
+          storage_provider?: string
           telefone?: string | null
           tipo?: string
           updated_at?: string
@@ -2147,6 +2158,7 @@ export type Database = {
           logo_url?: string | null
           nome?: string
           nome_representante_legal?: string | null
+          storage_provider?: string
           telefone?: string | null
           tipo?: string
           updated_at?: string
@@ -2483,6 +2495,9 @@ export type Database = {
           nr_recibo_origem: string | null
           nr_recibo_simulado: string | null
           status: Database["public"]["Enums"]["esocial_evento_status"]
+          storage_bucket: string | null
+          storage_path: string | null
+          storage_provider: string | null
           tentativas: number
           tp_amb: Database["public"]["Enums"]["esocial_tp_amb"]
           ultima_validacao_em: string | null
@@ -2515,6 +2530,9 @@ export type Database = {
           nr_recibo_origem?: string | null
           nr_recibo_simulado?: string | null
           status?: Database["public"]["Enums"]["esocial_evento_status"]
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string | null
           tentativas?: number
           tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
           ultima_validacao_em?: string | null
@@ -2547,6 +2565,9 @@ export type Database = {
           nr_recibo_origem?: string | null
           nr_recibo_simulado?: string | null
           status?: Database["public"]["Enums"]["esocial_evento_status"]
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string | null
           tentativas?: number
           tp_amb?: Database["public"]["Enums"]["esocial_tp_amb"]
           ultima_validacao_em?: string | null
@@ -2610,6 +2631,9 @@ export type Database = {
           ppp_documento_id: string | null
           ppp_periodo_id: string | null
           status: Database["public"]["Enums"]["esocial_s2240_status"]
+          storage_bucket: string | null
+          storage_path: string | null
+          storage_provider: string | null
           tipo_evento: Database["public"]["Enums"]["esocial_s2240_tipo_evento"]
           updated_at: string
           validado_em: string | null
@@ -2646,6 +2670,9 @@ export type Database = {
           ppp_documento_id?: string | null
           ppp_periodo_id?: string | null
           status?: Database["public"]["Enums"]["esocial_s2240_status"]
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string | null
           tipo_evento?: Database["public"]["Enums"]["esocial_s2240_tipo_evento"]
           updated_at?: string
           validado_em?: string | null
@@ -2682,6 +2709,9 @@ export type Database = {
           ppp_documento_id?: string | null
           ppp_periodo_id?: string | null
           status?: Database["public"]["Enums"]["esocial_s2240_status"]
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string | null
           tipo_evento?: Database["public"]["Enums"]["esocial_s2240_tipo_evento"]
           updated_at?: string
           validado_em?: string | null
@@ -4985,6 +5015,9 @@ export type Database = {
           pdf_hash: string
           pdf_versao: number
           status_no_momento: Database["public"]["Enums"]["ltcat_status"]
+          storage_bucket: string | null
+          storage_path: string | null
+          storage_provider: string
           tamanho_bytes: number | null
         }
         Insert: {
@@ -5001,6 +5034,9 @@ export type Database = {
           pdf_hash: string
           pdf_versao: number
           status_no_momento: Database["public"]["Enums"]["ltcat_status"]
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
           tamanho_bytes?: number | null
         }
         Update: {
@@ -5017,6 +5053,9 @@ export type Database = {
           pdf_hash?: string
           pdf_versao?: number
           status_no_momento?: Database["public"]["Enums"]["ltcat_status"]
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
           tamanho_bytes?: number | null
         }
         Relationships: [
@@ -5908,6 +5947,9 @@ export type Database = {
           pgr_id: string
           pgr_versao: number
           status_no_momento: Database["public"]["Enums"]["pgr_status"]
+          storage_bucket: string | null
+          storage_path: string | null
+          storage_provider: string
           tamanho_bytes: number | null
         }
         Insert: {
@@ -5925,6 +5967,9 @@ export type Database = {
           pgr_id: string
           pgr_versao: number
           status_no_momento: Database["public"]["Enums"]["pgr_status"]
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
           tamanho_bytes?: number | null
         }
         Update: {
@@ -5942,6 +5987,9 @@ export type Database = {
           pgr_id?: string
           pgr_versao?: number
           status_no_momento?: Database["public"]["Enums"]["pgr_status"]
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
           tamanho_bytes?: number | null
         }
         Relationships: [
@@ -6481,6 +6529,9 @@ export type Database = {
           ppp_id: string
           sha256: string
           status_no_momento: string | null
+          storage_bucket: string | null
+          storage_path: string | null
+          storage_provider: string
           tamanho_bytes: number | null
           tipo: string
           versao_ppp_snapshot: number | null
@@ -6501,6 +6552,9 @@ export type Database = {
           ppp_id: string
           sha256: string
           status_no_momento?: string | null
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
           tamanho_bytes?: number | null
           tipo: string
           versao_ppp_snapshot?: number | null
@@ -6521,6 +6575,9 @@ export type Database = {
           ppp_id?: string
           sha256?: string
           status_no_momento?: string | null
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_provider?: string
           tamanho_bytes?: number | null
           tipo?: string
           versao_ppp_snapshot?: number | null

@@ -1,95 +1,134 @@
-# Roteiro de Homologação Interna Controlada — Sistema SST
 
-Objetivo: executar, em ambiente real do projeto, um ciclo completo de uso ponta-a-ponta com **2 empresas teste isoladas**, validando os 20 pontos solicitados sem qualquer envio oficial ao eSocial.
+# Plano: Supabase Storage privado para destravar a homologação
 
-Escopo explicitamente excluído: certificado digital, ICP-Brasil, XMLDSig, SOAP, S-3000, transmissão real, consulta de recibo real.
+Objetivo: destravar U3 (PGR/CAT/LTCAT/PPP + S-2210/S-2240 stubs) usando **Supabase Storage privado**, sem depender do OAuth do Google Drive. Drive BYOK permanece como provider selecionável, mas não é mais o caminho padrão da homologação.
 
----
-
-## Fase 0 — Preparação do Ambiente
-
-- **Empresas teste**: Empresa A (Matriz A + Unidade A1 + Contrato A1.1) e Empresa B (Matriz B + Unidade B1 + Contrato B1.1).
-- **Usuários teste**:
-  - U1 Super Admin (global)
-  - U2 Principal Empresa A
-  - U3 Operacional A (sem MFA)
-  - U4 Operacional A (com MFA)
-  - U5 Principal Empresa B
-- **Drive BYOK**: conta Google distinta por empresa.
-- **Matriz de evidências**: planilha única (OK / FALHA / N/A + screenshot/log) — uma linha por caso de teste.
+Escopo intocado (reafirmando): sem envio real ao eSocial, sem certificado digital, sem SOAP, sem XMLDSig, sem ICP-Brasil.
 
 ---
 
-## Fase 1 — Cadastros Básicos (pontos 1–4)
+## 1. Buckets a criar
 
-1. **Empresa**: criar Matriz A, Unidade A1, Contrato A1.1 — repetir para B. Confirmar `empresa_pai_id`, logo no Drive, config inicial.
-2. **Usuários e permissões**: provisionar U2–U5 via `usuarios_liberados`, vincular `usuario_empresas`, atribuir perfis e ações especiais (`esocial:s2240:*`, `epis:gestao_estoque`, etc.).
-3. **Funcionários**: cadastrar 3 funcionários por contrato (com CPF, CBO, função, unidade responsável obrigatória).
-4. **Setores / Funções / GHE-GES**: cadastrar setor, função, GHE e GES; vincular riscos via catálogo.
+Um bucket único, **privado**, com paths por tenant:
 
-## Fase 2 — Documentos Técnicos (pontos 5–8)
+- `sst-documentos` (private, sem listagem pública, sem `public=true`)
 
-5. **CAT**: emitir 1 CAT por empresa (típico + trajeto), gerar PDF, conferir numeração isolada por empresa, anexar testemunhas, histórico.
-6. **PGR**: criar documento, importar GHE, montar inventário de riscos, matriz, plano de ação, gerar PDF e revisão.
-7. **LTCAT**: criar, importar do PGR, agentes/avaliações, responsáveis técnicos, conclusões, PDF.
-8. **PPP**: emitir PPP do funcionário, períodos, exposições, responsáveis ambientais/médicos, PDF IN 128/2022, aba S-2240.
+Estrutura de paths (conforme solicitado):
 
-## Fase 3 — eSocial Stub (pontos 9–10)
+```text
+{empresa_id}/pdf/{modulo}/{documento_id}/v{versao}/arquivo.pdf
+{empresa_id}/xml/{evento}/{evento_id}/arquivo.xml
+```
 
-9. **S-2210 stub**: gerar XML a partir da CAT, validar localmente, conferir hash SHA-256, baixar do Drive BYOK, confirmar que `xml_gerado` **não** existe mais no banco.
-10. **S-2240 stub**: mapear agentes PPP/LTCAT → Tabela 24, gerar XML técnico, validar local, hash, salvar no Drive `eSocial/S2240/`, abrir `/esocial/s2240/dashboard` (KPIs + checklist 21 pontos + filtros + drawer).
+Exemplos:
+- `<empresa_id>/pdf/pgr/<pgr_id>/v1/PGR.pdf`
+- `<empresa_id>/pdf/cat/<cat_id>/v1/CAT.pdf`
+- `<empresa_id>/pdf/ltcat/<ltcat_id>/v1/LTCAT.pdf`
+- `<empresa_id>/pdf/ppp/<ppp_id>/v1/PPP.pdf`
+- `<empresa_id>/xml/s2210/<evento_id>/S2210.xml`
+- `<empresa_id>/xml/s2240/<evento_id>/S2240.xml`
 
-## Fase 4 — Artefatos e Integrações (pontos 11–14)
-
-11. **PDFs**: validar header, dados, assinaturas e versionamento em ASO, PPP, LTCAT, PGR, Ficha de Entrega EPI (paisagem) e CAT.
-12. **QR Codes**: escanear QR de ASO/PPP/Ficha e confirmar URL de verificação válida e tenant correto.
-13. **Drive BYOK**: confirmar `refreshSession` antes de cada upload, hierarquia Matriz>Unidade>Contrato, falha de upload bloqueia gravação, `gdrive-proxy` serve imagens sem CORS, **Empresa B não baixa fileId da Empresa A**.
-14. **MFA**: U3 bloqueado em ações sensíveis (gerar/validar XML, dispensa, alterações Tabela 24); U4 passa; sessão MFA expirada exige revalidação.
-
-## Fase 5 — Segurança Multi-Tenant (pontos 15–16)
-
-15. **Permissões por perfil**: matriz Perfil × Ação (visualizar / criar / editar / validar / retificar / excluir / exportar) por módulo; conferir tokens `esocial:s2240:*` (3 níveis); apenas Super Admin vê Infra/Cloud/Backups.
-16. **Isolamento A × B**:
-    - Logar U2, abrir CAT/PGR/LTCAT/PPP/S-2210/S-2240; trocar para outra empresa autorizada → confirmar `purgeQueryCache` + `clearAllCachedData` (sem dados residuais da A).
-    - Forçar URLs com IDs da B autenticado como U2 → 0 linhas / erro RLS.
-    - RPCs (`s2240_assert_tenant`, `s2240_registrar_*`, `esocial_registrar_xml_meta`) com IDs cruzados → exceção.
-    - `aso_medicos` com `empresa_id IS NULL` invisível para U2/U5.
-
-## Fase 6 — Saídas e Observabilidade (pontos 17–19)
-
-17. **Exportações CSV**: S-2240 (eventos, ocorrências, agentes, pendentes/divergentes) + demais módulos; UTF-8 BOM, separador, escape de vírgulas/quebras, filtro respeita empresa ativa.
-18. **Dashboards**: S-2240, EPI/Estoque, Inspeções, Documentos, Pareto, fluxo, consumo — comparar KPIs com queries diretas.
-19. **Audit log**: para cada ação sensível, 1 linha com `acao`/`status`/`metadata` mínimo, **sem XML completo**, sem PII desnecessária; inserts somente via RPC (`s2240_registrar_mapeamento_audit`, `esocial_registrar_xml_meta`, `esocial_registrar_download`).
-
-## Fase 7 — Consolidação (ponto 20)
-
-20. **Lista final de bugs**: triagem dos achados em P0/P1/P2/P3 com módulo, descrição, evidência, esforço.
-- Relatório final salvo em `/mnt/documents/Homologacao_Interna_SST.md`.
-- Recomendação final: liberar uso interno controlado **sim/não**; transmissão real permanece **NO-GO**.
+RLS em `storage.objects` para o bucket `sst-documentos`:
+- SELECT/INSERT/UPDATE/DELETE permitidos apenas se `(storage.foldername(name))[1]::uuid` está nas empresas do usuário autenticado (via `usuario_empresas` ou função `user_has_empresa(auth.uid(), empresa_id)`).
+- `anon`: sem acesso.
+- Download sempre via **signed URL** com TTL 60–300s, gerada por edge function que revalida tenant.
 
 ---
 
-## Critérios de Aceite
+## 2. Colunas novas nas tabelas
 
-- 100% dos 20 pontos executados em A e B, com evidências.
-- Zero vazamento entre A × B.
-- Zero XML completo em banco ou audit log.
-- MFA não contornável em ação sensível.
-- Drive BYOK isolado por empresa.
-- Nenhuma chamada a endpoint real do eSocial.
+Adicionar, de forma **aditiva e nullable** (sem quebrar registros antigos do Drive), nas tabelas que hoje gravam `drive_file_id`/`drive_link`:
 
-## Entregáveis
+Tabelas afetadas:
+- `pgr_pdf_versoes`, `pgr_documentos`
+- `ltcat_pdf_versoes`, `ltcat_documentos`
+- `ppp_pdf_versoes`, `ppp_documentos`
+- `cat_anexos` (PDF da CAT)
+- `esocial_eventos_s2210`, `esocial_eventos_s2240` (XML stubs)
 
-1. Matriz de evidências (planilha/markdown).
-2. Lista P0–P3 com priorização.
-3. Relatório `/mnt/documents/Homologacao_Interna_SST.md` com status final por módulo (Verde/Amarelo/Vermelho).
-4. Recomendação Go/No-Go para uso interno controlado.
+Colunas novas por tabela (todas nullable):
+- `storage_provider text` — `'google_drive_byok'` | `'supabase_storage'`
+- `storage_bucket text`
+- `storage_path text`
+- `storage_size_bytes bigint`
+- `pdf_hash` / `xml_hash` `text` — SHA-256 (onde ainda não existir; várias já têm `hash`)
+- `versao int` (onde ainda não existir)
+- `gerado_em timestamptz default now()`
+- `gerado_por uuid` (auth.uid())
 
-## Itens Fora de Escopo (não executar)
+Sem CHECK de provider — validar em código. Sem alterar colunas Drive existentes.
 
-- Certificado digital A1/A3, KMS, XMLDSig, C14N.
-- Cliente SOAP, fila de envio, retry, consulta de recibo.
-- S-3000 (exclusão oficial).
-- Qualquer chamada a ambiente eSocial (produção ou homologação oficial).
+---
 
-Aguardando aprovação para iniciar a Fase 0.
+## 3. Arquivos a alterar
+
+Novo helper compartilhado (frontend):
+- `src/lib/secureStorage.ts` — `uploadDocumentoSeguro({ provider, bucket, path, blob, empresa_id })` e `getSignedUrlSeguro({ bucket, path, ttl })`. Internamente:
+  - `provider='supabase_storage'` → `supabase.storage.from('sst-documentos').upload(path, blob, { upsert: true })`
+  - `provider='google_drive_byok'` → caminho atual (mantido)
+  - Calcula SHA-256, valida que `path` começa com `empresa_id/`.
+
+Nova edge function:
+- `supabase/functions/signed-url-doc/index.ts` — recebe `{ bucket, path }`, valida JWT, valida que `empresa_id` do path pertence ao usuário, retorna signed URL com TTL 60–300s. (Reuso conceitual da `signed-url` existente, mas focada em `sst-documentos` e com checagem de tenant.)
+
+Geradores a atualizar (trocar a etapa de upload Drive por `uploadDocumentoSeguro` com provider lido de `empresa_config.storage_provider`, default `supabase_storage`):
+- `src/lib/pgrPdf.ts`
+- `src/lib/catPdf.ts`
+- `src/lib/ltcatPdf.ts`
+- `src/lib/pppPdf.ts`
+- `src/lib/esocialS2210Xml.ts`
+- `src/lib/esocialS2240Xml.ts`
+
+Config:
+- `empresa_config`: nova coluna `storage_provider text default 'supabase_storage'`.
+- `src/pages/admin/AdminCloud.tsx`: seletor `Supabase Storage` / `Google Drive BYOK` (homologação fica em Supabase).
+
+Consumo (download/visualização):
+- Componentes que hoje resolvem link Drive para PDFs/XMLs passam a chamar `getSignedUrlSeguro` quando `storage_provider='supabase_storage'`. Drive continua usando `gdrive-proxy`.
+
+---
+
+## 4. Migração dos registros existentes
+
+Não há reupload automático. Estratégia segura:
+
+- Registros antigos mantêm `drive_file_id` e continuam sendo abertos pelo caminho Drive (quando o OAuth estiver OK).
+- Novos PDFs/XMLs gerados a partir desta mudança vão para Supabase Storage e preenchem as novas colunas.
+- Backfill opcional (fora do escopo desta entrega): job manual posterior para baixar do Drive e reenviar ao bucket, preenchendo as novas colunas. Não bloqueia homologação.
+
+---
+
+## 5. Audit log
+
+`audit_log` permanece registrando apenas metadados: `entidade`, `entidade_id`, `acao`, `storage_provider`, `bucket`, `path`, `hash`, `tamanho`, `versao`, `gerado_por`. **Nunca** o binário, nunca o XML/PDF inline. Revisão dos pontos que hoje logam geração de documento para garantir esse contrato.
+
+---
+
+## 6. Critérios de aceite mapeados
+
+- PGR PDF gerado com U3 → bucket `sst-documentos`, path `{empresa_id}/pdf/pgr/{id}/v1/PGR.pdf`, `pdf_hash` preenchido, signed URL abre o PDF.
+- Empresa B não consegue baixar PDF da Empresa A (RLS + validação na edge function).
+- S-2210/S-2240 stubs salvos no bucket privado com hash e path.
+- `anon` sem acesso ao bucket.
+- Build limpo, sem mexer em fluxos Drive existentes.
+
+---
+
+## 7. Riscos residuais
+
+- **Custo/quota de Storage**: PDFs e XMLs passam a consumir Supabase Storage. Mitigação: bucket único, paths versionados, possível política de retenção depois.
+- **Dupla fonte de verdade temporária**: documentos antigos ficam no Drive, novos no Supabase. UI precisa ler `storage_provider` por registro — já tratado no helper de download.
+- **Path injection**: mitigado validando `empresa_id` no início do path tanto no helper quanto na edge function.
+- **TTL curto** pode expirar durante download de PDFs grandes em rede ruim. Mitigação: 300s por padrão para PDFs.
+- **Backfill pendente**: documentos antigos seguem dependentes do OAuth Drive até reupload. Aceitável: homologação não exige histórico migrado.
+- **RLS de storage**: precisa ser testada com 2 empresas reais antes de marcar U3 como concluída.
+
+---
+
+## 8. Fora deste plano (reafirmado)
+
+- Sem envio real eSocial, sem certificado digital, sem SOAP, sem XMLDSig, sem ICP-Brasil, sem S-3000.
+- Sem alterar o fluxo Drive BYOK existente além de torná-lo opcional.
+- Sem U4.
+
+Confirma este recorte para eu seguir com a migração SQL + helper + ajuste dos 6 geradores?
