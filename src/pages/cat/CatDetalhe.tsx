@@ -349,14 +349,21 @@ export default function CatDetalhe() {
   };
 
   const baixarPdf = async () => {
-    const link = (cat as any).pdf_drive_view_link;
-    if (!link) return;
+    // Localiza a versão vigente do PDF entre os anexos (pdf_cat)
+    const pdfAnexos = (anexos as any[]).filter((a) => a.categoria === "pdf_cat");
+    const vigente =
+      pdfAnexos.find((a) => a.drive_file_id === (cat as any).pdf_drive_file_id) ||
+      pdfAnexos[0];
+    if (!vigente) {
+      toast.error("Nenhum PDF disponível");
+      return;
+    }
     try {
       await logCatPdfDownload(cat.id);
     } catch (e) {
       console.warn("[cat-pdf] log download falhou", e);
     }
-    window.open(link, "_blank", "noopener");
+    await abrirAnexoStorage(vigente);
     qc.invalidateQueries({ queryKey: ["cat-detalhe-hist", id] });
   };
 
