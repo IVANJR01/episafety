@@ -10,11 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck } from "lucide-react";
+import { FileText, Download, RefreshCw, PenLine, Eye, AlertTriangle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import { PppDocumento, isPppEditavel } from "@/lib/pppTypes";
 import { generateAndUploadPppPdf, PppPdfContext } from "@/lib/pppPdf";
+import { resolveDocumentoUrl, SUPABASE_STORAGE_REF_PREFIX } from "@/lib/secureStorage";
 
 interface Props {
   ppp: PppDocumento;
@@ -22,6 +23,15 @@ interface Props {
   empresa: any | null;
   canExport: boolean;
   canAssinar: boolean;
+}
+
+function isSupabaseStorageRow(v: any): boolean {
+  return (
+    v?.storage_provider === "supabase_storage" ||
+    !!v?.storage_path ||
+    (typeof v?.drive_id === "string" && v.drive_id.startsWith(SUPABASE_STORAGE_REF_PREFIX)) ||
+    (typeof v?.drive_file_id === "string" && v.drive_file_id.startsWith(SUPABASE_STORAGE_REF_PREFIX))
+  );
 }
 
 export default function PppPdfTab({ ppp, funcionario, empresa, canExport, canAssinar }: Props) {
@@ -53,6 +63,7 @@ export default function PppPdfTab({ ppp, funcionario, empresa, canExport, canAss
   });
 
   const ultima = versoes[0];
+  const ultimaSupabase = ultima ? isSupabaseStorageRow(ultima) : false;
   const desatualizado = ultima && ppp.conteudo_atualizado_em &&
     new Date(ppp.conteudo_atualizado_em).getTime() > new Date(ultima.gerado_em).getTime() + 500;
 
@@ -80,13 +91,38 @@ export default function PppPdfTab({ ppp, funcionario, empresa, canExport, canAss
     };
   }
 
+  async function abrirPdfSeguro(v: any, download = false) {
+    try {
+      if (isSupabaseStorageRow(v)) {
+        const url = await resolveDocumentoUrl({
+          provider: "supabase_storage",
+          bucket: v.storage_bucket || null,
+          path: v.storage_path || null,
+          driveFileId: v.drive_id || null,
+          driveViewLink: null,
+          ttl: 300,
+          download,
+        });
+        window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      }
+      if (v.drive_link) {
+        window.open(v.drive_link, "_blank", "noopener,noreferrer");
+        return;
+      }
+      toast.error("Arquivo indisponível");
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao abrir PDF");
+    }
+  }
+
   async function handleGerar() {
     if (bloqueado) { toast.error(`PPP ${ppp.status} — não é permitido gerar nova versão.`); return; }
     setBusy(true);
     try {
       const ctx = await carregarContexto();
       const r = await generateAndUploadPppPdf(ctx);
-      toast.success(`PDF v${r.pdfVersao} gerado e salvo no Drive`);
+      toast.success(`PDF v${r.pdfVersao} gerado e salvo no Storage privado`);
       refetch();
       qc.invalidateQueries({ queryKey: ["ppp-detalhe", ppp.id] });
       qc.invalidateQueries({ queryKey: ["ppp-revisoes", ppp.id] });
@@ -158,20 +194,39 @@ export default function PppPdfTab({ ppp, funcionario, empresa, canExport, canAss
             </div>
           )}
           {ultima ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Info label="Última versão" value={`v${ultima.pdf_versao}${ultima.com_marca_dagua ? " (RASCUNHO)" : ""}`} />
-              <Info label="Gerado em" value={new Date(ultima.gerado_em).toLocaleString("pt-BR")} />
-              <Info label="Tamanho" value={ultima.tamanho_bytes ? `${Math.round(ultima.tamanho_bytes / 1024)} KB` : "—"} />
-              <Info label="Drive" value={
-                ultima.drive_link
-                  ? <a className="text-primary underline inline-flex items-center gap-1" href={ultima.drive_link} target="_blank" rel="noreferrer">abrir <ExternalLink className="h-3 w-3" /></a>
-                  : "—"
-              } />
-              <div className="md:col-span-2">
-                <span className="text-xs text-muted-foreground">Hash SHA-256: </span>
-                <span className="font-mono text-[11px] break-all">{ultima.pdf_hash}</span>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <Info label="Última versão" value={`v${ultima.pdf_versao}${ultima.com_marca_dagua ? " (RASCUNHO)" : ""}`} />
+                <Info label="Gerado em" value={new Date(ultima.gerado_em).toLocaleString("pt-BR")} />
+                <Info label="Tamanho" value={ultima.tamanho_bytes ? `${Math.round(ultima.tamanho_bytes / 1024)} KB` : "—"} />
+                <Info
+                  label="Armazenamento"
+                  value={
+                    <Badge variant="outline" className="text-[10px]">
+                      {ultimaSupabase ? "Supabase Storage (privado)" : "Google Drive (BYOK)"}
+                    </Badge>
+                  }
+                />
+                {ultimaSupabase && ultima.storage_path && (
+                  <div className="md:col-span-2">
+                    <span className="text-xs text-muted-foreground">Path: </span>
+                    <span className="font-mono text-[11px] break-all">{ultima.storage_path}</span>
+                  </div>
+                )}
+                <div className="md:col-span-2">
+                  <span className="text-xs text-muted-foreground">Hash SHA-256: </span>
+                  <span className="font-mono text-[11px] break-all">{ultima.pdf_hash}</span>
+                </div>
               </div>
-            </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(ultima, false)}>
+                  <Eye className="h-3 w-3 mr-1" /> Visualizar PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(ultima, true)}>
+                  <Download className="h-3 w-3 mr-1" /> Baixar PDF
+                </Button>
+              </div>
+            </>
           ) : (
             <div className="text-sm text-muted-foreground">Nenhum PDF gerado ainda.</div>
           )}
@@ -185,26 +240,36 @@ export default function PppPdfTab({ ppp, funcionario, empresa, canExport, canAss
             <p className="text-sm text-muted-foreground text-center py-4">Nenhuma versão registrada.</p>
           ) : (
             <ul className="space-y-2">
-              {versoes.map((v: any) => (
-                <li key={v.id} className="border rounded-md p-3 text-sm flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <div className="font-medium">
-                      PDF v{v.pdf_versao}
-                      {v.com_marca_dagua && <Badge variant="outline" className="ml-2 text-[10px]">RASCUNHO</Badge>}
-                      {v.status_no_momento && <Badge variant="outline" className="ml-2 text-[10px]">{v.status_no_momento}</Badge>}
+              {versoes.map((v: any) => {
+                const sb = isSupabaseStorageRow(v);
+                return (
+                  <li key={v.id} className="border rounded-md p-3 text-sm flex items-center justify-between gap-2 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="font-medium flex items-center gap-2 flex-wrap">
+                        PDF v{v.pdf_versao}
+                        {v.com_marca_dagua && <Badge variant="outline" className="text-[10px]">RASCUNHO</Badge>}
+                        {v.status_no_momento && <Badge variant="outline" className="text-[10px]">{v.status_no_momento}</Badge>}
+                        <Badge variant="outline" className="text-[10px]">
+                          {sb ? "Supabase Storage (privado)" : "Google Drive (BYOK)"}
+                        </Badge>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground font-mono break-all">{v.pdf_hash}</div>
+                      <div className="text-[11px] text-muted-foreground">{new Date(v.gerado_em).toLocaleString("pt-BR")}</div>
+                      {sb && v.storage_path && (
+                        <div className="text-[11px] text-muted-foreground font-mono break-all">{v.storage_path}</div>
+                      )}
                     </div>
-                    <div className="text-[11px] text-muted-foreground font-mono break-all">{v.pdf_hash}</div>
-                    <div className="text-[11px] text-muted-foreground">{new Date(v.gerado_em).toLocaleString("pt-BR")}</div>
-                  </div>
-                  {v.drive_link && (
-                    <Button asChild size="sm" variant="outline">
-                      <a href={v.drive_link} target="_blank" rel="noreferrer">
-                        <Download className="h-3 w-3 mr-1" /> Abrir
-                      </a>
-                    </Button>
-                  )}
-                </li>
-              ))}
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(v, false)}>
+                        <Eye className="h-3 w-3 mr-1" /> Abrir
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(v, true)}>
+                        <Download className="h-3 w-3 mr-1" /> Baixar
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
