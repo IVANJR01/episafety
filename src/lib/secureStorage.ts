@@ -22,6 +22,32 @@ export async function sha256Hex(buf: ArrayBuffer): Promise<string> {
     .join("");
 }
 
+/**
+ * Sanitiza nome de arquivo para Supabase Storage.
+ * Remove acentos, colchetes, barras e caracteres especiais.
+ * Mantém apenas [A-Za-z0-9_.-]. Preserva extensão.
+ */
+export function sanitizeStorageFileName(name: string, maxLen = 180): string {
+  if (!name) return "arquivo";
+  const dot = name.lastIndexOf(".");
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot + 1) : "";
+  const clean = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\[\]\(\)\{\}]/g, "")
+      .replace(/[\/\\]/g, "_")
+      .replace(/\s+/g, "_")
+      .replace(/[^A-Za-z0-9_.-]/g, "")
+      .replace(/_+/g, "_")
+      .replace(/^[._-]+|[._-]+$/g, "");
+  let safeBase = clean(base) || "arquivo";
+  const safeExt = clean(ext).toLowerCase();
+  if (safeBase.length > maxLen) safeBase = safeBase.slice(0, maxLen);
+  return safeExt ? `${safeBase}.${safeExt}` : safeBase;
+}
+
 /** Resolve o provider configurado para a empresa. Default: supabase_storage. */
 export async function getEmpresaStorageProvider(
   empresa_id: string,
