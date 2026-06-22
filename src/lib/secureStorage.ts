@@ -226,8 +226,11 @@ export async function resolveDocumentoUrl(opts: {
       download: opts.download,
     });
   }
-  if (!opts.driveViewLink) throw new Error("Link do Drive ausente");
-  return opts.driveViewLink;
+  if (opts.driveViewLink) return opts.driveViewLink;
+  if (opts.driveFileId && !storageRef) {
+    return `https://drive.google.com/file/d/${encodeURIComponent(opts.driveFileId)}/view`;
+  }
+  throw new Error("Link do Drive ausente");
 }
 
 export async function openDocumentoSeguro(opts: {
