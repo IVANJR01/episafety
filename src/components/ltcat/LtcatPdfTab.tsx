@@ -117,7 +117,7 @@ export default function LtcatPdfTab({ ltcat, canExport, canAssinar }: Props) {
     try {
       const ctx = await carregarContexto();
       const r = await generateAndUploadLtcatPdf(ctx);
-      toast.success(`PDF v${r.pdfVersao} gerado e salvo no Drive`);
+      toast.success(`PDF v${r.pdfVersao} gerado e salvo no Storage privado`);
       refetch();
       qc.invalidateQueries({ queryKey: ["ltcat-detalhe", ltcat.id] });
       qc.invalidateQueries({ queryKey: ["ltcat-revisoes", ltcat.id] });
