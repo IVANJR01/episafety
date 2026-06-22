@@ -6,7 +6,7 @@
 // XML salvo em Google Drive BYOK; banco guarda só metadados/hash.
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
-import { uploadToDrive } from "@/lib/googleDriveStorage";
+import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 
 export const ESOCIAL_S2240_AVISO =
   "XML gerado apenas para validação técnica. Não enviado ao Ambiente Nacional.";

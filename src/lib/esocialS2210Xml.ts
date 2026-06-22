@@ -379,28 +379,34 @@ export async function gerarSalvarXmlS2210(eventoId: string): Promise<{
   const hash = await sha256Hex(xml);
   const tamanho = new TextEncoder().encode(xml).length;
 
-  // Upload para Drive BYOK privado (mesmo padrão do S-2240).
-  await supabase.auth.refreshSession();
-  const { uploadToDrive } = await import("@/lib/googleDriveStorage");
-  const folder = `eSocial/S2210/${input.evento.empresa_id}`;
+  // Upload via storage seguro (Supabase Storage privado por padrão).
+  const { uploadDocumentoSeguro } = await import("@/lib/secureStorage");
   const fileName = `S2210_${idEvento}_${hash.slice(0, 8)}.xml`;
   const blob = new Blob([xml], { type: "application/xml" });
-  const up = await uploadToDrive(blob, folder, fileName, { makePublic: false });
+  const up = await uploadDocumentoSeguro({
+    empresa_id: input.evento.empresa_id,
+    kind: "xml",
+    modulo: "s2210",
+    documento_id: eventoId,
+    fileName,
+    blob,
+    driveFolderFallback: `eSocial/S2210/${input.evento.empresa_id}`,
+  });
 
   const { error: rpcErr } = await (supabase.rpc as any)("esocial_registrar_xml_meta", {
     _evento_id: eventoId,
     _hash: hash,
     _versao_layout: input.evento.versao_layout || "1.3",
     _tamanho_bytes: tamanho,
-    _drive_file_id: up.fileId,
-    _drive_link: up.webViewLink || null,
+    _drive_file_id: up.ref,
+    _drive_link: up.viewLink,
   });
   if (rpcErr) throw new Error(rpcErr.message);
 
   // grava alertas pós-geração
   await (supabase.rpc as any)("esocial_registrar_ocorrencias", { _evento_id: eventoId, _ocorrencias: ocorrencias });
 
-  return { xml, hash, warnings, idEvento, driveFileId: up.fileId, driveLink: up.webViewLink || null };
+  return { xml, hash, warnings, idEvento, driveFileId: up.ref, driveLink: up.viewLink };
 }
 
 // ---------- retificação ----------
