@@ -9,6 +9,7 @@ const ALLOWED_BUCKETS = new Set([
   "conformidades",
   "videos-treinamento",
   "fotos-reconhecimento",
+  "sst-documentos",
 ]);
 const DEFAULT_TTL = 60;          // segundos
 const MAX_TTL = 300;             // 5 min — TTL curto obrigatório
