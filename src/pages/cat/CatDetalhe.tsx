@@ -628,16 +628,17 @@ export default function CatDetalhe() {
                           <Badge className="text-[10px]" variant="secondary">Anterior</Badge>
                         )}
                         <span className="text-muted-foreground">{new Date(v.created_at).toLocaleString("pt-BR")}</span>
-                        {v.drive_file_id && (
-                          <a
-                            href={`https://drive.google.com/file/d/${v.drive_file_id}/view`}
-                            target="_blank"
-                            rel="noreferrer"
+                        {(v.storage_path || (v.drive_file_id && !String(v.drive_file_id).startsWith("sb://"))) && (
+                          <button
+                            type="button"
                             className="text-primary hover:underline"
-                            onClick={() => logCatPdfDownload(cat.id).catch(() => {})}
+                            onClick={async () => {
+                              logCatPdfDownload(cat.id).catch(() => {});
+                              await abrirAnexoStorage(v);
+                            }}
                           >
                             Abrir
-                          </a>
+                          </button>
                         )}
                       </li>
                     );
