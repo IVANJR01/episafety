@@ -428,12 +428,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applySignedOutState, handleAuthCheck]);
 
   const signOut = async () => {
+    // Limpa estado local PRIMEIRO para garantir que a UI reage mesmo se o
+    // servidor retornar 403 (sessão já invalidada) ou estiver offline.
     clearCachedSession();
     saveActiveEmpresaId(null);
     clearAllCachedData();
     purgeQueryCache();
     setCacheUserScope(null);
-    await supabase.auth.signOut();
+    applySignedOutState();
+
+    // scope: 'local' evita chamar /logout no servidor; remove apenas a sessão
+    // local. Evita o loop de 403 "session_not_found" visto nos logs.
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      // ignora qualquer erro: o estado local já foi limpo acima.
+    }
+
+    // Força navegação dura para descartar qualquer estado em memória de
+    // contextos/queries de outros componentes.
+    if (typeof window !== "undefined") {
+      window.location.replace("/login");
+    }
   };
 
   return (
