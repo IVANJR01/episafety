@@ -117,7 +117,8 @@ export async function uploadDocumentoSeguro(
   if (provider === "supabase_storage") {
     const versaoSeg =
       typeof p.versao === "number" && p.versao > 0 ? `v${p.versao}/` : "";
-    const path = `${p.empresa_id}/${p.kind}/${p.modulo}/${p.documento_id}/${versaoSeg}${p.fileName}`;
+    const safeName = sanitizeStorageFileName(p.fileName);
+    const path = `${p.empresa_id}/${p.kind}/${p.modulo}/${p.documento_id}/${versaoSeg}${safeName}`;
 
     if (!path.startsWith(`${p.empresa_id}/`)) {
       throw new Error("Path fora do tenant — abortado");
