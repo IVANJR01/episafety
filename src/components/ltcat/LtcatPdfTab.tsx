@@ -10,11 +10,37 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck } from "lucide-react";
+import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import { LtcatDocumento, LtcatStatus, isLtcatEditavel } from "@/lib/ltcatTypes";
 import { generateAndUploadLtcatPdf, LtcatPdfContext } from "@/lib/ltcatPdf";
+import { resolveDocumentoUrl, SUPABASE_STORAGE_REF_PREFIX } from "@/lib/secureStorage";
+
+function isSupabaseStorageRow(v: any): boolean {
+  return (
+    v?.storage_provider === "supabase_storage" ||
+    Boolean(v?.storage_path) ||
+    Boolean(v?.drive_file_id?.startsWith?.(SUPABASE_STORAGE_REF_PREFIX))
+  );
+}
+
+async function abrirPdfSeguro(v: any, download = false) {
+  try {
+    const url = await resolveDocumentoUrl({
+      provider: isSupabaseStorageRow(v) ? "supabase_storage" : "google_drive_byok",
+      bucket: v.storage_bucket || null,
+      path: v.storage_path || null,
+      driveFileId: v.drive_file_id || null,
+      driveViewLink: isSupabaseStorageRow(v) ? null : v.drive_view_link || null,
+      ttl: 300,
+      download,
+    });
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (e: any) {
+    toast.error(e.message || "Falha ao abrir PDF");
+  }
+}
 
 interface Props {
   ltcat: LtcatDocumento;
@@ -91,7 +117,7 @@ export default function LtcatPdfTab({ ltcat, canExport, canAssinar }: Props) {
     try {
       const ctx = await carregarContexto();
       const r = await generateAndUploadLtcatPdf(ctx);
-      toast.success(`PDF v${r.pdfVersao} gerado e salvo no Drive`);
+      toast.success(`PDF v${r.pdfVersao} gerado e salvo no Storage privado`);
       refetch();
       qc.invalidateQueries({ queryKey: ["ltcat-detalhe", ltcat.id] });
       qc.invalidateQueries({ queryKey: ["ltcat-revisoes", ltcat.id] });
@@ -167,15 +193,29 @@ export default function LtcatPdfTab({ ltcat, canExport, canAssinar }: Props) {
               <Info label="Última versão" value={`v${ultima.pdf_versao}${ultima.com_marca_dagua ? " (RASCUNHO)" : ""}`} />
               <Info label="Gerado em" value={new Date(ultima.gerado_em).toLocaleString("pt-BR")} />
               <Info label="Tamanho" value={ultima.tamanho_bytes ? `${Math.round(ultima.tamanho_bytes / 1024)} KB` : "—"} />
-              <Info label="Drive" value={
-                ultima.drive_view_link
-                  ? <a className="text-primary underline inline-flex items-center gap-1" href={ultima.drive_view_link} target="_blank" rel="noreferrer">abrir <ExternalLink className="h-3 w-3" /></a>
-                  : "—"
+              <Info label="Armazenamento" value={
+                isSupabaseStorageRow(ultima)
+                  ? <Badge variant="outline" className="text-[10px]">Supabase Storage (privado)</Badge>
+                  : <Badge variant="outline" className="text-[10px]">Google Drive (BYOK)</Badge>
               } />
+              <div className="md:col-span-2 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(ultima, false)}>
+                  <Eye className="h-3 w-3 mr-1" /> Visualizar PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(ultima, true)}>
+                  <Download className="h-3 w-3 mr-1" /> Baixar PDF
+                </Button>
+              </div>
               <div className="md:col-span-2">
                 <span className="text-xs text-muted-foreground">Hash SHA-256: </span>
                 <span className="font-mono text-[11px] break-all">{ultima.pdf_hash}</span>
               </div>
+              {isSupabaseStorageRow(ultima) && ultima.storage_path && (
+                <div className="md:col-span-2 text-[11px] text-muted-foreground">
+                  <span>Path: </span>
+                  <span className="font-mono break-all">{ultima.storage_bucket}/{ultima.storage_path}</span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-sm text-muted-foreground">Nenhum PDF gerado ainda.</div>
@@ -201,13 +241,14 @@ export default function LtcatPdfTab({ ltcat, canExport, canAssinar }: Props) {
                     <div className="text-[11px] text-muted-foreground font-mono break-all">{v.pdf_hash}</div>
                     <div className="text-[11px] text-muted-foreground">{new Date(v.gerado_em).toLocaleString("pt-BR")}</div>
                   </div>
-                  {v.drive_view_link && (
-                    <Button asChild size="sm" variant="outline">
-                      <a href={v.drive_view_link} target="_blank" rel="noreferrer">
-                        <Download className="h-3 w-3 mr-1" /> Abrir
-                      </a>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(v, false)}>
+                      <Eye className="h-3 w-3 mr-1" /> Abrir
                     </Button>
-                  )}
+                    <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(v, true)}>
+                      <Download className="h-3 w-3 mr-1" /> Baixar
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
