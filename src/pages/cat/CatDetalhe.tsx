@@ -337,7 +337,7 @@ export default function CatDetalhe() {
         historico: historico as any[],
         anexos: anexos as any[],
       });
-      toast.success(`PDF v${res.versao} gerado e enviado ao Google Drive`);
+      toast.success(`PDF v${res.versao} gerado e armazenado com segurança`);
       qc.invalidateQueries({ queryKey: ["cat-detalhe", id] });
       qc.invalidateQueries({ queryKey: ["cat-detalhe-anx", id] });
       qc.invalidateQueries({ queryKey: ["cat-detalhe-hist", id] });
