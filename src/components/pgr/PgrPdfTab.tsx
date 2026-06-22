@@ -8,11 +8,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck } from "lucide-react";
+import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { generateAndUploadPgrPdf } from "@/lib/pgrPdf";
+import { resolveDocumentoUrl } from "@/lib/secureStorage";
+
+async function abrirPdfVersao(v: any) {
+  try {
+    const provider =
+      (v.storage_provider as "supabase_storage" | "google_drive_byok") ||
+      (v.storage_path ? "supabase_storage" : "google_drive_byok");
+    const url = await resolveDocumentoUrl({
+      provider,
+      bucket: v.storage_bucket,
+      path: v.storage_path,
+      driveViewLink: v.drive_view_link,
+      ttl: 300,
+    });
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (e: any) {
+    toast.error(e?.message || "Falha ao abrir PDF");
+  }
+}
 
 interface Props {
   pgr: PgrDocumento;
