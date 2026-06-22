@@ -9,6 +9,13 @@ async function getAccessToken(): Promise<string> {
   const refreshToken = Deno.env.get("GOOGLE_OAUTH_REFRESH_TOKEN");
   if (!clientId || !clientSecret || !refreshToken) throw new Error("Google OAuth credentials missing");
 
+  // Diagnostic fingerprints (NEVER log full secret values)
+  const fp = (s: string) => `len=${s.length} tail=...${s.slice(-6)}`;
+  const clientIdSuffix = clientId.includes(".apps.googleusercontent.com")
+    ? "ends_with=.apps.googleusercontent.com"
+    : "ends_with=UNEXPECTED";
+  console.log(`[gdrive-token] OAuth attempt: client_id ${fp(clientId)} ${clientIdSuffix} | client_secret ${fp(clientSecret)} | refresh_token ${fp(refreshToken)} starts=${refreshToken.slice(0, 4)}...`);
+
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -20,7 +27,11 @@ async function getAccessToken(): Promise<string> {
     }),
   });
   const data = await res.json();
-  if (!res.ok || !data.access_token) throw new Error(`OAuth error: ${JSON.stringify(data)}`);
+  if (!res.ok || !data.access_token) {
+    console.error(`[gdrive-token] Google rejected token exchange. HTTP ${res.status}. Body: ${JSON.stringify(data)}. Used client_id tail=...${clientId.slice(-6)} refresh_token tail=...${refreshToken.slice(-6)}`);
+    throw new Error(`OAuth error: ${JSON.stringify(data)}`);
+  }
+  console.log(`[gdrive-token] OAuth success. access_token len=${data.access_token.length} expires_in=${data.expires_in}`);
   return data.access_token;
 }
 
