@@ -46,7 +46,34 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { uploadToDrive } from "@/lib/googleDriveStorage";
 import { generateAndUploadCatPdf, logCatPdfDownload } from "@/lib/catPdf";
+import { resolveDocumentoUrl } from "@/lib/secureStorage";
 import { FileDown, RefreshCw } from "lucide-react";
+
+async function abrirAnexoStorage(a: any) {
+  try {
+    const provider =
+      (a?.storage_provider as "supabase_storage" | "google_drive_byok") ||
+      (a?.storage_path ? "supabase_storage" : "google_drive_byok");
+    if (provider === "supabase_storage" && a?.storage_path) {
+      const url = await resolveDocumentoUrl({
+        provider,
+        bucket: a.storage_bucket,
+        path: a.storage_path,
+        ttl: 300,
+      });
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Legacy Google Drive fallback
+    if (a?.drive_file_id && !String(a.drive_file_id).startsWith("sb://")) {
+      window.open(`https://drive.google.com/file/d/${a.drive_file_id}/view`, "_blank", "noopener,noreferrer");
+      return;
+    }
+    throw new Error("Arquivo sem referência de storage válida");
+  } catch (e: any) {
+    toast.error(e?.message || "Falha ao abrir arquivo");
+  }
+}
 
 export default function CatDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -310,7 +337,7 @@ export default function CatDetalhe() {
         historico: historico as any[],
         anexos: anexos as any[],
       });
-      toast.success(`PDF v${res.versao} gerado e enviado ao Google Drive`);
+      toast.success(`PDF v${res.versao} gerado e armazenado com segurança`);
       qc.invalidateQueries({ queryKey: ["cat-detalhe", id] });
       qc.invalidateQueries({ queryKey: ["cat-detalhe-anx", id] });
       qc.invalidateQueries({ queryKey: ["cat-detalhe-hist", id] });
@@ -322,14 +349,21 @@ export default function CatDetalhe() {
   };
 
   const baixarPdf = async () => {
-    const link = (cat as any).pdf_drive_view_link;
-    if (!link) return;
+    // Localiza a versão vigente do PDF entre os anexos (pdf_cat)
+    const pdfAnexos = (anexos as any[]).filter((a) => a.categoria === "pdf_cat");
+    const vigente =
+      pdfAnexos.find((a) => a.drive_file_id === (cat as any).pdf_drive_file_id) ||
+      pdfAnexos[0];
+    if (!vigente) {
+      toast.error("Nenhum PDF disponível");
+      return;
+    }
     try {
       await logCatPdfDownload(cat.id);
     } catch (e) {
       console.warn("[cat-pdf] log download falhou", e);
     }
-    window.open(link, "_blank", "noopener");
+    await abrirAnexoStorage(vigente);
     qc.invalidateQueries({ queryKey: ["cat-detalhe-hist", id] });
   };
 
@@ -513,15 +547,14 @@ export default function CatDetalhe() {
                   <Badge variant="outline" className="text-[10px]">
                     {CATEGORIAS_ANEXO.find((c) => c.value === a.categoria)?.label || a.categoria}
                   </Badge>
-                  {a.drive_file_id && (
-                    <a
-                      href={`https://drive.google.com/file/d/${a.drive_file_id}/view`}
-                      target="_blank"
-                      rel="noreferrer"
+                  {(a.storage_path || (a.drive_file_id && !String(a.drive_file_id).startsWith("sb://"))) && (
+                    <button
+                      type="button"
+                      onClick={() => abrirAnexoStorage(a)}
                       className="text-xs text-primary hover:underline"
                     >
                       Abrir
-                    </a>
+                    </button>
                   )}
                   {canEdit && (
                     <Button size="sm" variant="ghost" onClick={() => removerAnexo(a)}>
@@ -566,7 +599,7 @@ export default function CatDetalhe() {
                 {(cat as any).pdf_versao ? "Gerar nova versão" : "Gerar PDF"}
               </MfaActionButton>
             )}
-            {(cat as any).pdf_drive_view_link && (
+            {((cat as any).pdf_versao || (anexos as any[]).some((a) => a.categoria === "pdf_cat")) && (
               <Button size="sm" variant="outline" onClick={baixarPdf}>
                 <FileDown className="h-4 w-4 mr-1" /> Abrir / baixar PDF
               </Button>
@@ -595,16 +628,17 @@ export default function CatDetalhe() {
                           <Badge className="text-[10px]" variant="secondary">Anterior</Badge>
                         )}
                         <span className="text-muted-foreground">{new Date(v.created_at).toLocaleString("pt-BR")}</span>
-                        {v.drive_file_id && (
-                          <a
-                            href={`https://drive.google.com/file/d/${v.drive_file_id}/view`}
-                            target="_blank"
-                            rel="noreferrer"
+                        {(v.storage_path || (v.drive_file_id && !String(v.drive_file_id).startsWith("sb://"))) && (
+                          <button
+                            type="button"
                             className="text-primary hover:underline"
-                            onClick={() => logCatPdfDownload(cat.id).catch(() => {})}
+                            onClick={async () => {
+                              logCatPdfDownload(cat.id).catch(() => {});
+                              await abrirAnexoStorage(v);
+                            }}
                           >
                             Abrir
-                          </a>
+                          </button>
                         )}
                       </li>
                     );
