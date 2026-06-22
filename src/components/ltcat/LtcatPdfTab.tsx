@@ -10,11 +10,37 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck } from "lucide-react";
+import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import { LtcatDocumento, LtcatStatus, isLtcatEditavel } from "@/lib/ltcatTypes";
 import { generateAndUploadLtcatPdf, LtcatPdfContext } from "@/lib/ltcatPdf";
+import { resolveDocumentoUrl, SUPABASE_STORAGE_REF_PREFIX } from "@/lib/secureStorage";
+
+function isSupabaseStorageRow(v: any): boolean {
+  return (
+    v?.storage_provider === "supabase_storage" ||
+    Boolean(v?.storage_path) ||
+    Boolean(v?.drive_file_id?.startsWith?.(SUPABASE_STORAGE_REF_PREFIX))
+  );
+}
+
+async function abrirPdfSeguro(v: any, download = false) {
+  try {
+    const url = await resolveDocumentoUrl({
+      provider: isSupabaseStorageRow(v) ? "supabase_storage" : "google_drive_byok",
+      bucket: v.storage_bucket || null,
+      path: v.storage_path || null,
+      driveFileId: v.drive_file_id || null,
+      driveViewLink: isSupabaseStorageRow(v) ? null : v.drive_view_link || null,
+      ttl: 300,
+      download,
+    });
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (e: any) {
+    toast.error(e.message || "Falha ao abrir PDF");
+  }
+}
 
 interface Props {
   ltcat: LtcatDocumento;
