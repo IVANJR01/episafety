@@ -154,6 +154,32 @@ function ProtectedRoute() {
     );
   }
 
+  // Usuário ativo mas sem nenhuma permissão efetiva → tela de bloqueio explícita.
+  // Critério: não é Super Admin, não é Principal e modulos_permitidos está vazio.
+  const hasNoEffectiveAccess =
+    !isSuperAdmin && !isPrincipal && (!modulosPermitidos || modulosPermitidos.length === 0);
+
+  if (hasNoEffectiveAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4 max-w-md p-8">
+          <div className="text-5xl">🔒</div>
+          <h1 className="text-xl font-bold">Acesso não autorizado</h1>
+          <p className="text-muted-foreground text-sm">
+            Seu usuário (<strong>{user.email}</strong>) não possui permissões liberadas para acessar o sistema.
+            Contate o administrador.
+          </p>
+          <button
+            onClick={signOut}
+            className="mt-4 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // If user only has video_treinamentos permission, show portal
   const isVideoOnly = !isSuperAdmin && !isPrincipal && modulosPermitidos.length > 0 &&
     modulosPermitidos.every(p => p.startsWith("video_treinamentos"));
