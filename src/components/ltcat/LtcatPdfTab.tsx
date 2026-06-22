@@ -241,13 +241,14 @@ export default function LtcatPdfTab({ ltcat, canExport, canAssinar }: Props) {
                     <div className="text-[11px] text-muted-foreground font-mono break-all">{v.pdf_hash}</div>
                     <div className="text-[11px] text-muted-foreground">{new Date(v.gerado_em).toLocaleString("pt-BR")}</div>
                   </div>
-                  {v.drive_view_link && (
-                    <Button asChild size="sm" variant="outline">
-                      <a href={v.drive_view_link} target="_blank" rel="noreferrer">
-                        <Download className="h-3 w-3 mr-1" /> Abrir
-                      </a>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(v, false)}>
+                      <Eye className="h-3 w-3 mr-1" /> Abrir
                     </Button>
-                  )}
+                    <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(v, true)}>
+                      <Download className="h-3 w-3 mr-1" /> Baixar
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
