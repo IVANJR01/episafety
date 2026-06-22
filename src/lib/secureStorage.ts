@@ -244,9 +244,9 @@ export async function openDocumentoSeguro(opts: {
 }): Promise<string> {
   const storageRef = parseSupabaseStorageRef(opts.driveFileId);
   const provider: StorageProvider =
-    opts.provider === "google_drive_byok" && !opts.path && !storageRef
-      ? "google_drive_byok"
-      : "supabase_storage";
+    opts.provider === "supabase_storage" || opts.path || storageRef
+      ? "supabase_storage"
+      : "google_drive_byok";
 
   const url = await resolveDocumentoUrl({
     provider,
