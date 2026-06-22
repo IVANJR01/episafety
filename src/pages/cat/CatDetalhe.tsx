@@ -354,7 +354,16 @@ export default function CatDetalhe() {
     const pdfAnexos = (anexos as any[]).filter((a) => a.categoria === "pdf_cat");
     const vigente =
       pdfAnexos.find((a) => a.drive_file_id === (cat as any).pdf_drive_file_id) ||
-      pdfAnexos[0];
+      pdfAnexos[0] ||
+      ((cat as any).pdf_drive_file_id || (cat as any).pdf_drive_view_link
+        ? {
+            storage_provider: String((cat as any).pdf_drive_file_id || "").startsWith("sb://")
+              ? "supabase_storage"
+              : "google_drive_byok",
+            drive_file_id: (cat as any).pdf_drive_file_id,
+            drive_view_link: (cat as any).pdf_drive_view_link,
+          }
+        : null);
     if (!vigente) {
       toast.error("Nenhum PDF disponível");
       return;
@@ -548,7 +557,7 @@ export default function CatDetalhe() {
                   <Badge variant="outline" className="text-[10px]">
                     {CATEGORIAS_ANEXO.find((c) => c.value === a.categoria)?.label || a.categoria}
                   </Badge>
-                  {(a.storage_path || (a.drive_file_id && !String(a.drive_file_id).startsWith("sb://"))) && (
+                  {hasDocumentoSeguro(a) && (
                     <button
                       type="button"
                       onClick={() => abrirAnexoStorage(a)}
@@ -629,7 +638,7 @@ export default function CatDetalhe() {
                           <Badge className="text-[10px]" variant="secondary">Anterior</Badge>
                         )}
                         <span className="text-muted-foreground">{new Date(v.created_at).toLocaleString("pt-BR")}</span>
-                        {(v.storage_path || (v.drive_file_id && !String(v.drive_file_id).startsWith("sb://"))) && (
+                        {hasDocumentoSeguro(v) && (
                           <button
                             type="button"
                             className="text-primary hover:underline"
