@@ -3,7 +3,7 @@
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadToDrive } from "@/lib/googleDriveStorage";
+import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { PppDocumento, PPP_STATUS_LABEL, PPP_MOTIVO_LABEL } from "@/lib/pppTypes";
 
 export interface PppPdfContext {
@@ -275,16 +275,23 @@ export async function generateAndUploadPppPdf(ctx: PppPdfContext): Promise<Gener
   const cpfSlug = (ctx.funcionario?.cpf || ctx.funcionario?.id || "anon").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 20);
   const funcSlug = (ctx.funcionario?.nome || "func").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 30);
   const fileName = `PPP_${funcSlug}_v${pp.versao}_pdf${proxVersao}${comMarca ? "_RASCUNHO" : ""}.pdf`;
-  const folder = `PPP/${cpfSlug}/v${pp.versao}/Documento`;
 
-  const file = new File([blob], fileName, { type: "application/pdf" });
-  const up = await uploadToDrive(file, folder, fileName, { makePublic: false });
+  const up = await uploadDocumentoSeguro({
+    empresa_id: (pp as any).empresa_id,
+    kind: "pdf",
+    modulo: "ppp",
+    documento_id: pp.id,
+    versao: proxVersao,
+    fileName,
+    blob,
+    driveFolderFallback: `PPP/${cpfSlug}/v${pp.versao}/Documento`,
+  });
 
   const { data, error } = await (supabase.rpc as any)("ppp_pdf_registrar", {
     _ppp_id: pp.id,
-    _drive_file_id: up.fileId,
-    _drive_view_link: up.webViewLink,
-    _drive_path: folder,
+    _drive_file_id: up.ref,
+    _drive_view_link: up.viewLink,
+    _drive_path: up.path,
     _nome_arquivo: fileName,
     _tamanho_bytes: blob.size,
     _pdf_hash: hash,
@@ -295,8 +302,8 @@ export async function generateAndUploadPppPdf(ctx: PppPdfContext): Promise<Gener
   return {
     pdfVersao: (data as any)?.pdf_versao ?? proxVersao,
     hash,
-    fileId: up.fileId,
-    viewLink: up.webViewLink,
+    fileId: up.ref,
+    viewLink: up.viewLink || up.ref,
     fileName,
     blob,
   };

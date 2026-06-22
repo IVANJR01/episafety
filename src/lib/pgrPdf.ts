@@ -1,9 +1,10 @@
-// PGR Parte 5 — PDF técnico interno + assinatura visual + QR Code + Drive BYOK
-// Nada de ICP-Brasil. Hash SHA-256 + assinatura visual + QR de validação interna.
+// PGR Parte 5 — PDF técnico interno + assinatura visual + QR Code
+// Storage: Supabase Storage privado (default) ou Google Drive BYOK (opcional).
+// Banco recebe apenas hash SHA-256 + bucket/path + tamanho — nunca o binário.
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadToDrive } from "@/lib/googleDriveStorage";
+import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { PgrDocumento, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
 import { CLASSE_LABEL as CLASSIF_LABEL, classificarRisco as classificarMatriz, PgrClasse } from "@/lib/pgrMatriz";
 const ACAO_CLASSE_LABEL = CLASSIF_LABEL;
@@ -379,16 +380,23 @@ export async function generateAndUploadPgrPdf(ctx: PgrPdfContext): Promise<Gener
   const empSlug = (ctx.empresaNome || "empresa").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 30);
   const uniSlug = (ctx.unidadeNome || "matriz").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 30);
   const fileName = `PGR_${empSlug}_${uniSlug}_v${pgr.versao}_pdf${proxVersao}${comMarca ? "_RASCUNHO" : ""}.pdf`;
-  const folder = `PGR/v${pgr.versao}/Documento`;
 
-  const file = new File([blob], fileName, { type: "application/pdf" });
-  const up = await uploadToDrive(file, folder, fileName, { makePublic: false });
+  const up = await uploadDocumentoSeguro({
+    empresa_id: (pgr as any).empresa_id,
+    kind: "pdf",
+    modulo: "pgr",
+    documento_id: pgr.id,
+    versao: proxVersao,
+    fileName,
+    blob,
+    driveFolderFallback: `PGR/v${pgr.versao}/Documento`,
+  });
 
   const { data, error } = await (supabase.rpc as any)("pgr_pdf_registrar", {
     _pgr_id: pgr.id,
-    _drive_file_id: up.fileId,
-    _drive_view_link: up.webViewLink,
-    _drive_path: folder,
+    _drive_file_id: up.ref,
+    _drive_view_link: up.viewLink,
+    _drive_path: up.path,
     _nome_arquivo: fileName,
     _tamanho_bytes: blob.size,
     _pdf_hash: hash,
@@ -399,8 +407,8 @@ export async function generateAndUploadPgrPdf(ctx: PgrPdfContext): Promise<Gener
   return {
     pdfVersao: (data as any)?.pdf_versao ?? proxVersao,
     hash,
-    fileId: up.fileId,
-    viewLink: up.webViewLink,
+    fileId: up.ref,
+    viewLink: up.viewLink || up.ref,
     fileName,
     blob,
   };

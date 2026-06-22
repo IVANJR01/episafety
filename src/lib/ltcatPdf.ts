@@ -3,7 +3,7 @@
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadToDrive } from "@/lib/googleDriveStorage";
+import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import {
   LtcatDocumento, LTCAT_STATUS_LABEL, LTCAT_MOTIVO_LABEL,
   LTCAT_CONCLUSAO_LABEL, LTCAT_ENQUADRAMENTO_LABEL,
@@ -341,16 +341,23 @@ export async function generateAndUploadLtcatPdf(ctx: LtcatPdfContext): Promise<G
   const empSlug = (ctx.empresaNome || "empresa").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 30);
   const uniSlug = (ctx.unidadeNome || "matriz").replace(/[^A-Za-z0-9]+/g, "_").slice(0, 30);
   const fileName = `LTCAT_${empSlug}_${uniSlug}_v${lt.versao}_pdf${proxVersao}${comMarca ? "_RASCUNHO" : ""}.pdf`;
-  const folder = `LTCAT/v${lt.versao}/Documento`;
 
-  const file = new File([blob], fileName, { type: "application/pdf" });
-  const up = await uploadToDrive(file, folder, fileName, { makePublic: false });
+  const up = await uploadDocumentoSeguro({
+    empresa_id: (lt as any).empresa_id,
+    kind: "pdf",
+    modulo: "ltcat",
+    documento_id: lt.id,
+    versao: proxVersao,
+    fileName,
+    blob,
+    driveFolderFallback: `LTCAT/v${lt.versao}/Documento`,
+  });
 
   const { data, error } = await (supabase.rpc as any)("ltcat_pdf_registrar", {
     _ltcat_id: lt.id,
-    _drive_file_id: up.fileId,
-    _drive_view_link: up.webViewLink,
-    _drive_path: folder,
+    _drive_file_id: up.ref,
+    _drive_view_link: up.viewLink,
+    _drive_path: up.path,
     _nome_arquivo: fileName,
     _tamanho_bytes: blob.size,
     _pdf_hash: hash,
@@ -361,8 +368,8 @@ export async function generateAndUploadLtcatPdf(ctx: LtcatPdfContext): Promise<G
   return {
     pdfVersao: (data as any)?.pdf_versao ?? proxVersao,
     hash,
-    fileId: up.fileId,
-    viewLink: up.webViewLink,
+    fileId: up.ref,
+    viewLink: up.viewLink || up.ref,
     fileName,
     blob,
   };

@@ -2,7 +2,7 @@
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadToDrive } from "@/lib/googleDriveStorage";
+import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import {
   CatRow,
   STATUS_LABEL,
@@ -391,18 +391,25 @@ export async function generateAndUploadCatPdf(ctx: CatPdfContext): Promise<Gener
   // 3. Reembala incluindo o hash no rodapé final em uma página adicional? Não — para manter hash imutável,
   //    o hash é do PDF gerado e gravado externamente. Não voltamos a alterar o blob.
   const fileName = `CAT_${cat.numero_cat || cat.id.slice(0, 8)}_v${versaoPrev}.pdf`;
-  const folder = `CAT/${cat.numero_cat || cat.id}`;
 
-  // 4. Upload Drive BYOK (pasta da empresa via gdrive-token)
-  const file = new File([blob], fileName, { type: "application/pdf" });
-  const up = await uploadToDrive(file, folder, fileName);
+  // 4. Upload via storage seguro (Supabase Storage privado por padrão)
+  const up = await uploadDocumentoSeguro({
+    empresa_id: (cat as any).empresa_id,
+    kind: "pdf",
+    modulo: "cat",
+    documento_id: cat.id,
+    versao: versaoPrev,
+    fileName,
+    blob,
+    driveFolderFallback: `CAT/${cat.numero_cat || cat.id}`,
+  });
 
   // 5. Registra no banco via RPC com tenant guard
   const { data, error } = await (supabase.rpc as any)("cat_registrar_pdf", {
     _cat_id: cat.id,
-    _drive_file_id: up.fileId,
-    _drive_view_link: up.webViewLink,
-    _drive_path: folder,
+    _drive_file_id: up.ref,
+    _drive_view_link: up.viewLink,
+    _drive_path: up.path,
     _nome_arquivo: fileName,
     _tamanho_bytes: blob.size,
     _pdf_hash: hash,
@@ -410,7 +417,7 @@ export async function generateAndUploadCatPdf(ctx: CatPdfContext): Promise<Gener
   if (error) throw error;
   const versao = (data as any)?.versao ?? versaoPrev;
 
-  return { versao, fileId: up.fileId, viewLink: up.webViewLink, hash, fileName, blob };
+  return { versao, fileId: up.ref, viewLink: up.viewLink || up.ref, hash, fileName, blob };
 }
 
 /** Marca download no histórico (auditoria). */
