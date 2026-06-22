@@ -336,10 +336,16 @@ async function coletarInput(eventoId: string): Promise<S2210BuildInput> {
     .select("nome, cpf, matricula, empresa_id").eq("id", cat.funcionario_id).maybeSingle();
   if (!funcionario) throw new Error("Funcionário da CAT não encontrado");
   const { data: cfg } = await (supabase.from as any)("esocial_config")
-    .select("cnpj_raiz, tp_amb, ver_proc").eq("empresa_id", evento.empresa_id).maybeSingle();
+    .select("nr_insc, cnpj_raiz, tp_insc, tp_amb, ver_proc").eq("empresa_id", evento.empresa_id).maybeSingle();
   const { data: emp } = await (supabase.from as any)("empresa_config")
     .select("nome, cnpj").eq("id", evento.empresa_id).maybeSingle();
-  const empresa = { cnpj: cfg?.cnpj_raiz || emp?.cnpj || null, razao_social: emp?.nome || null };
+  // Prioriza nr_insc (14 dígitos) do esocial_config; fallback p/ cnpj da empresa_config; último p/ cnpj_raiz (8 d).
+  const cnpjFinal =
+    (cfg?.nr_insc && onlyDigits(cfg.nr_insc).length === 14 ? cfg.nr_insc : null) ||
+    (emp?.cnpj && onlyDigits(emp.cnpj).length === 14 ? emp.cnpj : null) ||
+    cfg?.cnpj_raiz ||
+    null;
+  const empresa = { cnpj: cnpjFinal, razao_social: emp?.nome || null };
 
   const [{ data: cid }, { data: municipio }, { data: parte }, { data: agente }, { data: natureza }, { data: situacao }] = await Promise.all([
     cat.cid_codigo
