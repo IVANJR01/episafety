@@ -193,15 +193,29 @@ export default function LtcatPdfTab({ ltcat, canExport, canAssinar }: Props) {
               <Info label="Última versão" value={`v${ultima.pdf_versao}${ultima.com_marca_dagua ? " (RASCUNHO)" : ""}`} />
               <Info label="Gerado em" value={new Date(ultima.gerado_em).toLocaleString("pt-BR")} />
               <Info label="Tamanho" value={ultima.tamanho_bytes ? `${Math.round(ultima.tamanho_bytes / 1024)} KB` : "—"} />
-              <Info label="Drive" value={
-                ultima.drive_view_link
-                  ? <a className="text-primary underline inline-flex items-center gap-1" href={ultima.drive_view_link} target="_blank" rel="noreferrer">abrir <ExternalLink className="h-3 w-3" /></a>
-                  : "—"
+              <Info label="Armazenamento" value={
+                isSupabaseStorageRow(ultima)
+                  ? <Badge variant="outline" className="text-[10px]">Supabase Storage (privado)</Badge>
+                  : <Badge variant="outline" className="text-[10px]">Google Drive (BYOK)</Badge>
               } />
+              <div className="md:col-span-2 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(ultima, false)}>
+                  <Eye className="h-3 w-3 mr-1" /> Visualizar PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => abrirPdfSeguro(ultima, true)}>
+                  <Download className="h-3 w-3 mr-1" /> Baixar PDF
+                </Button>
+              </div>
               <div className="md:col-span-2">
                 <span className="text-xs text-muted-foreground">Hash SHA-256: </span>
                 <span className="font-mono text-[11px] break-all">{ultima.pdf_hash}</span>
               </div>
+              {isSupabaseStorageRow(ultima) && ultima.storage_path && (
+                <div className="md:col-span-2 text-[11px] text-muted-foreground">
+                  <span>Path: </span>
+                  <span className="font-mono break-all">{ultima.storage_bucket}/{ultima.storage_path}</span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-sm text-muted-foreground">Nenhum PDF gerado ainda.</div>
