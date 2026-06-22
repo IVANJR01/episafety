@@ -223,11 +223,9 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
                     <div className="text-[11px] text-muted-foreground font-mono break-all">{v.pdf_hash}</div>
                     <div className="text-[11px] text-muted-foreground">{new Date(v.gerado_em).toLocaleString("pt-BR")}</div>
                   </div>
-                  {v.drive_view_link && (
-                    <Button asChild size="sm" variant="outline">
-                      <a href={v.drive_view_link} target="_blank" rel="noreferrer">
-                        <Download className="h-3 w-3 mr-1" /> Abrir
-                      </a>
+                  {(v.storage_path || v.drive_view_link) && (
+                    <Button size="sm" variant="outline" onClick={() => abrirPdfVersao(v)}>
+                      <Eye className="h-3 w-3 mr-1" /> Visualizar
                     </Button>
                   )}
                 </li>
