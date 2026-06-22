@@ -149,6 +149,11 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
               <FileText className="h-4 w-4" /> PDF técnico interno
             </CardTitle>
             <div className="flex flex-wrap gap-2">
+              {ultima && (
+                <Button size="sm" variant="outline" onClick={() => abrirPdfVersao(ultima)}>
+                  <Eye className="h-4 w-4 mr-1" /> Visualizar PDF
+                </Button>
+              )}
               {!bloqueado && canExport && (
                 <MfaActionButton size="sm" onClick={handleGerar} disabled={busy}>
                   <RefreshCw className={`h-4 w-4 mr-1 ${busy ? "animate-spin" : ""}`} />
