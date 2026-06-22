@@ -213,8 +213,9 @@ export async function resolveDocumentoUrl(opts: {
   download?: boolean;
 }): Promise<string> {
   const storageRef = parseSupabaseStorageRef(opts.driveFileId);
+  const hasStorageRef = Boolean(opts.driveFileId?.startsWith(SUPABASE_STORAGE_REF_PREFIX));
   const isSupabaseStorage =
-    opts.provider === "supabase_storage" || Boolean(opts.path) || Boolean(storageRef);
+    opts.provider === "supabase_storage" || Boolean(opts.path) || hasStorageRef;
 
   if (isSupabaseStorage) {
     const path = opts.path || storageRef?.path;
@@ -243,8 +244,9 @@ export async function openDocumentoSeguro(opts: {
   download?: boolean;
 }): Promise<string> {
   const storageRef = parseSupabaseStorageRef(opts.driveFileId);
+  const hasStorageRef = Boolean(opts.driveFileId?.startsWith(SUPABASE_STORAGE_REF_PREFIX));
   const provider: StorageProvider =
-    opts.provider === "supabase_storage" || opts.path || storageRef
+    opts.provider === "supabase_storage" || opts.path || hasStorageRef
       ? "supabase_storage"
       : "google_drive_byok";
 
