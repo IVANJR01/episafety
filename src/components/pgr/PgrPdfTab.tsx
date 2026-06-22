@@ -188,9 +188,11 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
               <Info label="Última versão" value={`v${ultima.pdf_versao}${ultima.com_marca_dagua ? " (RASCUNHO)" : ""}`} />
               <Info label="Gerado em" value={new Date(ultima.gerado_em).toLocaleString("pt-BR")} />
               <Info label="Tamanho" value={ultima.tamanho_bytes ? `${Math.round(ultima.tamanho_bytes / 1024)} KB` : "—"} />
-              <Info label="Drive" value={
-                ultima.drive_view_link
-                  ? <a className="text-primary underline inline-flex items-center gap-1" href={ultima.drive_view_link} target="_blank" rel="noreferrer">abrir <ExternalLink className="h-3 w-3" /></a>
+              <Info label="Armazenamento" value={
+                ultima.storage_provider === "supabase_storage" || ultima.storage_path
+                  ? <span className="text-xs">Supabase Storage (privado)</span>
+                  : ultima.drive_view_link
+                  ? <a className="text-primary underline inline-flex items-center gap-1" href={ultima.drive_view_link} target="_blank" rel="noreferrer">Drive <ExternalLink className="h-3 w-3" /></a>
                   : "—"
               } />
               <div className="md:col-span-2">
