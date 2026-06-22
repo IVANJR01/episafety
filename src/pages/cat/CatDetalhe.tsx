@@ -46,30 +46,31 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { uploadToDrive } from "@/lib/googleDriveStorage";
 import { generateAndUploadCatPdf, logCatPdfDownload } from "@/lib/catPdf";
-import { resolveDocumentoUrl } from "@/lib/secureStorage";
+import { openDocumentoSeguro } from "@/lib/secureStorage";
 import { FileDown, RefreshCw } from "lucide-react";
+
+function hasDocumentoSeguro(a: any): boolean {
+  const driveFileId = String(a?.drive_file_id ?? a?.pdf_drive_file_id ?? "");
+  return Boolean(
+    a?.storage_provider === "supabase_storage" ||
+      a?.storage_path ||
+      driveFileId.startsWith("sb://") ||
+      a?.drive_view_link ||
+      a?.pdf_drive_view_link ||
+      (a?.storage_provider === "google_drive_byok" && driveFileId),
+  );
+}
 
 async function abrirAnexoStorage(a: any) {
   try {
-    const provider =
-      (a?.storage_provider as "supabase_storage" | "google_drive_byok") ||
-      (a?.storage_path ? "supabase_storage" : "google_drive_byok");
-    if (provider === "supabase_storage" && a?.storage_path) {
-      const url = await resolveDocumentoUrl({
-        provider,
-        bucket: a.storage_bucket,
-        path: a.storage_path,
-        ttl: 300,
-      });
-      window.open(url, "_blank", "noopener,noreferrer");
-      return;
-    }
-    // Legacy Google Drive fallback
-    if (a?.drive_file_id && !String(a.drive_file_id).startsWith("sb://")) {
-      window.open(`https://drive.google.com/file/d/${a.drive_file_id}/view`, "_blank", "noopener,noreferrer");
-      return;
-    }
-    throw new Error("Arquivo sem referência de storage válida");
+    await openDocumentoSeguro({
+      provider: a?.storage_provider,
+      bucket: a?.storage_bucket,
+      path: a?.storage_path,
+      driveFileId: a?.drive_file_id ?? a?.pdf_drive_file_id,
+      driveViewLink: a?.drive_view_link ?? a?.pdf_drive_view_link,
+      ttl: 300,
+    });
   } catch (e: any) {
     toast.error(e?.message || "Falha ao abrir arquivo");
   }
