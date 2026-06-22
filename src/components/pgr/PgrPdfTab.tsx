@@ -8,11 +8,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck } from "lucide-react";
+import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { generateAndUploadPgrPdf } from "@/lib/pgrPdf";
+import { resolveDocumentoUrl } from "@/lib/secureStorage";
+
+async function abrirPdfVersao(v: any) {
+  try {
+    const provider =
+      (v.storage_provider as "supabase_storage" | "google_drive_byok") ||
+      (v.storage_path ? "supabase_storage" : "google_drive_byok");
+    const url = await resolveDocumentoUrl({
+      provider,
+      bucket: v.storage_bucket,
+      path: v.storage_path,
+      driveViewLink: v.drive_view_link,
+      ttl: 300,
+    });
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (e: any) {
+    toast.error(e?.message || "Falha ao abrir PDF");
+  }
+}
 
 interface Props {
   pgr: PgrDocumento;
@@ -130,6 +149,11 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
               <FileText className="h-4 w-4" /> PDF técnico interno
             </CardTitle>
             <div className="flex flex-wrap gap-2">
+              {ultima && (
+                <Button size="sm" variant="outline" onClick={() => abrirPdfVersao(ultima)}>
+                  <Eye className="h-4 w-4 mr-1" /> Visualizar PDF
+                </Button>
+              )}
               {!bloqueado && canExport && (
                 <MfaActionButton size="sm" onClick={handleGerar} disabled={busy}>
                   <RefreshCw className={`h-4 w-4 mr-1 ${busy ? "animate-spin" : ""}`} />
@@ -164,9 +188,11 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
               <Info label="Última versão" value={`v${ultima.pdf_versao}${ultima.com_marca_dagua ? " (RASCUNHO)" : ""}`} />
               <Info label="Gerado em" value={new Date(ultima.gerado_em).toLocaleString("pt-BR")} />
               <Info label="Tamanho" value={ultima.tamanho_bytes ? `${Math.round(ultima.tamanho_bytes / 1024)} KB` : "—"} />
-              <Info label="Drive" value={
-                ultima.drive_view_link
-                  ? <a className="text-primary underline inline-flex items-center gap-1" href={ultima.drive_view_link} target="_blank" rel="noreferrer">abrir <ExternalLink className="h-3 w-3" /></a>
+              <Info label="Armazenamento" value={
+                ultima.storage_provider === "supabase_storage" || ultima.storage_path
+                  ? <span className="text-xs">Supabase Storage (privado)</span>
+                  : ultima.drive_view_link
+                  ? <a className="text-primary underline inline-flex items-center gap-1" href={ultima.drive_view_link} target="_blank" rel="noreferrer">Drive <ExternalLink className="h-3 w-3" /></a>
                   : "—"
               } />
               <div className="md:col-span-2">
@@ -197,11 +223,9 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
                     <div className="text-[11px] text-muted-foreground font-mono break-all">{v.pdf_hash}</div>
                     <div className="text-[11px] text-muted-foreground">{new Date(v.gerado_em).toLocaleString("pt-BR")}</div>
                   </div>
-                  {v.drive_view_link && (
-                    <Button asChild size="sm" variant="outline">
-                      <a href={v.drive_view_link} target="_blank" rel="noreferrer">
-                        <Download className="h-3 w-3 mr-1" /> Abrir
-                      </a>
+                  {(v.storage_path || v.drive_view_link) && (
+                    <Button size="sm" variant="outline" onClick={() => abrirPdfVersao(v)}>
+                      <Eye className="h-3 w-3 mr-1" /> Visualizar
                     </Button>
                   )}
                 </li>
