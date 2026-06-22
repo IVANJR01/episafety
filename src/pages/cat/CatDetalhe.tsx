@@ -599,7 +599,7 @@ export default function CatDetalhe() {
                 {(cat as any).pdf_versao ? "Gerar nova versão" : "Gerar PDF"}
               </MfaActionButton>
             )}
-            {(cat as any).pdf_drive_view_link && (
+            {((cat as any).pdf_versao || (anexos as any[]).some((a) => a.categoria === "pdf_cat")) && (
               <Button size="sm" variant="outline" onClick={baixarPdf}>
                 <FileDown className="h-4 w-4 mr-1" /> Abrir / baixar PDF
               </Button>
