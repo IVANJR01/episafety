@@ -11,6 +11,7 @@ import { uploadToDrive } from "@/lib/googleDriveStorage";
 export type StorageProvider = "supabase_storage" | "google_drive_byok";
 
 export const SST_BUCKET = "sst-documentos";
+export const SUPABASE_STORAGE_REF_PREFIX = "sb://";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -95,6 +96,17 @@ export interface UploadDocumentoResult {
   viewLink: string | null;
   hash: string;
   size: number;
+}
+
+export function parseSupabaseStorageRef(ref?: string | null): {
+  bucket: string;
+  path: string;
+} | null {
+  if (!ref?.startsWith(SUPABASE_STORAGE_REF_PREFIX)) return null;
+  const rest = ref.slice(SUPABASE_STORAGE_REF_PREFIX.length);
+  const slash = rest.indexOf("/");
+  if (slash <= 0 || slash === rest.length - 1) return null;
+  return { bucket: rest.slice(0, slash), path: rest.slice(slash + 1) };
 }
 
 /** Faz upload do PDF/XML no provider correto e devolve a referência canônica. */
@@ -195,19 +207,53 @@ export async function resolveDocumentoUrl(opts: {
   provider: StorageProvider;
   bucket?: string | null;
   path?: string | null;
+  driveFileId?: string | null;
   driveViewLink?: string | null;
   ttl?: number;
   download?: boolean;
 }): Promise<string> {
-  if (opts.provider === "supabase_storage") {
-    if (!opts.path) throw new Error("Path ausente para Supabase Storage");
+  const storageRef = parseSupabaseStorageRef(opts.driveFileId);
+  const isSupabaseStorage =
+    opts.provider === "supabase_storage" || Boolean(opts.path) || Boolean(storageRef);
+
+  if (isSupabaseStorage) {
+    const path = opts.path || storageRef?.path;
+    if (!path) throw new Error("Path ausente para Supabase Storage");
     return getSignedUrlSeguro({
-      bucket: opts.bucket || SST_BUCKET,
-      path: opts.path,
+      bucket: opts.bucket || storageRef?.bucket || SST_BUCKET,
+      path,
       ttl: opts.ttl,
       download: opts.download,
     });
   }
   if (!opts.driveViewLink) throw new Error("Link do Drive ausente");
   return opts.driveViewLink;
+}
+
+export async function openDocumentoSeguro(opts: {
+  provider?: StorageProvider | string | null;
+  bucket?: string | null;
+  path?: string | null;
+  driveFileId?: string | null;
+  driveViewLink?: string | null;
+  ttl?: number;
+  download?: boolean;
+}): Promise<string> {
+  const storageRef = parseSupabaseStorageRef(opts.driveFileId);
+  const provider: StorageProvider =
+    opts.provider === "google_drive_byok" && !opts.path && !storageRef
+      ? "google_drive_byok"
+      : "supabase_storage";
+
+  const url = await resolveDocumentoUrl({
+    provider,
+    bucket: opts.bucket || storageRef?.bucket || null,
+    path: opts.path || storageRef?.path || null,
+    driveFileId: opts.driveFileId,
+    driveViewLink: opts.driveViewLink,
+    ttl: opts.ttl ?? 300,
+    download: opts.download,
+  });
+  window.open(url, "_blank", "noopener,noreferrer");
+  return url;
 }
