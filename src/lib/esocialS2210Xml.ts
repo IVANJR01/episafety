@@ -339,11 +339,15 @@ async function coletarInput(eventoId: string): Promise<S2210BuildInput> {
     .select("nr_insc, cnpj_raiz, tp_insc, tp_amb, ver_proc").eq("empresa_id", evento.empresa_id).maybeSingle();
   const { data: emp } = await (supabase.from as any)("empresa_config")
     .select("nome, cnpj").eq("id", evento.empresa_id).maybeSingle();
-  // Prioriza nr_insc (14 dígitos) do esocial_config; fallback p/ cnpj da empresa_config; último p/ cnpj_raiz (8 d).
+  // Normaliza (remove máscara, espaços, qualquer não-dígito) antes de validar.
+  // Prioridade quando tp_insc=1 (CNPJ): nr_insc(14) > empresa_config.cnpj(14) > cnpj_raiz(8, apenas fallback inválido p/ checksum).
+  const nrInscDig = onlyDigits(cfg?.nr_insc);
+  const empCnpjDig = onlyDigits(emp?.cnpj);
+  const raizDig = onlyDigits(cfg?.cnpj_raiz);
   const cnpjFinal =
-    (cfg?.nr_insc && onlyDigits(cfg.nr_insc).length === 14 ? cfg.nr_insc : null) ||
-    (emp?.cnpj && onlyDigits(emp.cnpj).length === 14 ? emp.cnpj : null) ||
-    cfg?.cnpj_raiz ||
+    (nrInscDig.length === 14 ? nrInscDig : null) ||
+    (empCnpjDig.length === 14 ? empCnpjDig : null) ||
+    (raizDig.length === 14 ? raizDig : null) ||
     null;
   const empresa = { cnpj: cnpjFinal, razao_social: emp?.nome || null };
 
