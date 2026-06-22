@@ -547,15 +547,14 @@ export default function CatDetalhe() {
                   <Badge variant="outline" className="text-[10px]">
                     {CATEGORIAS_ANEXO.find((c) => c.value === a.categoria)?.label || a.categoria}
                   </Badge>
-                  {a.drive_file_id && (
-                    <a
-                      href={`https://drive.google.com/file/d/${a.drive_file_id}/view`}
-                      target="_blank"
-                      rel="noreferrer"
+                  {(a.storage_path || (a.drive_file_id && !String(a.drive_file_id).startsWith("sb://"))) && (
+                    <button
+                      type="button"
+                      onClick={() => abrirAnexoStorage(a)}
                       className="text-xs text-primary hover:underline"
                     >
                       Abrir
-                    </a>
+                    </button>
                   )}
                   {canEdit && (
                     <Button size="sm" variant="ghost" onClick={() => removerAnexo(a)}>
