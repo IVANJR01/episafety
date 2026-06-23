@@ -96,7 +96,7 @@ export default function S2240Mapeamentos() {
   });
 
   // Agentes do PPP (na empresa ativa)
-  const { data: pppAgentes = [] } = useQuery({
+  const { data: pppAgentes = [], refetch: refetchPpp, isFetching: fetchingPpp } = useQuery({
     queryKey: ["s2240-ppp-agentes", empresaId],
     queryFn: async () => {
       if (!empresaId) return [];
@@ -107,10 +107,12 @@ export default function S2240Mapeamentos() {
       return data || [];
     },
     enabled: canView && !!empresaId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   // Agentes do LTCAT (na empresa ativa)
-  const { data: ltcatAgentes = [] } = useQuery({
+  const { data: ltcatAgentes = [], refetch: refetchLtcat } = useQuery({
     queryKey: ["s2240-ltcat-agentes", empresaId],
     queryFn: async () => {
       if (!empresaId) return [];
@@ -121,10 +123,12 @@ export default function S2240Mapeamentos() {
       return data || [];
     },
     enabled: canView && !!empresaId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   // Mapeamentos existentes
-  const { data: mapeamentos = [] } = useQuery({
+  const { data: mapeamentos = [], refetch: refetchMap } = useQuery({
     queryKey: ["s2240-map", empresaId],
     queryFn: async () => {
       if (!empresaId) return [];
@@ -134,7 +138,11 @@ export default function S2240Mapeamentos() {
       return (data || []) as Mapeamento[];
     },
     enabled: canView && !!empresaId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
+
+  const refetchAll = () => { refetchPpp(); refetchLtcat(); refetchMap(); };
 
   // Agregação por nome de agente
   const agentes: AgenteAggregado[] = useMemo(() => {
