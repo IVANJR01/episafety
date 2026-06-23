@@ -33,21 +33,36 @@ const epiItems: NavItem[] = [
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
 ];
 
+// Gestão de ASO (técnico — SST emite/edita ASO)
+const asoItems: NavItem[] = [
+  { path: "/aso", label: "Gestão de ASO", icon: Stethoscope, moduleKey: "aso" },
+];
+
+// Portal RH — acesso restrito do RH a ASOs liberados
+const portalRhItems: NavItem[] = [
+  { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
+];
+
+// Gestão Documental SST (sem ASO, sem Portal RH, sem eSocial)
 const gestaoDocItems: NavItem[] = [
-  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap, moduleKey: "treinamentos" },
-  { path: "/aso", label: "Gestão de ASO", icon: FileText, moduleKey: "aso" },
-  { path: "/rh/asos", label: "Portal RH — ASO", icon: FileText, moduleKey: "rh" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
   { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: ShieldCheck, moduleKey: "pgr" },
   { path: "/ltcat", label: "LTCAT — Laudo Previdenciário", icon: ShieldCheck, moduleKey: "ltcat" },
   { path: "/ppp", label: "PPP — Perfil Profissiográfico Previdenciário", icon: FileText, moduleKey: "ppp" },
-  { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "treinamentos" },
+  { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "ppp" },
+  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap, moduleKey: "treinamentos" },
+  { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
 ];
 
+// eSocial técnico / stub
+const esocialItems: NavItem[] = [
+  { path: "/cat/esocial/config", label: "S-2210 — CAT (config)", icon: Settings, moduleKey: "cat" },
+  { path: "/esocial/s2240/mapeamentos", label: "S-2240 — Mapeamentos", icon: Network, moduleKey: "esocial" },
+  { path: "/esocial/s2240/dashboard", label: "S-2240 — Dashboard", icon: LayoutDashboard, moduleKey: "esocial" },
+];
 
 const afterCadastroItems: NavItem[] = [
-  { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
-  { path: "/video-treinamentos", label: "Treinamentos", icon: Video, moduleKey: "video_treinamentos" },
+  { path: "/video-treinamentos", label: "Treinamentos em Vídeo", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
 const inspecoesItems: NavItem[] = [
