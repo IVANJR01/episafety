@@ -18,6 +18,12 @@ import {
   ESOCIAL_S2240_AVISO, ESOCIAL_S2240_VERSAO_LAYOUT,
   type Ocorrencia,
 } from "@/lib/esocialS2240Xml";
+import {
+  openDocumentoSeguro,
+  parseSupabaseStorageRef,
+  SUPABASE_STORAGE_REF_PREFIX,
+  SST_BUCKET,
+} from "@/lib/secureStorage";
 
 interface Props { ppp: any; }
 
