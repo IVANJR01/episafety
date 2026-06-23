@@ -77,7 +77,8 @@ export const MODULOS = [
 
   { key: "exames", label: "Exames", path: "/exames" },
   { key: "aso", label: "Gestão e Emissão de ASO", path: "/aso" },
-  { key: "rh", label: "Portal RH — ASO", path: "/rh/asos" },
+  { key: "rh", label: "Portal RH — ASO (legado)", path: "/rh/asos" },
+  { key: "portal_rh", label: "Portal RH", path: "/rh/asos" },
   { key: "video_treinamentos", label: "Treinamentos em Vídeo", path: "/video-treinamentos" },
 ] as const;
 
