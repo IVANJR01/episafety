@@ -283,8 +283,10 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
       toast.success("Período salvo.");
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["ppp-periodos", ppp.id] });
+      qc.invalidateQueries({ queryKey: ["ppp-checklist", ppp.id] });
       qc.invalidateQueries({ queryKey: ["ppp-revisoes", ppp.id] });
       qc.invalidateQueries({ queryKey: ["ppp-detalhe-resumo", ppp.id] });
+      qc.invalidateQueries({ queryKey: ["ppp-detalhe", ppp.id] });
       refetch();
     } catch (e: any) {
       const msg = e?.message || "Erro ao salvar período.";
@@ -309,7 +311,10 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
       toast.success("Período excluído.");
       setDelId(null);
       qc.invalidateQueries({ queryKey: ["ppp-periodos", ppp.id] });
+      qc.invalidateQueries({ queryKey: ["ppp-checklist", ppp.id] });
       qc.invalidateQueries({ queryKey: ["ppp-revisoes", ppp.id] });
+      qc.invalidateQueries({ queryKey: ["ppp-detalhe-resumo", ppp.id] });
+      qc.invalidateQueries({ queryKey: ["ppp-detalhe", ppp.id] });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao excluir.");
     }
