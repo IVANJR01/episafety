@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle2, Search, Tag, Pencil } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Search, Tag, Pencil, RefreshCw } from "lucide-react";
 
 type T24Row = {
   codigo: string;
@@ -96,7 +96,7 @@ export default function S2240Mapeamentos() {
   });
 
   // Agentes do PPP (na empresa ativa)
-  const { data: pppAgentes = [] } = useQuery({
+  const { data: pppAgentes = [], refetch: refetchPpp, isFetching: fetchingPpp } = useQuery({
     queryKey: ["s2240-ppp-agentes", empresaId],
     queryFn: async () => {
       if (!empresaId) return [];
@@ -107,10 +107,12 @@ export default function S2240Mapeamentos() {
       return data || [];
     },
     enabled: canView && !!empresaId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   // Agentes do LTCAT (na empresa ativa)
-  const { data: ltcatAgentes = [] } = useQuery({
+  const { data: ltcatAgentes = [], refetch: refetchLtcat } = useQuery({
     queryKey: ["s2240-ltcat-agentes", empresaId],
     queryFn: async () => {
       if (!empresaId) return [];
@@ -121,10 +123,12 @@ export default function S2240Mapeamentos() {
       return data || [];
     },
     enabled: canView && !!empresaId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   // Mapeamentos existentes
-  const { data: mapeamentos = [] } = useQuery({
+  const { data: mapeamentos = [], refetch: refetchMap } = useQuery({
     queryKey: ["s2240-map", empresaId],
     queryFn: async () => {
       if (!empresaId) return [];
@@ -134,7 +138,11 @@ export default function S2240Mapeamentos() {
       return (data || []) as Mapeamento[];
     },
     enabled: canView && !!empresaId,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
+
+  const refetchAll = () => { refetchPpp(); refetchLtcat(); refetchMap(); };
 
   // Agregação por nome de agente
   const agentes: AgenteAggregado[] = useMemo(() => {
@@ -285,7 +293,12 @@ export default function S2240Mapeamentos() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">eSocial S-2240 — Mapeamento de Agentes Nocivos</h1>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h1 className="text-2xl font-semibold">eSocial S-2240 — Mapeamento de Agentes Nocivos</h1>
+          <Button size="sm" variant="outline" onClick={refetchAll} disabled={fetchingPpp}>
+            <RefreshCw className={`size-3.5 mr-1 ${fetchingPpp ? "animate-spin" : ""}`} /> Atualizar
+          </Button>
+        </div>
         <p className="text-sm text-muted-foreground">
           Vincule cada agente usado em PPP/LTCAT ao código oficial da <strong>Tabela 24</strong> do eSocial.
         </p>
