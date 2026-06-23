@@ -1,134 +1,159 @@
 
-# Plano: Supabase Storage privado para destravar a homologação
+# Fase 3 — RLS Portal RH (Plano de Implementação)
 
-Objetivo: destravar U3 (PGR/CAT/LTCAT/PPP + S-2210/S-2240 stubs) usando **Supabase Storage privado**, sem depender do OAuth do Google Drive. Drive BYOK permanece como provider selecionável, mas não é mais o caminho padrão da homologação.
+## 1. Tabelas reais usadas pelo Portal RH
 
-Escopo intocado (reafirmando): sem envio real ao eSocial, sem certificado digital, sem SOAP, sem XMLDSig, sem ICP-Brasil.
+| Tabela | Papel no Portal RH | `empresa_id`? |
+|---|---|---|
+| `asos` | Registro principal do ASO (PDF em `pdf_url` no GDrive BYOK) | NOT NULL |
+| `aso_exames` | Exames vinculados ao ASO | via `aso_id` |
+| `aso_assinaturas` | Assinaturas digitais do ASO | via `aso_id` (+ `empresa_id` redundante) |
+| `aso_download_logs` | Auditoria de download/visualização | NOT NULL |
+| `aso_medicos` | Médicos do ASO (CRM, CPF, assinatura) | NULLABLE |
+| `locais_emissao_aso` | Locais de emissão (clínica) | NOT NULL |
+| `funcionarios` | Colaborador selecionado no Emitir ASO | NOT NULL |
+| `medicos` (legacy) | Não usado pelo Portal RH novo — só PCMSO | — |
 
----
+Storage: PDF do ASO é **Google Drive BYOK** (`pdf_url` é link gdrive-proxy), não há bucket Supabase ligado ao Portal RH. Logo, não há policy de `storage.objects` a ajustar nesta fase. O gate de download deve viver no edge function que assina/serve o PDF.
 
-## 1. Buckets a criar
+## 2. Policies atuais (resumo)
 
-Um bucket único, **privado**, com paths por tenant:
+Todas as tabelas acima já têm **isolamento por tenant** via `is_in_user_company_tree(auth.uid(), empresa_id)` + `is_super_admin`. `aso_medicos` exige `empresa_id IS NOT NULL` (bom — não vaza médico global).
 
-- `sst-documentos` (private, sem listagem pública, sem `public=true`)
+**O que falta:**
 
-Estrutura de paths (conforme solicitado):
+1. **Nenhuma policy checa permissão `portal_rh:*`.** Hoje qualquer usuário da Empresa A com token válido consegue `SELECT` em `asos` via PostgREST, independente do menu. O gate é só visual.
+2. **`funcionarios` tem policies redundantes/sobrepostas** (`Tenant read by unidade`, `from parent company`, `funcionarios_isolation_all`, `Users read own`). Funciona mas é difícil auditar; vamos manter como está nesta fase para não impactar SST.
+3. **`asos` não tem flag de liberação para RH.** Hoje RH veria qualquer ASO da empresa, inclusive rascunho técnico do SST.
+4. **`aso_download_logs`**: SELECT aberto a toda árvore — RH pode ver logs de download de qualquer usuário da empresa. Aceitável (auditoria interna), mantém.
 
-```text
-{empresa_id}/pdf/{modulo}/{documento_id}/v{versao}/arquivo.pdf
-{empresa_id}/xml/{evento}/{evento_id}/arquivo.xml
+## 3. Proposta de alteração
+
+### 3.1 Helper de permissão (security definer)
+
+```sql
+create or replace function public.has_permission(_user_id uuid, _permission text)
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select
+    is_super_admin(_user_id)
+    or is_principal(_user_id)
+    or exists (
+      select 1 from usuarios_liberados u
+      where u.email = (select email from auth.users where id = _user_id)
+        and u.ativo = true
+        and (
+          _permission = any(u.modulos_permitidos)
+          -- wildcard "portal_rh" cobre "portal_rh:*"
+          or split_part(_permission, ':', 1) = any(u.modulos_permitidos)
+        )
+    )
+$$;
 ```
 
-Exemplos:
-- `<empresa_id>/pdf/pgr/<pgr_id>/v1/PGR.pdf`
-- `<empresa_id>/pdf/cat/<cat_id>/v1/CAT.pdf`
-- `<empresa_id>/pdf/ltcat/<ltcat_id>/v1/LTCAT.pdf`
-- `<empresa_id>/pdf/ppp/<ppp_id>/v1/PPP.pdf`
-- `<empresa_id>/xml/s2210/<evento_id>/S2210.xml`
-- `<empresa_id>/xml/s2240/<evento_id>/S2240.xml`
+Isso espelha a lógica do front (`startsWith("portal_rh:")`) no banco, sem mudar tabela.
 
-RLS em `storage.objects` para o bucket `sst-documentos`:
-- SELECT/INSERT/UPDATE/DELETE permitidos apenas se `(storage.foldername(name))[1]::uuid` está nas empresas do usuário autenticado (via `usuario_empresas` ou função `user_has_empresa(auth.uid(), empresa_id)`).
-- `anon`: sem acesso.
-- Download sempre via **signed URL** com TTL 60–300s, gerada por edge function que revalida tenant.
+### 3.2 Flag de liberação para RH em `asos`
+
+Adicionar:
+```sql
+alter table public.asos
+  add column liberado_portal_rh boolean not null default false;
+```
+
+Regra de preenchimento (trigger ou app):
+- `liberado_portal_rh = true` quando `status in ('assinado','concluido')` **E** `pdf_url is not null`.
+- ASO em rascunho/em emissão fica invisível para RH.
+
+Migration de backfill: marcar `liberado_portal_rh = true` para ASOs já assinados/concluídos com `pdf_url`.
+
+### 3.3 Policies novas (somente SELECT — RH não escreve)
+
+Adicionar policies aditivas (sem remover as atuais de SST):
+
+```sql
+-- asos: RH só vê ASO liberado da própria árvore de empresa
+create policy "RH read asos liberados"
+on public.asos for select to authenticated
+using (
+  has_permission(auth.uid(), 'portal_rh:aso:visualizar')
+  and is_in_user_company_tree(auth.uid(), empresa_id)
+  and liberado_portal_rh = true
+);
+
+-- funcionarios: RH vê funcionários da empresa (sem flag, já é dado de RH)
+create policy "RH read funcionarios"
+on public.funcionarios for select to authenticated
+using (
+  has_permission(auth.uid(), 'portal_rh:funcionarios:visualizar')
+  and is_in_user_company_tree(auth.uid(), empresa_id)
+);
+
+-- aso_medicos / locais_emissao_aso: leitura para emissão (se RH emite)
+create policy "RH read aso_medicos"
+on public.aso_medicos for select to authenticated
+using (
+  has_permission(auth.uid(), 'portal_rh:aso:visualizar')
+  and empresa_id is not null
+  and is_in_user_company_tree(auth.uid(), empresa_id)
+);
+-- idem locais_emissao_aso
+```
+
+Como as policies de tenant já existentes são permissive, **um usuário SST mantém acesso** (passa pela policy antiga); um usuário **RH puro** passa pela nova. Não há regressão para U2/U3/U1.
+
+### 3.4 Restrição opcional por `contrato_id`/`unidade_id`
+
+`usuarios_liberados.contrato_id` existe mas `asos` não tem `contrato_id` direto — apenas via `funcionarios.contrato_id` (a confirmar). **Proposta:** nesta fase **não** filtrar por contrato no RLS de `asos` (precisaria join e mudaria semântica do SST). Documentar como Fase 3.1 futura.
+
+### 3.5 Download de ASO (edge function `aso-download` ou equivalente)
+
+Antes de devolver signed URL / stream do PDF:
+1. `auth.getUser()` → exigir sessão.
+2. `select empresa_id, pdf_url, liberado_portal_rh from asos where id = $1` (server-side, service role).
+3. Validar:
+   - `is_in_user_company_tree(uid, empresa_id)` **OU** `is_super_admin/principal`;
+   - se for RH-only: exigir `has_permission(uid, 'portal_rh:aso:baixar')` **E** `liberado_portal_rh = true`.
+4. Em falha → 403 `forbidden_tenant`.
+5. Registrar em `aso_download_logs` (acao='download_rh' ou 'view_rh', `perfil_usuario`).
+
+Se hoje o download passa direto pelo `gdrive-proxy` sem checar tenant, vamos **inserir o gate antes** do proxy (novo endpoint `portal-rh-aso-download` ou checagem no proxy existente).
+
+## 4. Riscos
+
+| Risco | Mitigação |
+|---|---|
+| Quebrar SST ao adicionar policies | Policies novas são aditivas (permissive OR), SST continua via policy antiga |
+| `liberado_portal_rh=false` esconder ASOs legítimos | Backfill marca todos `assinado/concluido` como true; trigger mantém |
+| RH ver médicos com CPF | `aso_medicos` já exige `empresa_id IS NOT NULL`, sem global; CPF fica dentro da árvore |
+| `has_permission` recursivo via RLS de `usuarios_liberados` | Função é SECURITY DEFINER — bypassa RLS |
+| Edge function de download usar service role sem checar uid | Implementar checagem explícita antes de devolver URL |
+
+## 5. Migrations planejadas (ordem)
+
+1. **`20260623_portal_rh_has_permission.sql`** — cria `public.has_permission(uuid,text)`.
+2. **`20260623_asos_liberado_portal_rh.sql`** — adiciona coluna + backfill + trigger de manutenção.
+3. **`20260623_portal_rh_rls_policies.sql`** — cria policies SELECT para `asos`, `funcionarios`, `aso_medicos`, `locais_emissao_aso`, `aso_exames`, `aso_assinaturas`.
+4. **Edge function** `portal-rh-aso-download` (ou patch no proxy) com gate de tenant + permissão + log.
+
+## 6. Plano de teste (após aplicar)
+
+Roteiro Playwright + curl direto:
+
+- **U5 (RH-only Empresa A)**
+  - `/rh/asos` lista somente ASOs `liberado_portal_rh=true` da Empresa A. ✔
+  - `curl PostgREST /asos?empresa_id=<EmpresaB>` → vazio.
+  - `curl PostgREST /asos?id=<aso_empresa_B>` → vazio.
+  - `curl portal-rh-aso-download?aso_id=<empresa_B>` → 403 `forbidden_tenant`.
+  - `curl /cat_comunicacoes` → vazio (sem permissão).
+- **U2 Principal Empresa A** — vê tudo da árvore (incluindo ASO não liberado).
+- **U3 Técnico SST** — vê módulos técnicos, sem regressão em PCMSO/LTCAT/PPP.
+- **U1 Super Admin** — acesso total.
+
+## 7. Fora de escopo desta fase
+
+eSocial real, certificado digital, ICP-Brasil, XMLDSig, SOAP, S-3000, alteração de módulos SST.
 
 ---
 
-## 2. Colunas novas nas tabelas
-
-Adicionar, de forma **aditiva e nullable** (sem quebrar registros antigos do Drive), nas tabelas que hoje gravam `drive_file_id`/`drive_link`:
-
-Tabelas afetadas:
-- `pgr_pdf_versoes`, `pgr_documentos`
-- `ltcat_pdf_versoes`, `ltcat_documentos`
-- `ppp_pdf_versoes`, `ppp_documentos`
-- `cat_anexos` (PDF da CAT)
-- `esocial_eventos_s2210`, `esocial_eventos_s2240` (XML stubs)
-
-Colunas novas por tabela (todas nullable):
-- `storage_provider text` — `'google_drive_byok'` | `'supabase_storage'`
-- `storage_bucket text`
-- `storage_path text`
-- `storage_size_bytes bigint`
-- `pdf_hash` / `xml_hash` `text` — SHA-256 (onde ainda não existir; várias já têm `hash`)
-- `versao int` (onde ainda não existir)
-- `gerado_em timestamptz default now()`
-- `gerado_por uuid` (auth.uid())
-
-Sem CHECK de provider — validar em código. Sem alterar colunas Drive existentes.
-
----
-
-## 3. Arquivos a alterar
-
-Novo helper compartilhado (frontend):
-- `src/lib/secureStorage.ts` — `uploadDocumentoSeguro({ provider, bucket, path, blob, empresa_id })` e `getSignedUrlSeguro({ bucket, path, ttl })`. Internamente:
-  - `provider='supabase_storage'` → `supabase.storage.from('sst-documentos').upload(path, blob, { upsert: true })`
-  - `provider='google_drive_byok'` → caminho atual (mantido)
-  - Calcula SHA-256, valida que `path` começa com `empresa_id/`.
-
-Nova edge function:
-- `supabase/functions/signed-url-doc/index.ts` — recebe `{ bucket, path }`, valida JWT, valida que `empresa_id` do path pertence ao usuário, retorna signed URL com TTL 60–300s. (Reuso conceitual da `signed-url` existente, mas focada em `sst-documentos` e com checagem de tenant.)
-
-Geradores a atualizar (trocar a etapa de upload Drive por `uploadDocumentoSeguro` com provider lido de `empresa_config.storage_provider`, default `supabase_storage`):
-- `src/lib/pgrPdf.ts`
-- `src/lib/catPdf.ts`
-- `src/lib/ltcatPdf.ts`
-- `src/lib/pppPdf.ts`
-- `src/lib/esocialS2210Xml.ts`
-- `src/lib/esocialS2240Xml.ts`
-
-Config:
-- `empresa_config`: nova coluna `storage_provider text default 'supabase_storage'`.
-- `src/pages/admin/AdminCloud.tsx`: seletor `Supabase Storage` / `Google Drive BYOK` (homologação fica em Supabase).
-
-Consumo (download/visualização):
-- Componentes que hoje resolvem link Drive para PDFs/XMLs passam a chamar `getSignedUrlSeguro` quando `storage_provider='supabase_storage'`. Drive continua usando `gdrive-proxy`.
-
----
-
-## 4. Migração dos registros existentes
-
-Não há reupload automático. Estratégia segura:
-
-- Registros antigos mantêm `drive_file_id` e continuam sendo abertos pelo caminho Drive (quando o OAuth estiver OK).
-- Novos PDFs/XMLs gerados a partir desta mudança vão para Supabase Storage e preenchem as novas colunas.
-- Backfill opcional (fora do escopo desta entrega): job manual posterior para baixar do Drive e reenviar ao bucket, preenchendo as novas colunas. Não bloqueia homologação.
-
----
-
-## 5. Audit log
-
-`audit_log` permanece registrando apenas metadados: `entidade`, `entidade_id`, `acao`, `storage_provider`, `bucket`, `path`, `hash`, `tamanho`, `versao`, `gerado_por`. **Nunca** o binário, nunca o XML/PDF inline. Revisão dos pontos que hoje logam geração de documento para garantir esse contrato.
-
----
-
-## 6. Critérios de aceite mapeados
-
-- PGR PDF gerado com U3 → bucket `sst-documentos`, path `{empresa_id}/pdf/pgr/{id}/v1/PGR.pdf`, `pdf_hash` preenchido, signed URL abre o PDF.
-- Empresa B não consegue baixar PDF da Empresa A (RLS + validação na edge function).
-- S-2210/S-2240 stubs salvos no bucket privado com hash e path.
-- `anon` sem acesso ao bucket.
-- Build limpo, sem mexer em fluxos Drive existentes.
-
----
-
-## 7. Riscos residuais
-
-- **Custo/quota de Storage**: PDFs e XMLs passam a consumir Supabase Storage. Mitigação: bucket único, paths versionados, possível política de retenção depois.
-- **Dupla fonte de verdade temporária**: documentos antigos ficam no Drive, novos no Supabase. UI precisa ler `storage_provider` por registro — já tratado no helper de download.
-- **Path injection**: mitigado validando `empresa_id` no início do path tanto no helper quanto na edge function.
-- **TTL curto** pode expirar durante download de PDFs grandes em rede ruim. Mitigação: 300s por padrão para PDFs.
-- **Backfill pendente**: documentos antigos seguem dependentes do OAuth Drive até reupload. Aceitável: homologação não exige histórico migrado.
-- **RLS de storage**: precisa ser testada com 2 empresas reais antes de marcar U3 como concluída.
-
----
-
-## 8. Fora deste plano (reafirmado)
-
-- Sem envio real eSocial, sem certificado digital, sem SOAP, sem XMLDSig, sem ICP-Brasil, sem S-3000.
-- Sem alterar o fluxo Drive BYOK existente além de torná-lo opcional.
-- Sem U4.
-
-Confirma este recorte para eu seguir com a migração SQL + helper + ajuste dos 6 geradores?
+**Aguardo aprovação para gerar as 3 migrations + edge function.** Posso também, antes, abrir um diff exato de cada policy nova se preferir revisar SQL final.
