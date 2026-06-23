@@ -18,6 +18,12 @@ import {
   ESOCIAL_S2240_AVISO, ESOCIAL_S2240_VERSAO_LAYOUT,
   type Ocorrencia,
 } from "@/lib/esocialS2240Xml";
+import {
+  openDocumentoSeguro,
+  parseSupabaseStorageRef,
+  SUPABASE_STORAGE_REF_PREFIX,
+  SST_BUCKET,
+} from "@/lib/secureStorage";
 
 interface Props { ppp: any; }
 
@@ -54,6 +60,9 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
 
   const { data: periodos = [] } = useQuery({
     queryKey: ["ppp-s2240-periodos", ppp.id],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("ppp_periodos")
         .select("id, data_inicio, data_fim, funcao_nome, cbo, setor_nome, ltcat_id")
@@ -64,6 +73,9 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
 
   const { data: eventos = [], refetch: refetchEv } = useQuery({
     queryKey: ["ppp-s2240-eventos", ppp.id],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("esocial_eventos_s2240")
         .select("*").eq("ppp_documento_id", ppp.id).order("created_at", { ascending: false });
@@ -73,11 +85,16 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
 
   const eventoByPeriodo = new Map<string, any>();
   for (const ev of eventos as any[]) {
+    if (ev.status === "excluido_local") continue;
+    if (!ev.ppp_periodo_id) continue;
     if (!eventoByPeriodo.has(ev.ppp_periodo_id)) eventoByPeriodo.set(ev.ppp_periodo_id, ev);
   }
 
   const { data: mapeamentos = [] } = useQuery({
     queryKey: ["ppp-s2240-maps", ppp.empresa_id],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("esocial_s2240_mapeamentos")
         .select("agente_nome, codigo_t24, status").eq("empresa_id", ppp.empresa_id);
@@ -89,6 +106,9 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
 
   const { data: exposByPeriodo = {} } = useQuery({
     queryKey: ["ppp-s2240-exp", ppp.id],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("ppp_exposicoes")
         .select("id, periodo_id, agente_nome, codigo_esocial").eq("ppp_id", ppp.id);
@@ -122,8 +142,11 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
     try {
       const evId = await obterOuCriarEventoS2240PorPeriodo(ppp.id, periodoId);
       const r = await gerarXmlS2240(evId);
+      const isSb = String(r.driveId || "").startsWith(SUPABASE_STORAGE_REF_PREFIX);
       toast.success(`XML técnico gerado — hash ${r.hash.slice(0, 16)}…`, {
-        description: `Drive: ${r.driveId.slice(0, 12)}…`,
+        description: isSb
+          ? `Supabase Storage (${SST_BUCKET}) — signed URL ao abrir/baixar.`
+          : `Drive: ${String(r.driveId).slice(0, 12)}…`,
       });
       if (r.warnings.length) toast.warning(`${r.warnings.length} alerta(s) — revise.`);
       refresh();
@@ -177,8 +200,9 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
             <div>
               <div className="font-semibold">{ESOCIAL_S2240_AVISO}</div>
               <div className="opacity-80">
-                XML salvo apenas no seu Google Drive privado (BYOK), em
-                <code className="font-mono mx-1">eSocial/S2240/{ppp.id.slice(0, 8)}…/</code>.
+                XML salvo no Storage privado Supabase
+                (bucket <code className="font-mono mx-1">{SST_BUCKET}</code>),
+                acessado via signed URL temporária.
                 Nenhum certificado ICP-Brasil, SOAP, recibo ou protocolo real é gerado.
               </div>
               <div className="opacity-80 mt-1">
@@ -285,20 +309,54 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
                         Validar XML técnico
                       </MfaActionButton>
                     )}
-                    {ev?.xml_drive_link && (
-                      <>
-                        <Button asChild size="sm" variant="outline">
-                          <a href={ev.xml_drive_link} target="_blank" rel="noreferrer">
-                            <ExternalLink className="h-4 w-4 mr-1" /> Abrir no Drive
-                          </a>
-                        </Button>
-                        <Button asChild size="sm" variant="outline">
-                          <a href={`https://drive.google.com/uc?id=${ev.xml_drive_id}&export=download`} target="_blank" rel="noreferrer">
-                            <Download className="h-4 w-4 mr-1" /> Baixar XML
-                          </a>
-                        </Button>
-                      </>
-                    )}
+                    {ev?.xml_drive_id && (() => {
+                      const isSb = String(ev.xml_drive_id).startsWith(SUPABASE_STORAGE_REF_PREFIX);
+                      const parsed = isSb ? parseSupabaseStorageRef(ev.xml_drive_id) : null;
+                      const openSigned = async (download: boolean) => {
+                        try {
+                          await openDocumentoSeguro({
+                            provider: isSb ? "supabase_storage" : "google_drive_byok",
+                            bucket: parsed?.bucket || null,
+                            path: parsed?.path || null,
+                            driveFileId: isSb ? null : ev.xml_drive_id,
+                            driveViewLink: ev.xml_drive_link || null,
+                            ttl: 120,
+                            download,
+                          });
+                        } catch (e: any) {
+                          toast.error(e?.message || "Falha ao abrir XML");
+                        }
+                      };
+                      if (isSb) {
+                        return (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => openSigned(false)}>
+                              <ExternalLink className="h-4 w-4 mr-1" /> Abrir XML (signed URL)
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => openSigned(true)}>
+                              <Download className="h-4 w-4 mr-1" /> Baixar XML
+                            </Button>
+                          </>
+                        );
+                      }
+                      if (ev?.xml_drive_link) {
+                        return (
+                          <>
+                            <Button asChild size="sm" variant="outline">
+                              <a href={ev.xml_drive_link} target="_blank" rel="noreferrer">
+                                <ExternalLink className="h-4 w-4 mr-1" /> Abrir no Drive (legado)
+                              </a>
+                            </Button>
+                            <Button asChild size="sm" variant="outline">
+                              <a href={`https://drive.google.com/uc?id=${ev.xml_drive_id}&export=download`} target="_blank" rel="noreferrer">
+                                <Download className="h-4 w-4 mr-1" /> Baixar XML
+                              </a>
+                            </Button>
+                          </>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   {ev?.validado_em && (

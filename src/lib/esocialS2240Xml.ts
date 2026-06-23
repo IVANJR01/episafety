@@ -3,16 +3,23 @@
 // ----------------------------------------------------------------------------
 // NÃO transmite ao Ambiente Nacional, NÃO assina ICP-Brasil,
 // NÃO gera recibo/protocolo reais. Apenas validação técnica interna.
-// XML salvo em Google Drive BYOK; banco guarda só metadados/hash.
+// XML salvo em Supabase Storage privado (bucket `sst-documentos`) por padrão;
+// Google Drive BYOK mantido apenas como provider legado opcional.
+// Banco guarda só metadados/hash; binário nunca é gravado em tabelas.
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
-import { uploadDocumentoSeguro } from "@/lib/secureStorage";
+import {
+  uploadDocumentoSeguro,
+  getSignedUrlSeguro,
+  parseSupabaseStorageRef,
+  SUPABASE_STORAGE_REF_PREFIX,
+} from "@/lib/secureStorage";
 
 export const ESOCIAL_S2240_AVISO =
   "XML gerado apenas para validação técnica. Não enviado ao Ambiente Nacional.";
 export const ESOCIAL_S2240_VERSAO_LAYOUT = "S-1.3";
 
-// ---------- Drive download (XML completo nunca é gravado no banco) ----------
+// ---------- Download do XML (Supabase Storage default; Drive BYOK legado) ----
 async function getDriveAccessToken(folder: string): Promise<string> {
   await supabase.auth.refreshSession();
   const { data, error } = await supabase.functions.invoke("gdrive-token", { body: { folder } });
@@ -20,15 +27,32 @@ async function getDriveAccessToken(folder: string): Promise<string> {
   if (!data?.accessToken) throw new Error("Token Drive ausente");
   return data.accessToken as string;
 }
-export async function downloadXmlFromDrive(fileId: string, pppId: string): Promise<string> {
+
+/**
+ * Baixa o XML técnico do storage configurado.
+ * - Se `ref` começa com `sb://` → Supabase Storage privado via signed URL temporária.
+ * - Caso contrário → Google Drive BYOK (legado).
+ */
+export async function downloadXmlS2240(ref: string, pppId: string): Promise<string> {
+  if (ref?.startsWith(SUPABASE_STORAGE_REF_PREFIX)) {
+    const parsed = parseSupabaseStorageRef(ref);
+    if (!parsed) throw new Error("Referência Supabase Storage inválida");
+    const url = await getSignedUrlSeguro({ bucket: parsed.bucket, path: parsed.path, ttl: 120 });
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Storage ${res.status}: não foi possível baixar o XML`);
+    return await res.text();
+  }
   const token = await getDriveAccessToken(`eSocial/S2240/${pppId}`);
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`,
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(ref)}?alt=media`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`Drive ${res.status}: não foi possível baixar o XML`);
   return await res.text();
 }
+
+/** @deprecated use downloadXmlS2240 — mantido para compatibilidade. */
+export const downloadXmlFromDrive = downloadXmlS2240;
 
 
 export type OcorrenciaTipo = "erro" | "alerta";
@@ -580,7 +604,7 @@ export async function validarXmlS2240Tecnico(eventoId: string): Promise<XmlValid
   if (evErr || !evento) throw new Error("Evento S-2240 não encontrado ou fora do tenant");
   if (!evento.xml_drive_id) throw new Error("Nenhum XML gerado ainda — execute 'Gerar XML técnico' antes.");
 
-  const xml = await downloadXmlFromDrive(evento.xml_drive_id, evento.ppp_documento_id);
+  const xml = await downloadXmlS2240(evento.xml_drive_id, evento.ppp_documento_id);
   const tamanho = new TextEncoder().encode(xml).length;
 
   const hashCalculado = await sha256Hex(xml);
