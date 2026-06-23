@@ -253,6 +253,8 @@ export default function PppExposicoesTab({ ppp }: Props) {
       setDelId(null);
       qc.invalidateQueries({ queryKey: ["ppp-exposicoes", ppp.id] });
       qc.invalidateQueries({ queryKey: ["ppp-revisoes", ppp.id] });
+      qc.invalidateQueries({ queryKey: ["ppp-detalhe-resumo", ppp.id] });
+      qc.invalidateQueries({ queryKey: ["s2240-ppp-agentes", ppp.empresa_id] });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao excluir.");
     }
