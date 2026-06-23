@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, CheckCircle2, Search, Tag, Pencil } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Search, Tag, Pencil, RefreshCw } from "lucide-react";
 
 type T24Row = {
   codigo: string;
