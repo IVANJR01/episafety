@@ -60,6 +60,9 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
 
   const { data: periodos = [] } = useQuery({
     queryKey: ["ppp-s2240-periodos", ppp.id],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("ppp_periodos")
         .select("id, data_inicio, data_fim, funcao_nome, cbo, setor_nome, ltcat_id")
@@ -70,6 +73,9 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
 
   const { data: eventos = [], refetch: refetchEv } = useQuery({
     queryKey: ["ppp-s2240-eventos", ppp.id],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("esocial_eventos_s2240")
         .select("*").eq("ppp_documento_id", ppp.id).order("created_at", { ascending: false });
@@ -79,11 +85,16 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
 
   const eventoByPeriodo = new Map<string, any>();
   for (const ev of eventos as any[]) {
+    if (ev.status === "excluido_local") continue;
+    if (!ev.ppp_periodo_id) continue;
     if (!eventoByPeriodo.has(ev.ppp_periodo_id)) eventoByPeriodo.set(ev.ppp_periodo_id, ev);
   }
 
   const { data: mapeamentos = [] } = useQuery({
     queryKey: ["ppp-s2240-maps", ppp.empresa_id],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("esocial_s2240_mapeamentos")
         .select("agente_nome, codigo_t24, status").eq("empresa_id", ppp.empresa_id);
@@ -95,6 +106,9 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
 
   const { data: exposByPeriodo = {} } = useQuery({
     queryKey: ["ppp-s2240-exp", ppp.id],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data } = await (supabase.from as any)("ppp_exposicoes")
         .select("id, periodo_id, agente_nome, codigo_esocial").eq("ppp_id", ppp.id);
