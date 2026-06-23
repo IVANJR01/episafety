@@ -338,6 +338,80 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {visibleAsoItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setAsoOpen(!asoOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isAsoActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Stethoscope className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Gestão de ASO</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${asoOpen ? "rotate-180" : ""}`} />
+              </button>
+              {asoOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleAsoItems.map((item) => {
+                    const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visiblePortalRhItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setPortalRhOpen(!portalRhOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isPortalRhActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Briefcase className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Portal RH</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${portalRhOpen ? "rotate-180" : ""}`} />
+              </button>
+              {portalRhOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visiblePortalRhItems.map((item) => {
+                    const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
           {visibleGestaoDocItems.length > 0 && (
             <>
               <button
@@ -349,7 +423,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão Documental</span>
+                <span className="truncate flex-1 text-left">Gestão Documental SST</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
               </button>
               {gestaoDocOpen && (
@@ -365,6 +439,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           active
                             ? "bg-sidebar-accent text-primary"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visibleEsocialItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setEsocialOpen(!esocialOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isEsocialActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Network className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">eSocial (stub)</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${esocialOpen ? "rotate-180" : ""}`} />
+              </button>
+              {esocialOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  <p className="text-[10px] text-sidebar-foreground/40 px-3 py-1 leading-tight">
+                    Modo técnico/stub — sem certificado digital, SOAP, XMLDSig, ICP-Brasil, S-3000 ou envio real.
+                  </p>
+                  {visibleEsocialItems.map((item) => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
