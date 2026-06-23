@@ -120,8 +120,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const canAccess = (moduleKey: string) => {
     if (isSuperAdmin || isPrincipal) return true;
-    // Portal RH is also available to anyone who can view ASOs
-    if (moduleKey === "rh" && canAccessModule(modulosPermitidos, "aso")) return true;
+    // Portal RH: aceita chave nova `portal_rh`, legado `rh`, ou compat por `aso`.
+    if (moduleKey === "portal_rh") {
+      return canAccessModule(modulosPermitidos, "portal_rh")
+        || canAccessModule(modulosPermitidos, "rh")
+        || canAccessModule(modulosPermitidos, "aso");
+    }
     return canAccessModule(modulosPermitidos, moduleKey);
   };
 
@@ -129,16 +133,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleEpiItems = epiItems.filter((i) => canAccess(i.moduleKey));
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
   const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
+  const visibleAsoItems = asoItems.filter((i) => canAccess(i.moduleKey));
+  const visiblePortalRhItems = portalRhItems.filter((i) => canAccess(i.moduleKey));
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
+  const visibleEsocialItems = esocialItems.filter((i) => canAccess(i.moduleKey));
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
+  const isAsoActive = visibleAsoItems.some((i) => location.pathname.startsWith(i.path));
+  const isPortalRhActive = visiblePortalRhItems.some((i) => location.pathname.startsWith(i.path));
   const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
+  const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
+  const [asoOpen, setAsoOpen] = useState(isAsoActive);
+  const [portalRhOpen, setPortalRhOpen] = useState(isPortalRhActive);
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
+  const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
 
   // Bottom nav items for mobile
