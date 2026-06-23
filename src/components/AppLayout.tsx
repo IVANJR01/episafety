@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, FileWarning } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, FileWarning, Briefcase, Network } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,21 +33,36 @@ const epiItems: NavItem[] = [
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
 ];
 
+// Gestão de ASO (técnico — SST emite/edita ASO)
+const asoItems: NavItem[] = [
+  { path: "/aso", label: "Gestão de ASO", icon: Stethoscope, moduleKey: "aso" },
+];
+
+// Portal RH — acesso restrito do RH a ASOs liberados
+const portalRhItems: NavItem[] = [
+  { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
+];
+
+// Gestão Documental SST (sem ASO, sem Portal RH, sem eSocial)
 const gestaoDocItems: NavItem[] = [
-  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap, moduleKey: "treinamentos" },
-  { path: "/aso", label: "Gestão de ASO", icon: FileText, moduleKey: "aso" },
-  { path: "/rh/asos", label: "Portal RH — ASO", icon: FileText, moduleKey: "rh" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
   { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: ShieldCheck, moduleKey: "pgr" },
   { path: "/ltcat", label: "LTCAT — Laudo Previdenciário", icon: ShieldCheck, moduleKey: "ltcat" },
   { path: "/ppp", label: "PPP — Perfil Profissiográfico Previdenciário", icon: FileText, moduleKey: "ppp" },
-  { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "treinamentos" },
+  { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "ppp" },
+  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap, moduleKey: "treinamentos" },
+  { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
 ];
 
+// eSocial técnico / stub
+const esocialItems: NavItem[] = [
+  { path: "/cat/esocial/config", label: "S-2210 — CAT (config)", icon: Settings, moduleKey: "cat" },
+  { path: "/esocial/s2240/mapeamentos", label: "S-2240 — Mapeamentos", icon: Network, moduleKey: "esocial" },
+  { path: "/esocial/s2240/dashboard", label: "S-2240 — Dashboard", icon: LayoutDashboard, moduleKey: "esocial" },
+];
 
 const afterCadastroItems: NavItem[] = [
-  { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
-  { path: "/video-treinamentos", label: "Treinamentos", icon: Video, moduleKey: "video_treinamentos" },
+  { path: "/video-treinamentos", label: "Treinamentos em Vídeo", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
 const inspecoesItems: NavItem[] = [
@@ -105,8 +120,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const canAccess = (moduleKey: string) => {
     if (isSuperAdmin || isPrincipal) return true;
-    // Portal RH is also available to anyone who can view ASOs
-    if (moduleKey === "rh" && canAccessModule(modulosPermitidos, "aso")) return true;
+    // Portal RH: aceita chave nova `portal_rh`, legado `rh`, ou compat por `aso`.
+    if (moduleKey === "portal_rh") {
+      return canAccessModule(modulosPermitidos, "portal_rh")
+        || canAccessModule(modulosPermitidos, "rh")
+        || canAccessModule(modulosPermitidos, "aso");
+    }
     return canAccessModule(modulosPermitidos, moduleKey);
   };
 
@@ -114,16 +133,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleEpiItems = epiItems.filter((i) => canAccess(i.moduleKey));
   const visibleCadastroItems = cadastroItems.filter((i) => canAccess(i.moduleKey));
   const visibleAfterCadastroItems = afterCadastroItems.filter((i) => canAccess(i.moduleKey));
+  const visibleAsoItems = asoItems.filter((i) => canAccess(i.moduleKey));
+  const visiblePortalRhItems = portalRhItems.filter((i) => canAccess(i.moduleKey));
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
+  const visibleEsocialItems = esocialItems.filter((i) => canAccess(i.moduleKey));
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
+  const isAsoActive = visibleAsoItems.some((i) => location.pathname.startsWith(i.path));
+  const isPortalRhActive = visiblePortalRhItems.some((i) => location.pathname.startsWith(i.path));
   const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
+  const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
+  const [asoOpen, setAsoOpen] = useState(isAsoActive);
+  const [portalRhOpen, setPortalRhOpen] = useState(isPortalRhActive);
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
+  const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
 
   // Bottom nav items for mobile
@@ -310,6 +338,80 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {visibleAsoItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setAsoOpen(!asoOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isAsoActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Stethoscope className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Gestão de ASO</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${asoOpen ? "rotate-180" : ""}`} />
+              </button>
+              {asoOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleAsoItems.map((item) => {
+                    const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visiblePortalRhItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setPortalRhOpen(!portalRhOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isPortalRhActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Briefcase className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Portal RH</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${portalRhOpen ? "rotate-180" : ""}`} />
+              </button>
+              {portalRhOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visiblePortalRhItems.map((item) => {
+                    const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
           {visibleGestaoDocItems.length > 0 && (
             <>
               <button
@@ -321,7 +423,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão Documental</span>
+                <span className="truncate flex-1 text-left">Gestão Documental SST</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
               </button>
               {gestaoDocOpen && (
@@ -337,6 +439,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           active
                             ? "bg-sidebar-accent text-primary"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visibleEsocialItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setEsocialOpen(!esocialOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isEsocialActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Network className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">eSocial (stub)</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${esocialOpen ? "rotate-180" : ""}`} />
+              </button>
+              {esocialOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  <p className="text-[10px] text-sidebar-foreground/40 px-3 py-1 leading-tight">
+                    Modo técnico/stub — sem certificado digital, SOAP, XMLDSig, ICP-Brasil, S-3000 ou envio real.
+                  </p>
+                  {visibleEsocialItems.map((item) => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
