@@ -593,6 +593,7 @@ export type Database = {
           id: string
           inapto_cargo: boolean | null
           inapto_nr35: boolean | null
+          liberado_portal_rh: boolean
           local_emissao: string | null
           local_emissao_id: string | null
           local_emissao_snapshot: string | null
@@ -624,6 +625,7 @@ export type Database = {
           id?: string
           inapto_cargo?: boolean | null
           inapto_nr35?: boolean | null
+          liberado_portal_rh?: boolean
           local_emissao?: string | null
           local_emissao_id?: string | null
           local_emissao_snapshot?: string | null
@@ -655,6 +657,7 @@ export type Database = {
           id?: string
           inapto_cargo?: boolean | null
           inapto_nr35?: boolean | null
+          liberado_portal_rh?: boolean
           local_emissao?: string | null
           local_emissao_id?: string | null
           local_emissao_snapshot?: string | null
@@ -7690,6 +7693,10 @@ export type Database = {
       get_user_parent_empresa_id: {
         Args: { _user_id: string }
         Returns: string
+      }
+      has_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
