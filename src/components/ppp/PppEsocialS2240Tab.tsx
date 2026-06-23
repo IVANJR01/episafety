@@ -142,8 +142,11 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
     try {
       const evId = await obterOuCriarEventoS2240PorPeriodo(ppp.id, periodoId);
       const r = await gerarXmlS2240(evId);
+      const isSb = String(r.driveId || "").startsWith(SUPABASE_STORAGE_REF_PREFIX);
       toast.success(`XML técnico gerado — hash ${r.hash.slice(0, 16)}…`, {
-        description: `Drive: ${r.driveId.slice(0, 12)}…`,
+        description: isSb
+          ? `Supabase Storage (${SST_BUCKET}) — signed URL ao abrir/baixar.`
+          : `Drive: ${String(r.driveId).slice(0, 12)}…`,
       });
       if (r.warnings.length) toast.warning(`${r.warnings.length} alerta(s) — revise.`);
       refresh();
