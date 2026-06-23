@@ -197,8 +197,9 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
             <div>
               <div className="font-semibold">{ESOCIAL_S2240_AVISO}</div>
               <div className="opacity-80">
-                XML salvo apenas no seu Google Drive privado (BYOK), em
-                <code className="font-mono mx-1">eSocial/S2240/{ppp.id.slice(0, 8)}…/</code>.
+                XML salvo no Storage privado Supabase
+                (bucket <code className="font-mono mx-1">{SST_BUCKET}</code>),
+                acessado via signed URL temporária.
                 Nenhum certificado ICP-Brasil, SOAP, recibo ou protocolo real é gerado.
               </div>
               <div className="opacity-80 mt-1">
