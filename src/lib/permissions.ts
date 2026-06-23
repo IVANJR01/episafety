@@ -13,6 +13,12 @@ export const ACOES = [
 /** Special per-module actions (shown as extra checkboxes) */
 export const ACOES_ESPECIAIS: Record<string, { key: string; label: string }[]> = {
   epis: [{ key: "gestao_estoque", label: "Gestão de Estoque (todas unidades)" }],
+  portal_rh: [
+    { key: "visualizar", label: "Acessar Portal RH" },
+    { key: "aso:visualizar", label: "Consultar ASOs liberados" },
+    { key: "aso:baixar", label: "Baixar ASOs liberados" },
+    { key: "funcionarios:visualizar", label: "Visualizar funcionários vinculados" },
+  ],
   cat: [
     { key: "enviar_esocial", label: "Preparar envio eSocial (CAT)" },
     { key: "esocial", label: "Módulo eSocial S-2210 (gerar/validar/configurar)" },
