@@ -604,7 +604,7 @@ export async function validarXmlS2240Tecnico(eventoId: string): Promise<XmlValid
   if (evErr || !evento) throw new Error("Evento S-2240 não encontrado ou fora do tenant");
   if (!evento.xml_drive_id) throw new Error("Nenhum XML gerado ainda — execute 'Gerar XML técnico' antes.");
 
-  const xml = await downloadXmlFromDrive(evento.xml_drive_id, evento.ppp_documento_id);
+  const xml = await downloadXmlS2240(evento.xml_drive_id, evento.ppp_documento_id);
   const tamanho = new TextEncoder().encode(xml).length;
 
   const hashCalculado = await sha256Hex(xml);
