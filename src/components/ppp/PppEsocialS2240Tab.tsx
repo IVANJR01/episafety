@@ -306,20 +306,54 @@ export default function PppEsocialS2240Tab({ ppp }: Props) {
                         Validar XML técnico
                       </MfaActionButton>
                     )}
-                    {ev?.xml_drive_link && (
-                      <>
-                        <Button asChild size="sm" variant="outline">
-                          <a href={ev.xml_drive_link} target="_blank" rel="noreferrer">
-                            <ExternalLink className="h-4 w-4 mr-1" /> Abrir no Drive
-                          </a>
-                        </Button>
-                        <Button asChild size="sm" variant="outline">
-                          <a href={`https://drive.google.com/uc?id=${ev.xml_drive_id}&export=download`} target="_blank" rel="noreferrer">
-                            <Download className="h-4 w-4 mr-1" /> Baixar XML
-                          </a>
-                        </Button>
-                      </>
-                    )}
+                    {ev?.xml_drive_id && (() => {
+                      const isSb = String(ev.xml_drive_id).startsWith(SUPABASE_STORAGE_REF_PREFIX);
+                      const parsed = isSb ? parseSupabaseStorageRef(ev.xml_drive_id) : null;
+                      const openSigned = async (download: boolean) => {
+                        try {
+                          await openDocumentoSeguro({
+                            provider: isSb ? "supabase_storage" : "google_drive_byok",
+                            bucket: parsed?.bucket || null,
+                            path: parsed?.path || null,
+                            driveFileId: isSb ? null : ev.xml_drive_id,
+                            driveViewLink: ev.xml_drive_link || null,
+                            ttl: 120,
+                            download,
+                          });
+                        } catch (e: any) {
+                          toast.error(e?.message || "Falha ao abrir XML");
+                        }
+                      };
+                      if (isSb) {
+                        return (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => openSigned(false)}>
+                              <ExternalLink className="h-4 w-4 mr-1" /> Abrir XML (signed URL)
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => openSigned(true)}>
+                              <Download className="h-4 w-4 mr-1" /> Baixar XML
+                            </Button>
+                          </>
+                        );
+                      }
+                      if (ev?.xml_drive_link) {
+                        return (
+                          <>
+                            <Button asChild size="sm" variant="outline">
+                              <a href={ev.xml_drive_link} target="_blank" rel="noreferrer">
+                                <ExternalLink className="h-4 w-4 mr-1" /> Abrir no Drive (legado)
+                              </a>
+                            </Button>
+                            <Button asChild size="sm" variant="outline">
+                              <a href={`https://drive.google.com/uc?id=${ev.xml_drive_id}&export=download`} target="_blank" rel="noreferrer">
+                                <Download className="h-4 w-4 mr-1" /> Baixar XML
+                              </a>
+                            </Button>
+                          </>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   {ev?.validado_em && (
