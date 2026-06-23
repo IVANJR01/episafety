@@ -293,7 +293,12 @@ export default function S2240Mapeamentos() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">eSocial S-2240 — Mapeamento de Agentes Nocivos</h1>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h1 className="text-2xl font-semibold">eSocial S-2240 — Mapeamento de Agentes Nocivos</h1>
+          <Button size="sm" variant="outline" onClick={refetchAll} disabled={fetchingPpp}>
+            <RefreshCw className={`size-3.5 mr-1 ${fetchingPpp ? "animate-spin" : ""}`} /> Atualizar
+          </Button>
+        </div>
         <p className="text-sm text-muted-foreground">
           Vincule cada agente usado em PPP/LTCAT ao código oficial da <strong>Tabela 24</strong> do eSocial.
         </p>
