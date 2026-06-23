@@ -75,6 +75,18 @@ const empty = (pppId: string, empresaId: string): Periodo => ({
   observacoes: null,
 });
 
+const addDays = (date: string, days: number) => {
+  const d = new Date(`${date}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+const rangesOverlap = (aStart: string, aEnd: string | null, bStart: string, bEnd: string | null) => {
+  const endA = aEnd || "9999-12-31";
+  const endB = bEnd || "9999-12-31";
+  return aStart <= endB && bStart <= endA;
+};
+
 export default function PppHistoricoTab({ ppp, funcionario }: Props) {
   const { user } = useAuth();
   const perms = usePermissions("ppp");
@@ -158,24 +170,43 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
       toast.error("Funcionário não carregado.");
       return;
     }
+    if (!funcionario.data_admissao) {
+      toast.error("Funcionário sem data de admissão. Informe a data manualmente em Novo período.");
+      return;
+    }
     if (periodoAtual) {
       toast.error("Já existe um período em aberto. Encerre-o antes de importar.");
       return;
     }
     const ghe = (ghes as any[]).find((g) => g.id === funcionario.ghe_id) || null;
+    const funcao = (funcoes as any[]).find((f) =>
+      f.nome_funcao?.trim().toLowerCase() === funcionario.cargo?.trim().toLowerCase()
+      && (!ghe?.id || !f.ghe_id || f.ghe_id === ghe.id)
+    ) || null;
+    const ordenados = [...(periodos as Periodo[])].sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
+    const ultimoEncerrado = [...ordenados].reverse().find((p) => !!p.data_fim) || null;
+    const dataInicio = ultimoEncerrado?.data_fim && funcionario.data_admissao <= ultimoEncerrado.data_fim
+      ? addDays(ultimoEncerrado.data_fim, 1)
+      : funcionario.data_admissao;
     const nextOrdem = (periodos as Periodo[]).reduce((m, p) => Math.max(m, p.ordem), 0) + 1;
     setForm({
       ...empty(ppp.id, ppp.empresa_id),
       ordem: nextOrdem,
-      data_inicio: funcionario.data_admissao || "",
+      data_inicio: dataInicio,
       data_fim: null,
-      funcao_nome: funcionario.cargo || null,
+      funcao_id: funcao?.id || null,
+      funcao_nome: funcao?.nome_funcao || funcionario.cargo || null,
+      cbo: funcao?.cbo || null,
       setor_nome: funcionario.setor || null,
       ghe_id: ghe?.id || null,
       ghe_codigo: ghe?.codigo || null,
       ghe_descricao: ghe?.nome || null,
+      descricao_atividade: funcao?.descricao_atividade || null,
       observacoes: "Importado do cadastro do funcionário (revisar antes de salvar).",
     });
+    if (dataInicio !== funcionario.data_admissao) {
+      toast.info(`Data inicial ajustada para ${new Date(`${dataInicio}T00:00:00`).toLocaleDateString("pt-BR")} para evitar sobreposição.`);
+    }
     setOpen(true);
   }
 
@@ -191,6 +222,14 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
     }
     if (form.data_fim && form.data_fim < form.data_inicio) {
       toast.error("Data de fim não pode ser anterior à data de início.");
+      return;
+    }
+    const conflito = (periodos as Periodo[]).find((p) =>
+      p.id !== form.id && rangesOverlap(form.data_inicio, form.data_fim || null, p.data_inicio, p.data_fim)
+    );
+    if (conflito) {
+      const fim = conflito.data_fim ? new Date(`${conflito.data_fim}T00:00:00`).toLocaleDateString("pt-BR") : "atual";
+      toast.error(`Período sobreposto ao histórico já cadastrado (${new Date(`${conflito.data_inicio}T00:00:00`).toLocaleDateString("pt-BR")} → ${fim}).`);
       return;
     }
     if (!form.setor_nome && !form.ghe_id) {
@@ -245,6 +284,7 @@ export default function PppHistoricoTab({ ppp, funcionario }: Props) {
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["ppp-periodos", ppp.id] });
       qc.invalidateQueries({ queryKey: ["ppp-revisoes", ppp.id] });
+      qc.invalidateQueries({ queryKey: ["ppp-detalhe-resumo", ppp.id] });
       refetch();
     } catch (e: any) {
       const msg = e?.message || "Erro ao salvar período.";
