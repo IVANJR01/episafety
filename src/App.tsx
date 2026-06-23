@@ -109,15 +109,44 @@ function DashboardGuard() {
   if (isSuperAdmin || canAccessModule(modulosPermitidos, "dashboard")) {
     return <Dashboard />;
   }
-  // Redirect to first accessible route
-  const fallbacks = ["/epis", "/entregas", "/relatorios", "/cadastro/empresas", "/cadastro/funcionarios", "/cadastro/usuarios"];
-  const moduleKeys = ["epis", "entregas", "relatorios", "cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"];
-  for (let i = 0; i < fallbacks.length; i++) {
-    if (canAccessModule(modulosPermitidos, moduleKeys[i])) {
-      return <Navigate to={fallbacks[i]} replace />;
+  // Redirect to first accessible route — Portal RH primeiro para perfis RH-only.
+  const fallbacks = [
+    { path: "/rh/asos", key: "portal_rh" },
+    { path: "/rh/asos", key: "rh" },
+    { path: "/aso", key: "aso" },
+    { path: "/epis", key: "epis" },
+    { path: "/epis/controle-contrato", key: "estoque_contrato" },
+    { path: "/entregas", key: "entregas" },
+    { path: "/relatorios", key: "relatorios" },
+    { path: "/cadastro/empresas", key: "cadastro_empresas" },
+    { path: "/cadastro/funcionarios", key: "cadastro_funcionarios" },
+    { path: "/cadastro/usuarios", key: "cadastro_usuarios" },
+    { path: "/cat", key: "cat" },
+    { path: "/pgr", key: "pgr" },
+    { path: "/ltcat", key: "ltcat" },
+    { path: "/ppp", key: "ppp" },
+    { path: "/inspecoes-se", key: "inspecoes_se" },
+    { path: "/treinamentos", key: "treinamentos" },
+    { path: "/dds", key: "dds" },
+    { path: "/video-treinamentos", key: "video_treinamentos" },
+  ];
+  for (const f of fallbacks) {
+    if (canAccessModule(modulosPermitidos, f.key)) {
+      return <Navigate to={f.path} replace />;
     }
   }
-  return <Dashboard />;
+  // Sem nenhuma permissão acessível — bloqueio explícito (mesma mensagem do ProtectedRoute).
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center space-y-4 max-w-md p-8">
+        <div className="text-5xl">🔒</div>
+        <h1 className="text-xl font-bold">Acesso não autorizado</h1>
+        <p className="text-muted-foreground text-sm">
+          Seu usuário não possui permissões liberadas para acessar nenhum módulo. Contate o administrador.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function ProtectedRoute() {
