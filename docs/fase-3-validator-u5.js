@@ -8,7 +8,7 @@
 //   3. No painel flutuante, use os botões para Validation OU Report cru.
 //   4. Atalhos no console:
 //        baixarFase3Validation()  → baixa o resumo validado
-//        baixarFase3Report()      → baixa o __fase3Report cru
+//        baixarFase3Report()      → baixa/abre painel com o __fase3Report cru
 //        copiarFase3Report()      → copia __fase3Report para o clipboard
 
 (function () {
@@ -205,10 +205,76 @@
     if (!ok) throw new Error("clipboard indisponível");
   }
 
-  function downloadJsonWithFallback(kind, override) {
-    const { fname, json } = getFase3ExportPayload(kind, override);
+  function makeFase3ObjectUrl(json) {
     const blob = new Blob([json], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    return URL.createObjectURL(blob);
+  }
+
+  function makeFase3DataUrl(json) {
+    return `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
+  }
+
+  function renderManualDownloadPanel(kind = "report", override, reason = "") {
+    const payload = getFase3ExportPayload(kind, override);
+    const old = document.getElementById("fase3-manual-download-panel");
+    if (old?._fase3ObjectUrl) URL.revokeObjectURL(old._fase3ObjectUrl);
+    old?.remove();
+
+    const objectUrl = makeFase3ObjectUrl(payload.json);
+    const dataUrl = makeFase3DataUrl(payload.json);
+    const title = kind === "report" ? "Report (__fase3Report cru)" : "Validation (resumo)";
+    const panel = document.createElement("div");
+    panel.id = "fase3-manual-download-panel";
+    panel._fase3ObjectUrl = objectUrl;
+    panel.style.cssText = "position:fixed;top:16px;right:16px;z-index:2147483647;background:#101010;color:#fff;border:1px solid #444;border-radius:10px;padding:12px 14px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.45);width:min(520px,calc(100vw - 32px));box-sizing:border-box";
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <strong style="color:#ffb74d">Arquivo pronto: ${title}</strong>
+        <button data-act="close" style="background:transparent;color:#aaa;border:0;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      ${reason ? `<div style="color:#ef9a9a;margin-bottom:8px">${reason}</div>` : ""}
+      <div style="color:#bbb;margin-bottom:8px;word-break:break-all">${payload.fname}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <a data-act="object-link" href="${objectUrl}" download="${payload.fname}" style="background:#00897b;color:#fff;text-decoration:none;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:700">Clique aqui para baixar</a>
+        <a data-act="data-link" href="${dataUrl}" download="${payload.fname}" style="background:#455a64;color:#fff;text-decoration:none;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:700">Baixar alternativo</a>
+        <button data-act="copy" style="background:#2962ff;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:700">Copiar JSON</button>
+        <button data-act="select" style="background:#424242;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:700">Selecionar JSON</button>
+      </div>
+      <textarea readonly style="width:100%;height:220px;background:#050505;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:8px;font:11px/1.35 monospace;box-sizing:border-box">${payload.json.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}</textarea>
+      <div data-feedback style="margin-top:8px;color:#9ccc65;min-height:16px">Se o download automático bloquear, clique no botão verde acima.</div>`;
+    document.body.appendChild(panel);
+
+    const ta = panel.querySelector("textarea");
+    const feedbackEl = panel.querySelector("[data-feedback]");
+    const feedback = (msg, color = "#9ccc65") => { feedbackEl.textContent = msg; feedbackEl.style.color = color; };
+    panel.addEventListener("click", async (ev) => {
+      const act = ev.target.closest("[data-act]")?.getAttribute("data-act");
+      if (!act) return;
+      try {
+        if (act === "close") {
+          URL.revokeObjectURL(objectUrl);
+          panel.remove();
+        } else if (act === "copy") {
+          await copyTextWithFallback(payload.json);
+          feedback("JSON copiado ✓");
+        } else if (act === "select") {
+          ta.focus(); ta.select();
+          feedback("JSON selecionado: pressione Ctrl+C");
+        } else if (act === "object-link" || act === "data-link") {
+          feedback("Download solicitado ✓");
+        }
+      } catch (e) {
+        ta.focus(); ta.select();
+        feedback(`Falha: ${e.message || e}. JSON selecionado: pressione Ctrl+C.`, "#ef5350");
+      }
+    });
+    window.__fase3LastDownload = payload;
+    return payload;
+  }
+
+  function downloadJsonWithFallback(kind, override, opts = {}) {
+    const { fname, json } = getFase3ExportPayload(kind, override);
+    const url = makeFase3ObjectUrl(json);
     const a = document.createElement("a");
     a.href = url;
     a.download = fname;
@@ -220,7 +286,10 @@
     } catch (e) {
       a.click();
     }
-    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 5000);
+    if (opts.showManual !== false) {
+      renderManualDownloadPanel(kind, override, "Também deixei um link manual caso o navegador bloqueie o download automático.");
+    }
     return { fname, json };
   }
 
@@ -232,7 +301,11 @@
   window.baixarFase3Report = function () {
     const r = downloadJsonWithFallback("report");
     console.log(`Download solicitado: ${r.fname}`);
-    return r.fname;
+    console.log("Se o navegador bloquear, use o painel aberto na tela: botão verde 'Clique aqui para baixar' ou 'Copiar JSON'.");
+    return r;
+  };
+  window.abrirFase3Report = function () {
+    return renderManualDownloadPanel("report");
   };
   window.copiarFase3Report = async function () {
     const { json } = getFase3ExportPayload("report");
@@ -296,10 +369,10 @@
       const act = btn.getAttribute("data-act");
       try {
         if (act === "copy-val") { await copyTextWithFallback(validation.json); feedback("Validation copiado ✓"); }
-        else if (act === "dl-val") { const r = downloadJsonWithFallback("validation", summary); feedback(`Baixando ${r.fname} ✓`); }
+        else if (act === "dl-val") { const r = downloadJsonWithFallback("validation", summary, { showManual: false }); renderManualDownloadPanel("validation", summary); feedback(`Baixando ${r.fname} ✓`); }
         else if (act === "sel-val") { showInBox(validation.json, "Validation"); }
         else if (act === "copy-rep" && report) { await copyTextWithFallback(report.json); feedback("Report copiado ✓"); }
-        else if (act === "dl-rep" && report) { const r = downloadJsonWithFallback("report"); feedback(`Baixando ${r.fname} ✓`); }
+        else if (act === "dl-rep" && report) { const r = downloadJsonWithFallback("report", undefined, { showManual: false }); renderManualDownloadPanel("report"); feedback(`Baixando ${r.fname} ✓`); }
         else if (act === "sel-rep" && report) { showInBox(report.json, "Report"); }
       } catch (e) {
         feedback(`Falha: ${e.message || e}. Use Selecionar.`, "#ef5350");
@@ -310,9 +383,10 @@
   // Reabrir o painel: renderFase3Panel(__fase3Validation)
   // Baixar manualmente:
   //   baixarFase3Validation()  → resumo validado
-  //   baixarFase3Report()      → __fase3Report cru
+  //   baixarFase3Report()      → __fase3Report cru + painel manual
+  //   abrirFase3Report()       → abre apenas o painel manual
   //   copiarFase3Report()      → copia __fase3Report para o clipboard
 
   console.log("validateFase3U5 carregado. Rode: validateFase3U5(__fase3Report)");
-  console.log("Atalhos: baixarFase3Validation() | baixarFase3Report() | copiarFase3Report()");
+  console.log("Atalhos: baixarFase3Validation() | baixarFase3Report() | abrirFase3Report() | copiarFase3Report()");
 })();
