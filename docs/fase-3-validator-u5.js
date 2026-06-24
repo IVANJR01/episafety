@@ -7,6 +7,7 @@
 //   2. Rode: validateFase3U5(__fase3Report)
 //   3. No painel flutuante, use os botões para Validation OU Report cru.
 //   4. Atalhos no console:
+//        imprimirFase3Report()    → imprime report+validation+veredito no console (sem baixar)
 //        baixarFase3Validation()  → baixa o resumo validado
 //        baixarFase3Report()      → baixa/abre painel com o __fase3Report cru
 //        copiarFase3Report()      → copia __fase3Report para o clipboard
