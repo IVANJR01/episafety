@@ -167,12 +167,22 @@
   };
 
   // ---------- Painel flutuante: copiar / baixar JSON ----------
-  function getFase3ExportPayload(summary) {
-    const source = summary || window.__fase3Validation;
-    if (!source) throw new Error("__fase3Validation não encontrado. Rode validateFase3U5(__fase3Report) primeiro.");
+  // kind = "validation" (resumo validado) | "report" (__fase3Report cru)
+  function getFase3ExportPayload(kind = "validation", override) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    if (kind === "report") {
+      const src = override || window.__fase3Report;
+      if (!src) throw new Error("__fase3Report não encontrado. Rode o script de teste primeiro.");
+      return {
+        fname: `fase3-report-${src.perfil || "u5"}-${stamp}.json`,
+        json: JSON.stringify(src, null, 2),
+      };
+    }
+    const src = override || window.__fase3Validation;
+    if (!src) throw new Error("__fase3Validation não encontrado. Rode validateFase3U5(__fase3Report) primeiro.");
     return {
-      fname: `fase3-${source.perfil || "report"}-${new Date().toISOString().replace(/[:.]/g,"-")}.json`,
-      json: JSON.stringify(source, null, 2),
+      fname: `fase3-validation-${src.perfil || "u5"}-${stamp}.json`,
+      json: JSON.stringify(src, null, 2),
     };
   }
 
@@ -193,8 +203,8 @@
     if (!ok) throw new Error("clipboard indisponível");
   }
 
-  function downloadJsonWithFallback(summary) {
-    const { fname, json } = getFase3ExportPayload(summary);
+  function downloadJsonWithFallback(kind, override) {
+    const { fname, json } = getFase3ExportPayload(kind, override);
     const blob = new Blob([json], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -203,83 +213,104 @@
     a.rel = "noopener";
     a.style.display = "none";
     document.body.appendChild(a);
-
     try {
       a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
     } catch (e) {
       a.click();
     }
-
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-      a.remove();
-    }, 1500);
-
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500);
     return { fname, json };
   }
 
   window.baixarFase3Validation = function () {
-    const result = downloadJsonWithFallback(window.__fase3Validation);
-    console.log(`Download solicitado: ${result.fname}`);
-    return result.fname;
+    const r = downloadJsonWithFallback("validation");
+    console.log(`Download solicitado: ${r.fname}`);
+    return r.fname;
+  };
+  window.baixarFase3Report = function () {
+    const r = downloadJsonWithFallback("report");
+    console.log(`Download solicitado: ${r.fname}`);
+    return r.fname;
+  };
+  window.copiarFase3Report = async function () {
+    const { json } = getFase3ExportPayload("report");
+    await copyTextWithFallback(json);
+    console.log("__fase3Report copiado para a área de transferência");
   };
 
   function renderFase3Panel(summary) {
     document.getElementById("fase3-export-panel")?.remove();
     const aprovado = summary.veredito === "APROVADO";
     const bg = aprovado ? "#1b5e20" : "#b00020";
-    const { json } = getFase3ExportPayload(summary);
+    const validation = getFase3ExportPayload("validation", summary);
+    let report = null;
+    try { report = getFase3ExportPayload("report"); } catch (e) { /* sem report */ }
 
     const panel = document.createElement("div");
     panel.id = "fase3-export-panel";
-    panel.style.cssText = `position:fixed;bottom:16px;right:16px;z-index:2147483647;background:#111;color:#fff;border:1px solid #333;border-radius:10px;padding:12px 14px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.4);min-width:260px;`;
+    panel.style.cssText = `position:fixed;bottom:16px;right:16px;z-index:2147483647;background:#111;color:#fff;border:1px solid #333;border-radius:10px;padding:12px 14px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.4);min-width:300px;max-width:360px;`;
     panel.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
         <span style="background:${bg};padding:2px 8px;border-radius:4px;font-weight:700">${summary.veredito} ${summary.passed}/${summary.total}</span>
         <button id="fase3-close" style="background:transparent;color:#aaa;border:0;cursor:pointer;font-size:16px">✕</button>
       </div>
       <div style="margin-bottom:10px;color:#bbb">Fase 3 · ${summary.perfil || "-"}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button id="fase3-copy" style="flex:1;background:#2962ff;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600">Copiar JSON</button>
-        <button id="fase3-download" style="flex:1;background:#00897b;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600">Baixar .json</button>
+
+      <div style="color:#80cbc4;font-weight:600;margin:6px 0 4px">Validation (resumo)</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button data-act="copy-val" style="flex:1;background:#2962ff;color:#fff;border:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-weight:600">Copiar</button>
+        <button data-act="dl-val" style="flex:1;background:#00897b;color:#fff;border:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-weight:600">Baixar .json</button>
+        <button data-act="sel-val" style="flex:1;background:#424242;color:#fff;border:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-weight:600">Selecionar</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <button id="fase3-select" style="flex:1;background:#424242;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600">Selecionar JSON</button>
+
+      <div style="color:#ffb74d;font-weight:600;margin:12px 0 4px">Report (__fase3Report cru) ${report ? "" : "<span style='color:#ef5350;font-weight:400'>— não encontrado</span>"}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button data-act="copy-rep" ${report?"":"disabled"} style="flex:1;background:#2962ff;color:#fff;border:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-weight:600;opacity:${report?1:.4}">Copiar</button>
+        <button data-act="dl-rep" ${report?"":"disabled"} style="flex:1;background:#00897b;color:#fff;border:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-weight:600;opacity:${report?1:.4}">Baixar .json</button>
+        <button data-act="sel-rep" ${report?"":"disabled"} style="flex:1;background:#424242;color:#fff;border:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-weight:600;opacity:${report?1:.4}">Selecionar</button>
       </div>
-      <textarea id="fase3-json-box" readonly style="display:none;margin-top:8px;width:100%;height:140px;background:#050505;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:8px;font:11px/1.35 monospace;box-sizing:border-box"></textarea>
+
+      <textarea id="fase3-json-box" readonly style="display:none;margin-top:8px;width:100%;height:160px;background:#050505;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:8px;font:11px/1.35 monospace;box-sizing:border-box"></textarea>
       <div id="fase3-feedback" style="margin-top:8px;color:#9ccc65;min-height:16px"></div>`;
     document.body.appendChild(panel);
-    const jsonBox = panel.querySelector("#fase3-json-box");
-    jsonBox.value = json;
 
+    const jsonBox = panel.querySelector("#fase3-json-box");
     const feedback = (msg, color = "#9ccc65") => {
       const el = panel.querySelector("#fase3-feedback");
       el.textContent = msg; el.style.color = color;
-      setTimeout(() => { el.textContent = ""; }, 2500);
+      setTimeout(() => { el.textContent = ""; }, 2800);
     };
-    panel.querySelector("#fase3-close").onclick = () => panel.remove();
-    panel.querySelector("#fase3-copy").onclick = async () => {
-      try { await copyTextWithFallback(json); feedback("JSON copiado ✓"); }
-      catch (e) { feedback("Falha ao copiar. Use Selecionar JSON.", "#ef5350"); }
-    };
-    panel.querySelector("#fase3-download").onclick = () => {
-      try {
-        const result = downloadJsonWithFallback(summary);
-        feedback(`Download solicitado: ${result.fname} ✓`);
-      } catch (e) {
-        feedback("Falha no download. Use Selecionar JSON.", "#ef5350");
-      }
-    };
-    panel.querySelector("#fase3-select").onclick = () => {
+    const showInBox = (json, label) => {
+      jsonBox.value = json;
       jsonBox.style.display = "block";
-      jsonBox.focus();
-      jsonBox.select();
-      feedback("JSON selecionado: Ctrl+C para copiar");
+      jsonBox.focus(); jsonBox.select();
+      feedback(`${label} selecionado: Ctrl+C para copiar`);
     };
+
+    panel.querySelector("#fase3-close").onclick = () => panel.remove();
+    panel.addEventListener("click", async (ev) => {
+      const btn = ev.target.closest("button[data-act]");
+      if (!btn) return;
+      const act = btn.getAttribute("data-act");
+      try {
+        if (act === "copy-val") { await copyTextWithFallback(validation.json); feedback("Validation copiado ✓"); }
+        else if (act === "dl-val") { const r = downloadJsonWithFallback("validation", summary); feedback(`Baixando ${r.fname} ✓`); }
+        else if (act === "sel-val") { showInBox(validation.json, "Validation"); }
+        else if (act === "copy-rep" && report) { await copyTextWithFallback(report.json); feedback("Report copiado ✓"); }
+        else if (act === "dl-rep" && report) { const r = downloadJsonWithFallback("report"); feedback(`Baixando ${r.fname} ✓`); }
+        else if (act === "sel-rep" && report) { showInBox(report.json, "Report"); }
+      } catch (e) {
+        feedback(`Falha: ${e.message || e}. Use Selecionar.`, "#ef5350");
+      }
+    });
   }
   window.renderFase3Panel = renderFase3Panel;
-  // Reabrir o painel manualmente: renderFase3Panel(__fase3Validation)
-  // Baixar manualmente: baixarFase3Validation()
+  // Reabrir o painel: renderFase3Panel(__fase3Validation)
+  // Baixar manualmente:
+  //   baixarFase3Validation()  → resumo validado
+  //   baixarFase3Report()      → __fase3Report cru
+  //   copiarFase3Report()      → copia __fase3Report para o clipboard
 
   console.log("validateFase3U5 carregado. Rode: validateFase3U5(__fase3Report)");
+  console.log("Atalhos: baixarFase3Validation() | baixarFase3Report() | copiarFase3Report()");
 })();
