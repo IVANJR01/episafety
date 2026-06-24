@@ -67,9 +67,6 @@ Deno.serve(async (req) => {
     if (!aso) {
       return json({ error: "not_found" }, 404);
     }
-    if (!aso.pdf_url) {
-      return json({ error: "pdf_unavailable" }, 404);
-    }
 
     // 4. Checa tenant (árvore de empresa) OU super admin/principal
     const [tenantRes, superRes, princRes, permRes] = await Promise.all([
@@ -112,6 +109,12 @@ Deno.serve(async (req) => {
         return json({ error: "aso_nao_liberado" }, 403);
       }
     }
+
+    // 6. Só agora valida disponibilidade do PDF (após autorização)
+    if (!aso.pdf_url) {
+      return json({ error: "pdf_unavailable" }, 404);
+    }
+
 
     // 6. Log + devolve a URL do PDF (link gdrive-proxy já privado)
     await logAccess(admin, {
