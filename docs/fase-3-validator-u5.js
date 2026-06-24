@@ -399,7 +399,18 @@
       if (!btn) return;
       const act = btn.getAttribute("data-act");
       try {
-        if (act === "copy-val") { await copyTextWithFallback(validation.json); feedback("Validation copiado ✓"); }
+        if (act === "copy-both" && report) {
+          const combined = JSON.stringify({
+            veredito: summary.veredito,
+            passed: summary.passed,
+            total: summary.total,
+            report: window.__fase3Report,
+            validation: summary,
+          }, null, 2);
+          await copyTextWithFallback(combined);
+          feedback(`Tudo copiado ✓ (${(combined.length/1024).toFixed(1)} KB) — cole no chat com Ctrl+V`);
+        }
+        else if (act === "copy-val") { await copyTextWithFallback(validation.json); feedback("Validation copiado ✓"); }
         else if (act === "dl-val") { const r = downloadJsonWithFallback("validation", summary, { showManual: false }); renderManualDownloadPanel("validation", summary); feedback(`Baixando ${r.fname} ✓`); }
         else if (act === "sel-val") { showInBox(validation.json, "Validation"); }
         else if (act === "copy-rep" && report) { await copyTextWithFallback(report.json); feedback("Report copiado ✓"); }
