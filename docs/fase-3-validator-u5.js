@@ -313,6 +313,34 @@
     console.log("__fase3Report copiado para a área de transferência");
   };
 
+  // Imprime no console o __fase3Report + __fase3Validation já formatados,
+  // prontos para copiar e colar no chat. Não baixa arquivo, não abre painel.
+  window.imprimirFase3Report = function () {
+    const report = window.__fase3Report;
+    const validation = window.__fase3Validation;
+    if (!report) {
+      console.error("__fase3Report não encontrado. Rode primeiro o script de teste da Fase 3.");
+      return null;
+    }
+    const veredito = validation?.veredito
+      || (report && !window.__fase3Validation ? "(rode validateFase3U5(__fase3Report) antes)" : "?");
+
+    const reportJson = JSON.stringify(report, null, 2);
+    const validationJson = validation ? JSON.stringify(validation, null, 2) : "(sem __fase3Validation — rode validateFase3U5(__fase3Report))";
+
+    console.log("%c===== __fase3Report =====", "color:#80cbc4;font-weight:bold");
+    console.log(reportJson);
+    console.log("%c===== __fase3Validation =====", "color:#80cbc4;font-weight:bold");
+    console.log(validationJson);
+    console.log(`%c===== VEREDITO: ${veredito} =====`,
+      `background:${veredito === "APROVADO" ? "#1b5e20" : "#b00020"};color:#fff;padding:2px 8px;font-weight:bold`);
+    if (validation) {
+      console.log(`Total: ${validation.passed}/${validation.total} · falhas: ${validation.failed}`);
+    }
+    console.log("Selecione o JSON acima no console (clique direito → 'Copy string contents' no Chrome) e cole no chat.");
+    return { veredito, report, validation };
+  };
+
   function renderFase3Panel(summary) {
     document.getElementById("fase3-export-panel")?.remove();
     const aprovado = summary.veredito === "APROVADO";
