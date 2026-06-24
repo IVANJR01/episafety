@@ -75,6 +75,8 @@ import SetupMfa from "@/pages/SetupMfa";
 import MfaBanner from "@/components/MfaBanner";
 import MfaGate from "@/components/MfaGate";
 import Fase3PortalRHTest from "@/pages/homolog/Fase3PortalRHTest";
+import Fase3AllTest from "@/pages/homolog/Fase3AllTest";
+
 
 
 function QueryProvider({ children }: { children: ReactNode }) {
@@ -341,6 +343,8 @@ const App = () => (
             <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
             <Route path="/setup-mfa" element={<SetupMfaGuarded />} />
             <Route path="/homolog/fase3-portal-rh-test" element={<Fase3PortalRHTest />} />
+            <Route path="/homolog/fase3-all" element={<Fase3AllTest />} />
+
             <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
             <Route path="/admin/empresas" element={<AdminLayout><AdminEmpresas /></AdminLayout>} />
             <Route path="/admin/usuarios" element={<AdminLayout><UsuariosLiberados /></AdminLayout>} />
