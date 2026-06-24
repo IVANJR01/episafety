@@ -209,11 +209,15 @@ export default function Fase3PortalRHTest() {
       );
     }
 
-    // INSERT em aso_exames — deve falhar
+    // INSERT em aso_exames — deve falhar por RLS (payload válido estruturalmente)
     {
       const { data, error } = await supabase
         .from("aso_exames")
-        .insert({ aso_id: ASO_RASCUNHO_A, nome: HOMOLOG_TAG } as any)
+        .insert({
+          aso_id: ASO_RASCUNHO_A,
+          nome_exame: `${HOMOLOG_TAG} exame`,
+          realizado: false,
+        } as any)
         .select("id");
       const denied = isRlsDenied(error) || (!data?.length && !!error);
       push(
@@ -224,19 +228,19 @@ export default function Fase3PortalRHTest() {
       );
       if (!denied && data?.[0]?.id) {
         warnings.push(`INSERT aso_exames passou — cleanup id ${data[0].id}`);
-        await (supabase as any).from("aso_exames").delete().eq("id", data[0].id).eq("nome", HOMOLOG_TAG);
+        await (supabase as any).from("aso_exames").delete().eq("id", data[0].id);
       }
     }
 
-    // UPDATE em aso_assinaturas — deve falhar ou 0 linhas
+    // UPDATE em aso_assinaturas — deve falhar ou 0 linhas (payload válido)
     {
       const { data, error } = await supabase
         .from("aso_assinaturas")
-        .update({ observacoes: HOMOLOG_TAG } as any)
+        .update({ nome: HOMOLOG_TAG } as any)
         .eq("aso_id", ASO_RASCUNHO_A)
         .select("id");
       const affected = data?.length ?? 0;
-      const denied = isRlsDenied(error) || affected === 0;
+      const denied = isRlsDenied(error) || (affected === 0 && !error);
       push(
         "escrita.update_aso_assinaturas negado",
         denied,
@@ -244,6 +248,7 @@ export default function Fase3PortalRHTest() {
         error ? `erro=${error.message}` : `affected=${affected}`,
       );
     }
+
 
     // ===== Edge function =====
     async function callEdge(label: string, asoId: string, expectedStatus: number, expectedError?: string) {
