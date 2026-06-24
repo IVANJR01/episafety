@@ -360,6 +360,8 @@
       </div>
       <div style="margin-bottom:10px;color:#bbb">Fase 3 · ${summary.perfil || "-"}</div>
 
+      <button data-act="copy-both" ${report?"":"disabled"} style="width:100%;background:#6a1b9a;color:#fff;border:0;padding:9px 10px;border-radius:6px;cursor:pointer;font-weight:700;margin-bottom:8px;opacity:${report?1:.4}">Copiar TUDO (report + validation)</button>
+
       <div style="color:#80cbc4;font-weight:600;margin:6px 0 4px">Validation (resumo)</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button data-act="copy-val" style="flex:1;background:#2962ff;color:#fff;border:0;padding:7px 10px;border-radius:6px;cursor:pointer;font-weight:600">Copiar</button>
