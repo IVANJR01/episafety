@@ -96,7 +96,7 @@ export default function Fase3PortalRHTest() {
       empresaAtiva = localStorage.getItem("active_empresa_id");
     } catch {}
     try {
-      const { data: ul } = await supabase
+      const { data: ul } = await (supabase as any)
         .from("usuarios_liberados")
         .select("*")
         .eq("user_id", user.id)
@@ -272,7 +272,7 @@ export default function Fase3PortalRHTest() {
         push(label, false, `${expectedStatus}`, `exception=${e?.message ?? e}`);
       }
     }
-    await callEdge("edge.liberado_A status=200", ASO_LIBERADO_A, 200);
+    await callEdge("edge.liberado_A status=200" as string, ASO_LIBERADO_A, 200);
     await callEdge("edge.rascunho_A 403 aso_nao_liberado", ASO_RASCUNHO_A, 403, "aso_nao_liberado");
     await callEdge("edge.empresa_B 403 forbidden_tenant", ASO_EMPRESA_B, 403, "forbidden_tenant");
 
