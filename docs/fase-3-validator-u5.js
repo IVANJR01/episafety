@@ -208,10 +208,7 @@
     };
   }
   window.renderFase3Panel = renderFase3Panel;
-  // Permite reabrir o painel manualmente:
-  //   renderFase3Panel(__fase3Validation)
-  return; // evita continuação acidental abaixo no template original
-  };
+  // Reabrir o painel manualmente: renderFase3Panel(__fase3Validation)
 
   console.log("validateFase3U5 carregado. Rode: validateFase3U5(__fase3Report)");
 })();
