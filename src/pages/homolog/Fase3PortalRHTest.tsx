@@ -224,7 +224,7 @@ export default function Fase3PortalRHTest() {
       );
       if (!denied && data?.[0]?.id) {
         warnings.push(`INSERT aso_exames passou — cleanup id ${data[0].id}`);
-        await supabase.from("aso_exames").delete().eq("id", data[0].id).eq("nome", HOMOLOG_TAG);
+        await (supabase as any).from("aso_exames").delete().eq("id", data[0].id).eq("nome", HOMOLOG_TAG);
       }
     }
 
