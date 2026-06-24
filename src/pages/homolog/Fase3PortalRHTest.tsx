@@ -99,7 +99,7 @@ export default function Fase3PortalRHTest() {
       const { data: ul } = await (supabase as any)
         .from("usuarios_liberados")
         .select("*")
-        .eq("user_id", user.id)
+        .ilike("email", user.email ?? "")
         .maybeSingle();
       usuariosLiberados = ul;
       modulos = Array.isArray(ul?.modulos_permitidos) ? (ul!.modulos_permitidos as string[]) : [];
