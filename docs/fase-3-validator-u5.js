@@ -7,6 +7,7 @@
 //   2. Rode: validateFase3U5(__fase3Report)
 //   3. Veja a tabela colorida + objeto retornado.
 //   4. Para copiar: copy(__fase3Validation)
+//   5. Se o botão de download falhar, rode no console: baixarFase3Validation()
 
 (function () {
   const EMPRESA_A      = "405d9da9-e213-4c25-8522-7d4bdc268dd0";
@@ -160,17 +161,74 @@
 
     window.__fase3Validation = summary;
     console.log("Para copiar o relatório: copy(__fase3Validation)");
+    console.log("Para baixar o arquivo: baixarFase3Validation()");
     renderFase3Panel(summary);
     return summary;
   };
 
   // ---------- Painel flutuante: copiar / baixar JSON ----------
+  function getFase3ExportPayload(summary) {
+    const source = summary || window.__fase3Validation;
+    if (!source) throw new Error("__fase3Validation não encontrado. Rode validateFase3U5(__fase3Report) primeiro.");
+    return {
+      fname: `fase3-${source.perfil || "report"}-${new Date().toISOString().replace(/[:.]/g,"-")}.json`,
+      json: JSON.stringify(source, null, 2),
+    };
+  }
+
+  async function copyTextWithFallback(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    if (!ok) throw new Error("clipboard indisponível");
+  }
+
+  function downloadJsonWithFallback(summary) {
+    const { fname, json } = getFase3ExportPayload(summary);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fname;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+
+    try {
+      a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+    } catch (e) {
+      a.click();
+    }
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 1500);
+
+    return { fname, json };
+  }
+
+  window.baixarFase3Validation = function () {
+    const result = downloadJsonWithFallback(window.__fase3Validation);
+    console.log(`Download solicitado: ${result.fname}`);
+    return result.fname;
+  };
+
   function renderFase3Panel(summary) {
     document.getElementById("fase3-export-panel")?.remove();
     const aprovado = summary.veredito === "APROVADO";
     const bg = aprovado ? "#1b5e20" : "#b00020";
-    const fname = `fase3-${summary.perfil || "report"}-${new Date().toISOString().replace(/[:.]/g,"-")}.json`;
-    const json = JSON.stringify(summary, null, 2);
+    const { json } = getFase3ExportPayload(summary);
 
     const panel = document.createElement("div");
     panel.id = "fase3-export-panel";
@@ -185,8 +243,14 @@
         <button id="fase3-copy" style="flex:1;background:#2962ff;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600">Copiar JSON</button>
         <button id="fase3-download" style="flex:1;background:#00897b;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600">Baixar .json</button>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button id="fase3-select" style="flex:1;background:#424242;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600">Selecionar JSON</button>
+      </div>
+      <textarea id="fase3-json-box" readonly style="display:none;margin-top:8px;width:100%;height:140px;background:#050505;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:8px;font:11px/1.35 monospace;box-sizing:border-box"></textarea>
       <div id="fase3-feedback" style="margin-top:8px;color:#9ccc65;min-height:16px"></div>`;
     document.body.appendChild(panel);
+    const jsonBox = panel.querySelector("#fase3-json-box");
+    jsonBox.value = json;
 
     const feedback = (msg, color = "#9ccc65") => {
       const el = panel.querySelector("#fase3-feedback");
@@ -195,20 +259,27 @@
     };
     panel.querySelector("#fase3-close").onclick = () => panel.remove();
     panel.querySelector("#fase3-copy").onclick = async () => {
-      try { await navigator.clipboard.writeText(json); feedback("JSON copiado ✓"); }
-      catch (e) { feedback("Falha ao copiar: " + e.message, "#ef5350"); }
+      try { await copyTextWithFallback(json); feedback("JSON copiado ✓"); }
+      catch (e) { feedback("Falha ao copiar. Use Selecionar JSON.", "#ef5350"); }
     };
     panel.querySelector("#fase3-download").onclick = () => {
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = fname; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      feedback(`Download: ${fname} ✓`);
+      try {
+        const result = downloadJsonWithFallback(summary);
+        feedback(`Download solicitado: ${result.fname} ✓`);
+      } catch (e) {
+        feedback("Falha no download. Use Selecionar JSON.", "#ef5350");
+      }
+    };
+    panel.querySelector("#fase3-select").onclick = () => {
+      jsonBox.style.display = "block";
+      jsonBox.focus();
+      jsonBox.select();
+      feedback("JSON selecionado: Ctrl+C para copiar");
     };
   }
   window.renderFase3Panel = renderFase3Panel;
   // Reabrir o painel manualmente: renderFase3Panel(__fase3Validation)
+  // Baixar manualmente: baixarFase3Validation()
 
   console.log("validateFase3U5 carregado. Rode: validateFase3U5(__fase3Report)");
 })();
