@@ -7694,6 +7694,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string
       }
+      has_aso_full_access: { Args: { _user_id: string }; Returns: boolean }
       has_permission: {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
