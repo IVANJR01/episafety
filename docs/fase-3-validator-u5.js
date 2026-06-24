@@ -5,9 +5,11 @@
 //
 //   1. Cole este arquivo inteiro no console.
 //   2. Rode: validateFase3U5(__fase3Report)
-//   3. Veja a tabela colorida + objeto retornado.
-//   4. Para copiar: copy(__fase3Validation)
-//   5. Se o botão de download falhar, rode no console: baixarFase3Validation()
+//   3. No painel flutuante, use os botões para Validation OU Report cru.
+//   4. Atalhos no console:
+//        baixarFase3Validation()  → baixa o resumo validado
+//        baixarFase3Report()      → baixa o __fase3Report cru
+//        copiarFase3Report()      → copia __fase3Report para o clipboard
 
 (function () {
   const EMPRESA_A      = "405d9da9-e213-4c25-8522-7d4bdc268dd0";
