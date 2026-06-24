@@ -156,10 +156,11 @@ export default function Fase3AllTest() {
     );
     pushBool(
       "sessao.perfil_detectado",
-      perfilDetectado !== "DESCONHECIDO",
+      (perfilDetectado as PerfilKey) !== "DESCONHECIDO",
       "perfil mapeado",
       perfilDetectado,
     );
+
 
     // ===== Helpers de leitura =====
     async function selectOne(label: string, id: string, expectedCount: 0 | 1) {
