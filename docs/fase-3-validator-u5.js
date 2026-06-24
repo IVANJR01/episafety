@@ -160,8 +160,55 @@
 
     window.__fase3Validation = summary;
     console.log("Para copiar o relatório: copy(__fase3Validation)");
+    renderFase3Panel(summary);
     return summary;
   };
+
+  // ---------- Painel flutuante: copiar / baixar JSON ----------
+  function renderFase3Panel(summary) {
+    document.getElementById("fase3-export-panel")?.remove();
+    const aprovado = summary.veredito === "APROVADO";
+    const bg = aprovado ? "#1b5e20" : "#b00020";
+    const fname = `fase3-${summary.perfil || "report"}-${new Date().toISOString().replace(/[:.]/g,"-")}.json`;
+    const json = JSON.stringify(summary, null, 2);
+
+    const panel = document.createElement("div");
+    panel.id = "fase3-export-panel";
+    panel.style.cssText = `position:fixed;bottom:16px;right:16px;z-index:2147483647;background:#111;color:#fff;border:1px solid #333;border-radius:10px;padding:12px 14px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.4);min-width:260px;`;
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="background:${bg};padding:2px 8px;border-radius:4px;font-weight:700">${summary.veredito} ${summary.passed}/${summary.total}</span>
+        <button id="fase3-close" style="background:transparent;color:#aaa;border:0;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="margin-bottom:10px;color:#bbb">Fase 3 · ${summary.perfil || "-"}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="fase3-copy" style="flex:1;background:#2962ff;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600">Copiar JSON</button>
+        <button id="fase3-download" style="flex:1;background:#00897b;color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-weight:600">Baixar .json</button>
+      </div>
+      <div id="fase3-feedback" style="margin-top:8px;color:#9ccc65;min-height:16px"></div>`;
+    document.body.appendChild(panel);
+
+    const feedback = (msg, color = "#9ccc65") => {
+      const el = panel.querySelector("#fase3-feedback");
+      el.textContent = msg; el.style.color = color;
+      setTimeout(() => { el.textContent = ""; }, 2500);
+    };
+    panel.querySelector("#fase3-close").onclick = () => panel.remove();
+    panel.querySelector("#fase3-copy").onclick = async () => {
+      try { await navigator.clipboard.writeText(json); feedback("JSON copiado ✓"); }
+      catch (e) { feedback("Falha ao copiar: " + e.message, "#ef5350"); }
+    };
+    panel.querySelector("#fase3-download").onclick = () => {
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = fname; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      feedback(`Download: ${fname} ✓`);
+    };
+  }
+  window.renderFase3Panel = renderFase3Panel;
+  // Reabrir o painel manualmente: renderFase3Panel(__fase3Validation)
 
   console.log("validateFase3U5 carregado. Rode: validateFase3U5(__fase3Report)");
 })();
