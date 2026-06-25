@@ -430,14 +430,18 @@ export default function Fase3AllTest() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto space-y-4">
         <h1 className="text-2xl font-bold">Teste Automático Fase 3 — Todos os Perfis</h1>
-        <p className="text-sm text-muted-foreground">
-          Usuário: <strong>{user?.email ?? "(não logado)"}</strong> · Perfil detectado:{" "}
-          <strong>{perfilDetectado}</strong>
-        </p>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Carregando sessão…</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Usuário: <strong>{user?.email ?? "(não logado)"}</strong> · Perfil detectado:{" "}
+            <strong>{perfilDetectado}</strong>
+          </p>
+        )}
 
         <div className="flex gap-2">
-          <Button onClick={runTests} disabled={running || !user || perfilDetectado === "DESCONHECIDO"}>
-            {running ? "Rodando..." : "Rodar teste agora"}
+          <Button onClick={runTests} disabled={loading || running || !user || perfilDetectado === "DESCONHECIDO"}>
+            {running ? "Rodando..." : loading ? "Aguardando sessão..." : "Rodar teste agora"}
           </Button>
           <Button variant="secondary" onClick={copyJson} disabled={!report}>
             Copiar JSON completo
