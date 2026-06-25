@@ -1,12 +1,13 @@
 // Rota única de homologação Fase 3 — detecta o perfil pelo e-mail logado
 // e roda o conjunto de checks específico (RLS + edge portal-rh-aso-download).
 // Disponível só em preview/dev. Não executa eSocial, ICP, XMLDSig, SOAP, S-3000.
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import type { User } from "@supabase/supabase-js";
 
 // ===== IDs fixos de homologação =====
 const EMPRESA_A      = "f141f880-b820-4e0d-8958-a410734201fa"; // [HOMOLOG] Empresa A
@@ -55,6 +56,36 @@ const EMAIL_TO_PERFIL: Record<string, PerfilKey> = {
   "homolog.u5@gmail.com": "U5_RH_ONLY",
 };
 
+function detectPerfil(email?: string | null): PerfilKey {
+  if (!email) return "DESCONHECIDO";
+  return EMAIL_TO_PERFIL[email.toLowerCase()] ?? "DESCONHECIDO";
+}
+
+async function readAuthenticatedUser(): Promise<User | null> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const session = sessionData?.session ?? null;
+
+  if (sessionError || !session) {
+    return null;
+  }
+
+  const { data: userData } = await supabase.auth.getUser();
+  if (userData?.user) {
+    return userData.user;
+  }
+
+  if (!session.refresh_token) {
+    return null;
+  }
+
+  try {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    return refreshed?.session?.user ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function isRlsDenied(err: any) {
   if (!err) return false;
   const code = String(err.code ?? "");
@@ -80,16 +111,16 @@ function isAllowed() {
 }
 
 async function callEdge(asoId: string) {
-  // Força refresh — evita 401 quando o access_token em cache é de uma sessão revogada
   let token: string | undefined;
   try {
-    const { data: refreshed } = await supabase.auth.refreshSession();
-    token = refreshed?.session?.access_token;
-  } catch {}
-  if (!token) {
     const { data: sess } = await supabase.auth.getSession();
     token = sess?.session?.access_token;
-  }
+
+    if (!token && sess?.session?.refresh_token) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      token = refreshed?.session?.access_token;
+    }
+  } catch {}
   const anonKey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY
     ?? (import.meta as any).env?.VITE_SUPABASE_ANON_KEY
     ?? "";
@@ -108,23 +139,71 @@ async function callEdge(asoId: string) {
 }
 
 export default function Fase3AllTest() {
-  const { user, loading } = useAuth();
+  const [hydratedUser, setHydratedUser] = useState<User | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [report, setReport] = useState<Report | null>(null);
   const [running, setRunning] = useState(false);
   const allowed = useMemo(() => isAllowed(), []);
+  const user = hydratedUser;
+  const loading = sessionLoading;
 
   const perfilDetectado: PerfilKey = useMemo(() => {
-    if (!user?.email) return "DESCONHECIDO";
-    return EMAIL_TO_PERFIL[user.email.toLowerCase()] ?? "DESCONHECIDO";
-  }, [user]);
+    return detectPerfil(user?.email);
+  }, [user?.email]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateSession = async () => {
+      setSessionLoading(true);
+      const sessionUser = await readAuthenticatedUser();
+      if (cancelled) return;
+      setHydratedUser(sessionUser);
+      setSessionLoading(false);
+    };
+
+    void hydrateSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setHydratedUser(null);
+        setSessionLoading(false);
+        return;
+      }
+
+      if (session?.user) {
+        setHydratedUser(session.user);
+        setSessionLoading(false);
+        return;
+      }
+
+      setSessionLoading(true);
+      void readAuthenticatedUser().then((sessionUser) => {
+        if (cancelled) return;
+        setHydratedUser(sessionUser);
+        setSessionLoading(false);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function runTests() {
-    if (!user) {
+    const testUser = await readAuthenticatedUser();
+    if (!testUser) {
+      setHydratedUser(null);
       toast.error("Faça login antes de rodar o teste.");
       return;
     }
-    if (perfilDetectado === "DESCONHECIDO") {
-      toast.error(`E-mail ${user.email} não pertence a nenhum perfil homolog.`);
+
+    setHydratedUser(testUser);
+    const testPerfil = detectPerfil(testUser.email);
+
+    if (testPerfil === "DESCONHECIDO") {
+      toast.error(`E-mail ${testUser.email} não pertence a nenhum perfil homolog.`);
       return;
     }
     setRunning(true);
@@ -152,7 +231,7 @@ export default function Fase3AllTest() {
       const { data: ul } = await (supabase as any)
         .from("usuarios_liberados")
         .select("*")
-        .ilike("email", user.email ?? "")
+        .ilike("email", testUser.email ?? "")
         .maybeSingle();
       usuariosLiberados = ul;
       modulos = Array.isArray(ul?.modulos_permitidos) ? (ul!.modulos_permitidos as string[]) : [];
@@ -162,15 +241,15 @@ export default function Fase3AllTest() {
 
     pushBool(
       "sessao.email_logado",
-      !!user.email,
+      !!testUser.email,
       "email não-nulo",
-      user.email ?? "",
+      testUser.email ?? "",
     );
     pushBool(
       "sessao.perfil_detectado",
-      (perfilDetectado as PerfilKey) !== "DESCONHECIDO",
+      testPerfil !== "DESCONHECIDO",
       "perfil mapeado",
-      perfilDetectado,
+      testPerfil,
     );
 
 
@@ -296,7 +375,7 @@ export default function Fase3AllTest() {
     }
 
     // ===== Conjuntos por perfil =====
-    if (perfilDetectado === "U5_RH_ONLY") {
+    if (testPerfil === "U5_RH_ONLY") {
       const hasRh = modulos.some((m) => m.startsWith("portal_rh") || m === "rh");
       pushBool("modulos.portal_rh", hasRh, "portal_rh*", modulos.join(","));
       await selectOne("leitura.aso_liberado_A=1", ASO_LIBERADO_A, 1);
@@ -311,7 +390,7 @@ export default function Fase3AllTest() {
       await edgeCheck("edge.liberado_A=200", ASO_LIBERADO_A, 200);
       await edgeCheck("edge.rascunho_A=403_aso_nao_liberado", ASO_RASCUNHO_A, 403, "aso_nao_liberado");
       await edgeCheck("edge.empresa_B=403_forbidden_tenant", ASO_EMPRESA_B, 403, "forbidden_tenant");
-    } else if (perfilDetectado === "U2_PRINCIPAL") {
+    } else if (testPerfil === "U2_PRINCIPAL") {
       await selectOne("leitura.aso_liberado_A=1", ASO_LIBERADO_A, 1);
       await selectOne("leitura.aso_rascunho_A=1", ASO_RASCUNHO_A, 1);
       await selectOne("leitura.aso_empresa_B=0", ASO_EMPRESA_B, 0);
@@ -333,7 +412,7 @@ export default function Fase3AllTest() {
       await insertAsoNegado("escrita.insert_aso_B negado", EMPRESA_B);
       await edgeCheck("edge.liberado_A=200", ASO_LIBERADO_A, 200);
       await edgeCheck("edge.empresa_B=403_forbidden_tenant", ASO_EMPRESA_B, 403, "forbidden_tenant");
-    } else if (perfilDetectado === "U3_TECNICO_SST") {
+    } else if (testPerfil === "U3_TECNICO_SST") {
       await selectOne("leitura.aso_liberado_A=1", ASO_LIBERADO_A, 1);
       await selectOne("leitura.aso_rascunho_A=1", ASO_RASCUNHO_A, 1);
       await selectOne("leitura.aso_empresa_B=0", ASO_EMPRESA_B, 0);
@@ -349,7 +428,7 @@ export default function Fase3AllTest() {
       await updateAsoNegado("escrita.update_empresa_B negado", ASO_EMPRESA_B);
       await edgeCheck("edge.liberado_A=200", ASO_LIBERADO_A, 200);
       await edgeCheck("edge.empresa_B=403_forbidden_tenant", ASO_EMPRESA_B, 403, "forbidden_tenant");
-    } else if (perfilDetectado === "U1_SUPER_ADMIN") {
+    } else if (testPerfil === "U1_SUPER_ADMIN") {
       await selectMin1("leitura.aso_liberado_A>=1", ASO_LIBERADO_A);
       await selectMin1("leitura.aso_rascunho_A>=1", ASO_RASCUNHO_A);
       await selectMin1("leitura.aso_empresa_B>=1", ASO_EMPRESA_B);
@@ -387,9 +466,9 @@ export default function Fase3AllTest() {
     const skipped = normalizedResults.filter((r) => r.status.startsWith("SKIPPED")).length;
     const rep: Report = {
       veredito: failed === 0 ? (skipped > 0 ? "APROVADO_COM_SKIPPED_SAFE" : "APROVADO") : "REPROVADO",
-      perfil_detectado: perfilDetectado,
-      email: user.email ?? null,
-      user_id: user.id,
+      perfil_detectado: testPerfil,
+      email: testUser.email ?? null,
+      user_id: testUser.id,
       empresa_ativa: empresaAtiva,
       usuarios_liberados: usuariosLiberados,
       modulos_permitidos: modulos,
@@ -424,6 +503,10 @@ export default function Fase3AllTest() {
         </Card>
       </div>
     );
+  }
+
+  if (!loading && !user) {
+    return <Navigate to="/auth?redirect=/homolog/fase3-all" replace />;
   }
 
   return (
