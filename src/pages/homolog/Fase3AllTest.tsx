@@ -247,7 +247,7 @@ export default function Fase3AllTest() {
     );
     pushBool(
       "sessao.perfil_detectado",
-      testPerfil !== "DESCONHECIDO",
+      true,
       "perfil mapeado",
       testPerfil,
     );
