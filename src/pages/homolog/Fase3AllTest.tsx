@@ -321,9 +321,14 @@ export default function Fase3AllTest() {
       await deleteAsoNegado("escrita.delete_empresa_B negado", ASO_EMPRESA_B);
       // Insert válido em Empresa A — Principal deve conseguir (e nós limpamos)
       {
+        const FUNC_A1 = "5e95ee33-4554-4da4-9755-1bc6123d901c"; // [HOMOLOG] Funcionário A1
         const insertId = crypto.randomUUID();
         const { data, error } = await supabase.from("asos").insert({
-          id: insertId, empresa_id: EMPRESA_A, status: "rascunho", observacoes: HOMOLOG_TAG,
+          id: insertId,
+          empresa_id: EMPRESA_A,
+          funcionario_id: FUNC_A1,
+          status: "rascunho",
+          observacoes: HOMOLOG_TAG,
         } as any).select("id");
         const ok = !error && !!data?.length;
         pushBool(
