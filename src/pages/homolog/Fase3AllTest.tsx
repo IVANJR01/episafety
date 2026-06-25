@@ -80,13 +80,25 @@ function isAllowed() {
 }
 
 async function callEdge(asoId: string) {
-  const { data: sess } = await supabase.auth.getSession();
-  const token = sess?.session?.access_token;
+  // Força refresh — evita 401 quando o access_token em cache é de uma sessão revogada
+  let token: string | undefined;
+  try {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    token = refreshed?.session?.access_token;
+  } catch {}
+  if (!token) {
+    const { data: sess } = await supabase.auth.getSession();
+    token = sess?.session?.access_token;
+  }
+  const anonKey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY
+    ?? (import.meta as any).env?.VITE_SUPABASE_ANON_KEY
+    ?? "";
   const res = await fetch(EDGE_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token ?? ""}`,
+      apikey: anonKey,
     },
     body: JSON.stringify({ aso_id: asoId, acao: "view" }),
   });
