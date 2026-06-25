@@ -514,7 +514,7 @@ export default function Fase3AllTest() {
       <div className="max-w-4xl mx-auto space-y-4">
         <h1 className="text-2xl font-bold">Teste Automático Fase 3 — Todos os Perfis</h1>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Carregando sessão…</p>
+          <p className="text-sm text-muted-foreground">Carregando sessão...</p>
         ) : (
           <p className="text-sm text-muted-foreground">
             Usuário: <strong>{user?.email ?? "(não logado)"}</strong> · Perfil detectado:{" "}
