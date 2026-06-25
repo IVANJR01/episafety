@@ -108,7 +108,7 @@ async function callEdge(asoId: string) {
 }
 
 export default function Fase3AllTest() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [report, setReport] = useState<Report | null>(null);
   const [running, setRunning] = useState(false);
   const allowed = useMemo(() => isAllowed(), []);
