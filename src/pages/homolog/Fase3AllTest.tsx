@@ -327,6 +327,7 @@ export default function Fase3AllTest() {
           id: insertId,
           empresa_id: EMPRESA_A,
           funcionario_id: FUNC_A1,
+          numero_aso: `HOMOLOG-${Date.now()}`,
           status: "rascunho",
           observacoes: HOMOLOG_TAG,
         } as any).select("id");
