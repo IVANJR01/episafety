@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { queryClient, storagePersister, QUERY_PERSIST_MAX_AGE } from "@/lib/queryClient";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { canAccessModule } from "@/lib/permissions";
 import AppLayout from "@/components/AppLayout";
@@ -308,7 +308,11 @@ function ProtectedRoute() {
 
 function AuthPage() {
   const { user, loading } = useAuth();
-  if (!loading && user) return <Navigate to="/" replace />;
+  const location = useLocation();
+  const redirect = new URLSearchParams(location.search).get("redirect");
+  const safeRedirect = redirect?.startsWith("/") && !redirect.startsWith("//") ? redirect : "/";
+
+  if (!loading && user) return <Navigate to={safeRedirect} replace />;
   return <Auth />;
 }
 
@@ -337,6 +341,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<AuthPage />} />
+            <Route path="/auth" element={<AuthPage />} />
             <Route path="/install" element={<Install />} />
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/reset-password" element={<ResetPassword />} />
