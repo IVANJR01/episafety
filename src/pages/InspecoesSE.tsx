@@ -290,30 +290,12 @@ export default function InspecoesSE() {
     reader.readAsDataURL(compressed);
   }
 
-  async function uploadPhoto(file: File, label: "antes" | "depois"): Promise<string> {
-    if (!file || !(file instanceof Blob) || file.size === 0) {
-      throw new Error(`Foto ${label} inválida (arquivo vazio).`);
-    }
-    console.log(`[Inspecoes] uploadPhoto ${label}`, {
-      empresaId,
-      userId: user?.id,
-      folder: "inspecoes",
-      fileName: file.name,
-      fileType: file.type,
-      sizeKB: Math.round(file.size / 1024),
-    });
-    const { uploadToDrive } = await import("@/lib/googleDriveStorage");
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const result = await uploadToDrive(
-      file,
-      "inspecoes",
-      `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-    );
-    console.log(`[Inspecoes] uploadPhoto ${label} OK →`, result.publicUrl);
-    return result.publicUrl;
-  }
-
-  function buildPayload(foto_antes: string | null, foto_depois: string | null) {
+  function buildPayload(
+    foto_antes: string | null,
+    foto_depois: string | null,
+    foto_antes_path: string | null,
+    foto_depois_path: string | null,
+  ) {
     const isSolucionado = form.status === "SOLUCIONADO";
     return {
       data_inspecao: form.data_inspecao,
@@ -323,12 +305,14 @@ export default function InspecoesSE() {
       responsavel: form.responsavel || null,
       local: form.local || null,
       prazo_correcao: form.prazo_correcao || null,
-      // data_realizado only when solucionado; on new/pending inspections stays null
+      // data_realizado só quando SOLUCIONADO; em novas/pendentes fica null
       data_realizado: isSolucionado ? (form.data_realizado || format(new Date(), "yyyy-MM-dd")) : null,
       resolved_by: isSolucionado ? (user?.id || null) : null,
       status: form.status,
       foto_antes,
       foto_depois,
+      foto_antes_path,
+      foto_depois_path,
       referencia_normativa: form.referencia_normativa || null,
       empresa_id: empresaId,
       created_by: user?.id,
@@ -370,13 +354,12 @@ export default function InspecoesSE() {
     if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
     if (!form.responsavel.trim()) newErrors.responsavel = "Informe o responsável.";
     if (!form.prazo_correcao) newErrors.prazo_correcao = "Informe o prazo de correção.";
-    if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes) {
+    if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes && !existingFotoAntesPath) {
       newErrors.foto_antes = "Anexe a foto ANTES (obrigatória).";
     }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       toast({ title: "Verifique os campos obrigatórios", variant: "destructive" });
-      // scroll to first error
       setTimeout(() => {
         const el = document.querySelector("[data-error='true']") as HTMLElement | null;
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -385,88 +368,108 @@ export default function InspecoesSE() {
     }
     setErrors({});
 
+    if (!empresaId) {
+      toast({ title: "Empresa não identificada", description: "Faça login novamente.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
-      let foto_antes = existingFotoAntes;
-      let foto_depois = existingFotoDepois;
-      let shouldSaveOffline = !isOnline();
-
-      if (!shouldSaveOffline) {
-        // Safety: Foto DEPOIS só faz sentido quando SOLUCIONADO. Ignora arquivo em outros status.
-        const shouldUploadDepois = form.status === "SOLUCIONADO" && !!fotoDepoisFile;
-        console.log("[Inspecoes] handleSave upload plan", {
-          status: form.status,
-          hasFotoAntesFile: !!fotoAntesFile,
-          hasFotoDepoisFile: !!fotoDepoisFile,
-          willUploadDepois: shouldUploadDepois,
-          empresaId,
-        });
-        try {
-          const uploads = await Promise.all([
-            fotoAntesFile ? uploadPhoto(fotoAntesFile, "antes") : Promise.resolve(null),
-            shouldUploadDepois ? uploadPhoto(fotoDepoisFile!, "depois") : Promise.resolve(null),
-          ]);
-
-          if (uploads[0]) foto_antes = uploads[0];
-          if (uploads[1]) foto_depois = uploads[1];
-        } catch (error: any) {
-          console.error("[Inspecoes] Falha no upload Google Drive:", error, {
-            message: error?.message,
-            stack: error?.stack,
-          });
-          if (isNetworkFailure(error)) {
-            shouldSaveOffline = true;
-          } else {
-            // Fallback: salva offline com base64 e a fila de sync tenta reenviar depois.
-            toast({
-              title: "Não foi possível enviar a foto",
-              description: "Verifique a conexão ou permissão do Google Drive. Salvamos localmente e tentaremos reenviar automaticamente.",
-              variant: "destructive",
-            });
-            shouldSaveOffline = true;
-          }
-        }
-      }
-
-      if (shouldSaveOffline) {
-        if (fotoAntesPreview) foto_antes = fotoAntesPreview;
-        if (fotoDepoisPreview && form.status === "SOLUCIONADO") foto_depois = fotoDepoisPreview;
-      }
-
-      const payload = buildPayload(foto_antes || null, foto_depois || null);
-
-      if (editingId) {
-        if (!shouldSaveOffline) {
-          const { error } = await (supabase.from as any)("conformidades").update(payload).eq("id", editingId);
-          if (error) throw error;
-        } else {
-          saveOffline(payload);
-        }
-        if (!shouldSaveOffline) {
-          toast({ title: "Registro atualizado!" });
-        }
-      } else {
-        if (!shouldSaveOffline) {
-          const { error } = await (supabase.from as any)("conformidades").insert(payload);
-          if (error) throw error;
-        } else {
-          saveOffline(payload);
-        }
-        if (!shouldSaveOffline) {
-          toast({ title: "Registro criado!" });
-        }
-      }
-
-      resetDraft();
-      setDialogOpen(false);
-      if (!shouldSaveOffline) {
-        void loadData();
-      }
-    } catch (err: any) {
-      if (!isOnline() || isNetworkFailure(err) || err?.message?.includes("fetch")) {
+      // OFFLINE — grava base64 no cache e delega upload à fila (usa Supabase Storage no sync).
+      if (!isOnline()) {
         const payload = buildPayload(
           fotoAntesPreview || existingFotoAntes || null,
-          fotoDepoisPreview || existingFotoDepois || null,
+          (fotoDepoisPreview && form.status === "SOLUCIONADO") ? fotoDepoisPreview : existingFotoDepois,
+          existingFotoAntesPath,
+          form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null,
+        );
+        saveOffline(payload);
+        resetDraft();
+        setDialogOpen(false);
+        setSaving(false);
+        return;
+      }
+
+      // ONLINE — fluxo Supabase Storage
+      const shouldUploadDepois = form.status === "SOLUCIONADO" && !!fotoDepoisFile;
+
+      // Determina o ID do registro (para compor o path do Storage)
+      let inspectionId = editingId;
+      let insertedRecord: any = null;
+      if (!inspectionId) {
+        // Cria o registro primeiro (sem fotos novas). Assim garantimos o id no path.
+        const initialPayload = buildPayload(
+          existingFotoAntes,
+          existingFotoDepois,
+          existingFotoAntesPath,
+          existingFotoDepoisPath,
+        );
+        const { data, error } = await (supabase.from as any)("conformidades")
+          .insert(initialPayload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        insertedRecord = data;
+        inspectionId = data.id;
+      }
+
+      // Upload das fotos para Supabase Storage
+      let foto_antes_path = existingFotoAntesPath;
+      let foto_depois_path = form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null;
+      let foto_antes = existingFotoAntes;
+      let foto_depois = form.status === "SOLUCIONADO" ? existingFotoDepois : null;
+
+      try {
+        const uploads = await Promise.all([
+          fotoAntesFile
+            ? uploadInspecaoPhoto(fotoAntesFile, empresaId, inspectionId!, "antes")
+            : Promise.resolve(null),
+          shouldUploadDepois
+            ? uploadInspecaoPhoto(fotoDepoisFile!, empresaId, inspectionId!, "depois")
+            : Promise.resolve(null),
+        ]);
+        if (uploads[0]) {
+          foto_antes_path = uploads[0].path;
+          foto_antes = null; // path é a nova fonte-de-verdade; limpa legado
+        }
+        if (uploads[1]) {
+          foto_depois_path = uploads[1].path;
+          foto_depois = null;
+        }
+      } catch (upErr: any) {
+        console.error("[Inspecoes] Falha no upload Supabase Storage:", upErr);
+        toast({
+          title: "Erro ao enviar foto",
+          description: "Não foi possível enviar a foto para o Supabase Storage. Verifique a conexão e tente novamente.",
+          variant: "destructive",
+        });
+        // Se foi um insert recém-criado sem foto, remove-o para não deixar registro órfão.
+        if (insertedRecord && !editingId) {
+          await (supabase.from as any)("conformidades").delete().eq("id", insertedRecord.id).eq("empresa_id", empresaId);
+        }
+        setSaving(false);
+        return;
+      }
+
+      // Atualiza o registro com paths finais + demais campos do formulário
+      const finalPayload = buildPayload(foto_antes, foto_depois, foto_antes_path, foto_depois_path);
+      const { error: upErr } = await (supabase.from as any)("conformidades")
+        .update(finalPayload)
+        .eq("id", inspectionId!)
+        .eq("empresa_id", empresaId);
+      if (upErr) throw upErr;
+
+      toast({ title: editingId ? "Registro atualizado!" : "Registro criado!" });
+      resetDraft();
+      setDialogOpen(false);
+      void loadData();
+    } catch (err: any) {
+      if (isNetworkFailure(err) || err?.message?.includes("fetch")) {
+        const payload = buildPayload(
+          fotoAntesPreview || existingFotoAntes || null,
+          (fotoDepoisPreview && form.status === "SOLUCIONADO") ? fotoDepoisPreview : existingFotoDepois,
+          existingFotoAntesPath,
+          form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null,
         );
         saveOffline(payload);
         resetDraft();
