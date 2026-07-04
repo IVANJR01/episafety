@@ -28,6 +28,12 @@ const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
 const STATUS_OPTIONS = ["PENDENTE", "SOLUCIONADO"];
 const LOAD_TIMEOUT_MS = 3000;
 
+function isVencido(item: { prazo_correcao?: string | null; status: string }): boolean {
+  if (!item.prazo_correcao || item.status === "SOLUCIONADO") return false;
+  const today = format(new Date(), "yyyy-MM-dd");
+  return item.prazo_correcao < today;
+}
+
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs = LOAD_TIMEOUT_MS) => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
