@@ -1085,7 +1085,7 @@ export default function Treinamentos() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-4"><ListSkeleton rows={5} variant="row" /></div>
               ) : (
                 <Table>
                   <TableHeader>
