@@ -142,6 +142,9 @@ export default function InspecoesSE() {
   const depoisRef = useRef<HTMLInputElement>(null);
   const antesGalleryRef = useRef<HTMLInputElement>(null);
   const depoisGalleryRef = useRef<HTMLInputElement>(null);
+  const antesAppRef = useRef<HTMLInputElement>(null);
+  const depoisAppRef = useRef<HTMLInputElement>(null);
+  const [cameraChooserFor, setCameraChooserFor] = useState<"antes" | "depois" | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
