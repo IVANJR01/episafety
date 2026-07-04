@@ -103,20 +103,10 @@ export default function CadastroDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex items-center gap-3"
-      >
-        <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-          <BarChart3 className="w-6 h-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard Cadastro</h1>
-          <p className="text-sm text-muted-foreground">Visão geral dos cadastros da empresa</p>
-        </div>
-      </motion.div>
+      <PageHeader
+        title="Dashboard Cadastro"
+        subtitle="Visão geral dos cadastros da empresa."
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
