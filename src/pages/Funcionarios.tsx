@@ -551,15 +551,20 @@ export default function Funcionarios() {
 
         <TabsContent value={activeTab} className="mt-4">
       {loading ? (
-        <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+        <ListSkeleton rows={5} />
       ) : (
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
             {filteredItems.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">
-                {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
-              </CardContent></Card>
+              <EmptyState
+                icon={User}
+                title={searchTerm ? "Nenhum resultado" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
+                description={searchTerm ? "Ajuste a busca ou os filtros para ver mais resultados." : activeTab === "demitidos" ? "Colaboradores desligados aparecerão aqui." : "Cadastre o primeiro colaborador para iniciar o controle de EPIs, exames e documentos."}
+                action={!searchTerm && activeTab === "ativos" && canCreate ? (
+                  <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Funcionário</Button>
+                ) : undefined}
+              />
             ) : filteredItems.map(f => (
               <Card key={f.id} className="overflow-hidden">
                 <CardContent className="p-4">
