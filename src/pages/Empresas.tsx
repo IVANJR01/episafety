@@ -192,34 +192,35 @@ export default function Empresas() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label>Logo / Marca da Empresa</Label>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   {logoUrl ? (
-                    <div className="relative group">
+                    <div className="relative self-center sm:self-auto">
                       <img
                         src={logoUrl}
                         alt="Logo da empresa"
-                        className="w-24 h-24 object-contain rounded-lg border border-border bg-muted p-1"
+                        className="w-32 h-32 sm:w-24 sm:h-24 object-contain rounded-lg border border-border bg-white p-2"
                       />
                       <button
+                        type="button"
                         onClick={handleRemoveLogo}
-                        className="absolute -top-2 -right-2 p-1 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remover logo"
+                        aria-label="Remover logo"
+                        className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className="w-24 h-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                    <div className="w-full sm:w-24 h-32 sm:h-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
                       <Image className="w-8 h-8 text-muted-foreground/40" />
                     </div>
                   )}
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 flex-1">
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
+                      className="w-full sm:w-auto min-h-[44px]"
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       {uploading ? "Enviando..." : logoUrl ? "Trocar Logo" : "Enviar Logo"}
@@ -239,27 +240,27 @@ export default function Empresas() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <Label>Nome da Empresa</Label>
-                  <Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Nome completo da empresa" />
+                  <Input className="min-h-[44px]" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Nome completo da empresa" />
                 </div>
                 <div>
                   <Label>CNPJ</Label>
-                  <Input value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
+                  <Input className="min-h-[44px]" value={form.cnpj} onChange={e => setForm({ ...form, cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
                 </div>
                 <div>
                   <Label>Telefone</Label>
-                  <Input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} placeholder="(00) 00000-0000" />
+                  <Input className="min-h-[44px]" value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} placeholder="(00) 00000-0000" />
                 </div>
                 <div className="sm:col-span-2">
                   <Label>E-mail</Label>
-                  <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contato@empresa.com" />
+                  <Input className="min-h-[44px]" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contato@empresa.com" />
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Endereço</Label>
-                  <Input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} placeholder="Endereço completo" />
+                  <Input className="min-h-[44px]" value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} placeholder="Endereço completo" />
                 </div>
               </div>
-              <div className="flex justify-end pt-2">
-                <Button onClick={handleSave} disabled={saving}>
+              <div className="flex justify-end pt-2 sticky bottom-0 bg-card -mx-6 px-6 pb-2 pt-3 border-t sm:static sm:border-0 sm:mx-0 sm:px-0 sm:pt-2">
+                <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto min-h-[44px]">
                   <Save className="w-4 h-4 mr-2" />
                   {saving ? "Salvando..." : "Salvar"}
                 </Button>
