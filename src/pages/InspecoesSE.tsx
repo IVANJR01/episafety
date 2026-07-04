@@ -1436,14 +1436,18 @@ export default function InspecoesSE() {
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   <input ref={antesGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
-                  {(fotoAntesPreview || existingFotoAntes) ? (
+                  {(fotoAntesPreview || existingFotoAntes || existingFotoAntesPath) ? (
                     <div className="relative mt-1">
-                      <DriveImage src={fotoAntesPreview || existingFotoAntes!} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      {fotoAntesPreview ? (
+                        <img src={fotoAntesPreview} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      ) : (
+                        <InspecaoImage path={existingFotoAntesPath} legacyUrl={existingFotoAntes} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      )}
                       <button
                         type="button"
                         aria-label="Remover foto antes"
                         className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                        onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); }}
+                        onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); setExistingFotoAntesPath(null); }}
                       >
                         <X className="w-4 h-4" />
                       </button>
