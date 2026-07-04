@@ -980,23 +980,28 @@ export default function InspecoesSE() {
     drawTopBar();
     let y = 16;
 
-    if (logoDataUrl) {
+    let logoDrawn = false;
+    if (logoData?.dataUrl) {
       try {
-        const d = getImgDims(logoDataUrl);
         const maxH = 20, maxW = 45;
-        const ar = d.w && d.h ? d.w / d.h : 2;
+        const ar = logoData.w && logoData.h ? logoData.w / logoData.h : 2;
         let w = maxW, h = w / ar;
         if (h > maxH) { h = maxH; w = h * ar; }
         doc.setFillColor(255, 255, 255);
         doc.rect(MARGIN, y, w, h, "F");
-        doc.addImage(logoDataUrl, "PNG", MARGIN, y, w, h);
+        doc.addImage(logoData.dataUrl, "PNG", MARGIN, y, w, h, undefined, "FAST");
+        logoDrawn = true;
       } catch {}
     }
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     setText(NAVY);
-    doc.text(empresaNome || "—", pageWidth - MARGIN, y + 5, { align: "right" });
+    // Se não houver logo, mostra o nome da empresa em destaque à esquerda também
+    if (!logoDrawn && empresaNome) {
+      doc.text(empresaNome, MARGIN, y + 7);
+    }
+    doc.text(empresaNome || "Empresa", pageWidth - MARGIN, y + 5, { align: "right" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     setText(GREY_TXT);
