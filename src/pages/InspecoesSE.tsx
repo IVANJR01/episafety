@@ -1213,8 +1213,7 @@ export default function InspecoesSE() {
                         const obraNome = obra?.nome || (item.obra_id ? "Obra removida" : null);
                         const partes: string[] = [];
                         if (obraNome) partes.push(`Obra: ${obraNome}`);
-                        if (item.local_especifico) partes.push(`Local específico: ${item.local_especifico}`);
-                        else if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
+                        if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
                         return partes.length > 0 ? (
                           <span className="text-xs text-muted-foreground break-words">{partes.join(" • ")}</span>
                         ) : null;
