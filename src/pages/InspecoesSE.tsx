@@ -821,15 +821,14 @@ export default function InspecoesSE() {
     pdfImageCacheRef.current.clear();
 
     // Load empresa logo & name
-    let logoDataUrl: string | null = null;
+    let logoData: { dataUrl: string; w: number; h: number } | null = null;
     let empresaNome = "";
     try {
       if (empresaId && isOnline()) {
         const { data: empresa } = await (supabase.from as any)("empresa_config")
           .select("logo_url, logo_path, nome")
           .eq("id", empresaId)
-          .limit(1)
-          .single();
+          .maybeSingle();
 
         let logoSourceUrl: string | null = null;
         if (empresa?.logo_path) {
@@ -842,10 +841,21 @@ export default function InspecoesSE() {
           logoSourceUrl = empresa.logo_url;
         }
         if (logoSourceUrl) {
-          logoDataUrl = await loadLogoAsPngDataUrl(logoSourceUrl);
+          logoData = await loadLogoAsPngDataUrl(logoSourceUrl);
         }
 
         empresaNome = empresa?.nome || "";
+
+        // Fallback: try to read nome from empresas table if empresa_config is empty
+        if (!empresaNome) {
+          try {
+            const { data: emp } = await (supabase.from as any)("empresas")
+              .select("nome")
+              .eq("id", empresaId)
+              .maybeSingle();
+            empresaNome = emp?.nome || "";
+          } catch {}
+        }
       }
     } catch {}
 
