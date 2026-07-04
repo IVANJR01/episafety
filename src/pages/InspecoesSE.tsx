@@ -109,7 +109,7 @@ const emptyForm = {
   acao_corretiva: "",
   responsavel: "",
   local: "",
-  local_especifico: "",
+  
   obra_id: "",
   prazo_correcao: "",
   data_realizado: "",
@@ -266,7 +266,7 @@ export default function InspecoesSE() {
       acao_corretiva: item.acao_corretiva || "",
       responsavel: item.responsavel || "",
       local: item.local || "",
-      local_especifico: item.local_especifico || "",
+      
       obra_id: item.obra_id || "",
       prazo_correcao: item.prazo_correcao || "",
       data_realizado: item.data_realizado || "",
@@ -353,9 +353,9 @@ export default function InspecoesSE() {
       acao_corretiva: form.acao_corretiva || null,
       responsavel: form.responsavel || null,
       obra_id: form.obra_id || null,
-      local_especifico: form.local_especifico || null,
+      local_especifico: null,
       // "local" mantido em branco (obra_id substitui). Preservamos coluna para dados antigos.
-      local: form.local_especifico || null,
+      local: null,
       prazo_correcao: form.prazo_correcao || null,
       // data_realizado só quando SOLUCIONADO; em novas/pendentes fica null
       data_realizado: isSolucionado ? (form.data_realizado || format(new Date(), "yyyy-MM-dd")) : null,
@@ -1007,7 +1007,7 @@ export default function InspecoesSE() {
       {
         const obra = obras.find(o => o.id === item.obra_id);
         const obraNome = obra?.nome || item.local || "";
-        const localTxt = item.local_especifico ? `${obraNome}\n${item.local_especifico}` : obraNome;
+        const localTxt = obraNome;
         drawCenteredText(localTxt, x, y, scaledWidths[8], ROW_H, 6);
       }
       x += scaledWidths[8];
@@ -1213,8 +1213,7 @@ export default function InspecoesSE() {
                         const obraNome = obra?.nome || (item.obra_id ? "Obra removida" : null);
                         const partes: string[] = [];
                         if (obraNome) partes.push(`Obra: ${obraNome}`);
-                        if (item.local_especifico) partes.push(`Local específico: ${item.local_especifico}`);
-                        else if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
+                        if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
                         return partes.length > 0 ? (
                           <span className="text-xs text-muted-foreground break-words">{partes.join(" • ")}</span>
                         ) : null;
@@ -1317,8 +1316,7 @@ export default function InspecoesSE() {
                     const obraNome = obra?.nome || (item.obra_id ? "Obra removida" : null);
                     const partes: string[] = [];
                     if (obraNome) partes.push(`Obra: ${obraNome}`);
-                    if (item.local_especifico) partes.push(item.local_especifico);
-                    else if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
+                    if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
                     return partes.length > 0 ? (
                       <span className="text-xs text-muted-foreground break-words">{partes.join(" • ")}</span>
                     ) : null;
@@ -1413,26 +1411,6 @@ export default function InspecoesSE() {
                     </p>
                   )}
                 </div>
-              </div>
-              <div className="mt-3">
-                <Label className="font-semibold">Local específico</Label>
-                <Input
-                  list="local-especifico-sugestoes"
-                  placeholder="Ex: Quadro elétrico, Sala elétrica, Pátio da subestação, Canteiro de obra..."
-                  value={form.local_especifico}
-                  onChange={e => setForm(p => ({ ...p, local_especifico: e.target.value }))}
-                  className="min-h-[44px]"
-                />
-                <datalist id="local-especifico-sugestoes">
-                  <option value="Quadro elétrico" />
-                  <option value="Sala elétrica" />
-                  <option value="Pátio da subestação" />
-                  <option value="Canteiro de obra" />
-                  <option value="Almoxarifado" />
-                  <option value="Frente de serviço" />
-                  <option value="Área administrativa" />
-                </datalist>
-                <p className="text-xs text-muted-foreground mt-1">Opcional. Detalhe onde a não conformidade foi encontrada dentro da obra.</p>
               </div>
             </div>
 
