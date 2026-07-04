@@ -1165,8 +1165,8 @@ export default function Treinamentos() {
         <TabsContent value="matriz">
           <Card className={matrizFullscreen ? "fixed inset-0 z-50 rounded-none m-0" : ""}>
             <CardContent className="p-0">
-              {/* Fullscreen toggle */}
-              <div className="flex justify-end p-2 border-b border-border/30">
+              {/* Fullscreen toggle — só desktop (no mobile os cards já dispensam) */}
+              <div className="hidden md:flex justify-end p-2 border-b border-border/30">
                 <Button size="sm" variant="outline" onClick={() => setMatrizFullscreen(f => !f)} className="gap-1.5 text-xs">
                   {matrizFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                   {matrizFullscreen ? "Sair Tela Cheia" : "Tela Cheia"}
@@ -1177,7 +1177,130 @@ export default function Treinamentos() {
               ) : matrixData.cursos.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</div>
               ) : (
-                <div className={`overflow-auto relative ${matrizFullscreen ? "max-h-[calc(100vh-50px)]" : "max-h-[70vh]"}`}>
+                <>
+                {/* ============ MOBILE: cards por colaborador ============ */}
+                <div className="md:hidden divide-y divide-border">
+                  {matrixData.rows.map((row, idx) => {
+                    const cursosStatus = matrixData.cursos.map(curso => {
+                      const cursoKey = normalizeCourseName(curso);
+                      const cd = row.cursoData[curso];
+                      const isProtocolado = row.protocolados.has(cursoKey);
+                      const isDispensado = row.dispensados.has(cursoKey);
+                      const isRequiredAndMissing = row.requiredCourseNames.has(cursoKey) && !cd && !isProtocolado;
+                      let statusKey: "na" | "valido" | "vencido" | "atencao" | "permanente" | "pendente" | "sem" = "sem";
+                      if (isDispensado) statusKey = "na";
+                      else if (!cd && isProtocolado) statusKey = "valido";
+                      else if (!cd && isRequiredAndMissing) statusKey = "pendente";
+                      else if (cd) statusKey = cd.status.key as any;
+                      return { curso, cd, statusKey };
+                    });
+                    const validos = cursosStatus.filter(c => c.statusKey === "valido" || c.statusKey === "permanente").length;
+                    const vencidos = cursosStatus.filter(c => c.statusKey === "vencido").length;
+                    const atencao = cursosStatus.filter(c => c.statusKey === "atencao").length;
+                    const pendentesCount = row.autoPendentes.length;
+                    const totalObrig = row.requiredCourseNames.size;
+                    // Próximo vencimento (data mais próxima entre "atencao" ou "valido" com renovacao futura)
+                    const proximoVenc = cursosStatus
+                      .filter(c => c.cd?.renovacao && !isPermanentDate(c.cd.renovacao))
+                      .map(c => ({ curso: c.curso, dt: c.cd!.renovacao }))
+                      .sort((a, b) => a.dt.localeCompare(b.dt))
+                      .find(c => c.dt >= new Date().toISOString().slice(0, 10));
+
+                    const statusGeral = vencidos > 0 ? "vencido" : pendentesCount > 0 ? "pendente" : atencao > 0 ? "atencao" : "conforme";
+                    const statusGeralLabel = { vencido: "Vencido", pendente: "Pendente", atencao: "A vencer", conforme: "Conforme" }[statusGeral];
+                    const statusGeralClass = {
+                      vencido: "bg-destructive text-destructive-foreground",
+                      pendente: "bg-warning text-warning-foreground",
+                      atencao: "bg-warning/80 text-warning-foreground",
+                      conforme: "bg-success text-success-foreground",
+                    }[statusGeral];
+
+                    return (
+                      <details key={row.func.id} className="group p-3">
+                        <summary className="list-none cursor-pointer flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-mono text-muted-foreground">#{idx + 1}</span>
+                              <Badge className={`text-[10px] px-1.5 py-0 ${statusGeralClass}`}>{statusGeralLabel}</Badge>
+                            </div>
+                            <p className="font-semibold text-sm leading-tight truncate">{row.func.nome}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {row.func.cargo || "—"}{row.func.setor ? ` • ${row.func.setor}` : ""}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/30">✓ {validos}/{totalObrig || matrixData.cursos.length}</Badge>
+                              {vencidos > 0 && <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">Venc. {vencidos}</Badge>}
+                              {atencao > 0 && <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30">A vencer {atencao}</Badge>}
+                              {pendentesCount > 0 && <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/30">Pend. {pendentesCount}</Badge>}
+                            </div>
+                            {proximoVenc && (
+                              <p className="text-[10px] text-muted-foreground mt-1.5">
+                                Próx. venc.: <span className="font-mono">{format(parseISO(proximoVenc.dt), "dd/MM/yyyy")}</span> — {proximoVenc.curso}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-11 w-11"
+                              aria-label="Dispensar requisitos"
+                              onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); openDispensaDialog(row.func.id); }}
+                            >
+                              <Settings2 className="w-5 h-5 text-primary" />
+                            </Button>
+                            <ChevronsUpDown className="w-4 h-4 text-muted-foreground group-open:rotate-180 transition-transform" />
+                          </div>
+                        </summary>
+                        {/* Detalhes recolhidos por padrão para performance */}
+                        <div className="mt-3 space-y-1.5">
+                          {cursosStatus.map(({ curso, cd, statusKey }) => {
+                            const badgeClass = {
+                              valido: "bg-success text-success-foreground",
+                              permanente: "bg-primary text-primary-foreground",
+                              vencido: "bg-destructive text-destructive-foreground",
+                              atencao: "bg-warning text-warning-foreground",
+                              pendente: "bg-warning/80 text-warning-foreground",
+                              na: "bg-muted text-muted-foreground",
+                              sem: "bg-muted/50 text-muted-foreground",
+                            }[statusKey];
+                            const label = {
+                              valido: "Válido",
+                              permanente: "∞ Entregue",
+                              vencido: "Vencido",
+                              atencao: "A vencer",
+                              pendente: "Pendente",
+                              na: "N/A",
+                              sem: "—",
+                            }[statusKey];
+                            const isPend = statusKey === "pendente";
+                            return (
+                              <div
+                                key={`${row.func.id}-m-${curso}`}
+                                className={`rounded-md border p-2 flex items-start justify-between gap-2 ${isPend ? "cursor-pointer active:bg-muted" : ""}`}
+                                onClick={isPend ? () => openNewWithCourse(row.func.id, curso) : undefined}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-medium leading-tight">{curso}</p>
+                                  {cd && (
+                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                                      {format(parseISO(cd.realizacao), "dd/MM/yyyy")}
+                                      {cd.renovacao && ` → ${isPermanentDate(cd.renovacao) ? "∞" : format(parseISO(cd.renovacao), "dd/MM/yyyy")}`}
+                                    </p>
+                                  )}
+                                </div>
+                                <Badge className={`text-[10px] px-1.5 py-0 shrink-0 ${badgeClass}`}>{label}</Badge>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </details>
+                    );
+                  })}
+                </div>
+
+                {/* ============ DESKTOP: matriz/tabela ============ */}
+                <div className={`hidden md:block overflow-auto relative ${matrizFullscreen ? "max-h-[calc(100vh-50px)]" : "max-h-[70vh]"}`}>
                   <style>{`
                     .matrix-sticky-shadow { box-shadow: 4px 0 8px -2px rgba(0,0,0,0.15); }
                   `}</style>
@@ -1341,6 +1464,7 @@ export default function Treinamentos() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>
