@@ -214,12 +214,19 @@ export default function Obras() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="font-semibold">Nome *</Label>
-              <Input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} className="min-h-[44px]" />
+              <Label className="font-semibold">Nome da obra *</Label>
+              <Input
+                value={form.nome}
+                onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
+                placeholder="Ex.: SE 69 KV BARROCAS"
+                className="min-h-[44px]"
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground mt-1">Único campo obrigatório. Os demais são opcionais.</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>Código</Label>
+                <Label>Código (opcional)</Label>
                 <Input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value }))} className="min-h-[44px]" />
               </div>
               <div>
