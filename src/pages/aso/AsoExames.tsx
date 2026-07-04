@@ -14,6 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { differenceInDays, format, parseISO, addMonths } from "date-fns";
 import * as XLSX from "xlsx-js-style";
