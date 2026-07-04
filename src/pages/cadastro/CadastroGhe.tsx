@@ -80,7 +80,7 @@ export default function CadastroGhe() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="GHE/GES"
+        title="GES"
         subtitle="Cadastro dos grupos homogêneos de exposição e setores vinculados à empresa."
         actions={
           <>
@@ -88,7 +88,7 @@ export default function CadastroGhe() {
               <SelectTrigger className="w-full sm:w-[240px]"><SelectValue placeholder="Empresa" /></SelectTrigger>
               <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}</SelectContent>
             </Select>
-            <Button onClick={novo} disabled={!empresaSel}><Plus className="h-4 w-4 mr-1" />Novo GHE/GES</Button>
+            <Button onClick={novo} disabled={!empresaSel}><Plus className="h-4 w-4 mr-1" />Novo GES</Button>
           </>
         }
       />
@@ -103,10 +103,10 @@ export default function CadastroGhe() {
           {!isLoading && filtrados.length === 0 && (
             <EmptyState
               icon={ClipboardList}
-              title={busca ? "Nenhum resultado" : "Nenhum GHE/GES cadastrado"}
+              title={busca ? "Nenhum resultado" : "Nenhum GES cadastrado"}
               description={busca ? "Ajuste a busca para ver mais resultados." : "Cadastre os grupos para organizar setores, funções e exposições ocupacionais."}
               action={!busca && empresaSel ? (
-                <Button onClick={novo}><Plus className="h-4 w-4 mr-1" />Novo GHE/GES</Button>
+                <Button onClick={novo}><Plus className="h-4 w-4 mr-1" />Novo GES</Button>
               ) : undefined}
               bare
             />
@@ -266,7 +266,7 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{editing ? "Editar GHE/GES" : "Novo GHE/GES"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "Editar GES" : "Novo GES"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
