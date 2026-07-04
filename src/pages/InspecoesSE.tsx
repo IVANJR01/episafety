@@ -485,7 +485,7 @@ export default function InspecoesSE() {
     if (!confirm("Excluir este registro?")) return;
     try {
       if (isOnline()) {
-        const { error } = await (supabase.from as any)("conformidades").delete().eq("id", id);
+        const { error } = await (supabase.from as any)("conformidades").delete().eq("id", id).eq("empresa_id", empresaId);
         if (error) throw error;
       }
       toast({ title: "Registro excluído" });
