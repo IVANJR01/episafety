@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area, ComposedChart, Line, ReferenceLine } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const MotionCard = motion.create(Card);
 
