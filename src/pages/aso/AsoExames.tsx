@@ -584,21 +584,20 @@ export default function AsoExames() {
 
   return (
     <div className="space-y-6">
-      {/* Header simplificado para tab */}
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight">Matriz de Exames</h2>
-          <p className="text-xs text-muted-foreground">Acompanhamento de exames ocupacionais do PCMSO.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="hidden md:flex border-primary/30 hover:bg-primary/10" onClick={handleExportExcel}>
-            <Download className="w-4 h-4 mr-2" />Exportar
-          </Button>
-          <Button size="sm" onClick={openNew} className="bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />Novo Exame
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Exames"
+        subtitle="Controle de ASOs, exames ocupacionais, vencimentos e renovações."
+        actions={
+          <>
+            <Button variant="outline" size="sm" className="hidden md:flex border-primary/30 hover:bg-primary/10" onClick={handleExportExcel}>
+              <Download className="w-4 h-4 mr-2" />Exportar
+            </Button>
+            <Button size="sm" onClick={openNew} className="bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />Novo Exame
+            </Button>
+          </>
+        }
+      />
 
       {/* Indicadores */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-7">
