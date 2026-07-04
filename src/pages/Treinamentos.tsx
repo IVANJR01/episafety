@@ -23,6 +23,10 @@ import * as XLSX from "xlsx-js-style";
 import CadastroCursos from "@/components/CadastroCursos";
 import BulkDocumentUpload from "@/components/BulkDocumentUpload";
 import CadastroFuncaoRequisitos from "@/components/CadastroFuncaoRequisitos";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 interface ControleTreinamento {
   id: string;
@@ -897,31 +901,25 @@ export default function Treinamentos() {
 
   return (
     <div className="space-y-6">
-      {/* Header com gradiente */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 p-5 sm:p-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-              <GraduationCap className="w-7 h-7" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Capacitações</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Gestão de cursos, certificados, listas de presença e vencimentos.</p>
-            </div>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={handleExportExcel} className="border-primary/30 hover:bg-primary/10">
+      {/* Header padronizado */}
+      <PageHeader
+        title="Controle de Capacitações"
+        subtitle="Gestão de cursos, certificados, listas de presença e vencimentos."
+        actions={
+          <>
+            <Button variant="outline" onClick={handleExportExcel}>
               <Download className="w-4 h-4 mr-2" />Exportar
             </Button>
-            <Button variant="outline" onClick={openNewMulti} className="border-primary/30 hover:bg-primary/10">
-              <Plus className="w-4 h-4 mr-2" />Adicionar Vários Documentos
+            <Button variant="outline" onClick={openNewMulti}>
+              <Plus className="w-4 h-4 mr-2" />Adicionar Vários
             </Button>
-            <Button onClick={openNew} className="shadow-lg shadow-primary/25">
+            <Button onClick={openNew}>
               <Plus className="w-4 h-4 mr-2" />Adicionar Novo
             </Button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
+
 
       {/* Indicadores visuais */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
@@ -1087,7 +1085,7 @@ export default function Treinamentos() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-4"><ListSkeleton rows={5} variant="row" /></div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -1106,7 +1104,7 @@ export default function Treinamentos() {
                   </TableHeader>
                   <TableBody>
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={10} className="p-0"><EmptyState icon={GraduationCap} title={search || statusFilter !== "todos" ? "Nenhum resultado" : "Nenhuma capacitação cadastrada"} description={search || statusFilter !== "todos" ? "Ajuste a busca ou os filtros para ver mais resultados." : "Registre a primeira capacitação para começar o controle de vencimentos."} bare /></TableCell></TableRow>
                     ) : filtered.map((t, index) => {
                       const func = funcMap[t.funcionario_id];
                       const status = getStatus(t.data_renovacao);
@@ -1120,17 +1118,16 @@ export default function Treinamentos() {
                           <TableCell className="font-mono text-xs">{format(parseISO(t.data_realizacao), "dd/MM/yyyy")}</TableCell>
                           <TableCell className="font-mono text-xs">{isPermanentDate(t.data_renovacao) ? "Vitalício / Permanente" : t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
                           <TableCell>
-                            <Badge
-                              variant={status.variant}
-                              className={
-                                status.key === "permanente" ? "bg-blue-500/10 text-blue-600 border-blue-300" :
-                                status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                                status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
-                                "bg-success/10 text-success border-success/20"
+                            <StatusBadge
+                              tone={
+                                status.key === "permanente" ? "info" :
+                                status.key === "vencido" ? "danger" :
+                                status.key === "atencao" ? "warning" :
+                                "success"
                               }
                             >
                               {status.label}
-                            </Badge>
+                            </StatusBadge>
                           </TableCell>
                           <TableCell>
                             {t.documento_pendente ? (
@@ -1173,9 +1170,9 @@ export default function Treinamentos() {
                 </Button>
               </div>
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-4"><ListSkeleton rows={5} variant="row" /></div>
               ) : matrixData.cursos.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</div>
+                <div className="p-4"><EmptyState icon={GraduationCap} title="Sem dados para a matriz" description="Cadastre capacitações e requisitos por função para visualizar a matriz." bare /></div>
               ) : (
                 <>
                 {/* ============ MOBILE: cards por colaborador ============ */}
@@ -1208,12 +1205,12 @@ export default function Treinamentos() {
 
                     const statusGeral = vencidos > 0 ? "vencido" : pendentesCount > 0 ? "pendente" : atencao > 0 ? "atencao" : "conforme";
                     const statusGeralLabel = { vencido: "Vencido", pendente: "Pendente", atencao: "A vencer", conforme: "Conforme" }[statusGeral];
-                    const statusGeralClass = {
-                      vencido: "bg-destructive text-destructive-foreground",
-                      pendente: "bg-warning text-warning-foreground",
-                      atencao: "bg-warning/80 text-warning-foreground",
-                      conforme: "bg-success text-success-foreground",
-                    }[statusGeral];
+                    const statusGeralTone: StatusTone = ({
+                      vencido: "danger",
+                      pendente: "pending",
+                      atencao: "warning",
+                      conforme: "success",
+                    } as const)[statusGeral];
 
                     return (
                       <details key={row.func.id} className="group p-3">
@@ -1221,7 +1218,7 @@ export default function Treinamentos() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-[10px] font-mono text-muted-foreground">#{idx + 1}</span>
-                              <Badge className={`text-[10px] px-1.5 py-0 ${statusGeralClass}`}>{statusGeralLabel}</Badge>
+                              <StatusBadge tone={statusGeralTone} size="sm">{statusGeralLabel}</StatusBadge>
                             </div>
                             <p className="font-semibold text-sm leading-tight truncate">{row.func.nome}</p>
                             <p className="text-xs text-muted-foreground mt-0.5 truncate">
