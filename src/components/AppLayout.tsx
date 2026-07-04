@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, FileWarning, Briefcase, Network } from "lucide-react";
+import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, FileWarning, Briefcase, Network, BookOpen, Flame, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,16 +45,26 @@ const portalRhItems: NavItem[] = [
 ];
 
 // Gestão Documental SST (ASO incluído; sem Portal RH, sem eSocial)
+// PGR e LTCAT foram movidos para o módulo "Programas".
 const gestaoDocItems: NavItem[] = [
   { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
-  { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: ShieldCheck, moduleKey: "pgr" },
-  { path: "/ltcat", label: "LTCAT — Laudo Previdenciário", icon: ShieldCheck, moduleKey: "ltcat" },
   { path: "/ppp", label: "PPP — Perfil Profissiográfico Previdenciário", icon: FileText, moduleKey: "ppp" },
   { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "ppp" },
   { path: "/treinamentos", label: "Capacitações", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
+];
+
+// Programas — PGR, PCMSO, LTCAT e laudos técnicos
+const programasItems: NavItem[] = [
+  { path: "/programas", label: "Visão Geral", icon: LayoutDashboard, moduleKey: "pgr" },
+  { path: "/pgr", label: "PGR", icon: ShieldCheck, moduleKey: "pgr" },
+  { path: "/programas/ordem-servico", label: "Ordem de Serviço", icon: ClipboardList, moduleKey: "pgr" },
+  { path: "/aso", label: "PCMSO", icon: Stethoscope, moduleKey: "aso" },
+  { path: "/ltcat", label: "LTCAT", icon: FileText, moduleKey: "ltcat" },
+  { path: "/programas/laudo-insalubridade", label: "Laudo de Insalubridade", icon: Flame, moduleKey: "pgr" },
+  { path: "/programas/laudo-periculosidade", label: "Laudo de Periculosidade", icon: Zap, moduleKey: "pgr" },
 ];
 
 // eSocial técnico / stub
@@ -140,6 +150,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
   const visibleEsocialItems = esocialItems.filter((i) => canAccess(i.moduleKey));
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
+  const visibleProgramasItems = programasItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
@@ -148,6 +159,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
+  const isProgramasActive = location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat");
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
   const [asoOpen, setAsoOpen] = useState(isAsoActive);
@@ -155,6 +167,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
   const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
+  const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
 
   // Bottom nav items for mobile
   const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
@@ -403,6 +416,47 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visibleProgramasItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setProgramasOpen(!programasOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isProgramasActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <BookOpen className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Programas</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${programasOpen ? "rotate-180" : ""}`} />
+              </button>
+              {programasOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleProgramasItems.map((item) => {
+                    const active =
+                      location.pathname === item.path ||
+                      (item.path !== "/programas" && location.pathname.startsWith(item.path + "/"));
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />

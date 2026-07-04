@@ -66,6 +66,10 @@ import PppValidar from "@/pages/ppp/PppValidar";
 import PppDashboard from "@/pages/ppp/PppDashboard";
 import S2240Mapeamentos from "@/pages/esocial/S2240Mapeamentos";
 import S2240Dashboard from "@/pages/esocial/S2240Dashboard";
+import ProgramasHome from "@/pages/programas/ProgramasHome";
+import OrdemServico from "@/pages/programas/OrdemServico";
+import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
+import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
@@ -283,6 +287,16 @@ function ProtectedRoute() {
         <Route path="/ltcat/:id" element={<LtcatDetalhe />} />
         <Route path="/ltcat/:id/editar" element={<LtcatNovo />} />
         <Route path="/ltcat/validar/:id" element={<LtcatValidar />} />
+
+        {/* Módulo Programas — landing + reuso de rotas existentes + stubs */}
+        <Route path="/programas" element={<ProgramasHome />} />
+        <Route path="/programas/pgr" element={<Navigate to="/pgr" replace />} />
+        <Route path="/programas/pcmso" element={<Navigate to="/aso" replace />} />
+        <Route path="/programas/ltcat" element={<Navigate to="/ltcat" replace />} />
+        <Route path="/programas/ordem-servico" element={<OrdemServico />} />
+        <Route path="/programas/laudo-insalubridade" element={<LaudoInsalubridade />} />
+        <Route path="/programas/laudo-periculosidade" element={<LaudoPericulosidade />} />
+
 
         <Route path="/ppp" element={<PppModule />} />
         <Route path="/ppp/dashboard" element={<PppDashboard />} />
