@@ -68,7 +68,7 @@ const afterCadastroItems: NavItem[] = [
 const inspecoesItems: NavItem[] = [
   { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
   { path: "/inspecoes-se", label: "Listagem", icon: ClipboardList, moduleKey: "inspecoes_se" },
-  { path: "/inspecoes-se/obras", label: "Cadastro de Obras", icon: HardHat, moduleKey: "inspecoes_se" },
+  { path: "/inspecoes-se/obras", label: "Cadastro de Local", icon: HardHat, moduleKey: "inspecoes_se" },
 ];
 
 const cadastroItems: NavItem[] = [
