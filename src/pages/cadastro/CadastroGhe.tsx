@@ -79,30 +79,37 @@ export default function CadastroGhe() {
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        title="GHE/GES"
+        subtitle="Cadastro dos grupos homogêneos de exposição e setores vinculados à empresa."
+        actions={
+          <>
+            <Select value={empresaSel} onValueChange={setEmpresaSel}>
+              <SelectTrigger className="w-full sm:w-[240px]"><SelectValue placeholder="Empresa" /></SelectTrigger>
+              <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}</SelectContent>
+            </Select>
+            <Button onClick={novo} disabled={!empresaSel}><Plus className="h-4 w-4 mr-1" />Novo GHE/GES</Button>
+          </>
+        }
+      />
+
       <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2"><ClipboardList className="h-5 w-5" />Cadastro de GHE/GES (PGR/PCMSO)</CardTitle>
-              <p className="text-sm text-muted-foreground">Cadastro base dos grupos de exposição. Riscos, exames e funções são configurados em Gestão Documental &gt; Gestão de ASO.</p>
-            </div>
-            <div className="flex gap-2 items-center">
-              <Select value={empresaSel} onValueChange={setEmpresaSel}>
-                <SelectTrigger className="w-[240px]"><SelectValue placeholder="Empresa" /></SelectTrigger>
-                <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}</SelectContent>
-              </Select>
-              <Button onClick={novo} disabled={!empresaSel}><Plus className="h-4 w-4 mr-1" />Novo GHE/GES</Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 pt-6">
           <div className="relative max-w-sm">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por código, nome ou setor…" className="pl-8" />
           </div>
-          {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+          {isLoading && <ListSkeleton rows={4} variant="row" />}
           {!isLoading && filtrados.length === 0 && (
-            <p className="text-sm text-muted-foreground italic">Nenhum GHE/GES cadastrado.</p>
+            <EmptyState
+              icon={ClipboardList}
+              title={busca ? "Nenhum resultado" : "Nenhum GHE/GES cadastrado"}
+              description={busca ? "Ajuste a busca para ver mais resultados." : "Cadastre os grupos para organizar setores, funções e exposições ocupacionais."}
+              action={!busca && empresaSel ? (
+                <Button onClick={novo}><Plus className="h-4 w-4 mr-1" />Novo GHE/GES</Button>
+              ) : undefined}
+              bare
+            />
           )}
           {filtrados.length > 0 && (
             <div className="border rounded">
@@ -139,9 +146,9 @@ export default function CadastroGhe() {
                         )}
                       </TableCell>
                       <TableCell className="align-top">
-                        <Badge variant={g.status === "ativo" ? "default" : "secondary"}>
+                        <StatusBadge tone={g.status === "ativo" ? "success" : "neutral"} size="sm">
                           {g.status === "ativo" ? "Ativo" : "Inativo"}
-                        </Badge>
+                        </StatusBadge>
                       </TableCell>
                       <TableCell className="text-right align-top">
                         <Button size="sm" variant="outline" onClick={() => setOpenFuncoes(g)} title="Gerenciar funções"><Briefcase className="h-4 w-4 mr-1" />Funções</Button>
