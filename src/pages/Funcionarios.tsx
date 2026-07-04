@@ -626,8 +626,13 @@ export default function Funcionarios() {
                 </TableHeader>
                 <TableBody>
                   {filteredItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 10 : 9} className="text-center text-muted-foreground py-8">
-                      {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
+                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 10 : 9} className="p-0">
+                      <EmptyState
+                        icon={User}
+                        title={searchTerm ? "Nenhum resultado" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
+                        description={searchTerm ? "Ajuste a busca ou os filtros para ver mais resultados." : activeTab === "demitidos" ? "Colaboradores desligados aparecerão aqui." : "Cadastre o primeiro colaborador para iniciar o controle de EPIs, exames e documentos."}
+                        bare
+                      />
                     </TableCell></TableRow>
                   ) : filteredItems.map(f => (
                     <TableRow key={f.id}>
