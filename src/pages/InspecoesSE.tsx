@@ -1532,10 +1532,9 @@ export default function InspecoesSE() {
 
                   {/* Right: Status + Actions */}
                   <div className="flex-shrink-0 flex flex-col items-end justify-between">
-                    <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
-                      className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
-                      {item.status}
-                    </Badge>
+                    <StatusBadge tone={item.status === "SOLUCIONADO" ? "success" : "pending"} size="sm">
+                      {item.status === "SOLUCIONADO" ? "Solucionado" : "Pendente"}
+                    </StatusBadge>
                     <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
                         <Pencil className="w-4 h-4" />
