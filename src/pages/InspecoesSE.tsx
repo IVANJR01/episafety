@@ -55,6 +55,8 @@ interface Conformidade {
   situacao_detectada: string;
   foto_antes: string | null;
   foto_depois: string | null;
+  foto_antes_path: string | null;
+  foto_depois_path: string | null;
   gravidade: string;
   acao_corretiva: string | null;
   responsavel: string | null;
