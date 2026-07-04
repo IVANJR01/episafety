@@ -754,38 +754,52 @@ export default function InspecoesSE() {
   }
 
   /**
-   * Carrega a logo sobre fundo BRANCO e exporta como PNG RGB opaco (sem alpha).
-   * Isso evita o bug do PDF que renderiza transparência como fundo preto.
+   * Carrega a logo, achata sobre fundo BRANCO e exporta como PNG opaco.
+   * Suporta PNG (com/sem alpha), JPG, WEBP e SVG.
    */
-  async function loadLogoAsPngDataUrl(url: string): Promise<string | null> {
+  async function loadLogoAsPngDataUrl(url: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
+    const loadViaImage = (src: string) =>
+      new Promise<{ dataUrl: string; w: number; h: number }>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const MAX = 800;
+          let w = img.naturalWidth || img.width || 300;
+          let h = img.naturalHeight || img.height || 120;
+          if (!w || !h) { w = 300; h = 120; }
+          if (w > MAX) { h = Math.round(h * (MAX / w)); w = MAX; }
+          if (h > MAX) { w = Math.round(w * (MAX / h)); h = MAX; }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d")!;
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          try {
+            resolve({ dataUrl: canvas.toDataURL("image/png"), w, h });
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = () => reject(new Error("image load failed"));
+        img.src = src;
+      });
+
+    // 1) Try direct load first (public URLs, same-origin)
+    try {
+      return await loadViaImage(url);
+    } catch {}
+
+    // 2) Fallback: fetch as blob then use blob URL (helps CORS/signed URLs)
     try {
       const resp = await fetch(url, { mode: "cors" });
       if (!resp.ok) return null;
       const blob = await resp.blob();
-      if (blob.size < 100) return null;
+      if (blob.size < 50) return null;
       const blobUrl = URL.createObjectURL(blob);
       try {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          img.onload = () => {
-            const MAX = 600;
-            let w = img.naturalWidth || img.width || 300;
-            let h = img.naturalHeight || img.height || 120;
-            if (w > MAX) { h = Math.round(h * (MAX / w)); w = MAX; }
-            const canvas = document.createElement("canvas");
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d")!;
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(0, 0, w, h);
-            ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvasToOpaqueRgbPngDataUrl(canvas));
-          };
-          img.onerror = () => reject(new Error("logo load failed"));
-          img.src = blobUrl;
-        });
-        return dataUrl;
+        return await loadViaImage(blobUrl);
       } finally {
         URL.revokeObjectURL(blobUrl);
       }
