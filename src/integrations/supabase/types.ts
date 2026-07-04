@@ -1497,7 +1497,9 @@ export type Database = {
           gravidade: string
           id: string
           local: string | null
+          local_especifico: string | null
           numero: number
+          obra_id: string | null
           prazo_correcao: string | null
           referencia_normativa: string | null
           resolved_by: string | null
@@ -1520,7 +1522,9 @@ export type Database = {
           gravidade?: string
           id?: string
           local?: string | null
+          local_especifico?: string | null
           numero?: number
+          obra_id?: string | null
           prazo_correcao?: string | null
           referencia_normativa?: string | null
           resolved_by?: string | null
@@ -1543,7 +1547,9 @@ export type Database = {
           gravidade?: string
           id?: string
           local?: string | null
+          local_especifico?: string | null
           numero?: number
+          obra_id?: string | null
           prazo_correcao?: string | null
           referencia_normativa?: string | null
           resolved_by?: string | null
@@ -1558,6 +1564,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conformidades_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
             referencedColumns: ["id"]
           },
         ]
@@ -5314,6 +5327,51 @@ export type Database = {
           updated_at?: string
           user_email?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      obras: {
+        Row: {
+          cidade: string | null
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          status: string
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          cidade?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          status?: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cidade?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          status?: string
+          uf?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
