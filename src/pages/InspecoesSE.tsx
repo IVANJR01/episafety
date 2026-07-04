@@ -327,10 +327,27 @@ export default function InspecoesSE() {
   }
 
   async function handleSave() {
-    if (!form.situacao_detectada.trim()) {
-      toast({ title: "Preencha a situação detectada", variant: "destructive" });
+    const newErrors: Record<string, string> = {};
+    if (!form.data_inspecao) newErrors.data_inspecao = "Informe a data.";
+    if (!form.local.trim()) newErrors.local = "Informe o local.";
+    if (!form.situacao_detectada.trim()) newErrors.situacao_detectada = "Descreva a situação detectada.";
+    if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
+    if (!form.responsavel.trim()) newErrors.responsavel = "Informe o responsável.";
+    if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes) {
+      newErrors.foto_antes = "Anexe a foto ANTES (obrigatória).";
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast({ title: "Verifique os campos obrigatórios", variant: "destructive" });
+      // scroll to first error
+      setTimeout(() => {
+        const el = document.querySelector("[data-error='true']") as HTMLElement | null;
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
       return;
     }
+    setErrors({});
+
     setSaving(true);
     try {
       let foto_antes = existingFotoAntes;
