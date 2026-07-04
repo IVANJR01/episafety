@@ -101,6 +101,8 @@ export default function InspecoesSE() {
   const [fotoDepoisPreview, setFotoDepoisPreview] = useState<string | null>(null);
   const [existingFotoAntes, setExistingFotoAntes] = useState<string | null>(null);
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
+  const [existingFotoAntesPath, setExistingFotoAntesPath] = useState<string | null>(null);
+  const [existingFotoDepoisPath, setExistingFotoDepoisPath] = useState<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
   const antesGalleryRef = useRef<HTMLInputElement>(null);
