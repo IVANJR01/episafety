@@ -1219,6 +1219,9 @@ export default function InspecoesSE() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
+                    {isVencido(item) && (
+                      <Badge className="bg-red-600 text-white text-[10px]">VENCIDO</Badge>
+                    )}
                     <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
                       className={item.status === "SOLUCIONADO" ? "bg-green-600 text-white text-[10px]" : "bg-amber-500 text-white text-[10px]"}>
                       {item.status}
