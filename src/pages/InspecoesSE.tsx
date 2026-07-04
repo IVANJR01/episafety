@@ -280,14 +280,26 @@ export default function InspecoesSE() {
     reader.readAsDataURL(compressed);
   }
 
-  async function uploadPhoto(file: File): Promise<string> {
+  async function uploadPhoto(file: File, label: "antes" | "depois"): Promise<string> {
+    if (!file || !(file instanceof Blob) || file.size === 0) {
+      throw new Error(`Foto ${label} inválida (arquivo vazio).`);
+    }
+    console.log(`[Inspecoes] uploadPhoto ${label}`, {
+      empresaId,
+      userId: user?.id,
+      folder: "inspecoes",
+      fileName: file.name,
+      fileType: file.type,
+      sizeKB: Math.round(file.size / 1024),
+    });
     const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const result = await uploadToDrive(
       file,
       "inspecoes",
-      `${Date.now()}_${Math.random().toString(36).slice(2)}.${file.name.split(".").pop()}`
+      `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
     );
-
+    console.log(`[Inspecoes] uploadPhoto ${label} OK →`, result.publicUrl);
     return result.publicUrl;
   }
 
@@ -370,33 +382,45 @@ export default function InspecoesSE() {
       let shouldSaveOffline = !isOnline();
 
       if (!shouldSaveOffline) {
+        // Safety: Foto DEPOIS só faz sentido quando SOLUCIONADO. Ignora arquivo em outros status.
+        const shouldUploadDepois = form.status === "SOLUCIONADO" && !!fotoDepoisFile;
+        console.log("[Inspecoes] handleSave upload plan", {
+          status: form.status,
+          hasFotoAntesFile: !!fotoAntesFile,
+          hasFotoDepoisFile: !!fotoDepoisFile,
+          willUploadDepois: shouldUploadDepois,
+          empresaId,
+        });
         try {
           const uploads = await Promise.all([
-            fotoAntesFile ? uploadPhoto(fotoAntesFile) : Promise.resolve(null),
-            fotoDepoisFile ? uploadPhoto(fotoDepoisFile) : Promise.resolve(null),
+            fotoAntesFile ? uploadPhoto(fotoAntesFile, "antes") : Promise.resolve(null),
+            shouldUploadDepois ? uploadPhoto(fotoDepoisFile!, "depois") : Promise.resolve(null),
           ]);
 
           if (uploads[0]) foto_antes = uploads[0];
           if (uploads[1]) foto_depois = uploads[1];
-        } catch (error) {
+        } catch (error: any) {
+          console.error("[Inspecoes] Falha no upload Google Drive:", error, {
+            message: error?.message,
+            stack: error?.stack,
+          });
           if (isNetworkFailure(error)) {
             shouldSaveOffline = true;
           } else {
-            console.error("[uploadPhoto] Falha no upload:", error);
+            // Fallback: salva offline com base64 e a fila de sync tenta reenviar depois.
             toast({
-              title: "Erro ao enviar foto",
-              description: "A foto não pôde ser enviada ao Google Drive. Tente novamente.",
+              title: "Não foi possível enviar a foto",
+              description: "Verifique a conexão ou permissão do Google Drive. Salvamos localmente e tentaremos reenviar automaticamente.",
               variant: "destructive",
             });
-            setSaving(false);
-            return;
+            shouldSaveOffline = true;
           }
         }
       }
 
       if (shouldSaveOffline) {
         if (fotoAntesPreview) foto_antes = fotoAntesPreview;
-        if (fotoDepoisPreview) foto_depois = fotoDepoisPreview;
+        if (fotoDepoisPreview && form.status === "SOLUCIONADO") foto_depois = fotoDepoisPreview;
       }
 
       const payload = buildPayload(foto_antes || null, foto_depois || null);
