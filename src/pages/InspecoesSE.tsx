@@ -694,7 +694,7 @@ export default function InspecoesSE() {
     const crcInput = new Uint8Array(typeBytes.length + data.length);
     crcInput.set(typeBytes, 0);
     crcInput.set(data, typeBytes.length);
-    const out = new Uint8Array(12 + typeBytes.length + data.length);
+    const out = new Uint8Array(12 + data.length);
     const view = new DataView(out.buffer);
     view.setUint32(0, data.length);
     out.set(typeBytes, 4);
