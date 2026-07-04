@@ -210,7 +210,7 @@ export default function Obras() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar obra" : "Nova obra"}</DialogTitle>
+            <DialogTitle>{editingId ? "Editar local" : "Novo local"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
