@@ -31,9 +31,10 @@ export default function AsoModule() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
             <FileText className="h-7 w-7 text-primary" />
-            Gestão de ASO
+            Exames
           </h1>
-          <p className="text-sm text-muted-foreground">Atestado de Saúde Ocupacional e Exames vinculados</p>
+          <p className="text-sm text-muted-foreground">Controle de exames ocupacionais, ASOs, vencimentos e renovações.</p>
+
         </div>
       </div>
 
