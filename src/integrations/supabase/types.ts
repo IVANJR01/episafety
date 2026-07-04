@@ -7257,6 +7257,39 @@ export type Database = {
           },
         ]
       }
+      termos_aceites: {
+        Row: {
+          aceito_em: string
+          created_at: string
+          empresa_id: string | null
+          id: string
+          ip: string | null
+          user_agent: string | null
+          user_id: string
+          versao_termos: string
+        }
+        Insert: {
+          aceito_em?: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id: string
+          versao_termos: string
+        }
+        Update: {
+          aceito_em?: string
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id?: string
+          versao_termos?: string
+        }
+        Relationships: []
+      }
       treinamento_participantes: {
         Row: {
           empresa_id: string | null
