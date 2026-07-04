@@ -25,6 +25,32 @@ import { isNetworkFailure } from "@/lib/offlineViewCache";
 import jsPDF from "jspdf";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
+const NR_SUGESTOES = [
+  "NR-01 — Item 1.4.1 — Disposições Gerais e Gerenciamento de Riscos Ocupacionais",
+  "NR-04 — SESMT — Serviços Especializados em Segurança e Medicina do Trabalho",
+  "NR-05 — CIPA — Comissão Interna de Prevenção de Acidentes",
+  "NR-06 — Item 6.6.1 — Uso obrigatório de Equipamento de Proteção Individual",
+  "NR-07 — PCMSO — Programa de Controle Médico de Saúde Ocupacional",
+  "NR-08 — Edificações — Condições estruturais dos locais de trabalho",
+  "NR-09 — PGR — Avaliação e controle de agentes físicos, químicos e biológicos",
+  "NR-10 — Item 10.2.8 — Medidas de controle em instalações elétricas",
+  "NR-10 — Item 10.4 — Segurança em projetos elétricos",
+  "NR-11 — Movimentação e armazenagem de materiais",
+  "NR-12 — Item 12.38 — Dispositivos de segurança em máquinas e equipamentos",
+  "NR-12 — Capítulo XII — Capacitação em máquinas e equipamentos",
+  "NR-13 — Caldeiras e vasos de pressão",
+  "NR-15 — Atividades e operações insalubres",
+  "NR-16 — Atividades e operações perigosas",
+  "NR-17 — Ergonomia no ambiente de trabalho",
+  "NR-18 — Item 18.6.1 — Instalações elétricas temporárias em canteiros de obra",
+  "NR-20 — Segurança e saúde no trabalho com inflamáveis e combustíveis",
+  "NR-23 — Item 23.1.1 — Proteção contra incêndios",
+  "NR-24 — Seção 24.2 — Instalações sanitárias",
+  "NR-24 — Seção 24.8 — Disposições gerais (água potável)",
+  "NR-26 — Sinalização de segurança",
+  "NR-33 — Segurança e saúde nos trabalhos em espaços confinados",
+  "NR-35 — Item 35.4.5 — Sistema de proteção contra quedas em trabalho em altura",
+];
 const STATUS_OPTIONS = ["PENDENTE", "SOLUCIONADO"];
 const LOAD_TIMEOUT_MS = 3000;
 
