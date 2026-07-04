@@ -15,12 +15,40 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
+import { PackageOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
+
+const tipoTone: Record<string, StatusTone> = {
+  entrega: "info",
+  substituicao: "warning",
+  perda: "danger",
+  dano: "warning",
+  devolucao: "neutral",
+};
+
+const statusTone = (status: string): StatusTone => {
+  if (status === "ativo") return "success";
+  if (status === "perdido" || status === "danificado") return "danger";
+  if (status === "substituido") return "warning";
+  return "neutral";
+};
+
+const statusLabel = (status: string): string => {
+  if (status === "ativo") return "Ativo";
+  if (status === "substituido") return "Substituído";
+  if (status === "perdido") return "Perdido";
+  if (status === "danificado") return "Danificado";
+  if (status === "devolvido") return "Devolvido";
+  return status;
+};
 
 
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; unidade_origem_id?: string | null; }
@@ -30,7 +58,7 @@ interface EpiItem { epi: EPI; quantidade: number; }
 interface Unidade { id: string; nome: string; tipo: string; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
-const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
+
 const devolucaoDestinos = [
   { value: "estoque", label: "Retornar ao estoque" },
   { value: "descarte", label: "Descarte / Avaria" },
@@ -1086,30 +1114,30 @@ export default function Entregas() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Entregas de EPI</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Entrega, troca e devolução de EPIs</p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto flex-wrap">
-          {canEdit && unsignedEntregas.length > 0 && (
-            <Button variant="outline" onClick={() => openSignExisting()} className="flex-1 sm:flex-none text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
-              <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
-              Assinar ({unsignedEntregas.length})
-            </Button>
-          )}
-          {canEdit && (
-            <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
-              <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
-            </Button>
-          )}
-          {canCreate && (
-            <Button onClick={() => { refetchEpis(); setOpen(true); }} className="flex-1 sm:flex-none text-xs sm:text-sm">
-              <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Entregas de EPI"
+        subtitle="Controle de entregas, assinaturas, devoluções e histórico de EPIs."
+        actions={
+          <>
+            {canEdit && unsignedEntregas.length > 0 && (
+              <Button variant="outline" onClick={() => openSignExisting()} className="text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
+                <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
+                Assinar ({unsignedEntregas.length})
+              </Button>
+            )}
+            {canEdit && (
+              <Button variant="outline" onClick={() => openFicha()} className="text-xs sm:text-sm">
+                <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
+              </Button>
+            )}
+            {canCreate && (
+              <Button onClick={() => { refetchEpis(); setOpen(true); }} className="text-xs sm:text-sm">
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova Entrega
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1117,26 +1145,38 @@ export default function Entregas() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+        <ListSkeleton rows={5} />
       ) : (
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
             {filteredEntregas.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</CardContent></Card>
+              searchTerm ? (
+                <EmptyState icon={Search} title="Nenhum resultado encontrado" description="Tente ajustar o termo de busca." />
+              ) : (
+                <EmptyState
+                  icon={PackageOpen}
+                  title="Nenhuma entrega registrada"
+                  description="Registre a primeira entrega de EPI para iniciar o controle do colaborador."
+                  action={canCreate ? (
+                    <Button onClick={() => { refetchEpis(); setOpen(true); }}>
+                      <Plus className="w-4 h-4 mr-2" />Nova Entrega
+                    </Button>
+                  ) : undefined}
+                />
+              )
             ) : filteredEntregas.map(e => (
               <Card key={e.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                         {offlinePendingIds.has(e.id) && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded px-1 py-0.5 font-medium"><WifiOff className="w-3 h-3" />Offline</span>
+                          <StatusBadge tone="info" size="sm"><WifiOff className="w-3 h-3 mr-0.5" />Offline</StatusBadge>
                         )}
-                        <Badge variant={tipoBadge[e.tipo] || "default"} className="text-[10px]">{tipoLabels[e.tipo] || e.tipo}</Badge>
-                        <span className={`text-[10px] font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
-                          {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
-                        </span>
+                        <StatusBadge tone={tipoTone[e.tipo] || "neutral"} size="sm">{tipoLabels[e.tipo] || e.tipo}</StatusBadge>
+                        <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
+
                         {e.tipo === "devolucao" ? (
                           <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground font-medium">—</span>
                         ) : e.assinatura_colaborador ? (
@@ -1201,15 +1241,22 @@ export default function Entregas() {
                 </TableHeader>
                 <TableBody>
                   {filteredEntregas.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="p-0">
+                      <EmptyState
+                        bare
+                        icon={searchTerm ? Search : PackageOpen}
+                        title={searchTerm ? "Nenhum resultado encontrado" : "Nenhuma entrega registrada"}
+                        description={searchTerm ? "Tente ajustar o termo de busca." : "Registre a primeira entrega de EPI para iniciar o controle do colaborador."}
+                      />
+                    </TableCell></TableRow>
                   ) : filteredEntregas.map(e => (
                     <TableRow key={e.id}>
                       <TableCell className="font-mono text-xs">{e.data}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <Badge variant={tipoBadge[e.tipo] || "default"}>{tipoLabels[e.tipo] || e.tipo}</Badge>
+                          <StatusBadge tone={tipoTone[e.tipo] || "neutral"} size="sm">{tipoLabels[e.tipo] || e.tipo}</StatusBadge>
                           {offlinePendingIds.has(e.id) && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded px-1.5 py-0.5 font-medium"><WifiOff className="w-3 h-3" />Offline</span>
+                            <StatusBadge tone="info" size="sm"><WifiOff className="w-3 h-3 mr-0.5" />Offline</StatusBadge>
                           )}
                         </div>
                       </TableCell>
@@ -1217,10 +1264,9 @@ export default function Entregas() {
                       <TableCell>{getName(epis, e.epi_id)}</TableCell>
                       <TableCell className="text-right">{e.quantidade}</TableCell>
                       <TableCell>
-                        <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
-                          {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
-                        </span>
+                        <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
                       </TableCell>
+
                       <TableCell>
                         {e.tipo === "devolucao" ? (
                           <span className="text-xs text-muted-foreground">—</span>
