@@ -187,6 +187,7 @@ export default function InspecoesSE() {
 
   function openNew() {
     setEditingId(null);
+    setErrors({});
     if (!hasDraft()) resetDraft();
     else setForm(form); // keep draft
     clearPhotoPreviews();
@@ -195,6 +196,7 @@ export default function InspecoesSE() {
 
   function openEdit(item: Conformidade) {
     setEditingId(item.id);
+    setErrors({});
     setForm({
       data_inspecao: item.data_inspecao,
       situacao_detectada: item.situacao_detectada,
