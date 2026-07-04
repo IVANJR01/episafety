@@ -401,7 +401,7 @@ export default function InspecoesSE() {
   async function handleSave() {
     const newErrors: Record<string, string> = {};
     if (!form.data_inspecao) newErrors.data_inspecao = "Informe a data.";
-    if (!form.local.trim()) newErrors.local = "Informe o local.";
+    if (!form.obra_id) newErrors.obra_id = "Selecione a obra.";
     if (!form.situacao_detectada.trim()) newErrors.situacao_detectada = "Descreva a situação detectada.";
     if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
     // Responsável agora é opcional; Data da correção só é usada quando SOLUCIONADO (auto).
