@@ -1115,30 +1115,30 @@ export default function Entregas() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Entregas de EPI</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Entrega, troca e devolução de EPIs</p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto flex-wrap">
-          {canEdit && unsignedEntregas.length > 0 && (
-            <Button variant="outline" onClick={() => openSignExisting()} className="flex-1 sm:flex-none text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
-              <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
-              Assinar ({unsignedEntregas.length})
-            </Button>
-          )}
-          {canEdit && (
-            <Button variant="outline" onClick={() => openFicha()} className="flex-1 sm:flex-none text-xs sm:text-sm">
-              <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
-            </Button>
-          )}
-          {canCreate && (
-            <Button onClick={() => { refetchEpis(); setOpen(true); }} className="flex-1 sm:flex-none text-xs sm:text-sm">
-              <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Entregas de EPI"
+        subtitle="Controle de entregas, assinaturas, devoluções e histórico de EPIs."
+        actions={
+          <>
+            {canEdit && unsignedEntregas.length > 0 && (
+              <Button variant="outline" onClick={() => openSignExisting()} className="text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
+                <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
+                Assinar ({unsignedEntregas.length})
+              </Button>
+            )}
+            {canEdit && (
+              <Button variant="outline" onClick={() => openFicha()} className="text-xs sm:text-sm">
+                <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
+              </Button>
+            )}
+            {canCreate && (
+              <Button onClick={() => { refetchEpis(); setOpen(true); }} className="text-xs sm:text-sm">
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova Entrega
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -1146,26 +1146,38 @@ export default function Entregas() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+        <ListSkeleton rows={5} />
       ) : (
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
             {filteredEntregas.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</CardContent></Card>
+              searchTerm ? (
+                <EmptyState icon={Search} title="Nenhum resultado encontrado" description="Tente ajustar o termo de busca." />
+              ) : (
+                <EmptyState
+                  icon={PackageOpen}
+                  title="Nenhuma entrega registrada"
+                  description="Registre a primeira entrega de EPI para iniciar o controle do colaborador."
+                  action={canCreate ? (
+                    <Button onClick={() => { refetchEpis(); setOpen(true); }}>
+                      <Plus className="w-4 h-4 mr-2" />Nova Entrega
+                    </Button>
+                  ) : undefined}
+                />
+              )
             ) : filteredEntregas.map(e => (
               <Card key={e.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                         {offlinePendingIds.has(e.id) && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded px-1 py-0.5 font-medium"><WifiOff className="w-3 h-3" />Offline</span>
+                          <StatusBadge tone="info" size="sm"><WifiOff className="w-3 h-3 mr-0.5" />Offline</StatusBadge>
                         )}
-                        <Badge variant={tipoBadge[e.tipo] || "default"} className="text-[10px]">{tipoLabels[e.tipo] || e.tipo}</Badge>
-                        <span className={`text-[10px] font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
-                          {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
-                        </span>
+                        <StatusBadge tone={tipoTone[e.tipo] || "neutral"} size="sm">{tipoLabels[e.tipo] || e.tipo}</StatusBadge>
+                        <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
+
                         {e.tipo === "devolucao" ? (
                           <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground font-medium">—</span>
                         ) : e.assinatura_colaborador ? (
