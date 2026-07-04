@@ -33,18 +33,18 @@ const epiItems: NavItem[] = [
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
 ];
 
-// Gestão de ASO (técnico — SST emite/edita ASO)
-const asoItems: NavItem[] = [
-  { path: "/aso", label: "Gestão de ASO", icon: Stethoscope, moduleKey: "aso" },
-];
+// Gestão de ASO — mantida como array vazio para não quebrar refs.
+// ASO agora aparece dentro de "Gestão Documental" como "ASO / Saúde Ocupacional".
+const asoItems: NavItem[] = [];
 
 // Portal RH — acesso restrito do RH a ASOs liberados
 const portalRhItems: NavItem[] = [
   { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
 ];
 
-// Gestão Documental SST (sem ASO, sem Portal RH, sem eSocial)
+// Gestão Documental SST (ASO incluído; sem Portal RH, sem eSocial)
 const gestaoDocItems: NavItem[] = [
+  { path: "/aso", label: "ASO / Saúde Ocupacional", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
   { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: ShieldCheck, moduleKey: "pgr" },
   { path: "/ltcat", label: "LTCAT — Laudo Previdenciário", icon: ShieldCheck, moduleKey: "ltcat" },
@@ -424,7 +424,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão Documental SST</span>
+                <span className="truncate flex-1 text-left">Gestão Documental</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
               </button>
               {gestaoDocOpen && (
