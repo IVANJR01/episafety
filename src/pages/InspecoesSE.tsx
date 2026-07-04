@@ -1285,23 +1285,25 @@ export default function InspecoesSE() {
 
       {/* Edit/Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Registro" : "Novo Registro de Conformidade"}</DialogTitle>
+        <DialogContent className="p-0 gap-0 max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] rounded-none sm:rounded-lg flex flex-col overflow-hidden">
+          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 border-b flex-shrink-0">
+            <DialogTitle className="text-base sm:text-lg">{editingId ? "Editar Registro" : "Novo Registro de Conformidade"}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-5 overflow-y-auto flex-1 pr-1">
+          <div className="space-y-5 overflow-y-auto flex-1 px-4 sm:px-6 py-4" style={{ WebkitOverflowScrolling: "touch" as any }}>
             {/* Seção: Localização */}
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Localização</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div data-error={!!errors.data_inspecao}>
                   <Label className="font-semibold">Data da Inspeção *</Label>
-                  <Input type="date" value={form.data_inspecao} onChange={e => setForm(p => ({ ...p, data_inspecao: e.target.value }))} className="min-h-[44px]" />
+                  <Input type="date" value={form.data_inspecao} onChange={e => { setForm(p => ({ ...p, data_inspecao: e.target.value })); setErrors(prev => ({ ...prev, data_inspecao: "" })); }} className={cn("min-h-[44px]", errors.data_inspecao && "border-destructive")} />
+                  {errors.data_inspecao && <p className="text-xs text-destructive mt-1">{errors.data_inspecao}</p>}
                 </div>
-                <div>
-                  <Label className="font-semibold">Local</Label>
-                  <Input placeholder="Ex: SE Jardim de Piranhas" value={form.local} onChange={e => setForm(p => ({ ...p, local: e.target.value }))} className="min-h-[44px]" />
+                <div data-error={!!errors.local}>
+                  <Label className="font-semibold">Local *</Label>
+                  <Input placeholder="Ex: SE Jardim de Piranhas" value={form.local} onChange={e => { setForm(p => ({ ...p, local: e.target.value })); setErrors(prev => ({ ...prev, local: "" })); }} className={cn("min-h-[44px]", errors.local && "border-destructive")} />
+                  {errors.local && <p className="text-xs text-destructive mt-1">{errors.local}</p>}
                 </div>
               </div>
             </div>
@@ -1310,7 +1312,7 @@ export default function InspecoesSE() {
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Detalhamento</p>
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="font-semibold">Gravidade *</Label>
                     <Select value={form.gravidade} onValueChange={v => setForm(p => ({ ...p, gravidade: v }))}>
@@ -1326,10 +1328,24 @@ export default function InspecoesSE() {
                   </div>
                 </div>
 
-                <div>
+                <div data-error={!!errors.situacao_detectada}>
                   <Label className="font-semibold">Situação Detectada *</Label>
-                  <Textarea placeholder="Descreva a não conformidade ou irregularidade..." value={form.situacao_detectada} onChange={e => setForm(p => ({ ...p, situacao_detectada: e.target.value }))} rows={4} className="resize-y min-h-[80px]" />
-                  <Button type="button" variant="outline" size="sm" className="mt-2 gap-1.5" onClick={askAI} disabled={aiLoading || form.situacao_detectada.trim().length < 5}>
+                  <Textarea placeholder="Descreva a não conformidade ou irregularidade..." value={form.situacao_detectada} onChange={e => { setForm(p => ({ ...p, situacao_detectada: e.target.value })); setErrors(prev => ({ ...prev, situacao_detectada: "" })); }} rows={4} className={cn("resize-y min-h-[96px]", errors.situacao_detectada && "border-destructive")} />
+                  {errors.situacao_detectada && <p className="text-xs text-destructive mt-1">{errors.situacao_detectada}</p>}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 gap-1.5"
+                    onClick={() => {
+                      if (form.situacao_detectada.trim().length < 5) {
+                        toast({ title: "Descreva a situação detectada antes de usar a IA.", variant: "destructive" });
+                        return;
+                      }
+                      askAI();
+                    }}
+                    disabled={aiLoading}
+                  >
                     {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                     {aiLoading ? "Analisando..." : "Sugerir NR, Gravidade e Ação (IA)"}
                   </Button>
@@ -1338,56 +1354,55 @@ export default function InspecoesSE() {
             </div>
 
             {/* Seção: Evidências */}
-            <div>
+            <div data-error={!!errors.foto_antes}>
               <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Evidências Fotográficas</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="font-semibold">Foto ANTES</Label>
-                  {/* Camera input (capture) */}
+                  <Label className="font-semibold">Foto ANTES *</Label>
                   <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
-                  {/* Gallery input (Google Fotos / galeria) */}
-                  <input ref={antesGalleryRef} type="file" accept="image/*" className="hidden"
+                  <input ref={antesGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   {(fotoAntesPreview || existingFotoAntes) ? (
                     <div className="relative mt-1">
                       <DriveImage src={fotoAntesPreview || existingFotoAntes!} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
                       <button
                         type="button"
-                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                        aria-label="Remover foto antes"
+                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
                         onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); }}
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-1.5 mt-1">
+                    <div className={cn("flex flex-col gap-1.5 mt-1 p-2 rounded-md", errors.foto_antes && "border border-destructive")}>
                       <Button variant="outline" size="sm" className="w-full min-h-[44px]" onClick={() => antesRef.current?.click()}>
                         <Camera className="w-4 h-4 mr-1" /> Câmera
                       </Button>
                       <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30" onClick={() => antesGalleryRef.current?.click()}>
-                        <ImageIcon className="w-4 h-4 mr-1" /> Google Fotos
+                        <ImageIcon className="w-4 h-4 mr-1" /> Galeria
                       </Button>
                     </div>
                   )}
+                  {errors.foto_antes && <p className="text-xs text-destructive mt-1">{errors.foto_antes}</p>}
                 </div>
                 <div>
                   <Label className="font-semibold">Foto DEPOIS</Label>
-                  {/* Camera input (capture) */}
                   <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                  {/* Gallery input (Google Fotos / galeria) */}
-                  <input ref={depoisGalleryRef} type="file" accept="image/*" className="hidden"
+                  <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                   {(fotoDepoisPreview || existingFotoDepois) ? (
                     <div className="relative mt-1">
                       <DriveImage src={fotoDepoisPreview || existingFotoDepois!} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
                       <button
                         type="button"
-                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                        aria-label="Remover foto depois"
+                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
                         onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); }}
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
@@ -1400,7 +1415,7 @@ export default function InspecoesSE() {
                       <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30"
                         onClick={() => depoisGalleryRef.current?.click()}
                         disabled={form.status !== "SOLUCIONADO"}>
-                        <ImageIcon className="w-4 h-4 mr-1" /> Google Fotos
+                        <ImageIcon className="w-4 h-4 mr-1" /> Galeria
                       </Button>
                     </div>
                   )}
@@ -1412,14 +1427,16 @@ export default function InspecoesSE() {
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Ação Corretiva</p>
               <div className="space-y-3">
-                <div>
-                  <Label className="font-semibold">O Que Fazer</Label>
-                  <Textarea placeholder="Descreva a ação corretiva necessária..." value={form.acao_corretiva} onChange={e => setForm(p => ({ ...p, acao_corretiva: e.target.value }))} rows={2} className="resize-y" />
+                <div data-error={!!errors.acao_corretiva}>
+                  <Label className="font-semibold">O Que Fazer *</Label>
+                  <Textarea placeholder="Descreva a ação corretiva necessária..." value={form.acao_corretiva} onChange={e => { setForm(p => ({ ...p, acao_corretiva: e.target.value })); setErrors(prev => ({ ...prev, acao_corretiva: "" })); }} rows={2} className={cn("resize-y min-h-[72px]", errors.acao_corretiva && "border-destructive")} />
+                  {errors.acao_corretiva && <p className="text-xs text-destructive mt-1">{errors.acao_corretiva}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="font-semibold">Responsável</Label>
-                    <Input placeholder="Nome ou setor" value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))} className="min-h-[44px]" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div data-error={!!errors.responsavel}>
+                    <Label className="font-semibold">Responsável *</Label>
+                    <Input placeholder="Nome ou setor" value={form.responsavel} onChange={e => { setForm(p => ({ ...p, responsavel: e.target.value })); setErrors(prev => ({ ...prev, responsavel: "" })); }} className={cn("min-h-[44px]", errors.responsavel && "border-destructive")} />
+                    {errors.responsavel && <p className="text-xs text-destructive mt-1">{errors.responsavel}</p>}
                   </div>
                   <div>
                     <Label className="font-semibold">Status</Label>
@@ -1437,21 +1454,16 @@ export default function InspecoesSE() {
                 </div>
               </div>
             </div>
+
+            {/* Spacer for iOS safe area */}
+            <div className="h-2" />
           </div>
 
-          {/* Aviso se não tem foto */}
-          {!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-              <Camera className="w-4 h-4 flex-shrink-0" />
-              <span>Nenhuma foto "Antes" anexada. Registre a evidência fotográfica para laudos completos.</span>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2 sticky bottom-0 bg-background pt-3 border-t">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving} className="min-h-[44px]">
+          <DialogFooter className="gap-2 flex-shrink-0 bg-background px-4 sm:px-6 py-3 border-t flex flex-row sm:flex-row justify-end" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving} className="flex-1 sm:flex-none min-h-[44px]">Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none min-h-[44px]">
               {saving ? (
-                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando fotos...</>
+                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Enviando...</>
               ) : "Salvar Inspeção"}
             </Button>
           </DialogFooter>
