@@ -25,6 +25,32 @@ import { isNetworkFailure } from "@/lib/offlineViewCache";
 import jsPDF from "jspdf";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
+const NR_SUGESTOES = [
+  "NR-01 — Item 1.4.1 — Disposições Gerais e Gerenciamento de Riscos Ocupacionais",
+  "NR-04 — SESMT — Serviços Especializados em Segurança e Medicina do Trabalho",
+  "NR-05 — CIPA — Comissão Interna de Prevenção de Acidentes",
+  "NR-06 — Item 6.6.1 — Uso obrigatório de Equipamento de Proteção Individual",
+  "NR-07 — PCMSO — Programa de Controle Médico de Saúde Ocupacional",
+  "NR-08 — Edificações — Condições estruturais dos locais de trabalho",
+  "NR-09 — PGR — Avaliação e controle de agentes físicos, químicos e biológicos",
+  "NR-10 — Item 10.2.8 — Medidas de controle em instalações elétricas",
+  "NR-10 — Item 10.4 — Segurança em projetos elétricos",
+  "NR-11 — Movimentação e armazenagem de materiais",
+  "NR-12 — Item 12.38 — Dispositivos de segurança em máquinas e equipamentos",
+  "NR-12 — Capítulo XII — Capacitação em máquinas e equipamentos",
+  "NR-13 — Caldeiras e vasos de pressão",
+  "NR-15 — Atividades e operações insalubres",
+  "NR-16 — Atividades e operações perigosas",
+  "NR-17 — Ergonomia no ambiente de trabalho",
+  "NR-18 — Item 18.6.1 — Instalações elétricas temporárias em canteiros de obra",
+  "NR-20 — Segurança e saúde no trabalho com inflamáveis e combustíveis",
+  "NR-23 — Item 23.1.1 — Proteção contra incêndios",
+  "NR-24 — Seção 24.2 — Instalações sanitárias",
+  "NR-24 — Seção 24.8 — Disposições gerais (água potável)",
+  "NR-26 — Sinalização de segurança",
+  "NR-33 — Segurança e saúde nos trabalhos em espaços confinados",
+  "NR-35 — Item 35.4.5 — Sistema de proteção contra quedas em trabalho em altura",
+];
 const STATUS_OPTIONS = ["PENDENTE", "SOLUCIONADO"];
 const LOAD_TIMEOUT_MS = 3000;
 
@@ -1141,8 +1167,12 @@ export default function InspecoesSE() {
                       </span>
                       <GravidadeBadge gravidade={item.gravidade} />
                       {item.referencia_normativa && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium">
-                          <Sparkles className="w-3 h-3" />{item.referencia_normativa}
+                        <span
+                          className="inline-flex items-start gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium max-w-full whitespace-normal break-words leading-snug"
+                          title={item.referencia_normativa}
+                        >
+                          <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span className="break-words">{item.referencia_normativa}</span>
                         </span>
                       )}
                       {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
@@ -1240,9 +1270,11 @@ export default function InspecoesSE() {
 
                 {/* Ref Normativa */}
                 {item.referencia_normativa && (
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs font-medium text-primary">{item.referencia_normativa}</span>
+                  <div className="flex items-start gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-xs font-medium text-primary break-words whitespace-normal leading-snug" title={item.referencia_normativa}>
+                      {item.referencia_normativa}
+                    </span>
                   </div>
                 )}
 
@@ -1336,9 +1368,27 @@ export default function InspecoesSE() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <Label className="font-semibold">Referência Normativa</Label>
-                    <Input placeholder="Ex: NR-10, Item 10.2.1" value={form.referencia_normativa} onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))} className="min-h-[44px]" />
+                    <Input
+                      list="nr-sugestoes"
+                      placeholder="Ex: NR-10 — Item 10.2.8 — Medidas de controle em instalações elétricas"
+                      value={form.referencia_normativa}
+                      onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))}
+                      className="min-h-[44px] w-full"
+                      title={form.referencia_normativa}
+                    />
+                    <datalist id="nr-sugestoes">
+                      {NR_SUGESTOES.map(nr => <option key={nr} value={nr} />)}
+                    </datalist>
+                    {form.referencia_normativa && (
+                      <p className="text-xs text-muted-foreground mt-1 break-words whitespace-normal">
+                        {form.referencia_normativa}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Formato sugerido: <strong>NR-XX — Item X.X.X — Descrição curta</strong>. Você pode digitar manualmente.
+                    </p>
                   </div>
                 </div>
 
