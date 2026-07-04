@@ -8123,10 +8123,12 @@ export type Database = {
         Returns: Database["public"]["Enums"]["pgr_risco_classe"]
       }
       pgr_funcionarios_por_ghe: { Args: { _ghe_id: string }; Returns: number }
-      pgr_importar_ghe: {
-        Args: { _dry_run?: boolean; _pgr_id: string }
-        Returns: Json
-      }
+      pgr_importar_ghe:
+        | { Args: { _dry_run?: boolean; _pgr_id: string }; Returns: Json }
+        | {
+            Args: { _dry_run?: boolean; _ghe_ids?: string[]; _pgr_id: string }
+            Returns: Json
+          }
       pgr_marcar_atrasadas: { Args: { _pgr_id: string }; Returns: number }
       pgr_pdf_registrar: {
         Args: {
