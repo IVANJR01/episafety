@@ -158,10 +158,7 @@ export default function CadastroDashboard() {
               </div>
               <div className="px-2 sm:px-6 pb-4 sm:pb-6">
                 {stats.setoresData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Building className="w-10 h-10 mb-2 opacity-30" />
-                    <p className="text-sm">Nenhum setor cadastrado</p>
-                  </div>
+                  <EmptyState icon={Building} title="Nenhum setor cadastrado" description="Cadastre funcionários com setor para visualizar a distribuição." bare />
                 ) : (
                   <ResponsiveContainer width="100%" height={Math.max(200, stats.setoresData.length * 44)}>
                     <BarChart data={stats.setoresData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
