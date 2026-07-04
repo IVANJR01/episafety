@@ -226,18 +226,48 @@ export default function InspecoesSE() {
     setExistingFotoDepois(null);
   }
 
-  function handleFileSelect(file: File, type: "antes" | "depois") {
+  async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
+    try {
+      if (!file.type.startsWith("image/")) return file;
+      const bitmap = await createImageBitmap(file).catch(() => null);
+      if (!bitmap) return file;
+      let { width, height } = bitmap;
+      const scale = Math.min(1, maxDim / Math.max(width, height));
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return file;
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      const blob: Blob | null = await new Promise(r => canvas.toBlob(r, "image/jpeg", quality));
+      if (!blob) return file;
+      return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+    } catch {
+      return file;
+    }
+  }
+
+  async function handleFileSelect(file: File, type: "antes" | "depois") {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Arquivo inválido", description: "Selecione uma imagem (JPG, PNG ou WEBP).", variant: "destructive" });
+      return;
+    }
+    const compressed = await compressImage(file);
     const reader = new FileReader();
     reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
       if (type === "antes") {
-        setFotoAntesFile(file);
-        setFotoAntesPreview(e.target?.result as string);
+        setFotoAntesFile(compressed);
+        setFotoAntesPreview(dataUrl);
+        setErrors(prev => ({ ...prev, foto_antes: "" }));
       } else {
-        setFotoDepoisFile(file);
-        setFotoDepoisPreview(e.target?.result as string);
+        setFotoDepoisFile(compressed);
+        setFotoDepoisPreview(dataUrl);
       }
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(compressed);
   }
 
   async function uploadPhoto(file: File): Promise<string> {
