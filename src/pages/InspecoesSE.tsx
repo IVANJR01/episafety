@@ -1336,9 +1336,27 @@ export default function InspecoesSE() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div className="md:col-span-2">
                     <Label className="font-semibold">Referência Normativa</Label>
-                    <Input placeholder="Ex: NR-10, Item 10.2.1" value={form.referencia_normativa} onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))} className="min-h-[44px]" />
+                    <Input
+                      list="nr-sugestoes"
+                      placeholder="Ex: NR-10 — Item 10.2.8 — Medidas de controle em instalações elétricas"
+                      value={form.referencia_normativa}
+                      onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))}
+                      className="min-h-[44px] w-full"
+                      title={form.referencia_normativa}
+                    />
+                    <datalist id="nr-sugestoes">
+                      {NR_SUGESTOES.map(nr => <option key={nr} value={nr} />)}
+                    </datalist>
+                    {form.referencia_normativa && (
+                      <p className="text-xs text-muted-foreground mt-1 break-words whitespace-normal">
+                        {form.referencia_normativa}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Formato sugerido: <strong>NR-XX — Item X.X.X — Descrição curta</strong>. Você pode digitar manualmente.
+                    </p>
                   </div>
                 </div>
 
