@@ -1457,11 +1457,19 @@ export default function InspecoesSE() {
                     </Select>
                   </div>
                 </div>
-                <div data-error={!!errors.data_realizado}>
-                  <Label className="font-semibold">Prazo *</Label>
-                  <Input type="date" value={form.data_realizado} onChange={e => { setForm(p => ({ ...p, data_realizado: e.target.value })); setErrors(prev => ({ ...prev, data_realizado: "" })); }} className={cn("min-h-[44px]", errors.data_realizado && "border-destructive")} />
-                  {errors.data_realizado && <p className="text-xs text-destructive mt-1">{errors.data_realizado}</p>}
+                <div data-error={!!errors.prazo_correcao}>
+                  <Label className="font-semibold">Prazo de correção *</Label>
+                  <Input type="date" value={form.prazo_correcao} onChange={e => { setForm(p => ({ ...p, prazo_correcao: e.target.value })); setErrors(prev => ({ ...prev, prazo_correcao: "" })); }} className={cn("min-h-[44px]", errors.prazo_correcao && "border-destructive")} />
+                  {errors.prazo_correcao && <p className="text-xs text-destructive mt-1">{errors.prazo_correcao}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">Data limite para resolver a não conformidade.</p>
                 </div>
+                {form.status === "SOLUCIONADO" && (
+                  <div>
+                    <Label className="font-semibold">Data de solução</Label>
+                    <Input type="date" value={form.data_realizado} onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))} className="min-h-[44px]" />
+                    <p className="text-xs text-muted-foreground mt-1">Preenchida automaticamente ao marcar como Solucionado.</p>
+                  </div>
+                )}
               </div>
             </div>
 
