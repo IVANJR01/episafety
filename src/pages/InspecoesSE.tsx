@@ -654,10 +654,53 @@ export default function InspecoesSE() {
     return null;
   }
 
+  /**
+   * Carrega a logo preservando transparência: pinta sobre canvas com fundo BRANCO
+   * (nunca preto) e exporta como PNG. Aceita PNG/JPG/WEBP/SVG.
+   */
+  async function loadLogoAsPngDataUrl(url: string): Promise<string | null> {
+    try {
+      const resp = await fetch(url, { mode: "cors" });
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      if (blob.size < 100) return null;
+      const blobUrl = URL.createObjectURL(blob);
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          img.onload = () => {
+            const MAX = 600;
+            let w = img.width || 300;
+            let h = img.height || 120;
+            if (w > MAX) { h = Math.round(h * (MAX / w)); w = MAX; }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d")!;
+            // Fundo BRANCO (combina com cabeçalho) para evitar preto em transparências
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          img.onerror = () => reject(new Error("logo load failed"));
+          img.src = blobUrl;
+        });
+        return dataUrl;
+      } finally {
+        URL.revokeObjectURL(blobUrl);
+      }
+    } catch {
+      return null;
+    }
+  }
+
   function isValidPdfImageUrl(url: string | null | undefined): url is string {
     if (!url || typeof url !== "string") return false;
     return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:");
   }
+
 
   async function generatePDF(dateRange?: { start?: Date; end?: Date }) {
     toast({ title: "Gerando PDF...", description: "Aguarde, carregando imagens." });
@@ -676,8 +719,9 @@ export default function InspecoesSE() {
           .limit(1)
           .single();
         if (isValidPdfImageUrl(empresa?.logo_url)) {
-          logoDataUrl = await loadImageAsDataUrl(empresa.logo_url);
+          logoDataUrl = await loadLogoAsPngDataUrl(empresa.logo_url);
         }
+
         empresaNome = empresa?.nome || "";
       }
     } catch {}
