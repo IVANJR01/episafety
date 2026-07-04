@@ -109,7 +109,7 @@ const emptyForm = {
   acao_corretiva: "",
   responsavel: "",
   local: "",
-  local_especifico: "",
+  
   obra_id: "",
   prazo_correcao: "",
   data_realizado: "",
