@@ -44,7 +44,7 @@ const portalRhItems: NavItem[] = [
 
 // Gestão Documental SST (ASO incluído; sem Portal RH, sem eSocial)
 const gestaoDocItems: NavItem[] = [
-  { path: "/aso", label: "ASO / Saúde Ocupacional", icon: Stethoscope, moduleKey: "aso" },
+  { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
   { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: ShieldCheck, moduleKey: "pgr" },
   { path: "/ltcat", label: "LTCAT — Laudo Previdenciário", icon: ShieldCheck, moduleKey: "ltcat" },
