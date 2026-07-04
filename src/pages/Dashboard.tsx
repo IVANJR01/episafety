@@ -730,7 +730,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {custoMensalData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Nenhum dado de custo disponível</p>
+            <EmptyState icon={DollarSign} title="Sem dados de custo" description="Registre entregas com valor para visualizar a evolução mensal." bare />
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={custoMensalData}>
