@@ -148,7 +148,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <Label className="text-xs">GHE/GES</Label>
+            <Label className="text-xs">GES</Label>
             <Select value={form.ghe_id || ""} onValueChange={(v) => setForm({ ...form, ghe_id: v })}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>

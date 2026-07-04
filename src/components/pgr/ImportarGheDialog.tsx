@@ -78,7 +78,7 @@ export default function ImportarGheDialog({
         riscos_count: (g.ghe_riscos || []).length,
       })));
     } catch (e: any) {
-      toast.error(e.message || "Falha ao carregar GES/GHE");
+      toast.error(e.message || "Falha ao carregar GES");
     } finally { setBusy(false); }
   };
 
@@ -93,7 +93,7 @@ export default function ImportarGheDialog({
   };
 
   const loadPreview = async () => {
-    if (selected.size === 0) { toast.error("Selecione ao menos um GES/GHE"); return; }
+    if (selected.size === 0) { toast.error("Selecione ao menos um GES"); return; }
     setBusy(true);
     try {
       const { data, error } = await (supabase as any).rpc("pgr_importar_ghe", {
@@ -127,10 +127,10 @@ export default function ImportarGheDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Importar GES/GHE → Inventário do PGR</DialogTitle>
+          <DialogTitle>Importar GES → Inventário do PGR</DialogTitle>
           <DialogDescription>
             {step === "select"
-              ? "Selecione os GES/GHE cujos riscos você deseja importar para o inventário deste PGR."
+              ? "Selecione os GES cujos riscos você deseja importar para o inventário deste PGR."
               : "Confira a prévia. Nada será gravado até você confirmar. Itens duplicados são ignorados automaticamente."}
           </DialogDescription>
         </DialogHeader>
@@ -139,16 +139,16 @@ export default function ImportarGheDialog({
           <div className="space-y-3">
             {busy ? (
               <p className="text-center py-8 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />Carregando GES/GHE…
+                <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />Carregando GES…
               </p>
             ) : ghes.length === 0 ? (
               <p className="text-center py-8 text-sm text-muted-foreground">
-                Nenhum GES/GHE ativo cadastrado nesta empresa. Cadastre em <b>Cadastro → GHE/GES</b>.
+                Nenhum GES ativo cadastrado nesta empresa. Cadastre em <b>Cadastro → GES</b>.
               </p>
             ) : (
               <>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{ghes.length} GES/GHE encontrado(s)</span>
+                  <span className="text-muted-foreground">{ghes.length} GES encontrado(s)</span>
                   <Button size="sm" variant="ghost" onClick={toggleAll}>
                     {selected.size === ghes.length ? "Desmarcar todos" : "Selecionar todos"}
                   </Button>
@@ -187,7 +187,7 @@ export default function ImportarGheDialog({
               <table className="w-full text-xs">
                 <thead className="bg-muted sticky top-0">
                   <tr>
-                    <th className="p-2 text-left">GES/GHE</th>
+                    <th className="p-2 text-left">GES</th>
                     <th className="p-2 text-left">Perigo</th>
                     <th className="p-2 text-left">Fonte</th>
                     <th className="p-2 text-center">S×P</th>

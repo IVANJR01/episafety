@@ -94,7 +94,7 @@ export default function InventarioTab({
             {editavel && (
               <>
                 <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                  <Download className="h-4 w-4 mr-1" /> Importar GHE/GES
+                  <Download className="h-4 w-4 mr-1" /> Importar GES
                 </Button>
                 <Button size="sm" onClick={() => { setEditId(null); setDialogOpen(true); }}>
                   <Plus className="h-4 w-4 mr-1" /> Novo item
@@ -116,14 +116,14 @@ export default function InventarioTab({
           ) : filtrados.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-sm text-muted-foreground">Nenhum item no inventário ainda.</p>
-              {editavel && <p className="text-xs text-muted-foreground mt-1">Use “Importar GHE/GES” ou “Novo item”.</p>}
+              {editavel && <p className="text-xs text-muted-foreground mt-1">Use “Importar GES” ou “Novo item”.</p>}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="p-2 text-left">GHE/GES</th>
+                    <th className="p-2 text-left">GES</th>
                     <th className="p-2 text-left">Grupo</th>
                     <th className="p-2 text-left">Perigo</th>
                     <th className="p-2 text-left">Fonte</th>
