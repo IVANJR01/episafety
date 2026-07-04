@@ -177,40 +177,65 @@ export default function EPIs() {
           <div className="space-y-3 lg:hidden">
             {episFiltrados.length === 0 ? (
               <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</CardContent></Card>
-            ) : episFiltrados.map(e => (
+            ) : episFiltrados.map(e => {
+              const zerado = e.estoque === 0;
+              const baixo = !zerado && e.estoque <= e.estoque_minimo;
+              const statusBadge = zerado
+                ? <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 shrink-0">Zerado</Badge>
+                : baixo
+                  ? <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px] px-1.5 py-0.5 shrink-0">Baixo</Badge>
+                  : <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-[10px] px-1.5 py-0.5 shrink-0">OK</Badge>;
+              const valorTotal = (Number(e.valor) || 0) * e.estoque;
+              return (
               <Card key={e.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${e.estoque <= e.estoque_minimo ? "bg-destructive/10" : "bg-primary/10"}`}>
-                        <Package className={`w-4 h-4 ${e.estoque <= e.estoque_minimo ? "text-destructive" : "text-primary"}`} />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${zerado ? "bg-destructive/10" : baixo ? "bg-amber-100 dark:bg-amber-900/30" : "bg-primary/10"}`}>
+                        <Package className={`w-5 h-5 ${zerado ? "text-destructive" : baixo ? "text-amber-600" : "text-primary"}`} />
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{e.nome}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {e.ca && <span className="text-xs font-mono text-muted-foreground">CA: {e.ca}</span>}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-sm leading-tight">{e.nome}{e.tamanho && <span className="ml-1 text-[10px] text-muted-foreground font-normal">({e.tamanho})</span>}</p>
+                          {statusBadge}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {e.ca && <span className="text-[11px] font-mono text-muted-foreground">CA: {e.ca}</span>}
                           {e.categoria && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{e.categoria}</Badge>}
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      {canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>}
-                      {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
+                    <div className="flex gap-2 shrink-0">
+                      {canEdit && <Button size="icon" variant="outline" className="h-11 w-11" aria-label="Editar" onClick={() => openEdit(e)}><Pencil className="w-5 h-5" /></Button>}
+                      {canDelete && <Button size="icon" variant="outline" className="h-11 w-11" aria-label="Excluir" onClick={() => remove(e.id)}><Trash2 className="w-5 h-5 text-destructive" /></Button>}
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs">
-                    <div className="flex gap-3">
-                      <div>
-                        <span className="text-muted-foreground">Estoque: </span>
-                        <span className={`font-mono font-semibold ${e.estoque <= e.estoque_minimo ? "text-destructive" : ""}`}>{e.estoque}</span>
-                      </div>
-                      {e.valor ? <div><span className="text-muted-foreground">Valor: </span><span className="font-mono">R$ {Number(e.valor).toFixed(2)}</span></div> : null}
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Estoque</div>
+                      <div className={`font-mono font-semibold text-sm ${zerado ? "text-destructive" : baixo ? "text-amber-600" : ""}`}>{e.estoque} <span className="text-[10px] text-muted-foreground font-normal">/ mín {e.estoque_minimo}</span></div>
                     </div>
-                    {e.validade && <span className="text-muted-foreground font-mono">{e.validade}</span>}
+                    <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor un.</div>
+                      <div className="font-mono text-sm">{e.valor ? `R$ ${Number(e.valor).toFixed(2)}` : "—"}</div>
+                    </div>
+                    {e.valor ? (
+                      <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</div>
+                        <div className="font-mono text-sm">R$ {valorTotal.toFixed(2)}</div>
+                      </div>
+                    ) : null}
+                    {e.validade && (
+                      <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Validade CA</div>
+                        <div className="font-mono text-sm">{e.validade}</div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
 
           {/* Desktop table */}

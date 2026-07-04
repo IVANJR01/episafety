@@ -662,10 +662,10 @@ export default function ControleEstoqueContrato() {
           </p>
         </div>
         {showMatrizSelector && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Label className="text-xs text-muted-foreground whitespace-nowrap">Empresa:</Label>
             <Select value={matrizId || ""} onValueChange={switchMatriz}>
-              <SelectTrigger className="w-[220px] h-8 text-xs">
+              <SelectTrigger className="flex-1 sm:w-[220px] min-h-[44px] sm:min-h-0 sm:h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -728,7 +728,7 @@ export default function ControleEstoqueContrato() {
       )}
 
       {/* Distribute from Matriz / Conferência buttons */}
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
         <ConferenciaEstoque
           unidades={unidades}
           contratos={contratos}
@@ -741,8 +741,8 @@ export default function ControleEstoqueContrato() {
           }}
         />
         {hasGestaoEstoque && matrizSummary.estoqueTotal > 0 && (
-          <Button size="sm" className="gap-1.5 text-xs" onClick={openDistModal}>
-            <ArrowRightLeft className="w-3.5 h-3.5" />
+          <Button className="gap-1.5 text-xs min-h-[44px] sm:min-h-0 sm:h-9 w-full sm:w-auto" onClick={openDistModal}>
+            <ArrowRightLeft className="w-4 h-4" />
             Distribuir da Matriz
           </Button>
         )}
