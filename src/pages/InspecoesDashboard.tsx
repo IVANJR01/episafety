@@ -180,7 +180,8 @@ export default function InspecoesDashboard() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Sem dados</p>
+              <EmptyState icon={BarChart3} title="Sem dados para exibir" description="Registre inspeções para visualizar a distribuição por status." bare />
+
             )}
           </CardContent>
         </Card>
