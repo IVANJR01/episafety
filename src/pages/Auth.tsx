@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { Download } from "lucide-react";
+import { Link } from "react-router-dom";
 import logoEpiSafety from "@/assets/logo-episafety.png";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import InstallBanner from "@/components/InstallBanner";
+import { TERMS_VERSION } from "@/lib/termsConfig";
 
 type AuthMode = "login" | "signup" | "forgot";
 
@@ -17,9 +20,11 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const { toast } = useToast();
+
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -69,14 +74,31 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({
+        if (!acceptedTerms) {
+          throw new Error("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
+        }
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { nome }, emailRedirectTo: window.location.origin }
         });
         if (error) throw error;
+        // Registra aceite dos termos (best-effort — não bloqueia se houver sessão pendente de confirmação)
+        try {
+          const userId = data.user?.id;
+          if (userId) {
+            await supabase.from("termos_aceites" as any).insert({
+              user_id: userId,
+              versao_termos: TERMS_VERSION,
+              user_agent: navigator.userAgent.slice(0, 500),
+            });
+          }
+        } catch {
+          /* silencioso — banner de aceite cobrirá o registro no primeiro login */
+        }
         toast({ title: "Conta criada!", description: "Verifique seu email para confirmar o cadastro." });
       }
+
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
