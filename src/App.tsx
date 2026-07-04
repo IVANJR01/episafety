@@ -68,6 +68,9 @@ import S2240Mapeamentos from "@/pages/esocial/S2240Mapeamentos";
 import S2240Dashboard from "@/pages/esocial/S2240Dashboard";
 import ProgramasHome from "@/pages/programas/ProgramasHome";
 import OrdemServico from "@/pages/programas/OrdemServico";
+import OrdemServicoNovo from "@/pages/programas/OrdemServicoNovo";
+import OrdemServicoDetalhe from "@/pages/programas/OrdemServicoDetalhe";
+import GerarDocumentos from "@/pages/programas/GerarDocumentos";
 import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
 import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
 
@@ -290,10 +293,14 @@ function ProtectedRoute() {
 
         {/* Módulo Programas — landing + reuso de rotas existentes + stubs */}
         <Route path="/programas" element={<ProgramasHome />} />
+        <Route path="/programas/gerar" element={<GerarDocumentos />} />
         <Route path="/programas/pgr" element={<Navigate to="/pgr" replace />} />
         <Route path="/programas/pcmso" element={<Navigate to="/aso" replace />} />
         <Route path="/programas/ltcat" element={<Navigate to="/ltcat" replace />} />
         <Route path="/programas/ordem-servico" element={<OrdemServico />} />
+        <Route path="/programas/ordem-servico/novo" element={<OrdemServicoNovo />} />
+        <Route path="/programas/ordem-servico/:id" element={<OrdemServicoDetalhe />} />
+        <Route path="/programas/ordem-servico/:id/editar" element={<OrdemServicoNovo />} />
         <Route path="/programas/laudo-insalubridade" element={<LaudoInsalubridade />} />
         <Route path="/programas/laudo-periculosidade" element={<LaudoPericulosidade />} />
 
