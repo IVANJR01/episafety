@@ -1099,7 +1099,7 @@ export default function AsoExames() {
                               <div className="font-semibold text-sm truncate">{f.nome}</div>
                               <div className="text-xs text-muted-foreground truncate">{f.cargo || "—"} · {f.setor || "—"}</div>
                             </div>
-                            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">Sem exame</Badge>
+                            <StatusBadge tone="danger">Sem exame</StatusBadge>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
                             <div><div className="text-[10px] uppercase text-muted-foreground">CPF</div><div className="font-mono">{f.cpf || "—"}</div></div>
