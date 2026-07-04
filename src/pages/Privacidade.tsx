@@ -1,4 +1,4 @@
-import { ArrowLeft, Shield } from "lucide-react";
+import { ArrowLeft, Shield, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Privacidade() {
