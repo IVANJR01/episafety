@@ -1145,7 +1145,7 @@ export default function InspecoesSE() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10.5);
       setText(NAVY);
-      const titulo = `INSPEÇÃO Nº ${String(idx + 1).padStart(3, "0")}`;
+      const titulo = `NÃO CONFORMIDADE Nº ${String(idx + 1).padStart(3, "0")}`;
       doc.text(titulo, MARGIN + 3, cy + 6.6);
 
       // Badges à direita
