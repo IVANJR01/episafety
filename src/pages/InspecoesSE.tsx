@@ -1270,9 +1270,11 @@ export default function InspecoesSE() {
 
                 {/* Ref Normativa */}
                 {item.referencia_normativa && (
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-xs font-medium text-primary">{item.referencia_normativa}</span>
+                  <div className="flex items-start gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-xs font-medium text-primary break-words whitespace-normal leading-snug" title={item.referencia_normativa}>
+                      {item.referencia_normativa}
+                    </span>
                   </div>
                 )}
 
