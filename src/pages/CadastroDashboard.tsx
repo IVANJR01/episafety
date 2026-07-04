@@ -159,7 +159,7 @@ export default function CadastroDashboard() {
                   <p className="text-xs text-muted-foreground">{stats.setoresData.length} setores cadastrados</p>
                 </div>
               </div>
-              <div className="px-6 pb-6">
+              <div className="px-2 sm:px-6 pb-4 sm:pb-6">
                 {stats.setoresData.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <Building className="w-10 h-10 mb-2 opacity-30" />
@@ -210,7 +210,7 @@ export default function CadastroDashboard() {
                   <p className="text-xs text-muted-foreground">{stats.cargosData.length} cargos cadastrados</p>
                 </div>
               </div>
-              <div className="px-6 pb-6">
+              <div className="px-2 sm:px-6 pb-4 sm:pb-6">
                 {stats.cargosData.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <Briefcase className="w-10 h-10 mb-2 opacity-30" />
