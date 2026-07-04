@@ -79,34 +79,6 @@ export default defineConfig(({ mode }) => ({
               networkTimeoutSeconds: 5,
             },
           },
-          {
-            urlPattern: /^https:\/\/drive\.google\.com\/thumbnail\?.*$/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "gdrive-thumbnails",
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/bccqjqimbjzskyexpjca\.supabase\.co\/functions\/v1\/gdrive-proxy\/.*\?.*raw=1.*$/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "gdrive-proxy-images",
-              expiration: {
-                maxEntries: 150,
-                maxAgeSeconds: 60 * 60 * 24 * 14,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
         ],
       },
       manifest: {
@@ -118,7 +90,7 @@ export default defineConfig(({ mode }) => ({
         display: "standalone",
         orientation: "any",
         scope: "/",
-        start_url: "/?v=1.2.0",
+        start_url: "/?v=1.3.0",
         icons: [
           {
             src: "/pwa-192x192.png",

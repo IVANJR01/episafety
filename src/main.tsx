@@ -20,16 +20,22 @@ if (Capacitor.isNativePlatform()) {
 
 const isNativeApp = Capacitor.isNativePlatform();
 
-// Purge only video entries from storage cache (keep all other caches for offline use)
+// Purge stale media caches from older releases (keep app/offline data intact)
 if (typeof window !== "undefined" && "caches" in window) {
-  void caches.open("supabase-storage-cache").then(async (storageCache) => {
+  void (async () => {
+    await Promise.allSettled([
+      caches.delete("gdrive-thumbnails"),
+      caches.delete("gdrive-proxy-images"),
+    ]);
+
+    const storageCache = await caches.open("supabase-storage-cache");
     const requests = await storageCache.keys();
     await Promise.all(
       requests
         .filter((r) => r.url.includes("/videos-treinamento/"))
         .map((r) => storageCache.delete(r))
     );
-  }).catch(() => {});
+  })().catch(() => {});
 }
 
 let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;

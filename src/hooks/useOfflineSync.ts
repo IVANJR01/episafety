@@ -6,7 +6,6 @@ import { uploadInspecaoPhoto } from "@/lib/inspecoesStorage";
 
 // Tables that may contain base64 photo fields needing upload
 const PHOTO_FIELDS: Record<string, string[]> = {
-  conformidades: ["foto_antes", "foto_depois"],
   inspecoes_subestacao: ["fotos"],
   dds_participantes: ["assinatura"],
 };
@@ -50,13 +49,12 @@ function isBase64DataUrl(value: unknown): value is string {
 }
 
 async function processPhotoFields(op: SyncOperation): Promise<SyncOperation> {
-  const fields = PHOTO_FIELDS[op.table];
-  if (!fields || !op.payload) return op;
+  if (!op.payload) return op;
 
   const updatedPayload = { ...op.payload };
   let changed = false;
 
-  // Conformidades (Inspeções) → Supabase Storage, com paths gravados em foto_*_path
+  // Conformidades (Inspeções) → Storage privado, com paths gravados em foto_*_path
   if (op.table === "conformidades") {
     const empresaId = updatedPayload.empresa_id;
     const inspectionId = updatedPayload.id;
@@ -78,6 +76,9 @@ async function processPhotoFields(op: SyncOperation): Promise<SyncOperation> {
     }
     return changed ? { ...op, payload: updatedPayload } : op;
   }
+
+  const fields = PHOTO_FIELDS[op.table];
+  if (!fields) return op;
 
   for (const field of fields) {
     const value = updatedPayload[field];
