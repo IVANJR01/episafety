@@ -732,72 +732,146 @@ export default function AsoExames() {
               {loading ? (
                 <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12 text-center">Nº</TableHead>
-                      <TableHead>Nome Completo</TableHead>
-                      <TableHead>Função</TableHead>
-                      <TableHead>Setor</TableHead>
-                      <TableHead>Exame</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Data Exame</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead>Resultado</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Médico</TableHead>
-                      <TableHead className="w-24"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile cards */}
+                  <div className="md:hidden p-3 space-y-3">
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                      <div className="text-center text-muted-foreground py-8 text-sm">Nenhum exame cadastrado</div>
                     ) : filtered.map((e, index) => {
                       const func = funcMap[e.funcionario_id];
                       const status = getStatus(e.data_vencimento);
+                      const statusCls =
+                        e.resultado === "pendente" ? "bg-warning/10 text-warning border-warning/30" :
+                        status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/30" :
+                        status.key === "atencao" ? "bg-warning/10 text-warning border-warning/30" :
+                        "bg-success/10 text-success border-success/30";
                       return (
-                        <TableRow key={e.id}>
-                          <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
-                          <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
-                          <TableCell>{func?.cargo || "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
-                          <TableCell className="text-xs font-medium">{e.nome_exame || "—"}</TableCell>
-                          <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
-                          <TableCell className="font-mono text-xs">{formatDateSafe(e.data)}</TableCell>
-                          <TableCell className="font-mono text-xs">{formatDateSafe(e.data_vencimento)}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              e.resultado === "apto" ? "default" :
-                              e.resultado === "inapto" ? "destructive" :
-                              e.resultado === "apto_com_restricao" ? "secondary" : "outline"
-                            }>
-                              {resultadoLabels[e.resultado] || e.resultado}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={status.variant}
-                              className={
-                                status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                                status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
-                                "bg-success/10 text-success border-success/20"
-                              }
-                            >
-                              {status.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs">{e.medico || "—"}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 justify-end">
-                              <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                              <Button size="icon" variant="ghost" onClick={() => handleDelete(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                        <Card key={e.id} className="border">
+                          <CardContent className="p-3 space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs text-muted-foreground">#{index + 1}</div>
+                                <div className="font-semibold text-sm truncate">{func?.nome || "—"}</div>
+                                <div className="text-xs text-muted-foreground truncate">{func?.cargo || "—"} · {func?.setor || "—"}</div>
+                              </div>
+                              <Badge variant="outline" className={statusCls}>
+                                {e.resultado === "pendente" ? "Pendente" : status.key === "vencido" ? "Vencido" : status.key === "atencao" ? "A vencer" : "Vigente"}
+                              </Badge>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                            <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">Tipo</div>
+                                <div className="font-medium">{tipoLabels[e.tipo] || e.tipo}</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">Resultado</div>
+                                <div className="font-medium">{resultadoLabels[e.resultado] || e.resultado}</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">Data</div>
+                                <div className="font-mono">{formatDateSafe(e.data)}</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">Vencimento</div>
+                                <div className="font-mono">{formatDateSafe(e.data_vencimento)}</div>
+                              </div>
+                              {e.nome_exame && (
+                                <div className="col-span-2">
+                                  <div className="text-[10px] uppercase text-muted-foreground">Exame</div>
+                                  <div className="font-medium">{e.nome_exame}</div>
+                                </div>
+                              )}
+                              {e.medico && (
+                                <div className="col-span-2">
+                                  <div className="text-[10px] uppercase text-muted-foreground">Médico</div>
+                                  <div className="truncate">{e.medico}</div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2 pt-2 border-t">
+                              <Button size="sm" variant="outline" className="flex-1 h-11" onClick={() => openEdit(e)} aria-label="Editar exame">
+                                <Pencil className="w-4 h-4 mr-1" /> Editar
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-11 w-11 p-0" onClick={() => handleDelete(e.id)} aria-label="Excluir exame">
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12 text-center">Nº</TableHead>
+                          <TableHead>Nome Completo</TableHead>
+                          <TableHead>Função</TableHead>
+                          <TableHead>Setor</TableHead>
+                          <TableHead>Exame</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Data Exame</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Resultado</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Médico</TableHead>
+                          <TableHead className="w-24"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.length === 0 ? (
+                          <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                        ) : filtered.map((e, index) => {
+                          const func = funcMap[e.funcionario_id];
+                          const status = getStatus(e.data_vencimento);
+                          return (
+                            <TableRow key={e.id}>
+                              <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
+                              <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
+                              <TableCell>{func?.cargo || "—"}</TableCell>
+                              <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
+                              <TableCell className="text-xs font-medium">{e.nome_exame || "—"}</TableCell>
+                              <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
+                              <TableCell className="font-mono text-xs">{formatDateSafe(e.data)}</TableCell>
+                              <TableCell className="font-mono text-xs">{formatDateSafe(e.data_vencimento)}</TableCell>
+                              <TableCell>
+                                <Badge variant={
+                                  e.resultado === "apto" ? "default" :
+                                  e.resultado === "inapto" ? "destructive" :
+                                  e.resultado === "apto_com_restricao" ? "secondary" : "outline"
+                                }>
+                                  {resultadoLabels[e.resultado] || e.resultado}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={status.variant}
+                                  className={
+                                    status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                                    status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
+                                    "bg-success/10 text-success border-success/20"
+                                  }
+                                >
+                                  {status.label}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs">{e.medico || "—"}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1 justify-end">
+                                  <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                  <Button size="icon" variant="ghost" onClick={() => handleDelete(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
