@@ -40,6 +40,13 @@ export function useMfaStatus(): MfaStatus {
 
     (async () => {
       try {
+        // Kill-switch de emergência: se `VITE_MFA_ENFORCEMENT_ENABLED=false`
+        // no ambiente, desliga o enforcement para evitar lockout de admins.
+        const enforcementFlag = (import.meta.env.VITE_MFA_ENFORCEMENT_ENABLED ?? "true")
+          .toString()
+          .toLowerCase();
+        const enforcementEnabled = enforcementFlag !== "false" && enforcementFlag !== "0";
+
         const [{ data: rpc }, { data: factors }, { data: aal }] = await Promise.all([
           supabase.rpc("mfa_required_for_current_user"),
           supabase.auth.mfa.listFactors(),
@@ -47,8 +54,8 @@ export function useMfaStatus(): MfaStatus {
         ]);
 
         if (cancelled) return;
-        const required = !!(rpc as any)?.required;
-        const enforced = !!(rpc as any)?.enforced;
+        const required = enforcementEnabled && !!(rpc as any)?.required;
+        const enforced = enforcementEnabled && !!(rpc as any)?.enforced;
         const graceUntil = (rpc as any)?.grace_until ?? null;
         const graceDaysRemaining = (rpc as any)?.grace_days_remaining ?? 0;
         const verifiedTotps = (factors?.totp ?? []).filter((f: any) => f.status === "verified");
