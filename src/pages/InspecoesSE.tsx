@@ -93,6 +93,7 @@ export default function InspecoesSE() {
   const antesGalleryRef = useRef<HTMLInputElement>(null);
   const depoisGalleryRef = useRef<HTMLInputElement>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
 
   // Filters
