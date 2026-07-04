@@ -259,6 +259,7 @@ function ProtectedRoute() {
         <Route path="/dds" element={<DDS />} />
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
+        <Route path="/inspecoes-se/obras" element={<Obras />} />
         <Route path="/treinamentos" element={<Treinamentos />} />
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
