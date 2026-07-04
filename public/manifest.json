@@ -2,7 +2,7 @@
   "name": "SafetySoluções",
   "short_name": "SafetySoluções",
   "description": "Sistema de gestão de EPIs e segurança do trabalho",
-  "start_url": "/",
+  "start_url": "/?v=1.3.0",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1A1A1A",

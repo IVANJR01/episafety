@@ -1,5 +1,5 @@
 // Storage helpers para fotos do módulo de Inspeções.
-// Substitui o antigo fluxo Google Drive por Supabase Storage privado.
+// Storage helpers para fotos do módulo de Inspeções.
 // Bucket: inspecoes-fotos
 // Path canônico: <empresa_id>/inspecoes/<inspection_id>/<label>_<ts>_<rand>.<ext>
 import { supabase } from "@/integrations/supabase/client";

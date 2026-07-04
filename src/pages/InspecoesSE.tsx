@@ -16,10 +16,8 @@ import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, I
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import DriveImage from "@/components/DriveImage";
 import InspecaoImage from "@/components/InspecaoImage";
-import { extractGDriveFileId, getGDriveImageProxyUrl, getGDriveThumbnailUrl } from "@/lib/googleDrive";
-import { uploadInspecaoPhoto, getInspecaoPhotoSignedUrl, isInspecaoStoragePath } from "@/lib/inspecoesStorage";
+import { uploadInspecaoPhoto, getInspecaoPhotoSignedUrl } from "@/lib/inspecoesStorage";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -390,7 +388,7 @@ export default function InspecoesSE() {
         return;
       }
 
-      // ONLINE — fluxo Supabase Storage
+      // ONLINE — fluxo Storage do backend
       const shouldUploadDepois = form.status === "SOLUCIONADO" && !!fotoDepoisFile;
 
       // Determina o ID do registro (para compor o path do Storage)
@@ -437,10 +435,9 @@ export default function InspecoesSE() {
           foto_depois = null;
         }
       } catch (upErr: any) {
-        console.error("[Inspecoes] Falha no upload Supabase Storage:", upErr);
+        console.error("[Inspecoes] Falha no upload para o Storage:", upErr);
         toast({
-          title: "Erro ao enviar foto",
-          description: "Não foi possível enviar a foto para o Supabase Storage. Verifique a conexão e tente novamente.",
+          title: "Não foi possível enviar a foto para o Supabase Storage. Verifique a conexão e tente novamente.",
           variant: "destructive",
         });
         // Se foi um insert recém-criado sem foto, remove-o para não deixar registro órfão.
@@ -507,23 +504,6 @@ export default function InspecoesSE() {
 
   const MAX_IMG_WIDTH = 600;
   const IMG_TIMEOUT_MS = 9000;
-
-  async function resolveDriveUrl(url: string): Promise<string> {
-    if (!url.includes("drive.google.com")) return url;
-
-    // Priority 1: proxy URL (avoids CORS, most reliable for PDF fetch)
-    const proxyUrl = getGDriveImageProxyUrl(url);
-    if (proxyUrl) return proxyUrl;
-
-    // Fallback: thumbnail URL
-    const thumbnailUrl = getGDriveThumbnailUrl(url, MAX_IMG_WIDTH);
-    if (thumbnailUrl) return thumbnailUrl;
-
-    const fileId = extractGDriveFileId(url);
-    if (!fileId) return url;
-
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${MAX_IMG_WIDTH}`;
-  }
 
   /** Gera um placeholder base64 "Imagem Indisponível" para fallback */
   function generatePlaceholderDataUrl(): string {
@@ -594,50 +574,11 @@ export default function InspecoesSE() {
     if (cached !== undefined) return cached;
 
     try {
-      const resolvedUrl = await resolveDriveUrl(url);
-      const result = await fetchImageAsDataUrl(resolvedUrl, IMG_TIMEOUT_MS);
+      const result = await fetchImageAsDataUrl(url, IMG_TIMEOUT_MS);
       if (result) {
         pdfImageCacheRef.current.set(url, result);
         return result;
       }
-
-      const fileId = extractGDriveFileId(url);
-      if (fileId) {
-        const proxyUrl = getGDriveImageProxyUrl(url);
-        if (proxyUrl && proxyUrl !== resolvedUrl) {
-          const proxyResult = await fetchImageAsDataUrl(proxyUrl, IMG_TIMEOUT_MS);
-          if (proxyResult) {
-            pdfImageCacheRef.current.set(url, proxyResult);
-            return proxyResult;
-          }
-        }
-
-        const thumbUrl = getGDriveThumbnailUrl(url, MAX_IMG_WIDTH);
-        if (thumbUrl && thumbUrl !== resolvedUrl) {
-          const thumbResult = await fetchImageAsDataUrl(thumbUrl, IMG_TIMEOUT_MS);
-          if (thumbResult) {
-            pdfImageCacheRef.current.set(url, thumbResult);
-            return thumbResult;
-          }
-        }
-
-        const imgSrc = proxyUrl || thumbUrl;
-        if (imgSrc) {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          const imgResult = await new Promise<string | null>((resolve) => {
-            const t = setTimeout(() => resolve(null), IMG_TIMEOUT_MS);
-            img.onload = () => { clearTimeout(t); resolve(resizeImageToDataUrl(img)); };
-            img.onerror = () => { clearTimeout(t); resolve(null); };
-            img.src = imgSrc;
-          });
-          if (imgResult) {
-            pdfImageCacheRef.current.set(url, imgResult);
-            return imgResult;
-          }
-        }
-      }
-
       return null;
     } catch {
       return null;

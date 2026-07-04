@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import DriveImage from "@/components/DriveImage";
 import { getInspecaoPhotoSignedUrl } from "@/lib/inspecoesStorage";
 
 interface InspecaoImageProps {
   /** Path canônico no bucket inspecoes-fotos (novos registros). */
   path?: string | null;
-  /** URL/base64/legacy Drive (registros antigos ou preview offline). */
+  /** URL/base64 legado ou preview offline. */
   legacyUrl?: string | null;
   alt: string;
   className?: string;
@@ -16,8 +15,7 @@ interface InspecaoImageProps {
 }
 
 /**
- * Renderiza foto de inspeção priorizando o path do Supabase Storage.
- * Se não houver path, cai no comportamento antigo (DriveImage — Drive/http/data).
+ * Renderiza foto de inspeção priorizando o path do Storage privado.
  */
 export default function InspecaoImage({ path, legacyUrl, alt, className, thumbnail }: InspecaoImageProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
@@ -72,6 +70,26 @@ export default function InspecaoImage({ path, legacyUrl, alt, className, thumbna
     );
   }
 
-  // Fallback: registros antigos (URL Google Drive, base64 offline, http)
-  return <DriveImage src={legacyUrl || null} alt={alt} className={className} thumbnail={thumbnail} />;
+  if (!legacyUrl) return null;
+
+  // O módulo de Inspeções não aciona mais provedores externos antigos.
+  if (legacyUrl.includes("drive.google.com")) {
+    return (
+      <div className={cn("flex items-center justify-center bg-muted rounded border", className)}>
+        <ImageOff className="w-4 h-4 text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={legacyUrl}
+      alt={alt}
+      className={cn("object-cover rounded border", className)}
+      style={{ imageOrientation: "from-image" }}
+      loading="lazy"
+      decoding="async"
+      onError={() => setError(true)}
+    />
+  );
 }
