@@ -732,72 +732,146 @@ export default function AsoExames() {
               {loading ? (
                 <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12 text-center">Nº</TableHead>
-                      <TableHead>Nome Completo</TableHead>
-                      <TableHead>Função</TableHead>
-                      <TableHead>Setor</TableHead>
-                      <TableHead>Exame</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Data Exame</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead>Resultado</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Médico</TableHead>
-                      <TableHead className="w-24"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile cards */}
+                  <div className="md:hidden p-3 space-y-3">
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                      <div className="text-center text-muted-foreground py-8 text-sm">Nenhum exame cadastrado</div>
                     ) : filtered.map((e, index) => {
                       const func = funcMap[e.funcionario_id];
                       const status = getStatus(e.data_vencimento);
+                      const statusCls =
+                        e.resultado === "pendente" ? "bg-warning/10 text-warning border-warning/30" :
+                        status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/30" :
+                        status.key === "atencao" ? "bg-warning/10 text-warning border-warning/30" :
+                        "bg-success/10 text-success border-success/30";
                       return (
-                        <TableRow key={e.id}>
-                          <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
-                          <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
-                          <TableCell>{func?.cargo || "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
-                          <TableCell className="text-xs font-medium">{e.nome_exame || "—"}</TableCell>
-                          <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
-                          <TableCell className="font-mono text-xs">{formatDateSafe(e.data)}</TableCell>
-                          <TableCell className="font-mono text-xs">{formatDateSafe(e.data_vencimento)}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              e.resultado === "apto" ? "default" :
-                              e.resultado === "inapto" ? "destructive" :
-                              e.resultado === "apto_com_restricao" ? "secondary" : "outline"
-                            }>
-                              {resultadoLabels[e.resultado] || e.resultado}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={status.variant}
-                              className={
-                                status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                                status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
-                                "bg-success/10 text-success border-success/20"
-                              }
-                            >
-                              {status.label}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs">{e.medico || "—"}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 justify-end">
-                              <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
-                              <Button size="icon" variant="ghost" onClick={() => handleDelete(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                        <Card key={e.id} className="border">
+                          <CardContent className="p-3 space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs text-muted-foreground">#{index + 1}</div>
+                                <div className="font-semibold text-sm truncate">{func?.nome || "—"}</div>
+                                <div className="text-xs text-muted-foreground truncate">{func?.cargo || "—"} · {func?.setor || "—"}</div>
+                              </div>
+                              <Badge variant="outline" className={statusCls}>
+                                {e.resultado === "pendente" ? "Pendente" : status.key === "vencido" ? "Vencido" : status.key === "atencao" ? "A vencer" : "Vigente"}
+                              </Badge>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                            <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">Tipo</div>
+                                <div className="font-medium">{tipoLabels[e.tipo] || e.tipo}</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">Resultado</div>
+                                <div className="font-medium">{resultadoLabels[e.resultado] || e.resultado}</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">Data</div>
+                                <div className="font-mono">{formatDateSafe(e.data)}</div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">Vencimento</div>
+                                <div className="font-mono">{formatDateSafe(e.data_vencimento)}</div>
+                              </div>
+                              {e.nome_exame && (
+                                <div className="col-span-2">
+                                  <div className="text-[10px] uppercase text-muted-foreground">Exame</div>
+                                  <div className="font-medium">{e.nome_exame}</div>
+                                </div>
+                              )}
+                              {e.medico && (
+                                <div className="col-span-2">
+                                  <div className="text-[10px] uppercase text-muted-foreground">Médico</div>
+                                  <div className="truncate">{e.medico}</div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2 pt-2 border-t">
+                              <Button size="sm" variant="outline" className="flex-1 h-11" onClick={() => openEdit(e)} aria-label="Editar exame">
+                                <Pencil className="w-4 h-4 mr-1" /> Editar
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-11 w-11 p-0" onClick={() => handleDelete(e.id)} aria-label="Excluir exame">
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12 text-center">Nº</TableHead>
+                          <TableHead>Nome Completo</TableHead>
+                          <TableHead>Função</TableHead>
+                          <TableHead>Setor</TableHead>
+                          <TableHead>Exame</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Data Exame</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Resultado</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Médico</TableHead>
+                          <TableHead className="w-24"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.length === 0 ? (
+                          <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                        ) : filtered.map((e, index) => {
+                          const func = funcMap[e.funcionario_id];
+                          const status = getStatus(e.data_vencimento);
+                          return (
+                            <TableRow key={e.id}>
+                              <TableCell className="text-center font-medium text-muted-foreground">{index + 1}</TableCell>
+                              <TableCell className="font-medium">{func?.nome || "—"}</TableCell>
+                              <TableCell>{func?.cargo || "—"}</TableCell>
+                              <TableCell className="text-muted-foreground">{func?.setor || "—"}</TableCell>
+                              <TableCell className="text-xs font-medium">{e.nome_exame || "—"}</TableCell>
+                              <TableCell><Badge variant="secondary">{tipoLabels[e.tipo] || e.tipo}</Badge></TableCell>
+                              <TableCell className="font-mono text-xs">{formatDateSafe(e.data)}</TableCell>
+                              <TableCell className="font-mono text-xs">{formatDateSafe(e.data_vencimento)}</TableCell>
+                              <TableCell>
+                                <Badge variant={
+                                  e.resultado === "apto" ? "default" :
+                                  e.resultado === "inapto" ? "destructive" :
+                                  e.resultado === "apto_com_restricao" ? "secondary" : "outline"
+                                }>
+                                  {resultadoLabels[e.resultado] || e.resultado}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={status.variant}
+                                  className={
+                                    status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                                    status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
+                                    "bg-success/10 text-success border-success/20"
+                                  }
+                                >
+                                  {status.label}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs">{e.medico || "—"}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1 justify-end">
+                                  <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>
+                                  <Button size="icon" variant="ghost" onClick={() => handleDelete(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -812,71 +886,132 @@ export default function AsoExames() {
               ) : matrixData.tipos.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</div>
               ) : (
-                <div className="overflow-auto max-h-[70vh]">
-                  <table className="w-full text-xs border-collapse">
-                    <thead className="sticky top-0 z-10">
-                      <tr className="bg-primary text-primary-foreground">
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-0 bg-primary z-20 min-w-[40px]">Nº</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-20 min-w-[180px]">COLABORADOR</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
-                        {matrixData.tipos.map(nome => (
-                          <th key={nome} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
-                            {nome}
-                          </th>
-                        ))}
-                      </tr>
-                      <tr className="bg-primary/80 text-primary-foreground">
-                        {matrixData.tipos.flatMap(tipo => [
-                          <th key={`${tipo}-data`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[90px]">DATA EXAME</th>,
-                          <th key={`${tipo}-ven`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[100px]">VENCIMENTO</th>,
-                          <th key={`${tipo}-st`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[80px]">STATUS</th>,
-                        ])}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {matrixData.rows.map((row, idx) => {
-                        const rowBg = idx % 2 === 0 ? "bg-background" : "bg-muted";
-                        return (
-                        <tr key={row.func.id} className={rowBg}>
-                          <td className={`border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 ${rowBg} z-10`}>{idx + 1}</td>
-                          <td className={`border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] ${rowBg} z-10 whitespace-nowrap`}>{row.func.nome}</td>
-                          <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
-                          {matrixData.tipos.flatMap(tipo => {
-                            const td = row.tipoData[tipo];
-                            if (!td) {
-                              return [
-                                <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
-                                <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
-                                <td key={`${row.func.id}-${tipo}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
-                              ];
-                            }
-                            const statusBg = td.status.key === "vencido"
-                              ? "bg-destructive text-destructive-foreground font-bold"
-                              : td.status.key === "atencao"
-                              ? "bg-warning text-warning-foreground font-bold"
-                              : "bg-success text-success-foreground font-bold";
-                            return [
-                              <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {formatDateSafe(td.data)}
-                              </td>,
-                              <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {formatDateSafe(td.vencimento)}
-                              </td>,
-                              <td key={`${row.func.id}-${tipo}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${td.resultado === "pendente" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : statusBg}`}>
-                                {td.resultado === "pendente" ? "Pendente" : td.status.key === "vencido" ? "Vencido" : td.status.key === "atencao" ? "Atenção" : "Válido"}
-                              </td>,
-                            ];
-                          })}
+                <>
+                  {/* Mobile cards */}
+                  <div className="md:hidden p-3 space-y-3">
+                    {matrixData.rows.map((row, idx) => {
+                      const tiposComDados = matrixData.tipos.filter(t => row.tipoData[t]);
+                      const vencidos = tiposComDados.filter(t => row.tipoData[t]!.status.key === "vencido").length;
+                      const atencao = tiposComDados.filter(t => row.tipoData[t]!.status.key === "atencao").length;
+                      const pendentes = tiposComDados.filter(t => row.tipoData[t]!.resultado === "pendente").length;
+                      const geral = vencidos > 0 ? { l: "Vencido", cls: "bg-destructive/10 text-destructive border-destructive/30" }
+                        : pendentes > 0 ? { l: "Pendente", cls: "bg-warning/10 text-warning border-warning/30" }
+                        : atencao > 0 ? { l: "A vencer", cls: "bg-warning/10 text-warning border-warning/30" }
+                        : { l: "Vigente", cls: "bg-success/10 text-success border-success/30" };
+                      return (
+                        <details key={row.func.id} className="border rounded-lg bg-card">
+                          <summary className="p-3 cursor-pointer list-none flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs text-muted-foreground">#{idx + 1}</div>
+                              <div className="font-semibold text-sm truncate">{row.func.nome}</div>
+                              <div className="text-xs text-muted-foreground truncate">{row.func.cargo || "—"} · {row.func.setor || "—"}</div>
+                              <div className="text-[11px] text-muted-foreground mt-1">
+                                {tiposComDados.length}/{matrixData.tipos.length} exames
+                                {vencidos > 0 && ` · ${vencidos} vencido(s)`}
+                                {pendentes > 0 && ` · ${pendentes} pendente(s)`}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={geral.cls}>{geral.l}</Badge>
+                          </summary>
+                          <div className="border-t p-3 space-y-2">
+                            {matrixData.tipos.map(tipo => {
+                              const td = row.tipoData[tipo];
+                              const stCls = !td ? "bg-muted text-muted-foreground border-border"
+                                : td.resultado === "pendente" ? "bg-warning/10 text-warning border-warning/30"
+                                : td.status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/30"
+                                : td.status.key === "atencao" ? "bg-warning/10 text-warning border-warning/30"
+                                : "bg-success/10 text-success border-success/30";
+                              const stLabel = !td ? "Sem exame"
+                                : td.resultado === "pendente" ? "Pendente"
+                                : td.status.key === "vencido" ? "Vencido"
+                                : td.status.key === "atencao" ? "Atenção" : "Válido";
+                              return (
+                                <div key={tipo} className="flex items-start justify-between gap-2 text-xs border-b last:border-0 pb-2 last:pb-0">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium truncate">{tipo}</div>
+                                    {td && (
+                                      <div className="text-[11px] text-muted-foreground font-mono">
+                                        {formatDateSafe(td.data)} → {formatDateSafe(td.vencimento)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Badge variant="outline" className={stCls}>{stLabel}</Badge>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
+
+                  {/* Desktop matrix */}
+                  <div className="hidden md:block overflow-auto max-h-[70vh]">
+                    <table className="w-full text-xs border-collapse">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="bg-primary text-primary-foreground">
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-0 bg-primary z-20 min-w-[40px]">Nº</th>
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-20 min-w-[180px]">COLABORADOR</th>
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
+                          {matrixData.tipos.map(nome => (
+                            <th key={nome} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
+                              {nome}
+                            </th>
+                          ))}
                         </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                        <tr className="bg-primary/80 text-primary-foreground">
+                          {matrixData.tipos.flatMap(tipo => [
+                            <th key={`${tipo}-data`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[90px]">DATA EXAME</th>,
+                            <th key={`${tipo}-ven`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[100px]">VENCIMENTO</th>,
+                            <th key={`${tipo}-st`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[80px]">STATUS</th>,
+                          ])}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {matrixData.rows.map((row, idx) => {
+                          const rowBg = idx % 2 === 0 ? "bg-background" : "bg-muted";
+                          return (
+                          <tr key={row.func.id} className={rowBg}>
+                            <td className={`border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 ${rowBg} z-10`}>{idx + 1}</td>
+                            <td className={`border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] ${rowBg} z-10 whitespace-nowrap`}>{row.func.nome}</td>
+                            <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
+                            <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
+                            <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
+                            {matrixData.tipos.flatMap(tipo => {
+                              const td = row.tipoData[tipo];
+                              if (!td) {
+                                return [
+                                  <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                  <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                  <td key={`${row.func.id}-${tipo}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                ];
+                              }
+                              const statusBg = td.status.key === "vencido"
+                                ? "bg-destructive text-destructive-foreground font-bold"
+                                : td.status.key === "atencao"
+                                ? "bg-warning text-warning-foreground font-bold"
+                                : "bg-success text-success-foreground font-bold";
+                              return [
+                                <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                                  {formatDateSafe(td.data)}
+                                </td>,
+                                <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                                  {formatDateSafe(td.vencimento)}
+                                </td>,
+                                <td key={`${row.func.id}-${tipo}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${td.resultado === "pendente" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : statusBg}`}>
+                                  {td.resultado === "pendente" ? "Pendente" : td.status.key === "vencido" ? "Vencido" : td.status.key === "atencao" ? "Atenção" : "Válido"}
+                                </td>,
+                              ];
+                            })}
+                          </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -915,29 +1050,25 @@ export default function AsoExames() {
               ) : funcionariosSemExame.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">✅ Todos os funcionários possuem exames cadastrados!</div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12 text-center">Nº</TableHead>
-                      <TableHead>Nome Completo</TableHead>
-                      <TableHead>CPF</TableHead>
-                      <TableHead>Matrícula</TableHead>
-                      <TableHead>Função</TableHead>
-                      <TableHead>Setor</TableHead>
-                      <TableHead className="w-32 text-center">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile cards */}
+                  <div className="md:hidden p-3 space-y-3">
                     {funcionariosSemExame.map((f, idx) => (
-                      <TableRow key={f.id}>
-                        <TableCell className="text-center font-medium text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">{f.nome}</TableCell>
-                        <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
-                        <TableCell className="text-xs">{f.matricula || "—"}</TableCell>
-                        <TableCell>{f.cargo || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
-                        <TableCell className="text-center">
-                          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => {
+                      <Card key={f.id} className="border">
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs text-muted-foreground">#{idx + 1}</div>
+                              <div className="font-semibold text-sm truncate">{f.nome}</div>
+                              <div className="text-xs text-muted-foreground truncate">{f.cargo || "—"} · {f.setor || "—"}</div>
+                            </div>
+                            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">Sem exame</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
+                            <div><div className="text-[10px] uppercase text-muted-foreground">CPF</div><div className="font-mono">{f.cpf || "—"}</div></div>
+                            <div><div className="text-[10px] uppercase text-muted-foreground">Matrícula</div><div>{f.matricula || "—"}</div></div>
+                          </div>
+                          <Button size="sm" variant="outline" className="w-full h-11" onClick={() => {
                             setEditing(null);
                             setForm({ funcionario_id: f.id, tipo: "periodico", nome_exame: "", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
                             setFuncSearch(f.nome);
@@ -945,13 +1076,54 @@ export default function AsoExames() {
                             setShowAddMedico(false);
                             setOpen(true);
                           }}>
-                            <Plus className="w-3 h-3" />Adicionar
+                            <Plus className="w-4 h-4 mr-1" /> Adicionar exame
                           </Button>
-                        </TableCell>
-                      </TableRow>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12 text-center">Nº</TableHead>
+                          <TableHead>Nome Completo</TableHead>
+                          <TableHead>CPF</TableHead>
+                          <TableHead>Matrícula</TableHead>
+                          <TableHead>Função</TableHead>
+                          <TableHead>Setor</TableHead>
+                          <TableHead className="w-32 text-center">Ação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {funcionariosSemExame.map((f, idx) => (
+                          <TableRow key={f.id}>
+                            <TableCell className="text-center font-medium text-muted-foreground">{idx + 1}</TableCell>
+                            <TableCell className="font-medium">{f.nome}</TableCell>
+                            <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
+                            <TableCell className="text-xs">{f.matricula || "—"}</TableCell>
+                            <TableCell>{f.cargo || "—"}</TableCell>
+                            <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
+                            <TableCell className="text-center">
+                              <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => {
+                                setEditing(null);
+                                setForm({ funcionario_id: f.id, tipo: "periodico", nome_exame: "", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
+                                setFuncSearch(f.nome);
+                                setMedicoSearch("");
+                                setShowAddMedico(false);
+                                setOpen(true);
+                              }}>
+                                <Plus className="w-3 h-3" />Adicionar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
