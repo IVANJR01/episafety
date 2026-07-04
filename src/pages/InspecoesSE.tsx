@@ -341,7 +341,7 @@ export default function InspecoesSE() {
     if (!form.situacao_detectada.trim()) newErrors.situacao_detectada = "Descreva a situação detectada.";
     if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
     if (!form.responsavel.trim()) newErrors.responsavel = "Informe o responsável.";
-    if (!form.data_realizado) newErrors.data_realizado = "Informe o prazo.";
+    if (!form.prazo_correcao) newErrors.prazo_correcao = "Informe o prazo de correção.";
     if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes) {
       newErrors.foto_antes = "Anexe a foto ANTES (obrigatória).";
     }
