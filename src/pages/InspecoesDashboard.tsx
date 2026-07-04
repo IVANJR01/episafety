@@ -132,15 +132,22 @@ export default function InspecoesDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+        <PageHeader
+          title="Dashboard de Inspeções"
+          subtitle="Visão geral das conformidades, gravidades e resolução."
+        />
+        <KpiSkeleton count={4} />
       </div>
     );
   }
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
-      <h1 className="text-xl font-bold">Dashboard de Inspeções</h1>
+      <PageHeader
+        title="Dashboard de Inspeções"
+        subtitle="Visão geral das conformidades, gravidades e resolução."
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
