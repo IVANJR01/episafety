@@ -1242,15 +1242,22 @@ export default function Entregas() {
                 </TableHeader>
                 <TableBody>
                   {filteredEntregas.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{searchTerm ? "Nenhum resultado encontrado" : "Nenhuma movimentação registrada"}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="p-0">
+                      <EmptyState
+                        bare
+                        icon={searchTerm ? Search : PackageOpen}
+                        title={searchTerm ? "Nenhum resultado encontrado" : "Nenhuma entrega registrada"}
+                        description={searchTerm ? "Tente ajustar o termo de busca." : "Registre a primeira entrega de EPI para iniciar o controle do colaborador."}
+                      />
+                    </TableCell></TableRow>
                   ) : filteredEntregas.map(e => (
                     <TableRow key={e.id}>
                       <TableCell className="font-mono text-xs">{e.data}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <Badge variant={tipoBadge[e.tipo] || "default"}>{tipoLabels[e.tipo] || e.tipo}</Badge>
+                          <StatusBadge tone={tipoTone[e.tipo] || "neutral"} size="sm">{tipoLabels[e.tipo] || e.tipo}</StatusBadge>
                           {offlinePendingIds.has(e.id) && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 rounded px-1.5 py-0.5 font-medium"><WifiOff className="w-3 h-3" />Offline</span>
+                            <StatusBadge tone="info" size="sm"><WifiOff className="w-3 h-3 mr-0.5" />Offline</StatusBadge>
                           )}
                         </div>
                       </TableCell>
@@ -1258,10 +1265,9 @@ export default function Entregas() {
                       <TableCell>{getName(epis, e.epi_id)}</TableCell>
                       <TableCell className="text-right">{e.quantidade}</TableCell>
                       <TableCell>
-                        <span className={`text-xs font-medium ${e.status === "ativo" ? "text-success" : e.status === "perdido" || e.status === "danificado" ? "text-destructive" : "text-muted-foreground"}`}>
-                          {e.status === "ativo" ? "Ativo" : e.status === "substituido" ? "Substituído" : e.status === "perdido" ? "Perdido" : e.status === "danificado" ? "Danificado" : e.status}
-                        </span>
+                        <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
                       </TableCell>
+
                       <TableCell>
                         {e.tipo === "devolucao" ? (
                           <span className="text-xs text-muted-foreground">—</span>
