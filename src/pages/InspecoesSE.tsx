@@ -1564,10 +1564,9 @@ export default function InspecoesSE() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
-                      className={item.status === "SOLUCIONADO" ? "bg-green-600 text-white text-[10px]" : "bg-amber-500 text-white text-[10px]"}>
-                      {item.status}
-                    </Badge>
+                    <StatusBadge tone={item.status === "SOLUCIONADO" ? "success" : "pending"} size="sm">
+                      {item.status === "SOLUCIONADO" ? "Solucionado" : "Pendente"}
+                    </StatusBadge>
                     <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                       <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => openEdit(item)} aria-label="Editar inspeção">
                         <Pencil className="w-5 h-5" />
