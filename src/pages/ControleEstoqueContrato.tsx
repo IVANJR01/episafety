@@ -662,10 +662,10 @@ export default function ControleEstoqueContrato() {
           </p>
         </div>
         {showMatrizSelector && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Label className="text-xs text-muted-foreground whitespace-nowrap">Empresa:</Label>
             <Select value={matrizId || ""} onValueChange={switchMatriz}>
-              <SelectTrigger className="w-[220px] h-8 text-xs">
+              <SelectTrigger className="flex-1 sm:w-[220px] min-h-[44px] sm:min-h-0 sm:h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
