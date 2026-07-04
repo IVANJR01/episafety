@@ -907,8 +907,8 @@ export default function Treinamentos() {
               <GraduationCap className="w-7 h-7" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Documentos</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Acompanhamento de Documentação</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Capacitações</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">Gestão de cursos, certificados, listas de presença e vencimentos.</p>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
