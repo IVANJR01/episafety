@@ -1104,7 +1104,7 @@ export default function Treinamentos() {
                   </TableHeader>
                   <TableBody>
                     {filtered.length === 0 ? (
-                      <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={10} className="p-0"><EmptyState icon={GraduationCap} title={search || statusFilter !== "todos" ? "Nenhum resultado" : "Nenhuma capacitação cadastrada"} description={search || statusFilter !== "todos" ? "Ajuste a busca ou os filtros para ver mais resultados." : "Registre a primeira capacitação para começar o controle de vencimentos."} bare /></TableCell></TableRow>
                     ) : filtered.map((t, index) => {
                       const func = funcMap[t.funcionario_id];
                       const status = getStatus(t.data_renovacao);
