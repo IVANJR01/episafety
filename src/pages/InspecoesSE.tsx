@@ -2046,15 +2046,11 @@ export default function InspecoesSE() {
 }
 
 function GravidadeBadge({ gravidade }: { gravidade: string }) {
-  const colors: Record<string, string> = {
-    "LEVE": "bg-green-100 text-green-800 border-green-300",
-    "MODERADO": "bg-amber-100 text-amber-800 border-amber-300",
-    "GRAVE": "bg-red-100 text-red-800 border-red-300",
-    "RISCO CRÍTICO": "bg-red-200 text-red-900 border-red-400",
+  const toneMap: Record<string, StatusTone> = {
+    "LEVE": "neutral",
+    "MODERADO": "warning",
+    "GRAVE": "danger",
+    "RISCO CRÍTICO": "critical",
   };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colors[gravidade] || "bg-muted text-muted-foreground"}`}>
-      {gravidade}
-    </span>
-  );
+  return <StatusBadge tone={toneMap[gravidade] || "neutral"} size="sm">{gravidade}</StatusBadge>;
 }
