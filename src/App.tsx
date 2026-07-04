@@ -66,6 +66,10 @@ import PppValidar from "@/pages/ppp/PppValidar";
 import PppDashboard from "@/pages/ppp/PppDashboard";
 import S2240Mapeamentos from "@/pages/esocial/S2240Mapeamentos";
 import S2240Dashboard from "@/pages/esocial/S2240Dashboard";
+import ProgramasHome from "@/pages/programas/ProgramasHome";
+import OrdemServico from "@/pages/programas/OrdemServico";
+import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
+import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
 
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
