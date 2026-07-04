@@ -51,13 +51,12 @@ const NR_SUGESTOES = [
   "NR-33 — Segurança e saúde nos trabalhos em espaços confinados",
   "NR-35 — Item 35.4.5 — Sistema de proteção contra quedas em trabalho em altura",
 ];
-const STATUS_OPTIONS = ["PENDENTE", "SOLUCIONADO"];
+const STATUS_OPTIONS = ["PENDENTE", "EM ANDAMENTO", "SOLUCIONADO"];
 const LOAD_TIMEOUT_MS = 3000;
 
-function isVencido(item: { prazo_correcao?: string | null; status: string }): boolean {
-  if (!item.prazo_correcao || item.status === "SOLUCIONADO") return false;
-  const today = format(new Date(), "yyyy-MM-dd");
-  return item.prazo_correcao < today;
+function isVencido(_item: { prazo_correcao?: string | null; status: string }): boolean {
+  // Prazo/data limite deixou de ser obrigatório — não marcamos mais como vencido.
+  return false;
 }
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs = LOAD_TIMEOUT_MS) => {
