@@ -851,7 +851,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {consumoChartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma entrega registrada com valor</p>
+            <EmptyState icon={Package} title="Sem entregas com valor" description="Registre entregas com custo para visualizar a distribuição por EPI." bare />
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(320, consumoChartData.length * 44)}>
               <ComposedChart data={consumoChartData} margin={{ left: isMobile ? 8 : 8, right: 24, top: 20, bottom: 4 }}>
