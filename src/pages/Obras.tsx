@@ -214,7 +214,7 @@ export default function Obras() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="font-semibold">Nome da obra *</Label>
+              <Label className="font-semibold">Nome do local *</Label>
               <Input
                 value={form.nome}
                 onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
