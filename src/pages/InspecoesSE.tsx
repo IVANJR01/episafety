@@ -142,6 +142,9 @@ export default function InspecoesSE() {
   const depoisRef = useRef<HTMLInputElement>(null);
   const antesGalleryRef = useRef<HTMLInputElement>(null);
   const depoisGalleryRef = useRef<HTMLInputElement>(null);
+  const antesAppRef = useRef<HTMLInputElement>(null);
+  const depoisAppRef = useRef<HTMLInputElement>(null);
+  const [cameraChooserFor, setCameraChooserFor] = useState<"antes" | "depois" | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
@@ -1755,6 +1758,8 @@ export default function InspecoesSE() {
                   <Label className="font-semibold">Foto ANTES *</Label>
                   <input ref={antesRef} type="file" accept="image/*" capture="environment" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
+                  <input ref={antesAppRef} type="file" accept="image/*" className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   <input ref={antesGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   {(fotoAntesPreview || existingFotoAntes || existingFotoAntesPath) ? (
@@ -1775,7 +1780,7 @@ export default function InspecoesSE() {
                     </div>
                   ) : (
                     <div className={cn("flex flex-col gap-1.5 mt-1 p-2 rounded-md", errors.foto_antes && "border border-destructive")}>
-                      <Button variant="outline" size="sm" className="w-full min-h-[44px]" onClick={() => antesRef.current?.click()}>
+                      <Button variant="outline" size="sm" className="w-full min-h-[44px]" onClick={() => setCameraChooserFor("antes")}>
                         <Camera className="w-4 h-4 mr-1" /> Câmera
                       </Button>
                       <Button variant="outline" size="sm" className="w-full min-h-[44px] text-primary border-primary/30" onClick={() => antesGalleryRef.current?.click()}>
@@ -1788,6 +1793,8 @@ export default function InspecoesSE() {
                 <div>
                   <Label className="font-semibold">Foto DEPOIS</Label>
                   <input ref={depoisRef} type="file" accept="image/*" capture="environment" className="hidden"
+                    onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
+                  <input ref={depoisAppRef} type="file" accept="image/*" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                   <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
@@ -1810,7 +1817,7 @@ export default function InspecoesSE() {
                   ) : (
                     <div className="flex flex-col gap-1.5 mt-1">
                       <Button variant="outline" size="sm" className="w-full min-h-[44px]"
-                        onClick={() => depoisRef.current?.click()}
+                        onClick={() => setCameraChooserFor("depois")}
                         disabled={form.status !== "SOLUCIONADO"}>
                         <Camera className="w-4 h-4 mr-1" /> {form.status !== "SOLUCIONADO" ? "Após solução" : "Câmera"}
                       </Button>
@@ -1824,6 +1831,45 @@ export default function InspecoesSE() {
                 </div>
               </div>
             </div>
+
+            {/* Dialog: escolha de câmera */}
+            <Dialog open={cameraChooserFor !== null} onOpenChange={(o) => { if (!o) setCameraChooserFor(null); }}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Como deseja tirar a foto?</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-2 mt-2">
+                  <Button
+                    variant="default"
+                    className="w-full min-h-[48px] justify-start"
+                    onClick={() => {
+                      const target = cameraChooserFor;
+                      setCameraChooserFor(null);
+                      setTimeout(() => (target === "antes" ? antesRef : depoisRef).current?.click(), 50);
+                    }}
+                  >
+                    <Camera className="w-4 h-4 mr-2" /> Câmera do celular
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full min-h-[48px] justify-start"
+                    onClick={() => {
+                      const target = cameraChooserFor;
+                      setCameraChooserFor(null);
+                      setTimeout(() => (target === "antes" ? antesAppRef : depoisAppRef).current?.click(), 50);
+                    }}
+                  >
+                    <ImageIcon className="w-4 h-4 mr-2" /> Escolher aplicativo de câmera
+                  </Button>
+                  <p className="text-xs text-muted-foreground px-1">
+                    Caso seu aplicativo de câmera (ex.: Conota) não apareça, tire a foto pelo aplicativo e depois envie pela Galeria.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" className="w-full" onClick={() => setCameraChooserFor(null)}>Cancelar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* Seção: Ação Corretiva */}
             <div>
