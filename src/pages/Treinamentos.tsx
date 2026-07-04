@@ -1205,12 +1205,12 @@ export default function Treinamentos() {
 
                     const statusGeral = vencidos > 0 ? "vencido" : pendentesCount > 0 ? "pendente" : atencao > 0 ? "atencao" : "conforme";
                     const statusGeralLabel = { vencido: "Vencido", pendente: "Pendente", atencao: "A vencer", conforme: "Conforme" }[statusGeral];
-                    const statusGeralClass = {
-                      vencido: "bg-destructive text-destructive-foreground",
-                      pendente: "bg-warning text-warning-foreground",
-                      atencao: "bg-warning/80 text-warning-foreground",
-                      conforme: "bg-success text-success-foreground",
-                    }[statusGeral];
+                    const statusGeralTone: StatusTone = ({
+                      vencido: "danger",
+                      pendente: "pending",
+                      atencao: "warning",
+                      conforme: "success",
+                    } as const)[statusGeral];
 
                     return (
                       <details key={row.func.id} className="group p-3">
@@ -1218,7 +1218,7 @@ export default function Treinamentos() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-[10px] font-mono text-muted-foreground">#{idx + 1}</span>
-                              <Badge className={`text-[10px] px-1.5 py-0 ${statusGeralClass}`}>{statusGeralLabel}</Badge>
+                              <StatusBadge tone={statusGeralTone} size="sm">{statusGeralLabel}</StatusBadge>
                             </div>
                             <p className="font-semibold text-sm leading-tight truncate">{row.func.nome}</p>
                             <p className="text-xs text-muted-foreground mt-0.5 truncate">
