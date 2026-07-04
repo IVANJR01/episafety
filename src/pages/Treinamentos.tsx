@@ -1171,9 +1171,9 @@ export default function Treinamentos() {
                 </Button>
               </div>
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-4"><ListSkeleton rows={5} variant="row" /></div>
               ) : matrixData.cursos.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">Nenhum treinamento cadastrado</div>
+                <div className="p-4"><EmptyState icon={GraduationCap} title="Sem dados para a matriz" description="Cadastre capacitações e requisitos por função para visualizar a matriz." bare /></div>
               ) : (
                 <>
                 {/* ============ MOBILE: cards por colaborador ============ */}
