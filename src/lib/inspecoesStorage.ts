@@ -53,7 +53,7 @@ export async function uploadInspecaoPhoto(
 
 export async function getInspecaoPhotoSignedUrl(
   path: string,
-  ttlSec = 3600,
+  ttlSec = 600,
 ): Promise<string | null> {
   if (!path) return null;
   try {
