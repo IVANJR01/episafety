@@ -150,6 +150,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
   const visibleEsocialItems = esocialItems.filter((i) => canAccess(i.moduleKey));
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
+  const visibleProgramasItems = programasItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
@@ -158,6 +159,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
+  const isProgramasActive = location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat");
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
   const [asoOpen, setAsoOpen] = useState(isAsoActive);
@@ -165,6 +167,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
   const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
+  const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
 
   // Bottom nav items for mobile
   const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
