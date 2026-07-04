@@ -1414,26 +1414,6 @@ export default function InspecoesSE() {
                   )}
                 </div>
               </div>
-              <div className="mt-3">
-                <Label className="font-semibold">Local específico</Label>
-                <Input
-                  list="local-especifico-sugestoes"
-                  placeholder="Ex: Quadro elétrico, Sala elétrica, Pátio da subestação, Canteiro de obra..."
-                  value={form.local_especifico}
-                  onChange={e => setForm(p => ({ ...p, local_especifico: e.target.value }))}
-                  className="min-h-[44px]"
-                />
-                <datalist id="local-especifico-sugestoes">
-                  <option value="Quadro elétrico" />
-                  <option value="Sala elétrica" />
-                  <option value="Pátio da subestação" />
-                  <option value="Canteiro de obra" />
-                  <option value="Almoxarifado" />
-                  <option value="Frente de serviço" />
-                  <option value="Área administrativa" />
-                </datalist>
-                <p className="text-xs text-muted-foreground mt-1">Opcional. Detalhe onde a não conformidade foi encontrada dentro da obra.</p>
-              </div>
             </div>
 
             {/* Seção: Detalhamento */}
