@@ -18,6 +18,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 interface Funcionario {
   id: string; nome: string; matricula: string | null; setor: string | null;
@@ -474,30 +478,28 @@ export default function Funcionarios() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Funcionários</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar funcionários</p>
-        </div>
-        {canCreate && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button variant="outline" onClick={exportToExcel} className="w-full sm:w-auto" disabled={items.length === 0}>
+      <PageHeader
+        title="Funcionários"
+        subtitle="Cadastro e gestão dos colaboradores vinculados à empresa."
+        actions={canCreate ? (
+          <>
+            <Button variant="outline" onClick={exportToExcel} disabled={items.length === 0}>
               <Download className="w-4 h-4 mr-2" />Exportar
             </Button>
-            <Button variant="outline" onClick={() => fileRef.current?.click()} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={() => fileRef.current?.click()}>
               <Upload className="w-4 h-4 mr-2" />Importar
             </Button>
-            <Button variant="outline" onClick={downloadTemplate} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={downloadTemplate}>
               <FileSpreadsheet className="w-4 h-4 mr-2" />Modelo
             </Button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
-            <Button onClick={openNew} className="w-full sm:w-auto relative">
+            <Button onClick={openNew} className="relative">
               <Plus className="w-4 h-4 mr-2" />Novo Funcionário
               {hasDraft() && <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse" title="Rascunho salvo" />}
             </Button>
-          </div>
-        )}
-      </div>
+          </>
+        ) : undefined}
+      />
 
       {/* Search bar + Sector filter */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
@@ -549,15 +551,20 @@ export default function Funcionarios() {
 
         <TabsContent value={activeTab} className="mt-4">
       {loading ? (
-        <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+        <ListSkeleton rows={5} />
       ) : (
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
             {filteredItems.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">
-                {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
-              </CardContent></Card>
+              <EmptyState
+                icon={User}
+                title={searchTerm ? "Nenhum resultado" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
+                description={searchTerm ? "Ajuste a busca ou os filtros para ver mais resultados." : activeTab === "demitidos" ? "Colaboradores desligados aparecerão aqui." : "Cadastre o primeiro colaborador para iniciar o controle de EPIs, exames e documentos."}
+                action={!searchTerm && activeTab === "ativos" && canCreate ? (
+                  <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Funcionário</Button>
+                ) : undefined}
+              />
             ) : filteredItems.map(f => (
               <Card key={f.id} className="overflow-hidden">
                 <CardContent className="p-4">
@@ -619,8 +626,13 @@ export default function Funcionarios() {
                 </TableHeader>
                 <TableBody>
                   {filteredItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 10 : 9} className="text-center text-muted-foreground py-8">
-                      {searchTerm ? "Nenhum funcionário encontrado para esta busca" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
+                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 10 : 9} className="p-0">
+                      <EmptyState
+                        icon={User}
+                        title={searchTerm ? "Nenhum resultado" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
+                        description={searchTerm ? "Ajuste a busca ou os filtros para ver mais resultados." : activeTab === "demitidos" ? "Colaboradores desligados aparecerão aqui." : "Cadastre o primeiro colaborador para iniciar o controle de EPIs, exames e documentos."}
+                        bare
+                      />
                     </TableCell></TableRow>
                   ) : filteredItems.map(f => (
                     <TableRow key={f.id}>

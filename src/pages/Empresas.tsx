@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Filiais from "@/pages/Filiais";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function Empresas() {
   const { toast } = useToast();
@@ -150,25 +152,25 @@ export default function Empresas() {
   if (!empresaId) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Empresas</h1>
-          <p className="text-muted-foreground text-sm mt-1">Dados da empresa</p>
-        </div>
-        <Card className="max-w-2xl">
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">Você ainda não está vinculado a nenhuma empresa. Contacte o administrador do sistema.</p>
-          </CardContent>
-        </Card>
+        <PageHeader
+          title="Empresas / Unidades"
+          subtitle="Gerencie os dados da empresa, unidades e identidade visual."
+        />
+        <EmptyState
+          icon={Building2}
+          title="Você não está vinculado a nenhuma empresa"
+          description="Contate o administrador do sistema para vincular seu usuário a uma empresa."
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Empresas</h1>
-        <p className="text-muted-foreground text-sm mt-1">Dados da empresa e unidades</p>
-      </div>
+      <PageHeader
+        title="Empresas / Unidades"
+        subtitle="Gerencie os dados da empresa, unidades e identidade visual."
+      />
 
       <Tabs defaultValue="dados" className="w-full">
         <TabsList>
