@@ -333,6 +333,7 @@ export default function InspecoesSE() {
     if (!form.situacao_detectada.trim()) newErrors.situacao_detectada = "Descreva a situação detectada.";
     if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
     if (!form.responsavel.trim()) newErrors.responsavel = "Informe o responsável.";
+    if (!form.data_realizado) newErrors.data_realizado = "Informe o prazo.";
     if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes) {
       newErrors.foto_antes = "Anexe a foto ANTES (obrigatória).";
     }
@@ -1448,9 +1449,10 @@ export default function InspecoesSE() {
                     </Select>
                   </div>
                 </div>
-                <div>
-                  <Label className="font-semibold">Data Realizado</Label>
-                  <Input type="date" value={form.data_realizado} onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))} className="min-h-[44px]" />
+                <div data-error={!!errors.data_realizado}>
+                  <Label className="font-semibold">Prazo *</Label>
+                  <Input type="date" value={form.data_realizado} onChange={e => { setForm(p => ({ ...p, data_realizado: e.target.value })); setErrors(prev => ({ ...prev, data_realizado: "" })); }} className={cn("min-h-[44px]", errors.data_realizado && "border-destructive")} />
+                  {errors.data_realizado && <p className="text-xs text-destructive mt-1">{errors.data_realizado}</p>}
                 </div>
               </div>
             </div>
