@@ -15,12 +15,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
-import { PackageOpen, Inbox } from "lucide-react";
+import { PackageOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
 import FullscreenSignature from "@/components/FullscreenSignature";
