@@ -1172,7 +1172,7 @@ export default function InspecoesSE() {
                           title={item.referencia_normativa}
                         >
                           <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span className="break-words">{item.referencia_normativa}</span>
+                          <span className="break-words whitespace-pre-line">{item.referencia_normativa}</span>
                         </span>
                       )}
                       {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
@@ -1272,7 +1272,7 @@ export default function InspecoesSE() {
                 {item.referencia_normativa && (
                   <div className="flex items-start gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-xs font-medium text-primary break-words whitespace-normal leading-snug" title={item.referencia_normativa}>
+                    <span className="text-xs font-medium text-primary break-words whitespace-pre-line leading-snug" title={item.referencia_normativa}>
                       {item.referencia_normativa}
                     </span>
                   </div>
@@ -1370,24 +1370,16 @@ export default function InspecoesSE() {
                   </div>
                   <div className="md:col-span-2">
                     <Label className="font-semibold">Referência Normativa</Label>
-                    <Input
-                      list="nr-sugestoes"
-                      placeholder="Ex: NR-10 — Item 10.2.8 — Medidas de controle em instalações elétricas"
+                    <Textarea
+                      placeholder={"Ex: NR-18 — Item 18.6.10 — Quadros de distribuição devem possuir partes vivas inacessíveis...\nNR-18 — Item 18.6.12(c) — Dispositivos de manobra devem possuir condições para bloqueio e sinalização."}
                       value={form.referencia_normativa}
                       onChange={e => setForm(p => ({ ...p, referencia_normativa: e.target.value }))}
-                      className="min-h-[44px] w-full"
+                      className="min-h-[96px] w-full resize-y text-sm"
+                      rows={4}
                       title={form.referencia_normativa}
                     />
-                    <datalist id="nr-sugestoes">
-                      {NR_SUGESTOES.map(nr => <option key={nr} value={nr} />)}
-                    </datalist>
-                    {form.referencia_normativa && (
-                      <p className="text-xs text-muted-foreground mt-1 break-words whitespace-normal">
-                        {form.referencia_normativa}
-                      </p>
-                    )}
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      Formato sugerido: <strong>NR-XX — Item X.X.X — Descrição curta</strong>. Você pode digitar manualmente.
+                      Formato: <strong>NR-XX — Item X.X.X — Descrição curta</strong>. Múltiplas referências: uma por linha (norma principal primeiro).
                     </p>
                   </div>
                 </div>
