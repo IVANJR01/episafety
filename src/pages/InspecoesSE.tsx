@@ -84,6 +84,8 @@ interface Conformidade {
   acao_corretiva: string | null;
   responsavel: string | null;
   local: string | null;
+  local_especifico?: string | null;
+  obra_id?: string | null;
   data_realizado: string | null;
   prazo_correcao: string | null;
   resolved_by: string | null;
@@ -93,6 +95,13 @@ interface Conformidade {
   referencia_normativa: string | null;
 }
 
+type ObraOption = {
+  id: string;
+  nome: string;
+  codigo: string | null;
+  status: string;
+};
+
 const emptyForm = {
   data_inspecao: format(new Date(), "yyyy-MM-dd"),
   situacao_detectada: "",
@@ -100,6 +109,8 @@ const emptyForm = {
   acao_corretiva: "",
   responsavel: "",
   local: "",
+  local_especifico: "",
+  obra_id: "",
   prazo_correcao: "",
   data_realizado: "",
   status: "PENDENTE",
