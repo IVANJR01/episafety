@@ -1157,18 +1157,22 @@ export default function Entregas() {
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
-                      <div className="flex gap-1">
+                      <div className="flex gap-2">
                         {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
-                            <RotateCcw className="w-3 h-3 text-primary" />
+                          <Button size="icon" variant="outline" className="h-11 w-11" title="Desfazer devolução" aria-label="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
+                            <RotateCcw className="w-5 h-5 text-primary" />
                           </Button>
                         )}
                         {!e.assinatura_colaborador && canEdit && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
-                            <PenLine className="w-3 h-3 text-amber-500" />
+                          <Button size="icon" variant="outline" className="h-11 w-11" title="Assinar" aria-label="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
+                            <PenLine className="w-5 h-5 text-amber-500" />
                           </Button>
                         )}
-                        {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(e.id)}><Trash2 className="w-3 h-3 text-destructive" /></Button>}
+                        {canDelete && (
+                          <Button size="icon" variant="outline" className="h-11 w-11" title="Excluir" aria-label="Excluir" onClick={() => remove(e.id)}>
+                            <Trash2 className="w-5 h-5 text-destructive" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
