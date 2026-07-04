@@ -754,38 +754,52 @@ export default function InspecoesSE() {
   }
 
   /**
-   * Carrega a logo sobre fundo BRANCO e exporta como PNG RGB opaco (sem alpha).
-   * Isso evita o bug do PDF que renderiza transparência como fundo preto.
+   * Carrega a logo, achata sobre fundo BRANCO e exporta como PNG opaco.
+   * Suporta PNG (com/sem alpha), JPG, WEBP e SVG.
    */
-  async function loadLogoAsPngDataUrl(url: string): Promise<string | null> {
+  async function loadLogoAsPngDataUrl(url: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
+    const loadViaImage = (src: string) =>
+      new Promise<{ dataUrl: string; w: number; h: number }>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const MAX = 800;
+          let w = img.naturalWidth || img.width || 300;
+          let h = img.naturalHeight || img.height || 120;
+          if (!w || !h) { w = 300; h = 120; }
+          if (w > MAX) { h = Math.round(h * (MAX / w)); w = MAX; }
+          if (h > MAX) { w = Math.round(w * (MAX / h)); h = MAX; }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d")!;
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          try {
+            resolve({ dataUrl: canvas.toDataURL("image/png"), w, h });
+          } catch (e) {
+            reject(e);
+          }
+        };
+        img.onerror = () => reject(new Error("image load failed"));
+        img.src = src;
+      });
+
+    // 1) Try direct load first (public URLs, same-origin)
+    try {
+      return await loadViaImage(url);
+    } catch {}
+
+    // 2) Fallback: fetch as blob then use blob URL (helps CORS/signed URLs)
     try {
       const resp = await fetch(url, { mode: "cors" });
       if (!resp.ok) return null;
       const blob = await resp.blob();
-      if (blob.size < 100) return null;
+      if (blob.size < 50) return null;
       const blobUrl = URL.createObjectURL(blob);
       try {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          img.onload = () => {
-            const MAX = 600;
-            let w = img.naturalWidth || img.width || 300;
-            let h = img.naturalHeight || img.height || 120;
-            if (w > MAX) { h = Math.round(h * (MAX / w)); w = MAX; }
-            const canvas = document.createElement("canvas");
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d")!;
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(0, 0, w, h);
-            ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvasToOpaqueRgbPngDataUrl(canvas));
-          };
-          img.onerror = () => reject(new Error("logo load failed"));
-          img.src = blobUrl;
-        });
-        return dataUrl;
+        return await loadViaImage(blobUrl);
       } finally {
         URL.revokeObjectURL(blobUrl);
       }
@@ -807,15 +821,14 @@ export default function InspecoesSE() {
     pdfImageCacheRef.current.clear();
 
     // Load empresa logo & name
-    let logoDataUrl: string | null = null;
+    let logoData: { dataUrl: string; w: number; h: number } | null = null;
     let empresaNome = "";
     try {
       if (empresaId && isOnline()) {
         const { data: empresa } = await (supabase.from as any)("empresa_config")
           .select("logo_url, logo_path, nome")
           .eq("id", empresaId)
-          .limit(1)
-          .single();
+          .maybeSingle();
 
         let logoSourceUrl: string | null = null;
         if (empresa?.logo_path) {
@@ -828,10 +841,21 @@ export default function InspecoesSE() {
           logoSourceUrl = empresa.logo_url;
         }
         if (logoSourceUrl) {
-          logoDataUrl = await loadLogoAsPngDataUrl(logoSourceUrl);
+          logoData = await loadLogoAsPngDataUrl(logoSourceUrl);
         }
 
         empresaNome = empresa?.nome || "";
+
+        // Fallback: try to read nome from empresas table if empresa_config is empty
+        if (!empresaNome) {
+          try {
+            const { data: emp } = await (supabase.from as any)("empresas")
+              .select("nome")
+              .eq("id", empresaId)
+              .maybeSingle();
+            empresaNome = emp?.nome || "";
+          } catch {}
+        }
       }
     } catch {}
 
@@ -956,23 +980,28 @@ export default function InspecoesSE() {
     drawTopBar();
     let y = 16;
 
-    if (logoDataUrl) {
+    let logoDrawn = false;
+    if (logoData?.dataUrl) {
       try {
-        const d = getImgDims(logoDataUrl);
         const maxH = 20, maxW = 45;
-        const ar = d.w && d.h ? d.w / d.h : 2;
+        const ar = logoData.w && logoData.h ? logoData.w / logoData.h : 2;
         let w = maxW, h = w / ar;
         if (h > maxH) { h = maxH; w = h * ar; }
         doc.setFillColor(255, 255, 255);
         doc.rect(MARGIN, y, w, h, "F");
-        doc.addImage(logoDataUrl, "PNG", MARGIN, y, w, h);
+        doc.addImage(logoData.dataUrl, "PNG", MARGIN, y, w, h, undefined, "FAST");
+        logoDrawn = true;
       } catch {}
     }
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     setText(NAVY);
-    doc.text(empresaNome || "—", pageWidth - MARGIN, y + 5, { align: "right" });
+    // Se não houver logo, mostra o nome da empresa em destaque à esquerda também
+    if (!logoDrawn && empresaNome) {
+      doc.text(empresaNome, MARGIN, y + 7);
+    }
+    doc.text(empresaNome || "Empresa", pageWidth - MARGIN, y + 5, { align: "right" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     setText(GREY_TXT);
