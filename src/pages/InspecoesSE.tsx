@@ -280,14 +280,26 @@ export default function InspecoesSE() {
     reader.readAsDataURL(compressed);
   }
 
-  async function uploadPhoto(file: File): Promise<string> {
+  async function uploadPhoto(file: File, label: "antes" | "depois"): Promise<string> {
+    if (!file || !(file instanceof Blob) || file.size === 0) {
+      throw new Error(`Foto ${label} inválida (arquivo vazio).`);
+    }
+    console.log(`[Inspecoes] uploadPhoto ${label}`, {
+      empresaId,
+      userId: user?.id,
+      folder: "inspecoes",
+      fileName: file.name,
+      fileType: file.type,
+      sizeKB: Math.round(file.size / 1024),
+    });
     const { uploadToDrive } = await import("@/lib/googleDriveStorage");
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
     const result = await uploadToDrive(
       file,
       "inspecoes",
-      `${Date.now()}_${Math.random().toString(36).slice(2)}.${file.name.split(".").pop()}`
+      `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
     );
-
+    console.log(`[Inspecoes] uploadPhoto ${label} OK →`, result.publicUrl);
     return result.publicUrl;
   }
 
