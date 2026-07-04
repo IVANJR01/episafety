@@ -1004,7 +1004,12 @@ export default function InspecoesSE() {
       x += scaledWidths[7];
 
       // Local - centered
-      drawCenteredText(item.local || "", x, y, scaledWidths[8], ROW_H, 6);
+      {
+        const obra = obras.find(o => o.id === item.obra_id);
+        const obraNome = obra?.nome || item.local || "";
+        const localTxt = item.local_especifico ? `${obraNome}\n${item.local_especifico}` : obraNome;
+        drawCenteredText(localTxt, x, y, scaledWidths[8], ROW_H, 6);
+      }
       x += scaledWidths[8];
 
       // Realizado - centered
