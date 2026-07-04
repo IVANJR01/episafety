@@ -13,6 +13,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Pencil, Power, ClipboardList, Search, Briefcase, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 export default function CadastroGhe() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
