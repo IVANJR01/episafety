@@ -172,7 +172,7 @@ export default function Obras() {
         <p className="text-sm text-muted-foreground">Carregando...</p>
       ) : filtered.length === 0 ? (
         <div className="border rounded-lg p-8 text-center text-muted-foreground">
-          Nenhuma obra cadastrada. Clique em <strong>Nova obra</strong> para começar.
+          Nenhum local cadastrado. Clique em <strong>Novo local</strong> para começar.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
