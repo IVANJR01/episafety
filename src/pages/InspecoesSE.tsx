@@ -654,9 +654,106 @@ export default function InspecoesSE() {
     return null;
   }
 
+  function bytesToBase64(bytes: Uint8Array): string {
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  }
+
+  function crc32(bytes: Uint8Array): number {
+    const table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+    let crc = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) crc = table[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function adler32(bytes: Uint8Array): number {
+    let a = 1;
+    let b = 0;
+    for (let i = 0; i < bytes.length; i++) {
+      a = (a + bytes[i]) % 65521;
+      b = (b + a) % 65521;
+    }
+    return ((b << 16) | a) >>> 0;
+  }
+
+  function writeU32(target: number[], value: number) {
+    target.push((value >>> 24) & 255, (value >>> 16) & 255, (value >>> 8) & 255, value & 255);
+  }
+
+  function pngChunk(type: string, data: Uint8Array): Uint8Array {
+    const typeBytes = new TextEncoder().encode(type);
+    const out: number[] = [];
+    writeU32(out, data.length);
+    out.push(...typeBytes, ...data);
+    const crcInput = new Uint8Array(typeBytes.length + data.length);
+    crcInput.set(typeBytes, 0);
+    crcInput.set(data, typeBytes.length);
+    writeU32(out, crc32(crcInput));
+    return new Uint8Array(out);
+  }
+
+  function zlibStore(bytes: Uint8Array): Uint8Array {
+    const out: number[] = [0x78, 0x01];
+    let offset = 0;
+    while (offset < bytes.length) {
+      const len = Math.min(65535, bytes.length - offset);
+      const finalBlock = offset + len >= bytes.length ? 1 : 0;
+      out.push(finalBlock, len & 255, (len >>> 8) & 255, (~len) & 255, ((~len) >>> 8) & 255);
+      out.push(...bytes.subarray(offset, offset + len));
+      offset += len;
+    }
+    writeU32(out, adler32(bytes));
+    return new Uint8Array(out);
+  }
+
+  function canvasToOpaqueRgbPngDataUrl(canvas: HTMLCanvasElement): string {
+    const ctx = canvas.getContext("2d")!;
+    const { width, height } = canvas;
+    const rgba = ctx.getImageData(0, 0, width, height).data;
+    const raw = new Uint8Array(height * (1 + width * 3));
+    let p = 0;
+    for (let y = 0; y < height; y++) {
+      raw[p++] = 0;
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        const alpha = rgba[i + 3] / 255;
+        raw[p++] = Math.round(rgba[i] * alpha + 255 * (1 - alpha));
+        raw[p++] = Math.round(rgba[i + 1] * alpha + 255 * (1 - alpha));
+        raw[p++] = Math.round(rgba[i + 2] * alpha + 255 * (1 - alpha));
+      }
+    }
+
+    const ihdr = new Uint8Array(13);
+    const view = new DataView(ihdr.buffer);
+    view.setUint32(0, width);
+    view.setUint32(4, height);
+    ihdr[8] = 8;  // bit depth
+    ihdr[9] = 2;  // truecolor RGB, sem canal alpha
+    ihdr[10] = 0; // compression
+    ihdr[11] = 0; // filter
+    ihdr[12] = 0; // interlace
+
+    const signature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    const chunks = [signature, pngChunk("IHDR", ihdr), pngChunk("IDAT", zlibStore(raw)), pngChunk("IEND", new Uint8Array())];
+    const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const png = new Uint8Array(total);
+    let offset = 0;
+    chunks.forEach((chunk) => { png.set(chunk, offset); offset += chunk.length; });
+    return `data:image/png;base64,${bytesToBase64(png)}`;
+  }
+
   /**
-   * Carrega a logo preservando transparência: pinta sobre canvas com fundo BRANCO
-   * (nunca preto) e exporta como PNG. Aceita PNG/JPG/WEBP/SVG.
+   * Carrega a logo sobre fundo BRANCO e exporta como PNG RGB opaco (sem alpha).
+   * Isso evita o bug do PDF que renderiza transparência como fundo preto.
    */
   async function loadLogoAsPngDataUrl(url: string): Promise<string | null> {
     try {
@@ -671,18 +768,17 @@ export default function InspecoesSE() {
         const dataUrl = await new Promise<string>((resolve, reject) => {
           img.onload = () => {
             const MAX = 600;
-            let w = img.width || 300;
-            let h = img.height || 120;
+            let w = img.naturalWidth || img.width || 300;
+            let h = img.naturalHeight || img.height || 120;
             if (w > MAX) { h = Math.round(h * (MAX / w)); w = MAX; }
             const canvas = document.createElement("canvas");
             canvas.width = w;
             canvas.height = h;
             const ctx = canvas.getContext("2d")!;
-            // Fundo BRANCO (combina com cabeçalho) para evitar preto em transparências
             ctx.fillStyle = "#FFFFFF";
             ctx.fillRect(0, 0, w, h);
             ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL("image/png"));
+            resolve(canvasToOpaqueRgbPngDataUrl(canvas));
           };
           img.onerror = () => reject(new Error("logo load failed"));
           img.src = blobUrl;
@@ -714,12 +810,23 @@ export default function InspecoesSE() {
     try {
       if (empresaId && isOnline()) {
         const { data: empresa } = await (supabase.from as any)("empresa_config")
-          .select("logo_url, nome")
+          .select("logo_url, logo_path, nome")
           .eq("id", empresaId)
           .limit(1)
           .single();
-        if (isValidPdfImageUrl(empresa?.logo_url)) {
-          logoDataUrl = await loadLogoAsPngDataUrl(empresa.logo_url);
+
+        let logoSourceUrl: string | null = null;
+        if (empresa?.logo_path) {
+          const { data: signedLogo } = await supabase.storage
+            .from("company-logos")
+            .createSignedUrl(empresa.logo_path, 900);
+          logoSourceUrl = signedLogo?.signedUrl || null;
+        }
+        if (!logoSourceUrl && isValidPdfImageUrl(empresa?.logo_url)) {
+          logoSourceUrl = empresa.logo_url;
+        }
+        if (logoSourceUrl) {
+          logoDataUrl = await loadLogoAsPngDataUrl(logoSourceUrl);
         }
 
         empresaNome = empresa?.nome || "";
@@ -854,6 +961,8 @@ export default function InspecoesSE() {
         const ar = d.w && d.h ? d.w / d.h : 2;
         let w = maxW, h = w / ar;
         if (h > maxH) { h = maxH; w = h * ar; }
+        doc.setFillColor(255, 255, 255);
+        doc.rect(MARGIN, y, w, h, "F");
         doc.addImage(logoDataUrl, "PNG", MARGIN, y, w, h);
       } catch {}
     }
