@@ -207,6 +207,7 @@ export default function InspecoesSE() {
       acao_corretiva: item.acao_corretiva || "",
       responsavel: item.responsavel || "",
       local: item.local || "",
+      prazo_correcao: item.prazo_correcao || "",
       data_realizado: item.data_realizado || "",
       status: item.status,
       referencia_normativa: item.referencia_normativa || "",
