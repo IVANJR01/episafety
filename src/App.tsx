@@ -25,6 +25,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import AdminEmpresas from "@/pages/AdminEmpresas";
 import Install from "@/pages/Install";
 import Privacidade from "@/pages/Privacidade";
+import Termos from "@/pages/Termos";
 import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
 import InspecoesDashboard from "@/pages/InspecoesDashboard";
@@ -346,6 +347,7 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/install" element={<Install />} />
             <Route path="/privacidade" element={<Privacidade />} />
+            <Route path="/termos" element={<Termos />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
             <Route path="/setup-mfa" element={<SetupMfaGuarded />} />

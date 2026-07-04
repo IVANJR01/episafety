@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
 import { APP_VERSION } from "@/lib/version";
+import SuporteButton from "@/components/SuporteButton";
+import TermsAcceptanceBanner from "@/components/TermsAcceptanceBanner";
 
 interface NavItem {
   path: string;
@@ -220,6 +222,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <TermsAcceptanceBanner />
       {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 bg-foreground/30 lg:hidden" onClick={() => setMobileOpen(false)} />
@@ -634,6 +637,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <RefreshCw className={`w-3 h-3 ${checking ? "animate-spin" : ""}`} />
             <span>v{APP_VERSION}{checking ? " verificando..." : " · Atualizar"}</span>
           </button>
+          <SuporteButton variant="sidebar" />
+          <div className="flex items-center gap-2 px-4 text-[10px] text-sidebar-foreground/40">
+            <Link to="/termos" className="hover:text-sidebar-foreground/70 hover:underline">Termos</Link>
+            <span>·</span>
+            <Link to="/privacidade" className="hover:text-sidebar-foreground/70 hover:underline">Privacidade</Link>
+          </div>
           <button onClick={signOut} className="flex items-center gap-2 w-full px-4 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
             <LogOut className="w-4 h-4" />
             <span>Sair</span>
@@ -674,6 +683,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 ))}
               </select>
             )}
+            <SuporteButton variant="icon" className="text-muted-foreground hover:text-foreground" />
             <button onClick={signOut} className="p-2 text-muted-foreground hover:text-foreground">
               <LogOut className="w-4 h-4" />
             </button>

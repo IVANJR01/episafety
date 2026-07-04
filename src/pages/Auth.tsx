@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { Download } from "lucide-react";
+import { Link } from "react-router-dom";
 import logoEpiSafety from "@/assets/logo-episafety.png";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import InstallBanner from "@/components/InstallBanner";
+import { TERMS_VERSION } from "@/lib/termsConfig";
 
 type AuthMode = "login" | "signup" | "forgot";
 
@@ -17,9 +20,11 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const { toast } = useToast();
+
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -69,14 +74,31 @@ export default function Auth() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({
+        if (!acceptedTerms) {
+          throw new Error("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
+        }
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { nome }, emailRedirectTo: window.location.origin }
         });
         if (error) throw error;
+        // Registra aceite dos termos (best-effort — não bloqueia se houver sessão pendente de confirmação)
+        try {
+          const userId = data.user?.id;
+          if (userId) {
+            await supabase.from("termos_aceites" as any).insert({
+              user_id: userId,
+              versao_termos: TERMS_VERSION,
+              user_agent: navigator.userAgent.slice(0, 500),
+            });
+          }
+        } catch {
+          /* silencioso — banner de aceite cobrirá o registro no primeiro login */
+        }
         toast({ title: "Conta criada!", description: "Verifique seu email para confirmar o cadastro." });
       }
+
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
@@ -123,7 +145,27 @@ export default function Auth() {
                 </button>
               </div>
             }
-            <Button type="submit" className="w-full" disabled={loading}>
+            {mode === "signup" && (
+              <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+                <Checkbox
+                  checked={acceptedTerms}
+                  onCheckedChange={(v) => setAcceptedTerms(Boolean(v))}
+                  className="mt-0.5"
+                />
+                <span>
+                  Li e aceito os{" "}
+                  <Link to="/termos" target="_blank" className="text-primary hover:underline">
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link to="/privacidade" target="_blank" className="text-primary hover:underline">
+                    Política de Privacidade
+                  </Link>
+                  .
+                </span>
+              </label>
+            )}
+            <Button type="submit" className="w-full" disabled={loading || (mode === "signup" && !acceptedTerms)}>
               {loading ?
               "Aguarde..." :
               mode === "login" ?
@@ -132,6 +174,7 @@ export default function Auth() {
               "Criar Conta" :
               "Enviar Link de Recuperação"}
             </Button>
+
           </form>
           <Button
             type="button"
@@ -164,8 +207,15 @@ export default function Auth() {
             }
           </div>
 
+          <div className="mt-6 pt-4 border-t border-border flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <Link to="/termos" className="hover:text-primary hover:underline">Termos de Uso</Link>
+            <span>·</span>
+            <Link to="/privacidade" className="hover:text-primary hover:underline">Política de Privacidade</Link>
+          </div>
+
         </CardContent>
       </Card>
+
       <InstallBanner autoTrigger={true} />
     </div>);
 

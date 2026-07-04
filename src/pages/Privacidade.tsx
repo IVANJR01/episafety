@@ -1,4 +1,4 @@
-import { ArrowLeft, Shield } from "lucide-react";
+import { ArrowLeft, Shield, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Privacidade() {
@@ -112,8 +112,12 @@ export default function Privacidade() {
           <p className="text-sm font-medium text-primary">contato@safetysolucoes.com.br</p>
         </section>
 
-        <div className="border-t border-border pt-6 text-center">
-          <Link to="/login" className="text-sm text-primary hover:underline inline-flex items-center gap-1.5">
+        <div className="border-t border-border pt-6 flex flex-col items-center gap-3">
+          <Link to="/termos" className="text-sm text-primary hover:underline inline-flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" />
+            Ver Termos de Uso
+          </Link>
+          <Link to="/login" className="text-sm text-muted-foreground hover:text-primary hover:underline inline-flex items-center gap-1.5">
             <ArrowLeft className="w-3.5 h-3.5" />
             Voltar ao login
           </Link>
