@@ -1421,21 +1421,26 @@ export default function InspecoesSE() {
 
       {/* Content */}
       {loading ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">Carregando...</p>
+        <ListSkeleton rows={5} />
       ) : filtered.length === 0 ? (
-        <div className="py-16 px-6 text-center border rounded-lg bg-muted/20 flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-            <Camera className="w-7 h-7 text-primary" />
-          </div>
-          <p className="text-base font-semibold">
-            {items.length === 0 ? "Nenhuma inspeção registrada ainda." : "Nenhum registro encontrado com os filtros atuais."}
-          </p>
-          {canCreate && items.length === 0 && (
-            <Button onClick={openNew} className="mt-2 min-h-[44px]">
-              <Plus className="w-4 h-4 mr-1.5" /> Criar primeira inspeção
-            </Button>
-          )}
-        </div>
+        items.length === 0 ? (
+          <EmptyState
+            icon={ClipboardCheck}
+            title="Nenhuma inspeção registrada"
+            description="Registre a primeira inspeção para acompanhar não conformidades e ações corretivas."
+            action={canCreate ? (
+              <Button onClick={openNew}>
+                <Plus className="w-4 h-4 mr-2" /> Nova Inspeção
+              </Button>
+            ) : undefined}
+          />
+        ) : (
+          <EmptyState
+            icon={SearchIcon}
+            title="Nenhum registro encontrado"
+            description="Nenhuma inspeção corresponde aos filtros atuais. Ajuste os filtros para ver outros resultados."
+          />
+        )
       ) : (
         <>
           {/* Desktop Cards */}
