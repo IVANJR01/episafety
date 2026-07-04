@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
+import { ClipboardCheck, Search as SearchIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -1353,31 +1358,30 @@ export default function InspecoesSE() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inspeções</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gestão de conformidades e não conformidades</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {canCreate && (
-            <Button onClick={openNew} size="sm" className="min-h-[40px]">
-              <Plus className="w-4 h-4 mr-1.5" /> Novo Registro
+      <PageHeader
+        title="Inspeções"
+        subtitle="Registro de não conformidades, evidências fotográficas e ações corretivas."
+        actions={
+          <>
+            {canCreate && (
+              <Button onClick={openNew} className="text-xs sm:text-sm">
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" /> Nova Inspeção
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setExportDateStart(undefined);
+                setExportDateEnd(undefined);
+                setExportDialogOpen(true);
+              }}
+              className="text-xs sm:text-sm"
+            >
+              <FileDown className="w-4 h-4 mr-1 sm:mr-2" /> Gerar Relatório
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setExportDateStart(undefined);
-              setExportDateEnd(undefined);
-              setExportDialogOpen(true);
-            }}
-            className="min-h-[40px]"
-          >
-            <FileDown className="w-4 h-4 mr-1.5" /> Gerar PDF
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-3">
@@ -1417,21 +1421,26 @@ export default function InspecoesSE() {
 
       {/* Content */}
       {loading ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">Carregando...</p>
+        <ListSkeleton rows={5} />
       ) : filtered.length === 0 ? (
-        <div className="py-16 px-6 text-center border rounded-lg bg-muted/20 flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-            <Camera className="w-7 h-7 text-primary" />
-          </div>
-          <p className="text-base font-semibold">
-            {items.length === 0 ? "Nenhuma inspeção registrada ainda." : "Nenhum registro encontrado com os filtros atuais."}
-          </p>
-          {canCreate && items.length === 0 && (
-            <Button onClick={openNew} className="mt-2 min-h-[44px]">
-              <Plus className="w-4 h-4 mr-1.5" /> Criar primeira inspeção
-            </Button>
-          )}
-        </div>
+        items.length === 0 ? (
+          <EmptyState
+            icon={ClipboardCheck}
+            title="Nenhuma inspeção registrada"
+            description="Registre a primeira inspeção para acompanhar não conformidades e ações corretivas."
+            action={canCreate ? (
+              <Button onClick={openNew}>
+                <Plus className="w-4 h-4 mr-2" /> Nova Inspeção
+              </Button>
+            ) : undefined}
+          />
+        ) : (
+          <EmptyState
+            icon={SearchIcon}
+            title="Nenhum registro encontrado"
+            description="Nenhuma inspeção corresponde aos filtros atuais. Ajuste os filtros para ver outros resultados."
+          />
+        )
       ) : (
         <>
           {/* Desktop Cards */}
@@ -1523,10 +1532,9 @@ export default function InspecoesSE() {
 
                   {/* Right: Status + Actions */}
                   <div className="flex-shrink-0 flex flex-col items-end justify-between">
-                    <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
-                      className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
-                      {item.status}
-                    </Badge>
+                    <StatusBadge tone={item.status === "SOLUCIONADO" ? "success" : "pending"} size="sm">
+                      {item.status === "SOLUCIONADO" ? "Solucionado" : "Pendente"}
+                    </StatusBadge>
                     <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
                         <Pencil className="w-4 h-4" />
@@ -1556,10 +1564,9 @@ export default function InspecoesSE() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
-                      className={item.status === "SOLUCIONADO" ? "bg-green-600 text-white text-[10px]" : "bg-amber-500 text-white text-[10px]"}>
-                      {item.status}
-                    </Badge>
+                    <StatusBadge tone={item.status === "SOLUCIONADO" ? "success" : "pending"} size="sm">
+                      {item.status === "SOLUCIONADO" ? "Solucionado" : "Pendente"}
+                    </StatusBadge>
                     <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                       <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => openEdit(item)} aria-label="Editar inspeção">
                         <Pencil className="w-5 h-5" />
@@ -2039,15 +2046,11 @@ export default function InspecoesSE() {
 }
 
 function GravidadeBadge({ gravidade }: { gravidade: string }) {
-  const colors: Record<string, string> = {
-    "LEVE": "bg-green-100 text-green-800 border-green-300",
-    "MODERADO": "bg-amber-100 text-amber-800 border-amber-300",
-    "GRAVE": "bg-red-100 text-red-800 border-red-300",
-    "RISCO CRÍTICO": "bg-red-200 text-red-900 border-red-400",
+  const toneMap: Record<string, StatusTone> = {
+    "LEVE": "neutral",
+    "MODERADO": "warning",
+    "GRAVE": "danger",
+    "RISCO CRÍTICO": "critical",
   };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colors[gravidade] || "bg-muted text-muted-foreground"}`}>
-      {gravidade}
-    </span>
-  );
+  return <StatusBadge tone={toneMap[gravidade] || "neutral"} size="sm">{gravidade}</StatusBadge>;
 }
