@@ -12,6 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -147,22 +151,22 @@ export default function EPIs() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Cadastro de EPIs</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar equipamentos de proteção</p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-           <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="flex-1 sm:flex-none text-xs sm:text-sm">
-            <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
-          </Button>
-          {canCreate && (
-            <Button onClick={openNew} className="flex-1 sm:flex-none text-xs sm:text-sm">
-              <Plus className="w-4 h-4 mr-1 sm:mr-2" />Novo EPI
+      <PageHeader
+        title="Cadastro de EPIs"
+        subtitle="Gerenciar equipamentos de proteção"
+        actions={
+          <>
+            <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="text-xs sm:text-sm">
+              <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
             </Button>
-          )}
-        </div>
-      </div>
+            {canCreate && (
+              <Button onClick={openNew} className="text-xs sm:text-sm">
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" />Novo EPI
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -170,21 +174,28 @@ export default function EPIs() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+        <ListSkeleton rows={4} />
       ) : (
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
             {episFiltrados.length === 0 ? (
-              <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</CardContent></Card>
+              <EmptyState
+                icon={Package}
+                title={busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}
+                description={busca ? "Tente ajustar sua busca ou limpar o filtro." : "Clique em Novo EPI para começar."}
+                action={!busca && canCreate ? (
+                  <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo EPI</Button>
+                ) : undefined}
+              />
             ) : episFiltrados.map(e => {
               const zerado = e.estoque === 0;
               const baixo = !zerado && e.estoque <= e.estoque_minimo;
               const statusBadge = zerado
-                ? <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 shrink-0">Zerado</Badge>
+                ? <StatusBadge tone="danger" size="sm">Zerado</StatusBadge>
                 : baixo
-                  ? <Badge variant="outline" className="text-amber-600 border-amber-300 text-[10px] px-1.5 py-0.5 shrink-0">Baixo</Badge>
-                  : <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-[10px] px-1.5 py-0.5 shrink-0">OK</Badge>;
+                  ? <StatusBadge tone="warning" size="sm">Baixo</StatusBadge>
+                  : <StatusBadge tone="success" size="sm">OK</StatusBadge>;
               const valorTotal = (Number(e.valor) || 0) * e.estoque;
               return (
               <Card key={e.id} className="overflow-hidden">
