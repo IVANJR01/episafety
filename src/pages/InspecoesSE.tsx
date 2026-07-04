@@ -1358,31 +1358,30 @@ export default function InspecoesSE() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inspeções</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gestão de conformidades e não conformidades</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {canCreate && (
-            <Button onClick={openNew} size="sm" className="min-h-[40px]">
-              <Plus className="w-4 h-4 mr-1.5" /> Novo Registro
+      <PageHeader
+        title="Inspeções"
+        subtitle="Registro de não conformidades, evidências fotográficas e ações corretivas."
+        actions={
+          <>
+            {canCreate && (
+              <Button onClick={openNew} className="text-xs sm:text-sm">
+                <Plus className="w-4 h-4 mr-1 sm:mr-2" /> Nova Inspeção
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setExportDateStart(undefined);
+                setExportDateEnd(undefined);
+                setExportDialogOpen(true);
+              }}
+              className="text-xs sm:text-sm"
+            >
+              <FileDown className="w-4 h-4 mr-1 sm:mr-2" /> Gerar Relatório
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setExportDateStart(undefined);
-              setExportDateEnd(undefined);
-              setExportDialogOpen(true);
-            }}
-            className="min-h-[40px]"
-          >
-            <FileDown className="w-4 h-4 mr-1.5" /> Gerar PDF
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-3">
