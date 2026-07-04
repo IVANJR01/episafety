@@ -352,7 +352,10 @@ export default function InspecoesSE() {
       gravidade: form.gravidade,
       acao_corretiva: form.acao_corretiva || null,
       responsavel: form.responsavel || null,
-      local: form.local || null,
+      obra_id: form.obra_id || null,
+      local_especifico: form.local_especifico || null,
+      // "local" mantido em branco (obra_id substitui). Preservamos coluna para dados antigos.
+      local: form.local_especifico || null,
       prazo_correcao: form.prazo_correcao || null,
       // data_realizado só quando SOLUCIONADO; em novas/pendentes fica null
       data_realizado: isSolucionado ? (form.data_realizado || format(new Date(), "yyyy-MM-dd")) : null,
