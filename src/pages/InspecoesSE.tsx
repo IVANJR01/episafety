@@ -1167,8 +1167,12 @@ export default function InspecoesSE() {
                       </span>
                       <GravidadeBadge gravidade={item.gravidade} />
                       {item.referencia_normativa && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium">
-                          <Sparkles className="w-3 h-3" />{item.referencia_normativa}
+                        <span
+                          className="inline-flex items-start gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-medium max-w-full whitespace-normal break-words leading-snug"
+                          title={item.referencia_normativa}
+                        >
+                          <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span className="break-words">{item.referencia_normativa}</span>
                         </span>
                       )}
                       {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
