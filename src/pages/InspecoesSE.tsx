@@ -1312,18 +1312,18 @@ export default function InspecoesSE() {
                 </div>
 
                 {/* Photos */}
-                {(item.foto_antes || item.foto_depois) && (
-                  <div className={`grid gap-2 ${item.foto_antes && item.foto_depois ? "grid-cols-2" : "grid-cols-1"}`}>
-                    {item.foto_antes && (
+                {(item.foto_antes_path || item.foto_antes || item.foto_depois_path || item.foto_depois) && (
+                  <div className={`grid gap-2 ${(item.foto_antes_path || item.foto_antes) && (item.foto_depois_path || item.foto_depois) ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {(item.foto_antes_path || item.foto_antes) && (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-semibold">ANTES</p>
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
+                        <InspecaoImage path={item.foto_antes_path} legacyUrl={item.foto_antes} alt="Antes" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
                       </div>
                     )}
-                    {item.foto_depois && (
+                    {(item.foto_depois_path || item.foto_depois) && (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-semibold">DEPOIS</p>
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
+                        <InspecaoImage path={item.foto_depois_path} legacyUrl={item.foto_depois} alt="Depois" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
                       </div>
                     )}
                   </div>
