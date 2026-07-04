@@ -206,10 +206,7 @@ export default function CadastroDashboard() {
               </div>
               <div className="px-2 sm:px-6 pb-4 sm:pb-6">
                 {stats.cargosData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Briefcase className="w-10 h-10 mb-2 opacity-30" />
-                    <p className="text-sm">Nenhum cargo cadastrado</p>
-                  </div>
+                  <EmptyState icon={Briefcase} title="Nenhum cargo cadastrado" description="Cadastre funcionários com cargo/função para visualizar a distribuição." bare />
                 ) : (
                   <ResponsiveContainer width="100%" height={Math.max(200, stats.cargosData.length * 44)}>
                     <BarChart data={stats.cargosData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
