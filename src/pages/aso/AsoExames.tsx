@@ -733,21 +733,36 @@ export default function AsoExames() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-3"><ListSkeleton rows={5} /></div>
               ) : (
                 <>
                   {/* Mobile cards */}
                   <div className="md:hidden p-3 space-y-3">
                     {filtered.length === 0 ? (
-                      <div className="text-center text-muted-foreground py-8 text-sm">Nenhum exame cadastrado</div>
+                      <EmptyState
+                        bare
+                        icon={Stethoscope}
+                        title={search || statusFilter !== "todos" || setorFilter ? "Nenhum resultado encontrado" : "Nenhum exame registrado"}
+                        description={search || statusFilter !== "todos" || setorFilter
+                          ? "Ajuste os filtros ou a busca para ver mais resultados."
+                          : "Cadastre o primeiro exame ocupacional para acompanhar vencimentos e renovações."}
+                        action={!(search || statusFilter !== "todos" || setorFilter) ? (
+                          <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Exame</Button>
+                        ) : undefined}
+                      />
                     ) : filtered.map((e, index) => {
                       const func = funcMap[e.funcionario_id];
                       const status = getStatus(e.data_vencimento);
-                      const statusCls =
-                        e.resultado === "pendente" ? "bg-warning/10 text-warning border-warning/30" :
-                        status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/30" :
-                        status.key === "atencao" ? "bg-warning/10 text-warning border-warning/30" :
-                        "bg-success/10 text-success border-success/30";
+                      const tone: StatusTone =
+                        e.resultado === "pendente" ? "pending" :
+                        status.key === "vencido" ? "danger" :
+                        status.key === "atencao" ? "warning" :
+                        "success";
+                      const toneLabel =
+                        e.resultado === "pendente" ? "Pendente" :
+                        status.key === "vencido" ? "Vencido" :
+                        status.key === "atencao" ? "A vencer" :
+                        "Vigente";
                       return (
                         <Card key={e.id} className="border">
                           <CardContent className="p-3 space-y-2">
@@ -757,9 +772,7 @@ export default function AsoExames() {
                                 <div className="font-semibold text-sm truncate">{func?.nome || "—"}</div>
                                 <div className="text-xs text-muted-foreground truncate">{func?.cargo || "—"} · {func?.setor || "—"}</div>
                               </div>
-                              <Badge variant="outline" className={statusCls}>
-                                {e.resultado === "pendente" ? "Pendente" : status.key === "vencido" ? "Vencido" : status.key === "atencao" ? "A vencer" : "Vigente"}
-                              </Badge>
+                              <StatusBadge tone={tone}>{toneLabel}</StatusBadge>
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
                               <div>
