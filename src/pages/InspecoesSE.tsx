@@ -121,6 +121,7 @@ export default function InspecoesSE() {
   const { user, empresaId } = useAuth();
   const { canCreate, canDelete } = usePermissions("inspecoes_se");
   const [items, setItems] = useState<Conformidade[]>([]);
+  const [obras, setObras] = useState<ObraOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
