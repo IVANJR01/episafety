@@ -901,31 +901,25 @@ export default function Treinamentos() {
 
   return (
     <div className="space-y-6">
-      {/* Header com gradiente */}
-      <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/20 p-5 sm:p-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-              <GraduationCap className="w-7 h-7" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Capacitações</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Gestão de cursos, certificados, listas de presença e vencimentos.</p>
-            </div>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={handleExportExcel} className="border-primary/30 hover:bg-primary/10">
+      {/* Header padronizado */}
+      <PageHeader
+        title="Controle de Capacitações"
+        subtitle="Gestão de cursos, certificados, listas de presença e vencimentos."
+        actions={
+          <>
+            <Button variant="outline" onClick={handleExportExcel}>
               <Download className="w-4 h-4 mr-2" />Exportar
             </Button>
-            <Button variant="outline" onClick={openNewMulti} className="border-primary/30 hover:bg-primary/10">
-              <Plus className="w-4 h-4 mr-2" />Adicionar Vários Documentos
+            <Button variant="outline" onClick={openNewMulti}>
+              <Plus className="w-4 h-4 mr-2" />Adicionar Vários
             </Button>
-            <Button onClick={openNew} className="shadow-lg shadow-primary/25">
+            <Button onClick={openNew}>
               <Plus className="w-4 h-4 mr-2" />Adicionar Novo
             </Button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
+
 
       {/* Indicadores visuais */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
