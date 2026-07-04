@@ -826,20 +826,11 @@ export default function InspecoesSE() {
     try {
       if (empresaId && isOnline()) {
         const { data: empresa } = await (supabase.from as any)("empresa_config")
-          .select("logo_url, logo_path, nome")
+          .select("logo_url, nome")
           .eq("id", empresaId)
           .maybeSingle();
 
-        let logoSourceUrl: string | null = null;
-        if (empresa?.logo_path) {
-          const { data: signedLogo } = await supabase.storage
-            .from("company-logos")
-            .createSignedUrl(empresa.logo_path, 900);
-          logoSourceUrl = signedLogo?.signedUrl || null;
-        }
-        if (!logoSourceUrl && isValidPdfImageUrl(empresa?.logo_url)) {
-          logoSourceUrl = empresa.logo_url;
-        }
+        const logoSourceUrl = isValidPdfImageUrl(empresa?.logo_url) ? empresa.logo_url : null;
         if (logoSourceUrl) {
           logoData = await loadLogoAsPngDataUrl(logoSourceUrl);
         }
