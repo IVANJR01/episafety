@@ -52,6 +52,8 @@ interface Conformidade {
   responsavel: string | null;
   local: string | null;
   data_realizado: string | null;
+  prazo_correcao: string | null;
+  resolved_by: string | null;
   status: string;
   empresa_id: string | null;
   created_at: string;
@@ -65,6 +67,7 @@ const emptyForm = {
   acao_corretiva: "",
   responsavel: "",
   local: "",
+  prazo_correcao: "",
   data_realizado: "",
   status: "PENDENTE",
   referencia_normativa: "",
