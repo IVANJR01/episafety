@@ -1307,7 +1307,17 @@ export default function InspecoesSE() {
                 {/* Gravidade + Local */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <GravidadeBadge gravidade={item.gravidade} />
-                  {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
+                  {(() => {
+                    const obra = obras.find(o => o.id === item.obra_id);
+                    const obraNome = obra?.nome || (item.obra_id ? "Obra removida" : null);
+                    const partes: string[] = [];
+                    if (obraNome) partes.push(`Obra: ${obraNome}`);
+                    if (item.local_especifico) partes.push(item.local_especifico);
+                    else if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
+                    return partes.length > 0 ? (
+                      <span className="text-xs text-muted-foreground break-words">{partes.join(" • ")}</span>
+                    ) : null;
+                  })()}
                 </div>
 
                 {/* Photos */}
