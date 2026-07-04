@@ -28,6 +28,7 @@ import Privacidade from "@/pages/Privacidade";
 import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
 import InspecoesDashboard from "@/pages/InspecoesDashboard";
+import Obras from "@/pages/Obras";
 import Treinamentos from "@/pages/Treinamentos";
 
 import CadastroDashboard from "@/pages/CadastroDashboard";
