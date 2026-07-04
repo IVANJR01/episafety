@@ -51,13 +51,12 @@ const NR_SUGESTOES = [
   "NR-33 — Segurança e saúde nos trabalhos em espaços confinados",
   "NR-35 — Item 35.4.5 — Sistema de proteção contra quedas em trabalho em altura",
 ];
-const STATUS_OPTIONS = ["PENDENTE", "SOLUCIONADO"];
+const STATUS_OPTIONS = ["PENDENTE", "EM ANDAMENTO", "SOLUCIONADO"];
 const LOAD_TIMEOUT_MS = 3000;
 
-function isVencido(item: { prazo_correcao?: string | null; status: string }): boolean {
-  if (!item.prazo_correcao || item.status === "SOLUCIONADO") return false;
-  const today = format(new Date(), "yyyy-MM-dd");
-  return item.prazo_correcao < today;
+function isVencido(_item: { prazo_correcao?: string | null; status: string }): boolean {
+  // Prazo/data limite deixou de ser obrigatório — não marcamos mais como vencido.
+  return false;
 }
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs = LOAD_TIMEOUT_MS) => {
@@ -376,8 +375,8 @@ export default function InspecoesSE() {
     if (!form.local.trim()) newErrors.local = "Informe o local.";
     if (!form.situacao_detectada.trim()) newErrors.situacao_detectada = "Descreva a situação detectada.";
     if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
-    if (!form.responsavel.trim()) newErrors.responsavel = "Informe o responsável.";
-    if (!form.prazo_correcao) newErrors.prazo_correcao = "Informe o prazo de correção.";
+    // Responsável agora é opcional; Data da correção só é usada quando SOLUCIONADO (auto).
+
     if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes && !existingFotoAntesPath) {
       newErrors.foto_antes = "Anexe a foto ANTES (obrigatória).";
     }
@@ -1204,12 +1203,6 @@ export default function InspecoesSE() {
                       className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
                       {item.status}
                     </Badge>
-                    {isVencido(item) && (
-                      <Badge className="bg-red-600 hover:bg-red-700 text-white mt-1">VENCIDO</Badge>
-                    )}
-                    {!item.prazo_correcao && item.status !== "SOLUCIONADO" && (
-                      <Badge variant="outline" className="border-dashed text-muted-foreground mt-1">Prazo não informado</Badge>
-                    )}
                     <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
                         <Pencil className="w-4 h-4" />
@@ -1239,12 +1232,6 @@ export default function InspecoesSE() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {isVencido(item) && (
-                      <Badge className="bg-red-600 text-white text-[10px]">VENCIDO</Badge>
-                    )}
-                    {!item.prazo_correcao && item.status !== "SOLUCIONADO" && (
-                      <Badge variant="outline" className="border-dashed text-[10px] text-muted-foreground">Prazo não informado</Badge>
-                    )}
                     <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
                       className={item.status === "SOLUCIONADO" ? "bg-green-600 text-white text-[10px]" : "bg-amber-500 text-white text-[10px]"}>
                       {item.status}
@@ -1497,14 +1484,28 @@ export default function InspecoesSE() {
                   {errors.acao_corretiva && <p className="text-xs text-destructive mt-1">{errors.acao_corretiva}</p>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div data-error={!!errors.responsavel}>
-                    <Label className="font-semibold">Responsável *</Label>
-                    <Input placeholder="Nome ou setor" value={form.responsavel} onChange={e => { setForm(p => ({ ...p, responsavel: e.target.value })); setErrors(prev => ({ ...prev, responsavel: "" })); }} className={cn("min-h-[44px]", errors.responsavel && "border-destructive")} />
-                    {errors.responsavel && <p className="text-xs text-destructive mt-1">{errors.responsavel}</p>}
+                  <div>
+                    <Label className="font-semibold">Responsável</Label>
+                    <Input placeholder="Nome ou setor (opcional)" value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))} className="min-h-[44px]" />
+                    <p className="text-xs text-muted-foreground mt-1">Campo opcional.</p>
                   </div>
                   <div>
                     <Label className="font-semibold">Status</Label>
-                    <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+                    <Select
+                      value={form.status}
+                      onValueChange={v => setForm(p => {
+                        const next = { ...p, status: v };
+                        // Ao marcar como SOLUCIONADO, preencher automaticamente a data da correção (se estiver vazia)
+                        if (v === "SOLUCIONADO" && !p.data_realizado) {
+                          next.data_realizado = format(new Date(), "yyyy-MM-dd");
+                        }
+                        // Ao voltar para PENDENTE / EM ANDAMENTO, limpar data da correção
+                        if (v !== "SOLUCIONADO") {
+                          next.data_realizado = "";
+                        }
+                        return next;
+                      })}
+                    >
                       <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -1512,17 +1513,22 @@ export default function InspecoesSE() {
                     </Select>
                   </div>
                 </div>
-                <div data-error={!!errors.prazo_correcao}>
-                  <Label className="font-semibold">Prazo de correção *</Label>
-                  <Input type="date" value={form.prazo_correcao} onChange={e => { setForm(p => ({ ...p, prazo_correcao: e.target.value })); setErrors(prev => ({ ...prev, prazo_correcao: "" })); }} className={cn("min-h-[44px]", errors.prazo_correcao && "border-destructive")} />
-                  {errors.prazo_correcao && <p className="text-xs text-destructive mt-1">{errors.prazo_correcao}</p>}
-                  <p className="text-xs text-muted-foreground mt-1">Data limite para resolver a não conformidade.</p>
-                </div>
-                {form.status === "SOLUCIONADO" && (
+                {form.status === "SOLUCIONADO" ? (
                   <div>
-                    <Label className="font-semibold">Data de solução</Label>
-                    <Input type="date" value={form.data_realizado} onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))} className="min-h-[44px]" />
-                    <p className="text-xs text-muted-foreground mt-1">Preenchida automaticamente ao marcar como Solucionado.</p>
+                    <Label className="font-semibold">Data da correção</Label>
+                    <Input
+                      type="date"
+                      value={form.data_realizado}
+                      onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))}
+                      className="min-h-[44px]"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Data em que a não conformidade foi corrigida. Preenchida automaticamente ao marcar como Solucionado — você pode ajustar se necessário.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <Label className="font-semibold text-muted-foreground">Data da correção</Label>
+                    <Input type="date" value="" disabled className="min-h-[44px] opacity-60" />
+                    <p className="text-xs text-muted-foreground mt-1">Disponível apenas quando o status for <strong>Solucionado</strong>.</p>
                   </div>
                 )}
               </div>
