@@ -50,8 +50,9 @@ const gestaoDocItems: NavItem[] = [
   { path: "/ltcat", label: "LTCAT — Laudo Previdenciário", icon: ShieldCheck, moduleKey: "ltcat" },
   { path: "/ppp", label: "PPP — Perfil Profissiográfico Previdenciário", icon: FileText, moduleKey: "ppp" },
   { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "ppp" },
-  { path: "/treinamentos", label: "Treinamentos", icon: GraduationCap, moduleKey: "treinamentos" },
-  { path: "/dds", label: "Lista de Presença", icon: MessageSquare, moduleKey: "dds" },
+  { path: "/treinamentos", label: "Capacitações", icon: GraduationCap, moduleKey: "treinamentos" },
+  { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
+  { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
 // eSocial técnico / stub
@@ -61,9 +62,7 @@ const esocialItems: NavItem[] = [
   { path: "/esocial/s2240/dashboard", label: "S-2240 — Dashboard", icon: LayoutDashboard, moduleKey: "esocial" },
 ];
 
-const afterCadastroItems: NavItem[] = [
-  { path: "/video-treinamentos", label: "Treinamentos em Vídeo", icon: Video, moduleKey: "video_treinamentos" },
-];
+const afterCadastroItems: NavItem[] = [];
 
 const inspecoesItems: NavItem[] = [
   { path: "/inspecoes-se/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleKey: "inspecoes_se" },
