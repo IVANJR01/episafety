@@ -1203,12 +1203,6 @@ export default function InspecoesSE() {
                       className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
                       {item.status}
                     </Badge>
-                    {isVencido(item) && (
-                      <Badge className="bg-red-600 hover:bg-red-700 text-white mt-1">VENCIDO</Badge>
-                    )}
-                    {!item.prazo_correcao && item.status !== "SOLUCIONADO" && (
-                      <Badge variant="outline" className="border-dashed text-muted-foreground mt-1">Prazo não informado</Badge>
-                    )}
                     <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
                         <Pencil className="w-4 h-4" />
