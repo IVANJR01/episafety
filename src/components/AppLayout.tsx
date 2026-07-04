@@ -45,16 +45,26 @@ const portalRhItems: NavItem[] = [
 ];
 
 // Gestão Documental SST (ASO incluído; sem Portal RH, sem eSocial)
+// PGR e LTCAT foram movidos para o módulo "Programas".
 const gestaoDocItems: NavItem[] = [
   { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
-  { path: "/pgr", label: "PGR — Gerenciamento de Riscos", icon: ShieldCheck, moduleKey: "pgr" },
-  { path: "/ltcat", label: "LTCAT — Laudo Previdenciário", icon: ShieldCheck, moduleKey: "ltcat" },
   { path: "/ppp", label: "PPP — Perfil Profissiográfico Previdenciário", icon: FileText, moduleKey: "ppp" },
   { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "ppp" },
   { path: "/treinamentos", label: "Capacitações", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
+];
+
+// Programas — PGR, PCMSO, LTCAT e laudos técnicos
+const programasItems: NavItem[] = [
+  { path: "/programas", label: "Visão Geral", icon: LayoutDashboard, moduleKey: "pgr" },
+  { path: "/pgr", label: "PGR", icon: ShieldCheck, moduleKey: "pgr" },
+  { path: "/programas/ordem-servico", label: "Ordem de Serviço", icon: ClipboardList, moduleKey: "pgr" },
+  { path: "/aso", label: "PCMSO", icon: Stethoscope, moduleKey: "aso" },
+  { path: "/ltcat", label: "LTCAT", icon: FileText, moduleKey: "ltcat" },
+  { path: "/programas/laudo-insalubridade", label: "Laudo de Insalubridade", icon: Flame, moduleKey: "pgr" },
+  { path: "/programas/laudo-periculosidade", label: "Laudo de Periculosidade", icon: Zap, moduleKey: "pgr" },
 ];
 
 // eSocial técnico / stub
