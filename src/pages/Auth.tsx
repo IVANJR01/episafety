@@ -145,7 +145,27 @@ export default function Auth() {
                 </button>
               </div>
             }
-            <Button type="submit" className="w-full" disabled={loading}>
+            {mode === "signup" && (
+              <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
+                <Checkbox
+                  checked={acceptedTerms}
+                  onCheckedChange={(v) => setAcceptedTerms(Boolean(v))}
+                  className="mt-0.5"
+                />
+                <span>
+                  Li e aceito os{" "}
+                  <Link to="/termos" target="_blank" className="text-primary hover:underline">
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link to="/privacidade" target="_blank" className="text-primary hover:underline">
+                    Política de Privacidade
+                  </Link>
+                  .
+                </span>
+              </label>
+            )}
+            <Button type="submit" className="w-full" disabled={loading || (mode === "signup" && !acceptedTerms)}>
               {loading ?
               "Aguarde..." :
               mode === "login" ?
@@ -154,6 +174,7 @@ export default function Auth() {
               "Criar Conta" :
               "Enviar Link de Recuperação"}
             </Button>
+
           </form>
           <Button
             type="button"
@@ -186,8 +207,15 @@ export default function Auth() {
             }
           </div>
 
+          <div className="mt-6 pt-4 border-t border-border flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <Link to="/termos" className="hover:text-primary hover:underline">Termos de Uso</Link>
+            <span>·</span>
+            <Link to="/privacidade" className="hover:text-primary hover:underline">Política de Privacidade</Link>
+          </div>
+
         </CardContent>
       </Card>
+
       <InstallBanner autoTrigger={true} />
     </div>);
 
