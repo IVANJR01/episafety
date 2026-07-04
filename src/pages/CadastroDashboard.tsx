@@ -1,9 +1,12 @@
 import { useMemo } from "react";
-import { Users, Building, Briefcase, TrendingUp, BarChart3 } from "lucide-react";
+import { Users, Building, Briefcase, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { motion } from "framer-motion";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { KpiSkeleton } from "@/components/ui/list-skeleton";
 
 interface Funcionario {
   id: string;
