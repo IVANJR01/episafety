@@ -1098,11 +1098,11 @@ export default function Treinamentos() {
                       <TableHead>Nome Completo</TableHead>
                       <TableHead>Função</TableHead>
                       <TableHead>Setor</TableHead>
-                      <TableHead>Nome do Curso</TableHead>
+                      <TableHead>Capacitação / Curso</TableHead>
                       <TableHead>Data Realização</TableHead>
                       <TableHead>Renovação</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Doc. Protocolada</TableHead>
+                      <TableHead>Documento / Evidência</TableHead>
                       <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
