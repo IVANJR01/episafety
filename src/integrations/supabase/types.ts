@@ -1496,7 +1496,9 @@ export type Database = {
           id: string
           local: string | null
           numero: number
+          prazo_correcao: string | null
           referencia_normativa: string | null
+          resolved_by: string | null
           responsavel: string | null
           situacao_detectada: string
           status: string
@@ -1515,7 +1517,9 @@ export type Database = {
           id?: string
           local?: string | null
           numero?: number
+          prazo_correcao?: string | null
           referencia_normativa?: string | null
+          resolved_by?: string | null
           responsavel?: string | null
           situacao_detectada: string
           status?: string
@@ -1534,7 +1538,9 @@ export type Database = {
           id?: string
           local?: string | null
           numero?: number
+          prazo_correcao?: string | null
           referencia_normativa?: string | null
+          resolved_by?: string | null
           responsavel?: string | null
           situacao_detectada?: string
           status?: string

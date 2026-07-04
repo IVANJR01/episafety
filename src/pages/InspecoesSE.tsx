@@ -28,6 +28,12 @@ const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
 const STATUS_OPTIONS = ["PENDENTE", "SOLUCIONADO"];
 const LOAD_TIMEOUT_MS = 3000;
 
+function isVencido(item: { prazo_correcao?: string | null; status: string }): boolean {
+  if (!item.prazo_correcao || item.status === "SOLUCIONADO") return false;
+  const today = format(new Date(), "yyyy-MM-dd");
+  return item.prazo_correcao < today;
+}
+
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs = LOAD_TIMEOUT_MS) => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -52,6 +58,8 @@ interface Conformidade {
   responsavel: string | null;
   local: string | null;
   data_realizado: string | null;
+  prazo_correcao: string | null;
+  resolved_by: string | null;
   status: string;
   empresa_id: string | null;
   created_at: string;
@@ -65,6 +73,7 @@ const emptyForm = {
   acao_corretiva: "",
   responsavel: "",
   local: "",
+  prazo_correcao: "",
   data_realizado: "",
   status: "PENDENTE",
   referencia_normativa: "",
@@ -204,6 +213,7 @@ export default function InspecoesSE() {
       acao_corretiva: item.acao_corretiva || "",
       responsavel: item.responsavel || "",
       local: item.local || "",
+      prazo_correcao: item.prazo_correcao || "",
       data_realizado: item.data_realizado || "",
       status: item.status,
       referencia_normativa: item.referencia_normativa || "",
@@ -282,6 +292,7 @@ export default function InspecoesSE() {
   }
 
   function buildPayload(foto_antes: string | null, foto_depois: string | null) {
+    const isSolucionado = form.status === "SOLUCIONADO";
     return {
       data_inspecao: form.data_inspecao,
       situacao_detectada: form.situacao_detectada,
@@ -289,7 +300,10 @@ export default function InspecoesSE() {
       acao_corretiva: form.acao_corretiva || null,
       responsavel: form.responsavel || null,
       local: form.local || null,
-      data_realizado: form.data_realizado || null,
+      prazo_correcao: form.prazo_correcao || null,
+      // data_realizado only when solucionado; on new/pending inspections stays null
+      data_realizado: isSolucionado ? (form.data_realizado || format(new Date(), "yyyy-MM-dd")) : null,
+      resolved_by: isSolucionado ? (user?.id || null) : null,
       status: form.status,
       foto_antes,
       foto_depois,
@@ -333,7 +347,7 @@ export default function InspecoesSE() {
     if (!form.situacao_detectada.trim()) newErrors.situacao_detectada = "Descreva a situação detectada.";
     if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
     if (!form.responsavel.trim()) newErrors.responsavel = "Informe o responsável.";
-    if (!form.data_realizado) newErrors.data_realizado = "Informe o prazo.";
+    if (!form.prazo_correcao) newErrors.prazo_correcao = "Informe o prazo de correção.";
     if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes) {
       newErrors.foto_antes = "Anexe a foto ANTES (obrigatória).";
     }
@@ -1173,6 +1187,9 @@ export default function InspecoesSE() {
                       className={item.status === "SOLUCIONADO" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
                       {item.status}
                     </Badge>
+                    {isVencido(item) && (
+                      <Badge className="bg-red-600 hover:bg-red-700 text-white mt-1">VENCIDO</Badge>
+                    )}
                     <div className="flex gap-1 mt-2" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
                         <Pencil className="w-4 h-4" />
@@ -1202,6 +1219,9 @@ export default function InspecoesSE() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
+                    {isVencido(item) && (
+                      <Badge className="bg-red-600 text-white text-[10px]">VENCIDO</Badge>
+                    )}
                     <Badge variant={item.status === "SOLUCIONADO" ? "default" : "secondary"}
                       className={item.status === "SOLUCIONADO" ? "bg-green-600 text-white text-[10px]" : "bg-amber-500 text-white text-[10px]"}>
                       {item.status}
@@ -1449,11 +1469,19 @@ export default function InspecoesSE() {
                     </Select>
                   </div>
                 </div>
-                <div data-error={!!errors.data_realizado}>
-                  <Label className="font-semibold">Prazo *</Label>
-                  <Input type="date" value={form.data_realizado} onChange={e => { setForm(p => ({ ...p, data_realizado: e.target.value })); setErrors(prev => ({ ...prev, data_realizado: "" })); }} className={cn("min-h-[44px]", errors.data_realizado && "border-destructive")} />
-                  {errors.data_realizado && <p className="text-xs text-destructive mt-1">{errors.data_realizado}</p>}
+                <div data-error={!!errors.prazo_correcao}>
+                  <Label className="font-semibold">Prazo de correção *</Label>
+                  <Input type="date" value={form.prazo_correcao} onChange={e => { setForm(p => ({ ...p, prazo_correcao: e.target.value })); setErrors(prev => ({ ...prev, prazo_correcao: "" })); }} className={cn("min-h-[44px]", errors.prazo_correcao && "border-destructive")} />
+                  {errors.prazo_correcao && <p className="text-xs text-destructive mt-1">{errors.prazo_correcao}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">Data limite para resolver a não conformidade.</p>
                 </div>
+                {form.status === "SOLUCIONADO" && (
+                  <div>
+                    <Label className="font-semibold">Data de solução</Label>
+                    <Input type="date" value={form.data_realizado} onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))} className="min-h-[44px]" />
+                    <p className="text-xs text-muted-foreground mt-1">Preenchida automaticamente ao marcar como Solucionado.</p>
+                  </div>
+                )}
               </div>
             </div>
 
