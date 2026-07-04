@@ -1496,14 +1496,28 @@ export default function InspecoesSE() {
                   {errors.acao_corretiva && <p className="text-xs text-destructive mt-1">{errors.acao_corretiva}</p>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div data-error={!!errors.responsavel}>
-                    <Label className="font-semibold">Responsável *</Label>
-                    <Input placeholder="Nome ou setor" value={form.responsavel} onChange={e => { setForm(p => ({ ...p, responsavel: e.target.value })); setErrors(prev => ({ ...prev, responsavel: "" })); }} className={cn("min-h-[44px]", errors.responsavel && "border-destructive")} />
-                    {errors.responsavel && <p className="text-xs text-destructive mt-1">{errors.responsavel}</p>}
+                  <div>
+                    <Label className="font-semibold">Responsável</Label>
+                    <Input placeholder="Nome ou setor (opcional)" value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))} className="min-h-[44px]" />
+                    <p className="text-xs text-muted-foreground mt-1">Campo opcional.</p>
                   </div>
                   <div>
                     <Label className="font-semibold">Status</Label>
-                    <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+                    <Select
+                      value={form.status}
+                      onValueChange={v => setForm(p => {
+                        const next = { ...p, status: v };
+                        // Ao marcar como SOLUCIONADO, preencher automaticamente a data da correção (se estiver vazia)
+                        if (v === "SOLUCIONADO" && !p.data_realizado) {
+                          next.data_realizado = format(new Date(), "yyyy-MM-dd");
+                        }
+                        // Ao voltar para PENDENTE / EM ANDAMENTO, limpar data da correção
+                        if (v !== "SOLUCIONADO") {
+                          next.data_realizado = "";
+                        }
+                        return next;
+                      })}
+                    >
                       <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -1511,17 +1525,22 @@ export default function InspecoesSE() {
                     </Select>
                   </div>
                 </div>
-                <div data-error={!!errors.prazo_correcao}>
-                  <Label className="font-semibold">Prazo de correção *</Label>
-                  <Input type="date" value={form.prazo_correcao} onChange={e => { setForm(p => ({ ...p, prazo_correcao: e.target.value })); setErrors(prev => ({ ...prev, prazo_correcao: "" })); }} className={cn("min-h-[44px]", errors.prazo_correcao && "border-destructive")} />
-                  {errors.prazo_correcao && <p className="text-xs text-destructive mt-1">{errors.prazo_correcao}</p>}
-                  <p className="text-xs text-muted-foreground mt-1">Data limite para resolver a não conformidade.</p>
-                </div>
-                {form.status === "SOLUCIONADO" && (
+                {form.status === "SOLUCIONADO" ? (
                   <div>
-                    <Label className="font-semibold">Data de solução</Label>
-                    <Input type="date" value={form.data_realizado} onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))} className="min-h-[44px]" />
-                    <p className="text-xs text-muted-foreground mt-1">Preenchida automaticamente ao marcar como Solucionado.</p>
+                    <Label className="font-semibold">Data da correção</Label>
+                    <Input
+                      type="date"
+                      value={form.data_realizado}
+                      onChange={e => setForm(p => ({ ...p, data_realizado: e.target.value }))}
+                      className="min-h-[44px]"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Data em que a não conformidade foi corrigida. Preenchida automaticamente ao marcar como Solucionado — você pode ajustar se necessário.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <Label className="font-semibold text-muted-foreground">Data da correção</Label>
+                    <Input type="date" value="" disabled className="min-h-[44px] opacity-60" />
+                    <p className="text-xs text-muted-foreground mt-1">Disponível apenas quando o status for <strong>Solucionado</strong>.</p>
                   </div>
                 )}
               </div>
