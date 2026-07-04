@@ -1560,13 +1560,13 @@ export default function InspecoesSE() {
                       className={item.status === "SOLUCIONADO" ? "bg-green-600 text-white text-[10px]" : "bg-amber-500 text-white text-[10px]"}>
                       {item.status}
                     </Badge>
-                    <div className="flex gap-0.5" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
-                        <Pencil className="w-3.5 h-3.5" />
+                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                      <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => openEdit(item)} aria-label="Editar inspeção">
+                        <Pencil className="w-5 h-5" />
                       </Button>
                       {canDelete && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => handleDelete(item.id)} aria-label="Excluir inspeção">
+                          <Trash2 className="w-5 h-5 text-destructive" />
                         </Button>
                       )}
                     </div>
