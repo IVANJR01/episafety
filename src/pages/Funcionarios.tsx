@@ -478,30 +478,28 @@ export default function Funcionarios() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Funcionários</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Gerenciar funcionários</p>
-        </div>
-        {canCreate && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button variant="outline" onClick={exportToExcel} className="w-full sm:w-auto" disabled={items.length === 0}>
+      <PageHeader
+        title="Funcionários"
+        subtitle="Cadastro e gestão dos colaboradores vinculados à empresa."
+        actions={canCreate ? (
+          <>
+            <Button variant="outline" onClick={exportToExcel} disabled={items.length === 0}>
               <Download className="w-4 h-4 mr-2" />Exportar
             </Button>
-            <Button variant="outline" onClick={() => fileRef.current?.click()} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={() => fileRef.current?.click()}>
               <Upload className="w-4 h-4 mr-2" />Importar
             </Button>
-            <Button variant="outline" onClick={downloadTemplate} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={downloadTemplate}>
               <FileSpreadsheet className="w-4 h-4 mr-2" />Modelo
             </Button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileSelect} />
-            <Button onClick={openNew} className="w-full sm:w-auto relative">
+            <Button onClick={openNew} className="relative">
               <Plus className="w-4 h-4 mr-2" />Novo Funcionário
               {hasDraft() && <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full animate-pulse" title="Rascunho salvo" />}
             </Button>
-          </div>
-        )}
-      </div>
+          </>
+        ) : undefined}
+      />
 
       {/* Search bar + Sector filter */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
