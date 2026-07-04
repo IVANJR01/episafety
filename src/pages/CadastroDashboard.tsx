@@ -1,9 +1,12 @@
 import { useMemo } from "react";
-import { Users, Building, Briefcase, TrendingUp, BarChart3 } from "lucide-react";
+import { Users, Building, Briefcase, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { motion } from "framer-motion";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { KpiSkeleton } from "@/components/ui/list-skeleton";
 
 interface Funcionario {
   id: string;
@@ -58,8 +61,12 @@ export default function CadastroDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="space-y-6">
+        <PageHeader
+          title="Dashboard Cadastro"
+          subtitle="Visão geral dos cadastros da empresa."
+        />
+        <KpiSkeleton count={3} />
       </div>
     );
   }
@@ -96,20 +103,10 @@ export default function CadastroDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex items-center gap-3"
-      >
-        <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-          <BarChart3 className="w-6 h-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard Cadastro</h1>
-          <p className="text-sm text-muted-foreground">Visão geral dos cadastros da empresa</p>
-        </div>
-      </motion.div>
+      <PageHeader
+        title="Dashboard Cadastro"
+        subtitle="Visão geral dos cadastros da empresa."
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -161,10 +158,7 @@ export default function CadastroDashboard() {
               </div>
               <div className="px-2 sm:px-6 pb-4 sm:pb-6">
                 {stats.setoresData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Building className="w-10 h-10 mb-2 opacity-30" />
-                    <p className="text-sm">Nenhum setor cadastrado</p>
-                  </div>
+                  <EmptyState icon={Building} title="Nenhum setor cadastrado" description="Cadastre funcionários com setor para visualizar a distribuição." bare />
                 ) : (
                   <ResponsiveContainer width="100%" height={Math.max(200, stats.setoresData.length * 44)}>
                     <BarChart data={stats.setoresData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
@@ -212,10 +206,7 @@ export default function CadastroDashboard() {
               </div>
               <div className="px-2 sm:px-6 pb-4 sm:pb-6">
                 {stats.cargosData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                    <Briefcase className="w-10 h-10 mb-2 opacity-30" />
-                    <p className="text-sm">Nenhum cargo cadastrado</p>
-                  </div>
+                  <EmptyState icon={Briefcase} title="Nenhum cargo cadastrado" description="Cadastre funcionários com cargo/função para visualizar a distribuição." bare />
                 ) : (
                   <ResponsiveContainer width="100%" height={Math.max(200, stats.cargosData.length * 44)}>
                     <BarChart data={stats.cargosData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>

@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area, ComposedChart, Line, ReferenceLine } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const MotionCard = motion.create(Card);
 
@@ -729,7 +730,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {custoMensalData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Nenhum dado de custo disponível</p>
+            <EmptyState icon={DollarSign} title="Sem dados de custo" description="Registre entregas com valor para visualizar a evolução mensal." bare />
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={custoMensalData}>
@@ -850,7 +851,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {consumoChartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Nenhuma entrega registrada com valor</p>
+            <EmptyState icon={Package} title="Sem entregas com valor" description="Registre entregas com custo para visualizar a distribuição por EPI." bare />
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(320, consumoChartData.length * 44)}>
               <ComposedChart data={consumoChartData} margin={{ left: isMobile ? 8 : 8, right: 24, top: 20, bottom: 4 }}>

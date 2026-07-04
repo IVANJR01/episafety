@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { ClipboardList, AlertTriangle, CheckCircle2, Clock, BarChart3 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { getCachedData, isOnline } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { KpiSkeleton } from "@/components/ui/list-skeleton";
 
 interface Stats {
   total: number;
@@ -129,15 +132,22 @@ export default function InspecoesDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
+        <PageHeader
+          title="Dashboard de Inspeções"
+          subtitle="Visão geral das conformidades, gravidades e resolução."
+        />
+        <KpiSkeleton count={4} />
       </div>
     );
   }
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
-      <h1 className="text-xl font-bold">Dashboard de Inspeções</h1>
+      <PageHeader
+        title="Dashboard de Inspeções"
+        subtitle="Visão geral das conformidades, gravidades e resolução."
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -170,7 +180,8 @@ export default function InspecoesDashboard() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Sem dados</p>
+              <EmptyState icon={BarChart3} title="Sem dados para exibir" description="Registre inspeções para visualizar a distribuição por status." bare />
+
             )}
           </CardContent>
         </Card>
@@ -198,7 +209,7 @@ export default function InspecoesDashboard() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Sem dados</p>
+              <EmptyState icon={BarChart3} title="Sem dados para exibir" description="Registre inspeções para visualizar a distribuição por gravidade." bare />
             )}
           </CardContent>
         </Card>
