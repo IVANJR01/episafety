@@ -1350,31 +1350,8 @@ export default function Treinamentos() {
 
 
         {/* === ABA VALIDAÇÃO IA === */}
-        <TabsContent value="ia">
-          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <p className="text-sm text-amber-800 dark:text-amber-300">
-              <strong>Em fase de teste.</strong> Este módulo utiliza inteligência artificial para validar documentos automaticamente. Os resultados devem ser conferidos manualmente.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <AIDocumentValidator
-                  funcionarios={funcionarios}
-                  cursos={CURSOS_SUGERIDOS}
-                  empresaId={empresaId}
-                  onComplete={fetchData}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-0">
-                <NRChatbot embedded />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+
+
 
         {/* === ABA REQUISITOS POR FUNÇÃO === */}
         <TabsContent value="requisitos">
