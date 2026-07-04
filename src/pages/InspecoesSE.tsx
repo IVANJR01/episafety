@@ -691,14 +691,16 @@ export default function InspecoesSE() {
 
   function pngChunk(type: string, data: Uint8Array): Uint8Array {
     const typeBytes = new TextEncoder().encode(type);
-    const out: number[] = [];
-    writeU32(out, data.length);
-    out.push(...typeBytes, ...data);
     const crcInput = new Uint8Array(typeBytes.length + data.length);
     crcInput.set(typeBytes, 0);
     crcInput.set(data, typeBytes.length);
-    writeU32(out, crc32(crcInput));
-    return new Uint8Array(out);
+    const out = new Uint8Array(12 + typeBytes.length + data.length);
+    const view = new DataView(out.buffer);
+    view.setUint32(0, data.length);
+    out.set(typeBytes, 4);
+    out.set(data, 8);
+    view.setUint32(8 + data.length, crc32(crcInput));
+    return out;
   }
 
   function zlibStore(bytes: Uint8Array): Uint8Array {
@@ -708,7 +710,7 @@ export default function InspecoesSE() {
       const len = Math.min(65535, bytes.length - offset);
       const finalBlock = offset + len >= bytes.length ? 1 : 0;
       out.push(finalBlock, len & 255, (len >>> 8) & 255, (~len) & 255, ((~len) >>> 8) & 255);
-      out.push(...bytes.subarray(offset, offset + len));
+      for (let i = offset; i < offset + len; i++) out.push(bytes[i]);
       offset += len;
     }
     writeU32(out, adler32(bytes));
