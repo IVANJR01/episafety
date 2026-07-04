@@ -1362,11 +1362,52 @@ export default function InspecoesSE() {
                   <Input type="date" value={form.data_inspecao} onChange={e => { setForm(p => ({ ...p, data_inspecao: e.target.value })); setErrors(prev => ({ ...prev, data_inspecao: "" })); }} className={cn("min-h-[44px]", errors.data_inspecao && "border-destructive")} />
                   {errors.data_inspecao && <p className="text-xs text-destructive mt-1">{errors.data_inspecao}</p>}
                 </div>
-                <div data-error={!!errors.local}>
-                  <Label className="font-semibold">Local *</Label>
-                  <Input placeholder="Ex: SE Jardim de Piranhas" value={form.local} onChange={e => { setForm(p => ({ ...p, local: e.target.value })); setErrors(prev => ({ ...prev, local: "" })); }} className={cn("min-h-[44px]", errors.local && "border-destructive")} />
-                  {errors.local && <p className="text-xs text-destructive mt-1">{errors.local}</p>}
+                <div data-error={!!errors.obra_id}>
+                  <Label className="font-semibold">Obra *</Label>
+                  <Select
+                    value={form.obra_id || ""}
+                    onValueChange={v => { setForm(p => ({ ...p, obra_id: v })); setErrors(prev => ({ ...prev, obra_id: "" })); }}
+                  >
+                    <SelectTrigger className={cn("min-h-[44px]", errors.obra_id && "border-destructive")}>
+                      <SelectValue placeholder={obras.length === 0 ? "Nenhuma obra cadastrada" : "Selecione a obra"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {obras
+                        .filter(o => o.status === "ATIVA" || o.id === form.obra_id)
+                        .map(o => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.nome}{o.codigo ? ` (${o.codigo})` : ""}{o.status !== "ATIVA" ? ` — ${o.status}` : ""}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.obra_id && <p className="text-xs text-destructive mt-1">{errors.obra_id}</p>}
+                  {obras.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Cadastre uma obra em <strong>Inspeções → Cadastro de Obras</strong>.
+                    </p>
+                  )}
                 </div>
+              </div>
+              <div className="mt-3">
+                <Label className="font-semibold">Local específico</Label>
+                <Input
+                  list="local-especifico-sugestoes"
+                  placeholder="Ex: Quadro elétrico, Sala elétrica, Pátio da subestação, Canteiro de obra..."
+                  value={form.local_especifico}
+                  onChange={e => setForm(p => ({ ...p, local_especifico: e.target.value }))}
+                  className="min-h-[44px]"
+                />
+                <datalist id="local-especifico-sugestoes">
+                  <option value="Quadro elétrico" />
+                  <option value="Sala elétrica" />
+                  <option value="Pátio da subestação" />
+                  <option value="Canteiro de obra" />
+                  <option value="Almoxarifado" />
+                  <option value="Frente de serviço" />
+                  <option value="Área administrativa" />
+                </datalist>
+                <p className="text-xs text-muted-foreground mt-1">Opcional. Detalhe onde a não conformidade foi encontrada dentro da obra.</p>
               </div>
             </div>
 
