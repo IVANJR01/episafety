@@ -707,342 +707,445 @@ export default function InspecoesSE() {
     });
     await Promise.allSettled(photoPromises);
 
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const ROW_H = 58;
-    const IMG_H = 48;
-    const IMG_W = 48;
-    const MARGIN = 10;
-    const tableWidth = pageWidth - MARGIN * 2;
+    // ======================================================================
+    // RELATÓRIO FOTOGRÁFICO DE INSPEÇÕES — formato laudo profissional
+    // ======================================================================
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();   // 210
+    const pageHeight = doc.internal.pageSize.getHeight(); // 297
+    const MARGIN = 14;
+    const contentW = pageWidth - MARGIN * 2;
 
-    // Color helpers
-    const getGravidadeColor = (g: string): [number, number, number] => {
-      const upper = (g || "").toUpperCase();
-      if (upper.includes("CRÍTICO") || upper.includes("CRITICO") || upper.includes("GRAVE")) return [220, 38, 38]; // red
-      if (upper.includes("MODERADO")) return [202, 138, 4]; // amber/yellow
-      if (upper.includes("LEVE")) return [37, 99, 235]; // blue
-      return [0, 0, 0];
+    // ---------- Paleta ----------
+    const NAVY: [number, number, number] = [30, 58, 110];
+    const NAVY_SOFT: [number, number, number] = [235, 240, 250];
+    const GREY_LINE: [number, number, number] = [220, 220, 220];
+    const GREY_TXT: [number, number, number] = [110, 110, 110];
+    const ORANGE: [number, number, number] = [234, 88, 12];
+    const GREEN: [number, number, number] = [22, 163, 74];
+    const RED: [number, number, number] = [220, 38, 38];
+    const BLUE: [number, number, number] = [37, 99, 235];
+    const YELLOW: [number, number, number] = [202, 138, 4];
+
+    const setFill = (c: [number, number, number]) => doc.setFillColor(c[0], c[1], c[2]);
+    const setDraw = (c: [number, number, number]) => doc.setDrawColor(c[0], c[1], c[2]);
+    const setText = (c: [number, number, number]) => doc.setTextColor(c[0], c[1], c[2]);
+
+    const statusColor = (s: string): [number, number, number] => {
+      const u = (s || "").toUpperCase();
+      if (u === "SOLUCIONADO") return GREEN;
+      if (u === "EM ANDAMENTO" || u === "EM_ANDAMENTO") return BLUE;
+      if (u === "PENDENTE") return ORANGE;
+      return GREY_TXT;
+    };
+    const gravidadeColor = (g: string): [number, number, number] => {
+      const u = (g || "").toUpperCase();
+      if (u.includes("CRÍTICO") || u.includes("CRITICO")) return RED;
+      if (u.includes("GRAVE") || u.includes("ALTA")) return RED;
+      if (u.includes("MODERADO") || u.includes("MÉDIA") || u.includes("MEDIA")) return YELLOW;
+      if (u.includes("LEVE")) return BLUE;
+      return GREY_TXT;
     };
 
-    const getStatusColor = (s: string): [number, number, number] => {
-      const upper = (s || "").toUpperCase();
-      if (upper === "PENDENTE") return [220, 38, 38]; // red
-      if (upper === "SOLUCIONADO") return [22, 163, 74]; // green
-      return [0, 0, 0];
+    // ---------- Helpers ----------
+    const getImgDims = (dataUrl: string): { w: number; h: number } => {
+      try {
+        const props = (doc as any).getImageProperties(dataUrl);
+        if (props?.width > 0 && props?.height > 0) return { w: props.width, h: props.height };
+      } catch {}
+      return { w: 0, h: 0 };
     };
 
-
-    // --- Header ---
-    let headerY = 8;
-    if (logoDataUrl) {
-      doc.addImage(logoDataUrl, "PNG", MARGIN, 5, 30, 15);
-    }
-    doc.setFontSize(15);
-    doc.setFont("helvetica", "bold");
-    doc.text("GESTÃO DE CONFORMIDADES - INSPEÇÕES", pageWidth / 2, headerY + 5, { align: "center" });
-    // Company name removed from PDF header per user request
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth / 2, headerY + 16, { align: "center" });
-    doc.setTextColor(0, 0, 0);
-
-    // Table columns - Ref. Normativa merged into Situação; extra space to photos
-    const headers = ["N°", "Data", "Situação Detectada", "Foto Antes", "Foto Depois", "Gravidade", "Ação Corretiva", "Responsável", "Local", "Realizado", "Status"];
-    const usableWidth = pageWidth - MARGIN * 2;
-    const colWidths = [9, 17, 52, 42, 42, 18, 36, 20, 20, 17, 26];
-    const totalCols = colWidths.reduce((a, b) => a + b, 0);
-    // Scale columns to fill usable width
-    const scale = usableWidth / totalCols;
-    const scaledWidths = colWidths.map(w => w * scale);
-    const totalScaled = scaledWidths.reduce((a, b) => a + b, 0);
-    const tableStartX = (pageWidth - totalScaled) / 2;
-
-    let y = headerY + 22;
-
-    // Draw table header
-    const drawTableHeader = () => {
-      doc.setFillColor(30, 58, 110);
-      doc.rect(tableStartX, y, totalScaled, 9, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(6.5);
-      doc.setFont("helvetica", "bold");
-      let x = tableStartX;
-      headers.forEach((h, i) => {
-        const textW = doc.getTextWidth(h);
-        doc.text(h, x + (scaledWidths[i] - textW) / 2, y + 6);
-        x += scaledWidths[i];
-      });
-      y += 9;
-      doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "normal");
-    };
-
-    drawTableHeader();
-
-    // Helper: draw vertically & horizontally centered wrapped text
-    const drawCenteredText = (text: string, cellX: number, cellY: number, cellW: number, cellH: number, fontSize = 6, bold = false, color?: [number, number, number]) => {
+    const drawBadge = (text: string, x: number, y: number, color: [number, number, number], padX = 3, padY = 1.4, fontSize = 8) => {
       doc.setFontSize(fontSize);
-      if (bold) doc.setFont("helvetica", "bold");
-      else doc.setFont("helvetica", "normal");
-      if (color) doc.setTextColor(color[0], color[1], color[2]);
-      const lines: string[] = doc.splitTextToSize(text, cellW - 4);
-      const lineH = fontSize * 0.4;
-      const blockH = lines.length * lineH;
-      const startY = cellY + (cellH - blockH) / 2 + lineH;
-      lines.forEach((line: string, li: number) => {
-        const lw = doc.getTextWidth(line);
-        doc.text(line, cellX + (cellW - lw) / 2, startY + li * lineH);
-      });
-      if (color) doc.setTextColor(0, 0, 0);
-      if (bold) doc.setFont("helvetica", "normal");
+      doc.setFont("helvetica", "bold");
+      const tw = doc.getTextWidth(text);
+      const w = tw + padX * 2;
+      const h = fontSize * 0.42 + padY * 2;
+      setFill(color);
+      doc.roundedRect(x, y, w, h, 1.4, 1.4, "F");
+      setText([255, 255, 255]);
+      doc.text(text, x + padX, y + h - padY - 0.6);
+      setText([0, 0, 0]);
+      doc.setFont("helvetica", "normal");
+      return { w, h };
     };
 
-    // Draw rows
-    filtered.forEach((item, idx) => {
-      if (y + ROW_H > pageHeight - 10) {
-        doc.setFontSize(6);
-        doc.setTextColor(150);
-        doc.text(`Página ${doc.getNumberOfPages()}`, pageWidth / 2, pageHeight - 5, { align: "center" });
-        doc.setTextColor(0);
+    const drawPageFooter = () => {
+      const total = doc.getNumberOfPages();
+      const cur = (doc as any).getCurrentPageInfo?.().pageNumber ?? total;
+      doc.setFontSize(7.5);
+      setText(GREY_TXT);
+      doc.text(
+        `${empresaNome || ""}${empresaNome ? "  ·  " : ""}Página ${cur}`,
+        pageWidth / 2, pageHeight - 6, { align: "center" }
+      );
+      setText([0, 0, 0]);
+    };
+
+    let pageIsFirst = true;
+    const drawTopBar = () => {
+      setFill(NAVY);
+      doc.rect(0, 0, pageWidth, 6, "F");
+    };
+
+    const ensureSpace = (needed: number, cursor: number): number => {
+      if (cursor + needed > pageHeight - 14) {
+        drawPageFooter();
         doc.addPage();
-        y = 12;
-        drawTableHeader();
+        drawTopBar();
+        return 14;
       }
+      return cursor;
+    };
 
-      // Row background
-      const rowBg = idx % 2 === 0 ? [250, 250, 250] : [255, 255, 255];
-      doc.setFillColor(rowBg[0], rowBg[1], rowBg[2]);
-      doc.rect(tableStartX, y, totalScaled, ROW_H, "F");
+    // ---------- CAPA ----------
+    drawTopBar();
+    let y = 16;
 
-      // Border
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.2);
-      doc.rect(tableStartX, y, totalScaled, ROW_H, "S");
+    if (logoDataUrl) {
+      try {
+        const d = getImgDims(logoDataUrl);
+        const maxH = 20, maxW = 45;
+        const ar = d.w && d.h ? d.w / d.h : 2;
+        let w = maxW, h = w / ar;
+        if (h > maxH) { h = maxH; w = h * ar; }
+        doc.addImage(logoDataUrl, "PNG", MARGIN, y, w, h);
+      } catch {}
+    }
 
-      // Vertical cell lines
-      let xLine = tableStartX;
-      scaledWidths.forEach((w) => {
-        doc.line(xLine, y, xLine, y + ROW_H);
-        xLine += w;
-      });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    setText(NAVY);
+    doc.text(empresaNome || "—", pageWidth - MARGIN, y + 5, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    setText(GREY_TXT);
+    doc.text(`Emitido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`, pageWidth - MARGIN, y + 11, { align: "right" });
+    setText([0, 0, 0]);
 
-      let x = tableStartX;
+    y += 28;
 
-      // N° - centered bold
-      drawCenteredText(String(idx + 1), x, y, scaledWidths[0], ROW_H, 7, true);
-      x += scaledWidths[0];
+    // Título
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    setText(NAVY);
+    doc.text("RELATÓRIO DE INSPEÇÃO DE SEGURANÇA", pageWidth / 2, y, { align: "center" });
+    y += 5;
+    setDraw(NAVY);
+    doc.setLineWidth(0.6);
+    doc.line(pageWidth / 2 - 40, y, pageWidth / 2 + 40, y);
+    setText([0, 0, 0]);
+    y += 8;
 
-      // Data - centered
-      const dataStr = item.data_inspecao ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy") : "";
-      drawCenteredText(dataStr, x, y, scaledWidths[1], ROW_H, 6);
-      x += scaledWidths[1];
+    // Metadados da capa
+    const uniqueLocais = Array.from(new Set(
+      filtered.map(it => {
+        const o = obras.find(o => o.id === it.obra_id);
+        return o?.nome || it.local || "";
+      }).filter(Boolean)
+    ));
+    const localCapa = uniqueLocais.length === 1
+      ? uniqueLocais[0]
+      : uniqueLocais.length === 0 ? "—" : `${uniqueLocais.length} locais`;
 
-      // Situação + Ref. Normativa merged
-      {
-        const nrPrefix = item.referencia_normativa ? `[${item.referencia_normativa}]\n` : "";
-        const situacaoText = nrPrefix + (item.situacao_detectada || "");
+    const periodoTxt = dateRange?.start || dateRange?.end
+      ? `${dateRange?.start ? format(dateRange.start, "dd/MM/yyyy") : "—"} a ${dateRange?.end ? format(dateRange.end, "dd/MM/yyyy") : "—"}`
+      : "Todos os registros";
 
-        // Draw NR in bold then situação in normal
-        if (item.referencia_normativa) {
-          const cellW = scaledWidths[2];
-          const cellH = ROW_H;
-          const nrLine = `[${item.referencia_normativa}]`;
-          doc.setFontSize(5.5);
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(30, 58, 110);
-          const nrLines: string[] = doc.splitTextToSize(nrLine, cellW - 4);
-          const lineH = 5.5 * 0.4;
+    const metaRows: [string, string][] = [
+      ["Local / Obra", localCapa],
+      ["Período", periodoTxt],
+      ["Total de inspeções", String(filtered.length)],
+    ];
 
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(0, 0, 0);
-          const sitLines: string[] = doc.splitTextToSize(item.situacao_detectada || "", cellW - 4);
-          const totalLines = nrLines.length + sitLines.length;
-          const blockH = totalLines * lineH;
-          const startY = y + (cellH - blockH) / 2 + lineH;
+    doc.setFontSize(9.5);
+    metaRows.forEach(([k, v]) => {
+      doc.setFont("helvetica", "bold");
+      setText(GREY_TXT);
+      doc.text(k.toUpperCase(), MARGIN, y);
+      doc.setFont("helvetica", "normal");
+      setText([0, 0, 0]);
+      const lines = doc.splitTextToSize(v, contentW - 50);
+      doc.text(lines, MARGIN + 50, y);
+      y += Math.max(6, lines.length * 5);
+    });
+    y += 4;
 
-          // Draw NR bold
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(30, 58, 110);
-          nrLines.forEach((line: string, li: number) => {
-            doc.text(line, x + 2, startY + li * lineH);
-          });
+    // ---------- RESUMO ----------
+    const summarize = () => {
+      const total = filtered.length;
+      const pend = filtered.filter(i => (i.status || "").toUpperCase() === "PENDENTE").length;
+      const andamento = filtered.filter(i => (i.status || "").toUpperCase().replace("_", " ") === "EM ANDAMENTO").length;
+      const sol = filtered.filter(i => (i.status || "").toUpperCase() === "SOLUCIONADO").length;
+      const grave = filtered.filter(i => {
+        const g = (i.gravidade || "").toUpperCase();
+        return g.includes("GRAVE") || g.includes("ALTA");
+      }).length;
+      const critico = filtered.filter(i => {
+        const g = (i.gravidade || "").toUpperCase();
+        return g.includes("CRÍTICO") || g.includes("CRITICO");
+      }).length;
+      return { total, pend, andamento, sol, grave, critico };
+    };
+    const s = summarize();
 
-          // Draw situação normal
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(0, 0, 0);
-          sitLines.forEach((line: string, li: number) => {
-            doc.text(line, x + 2, startY + (nrLines.length + li) * lineH);
-          });
-        } else {
-          drawCenteredText(item.situacao_detectada || "", x, y, scaledWidths[2], ROW_H, 5.5);
-        }
-      }
-      x += scaledWidths[2];
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    setText(NAVY);
+    doc.text("RESUMO", MARGIN, y);
+    setText([0, 0, 0]);
+    y += 4;
+    setDraw(GREY_LINE);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, y, pageWidth - MARGIN, y);
+    y += 4;
 
-      // Helper: get image dimensions from base64 data URL synchronously via jsPDF
-      const getImageDimensions = (dataUrl: string): { w: number; h: number } => {
-        try {
-          // Use jsPDF's internal getImageProperties to read real dimensions
-          const props = (doc as any).getImageProperties(dataUrl);
-          if (props && props.width > 0 && props.height > 0) {
-            return { w: props.width, h: props.height };
-          }
-        } catch { /* fallback below */ }
-        return { w: 0, h: 0 };
+    const cards: [string, string, [number, number, number]][] = [
+      ["Total", String(s.total), NAVY],
+      ["Pendentes", String(s.pend), ORANGE],
+      ["Em andamento", String(s.andamento), BLUE],
+      ["Solucionadas", String(s.sol), GREEN],
+      ["Graves", String(s.grave), RED],
+      ["Risco crítico", String(s.critico), RED],
+    ];
+    const cardW = (contentW - 5 * 3) / 6;
+    const cardH = 20;
+    cards.forEach((c, i) => {
+      const cx = MARGIN + i * (cardW + 3);
+      setFill(NAVY_SOFT);
+      doc.roundedRect(cx, y, cardW, cardH, 1.5, 1.5, "F");
+      setFill(c[2]);
+      doc.rect(cx, y, cardW, 2, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      setText(c[2]);
+      doc.text(c[1], cx + cardW / 2, y + 11, { align: "center" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      setText(GREY_TXT);
+      doc.text(c[0], cx + cardW / 2, y + 16.5, { align: "center" });
+    });
+    setText([0, 0, 0]);
+    y += cardH + 8;
+
+    // ---------- BLOCOS DE INSPEÇÕES ----------
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    setText(NAVY);
+    doc.text("INSPEÇÕES", MARGIN, y);
+    setText([0, 0, 0]);
+    y += 3;
+    setDraw(GREY_LINE);
+    doc.line(MARGIN, y, pageWidth - MARGIN, y);
+    y += 5;
+
+    if (filtered.length === 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      setText(GREY_TXT);
+      doc.text("Nenhuma inspeção encontrada para os filtros selecionados.", pageWidth / 2, y + 10, { align: "center" });
+      setText([0, 0, 0]);
+    }
+
+    // Helper: draw one inspection block, returns new Y
+    const drawBlock = (item: any, idx: number, startY: number): number => {
+      // Bloco começa com estimativa mínima; nova página se necessário
+      let cy = ensureSpace(70, startY);
+
+      const obra = obras.find(o => o.id === item.obra_id);
+      const obraNome = obra?.nome || item.local || "—";
+      const statusTxt = (item.status || "").toUpperCase() || "—";
+      const gravTxt = (item.gravidade || "").toUpperCase() || "—";
+      const dataInsp = item.data_inspecao
+        ? format(new Date(item.data_inspecao + "T12:00:00"), "dd/MM/yyyy")
+        : "—";
+      const dataReal = item.data_realizado
+        ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy")
+        : null;
+
+      // Cabeçalho do bloco
+      setFill(NAVY_SOFT);
+      doc.roundedRect(MARGIN, cy, contentW, 10, 1.5, 1.5, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      setText(NAVY);
+      const titulo = `INSPEÇÃO Nº ${String(idx + 1).padStart(3, "0")}`;
+      doc.text(titulo, MARGIN + 3, cy + 6.6);
+
+      // Badges à direita
+      let bx = pageWidth - MARGIN - 3;
+      const stBadge = { text: statusTxt, color: statusColor(statusTxt) };
+      const grBadge = { text: gravTxt, color: gravidadeColor(gravTxt) };
+      // Desenhar da direita para a esquerda
+      const measureBadge = (t: string, fs = 7.5) => {
+        doc.setFontSize(fs); doc.setFont("helvetica", "bold");
+        return doc.getTextWidth(t) + 6;
       };
+      const stW = measureBadge(stBadge.text);
+      const grW = measureBadge(grBadge.text);
+      drawBadge(stBadge.text, bx - stW, cy + 2.4, stBadge.color, 3, 1.4, 7.5);
+      bx -= (stW + 3);
+      drawBadge(grBadge.text, bx - grW, cy + 2.4, grBadge.color, 3, 1.4, 7.5);
+      setText([0, 0, 0]);
+      cy += 13;
 
-      // Helper: draw image fitted inside cell with padding, preserving aspect ratio
-      const CELL_PAD = 2; // mm padding inside cell
-      const drawFittedImage = (dataUrl: string, cellX: number, cellY: number, cellW: number, cellH: number) => {
-        const maxW = cellW - CELL_PAD * 2;
-        const maxH = cellH - CELL_PAD * 2;
-        if (maxW <= 0 || maxH <= 0) return;
-
-        const dims = getImageDimensions(dataUrl);
-        const naturalW = dims.w || maxW;
-        const naturalH = dims.h || maxH;
-        const aspect = naturalW / naturalH;
-
-        let drawW: number;
-        let drawH: number;
-
-        if (aspect >= 1) {
-          // Landscape or square: fit to width first
-          drawW = maxW;
-          drawH = drawW / aspect;
-          if (drawH > maxH) {
-            drawH = maxH;
-            drawW = drawH * aspect;
-          }
-        } else {
-          // Portrait: fit to height first
-          drawH = maxH;
-          drawW = drawH * aspect;
-          if (drawW > maxW) {
-            drawW = maxW;
-            drawH = drawW / aspect;
-          }
-        }
-
-        const drawX = cellX + (cellW - drawW) / 2;
-        const drawY = cellY + (cellH - drawH) / 2;
-        doc.addImage(dataUrl, "JPEG", drawX, drawY, drawW, drawH);
-      };
-
-      // Helper: draw "sem foto" placeholder as grey box
-      const drawNoPhoto = (cellX: number, cellY: number, cellW: number, cellH: number) => {
-        const boxW = Math.min(cellW - 4, IMG_W - 4);
-        const boxH = Math.min(cellH - 4, IMG_H - 4);
-        const bx = cellX + (cellW - boxW) / 2;
-        const by = cellY + (cellH - boxH) / 2;
-        doc.setFillColor(240, 240, 240);
-        doc.setDrawColor(210, 210, 210);
-        doc.roundedRect(bx, by, boxW, boxH, 1.5, 1.5, "FD");
-        doc.setFontSize(5);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(170, 170, 170);
-        const label = "Sem foto";
-        const lw = doc.getTextWidth(label);
-        doc.text(label, bx + (boxW - lw) / 2, by + boxH / 2 + 1.5);
-        doc.setTextColor(0, 0, 0);
+      // Linha meta: data | local | responsavel | data correção
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      const metaLine = (label: string, value: string, col: number, colW: number, baseY: number) => {
+        setText(GREY_TXT);
+        doc.setFont("helvetica", "bold");
+        doc.text(label.toUpperCase(), MARGIN + col, baseY);
         doc.setFont("helvetica", "normal");
+        setText([0, 0, 0]);
+        const lines = doc.splitTextToSize(value || "—", colW - 2);
+        doc.text(lines, MARGIN + col, baseY + 4);
+        return lines.length;
+      };
+      const colW = contentW / 4;
+      const nl1 = Math.max(
+        metaLine("Data da inspeção", dataInsp, 0, colW, cy),
+        metaLine("Local", obraNome, colW, colW, cy),
+        metaLine("Responsável", item.responsavel || "—", colW * 2, colW, cy),
+        metaLine("Data da correção", dataReal || "—", colW * 3, colW, cy),
+      );
+      cy += 4 + nl1 * 4 + 2;
+
+      // Referência normativa
+      if (item.referencia_normativa) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        setText(GREY_TXT);
+        doc.text("REFERÊNCIA NORMATIVA", MARGIN, cy);
+        cy += 4;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        setText(NAVY);
+        const nrLines = doc.splitTextToSize(item.referencia_normativa, contentW);
+        doc.text(nrLines, MARGIN, cy);
+        cy += nrLines.length * 4.5 + 2;
+        setText([0, 0, 0]);
+      }
+
+      // Situação detectada
+      cy = ensureSpace(20, cy);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      setText(GREY_TXT);
+      doc.text("SITUAÇÃO DETECTADA", MARGIN, cy);
+      cy += 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      setText([0, 0, 0]);
+      const sitLines = doc.splitTextToSize(item.situacao_detectada || "—", contentW);
+      // page-break inside long text
+      for (let i = 0; i < sitLines.length; i++) {
+        cy = ensureSpace(5, cy);
+        doc.text(sitLines[i], MARGIN, cy);
+        cy += 4.5;
+      }
+      cy += 2;
+
+      // Ação corretiva
+      cy = ensureSpace(20, cy);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      setText(GREY_TXT);
+      doc.text("AÇÃO CORRETIVA", MARGIN, cy);
+      cy += 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      setText([0, 0, 0]);
+      const acLines = doc.splitTextToSize(item.acao_corretiva || "—", contentW);
+      for (let i = 0; i < acLines.length; i++) {
+        cy = ensureSpace(5, cy);
+        doc.text(acLines[i], MARGIN, cy);
+        cy += 4.5;
+      }
+      cy += 3;
+
+      // Fotos — antes / depois lado a lado
+      const cache = photoCache[item.id];
+      const photoH = 62;
+      const gap = 4;
+      const photoW = (contentW - gap) / 2;
+
+      cy = ensureSpace(photoH + 12, cy);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      setText(GREY_TXT);
+      doc.text("EVIDÊNCIAS FOTOGRÁFICAS", MARGIN, cy);
+      setText([0, 0, 0]);
+      cy += 3.5;
+
+      const drawPhotoBox = (label: string, dataUrl: string | null, x: number, boxY: number, w: number, h: number, emptyMsg: string) => {
+        // legenda
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        setText(NAVY);
+        doc.text(label, x, boxY - 1);
+        setText([0, 0, 0]);
+        // moldura
+        setFill([248, 248, 248]);
+        setDraw(GREY_LINE);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, boxY, w, h, 1.5, 1.5, "FD");
+        if (dataUrl) {
+          try {
+            const d = getImgDims(dataUrl);
+            const pad = 2;
+            const maxW = w - pad * 2, maxH = h - pad * 2;
+            const ar = d.w && d.h ? d.w / d.h : maxW / maxH;
+            let dw = maxW, dh = dw / ar;
+            if (dh > maxH) { dh = maxH; dw = dh * ar; }
+            const dx = x + (w - dw) / 2;
+            const dy = boxY + (h - dh) / 2;
+            doc.addImage(dataUrl, "JPEG", dx, dy, dw, dh);
+          } catch {
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(9);
+            setText(GREY_TXT);
+            doc.text(emptyMsg, x + w / 2, boxY + h / 2, { align: "center" });
+            setText([0, 0, 0]);
+            doc.setFont("helvetica", "normal");
+          }
+        } else {
+          doc.setFont("helvetica", "italic");
+          doc.setFontSize(9);
+          setText(GREY_TXT);
+          const lines = doc.splitTextToSize(emptyMsg, w - 6);
+          const bh = lines.length * 4.5;
+          doc.text(lines, x + w / 2, boxY + h / 2 - bh / 2 + 3, { align: "center" });
+          setText([0, 0, 0]);
+          doc.setFont("helvetica", "normal");
+        }
       };
 
-      // Foto Antes - fitted inside cell
-      const cache = photoCache[item.id];
-      if (cache?.antes) {
-        try {
-          drawFittedImage(cache.antes, x, y, scaledWidths[3], ROW_H);
-        } catch {
-          drawNoPhoto(x, y, scaledWidths[3], ROW_H);
-        }
-      } else {
-        drawNoPhoto(x, y, scaledWidths[3], ROW_H);
-      }
-      x += scaledWidths[3];
+      const isPend = statusTxt === "PENDENTE";
+      const emptyDepois = isPend ? "Correção ainda não registrada." : "Sem foto";
+      drawPhotoBox("Foto ANTES", cache?.antes || null, MARGIN, cy + 3, photoW, photoH, "Sem foto");
+      drawPhotoBox("Foto DEPOIS", cache?.depois || null, MARGIN + photoW + gap, cy + 3, photoW, photoH, emptyDepois);
+      cy += photoH + 6;
 
-      // Foto Depois - fitted inside cell
-      if (cache?.depois) {
-        try {
-          drawFittedImage(cache.depois, x, y, scaledWidths[4], ROW_H);
-        } catch {
-          drawNoPhoto(x, y, scaledWidths[4], ROW_H);
-        }
-      } else {
-        drawNoPhoto(x, y, scaledWidths[4], ROW_H);
-      }
-      x += scaledWidths[4];
+      // Separador entre blocos
+      cy += 4;
+      setDraw(GREY_LINE);
+      doc.setLineWidth(0.3);
+      doc.line(MARGIN, cy, pageWidth - MARGIN, cy);
+      cy += 6;
 
-      // Gravidade - filled cell background with white text for critical levels
-      const gravText = item.gravidade || "";
-      const gravUpper = gravText.toUpperCase();
-      const isGravCritical = gravUpper.includes("CRÍTICO") || gravUpper.includes("CRITICO") || gravUpper.includes("GRAVE") || gravUpper.includes("ALTA");
-      const isGravModerado = gravUpper.includes("MODERADO");
-      if (isGravCritical) {
-        doc.setFillColor(220, 38, 38);
-        doc.rect(x, y, scaledWidths[5], ROW_H, "F");
-        drawCenteredText(gravText, x, y, scaledWidths[5], ROW_H, 6.5, true, [255, 255, 255]);
-      } else if (isGravModerado) {
-        doc.setFillColor(234, 179, 8);
-        doc.rect(x, y, scaledWidths[5], ROW_H, "F");
-        drawCenteredText(gravText, x, y, scaledWidths[5], ROW_H, 6.5, true, [255, 255, 255]);
-      } else {
-        doc.setFillColor(59, 130, 246);
-        doc.rect(x, y, scaledWidths[5], ROW_H, "F");
-        drawCenteredText(gravText, x, y, scaledWidths[5], ROW_H, 6.5, true, [255, 255, 255]);
-      }
-      x += scaledWidths[5];
+      return cy;
+    };
 
-      // Ação Corretiva - centered wrapped
-      drawCenteredText(item.acao_corretiva || "", x, y, scaledWidths[6], ROW_H, 5.5);
-      x += scaledWidths[6];
-
-      // Responsável - centered
-      drawCenteredText(item.responsavel || "", x, y, scaledWidths[7], ROW_H, 6);
-      x += scaledWidths[7];
-
-      // Local - centered
-      {
-        const obra = obras.find(o => o.id === item.obra_id);
-        const obraNome = obra?.nome || item.local || "";
-        const localTxt = obraNome;
-        drawCenteredText(localTxt, x, y, scaledWidths[8], ROW_H, 6);
-      }
-      x += scaledWidths[8];
-
-      // Realizado - centered
-      const realStr = item.data_realizado ? format(new Date(item.data_realizado + "T12:00:00"), "dd/MM/yyyy") : "—";
-      drawCenteredText(realStr, x, y, scaledWidths[9], ROW_H, 6);
-      x += scaledWidths[9];
-
-      // Status - filled cell background with white text
-      const statusText = item.status || "";
-      const isPendente = statusText.toUpperCase() === "PENDENTE";
-      const isSolucionado = statusText.toUpperCase() === "SOLUCIONADO";
-      if (isPendente) {
-        doc.setFillColor(220, 38, 38);
-        doc.rect(x, y, scaledWidths[10], ROW_H, "F");
-        drawCenteredText(statusText, x, y, scaledWidths[10], ROW_H, 6.5, true, [255, 255, 255]);
-      } else if (isSolucionado) {
-        doc.setFillColor(22, 163, 74);
-        doc.rect(x, y, scaledWidths[10], ROW_H, "F");
-        drawCenteredText(statusText, x, y, scaledWidths[10], ROW_H, 6.5, true, [255, 255, 255]);
-      } else {
-        drawCenteredText(statusText, x, y, scaledWidths[10], ROW_H, 6, true);
-      }
-
-      y += ROW_H;
+    filtered.forEach((item, idx) => {
+      y = drawBlock(item, idx, y);
     });
 
-    // Footer on last page
-    doc.setFontSize(6);
-    doc.setTextColor(150);
-    doc.text(`Página ${doc.getNumberOfPages()}`, pageWidth / 2, pageHeight - 5, { align: "center" });
-    doc.setTextColor(0);
+    // Rodapé final
+    drawPageFooter();
 
-    doc.save(`Conformidades_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    doc.save(`Relatorio_Inspecoes_${format(new Date(), "yyyy-MM-dd")}.pdf`);
 
     // Free memory: clear cached Base64 strings
     pdfImageCacheRef.current.clear();
