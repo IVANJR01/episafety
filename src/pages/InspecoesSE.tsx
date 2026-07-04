@@ -1077,8 +1077,18 @@ export default function InspecoesSE() {
       {loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">Carregando...</p>
       ) : filtered.length === 0 ? (
-        <div className="py-12 text-center text-muted-foreground text-sm border rounded-lg">
-          Nenhum registro encontrado.
+        <div className="py-16 px-6 text-center border rounded-lg bg-muted/20 flex flex-col items-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <Camera className="w-7 h-7 text-primary" />
+          </div>
+          <p className="text-base font-semibold">
+            {items.length === 0 ? "Nenhuma inspeção registrada ainda." : "Nenhum registro encontrado com os filtros atuais."}
+          </p>
+          {canCreate && items.length === 0 && (
+            <Button onClick={openNew} className="mt-2 min-h-[44px]">
+              <Plus className="w-4 h-4 mr-1.5" /> Criar primeira inspeção
+            </Button>
+          )}
         </div>
       ) : (
         <>
