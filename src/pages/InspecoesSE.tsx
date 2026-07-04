@@ -719,8 +719,9 @@ export default function InspecoesSE() {
           .limit(1)
           .single();
         if (isValidPdfImageUrl(empresa?.logo_url)) {
-          logoDataUrl = await loadImageAsDataUrl(empresa.logo_url);
+          logoDataUrl = await loadLogoAsPngDataUrl(empresa.logo_url);
         }
+
         empresaNome = empresa?.nome || "";
       }
     } catch {}
