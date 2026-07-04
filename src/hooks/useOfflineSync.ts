@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSyncQueue, removeFromSyncQueue, preCacheAllData, SyncOperation } from "@/lib/offlineStorage";
 import { useToast } from "@/hooks/use-toast";
+import { uploadInspecaoPhoto } from "@/lib/inspecoesStorage";
 
 // Tables that may contain base64 photo fields needing upload
 const PHOTO_FIELDS: Record<string, string[]> = {
@@ -13,7 +14,6 @@ const PHOTO_FIELDS: Record<string, string[]> = {
 async function uploadBase64ToDrive(base64: string, folder: string): Promise<string | null> {
   try {
     const { uploadToDrive } = await import("@/lib/googleDriveStorage");
-    // Convert base64 data URL to File
     const res = await fetch(base64);
     const blob = await res.blob();
     const ext = blob.type.includes("png") ? "png" : "jpg";
@@ -21,7 +21,26 @@ async function uploadBase64ToDrive(base64: string, folder: string): Promise<stri
     const result = await uploadToDrive(file, folder, file.name);
     return result.publicUrl;
   } catch (err) {
-    console.error("[useOfflineSync] Failed to upload base64 photo:", err);
+    console.error("[useOfflineSync] Failed to upload base64 photo to Drive:", err);
+    return null;
+  }
+}
+
+async function uploadBase64ToInspecoesStorage(
+  base64: string,
+  empresaId: string,
+  inspectionId: string,
+  label: "antes" | "depois",
+): Promise<string | null> {
+  try {
+    const res = await fetch(base64);
+    const blob = await res.blob();
+    const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+    const file = new File([blob], `${label}_${Date.now()}.${ext}`, { type: blob.type || "image/jpeg" });
+    const { path } = await uploadInspecaoPhoto(file, empresaId, inspectionId, label);
+    return path;
+  } catch (err) {
+    console.error("[useOfflineSync] Failed to upload inspecao photo to Supabase Storage:", err);
     return null;
   }
 }
@@ -36,6 +55,29 @@ async function processPhotoFields(op: SyncOperation): Promise<SyncOperation> {
 
   const updatedPayload = { ...op.payload };
   let changed = false;
+
+  // Conformidades (Inspeções) → Supabase Storage, com paths gravados em foto_*_path
+  if (op.table === "conformidades") {
+    const empresaId = updatedPayload.empresa_id;
+    const inspectionId = updatedPayload.id;
+    if (!empresaId || !inspectionId) return op;
+
+    for (const field of ["foto_antes", "foto_depois"] as const) {
+      const value = updatedPayload[field];
+      if (isBase64DataUrl(value)) {
+        const label = field === "foto_antes" ? "antes" : "depois";
+        const path = await uploadBase64ToInspecoesStorage(value, empresaId, inspectionId, label);
+        if (path) {
+          updatedPayload[`${field}_path`] = path;
+          updatedPayload[field] = null; // limpa base64/URL legado
+          changed = true;
+        } else {
+          return op; // retry later
+        }
+      }
+    }
+    return changed ? { ...op, payload: updatedPayload } : op;
+  }
 
   for (const field of fields) {
     const value = updatedPayload[field];

@@ -17,7 +17,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import DriveImage from "@/components/DriveImage";
+import InspecaoImage from "@/components/InspecaoImage";
 import { extractGDriveFileId, getGDriveImageProxyUrl, getGDriveThumbnailUrl } from "@/lib/googleDrive";
+import { uploadInspecaoPhoto, getInspecaoPhotoSignedUrl, isInspecaoStoragePath } from "@/lib/inspecoesStorage";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -53,6 +55,8 @@ interface Conformidade {
   situacao_detectada: string;
   foto_antes: string | null;
   foto_depois: string | null;
+  foto_antes_path: string | null;
+  foto_depois_path: string | null;
   gravidade: string;
   acao_corretiva: string | null;
   responsavel: string | null;
@@ -97,6 +101,8 @@ export default function InspecoesSE() {
   const [fotoDepoisPreview, setFotoDepoisPreview] = useState<string | null>(null);
   const [existingFotoAntes, setExistingFotoAntes] = useState<string | null>(null);
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
+  const [existingFotoAntesPath, setExistingFotoAntesPath] = useState<string | null>(null);
+  const [existingFotoDepoisPath, setExistingFotoDepoisPath] = useState<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
   const antesGalleryRef = useRef<HTMLInputElement>(null);
@@ -220,6 +226,8 @@ export default function InspecoesSE() {
     });
     setExistingFotoAntes(item.foto_antes);
     setExistingFotoDepois(item.foto_depois);
+    setExistingFotoAntesPath(item.foto_antes_path || null);
+    setExistingFotoDepoisPath(item.foto_depois_path || null);
     setFotoAntesFile(null);
     setFotoAntesPreview(null);
     setFotoDepoisFile(null);
@@ -234,6 +242,8 @@ export default function InspecoesSE() {
     setFotoDepoisPreview(null);
     setExistingFotoAntes(null);
     setExistingFotoDepois(null);
+    setExistingFotoAntesPath(null);
+    setExistingFotoDepoisPath(null);
   }
 
   async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
@@ -280,30 +290,12 @@ export default function InspecoesSE() {
     reader.readAsDataURL(compressed);
   }
 
-  async function uploadPhoto(file: File, label: "antes" | "depois"): Promise<string> {
-    if (!file || !(file instanceof Blob) || file.size === 0) {
-      throw new Error(`Foto ${label} inválida (arquivo vazio).`);
-    }
-    console.log(`[Inspecoes] uploadPhoto ${label}`, {
-      empresaId,
-      userId: user?.id,
-      folder: "inspecoes",
-      fileName: file.name,
-      fileType: file.type,
-      sizeKB: Math.round(file.size / 1024),
-    });
-    const { uploadToDrive } = await import("@/lib/googleDriveStorage");
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const result = await uploadToDrive(
-      file,
-      "inspecoes",
-      `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-    );
-    console.log(`[Inspecoes] uploadPhoto ${label} OK →`, result.publicUrl);
-    return result.publicUrl;
-  }
-
-  function buildPayload(foto_antes: string | null, foto_depois: string | null) {
+  function buildPayload(
+    foto_antes: string | null,
+    foto_depois: string | null,
+    foto_antes_path: string | null,
+    foto_depois_path: string | null,
+  ) {
     const isSolucionado = form.status === "SOLUCIONADO";
     return {
       data_inspecao: form.data_inspecao,
@@ -313,12 +305,14 @@ export default function InspecoesSE() {
       responsavel: form.responsavel || null,
       local: form.local || null,
       prazo_correcao: form.prazo_correcao || null,
-      // data_realizado only when solucionado; on new/pending inspections stays null
+      // data_realizado só quando SOLUCIONADO; em novas/pendentes fica null
       data_realizado: isSolucionado ? (form.data_realizado || format(new Date(), "yyyy-MM-dd")) : null,
       resolved_by: isSolucionado ? (user?.id || null) : null,
       status: form.status,
       foto_antes,
       foto_depois,
+      foto_antes_path,
+      foto_depois_path,
       referencia_normativa: form.referencia_normativa || null,
       empresa_id: empresaId,
       created_by: user?.id,
@@ -360,13 +354,12 @@ export default function InspecoesSE() {
     if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
     if (!form.responsavel.trim()) newErrors.responsavel = "Informe o responsável.";
     if (!form.prazo_correcao) newErrors.prazo_correcao = "Informe o prazo de correção.";
-    if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes) {
+    if (!fotoAntesFile && !fotoAntesPreview && !existingFotoAntes && !existingFotoAntesPath) {
       newErrors.foto_antes = "Anexe a foto ANTES (obrigatória).";
     }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       toast({ title: "Verifique os campos obrigatórios", variant: "destructive" });
-      // scroll to first error
       setTimeout(() => {
         const el = document.querySelector("[data-error='true']") as HTMLElement | null;
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -375,88 +368,108 @@ export default function InspecoesSE() {
     }
     setErrors({});
 
+    if (!empresaId) {
+      toast({ title: "Empresa não identificada", description: "Faça login novamente.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
-      let foto_antes = existingFotoAntes;
-      let foto_depois = existingFotoDepois;
-      let shouldSaveOffline = !isOnline();
-
-      if (!shouldSaveOffline) {
-        // Safety: Foto DEPOIS só faz sentido quando SOLUCIONADO. Ignora arquivo em outros status.
-        const shouldUploadDepois = form.status === "SOLUCIONADO" && !!fotoDepoisFile;
-        console.log("[Inspecoes] handleSave upload plan", {
-          status: form.status,
-          hasFotoAntesFile: !!fotoAntesFile,
-          hasFotoDepoisFile: !!fotoDepoisFile,
-          willUploadDepois: shouldUploadDepois,
-          empresaId,
-        });
-        try {
-          const uploads = await Promise.all([
-            fotoAntesFile ? uploadPhoto(fotoAntesFile, "antes") : Promise.resolve(null),
-            shouldUploadDepois ? uploadPhoto(fotoDepoisFile!, "depois") : Promise.resolve(null),
-          ]);
-
-          if (uploads[0]) foto_antes = uploads[0];
-          if (uploads[1]) foto_depois = uploads[1];
-        } catch (error: any) {
-          console.error("[Inspecoes] Falha no upload Google Drive:", error, {
-            message: error?.message,
-            stack: error?.stack,
-          });
-          if (isNetworkFailure(error)) {
-            shouldSaveOffline = true;
-          } else {
-            // Fallback: salva offline com base64 e a fila de sync tenta reenviar depois.
-            toast({
-              title: "Não foi possível enviar a foto",
-              description: "Verifique a conexão ou permissão do Google Drive. Salvamos localmente e tentaremos reenviar automaticamente.",
-              variant: "destructive",
-            });
-            shouldSaveOffline = true;
-          }
-        }
-      }
-
-      if (shouldSaveOffline) {
-        if (fotoAntesPreview) foto_antes = fotoAntesPreview;
-        if (fotoDepoisPreview && form.status === "SOLUCIONADO") foto_depois = fotoDepoisPreview;
-      }
-
-      const payload = buildPayload(foto_antes || null, foto_depois || null);
-
-      if (editingId) {
-        if (!shouldSaveOffline) {
-          const { error } = await (supabase.from as any)("conformidades").update(payload).eq("id", editingId);
-          if (error) throw error;
-        } else {
-          saveOffline(payload);
-        }
-        if (!shouldSaveOffline) {
-          toast({ title: "Registro atualizado!" });
-        }
-      } else {
-        if (!shouldSaveOffline) {
-          const { error } = await (supabase.from as any)("conformidades").insert(payload);
-          if (error) throw error;
-        } else {
-          saveOffline(payload);
-        }
-        if (!shouldSaveOffline) {
-          toast({ title: "Registro criado!" });
-        }
-      }
-
-      resetDraft();
-      setDialogOpen(false);
-      if (!shouldSaveOffline) {
-        void loadData();
-      }
-    } catch (err: any) {
-      if (!isOnline() || isNetworkFailure(err) || err?.message?.includes("fetch")) {
+      // OFFLINE — grava base64 no cache e delega upload à fila (usa Supabase Storage no sync).
+      if (!isOnline()) {
         const payload = buildPayload(
           fotoAntesPreview || existingFotoAntes || null,
-          fotoDepoisPreview || existingFotoDepois || null,
+          (fotoDepoisPreview && form.status === "SOLUCIONADO") ? fotoDepoisPreview : existingFotoDepois,
+          existingFotoAntesPath,
+          form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null,
+        );
+        saveOffline(payload);
+        resetDraft();
+        setDialogOpen(false);
+        setSaving(false);
+        return;
+      }
+
+      // ONLINE — fluxo Supabase Storage
+      const shouldUploadDepois = form.status === "SOLUCIONADO" && !!fotoDepoisFile;
+
+      // Determina o ID do registro (para compor o path do Storage)
+      let inspectionId = editingId;
+      let insertedRecord: any = null;
+      if (!inspectionId) {
+        // Cria o registro primeiro (sem fotos novas). Assim garantimos o id no path.
+        const initialPayload = buildPayload(
+          existingFotoAntes,
+          existingFotoDepois,
+          existingFotoAntesPath,
+          existingFotoDepoisPath,
+        );
+        const { data, error } = await (supabase.from as any)("conformidades")
+          .insert(initialPayload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        insertedRecord = data;
+        inspectionId = data.id;
+      }
+
+      // Upload das fotos para Supabase Storage
+      let foto_antes_path = existingFotoAntesPath;
+      let foto_depois_path = form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null;
+      let foto_antes = existingFotoAntes;
+      let foto_depois = form.status === "SOLUCIONADO" ? existingFotoDepois : null;
+
+      try {
+        const uploads = await Promise.all([
+          fotoAntesFile
+            ? uploadInspecaoPhoto(fotoAntesFile, empresaId, inspectionId!, "antes")
+            : Promise.resolve(null),
+          shouldUploadDepois
+            ? uploadInspecaoPhoto(fotoDepoisFile!, empresaId, inspectionId!, "depois")
+            : Promise.resolve(null),
+        ]);
+        if (uploads[0]) {
+          foto_antes_path = uploads[0].path;
+          foto_antes = null; // path é a nova fonte-de-verdade; limpa legado
+        }
+        if (uploads[1]) {
+          foto_depois_path = uploads[1].path;
+          foto_depois = null;
+        }
+      } catch (upErr: any) {
+        console.error("[Inspecoes] Falha no upload Supabase Storage:", upErr);
+        toast({
+          title: "Erro ao enviar foto",
+          description: "Não foi possível enviar a foto para o Supabase Storage. Verifique a conexão e tente novamente.",
+          variant: "destructive",
+        });
+        // Se foi um insert recém-criado sem foto, remove-o para não deixar registro órfão.
+        if (insertedRecord && !editingId) {
+          await (supabase.from as any)("conformidades").delete().eq("id", insertedRecord.id).eq("empresa_id", empresaId);
+        }
+        setSaving(false);
+        return;
+      }
+
+      // Atualiza o registro com paths finais + demais campos do formulário
+      const finalPayload = buildPayload(foto_antes, foto_depois, foto_antes_path, foto_depois_path);
+      const { error: upErr } = await (supabase.from as any)("conformidades")
+        .update(finalPayload)
+        .eq("id", inspectionId!)
+        .eq("empresa_id", empresaId);
+      if (upErr) throw upErr;
+
+      toast({ title: editingId ? "Registro atualizado!" : "Registro criado!" });
+      resetDraft();
+      setDialogOpen(false);
+      void loadData();
+    } catch (err: any) {
+      if (isNetworkFailure(err) || err?.message?.includes("fetch")) {
+        const payload = buildPayload(
+          fotoAntesPreview || existingFotoAntes || null,
+          (fotoDepoisPreview && form.status === "SOLUCIONADO") ? fotoDepoisPreview : existingFotoDepois,
+          existingFotoAntesPath,
+          form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null,
         );
         saveOffline(payload);
         resetDraft();
@@ -472,7 +485,7 @@ export default function InspecoesSE() {
     if (!confirm("Excluir este registro?")) return;
     try {
       if (isOnline()) {
-        const { error } = await (supabase.from as any)("conformidades").delete().eq("id", id);
+        const { error } = await (supabase.from as any)("conformidades").delete().eq("id", id).eq("empresa_id", empresaId);
         if (error) throw error;
       }
       toast({ title: "Registro excluído" });
@@ -678,14 +691,23 @@ export default function InspecoesSE() {
     const filtered = getFilteredItems(dateRange);
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
     const placeholderDataUrl = generatePlaceholderDataUrl();
+    // Resolve path do Storage → signed URL antes de baixar como dataURL
+    const resolvePhotoSrc = async (path: string | null, legacy: string | null): Promise<string | null> => {
+      if (path) return await getInspecaoPhotoSignedUrl(path, 900);
+      return isValidPdfImageUrl(legacy) ? legacy : null;
+    };
     const photoPromises = filtered.map(async (item) => {
+      const [antesSrc, depoisSrc] = await Promise.all([
+        resolvePhotoSrc(item.foto_antes_path, item.foto_antes),
+        resolvePhotoSrc(item.foto_depois_path, item.foto_depois),
+      ]);
       const [antes, depois] = await Promise.all([
-        isValidPdfImageUrl(item.foto_antes) ? loadImageAsDataUrl(item.foto_antes) : Promise.resolve(null),
-        isValidPdfImageUrl(item.foto_depois) ? loadImageAsDataUrl(item.foto_depois) : Promise.resolve(null),
+        antesSrc ? loadImageAsDataUrl(antesSrc) : Promise.resolve(null),
+        depoisSrc ? loadImageAsDataUrl(depoisSrc) : Promise.resolve(null),
       ]);
       photoCache[item.id] = {
-        antes: isValidPdfImageUrl(item.foto_antes) ? (antes || placeholderDataUrl) : null,
-        depois: isValidPdfImageUrl(item.foto_depois) ? (depois || placeholderDataUrl) : null,
+        antes: antesSrc ? (antes || placeholderDataUrl) : null,
+        depois: depoisSrc ? (depois || placeholderDataUrl) : null,
       };
     });
     await Promise.allSettled(photoPromises);
@@ -1140,10 +1162,10 @@ export default function InspecoesSE() {
                   <div className="flex-shrink-0 flex flex-col items-center gap-2">
                     <span className="text-lg font-bold text-muted-foreground w-8 text-center">{idx + 1}</span>
                     <div className="flex gap-2">
-                      {item.foto_antes ? (
+                      {(item.foto_antes_path || item.foto_antes) ? (
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground font-semibold mb-1">ANTES</p>
-                          <DriveImage src={item.foto_antes} alt="Antes" className="w-28 h-20 object-cover rounded-md border" thumbnail />
+                          <InspecaoImage path={item.foto_antes_path} legacyUrl={item.foto_antes} alt="Antes" className="w-28 h-20 object-cover rounded-md border" thumbnail />
                         </div>
                       ) : (
                         <div className="text-center">
@@ -1153,10 +1175,10 @@ export default function InspecoesSE() {
                           </div>
                         </div>
                       )}
-                      {item.foto_depois ? (
+                      {(item.foto_depois_path || item.foto_depois) ? (
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground font-semibold mb-1">DEPOIS</p>
-                          <DriveImage src={item.foto_depois} alt="Depois" className="w-28 h-20 object-cover rounded-md border" thumbnail />
+                          <InspecaoImage path={item.foto_depois_path} legacyUrl={item.foto_depois} alt="Depois" className="w-28 h-20 object-cover rounded-md border" thumbnail />
                         </div>
                       ) : (
                         <div className="text-center">
@@ -1290,18 +1312,18 @@ export default function InspecoesSE() {
                 </div>
 
                 {/* Photos */}
-                {(item.foto_antes || item.foto_depois) && (
-                  <div className={`grid gap-2 ${item.foto_antes && item.foto_depois ? "grid-cols-2" : "grid-cols-1"}`}>
-                    {item.foto_antes && (
+                {(item.foto_antes_path || item.foto_antes || item.foto_depois_path || item.foto_depois) && (
+                  <div className={`grid gap-2 ${(item.foto_antes_path || item.foto_antes) && (item.foto_depois_path || item.foto_depois) ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {(item.foto_antes_path || item.foto_antes) && (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-semibold">ANTES</p>
-                        <DriveImage src={item.foto_antes} alt="Antes" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
+                        <InspecaoImage path={item.foto_antes_path} legacyUrl={item.foto_antes} alt="Antes" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
                       </div>
                     )}
-                    {item.foto_depois && (
+                    {(item.foto_depois_path || item.foto_depois) && (
                       <div>
                         <p className="text-[10px] text-muted-foreground mb-1 font-semibold">DEPOIS</p>
-                        <DriveImage src={item.foto_depois} alt="Depois" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
+                        <InspecaoImage path={item.foto_depois_path} legacyUrl={item.foto_depois} alt="Depois" className="w-full h-auto aspect-[4/3] object-contain" thumbnail />
                       </div>
                     )}
                   </div>
@@ -1414,14 +1436,18 @@ export default function InspecoesSE() {
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
                   <input ref={antesGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "antes"); e.target.value = ""; }} />
-                  {(fotoAntesPreview || existingFotoAntes) ? (
+                  {(fotoAntesPreview || existingFotoAntes || existingFotoAntesPath) ? (
                     <div className="relative mt-1">
-                      <DriveImage src={fotoAntesPreview || existingFotoAntes!} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      {fotoAntesPreview ? (
+                        <img src={fotoAntesPreview} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      ) : (
+                        <InspecaoImage path={existingFotoAntesPath} legacyUrl={existingFotoAntes} alt="Antes" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      )}
                       <button
                         type="button"
                         aria-label="Remover foto antes"
                         className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                        onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); }}
+                        onClick={() => { setFotoAntesFile(null); setFotoAntesPreview(null); setExistingFotoAntes(null); setExistingFotoAntesPath(null); }}
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -1444,14 +1470,18 @@ export default function InspecoesSE() {
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                   <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                  {(fotoDepoisPreview || existingFotoDepois) ? (
+                  {(fotoDepoisPreview || existingFotoDepois || existingFotoDepoisPath) ? (
                     <div className="relative mt-1">
-                      <DriveImage src={fotoDepoisPreview || existingFotoDepois!} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      {fotoDepoisPreview ? (
+                        <img src={fotoDepoisPreview} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      ) : (
+                        <InspecaoImage path={existingFotoDepoisPath} legacyUrl={existingFotoDepois} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      )}
                       <button
                         type="button"
                         aria-label="Remover foto depois"
                         className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                        onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); }}
+                        onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); setExistingFotoDepoisPath(null); }}
                       >
                         <X className="w-4 h-4" />
                       </button>
