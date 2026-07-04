@@ -118,19 +118,19 @@ export default function Obras() {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: editingId ? "Obra atualizada" : "Obra cadastrada" });
+    toast({ title: editingId ? "Local atualizado" : "Local cadastrado" });
     setDialogOpen(false);
     load();
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Excluir esta obra? Inspeções vinculadas ficarão sem obra.")) return;
+    if (!confirm("Excluir este local? Inspeções vinculadas ficarão sem local.")) return;
     const { error } = await (supabase.from as any)("obras").delete().eq("id", id).eq("empresa_id", empresaId);
     if (error) {
       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Obra excluída" });
+    toast({ title: "Local excluído" });
     load();
   }
 
@@ -145,12 +145,12 @@ export default function Obras() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-primary" /> Cadastro de Obras
+            <Building2 className="w-6 h-6 text-primary" /> Cadastro de Local
           </h1>
-          <p className="text-sm text-muted-foreground">Obras vinculadas às inspeções da empresa.</p>
+          <p className="text-sm text-muted-foreground">Locais vinculados às inspeções da empresa.</p>
         </div>
         <Button onClick={openNew} className="min-h-[44px]">
-          <Plus className="w-4 h-4 mr-1" /> Nova obra
+          <Plus className="w-4 h-4 mr-1" /> Novo local
         </Button>
       </div>
 
