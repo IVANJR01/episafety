@@ -214,16 +214,23 @@ export default function Obras() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="font-semibold">Nome *</Label>
-              <Input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} className="min-h-[44px]" />
+              <Label className="font-semibold">Nome da obra *</Label>
+              <Input
+                value={form.nome}
+                onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
+                placeholder="Ex.: SE 69 KV BARROCAS"
+                className="min-h-[44px]"
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground mt-1">Único campo obrigatório. Os demais são opcionais.</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>Código</Label>
+                <Label>Código (opcional)</Label>
                 <Input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value }))} className="min-h-[44px]" />
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>Status (opcional)</Label>
                 <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
                   <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -233,21 +240,21 @@ export default function Obras() {
               </div>
             </div>
             <div>
-              <Label>Endereço</Label>
+              <Label>Endereço (opcional)</Label>
               <Input value={form.endereco} onChange={e => setForm(p => ({ ...p, endereco: e.target.value }))} className="min-h-[44px]" />
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
-                <Label>Cidade</Label>
+                <Label>Cidade (opcional)</Label>
                 <Input value={form.cidade} onChange={e => setForm(p => ({ ...p, cidade: e.target.value }))} className="min-h-[44px]" />
               </div>
               <div>
-                <Label>UF</Label>
+                <Label>UF (opcional)</Label>
                 <Input maxLength={2} value={form.uf} onChange={e => setForm(p => ({ ...p, uf: e.target.value.toUpperCase() }))} className="min-h-[44px]" />
               </div>
             </div>
             <div>
-              <Label>Observações</Label>
+              <Label>Observações (opcional)</Label>
               <Textarea rows={3} value={form.observacoes} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} />
             </div>
           </div>
