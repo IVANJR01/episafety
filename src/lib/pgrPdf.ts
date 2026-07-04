@@ -211,7 +211,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   b.y += 9;
 
   // 4. Inventário por GHE
-  title(b, "4. Inventário de riscos por GHE/GES");
+  title(b, "4. Inventário de riscos por GES");
   const byGhe = new Map<string, PgrInventarioItem[]>();
   ctx.inventario.forEach((i) => {
     const k = i.ghe_id || "_";
@@ -222,7 +222,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   for (const [gid, items] of byGhe) {
     ensure(b, 10);
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
-    pdf.text(`GHE/GES: ${ctx.ghes[gid] || "Sem GHE"}  (${items.length} riscos)`, 12, b.y + 3);
+    pdf.text(`GES: ${ctx.ghes[gid] || "Sem GHE"}  (${items.length} riscos)`, 12, b.y + 3);
     pdf.setTextColor(0); b.y += 6;
     items.forEach((i) => {
       ensure(b, 14);

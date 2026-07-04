@@ -143,7 +143,7 @@ export default function ImportarGheDialog({
               </p>
             ) : ghes.length === 0 ? (
               <p className="text-center py-8 text-sm text-muted-foreground">
-                Nenhum GES/GHE ativo cadastrado nesta empresa. Cadastre em <b>Cadastro → GHE/GES</b>.
+                Nenhum GES/GHE ativo cadastrado nesta empresa. Cadastre em <b>Cadastro → GES</b>.
               </p>
             ) : (
               <>
