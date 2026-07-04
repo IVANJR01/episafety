@@ -3878,42 +3878,78 @@ export type Database = {
       }
       ghe_ges: {
         Row: {
+          capacitacoes_obrigatorias: string | null
           codigo: string
           created_at: string
           created_by: string | null
           descricao: string | null
+          descricao_atividades: string | null
           empresa_id: string
+          epcs: string | null
+          frequencia_exposicao: string | null
           id: string
+          medidas_controle_existentes: string | null
+          medidas_controle_recomendadas: string | null
+          nivel_risco: string | null
           nome: string
+          observacoes_tecnicas: string | null
           pcmso_id: string | null
+          probabilidade: number | null
           setor: string | null
+          severidade: number | null
           status: string
+          tempo_exposicao: string | null
+          trabalhadores_expostos: number | null
           updated_at: string
         }
         Insert: {
+          capacitacoes_obrigatorias?: string | null
           codigo: string
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          descricao_atividades?: string | null
           empresa_id: string
+          epcs?: string | null
+          frequencia_exposicao?: string | null
           id?: string
+          medidas_controle_existentes?: string | null
+          medidas_controle_recomendadas?: string | null
+          nivel_risco?: string | null
           nome: string
+          observacoes_tecnicas?: string | null
           pcmso_id?: string | null
+          probabilidade?: number | null
           setor?: string | null
+          severidade?: number | null
           status?: string
+          tempo_exposicao?: string | null
+          trabalhadores_expostos?: number | null
           updated_at?: string
         }
         Update: {
+          capacitacoes_obrigatorias?: string | null
           codigo?: string
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          descricao_atividades?: string | null
           empresa_id?: string
+          epcs?: string | null
+          frequencia_exposicao?: string | null
           id?: string
+          medidas_controle_existentes?: string | null
+          medidas_controle_recomendadas?: string | null
+          nivel_risco?: string | null
           nome?: string
+          observacoes_tecnicas?: string | null
           pcmso_id?: string | null
+          probabilidade?: number | null
           setor?: string | null
+          severidade?: number | null
           status?: string
+          tempo_exposicao?: string | null
+          trabalhadores_expostos?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -5437,6 +5473,206 @@ export type Database = {
             columns: ["funcionario_id"]
             isOneToOne: false
             referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_servico_sst: {
+        Row: {
+          atividades: string | null
+          created_at: string
+          created_by: string | null
+          data_emissao: string | null
+          empresa_id: string
+          epis_snapshot: Json
+          escopo: string
+          funcao_id: string | null
+          funcionario_id: string | null
+          ghe_id: string | null
+          id: string
+          medidas_preventivas: string | null
+          pdf_drive_view_link: string | null
+          pdf_gerado_em: string | null
+          pdf_hash: string | null
+          procedimentos_acidente: string | null
+          proibicoes: string | null
+          responsabilidades: string | null
+          responsavel_tecnico_nome: string | null
+          responsavel_tecnico_registro: string | null
+          riscos_snapshot: Json
+          status: string
+          titulo: string
+          updated_at: string
+          versao: number
+        }
+        Insert: {
+          atividades?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          empresa_id: string
+          epis_snapshot?: Json
+          escopo: string
+          funcao_id?: string | null
+          funcionario_id?: string | null
+          ghe_id?: string | null
+          id?: string
+          medidas_preventivas?: string | null
+          pdf_drive_view_link?: string | null
+          pdf_gerado_em?: string | null
+          pdf_hash?: string | null
+          procedimentos_acidente?: string | null
+          proibicoes?: string | null
+          responsabilidades?: string | null
+          responsavel_tecnico_nome?: string | null
+          responsavel_tecnico_registro?: string | null
+          riscos_snapshot?: Json
+          status?: string
+          titulo: string
+          updated_at?: string
+          versao?: number
+        }
+        Update: {
+          atividades?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          empresa_id?: string
+          epis_snapshot?: Json
+          escopo?: string
+          funcao_id?: string | null
+          funcionario_id?: string | null
+          ghe_id?: string | null
+          id?: string
+          medidas_preventivas?: string | null
+          pdf_drive_view_link?: string | null
+          pdf_gerado_em?: string | null
+          pdf_hash?: string | null
+          procedimentos_acidente?: string | null
+          proibicoes?: string | null
+          responsabilidades?: string | null
+          responsavel_tecnico_nome?: string | null
+          responsavel_tecnico_registro?: string | null
+          riscos_snapshot?: Json
+          status?: string
+          titulo?: string
+          updated_at?: string
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_servico_sst_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordens_servico_sst_ghe_id_fkey"
+            columns: ["ghe_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_servico_sst_assinaturas: {
+        Row: {
+          assinado_em: string
+          assinatura_url: string | null
+          created_at: string
+          empresa_id: string
+          funcionario_id: string | null
+          id: string
+          observacao: string | null
+          os_id: string
+        }
+        Insert: {
+          assinado_em?: string
+          assinatura_url?: string | null
+          created_at?: string
+          empresa_id: string
+          funcionario_id?: string | null
+          id?: string
+          observacao?: string | null
+          os_id: string
+        }
+        Update: {
+          assinado_em?: string
+          assinatura_url?: string | null
+          created_at?: string
+          empresa_id?: string
+          funcionario_id?: string | null
+          id?: string
+          observacao?: string | null
+          os_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_servico_sst_assinaturas_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordens_servico_sst_assinaturas_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico_sst"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_servico_sst_pdf_versoes: {
+        Row: {
+          bucket: string | null
+          created_at: string
+          empresa_id: string
+          gerado_por: string | null
+          gerado_por_email: string | null
+          id: string
+          os_id: string
+          path: string | null
+          pdf_drive_view_link: string | null
+          pdf_hash: string
+          tamanho_bytes: number | null
+          versao: number
+        }
+        Insert: {
+          bucket?: string | null
+          created_at?: string
+          empresa_id: string
+          gerado_por?: string | null
+          gerado_por_email?: string | null
+          id?: string
+          os_id: string
+          path?: string | null
+          pdf_drive_view_link?: string | null
+          pdf_hash: string
+          tamanho_bytes?: number | null
+          versao: number
+        }
+        Update: {
+          bucket?: string | null
+          created_at?: string
+          empresa_id?: string
+          gerado_por?: string | null
+          gerado_por_email?: string | null
+          id?: string
+          os_id?: string
+          path?: string | null
+          pdf_drive_view_link?: string | null
+          pdf_hash?: string
+          tamanho_bytes?: number | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_servico_sst_pdf_versoes_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico_sst"
             referencedColumns: ["id"]
           },
         ]

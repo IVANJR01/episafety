@@ -59,6 +59,7 @@ const gestaoDocItems: NavItem[] = [
 // Programas — PGR, PCMSO, LTCAT e laudos técnicos
 const programasItems: NavItem[] = [
   { path: "/programas", label: "Visão Geral", icon: LayoutDashboard, moduleKey: "pgr" },
+  { path: "/programas/gerar", label: "Gerar Documentos", icon: Bell, moduleKey: "pgr" },
   { path: "/pgr", label: "PGR", icon: ShieldCheck, moduleKey: "pgr" },
   { path: "/programas/ordem-servico", label: "Ordem de Serviço", icon: ClipboardList, moduleKey: "pgr" },
   { path: "/aso", label: "PCMSO", icon: Stethoscope, moduleKey: "aso" },

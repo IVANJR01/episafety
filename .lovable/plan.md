@@ -1,159 +1,117 @@
+# Plano: GES/GHE como Base Central dos Programas
 
-# Fase 3 — RLS Portal RH (Plano de Implementação)
+## Objetivo
 
-## 1. Tabelas reais usadas pelo Portal RH
+Transformar o GES/GHE em **fonte única de verdade** para todos os documentos técnicos do módulo Programas. O usuário cadastra riscos, funções, EPIs, exames e medidas **uma vez** — o sistema reaproveita nos PDFs, sempre permitindo revisão técnica antes de emitir.
 
-| Tabela | Papel no Portal RH | `empresa_id`? |
-|---|---|---|
-| `asos` | Registro principal do ASO (PDF em `pdf_url` no GDrive BYOK) | NOT NULL |
-| `aso_exames` | Exames vinculados ao ASO | via `aso_id` |
-| `aso_assinaturas` | Assinaturas digitais do ASO | via `aso_id` (+ `empresa_id` redundante) |
-| `aso_download_logs` | Auditoria de download/visualização | NOT NULL |
-| `aso_medicos` | Médicos do ASO (CRM, CPF, assinatura) | NULLABLE |
-| `locais_emissao_aso` | Locais de emissão (clínica) | NOT NULL |
-| `funcionarios` | Colaborador selecionado no Emitir ASO | NOT NULL |
-| `medicos` (legacy) | Não usado pelo Portal RH novo — só PCMSO | — |
+## Escopo desta entrega
 
-Storage: PDF do ASO é **Google Drive BYOK** (`pdf_url` é link gdrive-proxy), não há bucket Supabase ligado ao Portal RH. Logo, não há policy de `storage.objects` a ajustar nesta fase. O gate de download deve viver no edge function que assina/serve o PDF.
+Sua recomendação prática:
+1. **Fase A (agora):** PGR + Ordem de Serviço
+2. **Fase B (depois):** PCMSO
+3. **Fase C (última):** LTCAT, Insalubridade, Periculosidade
 
-## 2. Policies atuais (resumo)
-
-Todas as tabelas acima já têm **isolamento por tenant** via `is_in_user_company_tree(auth.uid(), empresa_id)` + `is_super_admin`. `aso_medicos` exige `empresa_id IS NOT NULL` (bom — não vaza médico global).
-
-**O que falta:**
-
-1. **Nenhuma policy checa permissão `portal_rh:*`.** Hoje qualquer usuário da Empresa A com token válido consegue `SELECT` em `asos` via PostgREST, independente do menu. O gate é só visual.
-2. **`funcionarios` tem policies redundantes/sobrepostas** (`Tenant read by unidade`, `from parent company`, `funcionarios_isolation_all`, `Users read own`). Funciona mas é difícil auditar; vamos manter como está nesta fase para não impactar SST.
-3. **`asos` não tem flag de liberação para RH.** Hoje RH veria qualquer ASO da empresa, inclusive rascunho técnico do SST.
-4. **`aso_download_logs`**: SELECT aberto a toda árvore — RH pode ver logs de download de qualquer usuário da empresa. Aceitável (auditoria interna), mantém.
-
-## 3. Proposta de alteração
-
-### 3.1 Helper de permissão (security definer)
-
-```sql
-create or replace function public.has_permission(_user_id uuid, _permission text)
-returns boolean
-language sql stable security definer set search_path = public as $$
-  select
-    is_super_admin(_user_id)
-    or is_principal(_user_id)
-    or exists (
-      select 1 from usuarios_liberados u
-      where u.email = (select email from auth.users where id = _user_id)
-        and u.ativo = true
-        and (
-          _permission = any(u.modulos_permitidos)
-          -- wildcard "portal_rh" cobre "portal_rh:*"
-          or split_part(_permission, ':', 1) = any(u.modulos_permitidos)
-        )
-    )
-$$;
-```
-
-Isso espelha a lógica do front (`startsWith("portal_rh:")`) no banco, sem mudar tabela.
-
-### 3.2 Flag de liberação para RH em `asos`
-
-Adicionar:
-```sql
-alter table public.asos
-  add column liberado_portal_rh boolean not null default false;
-```
-
-Regra de preenchimento (trigger ou app):
-- `liberado_portal_rh = true` quando `status in ('assinado','concluido')` **E** `pdf_url is not null`.
-- ASO em rascunho/em emissão fica invisível para RH.
-
-Migration de backfill: marcar `liberado_portal_rh = true` para ASOs já assinados/concluídos com `pdf_url`.
-
-### 3.3 Policies novas (somente SELECT — RH não escreve)
-
-Adicionar policies aditivas (sem remover as atuais de SST):
-
-```sql
--- asos: RH só vê ASO liberado da própria árvore de empresa
-create policy "RH read asos liberados"
-on public.asos for select to authenticated
-using (
-  has_permission(auth.uid(), 'portal_rh:aso:visualizar')
-  and is_in_user_company_tree(auth.uid(), empresa_id)
-  and liberado_portal_rh = true
-);
-
--- funcionarios: RH vê funcionários da empresa (sem flag, já é dado de RH)
-create policy "RH read funcionarios"
-on public.funcionarios for select to authenticated
-using (
-  has_permission(auth.uid(), 'portal_rh:funcionarios:visualizar')
-  and is_in_user_company_tree(auth.uid(), empresa_id)
-);
-
--- aso_medicos / locais_emissao_aso: leitura para emissão (se RH emite)
-create policy "RH read aso_medicos"
-on public.aso_medicos for select to authenticated
-using (
-  has_permission(auth.uid(), 'portal_rh:aso:visualizar')
-  and empresa_id is not null
-  and is_in_user_company_tree(auth.uid(), empresa_id)
-);
--- idem locais_emissao_aso
-```
-
-Como as policies de tenant já existentes são permissive, **um usuário SST mantém acesso** (passa pela policy antiga); um usuário **RH puro** passa pela nova. Não há regressão para U2/U3/U1.
-
-### 3.4 Restrição opcional por `contrato_id`/`unidade_id`
-
-`usuarios_liberados.contrato_id` existe mas `asos` não tem `contrato_id` direto — apenas via `funcionarios.contrato_id` (a confirmar). **Proposta:** nesta fase **não** filtrar por contrato no RLS de `asos` (precisaria join e mudaria semântica do SST). Documentar como Fase 3.1 futura.
-
-### 3.5 Download de ASO (edge function `aso-download` ou equivalente)
-
-Antes de devolver signed URL / stream do PDF:
-1. `auth.getUser()` → exigir sessão.
-2. `select empresa_id, pdf_url, liberado_portal_rh from asos where id = $1` (server-side, service role).
-3. Validar:
-   - `is_in_user_company_tree(uid, empresa_id)` **OU** `is_super_admin/principal`;
-   - se for RH-only: exigir `has_permission(uid, 'portal_rh:aso:baixar')` **E** `liberado_portal_rh = true`.
-4. Em falha → 403 `forbidden_tenant`.
-5. Registrar em `aso_download_logs` (acao='download_rh' ou 'view_rh', `perfil_usuario`).
-
-Se hoje o download passa direto pelo `gdrive-proxy` sem checar tenant, vamos **inserir o gate antes** do proxy (novo endpoint `portal-rh-aso-download` ou checagem no proxy existente).
-
-## 4. Riscos
-
-| Risco | Mitigação |
-|---|---|
-| Quebrar SST ao adicionar policies | Policies novas são aditivas (permissive OR), SST continua via policy antiga |
-| `liberado_portal_rh=false` esconder ASOs legítimos | Backfill marca todos `assinado/concluido` como true; trigger mantém |
-| RH ver médicos com CPF | `aso_medicos` já exige `empresa_id IS NOT NULL`, sem global; CPF fica dentro da árvore |
-| `has_permission` recursivo via RLS de `usuarios_liberados` | Função é SECURITY DEFINER — bypassa RLS |
-| Edge function de download usar service role sem checar uid | Implementar checagem explícita antes de devolver URL |
-
-## 5. Migrations planejadas (ordem)
-
-1. **`20260623_portal_rh_has_permission.sql`** — cria `public.has_permission(uuid,text)`.
-2. **`20260623_asos_liberado_portal_rh.sql`** — adiciona coluna + backfill + trigger de manutenção.
-3. **`20260623_portal_rh_rls_policies.sql`** — cria policies SELECT para `asos`, `funcionarios`, `aso_medicos`, `locais_emissao_aso`, `aso_exames`, `aso_assinaturas`.
-4. **Edge function** `portal-rh-aso-download` (ou patch no proxy) com gate de tenant + permissão + log.
-
-## 6. Plano de teste (após aplicar)
-
-Roteiro Playwright + curl direto:
-
-- **U5 (RH-only Empresa A)**
-  - `/rh/asos` lista somente ASOs `liberado_portal_rh=true` da Empresa A. ✔
-  - `curl PostgREST /asos?empresa_id=<EmpresaB>` → vazio.
-  - `curl PostgREST /asos?id=<aso_empresa_B>` → vazio.
-  - `curl portal-rh-aso-download?aso_id=<empresa_B>` → 403 `forbidden_tenant`.
-  - `curl /cat_comunicacoes` → vazio (sem permissão).
-- **U2 Principal Empresa A** — vê tudo da árvore (incluindo ASO não liberado).
-- **U3 Técnico SST** — vê módulos técnicos, sem regressão em PCMSO/LTCAT/PPP.
-- **U1 Super Admin** — acesso total.
-
-## 7. Fora de escopo desta fase
-
-eSocial real, certificado digital, ICP-Brasil, XMLDSig, SOAP, S-3000, alteração de módulos SST.
+Nesta iteração entrego a **Fase A completa** + a **infraestrutura comum** que serve as fases seguintes. Sem tocar em EPIs, Entregas, Inspeções, Exames operacionais, Storage, RH.
 
 ---
 
-**Aguardo aprovação para gerar as 3 migrations + edge function.** Posso também, antes, abrir um diff exato de cada policy nova se preferir revisar SQL final.
+## Fase A — O que vou construir
+
+### 1. Ficha unificada do GES/GHE (usar o que já existe)
+
+O projeto já tem `ghe_ges`, `ghe_funcoes`, `ghe_riscos`, `ghe_exames`. Vou:
+
+- **Não recriar tabelas.** Apenas complementar `ghe_ges` com colunas faltantes:
+  - `descricao_atividades`, `trabalhadores_expostos`, `frequencia_exposicao`, `tempo_exposicao`, `severidade`, `probabilidade`, `nivel_risco`, `medidas_controle_existentes`, `medidas_controle_recomendadas`, `epcs`, `capacitacoes_obrigatorias`, `observacoes_tecnicas`
+- Reaproveitar `ghe_riscos` (perigos/agentes por grupo) e `ghe_exames` (exames+periodicidade) sem alteração de schema.
+- Adicionar view/aggregate helper `ghe_ficha_completa` (leitura) que devolve o GES + riscos + exames + funções em um único payload — a base que todos os geradores consomem.
+
+### 2. Tela "Gerar Documentos" (novo)
+
+Rota: `/programas/gerar`
+
+Fluxo:
+1. Selecionar empresa (respeita `empresaScopeIds`)
+2. Selecionar tipo de documento (PGR ou Ordem de Serviço — os outros aparecem como "Em breve" nas fases seguintes)
+3. Selecionar GES/GHE (multi para PGR, único ou por função/funcionário para OS)
+4. Preview dos dados carregados (riscos, funções, exames, EPIs, medidas)
+5. Formulário de **campos complementares** obrigatórios do documento
+6. Botão "Gerar PDF" → salva versão
+
+### 3. PGR a partir do GES/GHE
+
+Já existe `pgr_documentos`, `pgr_inventario_itens`, `pgr_acoes`, `pgr_pdf_versoes`. Vou:
+
+- Adicionar botão **"Importar do GES/GHE"** no PGR existente (`PgrDetalhe`) que popula `pgr_inventario_itens` a partir dos riscos do(s) GES selecionado(s), sem duplicar itens já presentes (dedup por `perigo + risco + ges_id`).
+- A geração de PDF continua no fluxo atual do PGR — apenas facilita o preenchimento inicial.
+
+### 4. Ordem de Serviço (novo, real)
+
+Hoje é stub. Vou implementar:
+
+- Tabela `ordens_servico_sst` (nome diferente da `ordens_servico` existente, que é outro domínio):
+  - `empresa_id`, `funcionario_id` (nullable), `funcao_id` (nullable), `ghe_id`, `escopo` (`funcionario|funcao|ghe`), `atividades`, `riscos_snapshot` (jsonb), `epis_snapshot` (jsonb), `medidas_preventivas`, `proibicoes`, `procedimentos_acidente`, `responsabilidades`, `responsavel_tecnico`, `status` (`rascunho|emitida|arquivada`), `versao`, `pdf_hash`, `pdf_drive_view_link`, `data_emissao`, `assinatura_url` (nullable)
+- Tabela `ordens_servico_sst_assinaturas` (aceite do trabalhador)
+- Página `src/pages/programas/OrdemServico.tsx` real: lista + criar + detalhe
+- Geração de PDF profissional (segue padrão dos PDFs atuais em `src/lib/`): capa, dados da empresa, dados do trabalhador/função, atividades, riscos, EPIs, medidas, proibições, procedimentos, responsabilidades, campo de assinatura
+- 3 modos: **por funcionário**, **por função**, **por GES**
+
+### 5. Versionamento comum
+
+Todo documento gerado grava:
+- Tipo, empresa, GES usados, data emissão, versão, usuário, responsável técnico, PDF, status.
+
+Reutilizo o padrão já existente de `pgr_pdf_versoes` / `ltcat_pdf_versoes` para OS (`ordens_servico_sst_pdf_versoes`).
+
+### 6. Regra de revisão técnica
+
+Fase A não gera conclusão técnica automática. LTCAT/Insalubridade/Periculosidade ficarão nas fases seguintes exatamente por causa dessa responsabilidade — o botão do documento na tela "Gerar" mostra "Requer revisão técnica" e permanece desabilitado até Fase C.
+
+---
+
+## O que NÃO vou fazer nesta entrega
+
+- Não mexer em EPIs, Entregas, Inspeções, Exames operacionais, Storage, RH, Termos, MFA.
+- Não recriar PGR/PCMSO/LTCAT — apenas plugar o GES/GHE neles.
+- Não implementar PCMSO/LTCAT/Insalubridade/Periculosidade novos — Fase B e C.
+- Não gerar conclusão técnica automática em nenhum laudo.
+
+---
+
+## Detalhes técnicos
+
+**Migrations (1 sozinha, com todos os GRANT + RLS):**
+1. `ALTER TABLE ghe_ges ADD COLUMN ...` para os campos complementares.
+2. `CREATE TABLE public.ordens_servico_sst` + GRANT authenticated/service_role + RLS por `empresa_id` (mesmo padrão de `pgr_documentos`).
+3. `CREATE TABLE public.ordens_servico_sst_assinaturas` + GRANT + RLS.
+4. `CREATE TABLE public.ordens_servico_sst_pdf_versoes` + GRANT + RLS.
+5. Trigger `updated_at`.
+
+**Novos arquivos:**
+- `src/lib/gesFicha.ts` — loader unificado do GES completo (riscos + exames + funções).
+- `src/lib/osTypes.ts`, `src/lib/osPdf.ts` — tipos e gerador de PDF da OS.
+- `src/pages/programas/GerarDocumentos.tsx` — nova tela.
+- `src/pages/programas/OrdemServico.tsx` — substitui o stub, implementação real.
+- `src/pages/programas/OrdemServicoNovo.tsx`, `OrdemServicoDetalhe.tsx`.
+- `src/components/pgr/ImportarGheDialog.tsx` — já existe; vou estender para popular inventário automaticamente a partir do GES.
+
+**Roteamento (`src/App.tsx`):**
+- `/programas/gerar` → GerarDocumentos.
+- `/programas/ordem-servico/novo`, `/programas/ordem-servico/:id`.
+
+**Sidebar (`src/components/AppLayout.tsx`):**
+- Sob "Programas", adicionar "Gerar Documentos" no topo.
+
+**Segurança:** RLS multi-tenant por `empresa_id` idêntica ao PGR. Nada exposto a `anon`.
+
+---
+
+## Resultado esperado
+
+Ao fim desta entrega:
+- Você abre um GES/GHE, completa os campos técnicos uma vez.
+- Vai em **Programas → Gerar Documentos**, escolhe PGR ou Ordem de Serviço, escolhe o GES, revisa, e gera o PDF.
+- No PGR existente, um botão "Importar do GES/GHE" popula o inventário sem redigitação.
+- Fases B (PCMSO) e C (LTCAT + Laudos) já têm a base pronta — só faltará plugar os geradores.
+
+Confirma que sigo com a **Fase A** exatamente assim?

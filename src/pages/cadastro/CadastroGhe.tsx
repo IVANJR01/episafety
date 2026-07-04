@@ -184,8 +184,15 @@ export default function CadastroGhe() {
 }
 
 function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any) {
-  const [form, setForm] = useState({ codigo: "", nome: "", setor: "", descricao: "", status: "ativo" });
+  const [form, setForm] = useState<any>({
+    codigo: "", nome: "", setor: "", descricao: "", status: "ativo",
+    descricao_atividades: "", trabalhadores_expostos: "", frequencia_exposicao: "",
+    tempo_exposicao: "", severidade: "", probabilidade: "", nivel_risco: "",
+    medidas_controle_existentes: "", medidas_controle_recomendadas: "",
+    epcs: "", capacitacoes_obrigatorias: "", observacoes_tecnicas: "",
+  });
   const [saving, setSaving] = useState(false);
+  const [showAvancado, setShowAvancado] = useState(false);
 
   useEffect(() => {
     if (editing) {
@@ -195,15 +202,35 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
         setor: editing.setor || "",
         descricao: editing.descricao || "",
         status: editing.status || "ativo",
+        descricao_atividades: editing.descricao_atividades || "",
+        trabalhadores_expostos: editing.trabalhadores_expostos ?? "",
+        frequencia_exposicao: editing.frequencia_exposicao || "",
+        tempo_exposicao: editing.tempo_exposicao || "",
+        severidade: editing.severidade ?? "",
+        probabilidade: editing.probabilidade ?? "",
+        nivel_risco: editing.nivel_risco || "",
+        medidas_controle_existentes: editing.medidas_controle_existentes || "",
+        medidas_controle_recomendadas: editing.medidas_controle_recomendadas || "",
+        epcs: editing.epcs || "",
+        capacitacoes_obrigatorias: editing.capacitacoes_obrigatorias || "",
+        observacoes_tecnicas: editing.observacoes_tecnicas || "",
       });
     } else {
-      setForm({ codigo: "", nome: "", setor: "", descricao: "", status: "ativo" });
+      setForm({
+        codigo: "", nome: "", setor: "", descricao: "", status: "ativo",
+        descricao_atividades: "", trabalhadores_expostos: "", frequencia_exposicao: "",
+        tempo_exposicao: "", severidade: "", probabilidade: "", nivel_risco: "",
+        medidas_controle_existentes: "", medidas_controle_recomendadas: "",
+        epcs: "", capacitacoes_obrigatorias: "", observacoes_tecnicas: "",
+      });
     }
+    setShowAvancado(false);
   }, [editing, open]);
 
   const save = async () => {
     if (!form.codigo.trim() || !form.setor.trim()) return toast.error("Código e setor são obrigatórios");
     setSaving(true);
+    const toInt = (v: any) => (v === "" || v === null || v === undefined ? null : Number(v));
     const payload: any = {
       codigo: form.codigo.trim(),
       nome: form.setor.trim(),
@@ -211,10 +238,22 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
       descricao: form.descricao.trim() || null,
       status: form.status,
       empresa_id: empresaId,
+      descricao_atividades: form.descricao_atividades?.trim() || null,
+      trabalhadores_expostos: toInt(form.trabalhadores_expostos),
+      frequencia_exposicao: form.frequencia_exposicao?.trim() || null,
+      tempo_exposicao: form.tempo_exposicao?.trim() || null,
+      severidade: toInt(form.severidade),
+      probabilidade: toInt(form.probabilidade),
+      nivel_risco: form.nivel_risco?.trim() || null,
+      medidas_controle_existentes: form.medidas_controle_existentes?.trim() || null,
+      medidas_controle_recomendadas: form.medidas_controle_recomendadas?.trim() || null,
+      epcs: form.epcs?.trim() || null,
+      capacitacoes_obrigatorias: form.capacitacoes_obrigatorias?.trim() || null,
+      observacoes_tecnicas: form.observacoes_tecnicas?.trim() || null,
     };
     const { error } = editing
-      ? await supabase.from("ghe_ges").update(payload).eq("id", editing.id)
-      : await supabase.from("ghe_ges").insert(payload);
+      ? await (supabase.from("ghe_ges") as any).update(payload).eq("id", editing.id)
+      : await (supabase.from("ghe_ges") as any).insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("GHE salvo");
@@ -222,28 +261,30 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
     onOpenChange(false);
   };
 
+  const set = (k: string, v: any) => setForm({ ...form, [k]: v });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{editing ? "Editar GHE/GES" : "Novo GHE/GES"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Código *</Label>
-              <Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="GHE 01" />
+              <Input value={form.codigo} onChange={(e) => set("codigo", e.target.value)} placeholder="GHE 01" />
             </div>
             <div>
               <Label>Setor *</Label>
-              <Input value={form.setor} onChange={(e) => setForm({ ...form, setor: e.target.value })} placeholder="PCP" />
+              <Input value={form.setor} onChange={(e) => set("setor", e.target.value)} placeholder="PCP" />
             </div>
           </div>
           <div>
             <Label>Descrição</Label>
-            <Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} placeholder="Grupo de exposição do setor PCP." />
+            <Textarea value={form.descricao} onChange={(e) => set("descricao", e.target.value)} rows={2} placeholder="Grupo de exposição do setor PCP." />
           </div>
           <div>
             <Label>Ativo</Label>
-            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+            <Select value={form.status} onValueChange={(v) => set("status", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ativo">Sim</SelectItem>
@@ -251,12 +292,77 @@ function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any)
               </SelectContent>
             </Select>
           </div>
+
+          <div className="pt-2 border-t">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowAvancado(!showAvancado)} className="w-full justify-between">
+              <span>Dados técnicos (usados nos programas: PGR, OS, PCMSO, LTCAT)</span>
+              <span className="text-xs text-muted-foreground">{showAvancado ? "ocultar" : "mostrar"}</span>
+            </Button>
+          </div>
+
+          {showAvancado && (
+            <div className="space-y-3 border rounded-md p-3 bg-muted/30">
+              <div>
+                <Label>Descrição das atividades</Label>
+                <Textarea rows={2} value={form.descricao_atividades} onChange={(e) => set("descricao_atividades", e.target.value)} placeholder="Ex.: Manutenção em painel elétrico energizado." />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label>Trab. expostos</Label>
+                  <Input type="number" min={0} value={form.trabalhadores_expostos} onChange={(e) => set("trabalhadores_expostos", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Frequência</Label>
+                  <Input value={form.frequencia_exposicao} onChange={(e) => set("frequencia_exposicao", e.target.value)} placeholder="Ex.: diária" />
+                </div>
+                <div>
+                  <Label>Tempo exposição</Label>
+                  <Input value={form.tempo_exposicao} onChange={(e) => set("tempo_exposicao", e.target.value)} placeholder="Ex.: 8h/dia" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label>Severidade (1-5)</Label>
+                  <Input type="number" min={1} max={5} value={form.severidade} onChange={(e) => set("severidade", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Probabilidade (1-5)</Label>
+                  <Input type="number" min={1} max={5} value={form.probabilidade} onChange={(e) => set("probabilidade", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Nível de risco</Label>
+                  <Input value={form.nivel_risco} onChange={(e) => set("nivel_risco", e.target.value)} placeholder="Baixo / Médio / Alto" />
+                </div>
+              </div>
+              <div>
+                <Label>Medidas de controle existentes</Label>
+                <Textarea rows={2} value={form.medidas_controle_existentes} onChange={(e) => set("medidas_controle_existentes", e.target.value)} />
+              </div>
+              <div>
+                <Label>Medidas de controle recomendadas</Label>
+                <Textarea rows={2} value={form.medidas_controle_recomendadas} onChange={(e) => set("medidas_controle_recomendadas", e.target.value)} />
+              </div>
+              <div>
+                <Label>EPCs (equipamentos de proteção coletiva)</Label>
+                <Textarea rows={2} value={form.epcs} onChange={(e) => set("epcs", e.target.value)} placeholder="Ex.: sinalização, bloqueio, aterramento temporário" />
+              </div>
+              <div>
+                <Label>Capacitações obrigatórias</Label>
+                <Textarea rows={2} value={form.capacitacoes_obrigatorias} onChange={(e) => set("capacitacoes_obrigatorias", e.target.value)} placeholder="Ex.: NR-10, NR-35, SEP" />
+              </div>
+              <div>
+                <Label>Observações técnicas</Label>
+                <Textarea rows={2} value={form.observacoes_tecnicas} onChange={(e) => set("observacoes_tecnicas", e.target.value)} />
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter><Button onClick={save} disabled={saving}>Salvar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 function FuncoesDialog({ ghe, onClose }: { ghe: any; onClose: () => void }) {
   const [nova, setNova] = useState("");
