@@ -913,9 +913,15 @@ export default function AsoExames() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-3"><ListSkeleton rows={5} /></div>
               ) : matrixData.tipos.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</div>
+                <EmptyState
+                  bare
+                  icon={Stethoscope}
+                  title="Nenhum exame registrado"
+                  description="Cadastre o primeiro exame ocupacional para acompanhar vencimentos e renovações."
+                  action={<Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Exame</Button>}
+                />
               ) : (
                 <>
                   {/* Mobile cards */}
