@@ -682,6 +682,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 ))}
               </select>
             )}
+            <SuporteButton variant="icon" className="text-muted-foreground hover:text-foreground" />
             <button onClick={signOut} className="p-2 text-muted-foreground hover:text-foreground">
               <LogOut className="w-4 h-4" />
             </button>
