@@ -875,16 +875,19 @@ export default function AsoExames() {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <Badge
-                                  variant={status.variant}
-                                  className={
-                                    status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                                    status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
-                                    "bg-success/10 text-success border-success/20"
-                                  }
-                                >
-                                  {status.label}
-                                </Badge>
+                                {(() => {
+                                  const tone: StatusTone =
+                                    e.resultado === "pendente" ? "pending" :
+                                    status.key === "vencido" ? "danger" :
+                                    status.key === "atencao" ? "warning" :
+                                    "success";
+                                  const label =
+                                    e.resultado === "pendente" ? "Pendente" :
+                                    status.key === "vencido" ? "Vencido" :
+                                    status.key === "atencao" ? "A vencer" :
+                                    "Vigente";
+                                  return <StatusBadge tone={tone}>{label}</StatusBadge>;
+                                })()}
                               </TableCell>
                               <TableCell className="text-xs">{e.medico || "—"}</TableCell>
                               <TableCell>
