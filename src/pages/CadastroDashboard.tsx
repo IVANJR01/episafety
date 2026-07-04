@@ -159,7 +159,7 @@ export default function CadastroDashboard() {
                   <p className="text-xs text-muted-foreground">{stats.setoresData.length} setores cadastrados</p>
                 </div>
               </div>
-              <div className="px-6 pb-6">
+              <div className="px-2 sm:px-6 pb-4 sm:pb-6">
                 {stats.setoresData.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <Building className="w-10 h-10 mb-2 opacity-30" />
@@ -169,7 +169,7 @@ export default function CadastroDashboard() {
                   <ResponsiveContainer width="100%" height={Math.max(200, stats.setoresData.length * 44)}>
                     <BarChart data={stats.setoresData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
                       <XAxis type="number" allowDecimals={false} fontSize={12} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                      <YAxis type="category" dataKey="name" width={130} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="name" width={100} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} tickLine={false} axisLine={false} />
                       <Tooltip
                         formatter={(v: number) => [v, "Funcionários"]}
                         contentStyle={{
@@ -210,7 +210,7 @@ export default function CadastroDashboard() {
                   <p className="text-xs text-muted-foreground">{stats.cargosData.length} cargos cadastrados</p>
                 </div>
               </div>
-              <div className="px-6 pb-6">
+              <div className="px-2 sm:px-6 pb-4 sm:pb-6">
                 {stats.cargosData.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <Briefcase className="w-10 h-10 mb-2 opacity-30" />
@@ -220,7 +220,7 @@ export default function CadastroDashboard() {
                   <ResponsiveContainer width="100%" height={Math.max(200, stats.cargosData.length * 44)}>
                     <BarChart data={stats.cargosData} layout="vertical" margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
                       <XAxis type="number" allowDecimals={false} fontSize={12} stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} />
-                      <YAxis type="category" dataKey="name" width={130} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} tickLine={false} axisLine={false} />
+                      <YAxis type="category" dataKey="name" width={100} fontSize={11} tick={{ fill: "hsl(var(--foreground))" }} tickLine={false} axisLine={false} />
                       <Tooltip
                         formatter={(v: number) => [v, "Funcionários"]}
                         contentStyle={{
