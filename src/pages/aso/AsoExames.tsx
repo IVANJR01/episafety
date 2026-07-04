@@ -839,7 +839,19 @@ export default function AsoExames() {
                       </TableHeader>
                       <TableBody>
                         {filtered.length === 0 ? (
-                          <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={12} className="py-4">
+                            <EmptyState
+                              bare
+                              icon={Stethoscope}
+                              title={search || statusFilter !== "todos" || setorFilter ? "Nenhum resultado encontrado" : "Nenhum exame registrado"}
+                              description={search || statusFilter !== "todos" || setorFilter
+                                ? "Ajuste os filtros ou a busca para ver mais resultados."
+                                : "Cadastre o primeiro exame ocupacional para acompanhar vencimentos e renovações."}
+                              action={!(search || statusFilter !== "todos" || setorFilter) ? (
+                                <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Exame</Button>
+                              ) : undefined}
+                            />
+                          </TableCell></TableRow>
                         ) : filtered.map((e, index) => {
                           const func = funcMap[e.funcionario_id];
                           const status = getStatus(e.data_vencimento);
