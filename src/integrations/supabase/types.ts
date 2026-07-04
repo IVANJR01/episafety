@@ -1491,7 +1491,9 @@ export type Database = {
           data_realizado: string | null
           empresa_id: string | null
           foto_antes: string | null
+          foto_antes_path: string | null
           foto_depois: string | null
+          foto_depois_path: string | null
           gravidade: string
           id: string
           local: string | null
@@ -1512,7 +1514,9 @@ export type Database = {
           data_realizado?: string | null
           empresa_id?: string | null
           foto_antes?: string | null
+          foto_antes_path?: string | null
           foto_depois?: string | null
+          foto_depois_path?: string | null
           gravidade?: string
           id?: string
           local?: string | null
@@ -1533,7 +1537,9 @@ export type Database = {
           data_realizado?: string | null
           empresa_id?: string | null
           foto_antes?: string | null
+          foto_antes_path?: string | null
           foto_depois?: string | null
+          foto_depois_path?: string | null
           gravidade?: string
           id?: string
           local?: string | null
