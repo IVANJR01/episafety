@@ -16,11 +16,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
+import { PackageOpen, Inbox } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
+
+const tipoTone: Record<string, StatusTone> = {
+  entrega: "info",
+  substituicao: "warning",
+  perda: "danger",
+  dano: "warning",
+  devolucao: "neutral",
+};
+
+const statusTone = (status: string): StatusTone => {
+  if (status === "ativo") return "success";
+  if (status === "perdido" || status === "danificado") return "danger";
+  if (status === "substituido") return "warning";
+  return "neutral";
+};
+
+const statusLabel = (status: string): string => {
+  if (status === "ativo") return "Ativo";
+  if (status === "substituido") return "Substituído";
+  if (status === "perdido") return "Perdido";
+  if (status === "danificado") return "Danificado";
+  if (status === "devolvido") return "Devolvido";
+  return status;
+};
 
 
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; unidade_origem_id?: string | null; }
