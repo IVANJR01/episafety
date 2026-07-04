@@ -84,6 +84,8 @@ interface Conformidade {
   acao_corretiva: string | null;
   responsavel: string | null;
   local: string | null;
+  local_especifico?: string | null;
+  obra_id?: string | null;
   data_realizado: string | null;
   prazo_correcao: string | null;
   resolved_by: string | null;
@@ -93,6 +95,13 @@ interface Conformidade {
   referencia_normativa: string | null;
 }
 
+type ObraOption = {
+  id: string;
+  nome: string;
+  codigo: string | null;
+  status: string;
+};
+
 const emptyForm = {
   data_inspecao: format(new Date(), "yyyy-MM-dd"),
   situacao_detectada: "",
@@ -100,6 +109,8 @@ const emptyForm = {
   acao_corretiva: "",
   responsavel: "",
   local: "",
+  local_especifico: "",
+  obra_id: "",
   prazo_correcao: "",
   data_realizado: "",
   status: "PENDENTE",
@@ -110,6 +121,7 @@ export default function InspecoesSE() {
   const { user, empresaId } = useAuth();
   const { canCreate, canDelete } = usePermissions("inspecoes_se");
   const [items, setItems] = useState<Conformidade[]>([]);
+  const [obras, setObras] = useState<ObraOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -182,6 +194,18 @@ export default function InspecoesSE() {
     void loadData();
   }, [loadData]);
 
+  // Carrega obras da empresa (apenas ATIVAS por padrão, mas incluímos concluídas caso a inspeção antiga referencie)
+  useEffect(() => {
+    if (!empresaId) { setObras([]); return; }
+    (async () => {
+      const { data } = await (supabase.from as any)("obras")
+        .select("id,nome,codigo,status")
+        .eq("empresa_id", empresaId)
+        .order("nome", { ascending: true });
+      setObras((data || []) as ObraOption[]);
+    })();
+  }, [empresaId]);
+
   useEffect(() => {
     const handleOnline = () => {
       void loadData();
@@ -242,6 +266,8 @@ export default function InspecoesSE() {
       acao_corretiva: item.acao_corretiva || "",
       responsavel: item.responsavel || "",
       local: item.local || "",
+      local_especifico: item.local_especifico || "",
+      obra_id: item.obra_id || "",
       prazo_correcao: item.prazo_correcao || "",
       data_realizado: item.data_realizado || "",
       status: item.status,
@@ -326,7 +352,10 @@ export default function InspecoesSE() {
       gravidade: form.gravidade,
       acao_corretiva: form.acao_corretiva || null,
       responsavel: form.responsavel || null,
-      local: form.local || null,
+      obra_id: form.obra_id || null,
+      local_especifico: form.local_especifico || null,
+      // "local" mantido em branco (obra_id substitui). Preservamos coluna para dados antigos.
+      local: form.local_especifico || null,
       prazo_correcao: form.prazo_correcao || null,
       // data_realizado só quando SOLUCIONADO; em novas/pendentes fica null
       data_realizado: isSolucionado ? (form.data_realizado || format(new Date(), "yyyy-MM-dd")) : null,
@@ -372,7 +401,7 @@ export default function InspecoesSE() {
   async function handleSave() {
     const newErrors: Record<string, string> = {};
     if (!form.data_inspecao) newErrors.data_inspecao = "Informe a data.";
-    if (!form.local.trim()) newErrors.local = "Informe o local.";
+    if (!form.obra_id) newErrors.obra_id = "Selecione a obra.";
     if (!form.situacao_detectada.trim()) newErrors.situacao_detectada = "Descreva a situação detectada.";
     if (!form.acao_corretiva.trim()) newErrors.acao_corretiva = "Descreva a ação corretiva.";
     // Responsável agora é opcional; Data da correção só é usada quando SOLUCIONADO (auto).
@@ -975,7 +1004,12 @@ export default function InspecoesSE() {
       x += scaledWidths[7];
 
       // Local - centered
-      drawCenteredText(item.local || "", x, y, scaledWidths[8], ROW_H, 6);
+      {
+        const obra = obras.find(o => o.id === item.obra_id);
+        const obraNome = obra?.nome || item.local || "";
+        const localTxt = item.local_especifico ? `${obraNome}\n${item.local_especifico}` : obraNome;
+        drawCenteredText(localTxt, x, y, scaledWidths[8], ROW_H, 6);
+      }
       x += scaledWidths[8];
 
       // Realizado - centered
@@ -1174,7 +1208,17 @@ export default function InspecoesSE() {
                           <span className="break-words whitespace-pre-line">{item.referencia_normativa}</span>
                         </span>
                       )}
-                      {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
+                      {(() => {
+                        const obra = obras.find(o => o.id === item.obra_id);
+                        const obraNome = obra?.nome || (item.obra_id ? "Obra removida" : null);
+                        const partes: string[] = [];
+                        if (obraNome) partes.push(`Obra: ${obraNome}`);
+                        if (item.local_especifico) partes.push(`Local específico: ${item.local_especifico}`);
+                        else if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
+                        return partes.length > 0 ? (
+                          <span className="text-xs text-muted-foreground break-words">{partes.join(" • ")}</span>
+                        ) : null;
+                      })()}
                     </div>
 
                     {/* Situação detectada */}
@@ -1268,7 +1312,17 @@ export default function InspecoesSE() {
                 {/* Gravidade + Local */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <GravidadeBadge gravidade={item.gravidade} />
-                  {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
+                  {(() => {
+                    const obra = obras.find(o => o.id === item.obra_id);
+                    const obraNome = obra?.nome || (item.obra_id ? "Obra removida" : null);
+                    const partes: string[] = [];
+                    if (obraNome) partes.push(`Obra: ${obraNome}`);
+                    if (item.local_especifico) partes.push(item.local_especifico);
+                    else if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
+                    return partes.length > 0 ? (
+                      <span className="text-xs text-muted-foreground break-words">{partes.join(" • ")}</span>
+                    ) : null;
+                  })()}
                 </div>
 
                 {/* Photos */}
@@ -1333,11 +1387,52 @@ export default function InspecoesSE() {
                   <Input type="date" value={form.data_inspecao} onChange={e => { setForm(p => ({ ...p, data_inspecao: e.target.value })); setErrors(prev => ({ ...prev, data_inspecao: "" })); }} className={cn("min-h-[44px]", errors.data_inspecao && "border-destructive")} />
                   {errors.data_inspecao && <p className="text-xs text-destructive mt-1">{errors.data_inspecao}</p>}
                 </div>
-                <div data-error={!!errors.local}>
-                  <Label className="font-semibold">Local *</Label>
-                  <Input placeholder="Ex: SE Jardim de Piranhas" value={form.local} onChange={e => { setForm(p => ({ ...p, local: e.target.value })); setErrors(prev => ({ ...prev, local: "" })); }} className={cn("min-h-[44px]", errors.local && "border-destructive")} />
-                  {errors.local && <p className="text-xs text-destructive mt-1">{errors.local}</p>}
+                <div data-error={!!errors.obra_id}>
+                  <Label className="font-semibold">Obra *</Label>
+                  <Select
+                    value={form.obra_id || ""}
+                    onValueChange={v => { setForm(p => ({ ...p, obra_id: v })); setErrors(prev => ({ ...prev, obra_id: "" })); }}
+                  >
+                    <SelectTrigger className={cn("min-h-[44px]", errors.obra_id && "border-destructive")}>
+                      <SelectValue placeholder={obras.length === 0 ? "Nenhuma obra cadastrada" : "Selecione a obra"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {obras
+                        .filter(o => o.status === "ATIVA" || o.id === form.obra_id)
+                        .map(o => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.nome}{o.codigo ? ` (${o.codigo})` : ""}{o.status !== "ATIVA" ? ` — ${o.status}` : ""}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.obra_id && <p className="text-xs text-destructive mt-1">{errors.obra_id}</p>}
+                  {obras.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Cadastre uma obra em <strong>Inspeções → Cadastro de Obras</strong>.
+                    </p>
+                  )}
                 </div>
+              </div>
+              <div className="mt-3">
+                <Label className="font-semibold">Local específico</Label>
+                <Input
+                  list="local-especifico-sugestoes"
+                  placeholder="Ex: Quadro elétrico, Sala elétrica, Pátio da subestação, Canteiro de obra..."
+                  value={form.local_especifico}
+                  onChange={e => setForm(p => ({ ...p, local_especifico: e.target.value }))}
+                  className="min-h-[44px]"
+                />
+                <datalist id="local-especifico-sugestoes">
+                  <option value="Quadro elétrico" />
+                  <option value="Sala elétrica" />
+                  <option value="Pátio da subestação" />
+                  <option value="Canteiro de obra" />
+                  <option value="Almoxarifado" />
+                  <option value="Frente de serviço" />
+                  <option value="Área administrativa" />
+                </datalist>
+                <p className="text-xs text-muted-foreground mt-1">Opcional. Detalhe onde a não conformidade foi encontrada dentro da obra.</p>
               </div>
             </div>
 

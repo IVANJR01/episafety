@@ -28,6 +28,7 @@ import Privacidade from "@/pages/Privacidade";
 import DDS from "@/pages/DDS";
 import InspecoesSE from "@/pages/InspecoesSE";
 import InspecoesDashboard from "@/pages/InspecoesDashboard";
+import Obras from "@/pages/Obras";
 import Treinamentos from "@/pages/Treinamentos";
 
 import CadastroDashboard from "@/pages/CadastroDashboard";
@@ -258,6 +259,7 @@ function ProtectedRoute() {
         <Route path="/dds" element={<DDS />} />
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
+        <Route path="/inspecoes-se/obras" element={<Obras />} />
         <Route path="/treinamentos" element={<Treinamentos />} />
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
