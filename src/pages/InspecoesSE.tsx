@@ -286,6 +286,7 @@ export default function InspecoesSE() {
   }
 
   function buildPayload(foto_antes: string | null, foto_depois: string | null) {
+    const isSolucionado = form.status === "SOLUCIONADO";
     return {
       data_inspecao: form.data_inspecao,
       situacao_detectada: form.situacao_detectada,
@@ -293,7 +294,10 @@ export default function InspecoesSE() {
       acao_corretiva: form.acao_corretiva || null,
       responsavel: form.responsavel || null,
       local: form.local || null,
-      data_realizado: form.data_realizado || null,
+      prazo_correcao: form.prazo_correcao || null,
+      // data_realizado only when solucionado; on new/pending inspections stays null
+      data_realizado: isSolucionado ? (form.data_realizado || format(new Date(), "yyyy-MM-dd")) : null,
+      resolved_by: isSolucionado ? (user?.id || null) : null,
       status: form.status,
       foto_antes,
       foto_depois,
