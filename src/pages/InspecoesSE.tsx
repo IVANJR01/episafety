@@ -691,14 +691,23 @@ export default function InspecoesSE() {
     const filtered = getFilteredItems(dateRange);
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
     const placeholderDataUrl = generatePlaceholderDataUrl();
+    // Resolve path do Storage → signed URL antes de baixar como dataURL
+    const resolvePhotoSrc = async (path: string | null, legacy: string | null): Promise<string | null> => {
+      if (path) return await getInspecaoPhotoSignedUrl(path, 900);
+      return isValidPdfImageUrl(legacy) ? legacy : null;
+    };
     const photoPromises = filtered.map(async (item) => {
+      const [antesSrc, depoisSrc] = await Promise.all([
+        resolvePhotoSrc(item.foto_antes_path, item.foto_antes),
+        resolvePhotoSrc(item.foto_depois_path, item.foto_depois),
+      ]);
       const [antes, depois] = await Promise.all([
-        isValidPdfImageUrl(item.foto_antes) ? loadImageAsDataUrl(item.foto_antes) : Promise.resolve(null),
-        isValidPdfImageUrl(item.foto_depois) ? loadImageAsDataUrl(item.foto_depois) : Promise.resolve(null),
+        antesSrc ? loadImageAsDataUrl(antesSrc) : Promise.resolve(null),
+        depoisSrc ? loadImageAsDataUrl(depoisSrc) : Promise.resolve(null),
       ]);
       photoCache[item.id] = {
-        antes: isValidPdfImageUrl(item.foto_antes) ? (antes || placeholderDataUrl) : null,
-        depois: isValidPdfImageUrl(item.foto_depois) ? (depois || placeholderDataUrl) : null,
+        antes: antesSrc ? (antes || placeholderDataUrl) : null,
+        depois: depoisSrc ? (depois || placeholderDataUrl) : null,
       };
     });
     await Promise.allSettled(photoPromises);
