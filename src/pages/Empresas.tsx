@@ -57,19 +57,48 @@ export default function Empresas() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Selecione um arquivo de imagem", variant: "destructive" });
+    const ALLOWED = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"];
+    if (!ALLOWED.includes(file.type)) {
+      toast({ title: "Formato não suportado", description: "Use PNG, JPG, WEBP ou SVG.", variant: "destructive" });
+      return;
+    }
+    const MAX = 5 * 1024 * 1024;
+    if (file.size > MAX) {
+      toast({ title: "Arquivo muito grande", description: "Tamanho máximo: 5 MB.", variant: "destructive" });
+      return;
+    }
+    if (!empresaId || !existingId) {
+      toast({ title: "Empresa não identificada", variant: "destructive" });
       return;
     }
 
     setUploading(true);
     try {
-      const { uploadToDrive } = await import("@/lib/googleDriveStorage");
-      const result = await uploadToDrive(file, "logos", `logo-empresa-${empresaId}-${Date.now()}.${file.name.split(".").pop()}`);
-      const publicUrl = result.publicUrl;
+      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `${empresaId}/logo/logo_${Date.now()}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("company-logos")
+        .upload(path, file, { contentType: file.type, upsert: true, cacheControl: "3600" });
+
+      if (upErr) {
+        console.error("[logo upload] storage error:", { userId: (await supabase.auth.getUser()).data.user?.id, empresaId, path, file: { name: file.name, type: file.type, size: file.size }, error: upErr });
+        throw upErr;
+      }
+
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("company-logos")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr) throw signErr;
+
+      const publicUrl = signed.signedUrl;
       setLogoUrl(publicUrl);
 
-      if (existingId) {
+      const { error: updErr } = await (supabase.from as any)("empresa_config")
+        .update({ logo_url: publicUrl, logo_path: path })
+        .eq("id", existingId);
+      if (updErr) {
+        // fallback: se coluna logo_path não existir, salva só a URL
         await (supabase.from as any)("empresa_config")
           .update({ logo_url: publicUrl })
           .eq("id", existingId);
@@ -77,7 +106,8 @@ export default function Empresas() {
 
       toast({ title: "Logo enviada com sucesso!" });
     } catch (err: any) {
-      toast({ title: "Erro ao enviar logo", description: err.message, variant: "destructive" });
+      console.error("[logo upload] falhou:", err);
+      toast({ title: "Erro ao enviar logo", description: err.message ?? String(err), variant: "destructive" });
     }
     setUploading(false);
   };
