@@ -1050,29 +1050,25 @@ export default function AsoExames() {
               ) : funcionariosSemExame.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">✅ Todos os funcionários possuem exames cadastrados!</div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12 text-center">Nº</TableHead>
-                      <TableHead>Nome Completo</TableHead>
-                      <TableHead>CPF</TableHead>
-                      <TableHead>Matrícula</TableHead>
-                      <TableHead>Função</TableHead>
-                      <TableHead>Setor</TableHead>
-                      <TableHead className="w-32 text-center">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Mobile cards */}
+                  <div className="md:hidden p-3 space-y-3">
                     {funcionariosSemExame.map((f, idx) => (
-                      <TableRow key={f.id}>
-                        <TableCell className="text-center font-medium text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">{f.nome}</TableCell>
-                        <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
-                        <TableCell className="text-xs">{f.matricula || "—"}</TableCell>
-                        <TableCell>{f.cargo || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
-                        <TableCell className="text-center">
-                          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => {
+                      <Card key={f.id} className="border">
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs text-muted-foreground">#{idx + 1}</div>
+                              <div className="font-semibold text-sm truncate">{f.nome}</div>
+                              <div className="text-xs text-muted-foreground truncate">{f.cargo || "—"} · {f.setor || "—"}</div>
+                            </div>
+                            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">Sem exame</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
+                            <div><div className="text-[10px] uppercase text-muted-foreground">CPF</div><div className="font-mono">{f.cpf || "—"}</div></div>
+                            <div><div className="text-[10px] uppercase text-muted-foreground">Matrícula</div><div>{f.matricula || "—"}</div></div>
+                          </div>
+                          <Button size="sm" variant="outline" className="w-full h-11" onClick={() => {
                             setEditing(null);
                             setForm({ funcionario_id: f.id, tipo: "periodico", nome_exame: "", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
                             setFuncSearch(f.nome);
@@ -1080,13 +1076,54 @@ export default function AsoExames() {
                             setShowAddMedico(false);
                             setOpen(true);
                           }}>
-                            <Plus className="w-3 h-3" />Adicionar
+                            <Plus className="w-4 h-4 mr-1" /> Adicionar exame
                           </Button>
-                        </TableCell>
-                      </TableRow>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12 text-center">Nº</TableHead>
+                          <TableHead>Nome Completo</TableHead>
+                          <TableHead>CPF</TableHead>
+                          <TableHead>Matrícula</TableHead>
+                          <TableHead>Função</TableHead>
+                          <TableHead>Setor</TableHead>
+                          <TableHead className="w-32 text-center">Ação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {funcionariosSemExame.map((f, idx) => (
+                          <TableRow key={f.id}>
+                            <TableCell className="text-center font-medium text-muted-foreground">{idx + 1}</TableCell>
+                            <TableCell className="font-medium">{f.nome}</TableCell>
+                            <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
+                            <TableCell className="text-xs">{f.matricula || "—"}</TableCell>
+                            <TableCell>{f.cargo || "—"}</TableCell>
+                            <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
+                            <TableCell className="text-center">
+                              <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => {
+                                setEditing(null);
+                                setForm({ funcionario_id: f.id, tipo: "periodico", nome_exame: "", data: new Date().toISOString().split("T")[0], data_vencimento: calcularVencimento("periodico", new Date().toISOString().split("T")[0]), resultado: "pendente", medico: "", observacao: "" });
+                                setFuncSearch(f.nome);
+                                setMedicoSearch("");
+                                setShowAddMedico(false);
+                                setOpen(true);
+                              }}>
+                                <Plus className="w-3 h-3" />Adicionar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
