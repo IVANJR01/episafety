@@ -23,6 +23,10 @@ import * as XLSX from "xlsx-js-style";
 import CadastroCursos from "@/components/CadastroCursos";
 import BulkDocumentUpload from "@/components/BulkDocumentUpload";
 import CadastroFuncaoRequisitos from "@/components/CadastroFuncaoRequisitos";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 interface ControleTreinamento {
   id: string;
