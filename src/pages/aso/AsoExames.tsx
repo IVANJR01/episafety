@@ -14,6 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { differenceInDays, format, parseISO, addMonths } from "date-fns";
 import * as XLSX from "xlsx-js-style";
@@ -580,21 +584,20 @@ export default function AsoExames() {
 
   return (
     <div className="space-y-6">
-      {/* Header simplificado para tab */}
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight">Matriz de Exames</h2>
-          <p className="text-xs text-muted-foreground">Acompanhamento de exames ocupacionais do PCMSO.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="hidden md:flex border-primary/30 hover:bg-primary/10" onClick={handleExportExcel}>
-            <Download className="w-4 h-4 mr-2" />Exportar
-          </Button>
-          <Button size="sm" onClick={openNew} className="bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />Novo Exame
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Exames"
+        subtitle="Controle de ASOs, exames ocupacionais, vencimentos e renovações."
+        actions={
+          <>
+            <Button variant="outline" size="sm" className="hidden md:flex border-primary/30 hover:bg-primary/10" onClick={handleExportExcel}>
+              <Download className="w-4 h-4 mr-2" />Exportar
+            </Button>
+            <Button size="sm" onClick={openNew} className="bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />Novo Exame
+            </Button>
+          </>
+        }
+      />
 
       {/* Indicadores */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-7">
@@ -730,21 +733,36 @@ export default function AsoExames() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-3"><ListSkeleton rows={5} /></div>
               ) : (
                 <>
                   {/* Mobile cards */}
                   <div className="md:hidden p-3 space-y-3">
                     {filtered.length === 0 ? (
-                      <div className="text-center text-muted-foreground py-8 text-sm">Nenhum exame cadastrado</div>
+                      <EmptyState
+                        bare
+                        icon={Stethoscope}
+                        title={search || statusFilter !== "todos" || setorFilter ? "Nenhum resultado encontrado" : "Nenhum exame registrado"}
+                        description={search || statusFilter !== "todos" || setorFilter
+                          ? "Ajuste os filtros ou a busca para ver mais resultados."
+                          : "Cadastre o primeiro exame ocupacional para acompanhar vencimentos e renovações."}
+                        action={!(search || statusFilter !== "todos" || setorFilter) ? (
+                          <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Exame</Button>
+                        ) : undefined}
+                      />
                     ) : filtered.map((e, index) => {
                       const func = funcMap[e.funcionario_id];
                       const status = getStatus(e.data_vencimento);
-                      const statusCls =
-                        e.resultado === "pendente" ? "bg-warning/10 text-warning border-warning/30" :
-                        status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/30" :
-                        status.key === "atencao" ? "bg-warning/10 text-warning border-warning/30" :
-                        "bg-success/10 text-success border-success/30";
+                      const tone: StatusTone =
+                        e.resultado === "pendente" ? "pending" :
+                        status.key === "vencido" ? "danger" :
+                        status.key === "atencao" ? "warning" :
+                        "success";
+                      const toneLabel =
+                        e.resultado === "pendente" ? "Pendente" :
+                        status.key === "vencido" ? "Vencido" :
+                        status.key === "atencao" ? "A vencer" :
+                        "Vigente";
                       return (
                         <Card key={e.id} className="border">
                           <CardContent className="p-3 space-y-2">
@@ -754,9 +772,7 @@ export default function AsoExames() {
                                 <div className="font-semibold text-sm truncate">{func?.nome || "—"}</div>
                                 <div className="text-xs text-muted-foreground truncate">{func?.cargo || "—"} · {func?.setor || "—"}</div>
                               </div>
-                              <Badge variant="outline" className={statusCls}>
-                                {e.resultado === "pendente" ? "Pendente" : status.key === "vencido" ? "Vencido" : status.key === "atencao" ? "A vencer" : "Vigente"}
-                              </Badge>
+                              <StatusBadge tone={tone}>{toneLabel}</StatusBadge>
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
                               <div>
@@ -823,7 +839,19 @@ export default function AsoExames() {
                       </TableHeader>
                       <TableBody>
                         {filtered.length === 0 ? (
-                          <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={12} className="py-4">
+                            <EmptyState
+                              bare
+                              icon={Stethoscope}
+                              title={search || statusFilter !== "todos" || setorFilter ? "Nenhum resultado encontrado" : "Nenhum exame registrado"}
+                              description={search || statusFilter !== "todos" || setorFilter
+                                ? "Ajuste os filtros ou a busca para ver mais resultados."
+                                : "Cadastre o primeiro exame ocupacional para acompanhar vencimentos e renovações."}
+                              action={!(search || statusFilter !== "todos" || setorFilter) ? (
+                                <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Exame</Button>
+                              ) : undefined}
+                            />
+                          </TableCell></TableRow>
                         ) : filtered.map((e, index) => {
                           const func = funcMap[e.funcionario_id];
                           const status = getStatus(e.data_vencimento);
@@ -847,16 +875,19 @@ export default function AsoExames() {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <Badge
-                                  variant={status.variant}
-                                  className={
-                                    status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                                    status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
-                                    "bg-success/10 text-success border-success/20"
-                                  }
-                                >
-                                  {status.label}
-                                </Badge>
+                                {(() => {
+                                  const tone: StatusTone =
+                                    e.resultado === "pendente" ? "pending" :
+                                    status.key === "vencido" ? "danger" :
+                                    status.key === "atencao" ? "warning" :
+                                    "success";
+                                  const label =
+                                    e.resultado === "pendente" ? "Pendente" :
+                                    status.key === "vencido" ? "Vencido" :
+                                    status.key === "atencao" ? "A vencer" :
+                                    "Vigente";
+                                  return <StatusBadge tone={tone}>{label}</StatusBadge>;
+                                })()}
                               </TableCell>
                               <TableCell className="text-xs">{e.medico || "—"}</TableCell>
                               <TableCell>
@@ -882,9 +913,15 @@ export default function AsoExames() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-3"><ListSkeleton rows={5} /></div>
               ) : matrixData.tipos.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</div>
+                <EmptyState
+                  bare
+                  icon={Stethoscope}
+                  title="Nenhum exame registrado"
+                  description="Cadastre o primeiro exame ocupacional para acompanhar vencimentos e renovações."
+                  action={<Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Exame</Button>}
+                />
               ) : (
                 <>
                   {/* Mobile cards */}
@@ -1046,9 +1083,9 @@ export default function AsoExames() {
                 </div>
               )}
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-3"><ListSkeleton rows={4} /></div>
               ) : funcionariosSemExame.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">✅ Todos os funcionários possuem exames cadastrados!</div>
+                <EmptyState bare icon={CheckCircle} title="Tudo em dia" description="Todos os funcionários possuem exames cadastrados." />
               ) : (
                 <>
                   {/* Mobile cards */}
@@ -1062,7 +1099,7 @@ export default function AsoExames() {
                               <div className="font-semibold text-sm truncate">{f.nome}</div>
                               <div className="text-xs text-muted-foreground truncate">{f.cargo || "—"} · {f.setor || "—"}</div>
                             </div>
-                            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">Sem exame</Badge>
+                            <StatusBadge tone="danger">Sem exame</StatusBadge>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t">
                             <div><div className="text-[10px] uppercase text-muted-foreground">CPF</div><div className="font-mono">{f.cpf || "—"}</div></div>
