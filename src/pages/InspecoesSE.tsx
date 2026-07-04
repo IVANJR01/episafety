@@ -1172,7 +1172,7 @@ export default function InspecoesSE() {
                           title={item.referencia_normativa}
                         >
                           <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span className="break-words">{item.referencia_normativa}</span>
+                          <span className="break-words whitespace-pre-line">{item.referencia_normativa}</span>
                         </span>
                       )}
                       {item.local && <span className="text-xs text-muted-foreground">📍 {item.local}</span>}
