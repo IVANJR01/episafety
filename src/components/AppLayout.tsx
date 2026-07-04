@@ -424,7 +424,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão Documental SST</span>
+                <span className="truncate flex-1 text-left">Gestão Documental</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
               </button>
               {gestaoDocOpen && (
