@@ -886,71 +886,132 @@ export default function AsoExames() {
               ) : matrixData.tipos.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">Nenhum exame cadastrado</div>
               ) : (
-                <div className="overflow-auto max-h-[70vh]">
-                  <table className="w-full text-xs border-collapse">
-                    <thead className="sticky top-0 z-10">
-                      <tr className="bg-primary text-primary-foreground">
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-0 bg-primary z-20 min-w-[40px]">Nº</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-20 min-w-[180px]">COLABORADOR</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
-                        <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
-                        {matrixData.tipos.map(nome => (
-                          <th key={nome} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
-                            {nome}
-                          </th>
-                        ))}
-                      </tr>
-                      <tr className="bg-primary/80 text-primary-foreground">
-                        {matrixData.tipos.flatMap(tipo => [
-                          <th key={`${tipo}-data`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[90px]">DATA EXAME</th>,
-                          <th key={`${tipo}-ven`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[100px]">VENCIMENTO</th>,
-                          <th key={`${tipo}-st`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[80px]">STATUS</th>,
-                        ])}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {matrixData.rows.map((row, idx) => {
-                        const rowBg = idx % 2 === 0 ? "bg-background" : "bg-muted";
-                        return (
-                        <tr key={row.func.id} className={rowBg}>
-                          <td className={`border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 ${rowBg} z-10`}>{idx + 1}</td>
-                          <td className={`border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] ${rowBg} z-10 whitespace-nowrap`}>{row.func.nome}</td>
-                          <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
-                          <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
-                          {matrixData.tipos.flatMap(tipo => {
-                            const td = row.tipoData[tipo];
-                            if (!td) {
-                              return [
-                                <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
-                                <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
-                                <td key={`${row.func.id}-${tipo}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
-                              ];
-                            }
-                            const statusBg = td.status.key === "vencido"
-                              ? "bg-destructive text-destructive-foreground font-bold"
-                              : td.status.key === "atencao"
-                              ? "bg-warning text-warning-foreground font-bold"
-                              : "bg-success text-success-foreground font-bold";
-                            return [
-                              <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {formatDateSafe(td.data)}
-                              </td>,
-                              <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
-                                {formatDateSafe(td.vencimento)}
-                              </td>,
-                              <td key={`${row.func.id}-${tipo}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${td.resultado === "pendente" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : statusBg}`}>
-                                {td.resultado === "pendente" ? "Pendente" : td.status.key === "vencido" ? "Vencido" : td.status.key === "atencao" ? "Atenção" : "Válido"}
-                              </td>,
-                            ];
-                          })}
+                <>
+                  {/* Mobile cards */}
+                  <div className="md:hidden p-3 space-y-3">
+                    {matrixData.rows.map((row, idx) => {
+                      const tiposComDados = matrixData.tipos.filter(t => row.tipoData[t]);
+                      const vencidos = tiposComDados.filter(t => row.tipoData[t]!.status.key === "vencido").length;
+                      const atencao = tiposComDados.filter(t => row.tipoData[t]!.status.key === "atencao").length;
+                      const pendentes = tiposComDados.filter(t => row.tipoData[t]!.resultado === "pendente").length;
+                      const geral = vencidos > 0 ? { l: "Vencido", cls: "bg-destructive/10 text-destructive border-destructive/30" }
+                        : pendentes > 0 ? { l: "Pendente", cls: "bg-warning/10 text-warning border-warning/30" }
+                        : atencao > 0 ? { l: "A vencer", cls: "bg-warning/10 text-warning border-warning/30" }
+                        : { l: "Vigente", cls: "bg-success/10 text-success border-success/30" };
+                      return (
+                        <details key={row.func.id} className="border rounded-lg bg-card">
+                          <summary className="p-3 cursor-pointer list-none flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs text-muted-foreground">#{idx + 1}</div>
+                              <div className="font-semibold text-sm truncate">{row.func.nome}</div>
+                              <div className="text-xs text-muted-foreground truncate">{row.func.cargo || "—"} · {row.func.setor || "—"}</div>
+                              <div className="text-[11px] text-muted-foreground mt-1">
+                                {tiposComDados.length}/{matrixData.tipos.length} exames
+                                {vencidos > 0 && ` · ${vencidos} vencido(s)`}
+                                {pendentes > 0 && ` · ${pendentes} pendente(s)`}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={geral.cls}>{geral.l}</Badge>
+                          </summary>
+                          <div className="border-t p-3 space-y-2">
+                            {matrixData.tipos.map(tipo => {
+                              const td = row.tipoData[tipo];
+                              const stCls = !td ? "bg-muted text-muted-foreground border-border"
+                                : td.resultado === "pendente" ? "bg-warning/10 text-warning border-warning/30"
+                                : td.status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/30"
+                                : td.status.key === "atencao" ? "bg-warning/10 text-warning border-warning/30"
+                                : "bg-success/10 text-success border-success/30";
+                              const stLabel = !td ? "Sem exame"
+                                : td.resultado === "pendente" ? "Pendente"
+                                : td.status.key === "vencido" ? "Vencido"
+                                : td.status.key === "atencao" ? "Atenção" : "Válido";
+                              return (
+                                <div key={tipo} className="flex items-start justify-between gap-2 text-xs border-b last:border-0 pb-2 last:pb-0">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium truncate">{tipo}</div>
+                                    {td && (
+                                      <div className="text-[11px] text-muted-foreground font-mono">
+                                        {formatDateSafe(td.data)} → {formatDateSafe(td.vencimento)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Badge variant="outline" className={stCls}>{stLabel}</Badge>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
+
+                  {/* Desktop matrix */}
+                  <div className="hidden md:block overflow-auto max-h-[70vh]">
+                    <table className="w-full text-xs border-collapse">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="bg-primary text-primary-foreground">
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-0 bg-primary z-20 min-w-[40px]">Nº</th>
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold sticky left-[40px] bg-primary z-20 min-w-[180px]">COLABORADOR</th>
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[100px]">CPF</th>
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">FUNÇÃO</th>
+                          <th rowSpan={2} className="border border-border/30 px-2 py-2 text-left font-bold min-w-[120px]">SETOR</th>
+                          {matrixData.tipos.map(nome => (
+                            <th key={nome} colSpan={3} className="border border-border/30 px-2 py-2 text-center font-bold min-w-[280px] bg-primary/90">
+                              {nome}
+                            </th>
+                          ))}
                         </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                        <tr className="bg-primary/80 text-primary-foreground">
+                          {matrixData.tipos.flatMap(tipo => [
+                            <th key={`${tipo}-data`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[90px]">DATA EXAME</th>,
+                            <th key={`${tipo}-ven`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[100px]">VENCIMENTO</th>,
+                            <th key={`${tipo}-st`} className="border border-border/30 px-1 py-1.5 text-center font-medium min-w-[80px]">STATUS</th>,
+                          ])}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {matrixData.rows.map((row, idx) => {
+                          const rowBg = idx % 2 === 0 ? "bg-background" : "bg-muted";
+                          return (
+                          <tr key={row.func.id} className={rowBg}>
+                            <td className={`border border-border/30 px-2 py-1.5 text-center font-mono sticky left-0 ${rowBg} z-10`}>{idx + 1}</td>
+                            <td className={`border border-border/30 px-2 py-1.5 font-medium sticky left-[40px] ${rowBg} z-10 whitespace-nowrap`}>{row.func.nome}</td>
+                            <td className="border border-border/30 px-2 py-1.5 font-mono">{row.func.cpf || "—"}</td>
+                            <td className="border border-border/30 px-2 py-1.5">{row.func.cargo || "—"}</td>
+                            <td className="border border-border/30 px-2 py-1.5 text-muted-foreground">{row.func.setor || "—"}</td>
+                            {matrixData.tipos.flatMap(tipo => {
+                              const td = row.tipoData[tipo];
+                              if (!td) {
+                                return [
+                                  <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                  <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                  <td key={`${row.func.id}-${tipo}-s`} className="border border-border/30 px-1 py-1.5 text-center text-muted-foreground">—</td>,
+                                ];
+                              }
+                              const statusBg = td.status.key === "vencido"
+                                ? "bg-destructive text-destructive-foreground font-bold"
+                                : td.status.key === "atencao"
+                                ? "bg-warning text-warning-foreground font-bold"
+                                : "bg-success text-success-foreground font-bold";
+                              return [
+                                <td key={`${row.func.id}-${tipo}-d`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                                  {formatDateSafe(td.data)}
+                                </td>,
+                                <td key={`${row.func.id}-${tipo}-v`} className="border border-border/30 px-1 py-1.5 text-center font-mono">
+                                  {formatDateSafe(td.vencimento)}
+                                </td>,
+                                <td key={`${row.func.id}-${tipo}-s`} className={`border border-border/30 px-1 py-1.5 text-center text-[10px] ${td.resultado === "pendente" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" : statusBg}`}>
+                                  {td.resultado === "pendente" ? "Pendente" : td.status.key === "vencido" ? "Vencido" : td.status.key === "atencao" ? "Atenção" : "Válido"}
+                                </td>,
+                              ];
+                            })}
+                          </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
