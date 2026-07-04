@@ -1162,10 +1162,10 @@ export default function InspecoesSE() {
                   <div className="flex-shrink-0 flex flex-col items-center gap-2">
                     <span className="text-lg font-bold text-muted-foreground w-8 text-center">{idx + 1}</span>
                     <div className="flex gap-2">
-                      {item.foto_antes ? (
+                      {(item.foto_antes_path || item.foto_antes) ? (
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground font-semibold mb-1">ANTES</p>
-                          <DriveImage src={item.foto_antes} alt="Antes" className="w-28 h-20 object-cover rounded-md border" thumbnail />
+                          <InspecaoImage path={item.foto_antes_path} legacyUrl={item.foto_antes} alt="Antes" className="w-28 h-20 object-cover rounded-md border" thumbnail />
                         </div>
                       ) : (
                         <div className="text-center">
@@ -1175,10 +1175,10 @@ export default function InspecoesSE() {
                           </div>
                         </div>
                       )}
-                      {item.foto_depois ? (
+                      {(item.foto_depois_path || item.foto_depois) ? (
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground font-semibold mb-1">DEPOIS</p>
-                          <DriveImage src={item.foto_depois} alt="Depois" className="w-28 h-20 object-cover rounded-md border" thumbnail />
+                          <InspecaoImage path={item.foto_depois_path} legacyUrl={item.foto_depois} alt="Depois" className="w-28 h-20 object-cover rounded-md border" thumbnail />
                         </div>
                       ) : (
                         <div className="text-center">
