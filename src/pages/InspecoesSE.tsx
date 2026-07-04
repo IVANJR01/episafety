@@ -194,6 +194,18 @@ export default function InspecoesSE() {
     void loadData();
   }, [loadData]);
 
+  // Carrega obras da empresa (apenas ATIVAS por padrão, mas incluímos concluídas caso a inspeção antiga referencie)
+  useEffect(() => {
+    if (!empresaId) { setObras([]); return; }
+    (async () => {
+      const { data } = await (supabase.from as any)("obras")
+        .select("id,nome,codigo,status")
+        .eq("empresa_id", empresaId)
+        .order("nome", { ascending: true });
+      setObras((data || []) as ObraOption[]);
+    })();
+  }, [empresaId]);
+
   useEffect(() => {
     const handleOnline = () => {
       void loadData();
