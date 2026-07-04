@@ -58,7 +58,7 @@ interface EpiItem { epi: EPI; quantidade: number; }
 interface Unidade { id: string; nome: string; tipo: string; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
-const tipoBadge: Record<string, "default" | "secondary" | "outline" | "destructive"> = { entrega: "default", substituicao: "secondary", perda: "destructive", dano: "outline" };
+
 const devolucaoDestinos = [
   { value: "estoque", label: "Retornar ao estoque" },
   { value: "descarte", label: "Descarte / Avaria" },
