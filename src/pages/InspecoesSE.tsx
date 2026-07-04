@@ -226,6 +226,8 @@ export default function InspecoesSE() {
     });
     setExistingFotoAntes(item.foto_antes);
     setExistingFotoDepois(item.foto_depois);
+    setExistingFotoAntesPath(item.foto_antes_path || null);
+    setExistingFotoDepoisPath(item.foto_depois_path || null);
     setFotoAntesFile(null);
     setFotoAntesPreview(null);
     setFotoDepoisFile(null);
@@ -240,6 +242,8 @@ export default function InspecoesSE() {
     setFotoDepoisPreview(null);
     setExistingFotoAntes(null);
     setExistingFotoDepois(null);
+    setExistingFotoAntesPath(null);
+    setExistingFotoDepoisPath(null);
   }
 
   async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
