@@ -1083,9 +1083,9 @@ export default function AsoExames() {
                 </div>
               )}
               {loading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>
+                <div className="p-3"><ListSkeleton rows={4} /></div>
               ) : funcionariosSemExame.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">✅ Todos os funcionários possuem exames cadastrados!</div>
+                <EmptyState bare icon={CheckCircle} title="Tudo em dia" description="Todos os funcionários possuem exames cadastrados." />
               ) : (
                 <>
                   {/* Mobile cards */}
