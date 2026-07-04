@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Brain, Infinity, Briefcase, Ban, Settings2, Maximize2, Minimize2, Building2, FilterX } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, AlertTriangle, CheckCircle, Clock, Download, TrendingUp, FileWarning, Check, ChevronsUpDown, X, LayoutGrid, List, BookOpen, Upload, Infinity, Briefcase, Ban, Settings2, Maximize2, Minimize2, Building2, FilterX } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,9 +22,7 @@ import { differenceInDays, format, parseISO } from "date-fns";
 import * as XLSX from "xlsx-js-style";
 import CadastroCursos from "@/components/CadastroCursos";
 import BulkDocumentUpload from "@/components/BulkDocumentUpload";
-import AIDocumentValidator from "@/components/AIDocumentValidator";
 import CadastroFuncaoRequisitos from "@/components/CadastroFuncaoRequisitos";
-import NRChatbot from "@/components/NRChatbot";
 
 interface ControleTreinamento {
   id: string;
@@ -907,8 +905,8 @@ export default function Treinamentos() {
               <GraduationCap className="w-7 h-7" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Documentos</h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Acompanhamento de Documentação</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Controle de Capacitações</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">Gestão de cursos, certificados, listas de presença e vencimentos.</p>
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -1077,12 +1075,11 @@ export default function Treinamentos() {
 
       <Tabs defaultValue="lista" className="w-full">
         <TabsList className="mb-3">
-          <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Lista</TabsTrigger>
-          <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz</TabsTrigger>
+          <TabsTrigger value="lista" className="gap-1.5"><List className="w-4 h-4" />Registros</TabsTrigger>
+          <TabsTrigger value="matriz" className="gap-1.5"><LayoutGrid className="w-4 h-4" />Matriz de Capacitação</TabsTrigger>
           
           <TabsTrigger value="requisitos" className="gap-1.5"><Briefcase className="w-4 h-4" />Requisitos por Função</TabsTrigger>
-          <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Documentação</TabsTrigger>
-          <TabsTrigger value="ia" className="gap-1.5"><Brain className="w-4 h-4" />Validação IA <Badge variant="outline" className="text-[8px] ml-1 px-1 py-0 border-amber-400 text-amber-600">Beta</Badge></TabsTrigger>
+          <TabsTrigger value="cadastro" className="gap-1.5"><BookOpen className="w-4 h-4" />Cursos e Evidências</TabsTrigger>
         </TabsList>
 
         {/* === ABA LISTA === */}
@@ -1099,11 +1096,11 @@ export default function Treinamentos() {
                       <TableHead>Nome Completo</TableHead>
                       <TableHead>Função</TableHead>
                       <TableHead>Setor</TableHead>
-                      <TableHead>Nome do Curso</TableHead>
+                      <TableHead>Capacitação / Curso</TableHead>
                       <TableHead>Data Realização</TableHead>
                       <TableHead>Renovação</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Doc. Protocolada</TableHead>
+                      <TableHead>Documento / Evidência</TableHead>
                       <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1351,31 +1348,8 @@ export default function Treinamentos() {
 
 
         {/* === ABA VALIDAÇÃO IA === */}
-        <TabsContent value="ia">
-          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <p className="text-sm text-amber-800 dark:text-amber-300">
-              <strong>Em fase de teste.</strong> Este módulo utiliza inteligência artificial para validar documentos automaticamente. Os resultados devem ser conferidos manualmente.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <AIDocumentValidator
-                  funcionarios={funcionarios}
-                  cursos={CURSOS_SUGERIDOS}
-                  empresaId={empresaId}
-                  onComplete={fetchData}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-0">
-                <NRChatbot embedded />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+
+
 
         {/* === ABA REQUISITOS POR FUNÇÃO === */}
         <TabsContent value="requisitos">
