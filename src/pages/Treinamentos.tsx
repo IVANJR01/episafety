@@ -1118,17 +1118,16 @@ export default function Treinamentos() {
                           <TableCell className="font-mono text-xs">{format(parseISO(t.data_realizacao), "dd/MM/yyyy")}</TableCell>
                           <TableCell className="font-mono text-xs">{isPermanentDate(t.data_renovacao) ? "Vitalício / Permanente" : t.data_renovacao ? format(parseISO(t.data_renovacao), "dd/MM/yyyy") : "—"}</TableCell>
                           <TableCell>
-                            <Badge
-                              variant={status.variant}
-                              className={
-                                status.key === "permanente" ? "bg-blue-500/10 text-blue-600 border-blue-300" :
-                                status.key === "vencido" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                                status.key === "atencao" ? "bg-warning/10 text-warning border-warning/20" :
-                                "bg-success/10 text-success border-success/20"
+                            <StatusBadge
+                              tone={
+                                status.key === "permanente" ? "info" :
+                                status.key === "vencido" ? "danger" :
+                                status.key === "atencao" ? "warning" :
+                                "success"
                               }
                             >
                               {status.label}
-                            </Badge>
+                            </StatusBadge>
                           </TableCell>
                           <TableCell>
                             {t.documento_pendente ? (
