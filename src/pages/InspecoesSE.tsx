@@ -1470,14 +1470,18 @@ export default function InspecoesSE() {
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
                   <input ref={depoisGalleryRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0], "depois"); e.target.value = ""; }} />
-                  {(fotoDepoisPreview || existingFotoDepois) ? (
+                  {(fotoDepoisPreview || existingFotoDepois || existingFotoDepoisPath) ? (
                     <div className="relative mt-1">
-                      <DriveImage src={fotoDepoisPreview || existingFotoDepois!} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      {fotoDepoisPreview ? (
+                        <img src={fotoDepoisPreview} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      ) : (
+                        <InspecaoImage path={existingFotoDepoisPath} legacyUrl={existingFotoDepois} alt="Depois" className="w-full h-48 object-contain bg-muted/30 rounded-md" />
+                      )}
                       <button
                         type="button"
                         aria-label="Remover foto depois"
                         className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1"
-                        onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); }}
+                        onClick={() => { setFotoDepoisFile(null); setFotoDepoisPreview(null); setExistingFotoDepois(null); setExistingFotoDepoisPath(null); }}
                       >
                         <X className="w-4 h-4" />
                       </button>
