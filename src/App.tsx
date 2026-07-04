@@ -288,6 +288,16 @@ function ProtectedRoute() {
         <Route path="/ltcat/:id/editar" element={<LtcatNovo />} />
         <Route path="/ltcat/validar/:id" element={<LtcatValidar />} />
 
+        {/* Módulo Programas — landing + reuso de rotas existentes + stubs */}
+        <Route path="/programas" element={<ProgramasHome />} />
+        <Route path="/programas/pgr" element={<Navigate to="/pgr" replace />} />
+        <Route path="/programas/pcmso" element={<Navigate to="/aso" replace />} />
+        <Route path="/programas/ltcat" element={<Navigate to="/ltcat" replace />} />
+        <Route path="/programas/ordem-servico" element={<OrdemServico />} />
+        <Route path="/programas/laudo-insalubridade" element={<LaudoInsalubridade />} />
+        <Route path="/programas/laudo-periculosidade" element={<LaudoPericulosidade />} />
+
+
         <Route path="/ppp" element={<PppModule />} />
         <Route path="/ppp/dashboard" element={<PppDashboard />} />
         <Route path="/ppp/novo" element={<PppNovo />} />
