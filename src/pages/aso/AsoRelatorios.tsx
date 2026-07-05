@@ -159,10 +159,9 @@ export default function AsoRelatorios() {
             </Select>
           </div>
           <div><Label>Empresa</Label>
-            <Select value={empresaSel} onValueChange={setEmpresaSel}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select value={empresaId || ""} disabled>
+              <SelectTrigger><SelectValue placeholder="Empresa ativa" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
                 {empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
               </SelectContent>
             </Select>
