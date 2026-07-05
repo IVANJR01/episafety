@@ -26,7 +26,7 @@ const TIPO_EXAME_FLAGS = [
 ];
 
 export default function PcmsoGhe() {
-  const { empresaId, empresaScopeIds } = useAuth();
+  const { empresaId } = useAuth();
   const qc = useQueryClient();
   const [openGhe, setOpenGhe] = useState<any | null>(null);
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
@@ -35,27 +35,23 @@ export default function PcmsoGhe() {
   useEffect(() => { setEmpresaSel(empresaId || ""); }, [empresaId]);
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["pcmso-empresas", (empresaScopeIds || []).join(",")],
+    queryKey: ["pcmso-empresas", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      const ids = (empresaScopeIds || []);
-      if (ids.length > 0) {
-        q = q.in("id", ids);
-      }
-      const { data, error } = await q;
+      const { data, error } = await supabase.from("empresa_config").select("id, nome").eq("id", empresaId!).order("nome");
       if (error) throw error;
       return data || [];
     },
   });
 
   const { data: ghes = [], isLoading } = useQuery({
-    queryKey: ["ghe-list", empresaSel],
-    enabled: !!empresaSel,
+    queryKey: ["ghe-list", empresaSel, empresaId],
+    enabled: !!empresaSel && !!empresaId && empresaSel === empresaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ghe_ges")
         .select("*, ghe_funcoes(count), ghe_riscos(count), ghe_exames(count)")
-        .eq("empresa_id", empresaSel)
+        .eq("empresa_id", empresaId!)
         .order("codigo");
       if (error) throw error;
       const ids = (data || []).map((g: any) => g.id);
@@ -64,12 +60,9 @@ export default function PcmsoGhe() {
         const { data: fs } = await supabase.from("funcionarios").select("ghe_id").in("ghe_id", ids);
         (fs || []).forEach((f: any) => { counts[f.ghe_id] = (counts[f.ghe_id] || 0) + 1; });
       }
-      const rows = data || [];
-      const filtered = (empresaScopeIds && empresaScopeIds.length > 0)
-        ? rows.filter((r: any) => empresaScopeIds.includes(r.empresa_id))
-        : rows;
+      const rows = (data || []).filter((r: any) => r.empresa_id === empresaId);
 
-      return filtered.map((g: any) => ({
+      return rows.map((g: any) => ({
         ...g,
         nFuncoes: g.ghe_funcoes?.[0]?.count || 0,
         nRiscos: g.ghe_riscos?.[0]?.count || 0,

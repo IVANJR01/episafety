@@ -30,55 +30,46 @@ const TIPO: Record<string, string> = {
 };
 
 export default function AsoRelatorios() {
-  const { empresaScopeIds, empresaId } = useAuth();
+  const { empresaId } = useAuth();
   const [tipoRel, setTipoRel] = useState("emitidos");
   const [from, setFrom] = useState(format(new Date(Date.now() - 90 * 86400000), "yyyy-MM-dd"));
   const [to, setTo] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "all");
-  useEffect(() => { setEmpresaSel(empresaId || "all"); }, [empresaId]);
-
-  const scopeKey = (empresaScopeIds || []).join(",");
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-rel-empresas", scopeKey],
+    queryKey: ["aso-rel-empresas", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      const ids = (empresaScopeIds || []);
-      if (ids.length > 0) q = q.in("id", ids);
-      return (await q).data || [];
+      const { data } = await supabase.from("empresa_config").select("id, nome").eq("id", empresaId!).order("nome");
+      return data || [];
     },
   });
 
   const { data: asos = [] } = useQuery({
-    queryKey: ["aso-rel-data", scopeKey],
+    queryKey: ["aso-rel-data", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("asos").select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), empresa_config:empresa_id (nome)`);
-      const ids = (empresaScopeIds || []);
-      if (ids.length > 0) q = q.in("empresa_id", ids);
-      return (await q).data || [];
+      const { data } = await supabase.from("asos")
+        .select(`*, funcionarios:funcionario_id (nome, cpf, cargo, setor), empresa_config:empresa_id (nome)`)
+        .eq("empresa_id", empresaId!);
+      return data || [];
     },
   });
 
   const { data: funcs = [] } = useQuery({
-    queryKey: ["aso-rel-funcs", scopeKey],
+    queryKey: ["aso-rel-funcs", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, empresa_id, ativo, empresa_config:empresa_id (nome)");
-      const ids = (empresaScopeIds || []);
-      if (ids.length > 0) q = q.in("empresa_id", ids);
-      return (await q).data || [];
+      const { data } = await supabase.from("funcionarios")
+        .select("id, nome, cpf, cargo, setor, empresa_id, ativo, empresa_config:empresa_id (nome)")
+        .eq("empresa_id", empresaId!);
+      return data || [];
     },
   });
 
   const dados = useMemo(() => {
-    // FILTRO EXTRA DE SEGURANÇA NO FRONTEND
-    const empScope = (a: any) => {
-      if (empresaSel !== "all" && a.empresa_id !== empresaSel) return false;
-      if (empresaScopeIds && empresaScopeIds.length > 0) {
-        return empresaScopeIds.includes(a.empresa_id);
-      }
-      return true;
-    };
-    
+    // Blindagem: só empresa ativa.
+    const empScope = (a: any) => empresaId && a.empresa_id === empresaId;
+
     const today = new Date();
     let ativos = asos.filter((a: any) => a.status !== "cancelado" && empScope(a));
 
@@ -111,13 +102,12 @@ export default function AsoRelatorios() {
     if (tipoRel === "sem_aso") {
       const comAso = new Set(ativos.map((a: any) => a.funcionario_id));
       return funcs.filter((f: any) => {
-        if (empresaSel !== "all" && f.empresa_id !== empresaSel) return false;
-        if (empresaScopeIds && empresaScopeIds.length > 0 && !empresaScopeIds.includes(f.empresa_id)) return false;
+        if (!empresaId || f.empresa_id !== empresaId) return false;
         return f.ativo !== false && !comAso.has(f.id);
       });
     }
     return [];
-  }, [asos, funcs, tipoRel, from, to, empresaSel, empresaScopeIds]);
+  }, [asos, funcs, tipoRel, from, to, empresaId]);
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(dados as any[]);
@@ -169,10 +159,9 @@ export default function AsoRelatorios() {
             </Select>
           </div>
           <div><Label>Empresa</Label>
-            <Select value={empresaSel} onValueChange={setEmpresaSel}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select value={empresaId || ""} disabled>
+              <SelectTrigger><SelectValue placeholder="Empresa ativa" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
                 {empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
               </SelectContent>
             </Select>

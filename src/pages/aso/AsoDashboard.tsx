@@ -31,20 +31,15 @@ function Kpi({ label, value, icon: Icon, color }: any) {
 }
 
 export default function AsoDashboard() {
-  const { empresaScopeIds } = useAuth();
-  const scopeKey = (empresaScopeIds || []).join(",");
+  const { empresaId } = useAuth();
 
   const { data: asos = [] } = useQuery({
-    queryKey: ["aso-dashboard", scopeKey],
+    queryKey: ["aso-dashboard", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("asos")
-        .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id");
-      
-      const ids = (empresaScopeIds || []);
-      if (ids.length > 0) {
-        q = q.in("empresa_id", ids);
-      }
-      const { data, error } = await q;
+      const { data, error } = await supabase.from("asos")
+        .select("id, tipo_exame, status_aptidao, data_emissao, data_vencimento, status, empresa_id")
+        .eq("empresa_id", empresaId!);
       if (error) throw error;
       return data || [];
     },
@@ -52,9 +47,9 @@ export default function AsoDashboard() {
 
   const stats = useMemo(() => {
     const today = new Date();
-    const rows = empresaScopeIds && empresaScopeIds.length > 0
-      ? asos.filter((a: any) => empresaScopeIds.includes(a.empresa_id))
-      : asos;
+    const rows = empresaId
+      ? asos.filter((a: any) => a.empresa_id === empresaId)
+      : [];
     const ativos = rows.filter((a: any) => a.status !== "cancelado");
     const aptos = ativos.filter((a: any) => a.status_aptidao === "apto").length;
     const inaptos = ativos.filter((a: any) => a.status_aptidao === "inapto").length;
@@ -84,7 +79,7 @@ export default function AsoDashboard() {
       { name: "Inapto", value: inaptos, color: "hsl(var(--destructive))" },
     ];
     return { total: ativos.length, aptos, inaptos, restricao, vencidos, vencendo, porTipo, meses, statusPie };
-  }, [asos, empresaScopeIds]);
+  }, [asos, empresaId]);
 
   return (
     <div className="space-y-4">

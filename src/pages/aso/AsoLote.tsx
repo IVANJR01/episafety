@@ -22,7 +22,7 @@ const TIPOS = [
 ];
 
 export default function AsoLote() {
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId } = useAuth();
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState(empresaId || "");
   useEffect(() => { setEmpresaSel(empresaId || ""); setSelected(new Set()); }, [empresaId]);
@@ -38,11 +38,11 @@ export default function AsoLote() {
   const [running, setRunning] = useState(false);
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-lote-empresas", empresaScopeIds.join(",")],
+    queryKey: ["aso-lote-empresas", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
-      return (await q).data || [];
+      const { data } = await supabase.from("empresa_config").select("id, nome").eq("id", empresaId!).order("nome");
+      return data || [];
     },
   });
   const { data: funcs = [] } = useQuery({

@@ -25,18 +25,17 @@ const GRUPOS = [
 ];
 
 export default function AsoFuncoes() {
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId } = useAuth();
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
   useEffect(() => { setEmpresaSel(empresaId || ""); }, [empresaId]);
   const [tab, setTab] = useState("funcoes");
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-fn-empresas", empresaScopeIds.join(",")],
+    queryKey: ["aso-fn-empresas", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
-      const { data } = await q;
+      const { data } = await supabase.from("empresa_config").select("id, nome").eq("id", empresaId!).order("nome");
       return data || [];
     },
   });

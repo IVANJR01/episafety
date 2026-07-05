@@ -13,24 +13,19 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AsoMedicos() {
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ nome: "", crm: "", uf_crm: "", cpf: "", email: "", telefone: "", responsavel_pcmso: false, ativo: true });
 
-  const scope: string[] = (empresaScopeIds && empresaScopeIds.length > 0)
-    ? empresaScopeIds
-    : (empresaId ? [empresaId] : []);
   const { data: medicos = [] } = useQuery({
-    queryKey: ["aso-medicos", scope.join(",")],
-    enabled: scope.length > 0,
+    queryKey: ["aso-medicos", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      // Filtro por empresa aplicado para TODOS os papéis — não só Super Admin.
-      // Necessário para usuários multi-empresa (usuario_empresas) cuja RLS
-      // ancora em profiles.empresa_id e pode devolver dados de outra empresa.
+      // Empresa ativa apenas — sem mash-up entre empresas.
       const { data, error } = await supabase.from("aso_medicos").select("*")
-        .in("empresa_id", scope).order("nome");
+        .eq("empresa_id", empresaId!).order("nome");
       if (error) throw error;
       return data || [];
     },

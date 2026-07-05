@@ -49,7 +49,7 @@ function parseDate(v: any): string | undefined {
 }
 
 export default function AsoImport() {
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId } = useAuth();
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
   useEffect(() => { setEmpresaSel(empresaId || ""); }, [empresaId]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -57,11 +57,11 @@ export default function AsoImport() {
   const [result, setResult] = useState<{ criados: number; atualizados: number; erros: number } | null>(null);
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-imp-empresas", empresaScopeIds.join(",")],
+    queryKey: ["aso-imp-empresas", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
-      return (await q).data || [];
+      const { data } = await supabase.from("empresa_config").select("id, nome").eq("id", empresaId!).order("nome");
+      return data || [];
     },
   });
 
