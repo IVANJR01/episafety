@@ -729,9 +729,39 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
             </p>
           </TabsContent>
 
-        </Tabs>
+    </Tabs>
+  );
 
-        <DialogFooter>
+  if (isPage) {
+    return (
+      <div className="flex flex-col min-h-[calc(100dvh-4rem)] w-full max-w-full overflow-x-hidden">
+        <div className="border-b pb-3 mb-3">
+          <h1 className="text-lg font-semibold break-words">
+            Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+          </p>
+        </div>
+        {bodyContent}
+        <div className="flex justify-end border-t pt-3 mt-3">
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:!max-w-[min(1200px,95vw)] sm:w-[95vw] sm:h-[92vh] sm:max-h-[92vh] sm:p-0 sm:overflow-hidden overflow-x-hidden flex flex-col">
+        <DialogHeader className="sm:px-6 sm:pt-6 sm:pb-3 sm:border-b">
+          <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+          </p>
+        </DialogHeader>
+        {bodyContent}
+        <DialogFooter className="sm:px-6 sm:pb-6">
           <Button variant="outline" onClick={onClose}>Fechar</Button>
         </DialogFooter>
       </DialogContent>
