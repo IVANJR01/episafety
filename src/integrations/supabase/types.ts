@@ -6169,6 +6169,7 @@ export type Database = {
           empresa_id: string
           excedente: boolean | null
           fonte_geradora: string | null
+          funcao_id: string | null
           ghe_id: string | null
           grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id: string
@@ -6199,6 +6200,7 @@ export type Database = {
           empresa_id: string
           excedente?: boolean | null
           fonte_geradora?: string | null
+          funcao_id?: string | null
           ghe_id?: string | null
           grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id?: string
@@ -6229,6 +6231,7 @@ export type Database = {
           empresa_id?: string
           excedente?: boolean | null
           fonte_geradora?: string | null
+          funcao_id?: string | null
           ghe_id?: string | null
           grupo?: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id?: string
@@ -6251,6 +6254,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pgr_inventario_itens_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_funcoes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pgr_inventario_itens_ghe_id_fkey"
             columns: ["ghe_id"]
