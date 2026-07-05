@@ -460,19 +460,15 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Processo / Descrição da atividade</Label>
+                  <Label className="text-xs">Processo / atividade *</Label>
                   <Textarea rows={3} value={editF.descricao_atividade || ""}
                     onChange={(e) => setEditF({ ...editF, descricao_atividade: e.target.value })}
                     placeholder="Ex.: Apura e projeta o saldo disponível da empresa para garantir capital de giro…" />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Este processo é específico desta combinação <b>Setor + Função</b>. A mesma função em outro setor pode ter processo diferente.
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <Label className="text-xs">Processo específico (opcional)</Label>
-                    <Input value={editF.processo || ""} onChange={(e) => setEditF({ ...editF, processo: e.target.value })} placeholder={ghe.processo ? "Deixe em branco para herdar do GES" : "Ex.: Administrativo"} />
-                    {ghe.processo && !editF.processo && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Herdando do GES: {ghe.processo.slice(0, 60)}{ghe.processo.length > 60 ? "…" : ""}</p>
-                    )}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs">Qtd trabalhadores</Label>
                     <Input type="number" min={0} value={editF.quantidade_trabalhadores ?? ""} onChange={(e) => setEditF({ ...editF, quantidade_trabalhadores: e.target.value })} />
