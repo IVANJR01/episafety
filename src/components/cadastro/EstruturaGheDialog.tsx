@@ -251,26 +251,27 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const riscosComuns = riscos.filter((r) => !r.funcao_id);
   const riscosEspec = riscos.filter((r) => !!r.funcao_id);
 
-  return (
-    <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:!max-w-[min(1200px,95vw)] sm:w-[95vw] sm:h-[92vh] sm:max-h-[92vh] sm:p-0 sm:overflow-hidden overflow-x-hidden flex flex-col">
-        <DialogHeader className="sm:px-6 sm:pt-6 sm:pb-3 sm:border-b">
-          <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
-          </p>
-        </DialogHeader>
+  const headerNode = (
+    <>
+      <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
+      <p className="text-xs text-muted-foreground">
+        Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+      </p>
+    </>
+  );
 
-        <Tabs value={tab} onValueChange={setTab} className="flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden">
-          <div className="w-full overflow-x-auto -mx-1 px-1">
-            <TabsList className="inline-flex w-max min-w-full sm:min-w-0 sm:w-auto self-start">
-              <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
-              <TabsTrigger value="funcoes">Setores e Funções</TabsTrigger>
-              <TabsTrigger value="riscos">Riscos</TabsTrigger>
-              <TabsTrigger value="epis">EPIs / Medidas</TabsTrigger>
-              <TabsTrigger value="resumo">Resumo</TabsTrigger>
-            </TabsList>
-          </div>
+  const tabsNode = (
+    <Tabs value={tab} onValueChange={setTab} className={isPage ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden"}>
+      <div className="w-full overflow-x-auto -mx-1 px-1">
+        <TabsList className="inline-flex w-max min-w-full sm:min-w-0 sm:w-auto self-start">
+          <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
+          <TabsTrigger value="funcoes">Setores e Funções</TabsTrigger>
+          <TabsTrigger value="riscos">Riscos</TabsTrigger>
+          <TabsTrigger value="epis">EPIs / Medidas</TabsTrigger>
+          <TabsTrigger value="resumo">Resumo</TabsTrigger>
+        </TabsList>
+      </div>
+
 
           {/* ---------- Aba Ambiente ---------- */}
           <TabsContent value="ambiente" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
