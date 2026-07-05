@@ -25,8 +25,11 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export default function EstruturaGheDialog({ ghe, onClose }: Props) {
   const [tab, setTab] = useState("ambiente");
 
-  /* ---------- Ambiente ---------- */
+  /* ---------- Ambiente (agora inclui Código, Nome e Ativo) ---------- */
   const [amb, setAmb] = useState({
+    codigo: ghe.codigo || "",
+    nome: ghe.nome || "",
+    status: ghe.status || "ativo",
     ambiente: ghe.ambiente || "",
     descricao_ambiente: ghe.descricao_ambiente || "",
     processo: ghe.processo || "",
@@ -37,11 +40,15 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
   const [savingAmb, setSavingAmb] = useState(false);
 
   const salvarAmbiente = async () => {
+    if (!amb.codigo.trim() || !amb.nome.trim()) return toast.error("Código e nome são obrigatórios");
     setSavingAmb(true);
     const setoresArr = amb.setores.map((s) => s.trim()).filter(Boolean);
     const { error } = await supabase
       .from("ghe_ges")
       .update({
+        codigo: amb.codigo.trim(),
+        nome: amb.nome.trim(),
+        status: amb.status,
         ambiente: amb.ambiente?.trim() || null,
         descricao_ambiente: amb.descricao_ambiente?.trim() || null,
         processo: amb.processo?.trim() || null,
@@ -53,11 +60,43 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
     setSavingAmb(false);
     if (error) return toast.error(error.message);
     toast.success("Ambiente salvo");
-    // sincroniza objeto local (útil para tabs seguintes)
+    ghe.codigo = amb.codigo; ghe.nome = amb.nome; ghe.status = amb.status;
     ghe.ambiente = amb.ambiente; ghe.descricao_ambiente = amb.descricao_ambiente;
     ghe.processo = amb.processo;
     ghe.descricao = amb.descricao; ghe.setores = setoresArr;
   };
+
+  /* ---------- EPIs / Medidas ---------- */
+  const [epis, setEpis] = useState({
+    medidas_controle_existentes: ghe.medidas_controle_existentes || "",
+    medidas_controle_recomendadas: ghe.medidas_controle_recomendadas || "",
+    epcs: ghe.epcs || "",
+    capacitacoes_obrigatorias: ghe.capacitacoes_obrigatorias || "",
+    observacoes_tecnicas: ghe.observacoes_tecnicas || "",
+  });
+  const [savingEpis, setSavingEpis] = useState(false);
+  const salvarEpis = async () => {
+    setSavingEpis(true);
+    const { error } = await supabase
+      .from("ghe_ges")
+      .update({
+        medidas_controle_existentes: epis.medidas_controle_existentes?.trim() || null,
+        medidas_controle_recomendadas: epis.medidas_controle_recomendadas?.trim() || null,
+        epcs: epis.epcs?.trim() || null,
+        capacitacoes_obrigatorias: epis.capacitacoes_obrigatorias?.trim() || null,
+        observacoes_tecnicas: epis.observacoes_tecnicas?.trim() || null,
+      })
+      .eq("id", ghe.id);
+    setSavingEpis(false);
+    if (error) return toast.error(error.message);
+    toast.success("EPIs e medidas salvos");
+    ghe.medidas_controle_existentes = epis.medidas_controle_existentes;
+    ghe.medidas_controle_recomendadas = epis.medidas_controle_recomendadas;
+    ghe.epcs = epis.epcs;
+    ghe.capacitacoes_obrigatorias = epis.capacitacoes_obrigatorias;
+    ghe.observacoes_tecnicas = epis.observacoes_tecnicas;
+  };
+
 
   /* ---------- Funções ---------- */
   const [funcoes, setFuncoes] = useState<any[]>([]);
