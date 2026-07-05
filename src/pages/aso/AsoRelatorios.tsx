@@ -35,6 +35,7 @@ export default function AsoRelatorios() {
   const [from, setFrom] = useState(format(new Date(Date.now() - 90 * 86400000), "yyyy-MM-dd"));
   const [to, setTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "all");
+  useEffect(() => { setEmpresaSel(empresaId || "all"); }, [empresaId]);
 
   const scopeKey = (empresaScopeIds || []).join(",");
 
