@@ -7704,6 +7704,32 @@ export type Database = {
           },
         ]
       }
+      user_active_empresa: {
+        Row: {
+          empresa_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          empresa_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          empresa_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_active_empresa_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -8106,11 +8132,13 @@ export type Database = {
       }
       gerar_numero_aso: { Args: { _empresa_id: string }; Returns: string }
       gerar_numero_cat: { Args: { _empresa_id: string }; Returns: string }
+      get_active_empresa_id: { Args: { _user_id: string }; Returns: string }
       get_consolidated_epi_stock: { Args: never; Returns: Json }
       get_filial_epis: { Args: { _filial_id: string }; Returns: Json }
       get_my_funcionario_ids: { Args: never; Returns: string[] }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       get_user_empresa_ids: { Args: { _email: string }; Returns: string[] }
+      get_user_empresas: { Args: { _user_id: string }; Returns: string[] }
       get_user_parent_empresa_id: {
         Args: { _user_id: string }
         Returns: string
@@ -8125,6 +8153,14 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_active_empresa: {
+        Args: { _empresa_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_empresa_authorized: {
+        Args: { _empresa_id: string; _user_id: string }
         Returns: boolean
       }
       is_in_user_company_tree: {
