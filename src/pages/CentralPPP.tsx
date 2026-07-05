@@ -696,12 +696,16 @@ export default function CentralPPP() {
                           <TableCell className="hidden sm:table-cell">{r.epi_eficaz ? "✓" : "—"}</TableCell>
                           <TableCell className="hidden sm:table-cell text-xs font-mono">{r.ca_epi || "—"}</TableCell>
                           <TableCell>
-                            <div className="flex gap-1 justify-end">
-                              <Button size="icon" variant="ghost" onClick={() => openEditRisco(r)}>
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => deleteRisco(r.id)}>
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            <div className="flex justify-end">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => navigate("/ltcat")}
+                                title="Editar no LTCAT"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                Editar no LTCAT
                               </Button>
                             </div>
                           </TableCell>
