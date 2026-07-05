@@ -628,11 +628,31 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                     </AccordionTrigger>
                     <AccordionContent className="space-y-2">
                       {fs.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma função ainda.</p>}
-                      {fs.map((f) => (
+                      {fs.map((f) => {
+                        const setorRow = setoresRows.find((s) => (s.nome || "").toLowerCase() === (f.setor || "").toLowerCase());
+                        const processoFuncao = f.descricao_atividade || f.processo;
+                        const processoFallback = !processoFuncao && setorRow?.processo;
+                        return (
                         <div key={f.id} className="border rounded p-2 flex items-start gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium text-sm">{f.nome_funcao}</span>
+                              {f.cbo && <span className="text-xs text-muted-foreground">CBO {f.cbo}</span>}
+                              {f.quantidade_trabalhadores != null && <Badge variant="secondary" className="text-xs">{f.quantidade_trabalhadores} trab.</Badge>}
+                            </div>
+                            {processoFuncao && (
+                              <p className="text-xs mt-1"><span className="text-muted-foreground">Processo:</span> <span className="whitespace-pre-wrap">{processoFuncao}</span></p>
+                            )}
+                            {processoFallback && (
+                              <p className="text-xs mt-1 italic text-muted-foreground"><span>Processo (herdado do setor):</span> <span className="whitespace-pre-wrap">{setorRow.processo}</span></p>
+                            )}
+                            {!processoFuncao && !processoFallback && (
+                              <p className="text-xs mt-1 italic text-destructive">Processo não informado — edite para preencher.</p>
+                            )}
+                            {f.observacoes && (
+                              <p className="text-[11px] text-muted-foreground mt-1 whitespace-pre-wrap">{f.observacoes}</p>
+                            )}
+                          </div>
                               {f.cbo && <span className="text-xs text-muted-foreground">CBO {f.cbo}</span>}
                               {f.quantidade_trabalhadores != null && <Badge variant="secondary" className="text-xs">{f.quantidade_trabalhadores} trab.</Badge>}
                             </div>
