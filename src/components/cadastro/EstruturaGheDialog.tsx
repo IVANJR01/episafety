@@ -339,9 +339,21 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
                 />
               </div>
             </div>
-            <div>
-              <Label className="text-xs">Observações do GES</Label>
-              <Textarea rows={2} value={amb.descricao} onChange={(e) => setAmb({ ...amb, descricao: e.target.value })} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Observações do GES</Label>
+                <Textarea rows={2} value={amb.descricao} onChange={(e) => setAmb({ ...amb, descricao: e.target.value })} className="w-full" />
+              </div>
+              <div>
+                <Label className="text-xs">Ativo</Label>
+                <Select value={amb.status} onValueChange={(v) => setAmb({ ...amb, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Sim</SelectItem>
+                    <SelectItem value="inativo">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="flex justify-end">
               <Button onClick={salvarAmbiente} disabled={savingAmb}>
@@ -349,6 +361,7 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
               </Button>
             </div>
           </TabsContent>
+
 
           {/* ---------- Aba Setores e Funções ---------- */}
           <TabsContent value="funcoes" className="mt-3 space-y-3 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
