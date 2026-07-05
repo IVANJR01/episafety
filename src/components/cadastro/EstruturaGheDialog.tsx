@@ -251,16 +251,39 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const riscosComuns = riscos.filter((r) => !r.funcao_id);
   const riscosEspec = riscos.filter((r) => !!r.funcao_id);
 
+  const salvarSetores = async () => {
+    const setoresArr = amb.setores.map((s) => s.trim()).filter(Boolean);
+    const { error } = await supabase
+      .from("ghe_ges")
+      .update({ setores: setoresArr, setor: setoresArr[0] || null })
+      .eq("id", ghe.id);
+    if (error) return toast.error(error.message);
+    toast.success("Setores salvos");
+    ghe.setores = setoresArr;
+  };
+
+  const colarSetoresBulk = (texto: string) => {
+    const novos = texto.split(/[,\n;]/).map((s) => s.trim()).filter(Boolean);
+    if (!novos.length) return;
+    const merged = Array.from(new Set([...amb.setores, ...novos]));
+    setAmb({ ...amb, setores: merged });
+  };
+
   const bodyContent = (
     <Tabs value={tab} onValueChange={setTab} className={isPage ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden"}>
       <div className="w-full overflow-x-auto -mx-1 px-1">
         <TabsList className="inline-flex w-max min-w-full sm:min-w-0 sm:w-auto self-start">
           <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
-          <TabsTrigger value="funcoes">Setores e Funções</TabsTrigger>
-          <TabsTrigger value="riscos">Riscos</TabsTrigger>
-          <TabsTrigger value="epis">EPIs / Medidas</TabsTrigger>
-          <TabsTrigger value="resumo">Resumo</TabsTrigger>
+          <TabsTrigger value="setores">Setores</TabsTrigger>
+          <TabsTrigger value="funcoes">Funções</TabsTrigger>
         </TabsList>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{amb.codigo || "—"}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{amb.ambiente ? "informado" : "não informado"}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Setores:</span> <b>{amb.setores.length}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Funções:</span> <b>{funcoes.length}</b></div>
       </div>
 
 
