@@ -219,10 +219,8 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const salvarFuncao = async (f: any) => {
     const nome = (f.nome_funcao || "").trim();
     const setor = (f.setor || "").trim();
-    const atividade = (f.descricao_atividade || "").trim();
     if (!nome) return toast.error("Nome da função é obrigatório");
     if (!setor) return toast.error("Selecione o setor da função");
-    if (!atividade) return toast.error("Informe o Processo / atividade desta função");
     // valida duplicidade por GES + Setor + Função
     const dup = funcoes.find(
       (x) => x.id !== f.id &&
@@ -235,7 +233,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       empresa_id: ghe.empresa_id,
       nome_funcao: nome,
       cbo: f.cbo?.trim() || null,
-      descricao_atividade: atividade,
+      descricao_atividade: (f.descricao_atividade || "").trim() || null,
       setor,
       processo: null,
       quantidade_trabalhadores:
@@ -571,15 +569,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                     <Label className="text-xs">Função *</Label>
                     <Input value={editF.nome_funcao || ""} onChange={(e) => setEditF({ ...editF, nome_funcao: e.target.value })} />
                   </div>
-                </div>
-                <div>
-                  <Label className="text-xs">Processo / atividade *</Label>
-                  <Textarea rows={3} value={editF.descricao_atividade || ""}
-                    onChange={(e) => setEditF({ ...editF, descricao_atividade: e.target.value })}
-                    placeholder="Ex.: Apura e projeta o saldo disponível da empresa para garantir capital de giro…" />
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Este processo é específico desta combinação <b>Setor + Função</b>. A mesma função em outro setor pode ter processo diferente.
-                  </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
