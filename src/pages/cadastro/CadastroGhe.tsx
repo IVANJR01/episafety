@@ -222,20 +222,16 @@ function QuickCreateGheDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { setCodigo(""); setNome(""); } onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setCodigo(""); } onOpenChange(v); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Novo GES</DialogTitle>
-          <p className="text-xs text-muted-foreground">Informe apenas código e nome. Você completa Ambiente, Setores, Funções, Riscos, EPIs e Medidas na tela seguinte.</p>
+          <p className="text-xs text-muted-foreground">Informe apenas o código. Você completa Ambiente, Setores, Funções, Riscos, EPIs e Medidas na tela seguinte.</p>
         </DialogHeader>
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Código do GES *</Label>
             <Input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="GES 01" />
-          </div>
-          <div>
-            <Label className="text-xs">Nome do GES *</Label>
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Administrativo" />
           </div>
         </div>
         <DialogFooter>
