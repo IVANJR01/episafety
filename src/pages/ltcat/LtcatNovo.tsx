@@ -35,6 +35,17 @@ export default function LtcatNovo() {
   const [observacoes, setObservacoes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const { data: matriz } = useQuery({
+    queryKey: ["ltcat-novo-matriz", empresaId],
+    queryFn: async () => {
+      if (!empresaId) return null;
+      const { data } = await (supabase.from as any)("empresa_config")
+        .select("id, nome").eq("id", empresaId).maybeSingle();
+      return data;
+    },
+    enabled: !!empresaId,
+  });
+
   const { data: unidades = [] } = useQuery({
     queryKey: ["ltcat-novo-unidades", empresaId],
     queryFn: async () => {
@@ -157,7 +168,7 @@ export default function LtcatNovo() {
             <Select value={unidadeId} onValueChange={setUnidadeId}>
               <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__matriz__">Matriz (empresa ativa)</SelectItem>
+                <SelectItem value="__matriz__">{matriz?.nome ? `${matriz.nome} (matriz)` : "Matriz (empresa ativa)"}</SelectItem>
                 {(unidades as any[]).map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
                 ))}
