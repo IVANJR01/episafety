@@ -100,6 +100,80 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   };
 
 
+  /* ---------- Setores (nova tabela ghe_setores) ---------- */
+  const [setoresRows, setSetoresRows] = useState<any[]>([]);
+  const [loadingS, setLoadingS] = useState(false);
+  const [editS, setEditS] = useState<any | null>(null);
+  const [bulkSOpen, setBulkSOpen] = useState(false);
+  const [bulkS, setBulkS] = useState("");
+
+  const loadSetores = async () => {
+    setLoadingS(true);
+    const { data, error } = await (supabase as any)
+      .from("ghe_setores")
+      .select("id, nome, processo, observacoes, ativo")
+      .eq("ghe_id", ghe.id)
+      .order("nome");
+    setLoadingS(false);
+    if (error) return toast.error(error.message);
+    setSetoresRows((data as any[]) || []);
+  };
+  useEffect(() => { loadSetores(); /* eslint-disable-next-line */ }, [ghe.id]);
+
+  const salvarSetorRow = async (s: any) => {
+    const nome = (s.nome || "").trim();
+    const processo = (s.processo || "").trim();
+    if (!nome) return toast.error("Nome do setor é obrigatório");
+    if (!processo) return toast.error("Informe o processo do setor");
+    const dup = setoresRows.find((x) => x.id !== s.id && (x.nome || "").trim().toLowerCase() === nome.toLowerCase());
+    if (dup) return toast.error(`Setor "${nome}" já existe neste GES`);
+    const payload: any = {
+      ghe_id: ghe.id,
+      empresa_id: ghe.empresa_id,
+      nome, processo,
+      observacoes: s.observacoes?.trim() || null,
+      ativo: s.ativo ?? true,
+    };
+    const { error } = s.id
+      ? await (supabase as any).from("ghe_setores").update(payload).eq("id", s.id)
+      : await (supabase as any).from("ghe_setores").insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success("Setor salvo");
+    setEditS(null);
+    loadSetores();
+  };
+
+  const excluirSetor = async (id: string) => {
+    if (!confirm("Excluir este setor? As funções vinculadas mantêm o nome do setor.")) return;
+    const { error } = await (supabase as any).from("ghe_setores").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    loadSetores();
+  };
+
+  const importarSetoresBulk = async () => {
+    const lines = bulkS.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    const rows = lines.map((l) => {
+      const [nome, processo, observacoes] = l.split(/[|\t]/).map((p) => p.trim());
+      return {
+        ghe_id: ghe.id,
+        empresa_id: ghe.empresa_id,
+        nome: nome || "",
+        processo: processo || null,
+        observacoes: observacoes || null,
+      };
+    }).filter((r) => r.nome && r.processo);
+    if (!rows.length) return toast.error("Nenhuma linha válida (precisa Setor | Processo)");
+    const existentes = new Set(setoresRows.map((s) => (s.nome || "").toLowerCase()));
+    const novos = rows.filter((r) => !existentes.has(r.nome.toLowerCase()));
+    if (!novos.length) { toast.info("Todos os setores da lista já existem"); setBulkS(""); setBulkSOpen(false); return; }
+    const { error } = await (supabase as any).from("ghe_setores").insert(novos);
+    if (error) return toast.error(error.message);
+    toast.success(`${novos.length} setor(es) importado(s)`);
+    setBulkS(""); setBulkSOpen(false);
+    loadSetores();
+  };
+
   /* ---------- Funções ---------- */
   const [funcoes, setFuncoes] = useState<any[]>([]);
   const [loadingF, setLoadingF] = useState(false);
@@ -123,10 +197,11 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   useEffect(() => { loadFuncoes(); /* eslint-disable-next-line */ }, [ghe.id]);
 
   const setoresAtivos: string[] = useMemo(() => {
-    const dos = amb.setores || [];
+    const dos = setoresRows.map((s) => s.nome).filter(Boolean) as string[];
     const dasFuncoes = Array.from(new Set(funcoes.map((f) => f.setor).filter(Boolean))) as string[];
     return Array.from(new Set([...dos, ...dasFuncoes]));
-  }, [amb.setores, funcoes]);
+  }, [setoresRows, funcoes]);
+
 
   const funcoesPorSetor = useMemo(() => {
     const map = new Map<string, any[]>();
