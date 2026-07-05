@@ -33,6 +33,17 @@ export default function PgrNovo() {
   const [observacoes, setObservacoes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const { data: matriz } = useQuery({
+    queryKey: ["pgr-novo-matriz", empresaId],
+    queryFn: async () => {
+      if (!empresaId) return null;
+      const { data } = await (supabase.from as any)("empresa_config")
+        .select("id, nome").eq("id", empresaId).maybeSingle();
+      return data;
+    },
+    enabled: !!empresaId,
+  });
+
   const { data: unidades = [] } = useQuery({
     queryKey: ["pgr-novo-unidades", empresaId],
     queryFn: async () => {
