@@ -584,7 +584,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
             Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}
           </h1>
           <p className="text-xs text-muted-foreground">
-            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+            Ambiente → Setores → Funções. O PGR importa essa estrutura.
           </p>
         </div>
         {bodyContent}
@@ -601,7 +601,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         <DialogHeader className="sm:px-6 sm:pt-6 sm:pb-3 sm:border-b">
           <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
           <p className="text-xs text-muted-foreground">
-            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+            Ambiente → Setores → Funções. O PGR importa essa estrutura.
           </p>
         </DialogHeader>
         {bodyContent}
