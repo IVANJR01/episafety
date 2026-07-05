@@ -366,15 +366,9 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
           {/* ---------- Aba Ambiente ---------- */}
           <TabsContent value="ambiente" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <Label className="text-xs">Código do GES *</Label>
-                <Input value={amb.codigo} onChange={(e) => setAmb({ ...amb, codigo: e.target.value })} placeholder="GES 01" className="w-full" />
-              </div>
-              <div>
-                <Label className="text-xs">Nome do GES *</Label>
-                <Input value={amb.nome} onChange={(e) => setAmb({ ...amb, nome: e.target.value })} placeholder="Administrativo" className="w-full" />
-              </div>
+            <div>
+              <Label className="text-xs">Código do GES *</Label>
+              <Input value={amb.codigo} onChange={(e) => setAmb({ ...amb, codigo: e.target.value, nome: e.target.value })} placeholder="GES 01" className="w-full sm:max-w-xs" />
             </div>
             <div>
               <Label className="text-xs">Descrição do ambiente</Label>
