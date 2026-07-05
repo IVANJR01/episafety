@@ -17,12 +17,14 @@ import { toast } from "sonner";
 interface Props {
   ghe: any;
   onClose: () => void;
+  mode?: "dialog" | "page";
 }
 
 const GRUPOS_RISCO = ["fisico", "quimico", "biologico", "ergonomico", "acidente", "outro"];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export default function EstruturaGheDialog({ ghe, onClose }: Props) {
+export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Props) {
+  const isPage = mode === "page";
   const [tab, setTab] = useState("ambiente");
 
   /* ---------- Ambiente (agora inclui Código, Nome e Ativo) ---------- */
