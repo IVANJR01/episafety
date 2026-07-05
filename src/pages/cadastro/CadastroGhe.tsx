@@ -12,12 +12,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Power, ClipboardList, Search, Briefcase, Trash2, ShieldAlert, X } from "lucide-react";
+import { Plus, Pencil, Power, ClipboardList, Search, Briefcase, Trash2, ShieldAlert, X, LayoutList } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
+import EstruturaGheDialog from "@/components/cadastro/EstruturaGheDialog";
 
 export default function CadastroGhe() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
@@ -26,8 +27,7 @@ export default function CadastroGhe() {
   const [busca, setBusca] = useState("");
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
-  const [openFuncoes, setOpenFuncoes] = useState<any | null>(null);
-  const [openRiscos, setOpenRiscos] = useState<any | null>(null);
+  const [openEstrutura, setOpenEstrutura] = useState<any | null>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["cad-ghe-empresas", empresaScopeIds.join(",")],
@@ -163,8 +163,7 @@ export default function CadastroGhe() {
                         </StatusBadge>
                       </TableCell>
                       <TableCell className="text-right align-top space-x-1">
-                        <Button size="sm" variant="outline" onClick={() => setOpenFuncoes(g)} title="Funções"><Briefcase className="h-4 w-4 mr-1" />Funções</Button>
-                        <Button size="sm" variant="outline" onClick={() => setOpenRiscos(g)} title="Riscos"><ShieldAlert className="h-4 w-4 mr-1" />Riscos</Button>
+                        <Button size="sm" onClick={() => setOpenEstrutura(g)} title="Estrutura completa"><LayoutList className="h-4 w-4 mr-1" />Estrutura</Button>
                         <Button size="icon" variant="ghost" onClick={() => editar(g)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" onClick={() => alternarStatus(g)} title={g.status === "ativo" ? "Inativar" : "Ativar"}>
                           <Power className={`h-4 w-4 ${g.status === "ativo" ? "text-destructive" : "text-primary"}`} />
@@ -186,16 +185,10 @@ export default function CadastroGhe() {
         editing={editing}
         onSaved={() => qc.invalidateQueries({ queryKey: ["cad-ghe-list"] })}
       />
-      {openFuncoes && (
-        <FuncoesDialog
-          ghe={openFuncoes}
-          onClose={() => { setOpenFuncoes(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
-        />
-      )}
-      {openRiscos && (
-        <RiscosDialog
-          ghe={openRiscos}
-          onClose={() => { setOpenRiscos(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
+      {openEstrutura && (
+        <EstruturaGheDialog
+          ghe={openEstrutura}
+          onClose={() => { setOpenEstrutura(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
         />
       )}
     </div>
