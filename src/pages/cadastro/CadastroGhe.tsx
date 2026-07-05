@@ -159,7 +159,7 @@ export default function CadastroGhe() {
                         </StatusBadge>
                       </TableCell>
                       <TableCell className="text-right align-top space-x-1">
-                        <Button size="sm" onClick={() => setOpenEstrutura(g)} title="Editar estrutura do GES">
+                        <Button size="sm" onClick={() => irParaEstrutura(g.id)} title="Editar estrutura do GES">
                           <Pencil className="h-4 w-4 mr-1" />Estrutura
                         </Button>
                         <Button size="icon" variant="ghost" onClick={() => alternarStatus(g)} title={g.status === "ativo" ? "Inativar" : "Ativar"}>
@@ -182,16 +182,9 @@ export default function CadastroGhe() {
         onCreated={async (id) => {
           setOpenQuick(false);
           await qc.invalidateQueries({ queryKey: ["cad-ghe-list"] });
-          const { data } = await supabase.from("ghe_ges").select("*").eq("id", id).maybeSingle();
-          if (data) setOpenEstrutura(data);
+          irParaEstrutura(id);
         }}
       />
-      {openEstrutura && (
-        <EstruturaGheDialog
-          ghe={openEstrutura}
-          onClose={() => { setOpenEstrutura(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
-        />
-      )}
     </div>
   );
 }
