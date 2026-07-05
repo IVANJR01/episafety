@@ -233,7 +233,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       empresa_id: ghe.empresa_id,
       nome_funcao: nome,
       cbo: f.cbo?.trim() || null,
-      descricao_atividade: atividade,
+      descricao_atividade: (f.descricao_atividade || "").trim() || null,
       setor,
       processo: null,
       quantidade_trabalhadores:
