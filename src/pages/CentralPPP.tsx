@@ -591,14 +591,16 @@ export default function CentralPPP() {
           : null,
         fonte: "LTCAT",
       };
-      const { error: snapErr } = await supabase.from("ppp_pdf_versoes").insert({
+      const { error: snapErr } = await (supabase.from as any)("ppp_snapshots_emitidos").insert({
         empresa_id: empresaId!,
+        funcionario_id: func.id,
+        funcionario_nome: func.nome,
         tipo: "desligamento",
+        nome_arquivo: `PPP_${func.nome.replace(/\s+/g, "_")}.pdf`,
         gerado_em: new Date().toISOString(),
         gerado_por: user?.id || null,
-        nome_arquivo: `PPP_${func.nome.replace(/\s+/g, "_")}.pdf`,
         snapshot_json: snapshot,
-      } as any);
+      });
       if (snapErr) console.warn("[PPP] snapshot não salvo:", snapErr.message);
     } catch (e) {
       console.warn("[PPP] snapshot falhou:", e);
