@@ -355,10 +355,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                     }
                   }}
                   placeholder="Digite o setor e Enter (ex.: PCP, Financeiro, RH)"
-                  className="border-0 shadow-none h-7 flex-1 min-w-[160px] p-1 focus-visible:ring-0"
-                />
-              </div>
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Observações do GES</Label>
@@ -381,6 +377,55 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
               </Button>
             </div>
           </TabsContent>
+
+          {/* ---------- Aba Setores ---------- */}
+          <TabsContent value="setores" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
+            <p className="text-xs text-muted-foreground">
+              Use esta aba para informar os setores que fazem parte deste GES. Ex.: PCP, Financeiro, RH, SESMT.
+            </p>
+            <div>
+              <Label className="text-xs">Setores do GES</Label>
+              <div className="border rounded p-2 flex flex-wrap gap-1 min-h-[44px]">
+                {amb.setores.map((s, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    {s}
+                    <button type="button" className="ml-1" onClick={() => setAmb({ ...amb, setores: amb.setores.filter((_, j) => j !== i) })}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <Input
+                  value={novoSetor}
+                  onChange={(e) => setNovoSetor(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") {
+                      e.preventDefault();
+                      const v = novoSetor.trim();
+                      if (v && !amb.setores.includes(v)) setAmb({ ...amb, setores: [...amb.setores, v] });
+                      setNovoSetor("");
+                    }
+                  }}
+                  placeholder="Digite o setor e Enter (ex.: PCP)"
+                  className="border-0 shadow-none h-7 flex-1 min-w-[160px] p-1 focus-visible:ring-0"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Colar vários setores (separe por vírgula ou linha)</Label>
+              <Textarea
+                rows={3}
+                placeholder={"PCP, Financeiro, RH, SESMT"}
+                onBlur={(e) => { if (e.target.value.trim()) { colarSetoresBulk(e.target.value); e.target.value = ""; } }}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Ao sair do campo, os setores são adicionados à lista acima. Clique em salvar para persistir.</p>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={salvarSetores}>
+                <Save className="h-4 w-4 mr-1" /> Salvar setores
+              </Button>
+            </div>
+          </TabsContent>
+
 
 
           {/* ---------- Aba Setores e Funções ---------- */}
