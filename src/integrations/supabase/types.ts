@@ -6217,6 +6217,7 @@ export type Database = {
           excedente: boolean | null
           fonte_geradora: string | null
           funcao_id: string | null
+          funcoes_snapshot: string[] | null
           ghe_id: string | null
           grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id: string
@@ -6232,6 +6233,7 @@ export type Database = {
           pgr_id: string
           probabilidade: number
           processo: string | null
+          setor: string | null
           severidade: number
           tipo_exposicao: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual: boolean
@@ -6249,6 +6251,7 @@ export type Database = {
           excedente?: boolean | null
           fonte_geradora?: string | null
           funcao_id?: string | null
+          funcoes_snapshot?: string[] | null
           ghe_id?: string | null
           grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id?: string
@@ -6264,6 +6267,7 @@ export type Database = {
           pgr_id: string
           probabilidade?: number
           processo?: string | null
+          setor?: string | null
           severidade?: number
           tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual?: boolean
@@ -6281,6 +6285,7 @@ export type Database = {
           excedente?: boolean | null
           fonte_geradora?: string | null
           funcao_id?: string | null
+          funcoes_snapshot?: string[] | null
           ghe_id?: string | null
           grupo?: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id?: string
@@ -6296,6 +6301,7 @@ export type Database = {
           pgr_id?: string
           probabilidade?: number
           processo?: string | null
+          setor?: string | null
           severidade?: number
           tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual?: boolean
