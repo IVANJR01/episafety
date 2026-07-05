@@ -446,7 +446,7 @@ export default function CentralPPP() {
           : null,
         fonte: "LTCAT",
       };
-      const { error: snapErr } = await (supabase.from as any)("ppp_snapshots_emitidos").insert({
+      const { error: snapErr } = await supabase.from("ppp_snapshots_emitidos").insert({
         empresa_id: empresaId!,
         funcionario_id: func.id,
         funcionario_nome: func.nome,
