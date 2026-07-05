@@ -219,8 +219,10 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const salvarFuncao = async (f: any) => {
     const nome = (f.nome_funcao || "").trim();
     const setor = (f.setor || "").trim();
+    const processo = (f.descricao_atividade || "").trim();
     if (!nome) return toast.error("Nome da função é obrigatório");
     if (!setor) return toast.error("Selecione o setor da função");
+    if (!processo) return toast.error("Informe o Processo / atividade da função");
     // valida duplicidade por GES + Setor + Função
     const dup = funcoes.find(
       (x) => x.id !== f.id &&
@@ -233,7 +235,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       empresa_id: ghe.empresa_id,
       nome_funcao: nome,
       cbo: f.cbo?.trim() || null,
-      descricao_atividade: (f.descricao_atividade || "").trim() || null,
+      descricao_atividade: processo,
       setor,
       processo: null,
       quantidade_trabalhadores:
