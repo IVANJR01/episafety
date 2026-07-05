@@ -604,6 +604,15 @@ export default function CentralPPP() {
 
         {/* === ABA RISCOS === */}
         <TabsContent value="riscos" className="space-y-4">
+          <div className="flex gap-2 items-start rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900 p-3 text-sm">
+            <Info className="w-4 h-4 mt-0.5 text-blue-600 shrink-0" />
+            <div className="text-blue-900 dark:text-blue-100">
+              Os riscos exibidos no PPP são <b>importados do LTCAT</b>. Para alterar agentes,
+              intensidade, técnica, EPI/EPC ou CA, edite o LTCAT correspondente em{" "}
+              <Link to="/ltcat" className="underline font-medium">Programas → LTCAT</Link>.
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -614,17 +623,30 @@ export default function CentralPPP() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={openNewRisco} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Novo Risco
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate("/ltcat")} className="gap-2">
+                <ExternalLink className="w-4 h-4" />
+                Ir para LTCAT
+              </Button>
+              <Button onClick={syncFromLtcat} disabled={syncing} className="gap-2">
+                <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Sincronizando…" : "Sincronizar do LTCAT"}
+              </Button>
+            </div>
           </div>
 
           {groupedRiscos.size === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p>Nenhum risco cadastrado. Configure os riscos por cargo para gerar o PPP automaticamente.</p>
+                <p className="font-medium text-foreground mb-1">Nenhum dado de LTCAT encontrado</p>
+                <p className="text-sm mb-4">
+                  Cadastre ou gere o LTCAT para que o PPP puxe automaticamente os agentes nocivos e informações previdenciárias.
+                </p>
+                <Button onClick={() => navigate("/ltcat")} className="gap-2">
+                  <ExternalLink className="w-4 h-4" />
+                  Ir para LTCAT
+                </Button>
               </CardContent>
             </Card>
           ) : (
