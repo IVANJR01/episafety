@@ -251,9 +251,9 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
 
   return (
     <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-5xl sm:max-h-[92vh] sm:overflow-hidden">
+      <DialogContent className="max-w-5xl sm:max-h-[92vh] sm:overflow-hidden overflow-x-hidden">
         <DialogHeader>
-          <DialogTitle>Estrutura do GES — {ghe.codigo} · {ghe.nome}</DialogTitle>
+          <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
           <p className="text-xs text-muted-foreground">
             Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
           </p>
@@ -264,19 +264,32 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
             <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
             <TabsTrigger value="funcoes">Setores e Funções</TabsTrigger>
             <TabsTrigger value="riscos">Riscos</TabsTrigger>
+            <TabsTrigger value="epis">EPIs / Medidas</TabsTrigger>
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
           </TabsList>
 
           {/* ---------- Aba Ambiente ---------- */}
-          <TabsContent value="ambiente" className="mt-3 space-y-3 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
+          <TabsContent value="ambiente" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Código do GES *</Label>
+                <Input value={amb.codigo} onChange={(e) => setAmb({ ...amb, codigo: e.target.value })} placeholder="GES 01" className="w-full" />
+              </div>
+              <div>
+                <Label className="text-xs">Nome do GES *</Label>
+                <Input value={amb.nome} onChange={(e) => setAmb({ ...amb, nome: e.target.value })} placeholder="Administrativo" className="w-full" />
+              </div>
+            </div>
             <div>
               <Label className="text-xs">Ambiente (título curto)</Label>
               <Input
                 value={amb.ambiente}
                 onChange={(e) => setAmb({ ...amb, ambiente: e.target.value })}
                 placeholder="Ex.: Ambiente interno / Área operacional"
+                className="w-full"
               />
             </div>
+
             <div>
               <Label className="text-xs">Descrição do ambiente</Label>
               <Textarea
