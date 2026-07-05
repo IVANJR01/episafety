@@ -461,7 +461,7 @@ export default function CentralPPP() {
     setPppOpen(true);
   }
 
-  function gerarPPP() {
+  async function gerarPPP() {
     const func = funcionarios.find((f) => f.id === selectedFuncId);
     if (!func) { toast.error("Selecione um funcionário"); return; }
 
