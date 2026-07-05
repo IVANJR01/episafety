@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Plus, Pencil, Trash2, FileText, Download, Search, Users, X, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Plus, Pencil, Trash2, FileText, Download, Search, Users, X, AlertTriangle, CheckCircle2, RefreshCw, ExternalLink, Info } from "lucide-react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -169,6 +170,8 @@ function CargoMultiSelect({ selected, onChange, suggestions }: { selected: strin
 
 export default function CentralPPP() {
   const { empresaId } = useAuth();
+  const navigate = useNavigate();
+  const [syncing, setSyncing] = useState(false);
 
   // Data
   const [riscos, setRiscos] = useState<RiscoCargo[]>([]);
@@ -304,6 +307,105 @@ export default function CentralPPP() {
     toast.success("Risco removido");
     loadAll();
   }
+
+  // === SINCRONIZAR RISCOS DO LTCAT ===
+  // Fonte oficial dos agentes previdenciários. O PPP apenas espelha.
+  async function syncFromLtcat() {
+    if (!empresaId) { toast.error("Selecione uma empresa ativa"); return; }
+    setSyncing(true);
+    try {
+      const [funcRes, agRes] = await Promise.all([
+        supabase.from("ltcat_funcoes")
+          .select("id, nome_funcao, cbo, grupo_homogeneo_id")
+          .eq("empresa_id", empresaId),
+        supabase.from("ltcat_agentes")
+          .select("id, nome, grupo, grupo_homogeneo_id, epi_eficacia, epc_eficacia, epi_ca, tipo_exposicao, trajetoria")
+          .eq("empresa_id", empresaId),
+      ]);
+      if (funcRes.error) throw funcRes.error;
+      if (agRes.error) throw agRes.error;
+
+      const funcoes = (funcRes.data || []) as any[];
+      const agentes = (agRes.data || []) as any[];
+
+      if (funcoes.length === 0 || agentes.length === 0) {
+        toast.error("Nenhum dado de LTCAT encontrado para esta empresa");
+        setSyncing(false);
+        return;
+      }
+
+      // Agrupar agentes por GHE
+      const agentesPorGhe = new Map<string, any[]>();
+      agentes.forEach((a) => {
+        if (!a.grupo_homogeneo_id) return;
+        const arr = agentesPorGhe.get(a.grupo_homogeneo_id) || [];
+        arr.push(a);
+        agentesPorGhe.set(a.grupo_homogeneo_id, arr);
+      });
+
+      const parseEficaz = (v: string | null) => !!v && /efic/i.test(v) && !/inefic/i.test(v);
+      const tiposValidos = ["fisico", "quimico", "biologico", "ergonomico", "acidente"];
+
+      // Montar linhas alvo
+      const alvo: any[] = [];
+      for (const f of funcoes) {
+        const cargo = (f.nome_funcao || "").trim();
+        if (!cargo) continue;
+        const ags = agentesPorGhe.get(f.grupo_homogeneo_id) || [];
+        for (const a of ags) {
+          const tipo = tiposValidos.includes(a.grupo) ? a.grupo : "fisico";
+          alvo.push({
+            empresa_id: empresaId,
+            cargo,
+            cbo: f.cbo || null,
+            tipo_risco: tipo,
+            fator_risco: (a.nome || "").trim(),
+            intensidade_concentracao: a.tipo_exposicao || null,
+            tecnica_utilizada: a.trajetoria || null,
+            epc_eficaz: parseEficaz(a.epc_eficacia),
+            epi_eficaz: parseEficaz(a.epi_eficacia),
+            ca_epi: a.epi_ca || null,
+          });
+        }
+      }
+
+      if (alvo.length === 0) {
+        toast.error("LTCAT sem funções vinculadas a agentes");
+        setSyncing(false);
+        return;
+      }
+
+      // Dedupe por (cargo, fator_risco)
+      const chave = (r: any) => `${r.cargo}||${r.fator_risco}`;
+      const existentesRes = await supabase.from("ppp_riscos_cargo")
+        .select("id, cargo, fator_risco").eq("empresa_id", empresaId);
+      const existentes = new Map<string, string>();
+      (existentesRes.data || []).forEach((r: any) => existentes.set(chave(r), r.id));
+
+      let inseridos = 0, atualizados = 0;
+      for (const row of alvo) {
+        const k = chave(row);
+        const existingId = existentes.get(k);
+        if (existingId) {
+          const { error } = await supabase.from("ppp_riscos_cargo")
+            .update(row).eq("id", existingId);
+          if (!error) atualizados++;
+        } else {
+          const { error } = await supabase.from("ppp_riscos_cargo").insert(row);
+          if (!error) inseridos++;
+        }
+      }
+
+      toast.success(`Dados do LTCAT sincronizados. ${inseridos} novo(s), ${atualizados} atualizado(s).`);
+      loadAll();
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao sincronizar com LTCAT");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+
 
   // === RESPONSÁVEIS CRUD ===
   function openNewResp() {
@@ -496,12 +598,21 @@ export default function CentralPPP() {
 
       <Tabs defaultValue={localStorage.getItem("ppp_active_tab") || "riscos"} onValueChange={(v) => localStorage.setItem("ppp_active_tab", v)}>
         <TabsList>
-          <TabsTrigger value="riscos">Riscos por Cargo</TabsTrigger>
+          <TabsTrigger value="riscos">Riscos Previdenciários (LTCAT)</TabsTrigger>
           <TabsTrigger value="responsaveis">Responsáveis Técnicos</TabsTrigger>
         </TabsList>
 
         {/* === ABA RISCOS === */}
         <TabsContent value="riscos" className="space-y-4">
+          <div className="flex gap-2 items-start rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900 p-3 text-sm">
+            <Info className="w-4 h-4 mt-0.5 text-blue-600 shrink-0" />
+            <div className="text-blue-900 dark:text-blue-100">
+              Os riscos exibidos no PPP são <b>importados do LTCAT</b>. Para alterar agentes,
+              intensidade, técnica, EPI/EPC ou CA, edite o LTCAT correspondente em{" "}
+              <Link to="/ltcat" className="underline font-medium">Programas → LTCAT</Link>.
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -512,17 +623,30 @@ export default function CentralPPP() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={openNewRisco} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Novo Risco
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate("/ltcat")} className="gap-2">
+                <ExternalLink className="w-4 h-4" />
+                Ir para LTCAT
+              </Button>
+              <Button onClick={syncFromLtcat} disabled={syncing} className="gap-2">
+                <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Sincronizando…" : "Sincronizar do LTCAT"}
+              </Button>
+            </div>
           </div>
 
           {groupedRiscos.size === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p>Nenhum risco cadastrado. Configure os riscos por cargo para gerar o PPP automaticamente.</p>
+                <p className="font-medium text-foreground mb-1">Nenhum dado de LTCAT encontrado</p>
+                <p className="text-sm mb-4">
+                  Cadastre ou gere o LTCAT para que o PPP puxe automaticamente os agentes nocivos e informações previdenciárias.
+                </p>
+                <Button onClick={() => navigate("/ltcat")} className="gap-2">
+                  <ExternalLink className="w-4 h-4" />
+                  Ir para LTCAT
+                </Button>
               </CardContent>
             </Card>
           ) : (
@@ -572,12 +696,16 @@ export default function CentralPPP() {
                           <TableCell className="hidden sm:table-cell">{r.epi_eficaz ? "✓" : "—"}</TableCell>
                           <TableCell className="hidden sm:table-cell text-xs font-mono">{r.ca_epi || "—"}</TableCell>
                           <TableCell>
-                            <div className="flex gap-1 justify-end">
-                              <Button size="icon" variant="ghost" onClick={() => openEditRisco(r)}>
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => deleteRisco(r.id)}>
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            <div className="flex justify-end">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => navigate("/ltcat")}
+                                title="Editar no LTCAT"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                Editar no LTCAT
                               </Button>
                             </div>
                           </TableCell>
