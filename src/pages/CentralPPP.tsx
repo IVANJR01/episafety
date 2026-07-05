@@ -454,7 +454,7 @@ export default function CentralPPP() {
         nome_arquivo: `PPP_${func.nome.replace(/\s+/g, "_")}.pdf`,
         gerado_em: new Date().toISOString(),
         gerado_por: user?.id || null,
-        snapshot_json: snapshot,
+        snapshot_json: snapshot as any,
       }]);
       if (snapErr) console.warn("[PPP] snapshot não salvo:", snapErr.message);
     } catch (e) {
