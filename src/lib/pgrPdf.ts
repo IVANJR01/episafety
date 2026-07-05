@@ -203,6 +203,43 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
 
   pdf.addPage(); b.y = 15;
 
+  // Controle de revisões (visível logo após a capa)
+  title(b, "Controle de Revisões");
+  if (!ctx.revisoes || ctx.revisoes.length === 0) {
+    para(b, "00 — Elaboração do Programa de Gerenciamento de Riscos");
+  } else {
+    ctx.revisoes.slice().reverse().forEach((r, idx) => {
+      ensure(b, 6);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+      const rev = String(idx).padStart(2, "0");
+      const desc = r.motivo || (r.acao === "publicar" ? "Publicação da versão" : r.acao);
+      const ll = pdf.splitTextToSize(`${rev}  ·  ${fmtDate(r.created_at)}  ·  ${desc}`, 186);
+      pdf.text(ll, 12, b.y + 3); b.y += 3 + ll.length * 3.2;
+    });
+  }
+
+  // Textos padrão editáveis (introdução, objetivos, responsabilidades etc.)
+  const T = ctx.textos || {};
+  const secoesTexto: Array<[string, string]> = [
+    ["introducao", "Introdução"],
+    ["apresentacao", "Apresentação"],
+    ["registro_divulgacao", "Registro e divulgação dos dados"],
+    ["objetivo_geral", "Objetivo geral"],
+    ["objetivos_especificos", "Objetivos específicos"],
+    ["politica_seguranca", "Política de segurança"],
+    ["resp_empregador", "Cabe ao empregador"],
+    ["resp_empregados", "Cabe aos empregados"],
+    ["seguranca_trabalho", "Segurança do Trabalho"],
+    ["cipa", "CIPA, quando aplicável"],
+    ["consideracoes_preliminares", "Considerações preliminares"],
+  ];
+  secoesTexto.forEach(([k, tit]) => {
+    const conteudo = (T[k] || "").trim();
+    if (!conteudo) return;
+    title(b, tit);
+    para(b, conteudo, 9, [40, 40, 40]);
+  });
+
   // 1. Escopo e metodologia
   title(b, "1. Escopo");
   kv(b, "Escopo do PGR", pgr.escopo || "—", true);
