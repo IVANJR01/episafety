@@ -28,6 +28,7 @@ export default function AsoFuncoes() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
+  useEffect(() => { setEmpresaSel(empresaId || ""); }, [empresaId]);
   const [tab, setTab] = useState("funcoes");
 
   const { data: empresas = [] } = useQuery({
