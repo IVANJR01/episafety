@@ -168,7 +168,7 @@ export default function LtcatNovo() {
             <Select value={unidadeId} onValueChange={setUnidadeId}>
               <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__matriz__">Matriz (empresa ativa)</SelectItem>
+                <SelectItem value="__matriz__">{matriz?.nome ? `${matriz.nome} (matriz)` : "Matriz (empresa ativa)"}</SelectItem>
                 {(unidades as any[]).map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>
                 ))}
