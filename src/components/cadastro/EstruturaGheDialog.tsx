@@ -17,12 +17,14 @@ import { toast } from "sonner";
 interface Props {
   ghe: any;
   onClose: () => void;
+  mode?: "dialog" | "page";
 }
 
 const GRUPOS_RISCO = ["fisico", "quimico", "biologico", "ergonomico", "acidente", "outro"];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export default function EstruturaGheDialog({ ghe, onClose }: Props) {
+export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Props) {
+  const isPage = mode === "page";
   const [tab, setTab] = useState("ambiente");
 
   /* ---------- Ambiente (agora inclui Código, Nome e Ativo) ---------- */
@@ -249,26 +251,19 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
   const riscosComuns = riscos.filter((r) => !r.funcao_id);
   const riscosEspec = riscos.filter((r) => !!r.funcao_id);
 
-  return (
-    <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:!max-w-[min(1200px,95vw)] sm:w-[95vw] sm:h-[92vh] sm:max-h-[92vh] sm:p-0 sm:overflow-hidden overflow-x-hidden flex flex-col">
-        <DialogHeader className="sm:px-6 sm:pt-6 sm:pb-3 sm:border-b">
-          <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
-          </p>
-        </DialogHeader>
+  const bodyContent = (
+    <Tabs value={tab} onValueChange={setTab} className={isPage ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden"}>
+      <div className="w-full overflow-x-auto -mx-1 px-1">
+        <TabsList className="inline-flex w-max min-w-full sm:min-w-0 sm:w-auto self-start">
+          <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
+          <TabsTrigger value="funcoes">Setores e Funções</TabsTrigger>
+          <TabsTrigger value="riscos">Riscos</TabsTrigger>
+          <TabsTrigger value="epis">EPIs / Medidas</TabsTrigger>
+          <TabsTrigger value="resumo">Resumo</TabsTrigger>
+        </TabsList>
+      </div>
 
-        <Tabs value={tab} onValueChange={setTab} className="flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden">
-          <div className="w-full overflow-x-auto -mx-1 px-1">
-            <TabsList className="inline-flex w-max min-w-full sm:min-w-0 sm:w-auto self-start">
-              <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
-              <TabsTrigger value="funcoes">Setores e Funções</TabsTrigger>
-              <TabsTrigger value="riscos">Riscos</TabsTrigger>
-              <TabsTrigger value="epis">EPIs / Medidas</TabsTrigger>
-              <TabsTrigger value="resumo">Resumo</TabsTrigger>
-            </TabsList>
-          </div>
+
 
           {/* ---------- Aba Ambiente ---------- */}
           <TabsContent value="ambiente" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
@@ -734,9 +729,39 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
             </p>
           </TabsContent>
 
-        </Tabs>
+    </Tabs>
+  );
 
-        <DialogFooter>
+  if (isPage) {
+    return (
+      <div className="flex flex-col min-h-[calc(100dvh-4rem)] w-full max-w-full overflow-x-hidden">
+        <div className="border-b pb-3 mb-3">
+          <h1 className="text-lg font-semibold break-words">
+            Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+          </p>
+        </div>
+        {bodyContent}
+        <div className="flex justify-end border-t pt-3 mt-3">
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:!max-w-[min(1200px,95vw)] sm:w-[95vw] sm:h-[92vh] sm:max-h-[92vh] sm:p-0 sm:overflow-hidden overflow-x-hidden flex flex-col">
+        <DialogHeader className="sm:px-6 sm:pt-6 sm:pb-3 sm:border-b">
+          <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+          </p>
+        </DialogHeader>
+        {bodyContent}
+        <DialogFooter className="sm:px-6 sm:pb-6">
           <Button variant="outline" onClick={onClose}>Fechar</Button>
         </DialogFooter>
       </DialogContent>
