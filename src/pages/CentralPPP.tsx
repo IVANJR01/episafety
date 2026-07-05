@@ -169,7 +169,7 @@ function CargoMultiSelect({ selected, onChange, suggestions }: { selected: strin
 }
 
 export default function CentralPPP() {
-  const { empresaId } = useAuth();
+  const { empresaId, user } = useAuth();
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
 
