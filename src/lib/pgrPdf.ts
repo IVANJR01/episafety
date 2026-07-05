@@ -288,6 +288,37 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     b.y += 2;
   }
 
+  // Quadro Sinóptico de EPIs
+  if (ctx.quadroEpis && ctx.quadroEpis.length > 0) {
+    pdf.addPage(); b.y = 15;
+    title(b, "Quadro Sinóptico de Utilização de EPIs");
+    // Cabeçalho da tabela
+    ensure(b, 8);
+    pdf.setFillColor(240, 240, 240); pdf.rect(10, b.y, 190, 6, "F");
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(30);
+    pdf.text("GES", 12, b.y + 4);
+    pdf.text("Função", 55, b.y + 4);
+    pdf.text("Medida de controle existente", 100, b.y + 4);
+    pdf.text("EPIs indicados", 155, b.y + 4);
+    b.y += 7;
+    pdf.setTextColor(0);
+    ctx.quadroEpis.forEach((l) => {
+      const gesTxt = pdf.splitTextToSize(`${l.ghe_codigo}\n${l.ghe_nome}`, 41);
+      const funcTxt = pdf.splitTextToSize(l.funcao, 43);
+      const medTxt = pdf.splitTextToSize(l.medida_controle, 53);
+      const epiTxt = pdf.splitTextToSize(l.epis, 43);
+      const h = Math.max(gesTxt.length, funcTxt.length, medTxt.length, epiTxt.length) * 3.4 + 3;
+      ensure(b, h + 1);
+      pdf.setDrawColor(220); pdf.line(10, b.y, 200, b.y);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
+      pdf.text(gesTxt, 12, b.y + 3);
+      pdf.text(funcTxt, 55, b.y + 3);
+      pdf.text(medTxt, 100, b.y + 3);
+      pdf.text(epiTxt, 155, b.y + 3);
+      b.y += h;
+    });
+  }
+
   // 5. Plano de ação 5W2H
   pdf.addPage(); b.y = 15;
   title(b, "5. Plano de Ação (5W2H)");
