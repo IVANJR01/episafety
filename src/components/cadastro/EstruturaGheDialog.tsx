@@ -25,8 +25,11 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export default function EstruturaGheDialog({ ghe, onClose }: Props) {
   const [tab, setTab] = useState("ambiente");
 
-  /* ---------- Ambiente ---------- */
+  /* ---------- Ambiente (agora inclui Código, Nome e Ativo) ---------- */
   const [amb, setAmb] = useState({
+    codigo: ghe.codigo || "",
+    nome: ghe.nome || "",
+    status: ghe.status || "ativo",
     ambiente: ghe.ambiente || "",
     descricao_ambiente: ghe.descricao_ambiente || "",
     processo: ghe.processo || "",
@@ -37,11 +40,15 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
   const [savingAmb, setSavingAmb] = useState(false);
 
   const salvarAmbiente = async () => {
+    if (!amb.codigo.trim() || !amb.nome.trim()) return toast.error("Código e nome são obrigatórios");
     setSavingAmb(true);
     const setoresArr = amb.setores.map((s) => s.trim()).filter(Boolean);
     const { error } = await supabase
       .from("ghe_ges")
       .update({
+        codigo: amb.codigo.trim(),
+        nome: amb.nome.trim(),
+        status: amb.status,
         ambiente: amb.ambiente?.trim() || null,
         descricao_ambiente: amb.descricao_ambiente?.trim() || null,
         processo: amb.processo?.trim() || null,
@@ -53,11 +60,43 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
     setSavingAmb(false);
     if (error) return toast.error(error.message);
     toast.success("Ambiente salvo");
-    // sincroniza objeto local (útil para tabs seguintes)
+    ghe.codigo = amb.codigo; ghe.nome = amb.nome; ghe.status = amb.status;
     ghe.ambiente = amb.ambiente; ghe.descricao_ambiente = amb.descricao_ambiente;
     ghe.processo = amb.processo;
     ghe.descricao = amb.descricao; ghe.setores = setoresArr;
   };
+
+  /* ---------- EPIs / Medidas ---------- */
+  const [epis, setEpis] = useState({
+    medidas_controle_existentes: ghe.medidas_controle_existentes || "",
+    medidas_controle_recomendadas: ghe.medidas_controle_recomendadas || "",
+    epcs: ghe.epcs || "",
+    capacitacoes_obrigatorias: ghe.capacitacoes_obrigatorias || "",
+    observacoes_tecnicas: ghe.observacoes_tecnicas || "",
+  });
+  const [savingEpis, setSavingEpis] = useState(false);
+  const salvarEpis = async () => {
+    setSavingEpis(true);
+    const { error } = await supabase
+      .from("ghe_ges")
+      .update({
+        medidas_controle_existentes: epis.medidas_controle_existentes?.trim() || null,
+        medidas_controle_recomendadas: epis.medidas_controle_recomendadas?.trim() || null,
+        epcs: epis.epcs?.trim() || null,
+        capacitacoes_obrigatorias: epis.capacitacoes_obrigatorias?.trim() || null,
+        observacoes_tecnicas: epis.observacoes_tecnicas?.trim() || null,
+      })
+      .eq("id", ghe.id);
+    setSavingEpis(false);
+    if (error) return toast.error(error.message);
+    toast.success("EPIs e medidas salvos");
+    ghe.medidas_controle_existentes = epis.medidas_controle_existentes;
+    ghe.medidas_controle_recomendadas = epis.medidas_controle_recomendadas;
+    ghe.epcs = epis.epcs;
+    ghe.capacitacoes_obrigatorias = epis.capacitacoes_obrigatorias;
+    ghe.observacoes_tecnicas = epis.observacoes_tecnicas;
+  };
+
 
   /* ---------- Funções ---------- */
   const [funcoes, setFuncoes] = useState<any[]>([]);
@@ -212,9 +251,9 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
 
   return (
     <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-5xl sm:max-h-[92vh] sm:overflow-hidden">
+      <DialogContent className="max-w-5xl sm:max-h-[92vh] sm:overflow-hidden overflow-x-hidden">
         <DialogHeader>
-          <DialogTitle>Estrutura do GES — {ghe.codigo} · {ghe.nome}</DialogTitle>
+          <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
           <p className="text-xs text-muted-foreground">
             Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
           </p>
@@ -225,19 +264,32 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
             <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
             <TabsTrigger value="funcoes">Setores e Funções</TabsTrigger>
             <TabsTrigger value="riscos">Riscos</TabsTrigger>
+            <TabsTrigger value="epis">EPIs / Medidas</TabsTrigger>
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
           </TabsList>
 
           {/* ---------- Aba Ambiente ---------- */}
-          <TabsContent value="ambiente" className="mt-3 space-y-3 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
+          <TabsContent value="ambiente" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Código do GES *</Label>
+                <Input value={amb.codigo} onChange={(e) => setAmb({ ...amb, codigo: e.target.value })} placeholder="GES 01" className="w-full" />
+              </div>
+              <div>
+                <Label className="text-xs">Nome do GES *</Label>
+                <Input value={amb.nome} onChange={(e) => setAmb({ ...amb, nome: e.target.value })} placeholder="Administrativo" className="w-full" />
+              </div>
+            </div>
             <div>
               <Label className="text-xs">Ambiente (título curto)</Label>
               <Input
                 value={amb.ambiente}
                 onChange={(e) => setAmb({ ...amb, ambiente: e.target.value })}
                 placeholder="Ex.: Ambiente interno / Área operacional"
+                className="w-full"
               />
             </div>
+
             <div>
               <Label className="text-xs">Descrição do ambiente</Label>
               <Textarea
@@ -287,9 +339,21 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
                 />
               </div>
             </div>
-            <div>
-              <Label className="text-xs">Observações do GES</Label>
-              <Textarea rows={2} value={amb.descricao} onChange={(e) => setAmb({ ...amb, descricao: e.target.value })} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Observações do GES</Label>
+                <Textarea rows={2} value={amb.descricao} onChange={(e) => setAmb({ ...amb, descricao: e.target.value })} className="w-full" />
+              </div>
+              <div>
+                <Label className="text-xs">Ativo</Label>
+                <Select value={amb.status} onValueChange={(v) => setAmb({ ...amb, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Sim</SelectItem>
+                    <SelectItem value="inativo">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="flex justify-end">
               <Button onClick={salvarAmbiente} disabled={savingAmb}>
@@ -297,6 +361,7 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
               </Button>
             </div>
           </TabsContent>
+
 
           {/* ---------- Aba Setores e Funções ---------- */}
           <TabsContent value="funcoes" className="mt-3 space-y-3 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
@@ -583,12 +648,50 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
             </div>
           </TabsContent>
 
+          {/* ---------- Aba EPIs / Medidas ---------- */}
+          <TabsContent value="epis" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
+            <p className="text-xs text-muted-foreground">
+              Medidas de controle, EPCs, EPIs e capacitações usados pelo PGR e pela OS. Aplicam a todo o GES.
+            </p>
+            <div>
+              <Label className="text-xs">Medidas de controle existentes</Label>
+              <Textarea rows={2} value={epis.medidas_controle_existentes} onChange={(e) => setEpis({ ...epis, medidas_controle_existentes: e.target.value })} className="w-full" />
+            </div>
+            <div>
+              <Label className="text-xs">Medidas de controle recomendadas</Label>
+              <Textarea rows={2} value={epis.medidas_controle_recomendadas} onChange={(e) => setEpis({ ...epis, medidas_controle_recomendadas: e.target.value })} className="w-full" />
+            </div>
+            <div>
+              <Label className="text-xs">EPCs (Equipamentos de Proteção Coletiva)</Label>
+              <Textarea rows={2} value={epis.epcs} onChange={(e) => setEpis({ ...epis, epcs: e.target.value })} placeholder="Ex.: Exaustão localizada, sinalização, isolamento de área…" className="w-full" />
+            </div>
+            <div>
+              <Label className="text-xs">EPIs</Label>
+              <Textarea rows={2} value={epis.observacoes_tecnicas} onChange={(e) => setEpis({ ...epis, observacoes_tecnicas: e.target.value })} placeholder="Ex.: Protetor auricular tipo plug, óculos ampla visão, calçado de segurança…" className="w-full" />
+              <p className="text-[10px] text-muted-foreground mt-1">Lista descritiva. O controle de entrega de EPIs continua no módulo próprio.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Capacitações obrigatórias</Label>
+              <Textarea rows={2} value={epis.capacitacoes_obrigatorias} onChange={(e) => setEpis({ ...epis, capacitacoes_obrigatorias: e.target.value })} placeholder="Ex.: NR-06, NR-35, NR-10 básica…" className="w-full" />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={salvarEpis} disabled={savingEpis}>
+                <Save className="h-4 w-4 mr-1" /> Salvar EPIs / Medidas
+              </Button>
+            </div>
+          </TabsContent>
+
           {/* ---------- Aba Resumo ---------- */}
-          <TabsContent value="resumo" className="mt-3 space-y-3 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
+          <TabsContent value="resumo" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
             <div className="border rounded p-3">
               <p className="text-xs text-muted-foreground">Ambiente</p>
-              <p className="text-sm font-medium">{amb.ambiente || "—"}</p>
-              {amb.descricao_ambiente && <p className="text-xs mt-1 whitespace-pre-wrap">{amb.descricao_ambiente}</p>}
+              <p className="text-sm font-medium break-words">{amb.ambiente || "—"}</p>
+              {amb.descricao_ambiente && <p className="text-xs mt-1 whitespace-pre-wrap break-words">{amb.descricao_ambiente}</p>}
+              {amb.processo && (
+                <p className="text-xs mt-2 whitespace-pre-wrap break-words">
+                  <span className="text-muted-foreground">Processo do GES:</span> {amb.processo}
+                </p>
+              )}
             </div>
             <div className="border rounded p-3">
               <p className="text-xs text-muted-foreground mb-1">Setores e Funções</p>
@@ -597,9 +700,11 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
                   <p className="text-sm font-medium">{setor} <span className="text-xs text-muted-foreground">({fs.length})</span></p>
                   <ul className="pl-4 list-disc text-xs">
                     {fs.map((f) => (
-                      <li key={f.id}>
+                      <li key={f.id} className="break-words">
                         <b>{f.nome_funcao}</b>
-                        {f.descricao_atividade && <span className="text-muted-foreground"> — {f.descricao_atividade}</span>}
+                        {(f.descricao_atividade || f.processo || amb.processo) && (
+                          <span className="text-muted-foreground"> — {f.descricao_atividade || f.processo || amb.processo}</span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -611,10 +716,22 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
               <p className="text-xs text-muted-foreground mb-1">Riscos ({riscos.length})</p>
               <p className="text-xs">{riscosComuns.length} comuns · {riscosEspec.length} específicos</p>
             </div>
+            <div className="border rounded p-3 space-y-1">
+              <p className="text-xs text-muted-foreground mb-1">EPIs / Medidas</p>
+              {epis.medidas_controle_existentes && <p className="text-xs break-words"><b>Medidas existentes:</b> {epis.medidas_controle_existentes}</p>}
+              {epis.medidas_controle_recomendadas && <p className="text-xs break-words"><b>Recomendadas:</b> {epis.medidas_controle_recomendadas}</p>}
+              {epis.epcs && <p className="text-xs break-words"><b>EPCs:</b> {epis.epcs}</p>}
+              {epis.observacoes_tecnicas && <p className="text-xs break-words"><b>EPIs:</b> {epis.observacoes_tecnicas}</p>}
+              {epis.capacitacoes_obrigatorias && <p className="text-xs break-words"><b>Capacitações:</b> {epis.capacitacoes_obrigatorias}</p>}
+              {!epis.medidas_controle_existentes && !epis.medidas_controle_recomendadas && !epis.epcs && !epis.observacoes_tecnicas && !epis.capacitacoes_obrigatorias && (
+                <p className="text-xs text-muted-foreground italic">Nada cadastrado.</p>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground italic">
-              Ao importar este GES no <b>PGR → Inventário de Riscos</b>, o sistema usa: descrição do ambiente, setor da função, código do GES, funções vinculadas, processo/atividade de cada função e agentes/riscos (comuns + específicos).
+              Ao importar este GES no <b>PGR → Inventário de Riscos</b>, o sistema usa: descrição do ambiente, setor da função, código do GES, funções vinculadas, processo/atividade de cada função, agentes/riscos (comuns + específicos), EPCs, EPIs, medidas e capacitações.
             </p>
           </TabsContent>
+
         </Tabs>
 
         <DialogFooter>
