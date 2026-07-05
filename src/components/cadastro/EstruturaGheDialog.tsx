@@ -44,6 +44,7 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
       .update({
         ambiente: amb.ambiente?.trim() || null,
         descricao_ambiente: amb.descricao_ambiente?.trim() || null,
+        processo: amb.processo?.trim() || null,
         descricao: amb.descricao?.trim() || null,
         setores: setoresArr,
         setor: setoresArr[0] || null,
@@ -54,6 +55,7 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
     toast.success("Ambiente salvo");
     // sincroniza objeto local (útil para tabs seguintes)
     ghe.ambiente = amb.ambiente; ghe.descricao_ambiente = amb.descricao_ambiente;
+    ghe.processo = amb.processo;
     ghe.descricao = amb.descricao; ghe.setores = setoresArr;
   };
 
