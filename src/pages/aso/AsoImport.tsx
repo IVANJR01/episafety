@@ -51,6 +51,7 @@ function parseDate(v: any): string | undefined {
 export default function AsoImport() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
+  useEffect(() => { setEmpresaSel(empresaId || ""); }, [empresaId]);
   const [rows, setRows] = useState<Row[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ criados: number; atualizados: number; erros: number } | null>(null);
