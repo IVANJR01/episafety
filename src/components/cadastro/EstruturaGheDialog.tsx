@@ -38,13 +38,13 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     descricao: ghe.descricao || "",
     setores: ((ghe.setores && ghe.setores.length ? ghe.setores : ghe.setor ? [ghe.setor] : []) as string[]),
   });
-  const [novoSetor, setNovoSetor] = useState("");
   const [savingAmb, setSavingAmb] = useState(false);
 
   const salvarAmbiente = async () => {
     if (!amb.codigo.trim() || !amb.nome.trim()) return toast.error("Código e nome são obrigatórios");
     setSavingAmb(true);
     const setoresArr = amb.setores.map((s) => s.trim()).filter(Boolean);
+
     const { error } = await supabase
       .from("ghe_ges")
       .update({
