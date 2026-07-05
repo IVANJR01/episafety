@@ -44,7 +44,7 @@ export default function AsoModule() {
           <TabsTrigger value="asos" className="gap-1"><FileText className="h-4 w-4" />ASOs</TabsTrigger>
           <TabsTrigger value="exames" className="gap-1"><Stethoscope className="h-4 w-4" />Exames</TabsTrigger>
           <TabsTrigger value="catalogo" className="gap-1"><Settings className="h-4 w-4" />Config. Exames</TabsTrigger>
-          <TabsTrigger value="pcmso" className="gap-1"><Shield className="h-4 w-4" />PCMSO / GHE</TabsTrigger>
+          <TabsTrigger value="pcmso" className="gap-1"><Shield className="h-4 w-4" />Exames por GES</TabsTrigger>
           <TabsTrigger value="medicos" className="gap-1"><Users className="h-4 w-4" />Médicos</TabsTrigger>
           <TabsTrigger value="locais" className="gap-1"><MapPin className="h-4 w-4" />Locais</TabsTrigger>
           <TabsTrigger value="relatorios" className="gap-1"><BarChart3 className="h-4 w-4" />Relatórios</TabsTrigger>

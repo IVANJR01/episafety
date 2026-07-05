@@ -74,7 +74,7 @@ export default function AsoDiagnostico() {
         </div>
         {data && data.ghes === 0 && (
           <div className="text-amber-600 dark:text-amber-400 pt-1">
-            Sem GHE/GES cadastrados nesta empresa. Use a aba <b>PCMSO / GHE</b> → "Novo GHE/GES" ou <b>Importar PCMSO</b> para começar.
+            Sem GES/GHE cadastrados nesta empresa. Cadastre em <b>Cadastro → GES/GHE</b> para começar.
           </div>
         )}
       </CardContent>
