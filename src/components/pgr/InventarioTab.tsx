@@ -124,6 +124,9 @@ export default function InventarioTab({
                 <thead className="bg-muted">
                   <tr>
                     <th className="p-2 text-left">GES</th>
+                    <th className="p-2 text-left">Setor</th>
+                    <th className="p-2 text-left">Funções expostas</th>
+                    <th className="p-2 text-left">Processo</th>
                     <th className="p-2 text-left">Grupo</th>
                     <th className="p-2 text-left">Perigo</th>
                     <th className="p-2 text-left">Fonte</th>
