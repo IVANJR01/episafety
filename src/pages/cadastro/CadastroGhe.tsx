@@ -199,18 +199,17 @@ function QuickCreateGheDialog({
   onCreated: (id: string) => void;
 }) {
   const [codigo, setCodigo] = useState("");
-  const [nome, setNome] = useState("");
   const [saving, setSaving] = useState(false);
 
   const salvar = async () => {
-    if (!codigo.trim() || !nome.trim()) return toast.error("Código e nome são obrigatórios");
+    if (!codigo.trim()) return toast.error("Código é obrigatório");
     setSaving(true);
     const { data, error } = await supabase
       .from("ghe_ges")
       .insert({
         empresa_id: empresaId,
         codigo: codigo.trim(),
-        nome: nome.trim(),
+        nome: codigo.trim(),
         status: "ativo",
       })
       .select("id")
@@ -218,7 +217,7 @@ function QuickCreateGheDialog({
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("GES criado — complete a estrutura");
-    setCodigo(""); setNome("");
+    setCodigo("");
     onCreated(data!.id);
   };
 
