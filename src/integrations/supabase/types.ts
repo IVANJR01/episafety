@@ -6426,6 +6426,44 @@ export type Database = {
           },
         ]
       }
+      pgr_textos: {
+        Row: {
+          conteudo: string
+          created_at: string
+          empresa_id: string
+          id: string
+          pgr_id: string
+          secao: string
+          updated_at: string
+        }
+        Insert: {
+          conteudo?: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          pgr_id: string
+          secao: string
+          updated_at?: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          pgr_id?: string
+          secao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pgr_textos_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ppp_assinaturas: {
         Row: {
           assinado_em: string
@@ -8144,6 +8182,7 @@ export type Database = {
         Returns: Json
       }
       pgr_publicar: { Args: { _pgr_id: string }; Returns: Json }
+      pgr_seed_textos: { Args: { _pgr_id: string }; Returns: undefined }
       pgr_validar_interno: {
         Args: { _pdf_versao?: number; _pgr_id: string }
         Returns: Json
