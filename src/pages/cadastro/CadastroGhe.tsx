@@ -27,8 +27,7 @@ export default function CadastroGhe() {
   const [busca, setBusca] = useState("");
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
-  const [openFuncoes, setOpenFuncoes] = useState<any | null>(null);
-  const [openRiscos, setOpenRiscos] = useState<any | null>(null);
+  const [openEstrutura, setOpenEstrutura] = useState<any | null>(null);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["cad-ghe-empresas", empresaScopeIds.join(",")],
