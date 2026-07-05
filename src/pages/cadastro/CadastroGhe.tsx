@@ -199,18 +199,17 @@ function QuickCreateGheDialog({
   onCreated: (id: string) => void;
 }) {
   const [codigo, setCodigo] = useState("");
-  const [nome, setNome] = useState("");
   const [saving, setSaving] = useState(false);
 
   const salvar = async () => {
-    if (!codigo.trim() || !nome.trim()) return toast.error("Código e nome são obrigatórios");
+    if (!codigo.trim()) return toast.error("Código é obrigatório");
     setSaving(true);
     const { data, error } = await supabase
       .from("ghe_ges")
       .insert({
         empresa_id: empresaId,
         codigo: codigo.trim(),
-        nome: nome.trim(),
+        nome: codigo.trim(),
         status: "ativo",
       })
       .select("id")
@@ -218,25 +217,21 @@ function QuickCreateGheDialog({
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("GES criado — complete a estrutura");
-    setCodigo(""); setNome("");
+    setCodigo("");
     onCreated(data!.id);
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { setCodigo(""); setNome(""); } onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setCodigo(""); } onOpenChange(v); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Novo GES</DialogTitle>
-          <p className="text-xs text-muted-foreground">Informe apenas código e nome. Você completa Ambiente, Setores, Funções, Riscos, EPIs e Medidas na tela seguinte.</p>
+          <p className="text-xs text-muted-foreground">Informe apenas o código. Você completa Ambiente, Setores, Funções, Riscos, EPIs e Medidas na tela seguinte.</p>
         </DialogHeader>
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Código do GES *</Label>
             <Input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="GES 01" />
-          </div>
-          <div>
-            <Label className="text-xs">Nome do GES *</Label>
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Administrativo" />
           </div>
         </div>
         <DialogFooter>
