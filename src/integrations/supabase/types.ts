@@ -6919,6 +6919,7 @@ export type Database = {
           pdf_versao: number | null
           ppp_id: string
           sha256: string
+          snapshot_json: Json | null
           status_no_momento: string | null
           storage_bucket: string | null
           storage_path: string | null
@@ -6942,6 +6943,7 @@ export type Database = {
           pdf_versao?: number | null
           ppp_id: string
           sha256: string
+          snapshot_json?: Json | null
           status_no_momento?: string | null
           storage_bucket?: string | null
           storage_path?: string | null
@@ -6965,6 +6967,7 @@ export type Database = {
           pdf_versao?: number | null
           ppp_id?: string
           sha256?: string
+          snapshot_json?: Json | null
           status_no_momento?: string | null
           storage_bucket?: string | null
           storage_path?: string | null
