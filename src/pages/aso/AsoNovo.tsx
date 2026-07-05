@@ -44,6 +44,11 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
 
   const [funcionarioId, setFuncionarioId] = useState<string>("");
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
+  // Sincroniza com a empresa ativa do header (evita ficar "preso" na anterior).
+  // Só reseta quando não estamos editando um ASO existente.
+  useEffect(() => {
+    if (!editingId) setEmpresaSel(empresaId || "");
+  }, [empresaId, editingId]);
   const [tipoExame, setTipoExame] = useState<string>("admissional");
   const [riscos, setRiscos] = useState<{ grupo: string; descricao: string }[]>([]);
   const [exames, setExames] = useState<{ exame_id?: string; nome_exame: string; realizado: boolean; data_realizacao?: string; resultado?: string; observacao?: string }[]>([]);
