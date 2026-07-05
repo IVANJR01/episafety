@@ -63,6 +63,14 @@ const programas: ProgramaCard[] = [
     to: "/programas/laudo-periculosidade",
     status: "em-estruturacao",
   },
+  {
+    key: "ppp",
+    nome: "PPP",
+    descricao: "Perfil Profissiográfico Previdenciário — gerado a partir dos dados do LTCAT (agentes nocivos, GES, EPI/EPC e responsável técnico).",
+    icon: IdCard,
+    to: "/central-ppp",
+    status: "ativo",
+  },
 ];
 
 export default function ProgramasHome() {
