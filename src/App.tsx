@@ -264,6 +264,7 @@ function ProtectedRoute() {
         <Route path="/cadastro/filiais" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
         <Route path="/cadastro/ghe" element={<CadastroGhe />} />
+        <Route path="/cadastro/ghe/:id/estrutura" element={<EstruturaGhePage />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
         <Route path="/dds" element={<DDS />} />
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
