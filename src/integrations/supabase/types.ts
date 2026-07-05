@@ -3834,6 +3834,10 @@ export type Database = {
           ghe_id: string
           id: string
           nome_funcao: string
+          observacoes: string | null
+          processo: string | null
+          quantidade_trabalhadores: number | null
+          setor: string | null
           status: string
           updated_at: string
         }
@@ -3845,6 +3849,10 @@ export type Database = {
           ghe_id: string
           id?: string
           nome_funcao: string
+          observacoes?: string | null
+          processo?: string | null
+          quantidade_trabalhadores?: number | null
+          setor?: string | null
           status?: string
           updated_at?: string
         }
@@ -3856,6 +3864,10 @@ export type Database = {
           ghe_id?: string
           id?: string
           nome_funcao?: string
+          observacoes?: string | null
+          processo?: string | null
+          quantidade_trabalhadores?: number | null
+          setor?: string | null
           status?: string
           updated_at?: string
         }
@@ -3878,11 +3890,13 @@ export type Database = {
       }
       ghe_ges: {
         Row: {
+          ambiente: string | null
           capacitacoes_obrigatorias: string | null
           codigo: string
           created_at: string
           created_by: string | null
           descricao: string | null
+          descricao_ambiente: string | null
           descricao_atividades: string | null
           empresa_id: string
           epcs: string | null
@@ -3896,6 +3910,7 @@ export type Database = {
           pcmso_id: string | null
           probabilidade: number | null
           setor: string | null
+          setores: string[]
           severidade: number | null
           status: string
           tempo_exposicao: string | null
@@ -3903,11 +3918,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ambiente?: string | null
           capacitacoes_obrigatorias?: string | null
           codigo: string
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          descricao_ambiente?: string | null
           descricao_atividades?: string | null
           empresa_id: string
           epcs?: string | null
@@ -3921,6 +3938,7 @@ export type Database = {
           pcmso_id?: string | null
           probabilidade?: number | null
           setor?: string | null
+          setores?: string[]
           severidade?: number | null
           status?: string
           tempo_exposicao?: string | null
@@ -3928,11 +3946,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ambiente?: string | null
           capacitacoes_obrigatorias?: string | null
           codigo?: string
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          descricao_ambiente?: string | null
           descricao_atividades?: string | null
           empresa_id?: string
           epcs?: string | null
@@ -3946,6 +3966,7 @@ export type Database = {
           pcmso_id?: string | null
           probabilidade?: number | null
           setor?: string | null
+          setores?: string[]
           severidade?: number | null
           status?: string
           tempo_exposicao?: string | null
@@ -3974,7 +3995,9 @@ export type Database = {
           aparece_aso: boolean
           created_at: string
           empresa_id: string
+          especifico_funcao: boolean
           exposicao: string | null
+          funcao_id: string | null
           ghe_id: string
           grupo: string
           id: string
@@ -3989,7 +4012,9 @@ export type Database = {
           aparece_aso?: boolean
           created_at?: string
           empresa_id: string
+          especifico_funcao?: boolean
           exposicao?: string | null
+          funcao_id?: string | null
           ghe_id: string
           grupo: string
           id?: string
@@ -4004,7 +4029,9 @@ export type Database = {
           aparece_aso?: boolean
           created_at?: string
           empresa_id?: string
+          especifico_funcao?: boolean
           exposicao?: string | null
+          funcao_id?: string | null
           ghe_id?: string
           grupo?: string
           id?: string
@@ -4021,6 +4048,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ghe_riscos_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_funcoes"
             referencedColumns: ["id"]
           },
           {

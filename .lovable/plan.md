@@ -1,99 +1,86 @@
+# Refatorar GES/GHE (multi-função + multi-setor) e melhorar importação no PGR
 
-# PGR — Modelo padrão SafetySoluções
+## Objetivo
+Permitir que **um mesmo GES** agrupe várias funções/setores com **atividades distintas**, compartilhando riscos comuns, e opcionalmente **risco específico por função**. O PGR passa a importar isso de forma inteligente (sem duplicar o GES).
 
-Objetivo: fazer o PGR gerado pelo sistema seguir a estrutura do seu documento "PGR G91 2025.2027", mas de forma dinâmica (dados da empresa + GES/GHE + inventário + EPIs + plano de ação) e com PDF mais profissional. Escopo restrito a **Programas / PGR / Inventário / Plano de Ação / GES**. Nada de EPI/Entregas/Inspeções/Exames/RH será tocado.
+---
 
-## Escopo desta entrega (fase 1)
+## 1. Banco de dados (migration)
 
-Como o pedido é muito amplo, proponho entregar em fase única e enxuta o que dá base para tudo o resto funcionar. Sem essa base, o resto vira retrabalho.
+### 1.1 `ghe_ges` — novos campos
+- `ambiente` (text) — ex.: "Ambiente de trabalho interno"
+- `setores` (text[]) — múltiplos setores. `setor` (singular) fica como legado/compat.
+- `descricao_ambiente` (text)
 
-### 1. Estrutura de textos padrão editáveis
-Nova tabela `pgr_textos` (por `pgr_id`) com as seções fixas do seu modelo:
-introdução, apresentação, registro e divulgação, objetivo geral, objetivos específicos, política de segurança, responsabilidades do empregador, responsabilidades dos empregados, segurança do trabalho, CIPA, considerações preliminares, área de abrangência, recomendações, considerações finais, encerramento.
+### 1.2 `ghe_funcoes` — enriquecer
+Já tem `nome_funcao`, `cbo`, `descricao_atividade`. Adicionar:
+- `setor` (text) — setor específico da função (dentro dos setores do GES)
+- `processo` (text)
+- `quantidade_trabalhadores` (int)
+- `observacoes` (text)
 
-- Ao criar um PGR, essas seções são semeadas com textos-padrão do SafetySoluções.
-- Nova aba **"Textos"** no PGR permite editar cada seção (rich textarea) antes de gerar o PDF.
-- Botão "Restaurar padrão" por seção.
+### 1.3 `ghe_riscos` — escopo função-específico
+- `funcao_id` (uuid, nullable, FK → `ghe_funcoes.id` ON DELETE CASCADE)
+  - `NULL` = risco comum do GES (aplica a todas as funções)
+  - preenchido = **risco específico daquela função**
+- `especifico_funcao` (bool, default false) — flag redundante para clareza de UI
 
-### 2. Controle de revisões visível no PDF
-Já existe `pgr_revisoes`. Vou:
-- Exibir a tabela "Controle de Revisões" (Revisão / Data / Descrição) na aba Resumo.
-- Incluir a mesma tabela no PDF, logo após a capa.
+RLS/GRANT já existentes cobrem os novos campos (mesma tabela).
 
-### 3. Matriz de risco — alinhar ao seu modelo (5×5, Trivial→Intolerável)
-Hoje a matriz do sistema classifica em baixo/moderado/alto/crítico. Vou **adicionar** o padrão do seu documento como opção default:
-- 1–3 Trivial · 4–8 Tolerável · 9–12 Moderado · 13–15 Substancial · 16–25 Intolerável
-- Mantém retrocompat: itens antigos continuam lendo o campo `classificacao` atual.
-- Novo helper `classificarRiscoPGR()` em `pgrMatriz.ts` e labels/cores novas.
-- Inventário e PDF passam a mostrar essa classificação.
+---
 
-### 4. Quadro sinóptico de EPIs (novo)
-Nova aba **"EPIs (Quadro Sinóptico)"** no PGR que consolida, a partir do inventário + GES:
-- GHE/GES · Função · Medida de controle existente · EPIs indicados (CA)
-- Fonte: `pgr_inventario_itens.ghe_id` → `ghe_ges` → `ghe_funcoes` + EPIs do GES.
-- Renderiza no PDF como tabela dedicada.
+## 2. UI — Cadastro GES (`src/pages/cadastro/CadastroGhe.tsx`)
 
-### 5. PDF profissional (reformulação de `pgrPdf.ts`)
-Manter a estrutura do seu DOCX, mas com visual SafetySoluções:
-- Capa com logo da empresa, nome do documento, período de vigência, versão.
-- Sumário automático.
-- Cabeçalho fixo (empresa + versão) e rodapé com paginação "Página X de Y".
-- Seções na ordem do seu modelo (item 1 do prompt).
-- Tabelas com zebra, bordas discretas, cores neutras.
-- Assinatura do responsável técnico ao final.
+### 2.1 Formulário do GES
+Reorganizar em blocos:
+- **Identificação**: Código, Nome, Ambiente, Setores (multi-tag input), Descrição do ambiente
+- **Dados técnicos** (colapsável, já existe): manter medidas, EPCs, capacitações, obs. técnicas
+- Remover obrigatoriedade de `setor` único (aceitar setores[])
 
-### 6. Segurança / integridade
-- `pgr_textos` com RLS por `empresa_id` + GRANTs (authenticated/service_role).
-- Nenhuma policy afrouxada em outros módulos.
-- Nada muda em EPIs/Entregas/Inspeções/Exames/RH/Termos/MFA/Storage.
+### 2.2 Diálogo de Funções (`FuncoesDialog`)
+Substituir input simples por **linha expansível** com campos:
+- Função, Setor, Descrição da atividade, Processo, Qtd. trabalhadores, Observações
 
-## O que **não** entra nesta entrega (proponho fases seguintes)
+Manter "Adicionar lista" (bulk) só para nome.
 
-Para não estourar o escopo em uma única mudança e não quebrar o que já funciona, deixo para próximas iterações — cada uma isolada e reversível:
+### 2.3 Novo diálogo: Riscos do GES
+Botão "Riscos" na linha da tabela abre modal listando `ghe_riscos` do GES:
+- Grupo (Físico/Químico/Biológico/Ergonômico/Acidente), perigo/fonte, exposição, lesões
+- Toggle "Aplica a todas as funções" (default) vs "Específico da função" → seleciona `funcao_id`
 
-- **Sugestão automática de ações** para riscos Moderado/Substancial/Intolerável (item 10). Precisa de UX de aprovação em lote — merece PR próprio.
-- **Geração de PGR consolidado "todas as unidades"** (item 3, terceira opção). Hoje o PGR é por empresa/unidade; consolidar exige nova modelagem de escopo.
-- **Editor rich-text (WYSIWYG)** dos textos. Fase 1 usa `<Textarea>` grande — funcional e sem dependências novas.
-- **Assinatura digital com imagem** no PDF (item 4 "assinatura, se existir"). Já temos `pgr_assinaturas`; incorporar imagem no PDF pode ir na fase 2.
+---
 
-## Detalhes técnicos
+## 3. Importação no PGR (`src/components/pgr/ImportarGheDialog.tsx`)
 
-### Migração SQL
-```sql
-CREATE TABLE public.pgr_textos (
-  id uuid PK default gen_random_uuid(),
-  pgr_id uuid NOT NULL REFERENCES pgr_documentos(id) ON DELETE CASCADE,
-  empresa_id uuid NOT NULL,
-  secao text NOT NULL,          -- 'introducao','apresentacao',...
-  conteudo text NOT NULL,
-  updated_at timestamptz default now(),
-  UNIQUE (pgr_id, secao)
-);
-GRANT SELECT,INSERT,UPDATE,DELETE ON public.pgr_textos TO authenticated;
-GRANT ALL ON public.pgr_textos TO service_role;
-ALTER TABLE public.pgr_textos ENABLE ROW LEVEL SECURITY;
--- policies usando is_in_user_company_tree(empresa_id)
+Ao importar um GES para o Inventário:
+- Para cada **função** do GES, gerar N itens em `pgr_inventario_itens`:
+  - Riscos comuns (`funcao_id IS NULL`) × função
+  - + Riscos específicos daquela função (`funcao_id = f.id`)
+- Deduplicar por (`empresa_id`, `pgr_id`, `ghe_id`, `funcao_id`, `perigo_descricao`)
+- Ambiente/setor do GES é referenciado, não duplicado
 
--- Função pgr_seed_textos(_pgr_id uuid) SECURITY DEFINER: cria linhas padrão.
--- Trigger AFTER INSERT em pgr_documentos que chama pgr_seed_textos.
-```
+O PDF do inventário (`pgrPdf.ts`) agrupa por **Ambiente → GES → Função → Riscos**, exibindo riscos comuns uma vez por função e específicos destacados.
 
-### Arquivos previstos
-- `supabase/migrations/…_pgr_textos.sql`
-- `src/lib/pgrTextosPadrao.ts` (conteúdo default de cada seção)
-- `src/lib/pgrMatriz.ts` (adicionar `classificarRiscoPGR`, labels Trivial/Tolerável/…)
-- `src/components/pgr/TextosTab.tsx` (nova aba)
-- `src/components/pgr/QuadroEpisTab.tsx` (nova aba)
-- `src/lib/pgrPdf.ts` (reescrita do layout — mantém API pública)
-- `src/pages/pgr/PgrDetalhe.tsx` (adicionar as duas abas)
+---
 
-### O que **não** será alterado
-`src/components/pgr/InventarioTab.tsx` (mantém como está — já importa GES corretamente). Regras de importação de GES, dedup e RLS permanecem intactas.
+## 4. Retrocompatibilidade
+- GES antigos com `setor` singular continuam funcionando (fallback: `setores = [setor]` quando vazio)
+- `ghe_riscos.funcao_id NULL` para todos os riscos existentes → viram "risco comum" automaticamente
+- Sem breaking change nas queries existentes
 
-## Confirmações antes de começar
+---
 
-1. Ok classificar risco pelo seu padrão (Trivial→Intolerável) como **default do PGR**, mantendo o antigo apenas como legado nos itens já salvos?
-2. Ok usar `<Textarea>` grande para editar os textos nesta fase (sem WYSIWYG)?
-3. Confirma que **não** quero neste PR: sugestão automática de plano de ação, PGR consolidado multi-unidade e assinatura por imagem no PDF (ficam para próxima iteração)?
+## 5. Arquivos afetados
+- **Nova migration** — colunas em `ghe_ges`, `ghe_funcoes`, `ghe_riscos`
+- **Editar** `src/pages/cadastro/CadastroGhe.tsx` — formulário + diálogo de funções + diálogo de riscos
+- **Editar** `src/components/pgr/ImportarGheDialog.tsx` — lógica de expansão função×risco
+- **Editar** `src/lib/pgrPdf.ts` — agrupamento Ambiente → GES → Função no inventário
 
-Assim que você confirmar, executo a migração, escrevo os arquivos acima e reescrevo o PDF.
+---
+
+## Fora desta fase
+- Editor visual da matriz de risco por função (será do Fase 2 do PGR)
+- Migração automática de GES antigos duplicados (feito manualmente pelo usuário)
+- Vínculo função ↔ funcionário automático baseado em atividade
+
+Aprovando, executo tudo em uma única rodada (migration + código).
