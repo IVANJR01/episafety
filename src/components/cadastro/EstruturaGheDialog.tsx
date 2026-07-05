@@ -251,16 +251,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const riscosComuns = riscos.filter((r) => !r.funcao_id);
   const riscosEspec = riscos.filter((r) => !!r.funcao_id);
 
-  const headerNode = (
-    <>
-      <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
-      <p className="text-xs text-muted-foreground">
-        Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
-      </p>
-    </>
-  );
-
-  const tabsNode = (
+  const bodyContent = (
     <Tabs value={tab} onValueChange={setTab} className={isPage ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden"}>
       <div className="w-full overflow-x-auto -mx-1 px-1">
         <TabsList className="inline-flex w-max min-w-full sm:min-w-0 sm:w-auto self-start">
@@ -271,6 +262,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
         </TabsList>
       </div>
+
 
 
           {/* ---------- Aba Ambiente ---------- */}
