@@ -583,6 +583,27 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                   </div>
                 </div>
                 <div>
+                  <Label className="text-xs">Processo / atividade *</Label>
+                  <Textarea
+                    rows={3}
+                    value={editF.descricao_atividade || ""}
+                    onChange={(e) => setEditF({ ...editF, descricao_atividade: e.target.value })}
+                    placeholder="Ex.: Apura e projeta saldo disponível, contas a pagar e receber."
+                  />
+                  {(() => {
+                    const setorSel = setoresRows.find((s) => (s.nome || "").toLowerCase() === (editF.setor || "").toLowerCase());
+                    return setorSel?.processo ? (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Processo do setor <b>{setorSel.nome}</b>: {setorSel.processo}
+                        <Button type="button" size="sm" variant="link" className="h-auto py-0 px-1 text-[11px]"
+                          onClick={() => setEditF({ ...editF, descricao_atividade: setorSel.processo })}>
+                          usar
+                        </Button>
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
+                <div>
                   <Label className="text-xs">Observações</Label>
                   <Textarea rows={2} value={editF.observacoes || ""} onChange={(e) => setEditF({ ...editF, observacoes: e.target.value })} />
                 </div>
