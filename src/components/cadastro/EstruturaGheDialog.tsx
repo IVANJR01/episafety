@@ -29,6 +29,7 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
   const [amb, setAmb] = useState({
     ambiente: ghe.ambiente || "",
     descricao_ambiente: ghe.descricao_ambiente || "",
+    processo: ghe.processo || "",
     descricao: ghe.descricao || "",
     setores: ((ghe.setores && ghe.setores.length ? ghe.setores : ghe.setor ? [ghe.setor] : []) as string[]),
   });
