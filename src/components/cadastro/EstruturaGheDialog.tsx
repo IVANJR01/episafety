@@ -249,6 +249,18 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
               <p className="text-xs text-muted-foreground mt-1">Este texto será importado no PGR no campo "Descrição do ambiente".</p>
             </div>
             <div>
+              <Label className="text-xs">Processo do GES</Label>
+              <Textarea
+                rows={4}
+                value={amb.processo}
+                onChange={(e) => setAmb({ ...amb, processo: e.target.value })}
+                placeholder="Ex.: Gerencia todo o processo produtivo da empresa. / Executa atividades administrativas, financeiras e de apoio à gestão da empresa."
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Processo geral aplicado a todas as funções deste GES. No PGR, se a função não tiver processo específico, será usado este.
+            </p>
+            </div>
+            <div>
               <Label className="text-xs">Setores vinculados</Label>
               <div className="border rounded p-2 flex flex-wrap gap-1 min-h-[44px]">
                 {amb.setores.map((s, i) => (
