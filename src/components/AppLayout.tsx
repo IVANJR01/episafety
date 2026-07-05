@@ -49,13 +49,12 @@ const portalRhItems: NavItem[] = [
 const gestaoDocItems: NavItem[] = [
   { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
-  { path: "/central-ppp", label: "Central PPP", icon: FileText, moduleKey: "ppp" },
   { path: "/treinamentos", label: "Capacitações", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
-// Programas — PGR, PCMSO, LTCAT e laudos técnicos
+// Programas — PGR, PCMSO, LTCAT, laudos técnicos e PPP (previdenciário, puxa dados do LTCAT)
 const programasItems: NavItem[] = [
   { path: "/programas", label: "Visão Geral", icon: LayoutDashboard, moduleKey: "pgr" },
   { path: "/programas/gerar", label: "Gerar Documentos", icon: Bell, moduleKey: "pgr" },
@@ -65,6 +64,7 @@ const programasItems: NavItem[] = [
   { path: "/ltcat", label: "LTCAT", icon: FileText, moduleKey: "ltcat" },
   { path: "/programas/laudo-insalubridade", label: "Laudo de Insalubridade", icon: Flame, moduleKey: "pgr" },
   { path: "/programas/laudo-periculosidade", label: "Laudo de Periculosidade", icon: Zap, moduleKey: "pgr" },
+  { path: "/central-ppp", label: "PPP", icon: FileText, moduleKey: "ppp" },
 ];
 
 // eSocial técnico / stub
