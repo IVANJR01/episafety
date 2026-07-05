@@ -124,6 +124,9 @@ export default function InventarioTab({
                 <thead className="bg-muted">
                   <tr>
                     <th className="p-2 text-left">GES</th>
+                    <th className="p-2 text-left">Setor</th>
+                    <th className="p-2 text-left">Funções expostas</th>
+                    <th className="p-2 text-left">Processo</th>
                     <th className="p-2 text-left">Grupo</th>
                     <th className="p-2 text-left">Perigo</th>
                     <th className="p-2 text-left">Fonte</th>
@@ -141,8 +144,18 @@ export default function InventarioTab({
                   {filtrados.map((i: any) => {
                     const cls = (i.classificacao || classificarRisco(i.severidade, i.probabilidade)) as keyof typeof CLASSE_TEXT;
                     return (
-                      <tr key={i.id} className="border-t hover:bg-muted/40">
+                      <tr key={i.id} className="border-t hover:bg-muted/40 align-top">
                         <td className="p-2">{i.ghe ? `${i.ghe.codigo} — ${i.ghe.nome}` : "—"}</td>
+                        <td className="p-2">{i.setor || "—"}</td>
+                        <td className="p-2 max-w-[200px]">
+                          {Array.isArray(i.funcoes_snapshot) && i.funcoes_snapshot.length > 0 ? (
+                            <span title={i.funcoes_snapshot.join(", ")}>
+                              {i.funcoes_snapshot.slice(0, 3).join(", ")}
+                              {i.funcoes_snapshot.length > 3 && <span className="text-muted-foreground"> +{i.funcoes_snapshot.length - 3}</span>}
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="p-2 max-w-[180px] truncate" title={i.processo || ""}>{i.processo || "—"}</td>
                         <td className="p-2">{GRUPO_LABEL[i.grupo] || i.grupo}</td>
                         <td className="p-2 max-w-[200px] truncate" title={i.perigo_descricao}>{i.perigo_descricao}</td>
                         <td className="p-2 max-w-[140px] truncate" title={i.fonte_geradora || ""}>{i.fonte_geradora || "—"}</td>

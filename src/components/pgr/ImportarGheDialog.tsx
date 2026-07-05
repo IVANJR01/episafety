@@ -11,6 +11,9 @@ interface PreviewItem {
   ghe_id: string;
   ghe_codigo?: string;
   ghe_nome?: string;
+  setor?: string | null;
+  processo?: string | null;
+  funcoes_snapshot?: string[] | null;
   perigo_descricao: string;
   grupo?: string;
   fonte_geradora?: string;
@@ -188,6 +191,9 @@ export default function ImportarGheDialog({
                 <thead className="bg-muted sticky top-0">
                   <tr>
                     <th className="p-2 text-left">GES</th>
+                    <th className="p-2 text-left">Setor</th>
+                    <th className="p-2 text-left">Funções expostas</th>
+                    <th className="p-2 text-left">Processo</th>
                     <th className="p-2 text-left">Perigo</th>
                     <th className="p-2 text-left">Fonte</th>
                     <th className="p-2 text-center">S×P</th>
@@ -195,12 +201,24 @@ export default function ImportarGheDialog({
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.itens.map((it, i) => (
-                    <tr key={i} className="border-t">
+                  {preview.itens.map((it, i) => {
+                    const funcs = it.funcoes_snapshot || [];
+                    return (
+                    <tr key={i} className="border-t align-top">
                       <td className="p-2">
                         <div className="font-medium">{it.ghe_codigo || "—"}</div>
                         <div className="text-muted-foreground text-[10px]">{it.ghe_nome}</div>
                       </td>
+                      <td className="p-2">{it.setor || "—"}</td>
+                      <td className="p-2 max-w-[220px]">
+                        {funcs.length > 0 ? (
+                          <span title={funcs.join(", ")}>
+                            {funcs.slice(0, 3).join(", ")}
+                            {funcs.length > 3 && <span className="text-muted-foreground"> +{funcs.length - 3}</span>}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="p-2 max-w-[180px] truncate" title={it.processo || ""}>{it.processo || "—"}</td>
                       <td className="p-2">{it.perigo_descricao}</td>
                       <td className="p-2 text-muted-foreground">{it.fonte_geradora || "—"}</td>
                       <td className="p-2 text-center">
@@ -209,12 +227,13 @@ export default function ImportarGheDialog({
                       <td className="p-2">
                         {it.acao === "criar"
                           ? <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">criar</Badge>
-                          : <Badge variant="outline">ignorar</Badge>}
+                          : <Badge variant="outline">já existente</Badge>}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {preview.itens.length === 0 && (
-                    <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Os GES selecionados não possuem riscos cadastrados.</td></tr>
+                    <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">Os GES selecionados não possuem riscos cadastrados.</td></tr>
                   )}
                 </tbody>
               </table>
