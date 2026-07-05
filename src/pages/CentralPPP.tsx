@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, FileText, Download, Search, Users, X, AlertTriangle, CheckCircle2, RefreshCw, ExternalLink, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, Download, Search, Users, AlertTriangle, CheckCircle2, RefreshCw, ExternalLink, Info } from "lucide-react";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,13 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
+
 import { toast } from "sonner";
 import { gerarPPPPdf } from "@/lib/gerarPPP";
 
@@ -85,21 +85,6 @@ const TIPO_RISCO_COLORS: Record<string, "default" | "secondary" | "destructive" 
   acidente: "destructive",
 };
 
-const emptyRiscoForm = {
-  cargo: "",
-  tipo_risco: "fisico",
-  fator_risco: "",
-  intensidade_concentracao: "",
-  tecnica_utilizada: "",
-  epc_eficaz: false,
-  epi_eficaz: false,
-  ca_epi: "",
-  profissiografia: "",
-  cbo: "",
-  cargos_multi: [] as string[], // for bulk creation
-  ausencia_risco: false, // checkbox for 09.01.001
-};
-
 const emptyRespForm = {
   tipo: "engenheiro",
   nome: "",
@@ -109,67 +94,8 @@ const emptyRespForm = {
   periodo_fim: "",
 };
 
-function CargoMultiSelect({ selected, onChange, suggestions }: { selected: string[]; onChange: (v: string[]) => void; suggestions: string[] }) {
-  const [inputValue, setInputValue] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const filtered = suggestions.filter(
-    (s) => !selected.includes(s) && s.toLowerCase().includes(inputValue.toLowerCase())
-  );
-
-  const addCargo = (cargo: string) => {
-    const trimmed = cargo.trim();
-    if (trimmed && !selected.includes(trimmed)) {
-      onChange([...selected, trimmed]);
-    }
-    setInputValue("");
-  };
-
-  const removeCargo = (cargo: string) => {
-    onChange(selected.filter((c) => c !== cargo));
-  };
-
-  return (
-    <div className="relative">
-      <div className="flex flex-wrap gap-1 rounded-md border border-input bg-background px-2 py-1.5 min-h-[36px] cursor-text" onClick={() => inputRef.current?.focus()}>
-        {selected.map((c) => (
-          <span key={c} className="inline-flex items-center gap-0.5 bg-primary/10 text-primary text-xs font-medium px-2 py-0.5 rounded-full">
-            {c}
-            <button type="button" onClick={(e) => { e.stopPropagation(); removeCargo(c); }} className="hover:text-destructive">
-              <X className="w-3 h-3" />
-            </button>
-          </span>
-        ))}
-        <input
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => { setInputValue(e.target.value); setShowSuggestions(true); }}
-          onFocus={() => setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && inputValue.trim()) { e.preventDefault(); addCargo(inputValue); }
-            if (e.key === "Backspace" && !inputValue && selected.length > 0) { removeCargo(selected[selected.length - 1]); }
-          }}
-          placeholder={selected.length === 0 ? "Ex: Servente" : "Adicionar..."}
-          className="flex-1 min-w-[80px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-        />
-      </div>
-      {showSuggestions && filtered.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md max-h-40 overflow-y-auto">
-          {filtered.map((s) => (
-            <button key={s} type="button" onMouseDown={(e) => { e.preventDefault(); addCargo(s); }} className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent truncate">
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function CentralPPP() {
-  const { empresaId } = useAuth();
+  const { empresaId, user } = useAuth();
   const navigate = useNavigate();
   const [syncing, setSyncing] = useState(false);
 
@@ -181,14 +107,11 @@ export default function CentralPPP() {
   const [loading, setLoading] = useState(true);
 
   // Dialogs
-  const [riscoOpen, setRiscoOpen] = useState(false);
   const [respOpen, setRespOpen] = useState(false);
   const [pppOpen, setPppOpen] = useState(false);
-  const [editingRisco, setEditingRisco] = useState<RiscoCargo | null>(null);
   const [editingResp, setEditingResp] = useState<Responsavel | null>(null);
 
   // Forms with localStorage persistence
-  const { form: riscoForm, setForm: setRiscoForm, resetForm: resetRiscoForm, hasDraft: hasRiscoDraft, clearDraft: clearRiscoDraft } = useFormDraft("ppp_risco", emptyRiscoForm);
   const { form: respForm, setForm: setRespForm, resetForm: resetRespForm, hasDraft: hasRespDraft, clearDraft: clearRespDraft } = useFormDraft("ppp_resp", emptyRespForm);
   const [selectedFuncId, setSelectedFuncId] = useState("");
   const [pppSearchName, setPppSearchName] = useState("");
@@ -197,14 +120,14 @@ export default function CentralPPP() {
   // Prevent accidental exit with unsaved form data
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (riscoOpen || respOpen) {
+      if (respOpen) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [riscoOpen, respOpen]);
+  }, [respOpen]);
 
   // Unique cargos from riscos
   const cargos = useMemo(() => [...new Set(riscos.map((r) => r.cargo))].sort(), [riscos]);
@@ -235,78 +158,10 @@ export default function CentralPPP() {
     setLoading(false);
   }
 
-  // === RISCOS CRUD ===
-  function openNewRisco() {
-    setEditingRisco(null);
-    if (!hasRiscoDraft()) resetRiscoForm();
-    setRiscoOpen(true);
-  }
-  function openEditRisco(r: RiscoCargo) {
-    setEditingRisco(r);
-    resetRiscoForm({
-      cargo: r.cargo,
-      tipo_risco: r.tipo_risco,
-      fator_risco: r.fator_risco,
-      intensidade_concentracao: r.intensidade_concentracao || "",
-      tecnica_utilizada: r.tecnica_utilizada || "",
-      epc_eficaz: r.epc_eficaz,
-      epi_eficaz: r.epi_eficaz,
-      ca_epi: r.ca_epi || "",
-      profissiografia: r.profissiografia || "",
-      cbo: r.cbo || "",
-      cargos_multi: [],
-      ausencia_risco: r.fator_risco === AUSENCIA_FATOR,
-    });
-    setRiscoOpen(true);
-  }
+  // === RISCOS ===
+  // O cadastro/edição/exclusão manual foi removido. Fonte oficial: LTCAT.
+  // As linhas em ppp_riscos_cargo são mantidas apenas por sincronização.
 
-  async function saveRisco() {
-    const isEditing = !!editingRisco;
-    // In edit mode use single cargo; in create mode use multi or single
-    const cargosList = isEditing
-      ? [riscoForm.cargo.trim()]
-      : riscoForm.cargos_multi.length > 0
-        ? riscoForm.cargos_multi.map((c) => c.trim())
-        : riscoForm.cargo.trim() ? [riscoForm.cargo.trim()] : [];
-
-    if (cargosList.length === 0 || !riscoForm.fator_risco) {
-      toast.error("Preencha cargo(s) e fator de risco");
-      return;
-    }
-
-    const basePayload = {
-      tipo_risco: riscoForm.tipo_risco as "fisico" | "quimico" | "biologico" | "ergonomico" | "acidente",
-      fator_risco: riscoForm.fator_risco.trim(),
-      intensidade_concentracao: riscoForm.intensidade_concentracao || null,
-      tecnica_utilizada: riscoForm.tecnica_utilizada || null,
-      epc_eficaz: riscoForm.epc_eficaz,
-      epi_eficaz: riscoForm.epi_eficaz,
-      ca_epi: riscoForm.ca_epi || null,
-      profissiografia: riscoForm.profissiografia || null,
-      cbo: riscoForm.cbo || null,
-      empresa_id: empresaId,
-    };
-
-    if (isEditing) {
-      const { error } = await supabase.from("ppp_riscos_cargo").update({ ...basePayload, cargo: cargosList[0] }).eq("id", editingRisco!.id);
-      if (error) { toast.error("Erro ao atualizar"); return; }
-      toast.success("Risco atualizado");
-    } else {
-      const rows = cargosList.map((cargo) => ({ ...basePayload, cargo }));
-      const { error } = await supabase.from("ppp_riscos_cargo").insert(rows);
-      if (error) { toast.error("Erro ao cadastrar"); return; }
-      toast.success(`${rows.length} risco(s) cadastrado(s) com sucesso`);
-    }
-    clearRiscoDraft();
-    setRiscoOpen(false);
-    loadAll();
-  }
-
-  async function deleteRisco(id: string) {
-    await supabase.from("ppp_riscos_cargo").delete().eq("id", id);
-    toast.success("Risco removido");
-    loadAll();
-  }
 
   // === SINCRONIZAR RISCOS DO LTCAT ===
   // Fonte oficial dos agentes previdenciários. O PPP apenas espelha.
@@ -461,7 +316,7 @@ export default function CentralPPP() {
     setPppOpen(true);
   }
 
-  function gerarPPP() {
+  async function gerarPPP() {
     const func = funcionarios.find((f) => f.id === selectedFuncId);
     if (!func) { toast.error("Selecione um funcionário"); return; }
 
@@ -554,6 +409,58 @@ export default function CentralPPP() {
     });
 
     doc.save(`PPP_${func.nome.replace(/\s+/g, "_")}.pdf`);
+
+    // === SNAPSHOT IMUTÁVEL ===
+    // Congela o estado do LTCAT/PPP no momento da emissão. Alterações
+    // posteriores no LTCAT NÃO alteram este PPP.
+    try {
+      const snapshot = {
+        gerado_em: new Date().toISOString(),
+        gerado_por: user?.id || null,
+        empresa: {
+          id: empresaId,
+          nome: empresa?.nome || null,
+          cnpj: empresa?.cnpj || null,
+        },
+        funcionario: {
+          id: func.id,
+          nome: func.nome,
+          cpf: func.cpf,
+          matricula: func.matricula,
+          cargo: func.cargo,
+          setor: func.setor,
+          data_admissao: func.data_admissao,
+          data_demissao: func.data_demissao,
+          regime_revezamento: func.regime_revezamento,
+        },
+        cbo,
+        profissiografia: profissiografiaFinal,
+        riscos: riscosParaPPP,
+        riscos_origem: cargoRiscos, // linhas cruas puxadas do LTCAT
+        responsaveis: {
+          engenheiro: eng || null,
+          medico: med || null,
+        },
+        representante_legal: empresa?.cpf_representante_legal
+          ? { nome: empresa.nome_representante_legal, cpf: empresa.cpf_representante_legal }
+          : null,
+        fonte: "LTCAT",
+      };
+      const { error: snapErr } = await (supabase.from as any)("ppp_snapshots_emitidos").insert({
+        empresa_id: empresaId!,
+        funcionario_id: func.id,
+        funcionario_nome: func.nome,
+        tipo: "desligamento",
+        nome_arquivo: `PPP_${func.nome.replace(/\s+/g, "_")}.pdf`,
+        gerado_em: new Date().toISOString(),
+        gerado_por: user?.id || null,
+        snapshot_json: snapshot,
+      });
+      if (snapErr) console.warn("[PPP] snapshot não salvo:", snapErr.message);
+    } catch (e) {
+      console.warn("[PPP] snapshot falhou:", e);
+    }
+
     toast.success("PPP gerado com sucesso!");
     setPppOpen(false);
   }
@@ -782,136 +689,9 @@ export default function CentralPPP() {
         </TabsContent>
       </Tabs>
 
-      {/* === DIALOG RISCO === */}
-      <Dialog open={riscoOpen} onOpenChange={setRiscoOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingRisco ? "Editar Risco" : "Novo Risco por Cargo"}</DialogTitle>
-            <DialogDescription>Configure os fatores de risco extraídos do LTCAT</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            {/* Ausência de Risco checkbox */}
-            <div className="flex items-center gap-3 p-3 rounded-md border border-dashed bg-muted/30">
-              <Switch
-                checked={riscoForm.ausencia_risco}
-                onCheckedChange={(v) => {
-                  if (v) {
-                    setRiscoForm({
-                      ...riscoForm,
-                      ausencia_risco: true,
-                      tipo_risco: "fisico",
-                      fator_risco: AUSENCIA_FATOR,
-                      intensidade_concentracao: "Não se aplica",
-                      tecnica_utilizada: "Não se aplica",
-                      epc_eficaz: false,
-                      epi_eficaz: false,
-                      ca_epi: "",
-                    });
-                  } else {
-                    setRiscoForm({
-                      ...riscoForm,
-                      ausencia_risco: false,
-                      fator_risco: "",
-                      intensidade_concentracao: "",
-                      tecnica_utilizada: "",
-                    });
-                  }
-                }}
-              />
-              <div>
-                <Label className="text-sm font-medium">Declarar Ausência de Agentes Nocivos</Label>
-                <p className="text-[11px] text-muted-foreground">Código eSocial 09.01.001 — Quando não há exposição acima do nível de ação</p>
-              </div>
-            </div>
+      {/* Dialog de risco removido — o PPP não cadastra risco manualmente. Fonte oficial: LTCAT. */}
 
-            {/* Cargo field: multi-select chips for new, single input for edit */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Cargo{!editingRisco ? "s" : ""} *</Label>
-                {editingRisco ? (
-                  <>
-                    <Input value={riscoForm.cargo} onChange={(e) => setRiscoForm({ ...riscoForm, cargo: e.target.value })} placeholder="Ex: Servente" list="cargos-list" />
-                    <datalist id="cargos-list">
-                      {cargos.map((c) => <option key={c} value={c} />)}
-                    </datalist>
-                  </>
-                ) : (
-                  <CargoMultiSelect
-                    selected={riscoForm.cargos_multi}
-                    onChange={(v) => setRiscoForm({ ...riscoForm, cargos_multi: v })}
-                    suggestions={allCargos}
-                  />
-                )}
-              </div>
-              <div>
-                <Label>CBO</Label>
-                <Input
-                  value={riscoForm.cbo}
-                  onChange={(e) => setRiscoForm({ ...riscoForm, cbo: e.target.value })}
-                  placeholder="Ex: 717020"
-                  disabled={!editingRisco && riscoForm.cargos_multi.length > 1}
-                />
-                {!editingRisco && riscoForm.cargos_multi.length > 1 && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Desabilitado com múltiplos cargos</p>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Tipo de Risco *</Label>
-                <Select value={riscoForm.tipo_risco} onValueChange={(v) => setRiscoForm({ ...riscoForm, tipo_risco: v })} disabled={riscoForm.ausencia_risco}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(TIPO_RISCO_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Fator de Risco *</Label>
-                <Input value={riscoForm.fator_risco} onChange={(e) => setRiscoForm({ ...riscoForm, fator_risco: e.target.value })} placeholder="Ex: Ruídos" disabled={riscoForm.ausencia_risco} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Intensidade/Concentração</Label>
-                <Input value={riscoForm.intensidade_concentracao} onChange={(e) => setRiscoForm({ ...riscoForm, intensidade_concentracao: e.target.value })} placeholder="Ex: 85 dB(A)" disabled={riscoForm.ausencia_risco} />
-              </div>
-              <div>
-                <Label>Técnica Utilizada</Label>
-                <Input value={riscoForm.tecnica_utilizada} onChange={(e) => setRiscoForm({ ...riscoForm, tecnica_utilizada: e.target.value })} placeholder="Ex: NHO-01" disabled={riscoForm.ausencia_risco} />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex items-center gap-2">
-                <Switch checked={riscoForm.epc_eficaz} onCheckedChange={(v) => setRiscoForm({ ...riscoForm, epc_eficaz: v })} disabled={riscoForm.ausencia_risco} />
-                <Label>EPC Eficaz</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={riscoForm.epi_eficaz} onCheckedChange={(v) => setRiscoForm({ ...riscoForm, epi_eficaz: v })} disabled={riscoForm.ausencia_risco} />
-                <Label>EPI Eficaz</Label>
-              </div>
-              <div>
-                <Label>CA do EPI</Label>
-                <Input value={riscoForm.ca_epi} onChange={(e) => setRiscoForm({ ...riscoForm, ca_epi: e.target.value })} placeholder="Ex: 33.161" disabled={riscoForm.ausencia_risco} />
-              </div>
-            </div>
-            <div>
-              <Label>Profissiografia (Descrição das Atividades)</Label>
-              <Textarea
-                value={riscoForm.profissiografia}
-                onChange={(e) => setRiscoForm({ ...riscoForm, profissiografia: e.target.value })}
-                placeholder="Descreva as atividades detalhadas do cargo conforme o item 14.2 do PPP..."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={saveRisco}>{editingRisco ? "Salvar" : "Cadastrar"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       {/* === DIALOG RESPONSÁVEL === */}
       <Dialog open={respOpen} onOpenChange={setRespOpen}>

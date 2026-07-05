@@ -6919,6 +6919,7 @@ export type Database = {
           pdf_versao: number | null
           ppp_id: string
           sha256: string
+          snapshot_json: Json | null
           status_no_momento: string | null
           storage_bucket: string | null
           storage_path: string | null
@@ -6942,6 +6943,7 @@ export type Database = {
           pdf_versao?: number | null
           ppp_id: string
           sha256: string
+          snapshot_json?: Json | null
           status_no_momento?: string | null
           storage_bucket?: string | null
           storage_path?: string | null
@@ -6965,6 +6967,7 @@ export type Database = {
           pdf_versao?: number | null
           ppp_id?: string
           sha256?: string
+          snapshot_json?: Json | null
           status_no_momento?: string | null
           storage_bucket?: string | null
           storage_path?: string | null
@@ -7410,6 +7413,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ppp_snapshots_emitidos: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          funcionario_id: string | null
+          funcionario_nome: string | null
+          gerado_em: string
+          gerado_por: string | null
+          id: string
+          nome_arquivo: string | null
+          snapshot_json: Json
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          funcionario_id?: string | null
+          funcionario_nome?: string | null
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          nome_arquivo?: string | null
+          snapshot_json: Json
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          funcionario_id?: string | null
+          funcionario_nome?: string | null
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          nome_arquivo?: string | null
+          snapshot_json?: Json
+          tipo?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
