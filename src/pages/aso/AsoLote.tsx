@@ -51,8 +51,9 @@ export default function AsoLote() {
     queryFn: async () => (await supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_demissao").eq("empresa_id", empresaSel).order("nome")).data || [],
   });
   const { data: medicos = [] } = useQuery({
-    queryKey: ["aso-lote-medicos"],
-    queryFn: async () => (await supabase.from("aso_medicos").select("id, nome, crm, uf_crm").eq("ativo", true).order("nome")).data || [],
+    queryKey: ["aso-lote-medicos", empresaSel],
+    enabled: !!empresaSel,
+    queryFn: async () => (await supabase.from("aso_medicos").select("id, nome, crm, uf_crm").eq("ativo", true).eq("empresa_id", empresaSel).order("nome")).data || [],
   });
 
   const setores = useMemo(() => [...new Set(funcs.map((f: any) => f.setor).filter(Boolean))], [funcs]);
