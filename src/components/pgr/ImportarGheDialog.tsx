@@ -11,6 +11,9 @@ interface PreviewItem {
   ghe_id: string;
   ghe_codigo?: string;
   ghe_nome?: string;
+  setor?: string | null;
+  processo?: string | null;
+  funcoes_snapshot?: string[] | null;
   perigo_descricao: string;
   grupo?: string;
   fonte_geradora?: string;
