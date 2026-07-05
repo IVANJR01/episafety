@@ -206,6 +206,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [empresaId]);
 
+  // Sincroniza empresa ativa no banco (tabela user_active_empresa) para que
+  // a RLS "ciente da empresa ativa" (is_active_empresa) veja a mesma coisa
+  // que o header. Sem isso, o banco não sabe qual empresa está selecionada
+  // e módulos migrados (Exames) ficariam vazios ou com fallback.
+  useEffect(() => {
+    if (!user?.id || !empresaId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await (supabase.from as any)("user_active_empresa").upsert(
+          { user_id: user.id, empresa_id: empresaId },
+          { onConflict: "user_id" }
+        );
+      } catch { /* best effort — fallback do banco cuida do resto */ }
+      if (cancelled) return;
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, empresaId]);
+
   const applySignedOutState = useCallback(() => {
     setUser(null);
     setSession(null);
