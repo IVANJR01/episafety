@@ -143,15 +143,26 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
   const salvarFuncao = async (f: any) => {
     const nome = (f.nome_funcao || "").trim();
+    const setor = (f.setor || "").trim();
+    const atividade = (f.descricao_atividade || "").trim();
     if (!nome) return toast.error("Nome da função é obrigatório");
+    if (!setor) return toast.error("Selecione o setor da função");
+    if (!atividade) return toast.error("Informe o Processo / atividade desta função");
+    // valida duplicidade por GES + Setor + Função
+    const dup = funcoes.find(
+      (x) => x.id !== f.id &&
+        (x.nome_funcao || "").trim().toLowerCase() === nome.toLowerCase() &&
+        (x.setor || "").trim().toLowerCase() === setor.toLowerCase()
+    );
+    if (dup) return toast.error(`Já existe a função "${nome}" no setor "${setor}" deste GES`);
     const payload: any = {
       ghe_id: ghe.id,
       empresa_id: ghe.empresa_id,
       nome_funcao: nome,
       cbo: f.cbo?.trim() || null,
-      descricao_atividade: f.descricao_atividade?.trim() || null,
-      setor: f.setor?.trim() || null,
-      processo: f.processo?.trim() || null,
+      descricao_atividade: atividade,
+      setor,
+      processo: null,
       quantidade_trabalhadores:
         f.quantidade_trabalhadores === "" || f.quantidade_trabalhadores == null
           ? null
@@ -184,12 +195,13 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         empresa_id: ghe.empresa_id,
         setor: setor || null,
         nome_funcao: nome_funcao || setor || "",
-        processo: processo || null,
+        descricao_atividade: processo || null,
+        processo: null,
         quantidade_trabalhadores: qtd && !isNaN(Number(qtd)) ? Number(qtd) : null,
         observacoes: obs || null,
       };
-    }).filter((r) => r.nome_funcao);
-    if (!rows.length) return toast.error("Nenhuma linha válida");
+    }).filter((r) => r.nome_funcao && r.setor && r.descricao_atividade);
+    if (!rows.length) return toast.error("Nenhuma linha válida (precisa Setor | Função | Processo)");
     const { error } = await supabase.from("ghe_funcoes").insert(rows as any);
     if (error) return toast.error(error.message);
     toast.success(`${rows.length} linha(s) importadas`);
@@ -320,18 +332,20 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
               />
               <p className="text-xs text-muted-foreground mt-1">Este texto será importado no PGR no campo "Descrição do ambiente".</p>
             </div>
-            <div>
-              <Label className="text-xs">Processo do GES</Label>
-              <Textarea
-                rows={4}
-                value={amb.processo}
-                onChange={(e) => setAmb({ ...amb, processo: e.target.value })}
-                placeholder="Ex.: Gerencia todo o processo produtivo da empresa. / Executa atividades administrativas, financeiras e de apoio à gestão da empresa."
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Processo geral aplicado a todas as funções deste GES. No PGR, se a função não tiver processo específico, será usado este.
-            </p>
-            </div>
+            <details className="border rounded p-2 bg-muted/20">
+              <summary className="text-xs cursor-pointer text-muted-foreground">Processo geral do GES — opcional (avançado)</summary>
+              <div className="mt-2">
+                <Textarea
+                  rows={3}
+                  value={amb.processo}
+                  onChange={(e) => setAmb({ ...amb, processo: e.target.value })}
+                  placeholder="Deixe em branco. O processo agora é cadastrado por Setor + Função."
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  O fluxo principal é: <b>GES → Setor → Função → Processo</b>. Este campo existe apenas para compatibilidade.
+                </p>
+              </div>
+            </details>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 
               <div>
@@ -458,19 +472,15 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Processo / Descrição da atividade</Label>
+                  <Label className="text-xs">Processo / atividade *</Label>
                   <Textarea rows={3} value={editF.descricao_atividade || ""}
                     onChange={(e) => setEditF({ ...editF, descricao_atividade: e.target.value })}
                     placeholder="Ex.: Apura e projeta o saldo disponível da empresa para garantir capital de giro…" />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Este processo é específico desta combinação <b>Setor + Função</b>. A mesma função em outro setor pode ter processo diferente.
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <Label className="text-xs">Processo específico (opcional)</Label>
-                    <Input value={editF.processo || ""} onChange={(e) => setEditF({ ...editF, processo: e.target.value })} placeholder={ghe.processo ? "Deixe em branco para herdar do GES" : "Ex.: Administrativo"} />
-                    {ghe.processo && !editF.processo && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Herdando do GES: {ghe.processo.slice(0, 60)}{ghe.processo.length > 60 ? "…" : ""}</p>
-                    )}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs">Qtd trabalhadores</Label>
                     <Input type="number" min={0} value={editF.quantidade_trabalhadores ?? ""} onChange={(e) => setEditF({ ...editF, quantidade_trabalhadores: e.target.value })} />
@@ -513,8 +523,9 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                               {f.cbo && <span className="text-xs text-muted-foreground">CBO {f.cbo}</span>}
                               {f.quantidade_trabalhadores != null && <Badge variant="secondary" className="text-xs">{f.quantidade_trabalhadores} trab.</Badge>}
                             </div>
-                            {f.descricao_atividade && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{f.descricao_atividade}</p>}
-                            {f.processo && <p className="text-xs mt-1"><span className="text-muted-foreground">Processo:</span> {f.processo}</p>}
+                            {(f.descricao_atividade || f.processo) && (
+                              <p className="text-xs mt-1"><span className="text-muted-foreground">Processo:</span> <span className="whitespace-pre-wrap">{f.descricao_atividade || f.processo}</span></p>
+                            )}
                           </div>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={() => setEditF(f)}><Pencil className="h-4 w-4" /></Button>
