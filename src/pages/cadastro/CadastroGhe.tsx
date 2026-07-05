@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,15 +17,16 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
-import EstruturaGheDialog from "@/components/cadastro/EstruturaGheDialog";
 
 export default function CadastroGhe() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
   const [busca, setBusca] = useState("");
   const [openQuick, setOpenQuick] = useState(false);
-  const [openEstrutura, setOpenEstrutura] = useState<any | null>(null);
+
+  const irParaEstrutura = (id: string) => navigate(`/cadastro/ghe/${id}/estrutura`);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["cad-ghe-empresas", empresaScopeIds.join(",")],
