@@ -49,7 +49,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       .from("ghe_ges")
       .update({
         codigo: amb.codigo.trim(),
-        nome: amb.nome.trim(),
+        nome: (amb.nome?.trim() || amb.codigo.trim()),
         status: amb.status,
         ambiente: amb.ambiente?.trim() || null,
         descricao_ambiente: amb.descricao_ambiente?.trim() || null,
