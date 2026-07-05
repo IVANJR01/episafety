@@ -432,51 +432,124 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
           {/* ---------- Aba Setores ---------- */}
           <TabsContent value="setores" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
-            <p className="text-xs text-muted-foreground">
-              Use esta aba para informar os setores que fazem parte deste GES. Ex.: PCP, Financeiro, RH, SESMT.
-            </p>
-            <div>
-              <Label className="text-xs">Setores do GES</Label>
-              <div className="border rounded p-2 flex flex-wrap gap-1 min-h-[44px]">
-                {amb.setores.map((s, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">
-                    {s}
-                    <button type="button" className="ml-1" onClick={() => setAmb({ ...amb, setores: amb.setores.filter((_, j) => j !== i) })}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                <Input
-                  value={novoSetor}
-                  onChange={(e) => setNovoSetor(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === ",") {
-                      e.preventDefault();
-                      const v = novoSetor.trim();
-                      if (v && !amb.setores.includes(v)) setAmb({ ...amb, setores: [...amb.setores, v] });
-                      setNovoSetor("");
-                    }
-                  }}
-                  placeholder="Digite o setor e Enter (ex.: PCP)"
-                  className="border-0 shadow-none h-7 flex-1 min-w-[160px] p-1 focus-visible:ring-0"
-                />
+            <div className="flex flex-wrap gap-2 items-center justify-between">
+              <p className="text-xs text-muted-foreground flex-1 min-w-[220px]">
+                Cadastre cada <b>setor</b> deste GES com seu respectivo <b>processo</b>. Ex.: <i>PCP — Gerencia o processo produtivo</i>. As funções serão vinculadas a esses setores.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setBulkSOpen(!bulkSOpen)}>
+                  <ClipboardPaste className="h-4 w-4 mr-1" />Colar em lote
+                </Button>
+                <Button size="sm" onClick={() => setEditS({ nome: "", processo: "", ativo: true })}>
+                  <Plus className="h-4 w-4 mr-1" />Adicionar setor
+                </Button>
               </div>
             </div>
-            <div>
-              <Label className="text-xs">Colar vários setores (separe por vírgula ou linha)</Label>
-              <Textarea
-                rows={3}
-                placeholder={"PCP, Financeiro, RH, SESMT"}
-                onBlur={(e) => { if (e.target.value.trim()) { colarSetoresBulk(e.target.value); e.target.value = ""; } }}
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">Ao sair do campo, os setores são adicionados à lista acima. Clique em salvar para persistir.</p>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={salvarSetores}>
-                <Save className="h-4 w-4 mr-1" /> Salvar setores
-              </Button>
-            </div>
+
+            {bulkSOpen && (
+              <div className="border rounded p-3 bg-muted/30 space-y-2">
+                <Label className="text-xs">Colar um setor por linha, campos separados por | ou tab</Label>
+                <p className="text-xs text-muted-foreground">Formato: <code>Setor | Processo | Observações (opc.)</code></p>
+                <Textarea rows={5} value={bulkS} onChange={(e) => setBulkS(e.target.value)}
+                  placeholder={"PCP | Gerencia todo o processo produtivo\nFinanceiro | Apura saldo, contas a pagar e receber\nRH | Rotinas de pessoal\nSESMT | Vistorias e acompanhamento de segurança"} />
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="ghost" onClick={() => { setBulkS(""); setBulkSOpen(false); }}>Cancelar</Button>
+                  <Button size="sm" onClick={importarSetoresBulk} disabled={!bulkS.trim()}>Importar</Button>
+                </div>
+              </div>
+            )}
+
+            {editS && (
+              <div className="border rounded p-3 bg-muted/30 space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Setor *</Label>
+                    <Input value={editS.nome || ""} onChange={(e) => setEditS({ ...editS, nome: e.target.value })} placeholder="Ex.: Financeiro" />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="setor-ativo" checked={editS.ativo ?? true} onCheckedChange={(v) => setEditS({ ...editS, ativo: !!v })} />
+                      <Label htmlFor="setor-ativo" className="text-xs">Ativo</Label>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Processo do setor *</Label>
+                  <Textarea rows={3} value={editS.processo || ""}
+                    onChange={(e) => setEditS({ ...editS, processo: e.target.value })}
+                    placeholder="Ex.: Apura e projeta saldo disponível, contas a pagar e receber." />
+                </div>
+                <div>
+                  <Label className="text-xs">Observações</Label>
+                  <Textarea rows={2} value={editS.observacoes || ""} onChange={(e) => setEditS({ ...editS, observacoes: e.target.value })} />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="ghost" onClick={() => setEditS(null)}>Cancelar</Button>
+                  <Button size="sm" onClick={() => salvarSetorRow(editS)}><Save className="h-4 w-4 mr-1" />Salvar setor</Button>
+                </div>
+              </div>
+            )}
+
+            {loadingS && <p className="text-sm text-muted-foreground">Carregando…</p>}
+
+            {!loadingS && setoresRows.length === 0 && !editS && (
+              <div className="border rounded p-6 text-center text-sm text-muted-foreground">
+                Nenhum setor cadastrado. Clique em <b>Adicionar setor</b> para começar.
+              </div>
+            )}
+
+            {/* Mobile: cards */}
+            {!loadingS && setoresRows.length > 0 && (
+              <div className="sm:hidden space-y-2">
+                {setoresRows.map((s) => (
+                  <div key={s.id} className="border rounded p-3 space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm break-words">{s.nome}</div>
+                        {!s.ativo && <Badge variant="outline" className="text-[10px] mt-1">inativo</Badge>}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button size="icon" variant="ghost" onClick={() => setEditS(s)}><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => excluirSetor(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    </div>
+                    <p className="text-xs whitespace-pre-wrap"><span className="text-muted-foreground">Processo:</span> {s.processo || "—"}</p>
+                    {s.observacoes && <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">{s.observacoes}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Desktop: tabela */}
+            {!loadingS && setoresRows.length > 0 && (
+              <div className="hidden sm:block border rounded overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[180px]">Setor</TableHead>
+                      <TableHead>Processo do setor</TableHead>
+                      <TableHead className="w-[80px]">Ativo</TableHead>
+                      <TableHead className="w-[100px] text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {setoresRows.map((s) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="text-sm font-medium">{s.nome}</TableCell>
+                        <TableCell className="text-xs whitespace-pre-wrap">{s.processo || "—"}</TableCell>
+                        <TableCell className="text-sm">{s.ativo ? "Sim" : "Não"}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="icon" variant="ghost" onClick={() => setEditS(s)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => excluirSetor(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </TabsContent>
+
 
 
 
