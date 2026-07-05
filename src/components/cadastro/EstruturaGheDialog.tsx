@@ -41,7 +41,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const [savingAmb, setSavingAmb] = useState(false);
 
   const salvarAmbiente = async () => {
-    if (!amb.codigo.trim() || !amb.nome.trim()) return toast.error("Código e nome são obrigatórios");
+    if (!amb.codigo.trim()) return toast.error("Código do GES é obrigatório");
     setSavingAmb(true);
     const setoresArr = amb.setores.map((s) => s.trim()).filter(Boolean);
 
