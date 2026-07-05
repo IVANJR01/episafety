@@ -65,6 +65,14 @@ export interface PgrAssinaturaItem {
   mfa_verificado: boolean;
 }
 
+export interface PgrQuadroEpiLinha {
+  ghe_codigo: string;
+  ghe_nome: string;
+  funcao: string;
+  medida_controle: string;
+  epis: string;
+}
+
 export interface PgrPdfContext {
   doc: PgrDocumento;
   empresaNome: string | null;
@@ -76,6 +84,8 @@ export interface PgrPdfContext {
   revisoes: PgrRevisaoItem[];
   assinaturas: PgrAssinaturaItem[];
   ghes: Record<string, string>;
+  textos?: Record<string, string>;
+  quadroEpis?: PgrQuadroEpiLinha[];
 }
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
