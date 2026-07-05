@@ -150,65 +150,29 @@ export default function PcmsoGhe() {
   );
 }
 
-function GheFormDialog({ open, onOpenChange, empresaId, editing, onSaved }: any) {
-  const [form, setForm] = useState({ codigo: "", nome: "", setor: "", descricao: "" });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (editing) setForm({ codigo: editing.codigo || "", nome: editing.nome || "", setor: editing.setor || "", descricao: editing.descricao || "" });
-    else setForm({ codigo: "", nome: "", setor: "", descricao: "" });
-  }, [editing, open]);
-
-  const save = async () => {
-    if (!form.codigo || !form.nome) return toast.error("Código e nome são obrigatórios");
-    setSaving(true);
-    const payload: any = { ...form, empresa_id: empresaId };
-    const { error } = editing
-      ? await supabase.from("ghe_ges").update(payload).eq("id", editing.id)
-      : await supabase.from("ghe_ges").insert(payload);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("GHE salvo");
-    onSaved(); onOpenChange(false);
-    setForm({ codigo: "", nome: "", setor: "", descricao: "" });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>{editing ? "Editar GHE/GES" : "Novo GHE/GES"}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div><Label>Código *</Label><Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="GHE 01" /></div>
-            <div><Label>Setor</Label><Input value={form.setor} onChange={(e) => setForm({ ...form, setor: e.target.value })} placeholder="Costura" /></div>
-          </div>
-          <div><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Administrativo / PCP" /></div>
-          <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} /></div>
-        </div>
-        <DialogFooter><Button onClick={save} disabled={saving}>Salvar</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function GheDetailDialog({ ghe, onClose }: { ghe: any; onClose: () => void }) {
   return (
     <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{ghe.codigo} — {ghe.nome}</DialogTitle>
-          {ghe.setor && <p className="text-sm text-muted-foreground">Setor: {ghe.setor}</p>}
+          <div className="flex items-center justify-between gap-2">
+            {ghe.setor && <p className="text-sm text-muted-foreground">Setor: {ghe.setor}</p>}
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/cadastro/ghe"><ExternalLink className="h-3 w-3 mr-1" />Editar GES no Cadastro</Link>
+            </Button>
+          </div>
         </DialogHeader>
-        <Tabs defaultValue="funcoes">
+        <Tabs defaultValue="exames">
           <TabsList className="grid grid-cols-4 w-full">
+            <TabsTrigger value="exames" className="gap-1"><Stethoscope className="h-3 w-3" />Exames</TabsTrigger>
             <TabsTrigger value="funcoes" className="gap-1"><Briefcase className="h-3 w-3" />Funções</TabsTrigger>
             <TabsTrigger value="riscos" className="gap-1"><AlertTriangle className="h-3 w-3" />Riscos</TabsTrigger>
-            <TabsTrigger value="exames" className="gap-1"><Stethoscope className="h-3 w-3" />Exames</TabsTrigger>
             <TabsTrigger value="colab" className="gap-1"><Users className="h-3 w-3" />Colaboradores</TabsTrigger>
           </TabsList>
-          <TabsContent value="funcoes" className="mt-4"><FuncoesTab ghe={ghe} /></TabsContent>
-          <TabsContent value="riscos" className="mt-4"><RiscosTab ghe={ghe} /></TabsContent>
           <TabsContent value="exames" className="mt-4"><ExamesTab ghe={ghe} /></TabsContent>
+          <TabsContent value="funcoes" className="mt-4"><FuncoesReadOnly ghe={ghe} /></TabsContent>
+          <TabsContent value="riscos" className="mt-4"><RiscosReadOnly ghe={ghe} /></TabsContent>
           <TabsContent value="colab" className="mt-4"><ColabTab ghe={ghe} /></TabsContent>
         </Tabs>
       </DialogContent>
@@ -216,12 +180,8 @@ function GheDetailDialog({ ghe, onClose }: { ghe: any; onClose: () => void }) {
   );
 }
 
-function FuncoesTab({ ghe }: { ghe: any }) {
-  const qc = useQueryClient();
-  const [nova, setNova] = useState("");
-  const [bulk, setBulk] = useState("");
-
-  const { data = [], refetch } = useQuery({
+function FuncoesReadOnly({ ghe }: { ghe: any }) {
+  const { data = [] } = useQuery({
     queryKey: ["ghe-funcoes", ghe.id],
     queryFn: async () => {
       const { data, error } = await supabase.from("ghe_funcoes").select("*").eq("ghe_id", ghe.id).order("nome_funcao");
@@ -229,42 +189,18 @@ function FuncoesTab({ ghe }: { ghe: any }) {
       return data || [];
     },
   });
-
-  const add = async () => {
-    if (!nova.trim()) return;
-    const { error } = await supabase.from("ghe_funcoes").insert({ ghe_id: ghe.id, empresa_id: ghe.empresa_id, nome_funcao: nova.trim() });
-    if (error) return toast.error(error.message);
-    setNova(""); refetch();
-  };
-  const addBulk = async () => {
-    const lines = bulk.split("\n").map((x) => x.trim()).filter(Boolean);
-    if (!lines.length) return;
-    const { error } = await supabase.from("ghe_funcoes").insert(lines.map((l) => ({ ghe_id: ghe.id, empresa_id: ghe.empresa_id, nome_funcao: l })));
-    if (error) return toast.error(error.message);
-    setBulk(""); toast.success(`${lines.length} funções adicionadas`); refetch();
-  };
-  const remove = async (id: string) => {
-    await supabase.from("ghe_funcoes").delete().eq("id", id);
-    refetch();
-  };
-
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
-        <Input value={nova} onChange={(e) => setNova(e.target.value)} placeholder="Nome da função (ex: Costureiro(a))" onKeyDown={(e) => e.key === "Enter" && add()} />
-        <Button onClick={add}><Plus className="h-4 w-4" /></Button>
-      </div>
-      <div>
-        <Label className="text-xs">Colar várias funções (uma por linha)</Label>
-        <Textarea value={bulk} onChange={(e) => setBulk(e.target.value)} rows={3} placeholder="Supervisor de Produção&#10;Auxiliar Administrativo" />
-        <Button size="sm" variant="outline" onClick={addBulk} className="mt-2" disabled={!bulk.trim()}>Adicionar lista</Button>
+      <div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs text-muted-foreground">
+        <Info className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+        <span>Funções são gerenciadas em <b>Cadastro → GES/GHE</b>. Aqui é somente leitura.</span>
       </div>
       <div className="border rounded divide-y">
         {data.length === 0 && <p className="text-sm text-muted-foreground p-3">Nenhuma função cadastrada.</p>}
         {data.map((f: any) => (
-          <div key={f.id} className="flex items-center justify-between p-2">
-            <span className="text-sm">{f.nome_funcao}</span>
-            <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+          <div key={f.id} className="p-2 text-sm">
+            <div className="font-medium">{f.nome_funcao}</div>
+            {f.descricao_atividade && <div className="text-xs text-muted-foreground">{f.descricao_atividade}</div>}
           </div>
         ))}
       </div>
@@ -272,52 +208,19 @@ function FuncoesTab({ ghe }: { ghe: any }) {
   );
 }
 
-function RiscosTab({ ghe }: { ghe: any }) {
-  const [grupo, setGrupo] = useState("ergonomico");
-  const [tipoAgente, setTipoAgente] = useState("");
-  const [texto, setTexto] = useState("");
-  const [exposicao, setExposicao] = useState("Intermitente");
-
-  const { data = [], refetch } = useQuery({
+function RiscosReadOnly({ ghe }: { ghe: any }) {
+  const { data = [] } = useQuery({
     queryKey: ["ghe-riscos", ghe.id],
     queryFn: async () => {
       const { data } = await supabase.from("ghe_riscos").select("*").eq("ghe_id", ghe.id).order("grupo");
       return data || [];
     },
   });
-
-  const add = async () => {
-    if (!tipoAgente.trim()) return toast.error("Informe o tipo de agente");
-    const { error } = await supabase.from("ghe_riscos").insert({
-      ghe_id: ghe.id, empresa_id: ghe.empresa_id, grupo,
-      tipo_agente: tipoAgente.trim(), texto_aso: (texto || tipoAgente).trim(), exposicao,
-    });
-    if (error) return toast.error(error.message);
-    setTipoAgente(""); setTexto(""); refetch();
-  };
-  const remove = async (id: string) => { await supabase.from("ghe_riscos").delete().eq("id", id); refetch(); };
-
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-12 gap-2">
-        <div className="col-span-3">
-          <Label className="text-xs">Grupo</Label>
-          <Select value={grupo} onValueChange={setGrupo}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{GRUPOS_RISCO.map((g) => <SelectItem key={g.k} value={g.k}>{g.l}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="col-span-4">
-          <Label className="text-xs">Tipo de agente *</Label>
-          <Input value={tipoAgente} onChange={(e) => setTipoAgente(e.target.value)} placeholder="Postura inadequada" />
-        </div>
-        <div className="col-span-3">
-          <Label className="text-xs">Texto resumido (ASO)</Label>
-          <Input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="(usa o tipo de agente se vazio)" />
-        </div>
-        <div className="col-span-2 flex items-end">
-          <Button onClick={add} className="w-full"><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
-        </div>
+      <div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs text-muted-foreground">
+        <Info className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+        <span>Riscos são gerenciados em <b>Cadastro → GES/GHE</b>. Aqui é somente leitura.</span>
       </div>
       {GRUPOS_RISCO.map((g) => {
         const itens = data.filter((r: any) => r.grupo === g.k);
@@ -329,10 +232,7 @@ function RiscosTab({ ghe }: { ghe: any }) {
             ) : (
               <div className="space-y-1">
                 {itens.map((r: any) => (
-                  <div key={r.id} className="flex items-center justify-between text-sm">
-                    <span>{r.texto_aso || r.tipo_agente}</span>
-                    <Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                  </div>
+                  <div key={r.id} className="text-sm">{r.texto_aso || r.tipo_agente}</div>
                 ))}
               </div>
             )}
