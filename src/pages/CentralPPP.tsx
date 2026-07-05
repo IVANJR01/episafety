@@ -181,14 +181,11 @@ export default function CentralPPP() {
   const [loading, setLoading] = useState(true);
 
   // Dialogs
-  const [riscoOpen, setRiscoOpen] = useState(false);
   const [respOpen, setRespOpen] = useState(false);
   const [pppOpen, setPppOpen] = useState(false);
-  const [editingRisco, setEditingRisco] = useState<RiscoCargo | null>(null);
   const [editingResp, setEditingResp] = useState<Responsavel | null>(null);
 
   // Forms with localStorage persistence
-  const { form: riscoForm, setForm: setRiscoForm, resetForm: resetRiscoForm, hasDraft: hasRiscoDraft, clearDraft: clearRiscoDraft } = useFormDraft("ppp_risco", emptyRiscoForm);
   const { form: respForm, setForm: setRespForm, resetForm: resetRespForm, hasDraft: hasRespDraft, clearDraft: clearRespDraft } = useFormDraft("ppp_resp", emptyRespForm);
   const [selectedFuncId, setSelectedFuncId] = useState("");
   const [pppSearchName, setPppSearchName] = useState("");
@@ -197,7 +194,7 @@ export default function CentralPPP() {
   // Prevent accidental exit with unsaved form data
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (riscoOpen || respOpen) {
+      if (respOpen) {
         e.preventDefault();
         e.returnValue = "";
       }
