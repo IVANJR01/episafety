@@ -403,6 +403,21 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     b.y += 26;
   });
 
+  // Seções finais (textos padrão editáveis)
+  const secoesFim: Array<[string, string]> = [
+    ["area_abrangencia", "Área de abrangência do PGR na empresa"],
+    ["recomendacoes", "Recomendações à empresa"],
+    ["consideracoes_finais", "Considerações finais"],
+    ["encerramento", "Encerramento"],
+  ];
+  secoesFim.forEach(([k, tit]) => {
+    const conteudo = ((ctx.textos || {})[k] || "").trim();
+    if (!conteudo) return;
+    title(b, tit);
+    para(b, conteudo, 9, [40, 40, 40]);
+  });
+
+
   // Rodapé com QR + hash + marca d'água
   const qrDataUrl = await QRCode.toDataURL(opts.qrUrl, { margin: 0, width: 220 });
   const pages = pdf.getNumberOfPages();
