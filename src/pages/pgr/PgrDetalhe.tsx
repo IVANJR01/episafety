@@ -186,8 +186,16 @@ export default function PgrDetalhe() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="textos">
+          <TextosTab pgrId={id!} empresaId={doc.empresa_id} canEdit={perms.canEdit && isEditavel(status)} />
+        </TabsContent>
+
         <TabsContent value="inventario">
           <InventarioTab pgrId={id!} empresaId={doc.empresa_id} status={status} canEdit={perms.canEdit} />
+        </TabsContent>
+
+        <TabsContent value="epis">
+          <QuadroEpisTab pgrId={id!} empresaId={doc.empresa_id} />
         </TabsContent>
 
         <TabsContent value="acoes">
