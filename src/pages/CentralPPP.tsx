@@ -554,6 +554,56 @@ export default function CentralPPP() {
     });
 
     doc.save(`PPP_${func.nome.replace(/\s+/g, "_")}.pdf`);
+
+    // === SNAPSHOT IMUTÁVEL ===
+    // Congela o estado do LTCAT/PPP no momento da emissão. Alterações
+    // posteriores no LTCAT NÃO alteram este PPP.
+    try {
+      const snapshot = {
+        gerado_em: new Date().toISOString(),
+        gerado_por: user?.id || null,
+        empresa: {
+          id: empresaId,
+          nome: empresa?.nome || null,
+          cnpj: empresa?.cnpj || null,
+        },
+        funcionario: {
+          id: func.id,
+          nome: func.nome,
+          cpf: func.cpf,
+          matricula: func.matricula,
+          cargo: func.cargo,
+          setor: func.setor,
+          data_admissao: func.data_admissao,
+          data_demissao: func.data_demissao,
+          regime_revezamento: func.regime_revezamento,
+        },
+        cbo,
+        profissiografia: profissiografiaFinal,
+        riscos: riscosParaPPP,
+        riscos_origem: cargoRiscos, // linhas cruas puxadas do LTCAT
+        responsaveis: {
+          engenheiro: eng || null,
+          medico: med || null,
+        },
+        representante_legal: empresa?.cpf_representante_legal
+          ? { nome: empresa.nome_representante_legal, cpf: empresa.cpf_representante_legal }
+          : null,
+        fonte: "LTCAT",
+      };
+      const { error: snapErr } = await supabase.from("ppp_pdf_versoes").insert({
+        empresa_id: empresaId!,
+        tipo: "desligamento",
+        gerado_em: new Date().toISOString(),
+        gerado_por: user?.id || null,
+        nome_arquivo: `PPP_${func.nome.replace(/\s+/g, "_")}.pdf`,
+        snapshot_json: snapshot,
+      } as any);
+      if (snapErr) console.warn("[PPP] snapshot não salvo:", snapErr.message);
+    } catch (e) {
+      console.warn("[PPP] snapshot falhou:", e);
+    }
+
     toast.success("PPP gerado com sucesso!");
     setPppOpen(false);
   }
