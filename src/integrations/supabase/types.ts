@@ -7414,6 +7414,45 @@ export type Database = {
           },
         ]
       }
+      ppp_snapshots_emitidos: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          funcionario_id: string | null
+          funcionario_nome: string | null
+          gerado_em: string
+          gerado_por: string | null
+          id: string
+          nome_arquivo: string | null
+          snapshot_json: Json
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          funcionario_id?: string | null
+          funcionario_nome?: string | null
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          nome_arquivo?: string | null
+          snapshot_json: Json
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          funcionario_id?: string | null
+          funcionario_nome?: string | null
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+          nome_arquivo?: string | null
+          snapshot_json?: Json
+          tipo?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
