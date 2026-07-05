@@ -377,16 +377,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
               </div>
             </div>
             <div>
-              <Label className="text-xs">Ambiente (título curto)</Label>
-              <Input
-                value={amb.ambiente}
-                onChange={(e) => setAmb({ ...amb, ambiente: e.target.value })}
-                placeholder="Ex.: Ambiente interno / Área operacional"
-                className="w-full"
-              />
-            </div>
-
-            <div>
               <Label className="text-xs">Descrição do ambiente</Label>
               <Textarea
                 rows={5}
@@ -396,37 +386,17 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
               />
               <p className="text-xs text-muted-foreground mt-1">Este texto será importado no PGR no campo "Descrição do ambiente".</p>
             </div>
-            <details className="border rounded p-2 bg-muted/20">
-              <summary className="text-xs cursor-pointer text-muted-foreground">Processo geral do GES — opcional (avançado)</summary>
-              <div className="mt-2">
-                <Textarea
-                  rows={3}
-                  value={amb.processo}
-                  onChange={(e) => setAmb({ ...amb, processo: e.target.value })}
-                  placeholder="Deixe em branco. O processo agora é cadastrado por Setor + Função."
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  O fluxo principal é: <b>GES → Setor → Função → Processo</b>. Este campo existe apenas para compatibilidade.
-                </p>
-              </div>
-            </details>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-
-              <div>
-                <Label className="text-xs">Observações do GES</Label>
-                <Textarea rows={2} value={amb.descricao} onChange={(e) => setAmb({ ...amb, descricao: e.target.value })} className="w-full" />
-              </div>
-              <div>
-                <Label className="text-xs">Ativo</Label>
-                <Select value={amb.status} onValueChange={(v) => setAmb({ ...amb, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ativo">Sim</SelectItem>
-                    <SelectItem value="inativo">Não</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label className="text-xs">Ativo</Label>
+              <Select value={amb.status} onValueChange={(v) => setAmb({ ...amb, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativo">Sim</SelectItem>
+                  <SelectItem value="inativo">Não</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
             <div className="flex justify-end">
               <Button onClick={salvarAmbiente} disabled={savingAmb}>
                 <Save className="h-4 w-4 mr-1" /> Salvar ambiente
