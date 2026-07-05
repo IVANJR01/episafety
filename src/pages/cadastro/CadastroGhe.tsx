@@ -135,7 +135,7 @@ export default function CadastroGhe() {
                   {filtrados.map((g: any) => (
                     <TableRow key={g.id}>
                       <TableCell className="font-medium align-top">{g.codigo}</TableCell>
-                      <TableCell className="align-top text-sm">{g.ambiente || "—"}</TableCell>
+                      <TableCell className="align-top text-sm">{g.ambienteDisplay || "—"}</TableCell>
                       <TableCell className="align-top">
                         {(g.setoresList || []).length ? (
                           <div className="flex flex-wrap gap-1">
