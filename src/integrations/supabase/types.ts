@@ -4069,6 +4069,50 @@ export type Database = {
           },
         ]
       }
+      ghe_setores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string
+          ghe_id: string
+          id: string
+          nome: string
+          observacoes: string | null
+          processo: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id: string
+          ghe_id: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          processo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string
+          ghe_id?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          processo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghe_setores_ghe_id_fkey"
+            columns: ["ghe_id"]
+            isOneToOne: false
+            referencedRelation: "ghe_ges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historico_inventario: {
         Row: {
           colaborador_id: string | null
