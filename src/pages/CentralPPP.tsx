@@ -201,7 +201,7 @@ export default function CentralPPP() {
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [riscoOpen, respOpen]);
+  }, [respOpen]);
 
   // Unique cargos from riscos
   const cargos = useMemo(() => [...new Set(riscos.map((r) => r.cargo))].sort(), [riscos]);
