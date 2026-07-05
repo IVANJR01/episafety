@@ -219,8 +219,10 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const salvarFuncao = async (f: any) => {
     const nome = (f.nome_funcao || "").trim();
     const setor = (f.setor || "").trim();
+    const processo = (f.descricao_atividade || "").trim();
     if (!nome) return toast.error("Nome da função é obrigatório");
     if (!setor) return toast.error("Selecione o setor da função");
+    if (!processo) return toast.error("Informe o Processo / atividade da função");
     // valida duplicidade por GES + Setor + Função
     const dup = funcoes.find(
       (x) => x.id !== f.id &&
@@ -233,7 +235,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       empresa_id: ghe.empresa_id,
       nome_funcao: nome,
       cbo: f.cbo?.trim() || null,
-      descricao_atividade: (f.descricao_atividade || "").trim() || null,
+      descricao_atividade: processo,
       setor,
       processo: null,
       quantidade_trabalhadores:
@@ -355,7 +357,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
       <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{amb.codigo || "—"}</b></div>
-        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{amb.ambiente ? "informado" : "não informado"}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{(amb.ambiente?.trim() || amb.descricao_ambiente?.trim()) ? "informado" : "não informado"}</b></div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Setores:</span> <b>{setoresRows.length}</b></div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Funções:</span> <b>{funcoes.length}</b></div>
       </div>
@@ -581,6 +583,27 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                   </div>
                 </div>
                 <div>
+                  <Label className="text-xs">Processo / atividade *</Label>
+                  <Textarea
+                    rows={3}
+                    value={editF.descricao_atividade || ""}
+                    onChange={(e) => setEditF({ ...editF, descricao_atividade: e.target.value })}
+                    placeholder="Ex.: Apura e projeta saldo disponível, contas a pagar e receber."
+                  />
+                  {(() => {
+                    const setorSel = setoresRows.find((s) => (s.nome || "").toLowerCase() === (editF.setor || "").toLowerCase());
+                    return setorSel?.processo ? (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Processo do setor <b>{setorSel.nome}</b>: {setorSel.processo}
+                        <Button type="button" size="sm" variant="link" className="h-auto py-0 px-1 text-[11px]"
+                          onClick={() => setEditF({ ...editF, descricao_atividade: setorSel.processo })}>
+                          usar
+                        </Button>
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
+                <div>
                   <Label className="text-xs">Observações</Label>
                   <Textarea rows={2} value={editF.observacoes || ""} onChange={(e) => setEditF({ ...editF, observacoes: e.target.value })} />
                 </div>
@@ -605,7 +628,11 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                     </AccordionTrigger>
                     <AccordionContent className="space-y-2">
                       {fs.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma função ainda.</p>}
-                      {fs.map((f) => (
+                      {fs.map((f) => {
+                        const setorRow = setoresRows.find((s) => (s.nome || "").toLowerCase() === (f.setor || "").toLowerCase());
+                        const processoFuncao = f.descricao_atividade || f.processo;
+                        const processoFallback = !processoFuncao && setorRow?.processo;
+                        return (
                         <div key={f.id} className="border rounded p-2 flex items-start gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
@@ -613,8 +640,17 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                               {f.cbo && <span className="text-xs text-muted-foreground">CBO {f.cbo}</span>}
                               {f.quantidade_trabalhadores != null && <Badge variant="secondary" className="text-xs">{f.quantidade_trabalhadores} trab.</Badge>}
                             </div>
-                            {(f.descricao_atividade || f.processo) && (
-                              <p className="text-xs mt-1"><span className="text-muted-foreground">Processo:</span> <span className="whitespace-pre-wrap">{f.descricao_atividade || f.processo}</span></p>
+                            {processoFuncao && (
+                              <p className="text-xs mt-1"><span className="text-muted-foreground">Processo:</span> <span className="whitespace-pre-wrap">{processoFuncao}</span></p>
+                            )}
+                            {processoFallback && (
+                              <p className="text-xs mt-1 italic text-muted-foreground"><span>Processo (herdado do setor):</span> <span className="whitespace-pre-wrap">{setorRow.processo}</span></p>
+                            )}
+                            {!processoFuncao && !processoFallback && (
+                              <p className="text-xs mt-1 italic text-destructive">Processo não informado — edite para preencher.</p>
+                            )}
+                            {f.observacoes && (
+                              <p className="text-[11px] text-muted-foreground mt-1 whitespace-pre-wrap">{f.observacoes}</p>
                             )}
                           </div>
                           <div className="flex gap-1">
@@ -622,7 +658,8 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                             <Button size="icon" variant="ghost" onClick={() => excluirFuncao(f.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                       <Button size="sm" variant="outline" onClick={() => setEditF({ nome_funcao: "", setor })}>
                         <Plus className="h-3 w-3 mr-1" />Adicionar função em {setor}
                       </Button>

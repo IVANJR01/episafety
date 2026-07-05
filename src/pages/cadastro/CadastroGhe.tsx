@@ -45,17 +45,23 @@ export default function CadastroGhe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ghe_ges")
-        .select("*, ghe_funcoes(nome_funcao), ghe_riscos(id)")
+        .select("*, ghe_funcoes(nome_funcao), ghe_riscos(id), ghe_setores(nome)")
         .eq("empresa_id", empresaSel)
         .order("codigo");
       if (error) throw error;
-      return (data || []).map((g: any) => ({
-        ...g,
-        funcoesList: (g.ghe_funcoes || []).map((f: any) => f.nome_funcao).filter(Boolean).sort(),
-        nFuncoes: (g.ghe_funcoes || []).length,
-        nRiscos: (g.ghe_riscos || []).length,
-        setoresList: (g.setores && g.setores.length ? g.setores : (g.setor ? [g.setor] : [])) as string[],
-      }));
+      return (data || []).map((g: any) => {
+        const setoresTab = (g.ghe_setores || []).map((s: any) => s.nome).filter(Boolean);
+        const setoresLegacy = (g.setores && g.setores.length ? g.setores : (g.setor ? [g.setor] : [])) as string[];
+        return {
+          ...g,
+          funcoesList: (g.ghe_funcoes || []).map((f: any) => f.nome_funcao).filter(Boolean).sort(),
+          nFuncoes: (g.ghe_funcoes || []).length,
+          nRiscos: (g.ghe_riscos || []).length,
+          setoresList: setoresTab.length ? setoresTab.sort() : setoresLegacy,
+          ambienteDisplay: g.ambiente?.trim()
+            || (g.descricao_ambiente?.trim() ? (g.descricao_ambiente.trim().slice(0, 80) + (g.descricao_ambiente.length > 80 ? "…" : "")) : ""),
+        };
+      });
     },
   });
 
@@ -129,7 +135,7 @@ export default function CadastroGhe() {
                   {filtrados.map((g: any) => (
                     <TableRow key={g.id}>
                       <TableCell className="font-medium align-top">{g.codigo}</TableCell>
-                      <TableCell className="align-top text-sm">{g.ambiente || "—"}</TableCell>
+                      <TableCell className="align-top text-sm">{g.ambienteDisplay || "—"}</TableCell>
                       <TableCell className="align-top">
                         {(g.setoresList || []).length ? (
                           <div className="flex flex-wrap gap-1">
