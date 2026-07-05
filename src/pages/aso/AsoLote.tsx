@@ -25,6 +25,7 @@ export default function AsoLote() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState(empresaId || "");
+  useEffect(() => { setEmpresaSel(empresaId || ""); setSelected(new Set()); }, [empresaId]);
   const [filter, setFilter] = useState("");
   const [setor, setSetor] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
