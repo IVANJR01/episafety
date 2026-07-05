@@ -20,6 +20,8 @@ import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
 import PgrChecklistTab from "@/components/pgr/PgrChecklistTab";
 import PgrResumoCards from "@/components/pgr/PgrResumoCards";
+import TextosTab from "@/components/pgr/TextosTab";
+import QuadroEpisTab from "@/components/pgr/QuadroEpisTab";
 import {
   PgrDocumento, PgrRevisao, PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus, isEditavel,
 } from "@/lib/pgrTypes";
