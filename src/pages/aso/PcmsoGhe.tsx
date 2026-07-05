@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,16 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, Users, FileText, AlertTriangle, Stethoscope, Briefcase, Upload } from "lucide-react";
+import { Plus, Trash2, Users, FileText, AlertTriangle, Stethoscope, Briefcase, ExternalLink, Info } from "lucide-react";
 import { toast } from "sonner";
 import { GRUPOS_RISCO } from "@/lib/asoFromGhe";
-import PcmsoImportDialog from "@/components/aso/PcmsoImportDialog";
 
 const TIPO_EXAME_FLAGS = [
   { k: "admissional", l: "Admissional" },
@@ -30,9 +29,6 @@ export default function PcmsoGhe() {
   const { empresaId, empresaScopeIds } = useAuth();
   const qc = useQueryClient();
   const [openGhe, setOpenGhe] = useState<any | null>(null);
-  const [openForm, setOpenForm] = useState(false);
-  const [openImport, setOpenImport] = useState(false);
-  const [editing, setEditing] = useState<any | null>(null);
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
 
   const { data: empresas = [] } = useQuery({
@@ -59,7 +55,6 @@ export default function PcmsoGhe() {
         .eq("empresa_id", empresaSel)
         .order("codigo");
       if (error) throw error;
-      // count colaboradores
       const ids = (data || []).map((g: any) => g.id);
       let counts: Record<string, number> = {};
       if (ids.length) {
@@ -81,17 +76,6 @@ export default function PcmsoGhe() {
     },
   });
 
-  const novoGhe = () => { setEditing(null); setOpenForm(true); };
-  const editarGhe = (g: any) => { setEditing(g); setOpenForm(true); };
-
-  const excluirGhe = async (g: any) => {
-    if (!confirm(`Excluir o GHE ${g.codigo} — ${g.nome}? Funções, riscos e exames vinculados também serão removidos.`)) return;
-    const { error } = await supabase.from("ghe_ges").delete().eq("id", g.id);
-    if (error) return toast.error(error.message);
-    toast.success("GHE excluído");
-    qc.invalidateQueries({ queryKey: ["ghe-list"] });
-  };
-
   const statusOf = (g: any) => {
     if (g.nFuncoes === 0) return { v: "Pendente", color: "secondary" as const };
     if (g.nRiscos === 0) return { v: "Sem riscos", color: "destructive" as const };
@@ -105,23 +89,28 @@ export default function PcmsoGhe() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <CardTitle className="text-lg flex items-center gap-2"><FileText className="h-5 w-5" />Configuração PCMSO / GHE</CardTitle>
-              <p className="text-sm text-muted-foreground">Cadastre os grupos do PCMSO, funções, riscos e exames para geração automática do ASO.</p>
+              <CardTitle className="text-lg flex items-center gap-2"><FileText className="h-5 w-5" />Exames por GES</CardTitle>
+              <p className="text-sm text-muted-foreground">Vincule exames ocupacionais aos GES/GHE já cadastrados para gerar o PCMSO e os ASOs.</p>
             </div>
             <div className="flex gap-2 items-center">
               <Select value={empresaSel} onValueChange={setEmpresaSel}>
                 <SelectTrigger className="w-[240px]"><SelectValue placeholder="Empresa" /></SelectTrigger>
                 <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}</SelectContent>
               </Select>
-              <Button variant="outline" onClick={() => setOpenImport(true)} disabled={!empresaSel}><Upload className="h-4 w-4 mr-1" />Importar PCMSO</Button>
-              <Button onClick={novoGhe} disabled={!empresaSel}><Plus className="h-4 w-4 mr-1" />Novo GHE/GES</Button>
+              <Button variant="outline" asChild>
+                <Link to="/cadastro/ghe"><ExternalLink className="h-4 w-4 mr-1" />Ir para Cadastro de GES/GHE</Link>
+              </Button>
             </div>
+          </div>
+          <div className="mt-3 flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs text-muted-foreground">
+            <Info className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+            <span>Os GES/GHE são cadastrados no módulo <b>Cadastro → GES/GHE</b>. Nesta tela você apenas vincula exames ocupacionais aos grupos existentes.</span>
           </div>
         </CardHeader>
         <CardContent>
           {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
           {!isLoading && ghes.length === 0 && (
-            <p className="text-sm text-muted-foreground italic">Nenhum GHE/GES cadastrado. Clique em "Novo GHE/GES" para começar.</p>
+            <p className="text-sm text-muted-foreground italic">Nenhum GES/GHE cadastrado nesta empresa. Cadastre em <b>Cadastro → GES/GHE</b>.</p>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {ghes.map((g: any) => {
@@ -143,10 +132,10 @@ export default function PcmsoGhe() {
                       <div><div className="font-bold">{g.nExames}</div><div className="text-muted-foreground">Exames</div></div>
                       <div><div className="font-bold">{g.nColaboradores}</div><div className="text-muted-foreground">Pessoas</div></div>
                     </div>
-                    <div className="flex gap-1 pt-2">
-                      <Button size="sm" variant="default" className="flex-1" onClick={() => setOpenGhe(g)}>Configurar</Button>
-                      <Button size="icon" variant="ghost" onClick={() => editarGhe(g)}><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => excluirGhe(g)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <div className="pt-2">
+                      <Button size="sm" variant="default" className="w-full" onClick={() => setOpenGhe(g)}>
+                        <Stethoscope className="h-4 w-4 mr-1" />Configurar exames
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -156,8 +145,6 @@ export default function PcmsoGhe() {
         </CardContent>
       </Card>
 
-      <GheFormDialog open={openForm} onOpenChange={setOpenForm} empresaId={empresaSel} editing={editing} onSaved={() => qc.invalidateQueries({ queryKey: ["ghe-list"] })} />
-      <PcmsoImportDialog open={openImport} onOpenChange={setOpenImport} empresaId={empresaSel} onImported={() => qc.invalidateQueries({ queryKey: ["ghe-list"] })} />
       {openGhe && <GheDetailDialog ghe={openGhe} onClose={() => { setOpenGhe(null); qc.invalidateQueries({ queryKey: ["ghe-list"] }); }} />}
     </div>
   );
