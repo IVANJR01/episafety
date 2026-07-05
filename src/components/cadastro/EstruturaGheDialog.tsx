@@ -648,12 +648,50 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
             </div>
           </TabsContent>
 
+          {/* ---------- Aba EPIs / Medidas ---------- */}
+          <TabsContent value="epis" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
+            <p className="text-xs text-muted-foreground">
+              Medidas de controle, EPCs, EPIs e capacitações usados pelo PGR e pela OS. Aplicam a todo o GES.
+            </p>
+            <div>
+              <Label className="text-xs">Medidas de controle existentes</Label>
+              <Textarea rows={2} value={epis.medidas_controle_existentes} onChange={(e) => setEpis({ ...epis, medidas_controle_existentes: e.target.value })} className="w-full" />
+            </div>
+            <div>
+              <Label className="text-xs">Medidas de controle recomendadas</Label>
+              <Textarea rows={2} value={epis.medidas_controle_recomendadas} onChange={(e) => setEpis({ ...epis, medidas_controle_recomendadas: e.target.value })} className="w-full" />
+            </div>
+            <div>
+              <Label className="text-xs">EPCs (Equipamentos de Proteção Coletiva)</Label>
+              <Textarea rows={2} value={epis.epcs} onChange={(e) => setEpis({ ...epis, epcs: e.target.value })} placeholder="Ex.: Exaustão localizada, sinalização, isolamento de área…" className="w-full" />
+            </div>
+            <div>
+              <Label className="text-xs">EPIs</Label>
+              <Textarea rows={2} value={epis.observacoes_tecnicas} onChange={(e) => setEpis({ ...epis, observacoes_tecnicas: e.target.value })} placeholder="Ex.: Protetor auricular tipo plug, óculos ampla visão, calçado de segurança…" className="w-full" />
+              <p className="text-[10px] text-muted-foreground mt-1">Lista descritiva. O controle de entrega de EPIs continua no módulo próprio.</p>
+            </div>
+            <div>
+              <Label className="text-xs">Capacitações obrigatórias</Label>
+              <Textarea rows={2} value={epis.capacitacoes_obrigatorias} onChange={(e) => setEpis({ ...epis, capacitacoes_obrigatorias: e.target.value })} placeholder="Ex.: NR-06, NR-35, NR-10 básica…" className="w-full" />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={salvarEpis} disabled={savingEpis}>
+                <Save className="h-4 w-4 mr-1" /> Salvar EPIs / Medidas
+              </Button>
+            </div>
+          </TabsContent>
+
           {/* ---------- Aba Resumo ---------- */}
-          <TabsContent value="resumo" className="mt-3 space-y-3 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
+          <TabsContent value="resumo" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
             <div className="border rounded p-3">
               <p className="text-xs text-muted-foreground">Ambiente</p>
-              <p className="text-sm font-medium">{amb.ambiente || "—"}</p>
-              {amb.descricao_ambiente && <p className="text-xs mt-1 whitespace-pre-wrap">{amb.descricao_ambiente}</p>}
+              <p className="text-sm font-medium break-words">{amb.ambiente || "—"}</p>
+              {amb.descricao_ambiente && <p className="text-xs mt-1 whitespace-pre-wrap break-words">{amb.descricao_ambiente}</p>}
+              {amb.processo && (
+                <p className="text-xs mt-2 whitespace-pre-wrap break-words">
+                  <span className="text-muted-foreground">Processo do GES:</span> {amb.processo}
+                </p>
+              )}
             </div>
             <div className="border rounded p-3">
               <p className="text-xs text-muted-foreground mb-1">Setores e Funções</p>
@@ -662,9 +700,11 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
                   <p className="text-sm font-medium">{setor} <span className="text-xs text-muted-foreground">({fs.length})</span></p>
                   <ul className="pl-4 list-disc text-xs">
                     {fs.map((f) => (
-                      <li key={f.id}>
+                      <li key={f.id} className="break-words">
                         <b>{f.nome_funcao}</b>
-                        {f.descricao_atividade && <span className="text-muted-foreground"> — {f.descricao_atividade}</span>}
+                        {(f.descricao_atividade || f.processo || amb.processo) && (
+                          <span className="text-muted-foreground"> — {f.descricao_atividade || f.processo || amb.processo}</span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -676,10 +716,22 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
               <p className="text-xs text-muted-foreground mb-1">Riscos ({riscos.length})</p>
               <p className="text-xs">{riscosComuns.length} comuns · {riscosEspec.length} específicos</p>
             </div>
+            <div className="border rounded p-3 space-y-1">
+              <p className="text-xs text-muted-foreground mb-1">EPIs / Medidas</p>
+              {epis.medidas_controle_existentes && <p className="text-xs break-words"><b>Medidas existentes:</b> {epis.medidas_controle_existentes}</p>}
+              {epis.medidas_controle_recomendadas && <p className="text-xs break-words"><b>Recomendadas:</b> {epis.medidas_controle_recomendadas}</p>}
+              {epis.epcs && <p className="text-xs break-words"><b>EPCs:</b> {epis.epcs}</p>}
+              {epis.observacoes_tecnicas && <p className="text-xs break-words"><b>EPIs:</b> {epis.observacoes_tecnicas}</p>}
+              {epis.capacitacoes_obrigatorias && <p className="text-xs break-words"><b>Capacitações:</b> {epis.capacitacoes_obrigatorias}</p>}
+              {!epis.medidas_controle_existentes && !epis.medidas_controle_recomendadas && !epis.epcs && !epis.observacoes_tecnicas && !epis.capacitacoes_obrigatorias && (
+                <p className="text-xs text-muted-foreground italic">Nada cadastrado.</p>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground italic">
-              Ao importar este GES no <b>PGR → Inventário de Riscos</b>, o sistema usa: descrição do ambiente, setor da função, código do GES, funções vinculadas, processo/atividade de cada função e agentes/riscos (comuns + específicos).
+              Ao importar este GES no <b>PGR → Inventário de Riscos</b>, o sistema usa: descrição do ambiente, setor da função, código do GES, funções vinculadas, processo/atividade de cada função, agentes/riscos (comuns + específicos), EPCs, EPIs, medidas e capacitações.
             </p>
           </TabsContent>
+
         </Tabs>
 
         <DialogFooter>
