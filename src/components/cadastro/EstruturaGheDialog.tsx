@@ -523,8 +523,9 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                               {f.cbo && <span className="text-xs text-muted-foreground">CBO {f.cbo}</span>}
                               {f.quantidade_trabalhadores != null && <Badge variant="secondary" className="text-xs">{f.quantidade_trabalhadores} trab.</Badge>}
                             </div>
-                            {f.descricao_atividade && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{f.descricao_atividade}</p>}
-                            {f.processo && <p className="text-xs mt-1"><span className="text-muted-foreground">Processo:</span> {f.processo}</p>}
+                            {(f.descricao_atividade || f.processo) && (
+                              <p className="text-xs mt-1"><span className="text-muted-foreground">Processo:</span> <span className="whitespace-pre-wrap">{f.descricao_atividade || f.processo}</span></p>
+                            )}
                           </div>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={() => setEditF(f)}><Pencil className="h-4 w-4" /></Button>
