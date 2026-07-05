@@ -305,7 +305,7 @@ function ProtectedRoute() {
         <Route path="/programas/laudo-periculosidade" element={<LaudoPericulosidade />} />
 
 
-        <Route path="/ppp" element={<PppModule />} />
+        <Route path="/ppp" element={<Navigate to="/central-ppp" replace />} />
         <Route path="/ppp/dashboard" element={<PppDashboard />} />
         <Route path="/ppp/novo" element={<PppNovo />} />
         <Route path="/ppp/:id" element={<PppDetalhe />} />
