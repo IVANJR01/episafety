@@ -26,26 +26,24 @@ type Local = {
 };
 
 export default function AsoLocaisEmissao() {
-  const { user, empresaScopeIds } = useAuth() as any;
+  const { user, empresaId } = useAuth() as any;
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Partial<Local> | null>(null);
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-locais-empresas", empresaScopeIds.join(",")],
+    queryKey: ["aso-locais-empresas", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
-      const { data } = await q;
+      const { data } = await supabase.from("empresa_config").select("id, nome").eq("id", empresaId).order("nome");
       return data || [];
     },
   });
 
   const { data: locais = [], isLoading, refetch } = useQuery({
-    queryKey: ["aso-locais-emissao", empresaScopeIds.join(",")],
+    queryKey: ["aso-locais-emissao", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = (supabase.from as any)("locais_emissao_aso").select("*").order("nome");
-      if (empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
-      const { data, error } = await q;
+      const { data, error } = await (supabase.from as any)("locais_emissao_aso").select("*").eq("empresa_id", empresaId).order("nome");
       if (error) throw error;
       return (data || []) as Local[];
     },
@@ -54,7 +52,7 @@ export default function AsoLocaisEmissao() {
   });
 
   const openNovo = () => setEditing({
-    empresa_id: empresas[0]?.id || "",
+    empresa_id: empresaId || "",
     nome: "", cidade: "", uf: "", endereco: "", ativo: true, padrao: false,
   });
 

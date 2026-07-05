@@ -38,7 +38,7 @@ const GRUPOS_RISCO = [
 const STEPS = ["Funcionário", "Tipo", "Riscos", "Exames", "Aptidão", "Validade", "Médico", "Revisão"];
 
 export default function AsoNovo({ editingId, onSaved }: { editingId: string | null; onSaved: () => void }) {
-  const { empresaId, empresaScopeIds } = useAuth();
+  const { empresaId } = useAuth();
   const qc = useQueryClient();
   const [step, setStep] = useState(0);
 
@@ -76,14 +76,10 @@ export default function AsoNovo({ editingId, onSaved }: { editingId: string | nu
   }, [validadeTipo, dataEmissao]);
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["aso-empresas", (empresaScopeIds || []).join(",")],
+    queryKey: ["aso-empresas", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      let q = supabase.from("empresa_config").select("id, nome, cnpj").order("nome");
-      const ids = (empresaScopeIds || []);
-      if (ids.length > 0) {
-        q = q.in("id", ids);
-      }
-      const { data, error } = await q;
+      const { data, error } = await supabase.from("empresa_config").select("id, nome, cnpj").eq("id", empresaId!).order("nome");
       if (error) throw error;
       return data || [];
     },
