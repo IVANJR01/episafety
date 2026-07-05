@@ -143,15 +143,26 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
   const salvarFuncao = async (f: any) => {
     const nome = (f.nome_funcao || "").trim();
+    const setor = (f.setor || "").trim();
+    const atividade = (f.descricao_atividade || "").trim();
     if (!nome) return toast.error("Nome da função é obrigatório");
+    if (!setor) return toast.error("Selecione o setor da função");
+    if (!atividade) return toast.error("Informe o Processo / atividade desta função");
+    // valida duplicidade por GES + Setor + Função
+    const dup = funcoes.find(
+      (x) => x.id !== f.id &&
+        (x.nome_funcao || "").trim().toLowerCase() === nome.toLowerCase() &&
+        (x.setor || "").trim().toLowerCase() === setor.toLowerCase()
+    );
+    if (dup) return toast.error(`Já existe a função "${nome}" no setor "${setor}" deste GES`);
     const payload: any = {
       ghe_id: ghe.id,
       empresa_id: ghe.empresa_id,
       nome_funcao: nome,
       cbo: f.cbo?.trim() || null,
-      descricao_atividade: f.descricao_atividade?.trim() || null,
-      setor: f.setor?.trim() || null,
-      processo: f.processo?.trim() || null,
+      descricao_atividade: atividade,
+      setor,
+      processo: null,
       quantidade_trabalhadores:
         f.quantidade_trabalhadores === "" || f.quantidade_trabalhadores == null
           ? null
