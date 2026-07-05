@@ -35,6 +35,17 @@ export default function LtcatNovo() {
   const [observacoes, setObservacoes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const { data: matriz } = useQuery({
+    queryKey: ["ltcat-novo-matriz", empresaId],
+    queryFn: async () => {
+      if (!empresaId) return null;
+      const { data } = await (supabase.from as any)("empresa_config")
+        .select("id, nome").eq("id", empresaId).maybeSingle();
+      return data;
+    },
+    enabled: !!empresaId,
+  });
+
   const { data: unidades = [] } = useQuery({
     queryKey: ["ltcat-novo-unidades", empresaId],
     queryFn: async () => {
