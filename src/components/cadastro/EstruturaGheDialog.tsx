@@ -355,7 +355,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
       <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{amb.codigo || "—"}</b></div>
-        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{amb.ambiente ? "informado" : "não informado"}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{(amb.ambiente?.trim() || amb.descricao_ambiente?.trim()) ? "informado" : "não informado"}</b></div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Setores:</span> <b>{setoresRows.length}</b></div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Funções:</span> <b>{funcoes.length}</b></div>
       </div>
