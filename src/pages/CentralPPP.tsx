@@ -170,6 +170,8 @@ function CargoMultiSelect({ selected, onChange, suggestions }: { selected: strin
 
 export default function CentralPPP() {
   const { empresaId } = useAuth();
+  const navigate = useNavigate();
+  const [syncing, setSyncing] = useState(false);
 
   // Data
   const [riscos, setRiscos] = useState<RiscoCargo[]>([]);
