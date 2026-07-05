@@ -332,30 +332,8 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                 Processo geral aplicado a todas as funções deste GES. No PGR, se a função não tiver processo específico, será usado este.
             </p>
             </div>
-            <div>
-              <Label className="text-xs">Setores vinculados</Label>
-              <div className="border rounded p-2 flex flex-wrap gap-1 min-h-[44px]">
-                {amb.setores.map((s, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">
-                    {s}
-                    <button type="button" className="ml-1" onClick={() => setAmb({ ...amb, setores: amb.setores.filter((_, j) => j !== i) })}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                <Input
-                  value={novoSetor}
-                  onChange={(e) => setNovoSetor(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === ",") {
-                      e.preventDefault();
-                      const v = novoSetor.trim();
-                      if (v && !amb.setores.includes(v)) setAmb({ ...amb, setores: [...amb.setores, v] });
-                      setNovoSetor("");
-                    }
-                  }}
-                  placeholder="Digite o setor e Enter (ex.: PCP, Financeiro, RH)"
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
               <div>
                 <Label className="text-xs">Observações do GES</Label>
                 <Textarea rows={2} value={amb.descricao} onChange={(e) => setAmb({ ...amb, descricao: e.target.value })} className="w-full" />
