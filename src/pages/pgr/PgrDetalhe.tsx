@@ -128,7 +128,9 @@ export default function PgrDetalhe() {
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
+          <TabsTrigger value="textos">Textos</TabsTrigger>
           <TabsTrigger value="inventario">Inventário</TabsTrigger>
+          <TabsTrigger value="epis">EPIs</TabsTrigger>
           <TabsTrigger value="acoes">Plano de Ação</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
           <TabsTrigger value="checklist">Checklist</TabsTrigger>
