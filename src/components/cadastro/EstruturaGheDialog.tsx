@@ -281,15 +281,19 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     if (error) return toast.error(error.message);
     toast.success(`${rows.length} linha(s) importadas`);
     setBulk(""); setBulkOpen(false);
-    // adiciona setores novos ao GES
+    // garante que os setores usados existam em ghe_setores (sem processo — usuário completa depois)
+    const existentes = new Set(setoresRows.map((s) => (s.nome || "").toLowerCase()));
     const novosSetores = Array.from(new Set(rows.map((r) => r.setor).filter(Boolean))) as string[];
-    const merged = Array.from(new Set([...(amb.setores || []), ...novosSetores]));
-    if (merged.length !== (amb.setores || []).length) {
-      await supabase.from("ghe_ges").update({ setores: merged, setor: merged[0] || null }).eq("id", ghe.id);
-      setAmb({ ...amb, setores: merged });
+    const faltantes = novosSetores.filter((n) => !existentes.has(n.toLowerCase()));
+    if (faltantes.length) {
+      await (supabase as any).from("ghe_setores").insert(
+        faltantes.map((nome) => ({ ghe_id: ghe.id, empresa_id: ghe.empresa_id, nome, processo: null }))
+      );
+      loadSetores();
     }
     loadFuncoes();
   };
+
 
   /* ---------- Riscos ---------- */
   const [riscos, setRiscos] = useState<any[]>([]);
