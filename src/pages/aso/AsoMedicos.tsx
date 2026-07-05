@@ -19,12 +19,18 @@ export default function AsoMedicos() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ nome: "", crm: "", uf_crm: "", cpf: "", email: "", telefone: "", responsavel_pcmso: false, ativo: true });
 
+  const scope: string[] = (empresaScopeIds && empresaScopeIds.length > 0)
+    ? empresaScopeIds
+    : (empresaId ? [empresaId] : []);
   const { data: medicos = [] } = useQuery({
-    queryKey: ["aso-medicos", empresaScopeIds.join(",")],
+    queryKey: ["aso-medicos", scope.join(",")],
+    enabled: scope.length > 0,
     queryFn: async () => {
-      let q = supabase.from("aso_medicos").select("*").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
-      const { data, error } = await q;
+      // Filtro por empresa aplicado para TODOS os papéis — não só Super Admin.
+      // Necessário para usuários multi-empresa (usuario_empresas) cuja RLS
+      // ancora em profiles.empresa_id e pode devolver dados de outra empresa.
+      const { data, error } = await supabase.from("aso_medicos").select("*")
+        .in("empresa_id", scope).order("nome");
       if (error) throw error;
       return data || [];
     },

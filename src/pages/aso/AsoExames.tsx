@@ -158,8 +158,18 @@ export default function AsoExames() {
   const [showAddMedico, setShowAddMedico] = useState(false);
   const [novoMedico, setNovoMedico] = useState({ nome: "", crm: "", especialidade: "" });
 
+  const { empresaScopeIds } = useAuth() as any;
+
   const fetchData = async () => {
     setLoading(true);
+    // Sem empresa ativa → não carrega nada (evita mostrar dados de outra empresa
+    // enquanto o contexto ainda não resolveu). Também impede Super Admin ver
+    // um mash-up global quando nenhuma empresa está selecionada.
+    if (!empresaId) {
+      setItems([]); setFuncionarios([]); setMedicos([]);
+      setLoading(false);
+      return;
+    }
     if (!isOnline()) {
       setItems(getCachedData<Exame>("exames") || []);
       setFuncionarios(getCachedData<Funcionario>("funcionarios") || []);
@@ -168,11 +178,14 @@ export default function AsoExames() {
       return;
     }
     try {
+      const scope: string[] = (empresaScopeIds && empresaScopeIds.length > 0)
+        ? empresaScopeIds
+        : [empresaId];
       const [{ data: exames }, { data: funcs }, { data: meds }, { data: cat }] = await Promise.all([
-        supabase.from("exames").select("*").order("data_vencimento", { ascending: true, nullsFirst: false }),
-        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, data_demissao"),
-        supabase.from("medicos").select("id, nome, crm, especialidade"),
-        supabase.from("aso_exames_catalogo").select("nome, periodicidade_meses").eq("ativo", true),
+        supabase.from("exames").select("*").in("empresa_id", scope).order("data_vencimento", { ascending: true, nullsFirst: false }),
+        supabase.from("funcionarios").select("id, nome, cargo, cpf, matricula, setor, data_demissao, empresa_id").in("empresa_id", scope),
+        supabase.from("medicos").select("id, nome, crm, especialidade, empresa_id").in("empresa_id", scope),
+        supabase.from("aso_exames_catalogo").select("nome, periodicidade_meses").eq("ativo", true).or(`empresa_id.in.(${scope.join(",")}),empresa_id.is.null`),
       ]);
       if (exames) { setItems(exames); setCachedData("exames", exames); }
       if (funcs) { setFuncionarios(funcs); setCachedData("funcionarios", funcs); }
@@ -186,7 +199,8 @@ export default function AsoExames() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  // Refetch quando a empresa ativa mudar (troca de empresa pelo header).
+  useEffect(() => { fetchData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [empresaId, (empresaScopeIds || []).join(",")]);
 
   const funcMap = useMemo(() => {
     const m: Record<string, Funcionario> = {};

@@ -25,12 +25,18 @@ export default function AsoCatalogo() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({ nome: "", tipo: "", periodicidade: "", periodicidade_meses: 12, risco_relacionado: "", obrigatorio: false, ativo: true });
 
+  const scope: string[] = (empresaScopeIds && empresaScopeIds.length > 0)
+    ? empresaScopeIds
+    : (empresaId ? [empresaId] : []);
   const { data: exames = [] } = useQuery({
-    queryKey: ["aso-cat", empresaScopeIds.join(",")],
+    queryKey: ["aso-cat", scope.join(",")],
+    enabled: scope.length > 0,
     queryFn: async () => {
-      let q = supabase.from("aso_exames_catalogo").select("*").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("empresa_id", empresaScopeIds);
-      const { data, error } = await q;
+      // Filtro por empresa para TODOS os papéis (isolamento multi-empresa).
+      // Mantemos itens globais (empresa_id IS NULL) visíveis a todos.
+      const { data, error } = await supabase.from("aso_exames_catalogo").select("*")
+        .or(`empresa_id.in.(${scope.join(",")}),empresa_id.is.null`)
+        .order("nome");
       if (error) throw error;
       return data || [];
     },

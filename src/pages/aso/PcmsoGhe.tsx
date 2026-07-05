@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,9 @@ export default function PcmsoGhe() {
   const qc = useQueryClient();
   const [openGhe, setOpenGhe] = useState<any | null>(null);
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
+  // Ao trocar a empresa ativa (header), reseta a seleção local para NUNCA
+  // exibir GES/GHE de outra empresa após a troca.
+  useEffect(() => { setEmpresaSel(empresaId || ""); }, [empresaId]);
 
   const { data: empresas = [] } = useQuery({
     queryKey: ["pcmso-empresas", (empresaScopeIds || []).join(",")],

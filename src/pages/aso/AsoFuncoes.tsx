@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +28,7 @@ export default function AsoFuncoes() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
+  useEffect(() => { setEmpresaSel(empresaId || ""); }, [empresaId]);
   const [tab, setTab] = useState("funcoes");
 
   const { data: empresas = [] } = useQuery({

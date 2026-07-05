@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import JSZip from "jszip";
 import { gerarPdfAsoBlob } from "@/lib/asoPdf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ export default function AsoLote() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const qc = useQueryClient();
   const [empresaSel, setEmpresaSel] = useState(empresaId || "");
+  useEffect(() => { setEmpresaSel(empresaId || ""); setSelected(new Set()); }, [empresaId]);
   const [filter, setFilter] = useState("");
   const [setor, setSetor] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -50,8 +51,9 @@ export default function AsoLote() {
     queryFn: async () => (await supabase.from("funcionarios").select("id, nome, cpf, cargo, setor, data_demissao").eq("empresa_id", empresaSel).order("nome")).data || [],
   });
   const { data: medicos = [] } = useQuery({
-    queryKey: ["aso-lote-medicos"],
-    queryFn: async () => (await supabase.from("aso_medicos").select("id, nome, crm, uf_crm").eq("ativo", true).order("nome")).data || [],
+    queryKey: ["aso-lote-medicos", empresaSel],
+    enabled: !!empresaSel,
+    queryFn: async () => (await supabase.from("aso_medicos").select("id, nome, crm, uf_crm").eq("ativo", true).eq("empresa_id", empresaSel).order("nome")).data || [],
   });
 
   const setores = useMemo(() => [...new Set(funcs.map((f: any) => f.setor).filter(Boolean))], [funcs]);

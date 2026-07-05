@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,7 @@ function parseDate(v: any): string | undefined {
 export default function AsoImport() {
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
+  useEffect(() => { setEmpresaSel(empresaId || ""); }, [empresaId]);
   const [rows, setRows] = useState<Row[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ criados: number; atualizados: number; erros: number } | null>(null);
