@@ -195,12 +195,13 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         empresa_id: ghe.empresa_id,
         setor: setor || null,
         nome_funcao: nome_funcao || setor || "",
-        processo: processo || null,
+        descricao_atividade: processo || null,
+        processo: null,
         quantidade_trabalhadores: qtd && !isNaN(Number(qtd)) ? Number(qtd) : null,
         observacoes: obs || null,
       };
-    }).filter((r) => r.nome_funcao);
-    if (!rows.length) return toast.error("Nenhuma linha válida");
+    }).filter((r) => r.nome_funcao && r.setor && r.descricao_atividade);
+    if (!rows.length) return toast.error("Nenhuma linha válida (precisa Setor | Função | Processo)");
     const { error } = await supabase.from("ghe_funcoes").insert(rows as any);
     if (error) return toast.error(error.message);
     toast.success(`${rows.length} linha(s) importadas`);
