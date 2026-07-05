@@ -3909,6 +3909,7 @@ export type Database = {
           observacoes_tecnicas: string | null
           pcmso_id: string | null
           probabilidade: number | null
+          processo: string | null
           setor: string | null
           setores: string[]
           severidade: number | null
@@ -3937,6 +3938,7 @@ export type Database = {
           observacoes_tecnicas?: string | null
           pcmso_id?: string | null
           probabilidade?: number | null
+          processo?: string | null
           setor?: string | null
           setores?: string[]
           severidade?: number | null
@@ -3965,6 +3967,7 @@ export type Database = {
           observacoes_tecnicas?: string | null
           pcmso_id?: string | null
           probabilidade?: number | null
+          processo?: string | null
           setor?: string | null
           setores?: string[]
           severidade?: number | null
@@ -6184,6 +6187,7 @@ export type Database = {
           perigo_id: string | null
           pgr_id: string
           probabilidade: number
+          processo: string | null
           severidade: number
           tipo_exposicao: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual: boolean
@@ -6215,6 +6219,7 @@ export type Database = {
           perigo_id?: string | null
           pgr_id: string
           probabilidade?: number
+          processo?: string | null
           severidade?: number
           tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual?: boolean
@@ -6246,6 +6251,7 @@ export type Database = {
           perigo_id?: string | null
           pgr_id?: string
           probabilidade?: number
+          processo?: string | null
           severidade?: number
           tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual?: boolean

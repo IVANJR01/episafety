@@ -29,6 +29,7 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
   const [amb, setAmb] = useState({
     ambiente: ghe.ambiente || "",
     descricao_ambiente: ghe.descricao_ambiente || "",
+    processo: ghe.processo || "",
     descricao: ghe.descricao || "",
     setores: ((ghe.setores && ghe.setores.length ? ghe.setores : ghe.setor ? [ghe.setor] : []) as string[]),
   });
@@ -43,6 +44,7 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
       .update({
         ambiente: amb.ambiente?.trim() || null,
         descricao_ambiente: amb.descricao_ambiente?.trim() || null,
+        processo: amb.processo?.trim() || null,
         descricao: amb.descricao?.trim() || null,
         setores: setoresArr,
         setor: setoresArr[0] || null,
@@ -53,6 +55,7 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
     toast.success("Ambiente salvo");
     // sincroniza objeto local (útil para tabs seguintes)
     ghe.ambiente = amb.ambiente; ghe.descricao_ambiente = amb.descricao_ambiente;
+    ghe.processo = amb.processo;
     ghe.descricao = amb.descricao; ghe.setores = setoresArr;
   };
 
@@ -246,6 +249,18 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
               <p className="text-xs text-muted-foreground mt-1">Este texto será importado no PGR no campo "Descrição do ambiente".</p>
             </div>
             <div>
+              <Label className="text-xs">Processo do GES</Label>
+              <Textarea
+                rows={4}
+                value={amb.processo}
+                onChange={(e) => setAmb({ ...amb, processo: e.target.value })}
+                placeholder="Ex.: Gerencia todo o processo produtivo da empresa. / Executa atividades administrativas, financeiras e de apoio à gestão da empresa."
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Processo geral aplicado a todas as funções deste GES. No PGR, se a função não tiver processo específico, será usado este.
+            </p>
+            </div>
+            <div>
               <Label className="text-xs">Setores vinculados</Label>
               <div className="border rounded p-2 flex flex-wrap gap-1 min-h-[44px]">
                 {amb.setores.map((s, i) => (
@@ -342,8 +357,11 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <Label className="text-xs">Processo (curto)</Label>
-                    <Input value={editF.processo || ""} onChange={(e) => setEditF({ ...editF, processo: e.target.value })} placeholder="Ex.: Administrativo" />
+                    <Label className="text-xs">Processo específico (opcional)</Label>
+                    <Input value={editF.processo || ""} onChange={(e) => setEditF({ ...editF, processo: e.target.value })} placeholder={ghe.processo ? "Deixe em branco para herdar do GES" : "Ex.: Administrativo"} />
+                    {ghe.processo && !editF.processo && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Herdando do GES: {ghe.processo.slice(0, 60)}{ghe.processo.length > 60 ? "…" : ""}</p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-xs">Qtd trabalhadores</Label>
