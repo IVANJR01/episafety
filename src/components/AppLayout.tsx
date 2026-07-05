@@ -148,7 +148,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleAsoItems = asoItems.filter((i) => canAccess(i.moduleKey));
   const visiblePortalRhItems = portalRhItems.filter((i) => canAccess(i.moduleKey));
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
-  const visibleEsocialItems = esocialItems.filter((i) => canAccess(i.moduleKey));
+  // eSocial ocultado temporariamente do menu (rotas/páginas/dados preservados).
+  const visibleEsocialItems: NavItem[] = [];
+  void esocialItems;
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
   const visibleProgramasItems = programasItems.filter((i) => canAccess(i.moduleKey));
 
