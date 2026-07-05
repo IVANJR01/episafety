@@ -308,6 +308,105 @@ export default function CentralPPP() {
     loadAll();
   }
 
+  // === SINCRONIZAR RISCOS DO LTCAT ===
+  // Fonte oficial dos agentes previdenciários. O PPP apenas espelha.
+  async function syncFromLtcat() {
+    if (!empresaId) { toast.error("Selecione uma empresa ativa"); return; }
+    setSyncing(true);
+    try {
+      const [funcRes, agRes] = await Promise.all([
+        supabase.from("ltcat_funcoes")
+          .select("id, nome_funcao, cbo, grupo_homogeneo_id")
+          .eq("empresa_id", empresaId),
+        supabase.from("ltcat_agentes")
+          .select("id, nome, grupo, grupo_homogeneo_id, epi_eficacia, epc_eficacia, epi_ca, tipo_exposicao, trajetoria")
+          .eq("empresa_id", empresaId),
+      ]);
+      if (funcRes.error) throw funcRes.error;
+      if (agRes.error) throw agRes.error;
+
+      const funcoes = (funcRes.data || []) as any[];
+      const agentes = (agRes.data || []) as any[];
+
+      if (funcoes.length === 0 || agentes.length === 0) {
+        toast.error("Nenhum dado de LTCAT encontrado para esta empresa");
+        setSyncing(false);
+        return;
+      }
+
+      // Agrupar agentes por GHE
+      const agentesPorGhe = new Map<string, any[]>();
+      agentes.forEach((a) => {
+        if (!a.grupo_homogeneo_id) return;
+        const arr = agentesPorGhe.get(a.grupo_homogeneo_id) || [];
+        arr.push(a);
+        agentesPorGhe.set(a.grupo_homogeneo_id, arr);
+      });
+
+      const parseEficaz = (v: string | null) => !!v && /efic/i.test(v) && !/inefic/i.test(v);
+      const tiposValidos = ["fisico", "quimico", "biologico", "ergonomico", "acidente"];
+
+      // Montar linhas alvo
+      const alvo: any[] = [];
+      for (const f of funcoes) {
+        const cargo = (f.nome_funcao || "").trim();
+        if (!cargo) continue;
+        const ags = agentesPorGhe.get(f.grupo_homogeneo_id) || [];
+        for (const a of ags) {
+          const tipo = tiposValidos.includes(a.grupo) ? a.grupo : "fisico";
+          alvo.push({
+            empresa_id: empresaId,
+            cargo,
+            cbo: f.cbo || null,
+            tipo_risco: tipo,
+            fator_risco: (a.nome || "").trim(),
+            intensidade_concentracao: a.tipo_exposicao || null,
+            tecnica_utilizada: a.trajetoria || null,
+            epc_eficaz: parseEficaz(a.epc_eficacia),
+            epi_eficaz: parseEficaz(a.epi_eficacia),
+            ca_epi: a.epi_ca || null,
+          });
+        }
+      }
+
+      if (alvo.length === 0) {
+        toast.error("LTCAT sem funções vinculadas a agentes");
+        setSyncing(false);
+        return;
+      }
+
+      // Dedupe por (cargo, fator_risco)
+      const chave = (r: any) => `${r.cargo}||${r.fator_risco}`;
+      const existentesRes = await supabase.from("ppp_riscos_cargo")
+        .select("id, cargo, fator_risco").eq("empresa_id", empresaId);
+      const existentes = new Map<string, string>();
+      (existentesRes.data || []).forEach((r: any) => existentes.set(chave(r), r.id));
+
+      let inseridos = 0, atualizados = 0;
+      for (const row of alvo) {
+        const k = chave(row);
+        const existingId = existentes.get(k);
+        if (existingId) {
+          const { error } = await supabase.from("ppp_riscos_cargo")
+            .update(row).eq("id", existingId);
+          if (!error) atualizados++;
+        } else {
+          const { error } = await supabase.from("ppp_riscos_cargo").insert(row);
+          if (!error) inseridos++;
+        }
+      }
+
+      toast.success(`Dados do LTCAT sincronizados. ${inseridos} novo(s), ${atualizados} atualizado(s).`);
+      loadAll();
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao sincronizar com LTCAT");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+
+
   // === RESPONSÁVEIS CRUD ===
   function openNewResp() {
     setEditingResp(null);
