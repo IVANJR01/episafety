@@ -357,8 +357,11 @@ export default function EstruturaGheDialog({ ghe, onClose }: Props) {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
-                    <Label className="text-xs">Processo (curto)</Label>
-                    <Input value={editF.processo || ""} onChange={(e) => setEditF({ ...editF, processo: e.target.value })} placeholder="Ex.: Administrativo" />
+                    <Label className="text-xs">Processo específico (opcional)</Label>
+                    <Input value={editF.processo || ""} onChange={(e) => setEditF({ ...editF, processo: e.target.value })} placeholder={ghe.processo ? "Deixe em branco para herdar do GES" : "Ex.: Administrativo"} />
+                    {ghe.processo && !editF.processo && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Herdando do GES: {ghe.processo.slice(0, 60)}{ghe.processo.length > 60 ? "…" : ""}</p>
+                    )}
                   </div>
                   <div>
                     <Label className="text-xs">Qtd trabalhadores</Label>
