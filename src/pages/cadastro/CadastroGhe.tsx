@@ -185,16 +185,10 @@ export default function CadastroGhe() {
         editing={editing}
         onSaved={() => qc.invalidateQueries({ queryKey: ["cad-ghe-list"] })}
       />
-      {openFuncoes && (
-        <FuncoesDialog
-          ghe={openFuncoes}
-          onClose={() => { setOpenFuncoes(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
-        />
-      )}
-      {openRiscos && (
-        <RiscosDialog
-          ghe={openRiscos}
-          onClose={() => { setOpenRiscos(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
+      {openEstrutura && (
+        <EstruturaGheDialog
+          ghe={openEstrutura}
+          onClose={() => { setOpenEstrutura(null); qc.invalidateQueries({ queryKey: ["cad-ghe-list"] }); }}
         />
       )}
     </div>
