@@ -163,8 +163,7 @@ export default function CadastroGhe() {
                         </StatusBadge>
                       </TableCell>
                       <TableCell className="text-right align-top space-x-1">
-                        <Button size="sm" variant="outline" onClick={() => setOpenFuncoes(g)} title="Funções"><Briefcase className="h-4 w-4 mr-1" />Funções</Button>
-                        <Button size="sm" variant="outline" onClick={() => setOpenRiscos(g)} title="Riscos"><ShieldAlert className="h-4 w-4 mr-1" />Riscos</Button>
+                        <Button size="sm" onClick={() => setOpenEstrutura(g)} title="Estrutura completa"><LayoutList className="h-4 w-4 mr-1" />Estrutura</Button>
                         <Button size="icon" variant="ghost" onClick={() => editar(g)} title="Editar"><Pencil className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" onClick={() => alternarStatus(g)} title={g.status === "ativo" ? "Inativar" : "Ativar"}>
                           <Power className={`h-4 w-4 ${g.status === "ativo" ? "text-destructive" : "text-primary"}`} />
