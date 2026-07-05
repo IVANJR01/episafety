@@ -251,16 +251,39 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const riscosComuns = riscos.filter((r) => !r.funcao_id);
   const riscosEspec = riscos.filter((r) => !!r.funcao_id);
 
+  const salvarSetores = async () => {
+    const setoresArr = amb.setores.map((s) => s.trim()).filter(Boolean);
+    const { error } = await supabase
+      .from("ghe_ges")
+      .update({ setores: setoresArr, setor: setoresArr[0] || null })
+      .eq("id", ghe.id);
+    if (error) return toast.error(error.message);
+    toast.success("Setores salvos");
+    ghe.setores = setoresArr;
+  };
+
+  const colarSetoresBulk = (texto: string) => {
+    const novos = texto.split(/[,\n;]/).map((s) => s.trim()).filter(Boolean);
+    if (!novos.length) return;
+    const merged = Array.from(new Set([...amb.setores, ...novos]));
+    setAmb({ ...amb, setores: merged });
+  };
+
   const bodyContent = (
     <Tabs value={tab} onValueChange={setTab} className={isPage ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden"}>
       <div className="w-full overflow-x-auto -mx-1 px-1">
         <TabsList className="inline-flex w-max min-w-full sm:min-w-0 sm:w-auto self-start">
           <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
-          <TabsTrigger value="funcoes">Setores e Funções</TabsTrigger>
-          <TabsTrigger value="riscos">Riscos</TabsTrigger>
-          <TabsTrigger value="epis">EPIs / Medidas</TabsTrigger>
-          <TabsTrigger value="resumo">Resumo</TabsTrigger>
+          <TabsTrigger value="setores">Setores</TabsTrigger>
+          <TabsTrigger value="funcoes">Funções</TabsTrigger>
         </TabsList>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{amb.codigo || "—"}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{amb.ambiente ? "informado" : "não informado"}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Setores:</span> <b>{amb.setores.length}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Funções:</span> <b>{funcoes.length}</b></div>
       </div>
 
 
@@ -309,34 +332,8 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                 Processo geral aplicado a todas as funções deste GES. No PGR, se a função não tiver processo específico, será usado este.
             </p>
             </div>
-            <div>
-              <Label className="text-xs">Setores vinculados</Label>
-              <div className="border rounded p-2 flex flex-wrap gap-1 min-h-[44px]">
-                {amb.setores.map((s, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">
-                    {s}
-                    <button type="button" className="ml-1" onClick={() => setAmb({ ...amb, setores: amb.setores.filter((_, j) => j !== i) })}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-                <Input
-                  value={novoSetor}
-                  onChange={(e) => setNovoSetor(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === ",") {
-                      e.preventDefault();
-                      const v = novoSetor.trim();
-                      if (v && !amb.setores.includes(v)) setAmb({ ...amb, setores: [...amb.setores, v] });
-                      setNovoSetor("");
-                    }
-                  }}
-                  placeholder="Digite o setor e Enter (ex.: PCP, Financeiro, RH)"
-                  className="border-0 shadow-none h-7 flex-1 min-w-[160px] p-1 focus-visible:ring-0"
-                />
-              </div>
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
               <div>
                 <Label className="text-xs">Observações do GES</Label>
                 <Textarea rows={2} value={amb.descricao} onChange={(e) => setAmb({ ...amb, descricao: e.target.value })} className="w-full" />
@@ -358,6 +355,55 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
               </Button>
             </div>
           </TabsContent>
+
+          {/* ---------- Aba Setores ---------- */}
+          <TabsContent value="setores" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
+            <p className="text-xs text-muted-foreground">
+              Use esta aba para informar os setores que fazem parte deste GES. Ex.: PCP, Financeiro, RH, SESMT.
+            </p>
+            <div>
+              <Label className="text-xs">Setores do GES</Label>
+              <div className="border rounded p-2 flex flex-wrap gap-1 min-h-[44px]">
+                {amb.setores.map((s, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    {s}
+                    <button type="button" className="ml-1" onClick={() => setAmb({ ...amb, setores: amb.setores.filter((_, j) => j !== i) })}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <Input
+                  value={novoSetor}
+                  onChange={(e) => setNovoSetor(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") {
+                      e.preventDefault();
+                      const v = novoSetor.trim();
+                      if (v && !amb.setores.includes(v)) setAmb({ ...amb, setores: [...amb.setores, v] });
+                      setNovoSetor("");
+                    }
+                  }}
+                  placeholder="Digite o setor e Enter (ex.: PCP)"
+                  className="border-0 shadow-none h-7 flex-1 min-w-[160px] p-1 focus-visible:ring-0"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Colar vários setores (separe por vírgula ou linha)</Label>
+              <Textarea
+                rows={3}
+                placeholder={"PCP, Financeiro, RH, SESMT"}
+                onBlur={(e) => { if (e.target.value.trim()) { colarSetoresBulk(e.target.value); e.target.value = ""; } }}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Ao sair do campo, os setores são adicionados à lista acima. Clique em salvar para persistir.</p>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={salvarSetores}>
+                <Save className="h-4 w-4 mr-1" /> Salvar setores
+              </Button>
+            </div>
+          </TabsContent>
+
 
 
           {/* ---------- Aba Setores e Funções ---------- */}
@@ -524,210 +570,8 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
             )}
           </TabsContent>
 
-          {/* ---------- Aba Riscos ---------- */}
-          <TabsContent value="riscos" className="mt-3 space-y-4 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
-            <div className="flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">
-                Riscos <b>comuns</b> aplicam a todas as funções. Marque <b>específico da função</b> quando o risco só existir em uma função.
-              </p>
-              <Button size="sm" onClick={() => setEditR({ grupo: "ergonomico", tipo_agente: "", funcao_id: null })}>
-                <Plus className="h-4 w-4 mr-1" />Novo risco
-              </Button>
-            </div>
+          {/* Abas Riscos, EPIs/Medidas e Resumo removidas desta tela — serão tratadas em módulo próprio. */}
 
-            {editR && (
-              <div className="border rounded p-3 bg-muted/30 space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <Label className="text-xs">Grupo *</Label>
-                    <Select value={editR.grupo || ""} onValueChange={(v) => setEditR({ ...editR, grupo: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {GRUPOS_RISCO.map((g) => <SelectItem key={g} value={g}>{cap(g)}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Label className="text-xs">Perigo / Agente *</Label>
-                    <Input value={editR.tipo_agente || ""} onChange={(e) => setEditR({ ...editR, tipo_agente: e.target.value })}
-                      placeholder="Ex.: Postura sentada prolongada" />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs">Fonte geradora</Label>
-                  <Input value={editR.perigo_fonte || ""} onChange={(e) => setEditR({ ...editR, perigo_fonte: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Exposição</Label>
-                    <Select value={editR.exposicao || ""} onValueChange={(v) => setEditR({ ...editR, exposicao: v })}>
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="continua">Contínua</SelectItem>
-                        <SelectItem value="intermitente">Intermitente</SelectItem>
-                        <SelectItem value="eventual">Eventual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Limite de exposição</Label>
-                    <Input value={editR.limite_exposicao || ""} onChange={(e) => setEditR({ ...editR, limite_exposicao: e.target.value })} />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs">Possíveis lesões</Label>
-                  <Textarea rows={2} value={editR.possiveis_lesoes || ""} onChange={(e) => setEditR({ ...editR, possiveis_lesoes: e.target.value })} />
-                </div>
-                <div className="border-t pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                      checked={!!editR.funcao_id}
-                      onCheckedChange={(v) => setEditR({ ...editR, funcao_id: v ? (funcoes[0]?.id || null) : null })}
-                    />
-                    <span className="text-sm">Risco específico da função</span>
-                  </label>
-                  {editR.funcao_id && (
-                    <Select value={editR.funcao_id} onValueChange={(v) => setEditR({ ...editR, funcao_id: v })}>
-                      <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {funcoes.map((f) => <SelectItem key={f.id} value={f.id}>{f.setor ? `${f.setor} · ` : ""}{f.nome_funcao}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="ghost" onClick={() => setEditR(null)}>Cancelar</Button>
-                  <Button size="sm" onClick={() => salvarRisco(editR)}>Salvar risco</Button>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Riscos comuns do GES</h4>
-              <div className="border rounded divide-y">
-                {loadingR && <p className="text-xs text-muted-foreground p-3">Carregando…</p>}
-                {!loadingR && riscosComuns.length === 0 && <p className="text-xs text-muted-foreground italic p-3">Nenhum risco comum.</p>}
-                {riscosComuns.map((r) => (
-                  <div key={r.id} className="p-2 flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{cap(r.grupo)}</Badge>
-                        <span className="text-sm font-medium">{r.tipo_agente || r.perigo_fonte}</span>
-                        {r.exposicao && <span className="text-xs text-muted-foreground">· {r.exposicao}</span>}
-                      </div>
-                      {r.perigo_fonte && r.tipo_agente && <p className="text-xs text-muted-foreground mt-1">Fonte: {r.perigo_fonte}</p>}
-                    </div>
-                    <Button size="icon" variant="ghost" onClick={() => setEditR(r)}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => excluirRisco(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Riscos específicos por função</h4>
-              <div className="border rounded divide-y">
-                {!loadingR && riscosEspec.length === 0 && <p className="text-xs text-muted-foreground italic p-3">Nenhum risco específico.</p>}
-                {riscosEspec.map((r) => (
-                  <div key={r.id} className="p-2 flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{cap(r.grupo)}</Badge>
-                        <span className="text-sm font-medium">{r.tipo_agente || r.perigo_fonte}</span>
-                        <Badge variant="secondary" className="text-xs">{nomeFuncao(r.funcao_id)}</Badge>
-                      </div>
-                    </div>
-                    <Button size="icon" variant="ghost" onClick={() => setEditR(r)}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => excluirRisco(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* ---------- Aba EPIs / Medidas ---------- */}
-          <TabsContent value="epis" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
-            <p className="text-xs text-muted-foreground">
-              Medidas de controle, EPCs, EPIs e capacitações usados pelo PGR e pela OS. Aplicam a todo o GES.
-            </p>
-            <div>
-              <Label className="text-xs">Medidas de controle existentes</Label>
-              <Textarea rows={2} value={epis.medidas_controle_existentes} onChange={(e) => setEpis({ ...epis, medidas_controle_existentes: e.target.value })} className="w-full" />
-            </div>
-            <div>
-              <Label className="text-xs">Medidas de controle recomendadas</Label>
-              <Textarea rows={2} value={epis.medidas_controle_recomendadas} onChange={(e) => setEpis({ ...epis, medidas_controle_recomendadas: e.target.value })} className="w-full" />
-            </div>
-            <div>
-              <Label className="text-xs">EPCs (Equipamentos de Proteção Coletiva)</Label>
-              <Textarea rows={2} value={epis.epcs} onChange={(e) => setEpis({ ...epis, epcs: e.target.value })} placeholder="Ex.: Exaustão localizada, sinalização, isolamento de área…" className="w-full" />
-            </div>
-            <div>
-              <Label className="text-xs">EPIs</Label>
-              <Textarea rows={2} value={epis.observacoes_tecnicas} onChange={(e) => setEpis({ ...epis, observacoes_tecnicas: e.target.value })} placeholder="Ex.: Protetor auricular tipo plug, óculos ampla visão, calçado de segurança…" className="w-full" />
-              <p className="text-[10px] text-muted-foreground mt-1">Lista descritiva. O controle de entrega de EPIs continua no módulo próprio.</p>
-            </div>
-            <div>
-              <Label className="text-xs">Capacitações obrigatórias</Label>
-              <Textarea rows={2} value={epis.capacitacoes_obrigatorias} onChange={(e) => setEpis({ ...epis, capacitacoes_obrigatorias: e.target.value })} placeholder="Ex.: NR-06, NR-35, NR-10 básica…" className="w-full" />
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={salvarEpis} disabled={savingEpis}>
-                <Save className="h-4 w-4 mr-1" /> Salvar EPIs / Medidas
-              </Button>
-            </div>
-          </TabsContent>
-
-          {/* ---------- Aba Resumo ---------- */}
-          <TabsContent value="resumo" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
-            <div className="border rounded p-3">
-              <p className="text-xs text-muted-foreground">Ambiente</p>
-              <p className="text-sm font-medium break-words">{amb.ambiente || "—"}</p>
-              {amb.descricao_ambiente && <p className="text-xs mt-1 whitespace-pre-wrap break-words">{amb.descricao_ambiente}</p>}
-              {amb.processo && (
-                <p className="text-xs mt-2 whitespace-pre-wrap break-words">
-                  <span className="text-muted-foreground">Processo do GES:</span> {amb.processo}
-                </p>
-              )}
-            </div>
-            <div className="border rounded p-3">
-              <p className="text-xs text-muted-foreground mb-1">Setores e Funções</p>
-              {Array.from(funcoesPorSetor.entries()).map(([setor, fs]) => (
-                <div key={setor} className="mb-2">
-                  <p className="text-sm font-medium">{setor} <span className="text-xs text-muted-foreground">({fs.length})</span></p>
-                  <ul className="pl-4 list-disc text-xs">
-                    {fs.map((f) => (
-                      <li key={f.id} className="break-words">
-                        <b>{f.nome_funcao}</b>
-                        {(f.descricao_atividade || f.processo || amb.processo) && (
-                          <span className="text-muted-foreground"> — {f.descricao_atividade || f.processo || amb.processo}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-              {funcoesPorSetor.size === 0 && <p className="text-xs text-muted-foreground italic">Nada cadastrado.</p>}
-            </div>
-            <div className="border rounded p-3">
-              <p className="text-xs text-muted-foreground mb-1">Riscos ({riscos.length})</p>
-              <p className="text-xs">{riscosComuns.length} comuns · {riscosEspec.length} específicos</p>
-            </div>
-            <div className="border rounded p-3 space-y-1">
-              <p className="text-xs text-muted-foreground mb-1">EPIs / Medidas</p>
-              {epis.medidas_controle_existentes && <p className="text-xs break-words"><b>Medidas existentes:</b> {epis.medidas_controle_existentes}</p>}
-              {epis.medidas_controle_recomendadas && <p className="text-xs break-words"><b>Recomendadas:</b> {epis.medidas_controle_recomendadas}</p>}
-              {epis.epcs && <p className="text-xs break-words"><b>EPCs:</b> {epis.epcs}</p>}
-              {epis.observacoes_tecnicas && <p className="text-xs break-words"><b>EPIs:</b> {epis.observacoes_tecnicas}</p>}
-              {epis.capacitacoes_obrigatorias && <p className="text-xs break-words"><b>Capacitações:</b> {epis.capacitacoes_obrigatorias}</p>}
-              {!epis.medidas_controle_existentes && !epis.medidas_controle_recomendadas && !epis.epcs && !epis.observacoes_tecnicas && !epis.capacitacoes_obrigatorias && (
-                <p className="text-xs text-muted-foreground italic">Nada cadastrado.</p>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground italic">
-              Ao importar este GES no <b>PGR → Inventário de Riscos</b>, o sistema usa: descrição do ambiente, setor da função, código do GES, funções vinculadas, processo/atividade de cada função, agentes/riscos (comuns + específicos), EPCs, EPIs, medidas e capacitações.
-            </p>
-          </TabsContent>
 
     </Tabs>
   );
@@ -740,7 +584,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
             Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}
           </h1>
           <p className="text-xs text-muted-foreground">
-            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+            Ambiente → Setores → Funções. O PGR importa essa estrutura.
           </p>
         </div>
         {bodyContent}
@@ -757,7 +601,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         <DialogHeader className="sm:px-6 sm:pt-6 sm:pb-3 sm:border-b">
           <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
           <p className="text-xs text-muted-foreground">
-            Ambiente → Setores → Funções → Processo/atividade → Riscos. O PGR importa tudo daqui.
+            Ambiente → Setores → Funções. O PGR importa essa estrutura.
           </p>
         </DialogHeader>
         {bodyContent}
