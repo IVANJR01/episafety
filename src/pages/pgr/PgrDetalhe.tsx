@@ -20,6 +20,8 @@ import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
 import PgrChecklistTab from "@/components/pgr/PgrChecklistTab";
 import PgrResumoCards from "@/components/pgr/PgrResumoCards";
+import TextosTab from "@/components/pgr/TextosTab";
+import QuadroEpisTab from "@/components/pgr/QuadroEpisTab";
 import {
   PgrDocumento, PgrRevisao, PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus, isEditavel,
 } from "@/lib/pgrTypes";
@@ -126,7 +128,9 @@ export default function PgrDetalhe() {
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
+          <TabsTrigger value="textos">Textos</TabsTrigger>
           <TabsTrigger value="inventario">Inventário</TabsTrigger>
+          <TabsTrigger value="epis">EPIs</TabsTrigger>
           <TabsTrigger value="acoes">Plano de Ação</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
           <TabsTrigger value="checklist">Checklist</TabsTrigger>
@@ -182,8 +186,16 @@ export default function PgrDetalhe() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="textos">
+          <TextosTab pgrId={id!} empresaId={doc.empresa_id} canEdit={perms.canEdit && isEditavel(status)} />
+        </TabsContent>
+
         <TabsContent value="inventario">
           <InventarioTab pgrId={id!} empresaId={doc.empresa_id} status={status} canEdit={perms.canEdit} />
+        </TabsContent>
+
+        <TabsContent value="epis">
+          <QuadroEpisTab pgrId={id!} empresaId={doc.empresa_id} />
         </TabsContent>
 
         <TabsContent value="acoes">

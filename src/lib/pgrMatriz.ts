@@ -59,3 +59,32 @@ export const EXPOSICAO_LABEL: Record<string, string> = {
 export const AVALIACAO_LABEL: Record<string, string> = {
   qualitativa: "Qualitativa", quantitativa: "Quantitativa",
 };
+
+// Classificação PGR — padrão SafetySoluções (5x5)
+// 1-3 Trivial · 4-8 Tolerável · 9-12 Moderado · 13-15 Substancial · 16-25 Intolerável
+export type PgrClassePGR = "trivial" | "toleravel" | "moderado" | "substancial" | "intoleravel";
+
+export const CLASSE_PGR_LABEL: Record<PgrClassePGR, string> = {
+  trivial: "Trivial",
+  toleravel: "Tolerável",
+  moderado: "Moderado",
+  substancial: "Substancial",
+  intoleravel: "Intolerável",
+};
+
+export const CLASSE_PGR_TEXT: Record<PgrClassePGR, string> = {
+  trivial: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  toleravel: "bg-lime-100 text-lime-800 border-lime-300",
+  moderado: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  substancial: "bg-orange-100 text-orange-800 border-orange-300",
+  intoleravel: "bg-red-100 text-red-800 border-red-300",
+};
+
+export function classificarRiscoPGR(sev: number, prob: number): PgrClassePGR {
+  const n = sev * prob;
+  if (n <= 3) return "trivial";
+  if (n <= 8) return "toleravel";
+  if (n <= 12) return "moderado";
+  if (n <= 15) return "substancial";
+  return "intoleravel";
+}

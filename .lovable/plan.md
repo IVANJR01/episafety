@@ -1,117 +1,99 @@
-# Plano: GES/GHE como Base Central dos Programas
 
-## Objetivo
+# PGR — Modelo padrão SafetySoluções
 
-Transformar o GES/GHE em **fonte única de verdade** para todos os documentos técnicos do módulo Programas. O usuário cadastra riscos, funções, EPIs, exames e medidas **uma vez** — o sistema reaproveita nos PDFs, sempre permitindo revisão técnica antes de emitir.
+Objetivo: fazer o PGR gerado pelo sistema seguir a estrutura do seu documento "PGR G91 2025.2027", mas de forma dinâmica (dados da empresa + GES/GHE + inventário + EPIs + plano de ação) e com PDF mais profissional. Escopo restrito a **Programas / PGR / Inventário / Plano de Ação / GES**. Nada de EPI/Entregas/Inspeções/Exames/RH será tocado.
 
-## Escopo desta entrega
+## Escopo desta entrega (fase 1)
 
-Sua recomendação prática:
-1. **Fase A (agora):** PGR + Ordem de Serviço
-2. **Fase B (depois):** PCMSO
-3. **Fase C (última):** LTCAT, Insalubridade, Periculosidade
+Como o pedido é muito amplo, proponho entregar em fase única e enxuta o que dá base para tudo o resto funcionar. Sem essa base, o resto vira retrabalho.
 
-Nesta iteração entrego a **Fase A completa** + a **infraestrutura comum** que serve as fases seguintes. Sem tocar em EPIs, Entregas, Inspeções, Exames operacionais, Storage, RH.
+### 1. Estrutura de textos padrão editáveis
+Nova tabela `pgr_textos` (por `pgr_id`) com as seções fixas do seu modelo:
+introdução, apresentação, registro e divulgação, objetivo geral, objetivos específicos, política de segurança, responsabilidades do empregador, responsabilidades dos empregados, segurança do trabalho, CIPA, considerações preliminares, área de abrangência, recomendações, considerações finais, encerramento.
 
----
+- Ao criar um PGR, essas seções são semeadas com textos-padrão do SafetySoluções.
+- Nova aba **"Textos"** no PGR permite editar cada seção (rich textarea) antes de gerar o PDF.
+- Botão "Restaurar padrão" por seção.
 
-## Fase A — O que vou construir
+### 2. Controle de revisões visível no PDF
+Já existe `pgr_revisoes`. Vou:
+- Exibir a tabela "Controle de Revisões" (Revisão / Data / Descrição) na aba Resumo.
+- Incluir a mesma tabela no PDF, logo após a capa.
 
-### 1. Ficha unificada do GES/GHE (usar o que já existe)
+### 3. Matriz de risco — alinhar ao seu modelo (5×5, Trivial→Intolerável)
+Hoje a matriz do sistema classifica em baixo/moderado/alto/crítico. Vou **adicionar** o padrão do seu documento como opção default:
+- 1–3 Trivial · 4–8 Tolerável · 9–12 Moderado · 13–15 Substancial · 16–25 Intolerável
+- Mantém retrocompat: itens antigos continuam lendo o campo `classificacao` atual.
+- Novo helper `classificarRiscoPGR()` em `pgrMatriz.ts` e labels/cores novas.
+- Inventário e PDF passam a mostrar essa classificação.
 
-O projeto já tem `ghe_ges`, `ghe_funcoes`, `ghe_riscos`, `ghe_exames`. Vou:
+### 4. Quadro sinóptico de EPIs (novo)
+Nova aba **"EPIs (Quadro Sinóptico)"** no PGR que consolida, a partir do inventário + GES:
+- GHE/GES · Função · Medida de controle existente · EPIs indicados (CA)
+- Fonte: `pgr_inventario_itens.ghe_id` → `ghe_ges` → `ghe_funcoes` + EPIs do GES.
+- Renderiza no PDF como tabela dedicada.
 
-- **Não recriar tabelas.** Apenas complementar `ghe_ges` com colunas faltantes:
-  - `descricao_atividades`, `trabalhadores_expostos`, `frequencia_exposicao`, `tempo_exposicao`, `severidade`, `probabilidade`, `nivel_risco`, `medidas_controle_existentes`, `medidas_controle_recomendadas`, `epcs`, `capacitacoes_obrigatorias`, `observacoes_tecnicas`
-- Reaproveitar `ghe_riscos` (perigos/agentes por grupo) e `ghe_exames` (exames+periodicidade) sem alteração de schema.
-- Adicionar view/aggregate helper `ghe_ficha_completa` (leitura) que devolve o GES + riscos + exames + funções em um único payload — a base que todos os geradores consomem.
+### 5. PDF profissional (reformulação de `pgrPdf.ts`)
+Manter a estrutura do seu DOCX, mas com visual SafetySoluções:
+- Capa com logo da empresa, nome do documento, período de vigência, versão.
+- Sumário automático.
+- Cabeçalho fixo (empresa + versão) e rodapé com paginação "Página X de Y".
+- Seções na ordem do seu modelo (item 1 do prompt).
+- Tabelas com zebra, bordas discretas, cores neutras.
+- Assinatura do responsável técnico ao final.
 
-### 2. Tela "Gerar Documentos" (novo)
+### 6. Segurança / integridade
+- `pgr_textos` com RLS por `empresa_id` + GRANTs (authenticated/service_role).
+- Nenhuma policy afrouxada em outros módulos.
+- Nada muda em EPIs/Entregas/Inspeções/Exames/RH/Termos/MFA/Storage.
 
-Rota: `/programas/gerar`
+## O que **não** entra nesta entrega (proponho fases seguintes)
 
-Fluxo:
-1. Selecionar empresa (respeita `empresaScopeIds`)
-2. Selecionar tipo de documento (PGR ou Ordem de Serviço — os outros aparecem como "Em breve" nas fases seguintes)
-3. Selecionar GES/GHE (multi para PGR, único ou por função/funcionário para OS)
-4. Preview dos dados carregados (riscos, funções, exames, EPIs, medidas)
-5. Formulário de **campos complementares** obrigatórios do documento
-6. Botão "Gerar PDF" → salva versão
+Para não estourar o escopo em uma única mudança e não quebrar o que já funciona, deixo para próximas iterações — cada uma isolada e reversível:
 
-### 3. PGR a partir do GES/GHE
-
-Já existe `pgr_documentos`, `pgr_inventario_itens`, `pgr_acoes`, `pgr_pdf_versoes`. Vou:
-
-- Adicionar botão **"Importar do GES/GHE"** no PGR existente (`PgrDetalhe`) que popula `pgr_inventario_itens` a partir dos riscos do(s) GES selecionado(s), sem duplicar itens já presentes (dedup por `perigo + risco + ges_id`).
-- A geração de PDF continua no fluxo atual do PGR — apenas facilita o preenchimento inicial.
-
-### 4. Ordem de Serviço (novo, real)
-
-Hoje é stub. Vou implementar:
-
-- Tabela `ordens_servico_sst` (nome diferente da `ordens_servico` existente, que é outro domínio):
-  - `empresa_id`, `funcionario_id` (nullable), `funcao_id` (nullable), `ghe_id`, `escopo` (`funcionario|funcao|ghe`), `atividades`, `riscos_snapshot` (jsonb), `epis_snapshot` (jsonb), `medidas_preventivas`, `proibicoes`, `procedimentos_acidente`, `responsabilidades`, `responsavel_tecnico`, `status` (`rascunho|emitida|arquivada`), `versao`, `pdf_hash`, `pdf_drive_view_link`, `data_emissao`, `assinatura_url` (nullable)
-- Tabela `ordens_servico_sst_assinaturas` (aceite do trabalhador)
-- Página `src/pages/programas/OrdemServico.tsx` real: lista + criar + detalhe
-- Geração de PDF profissional (segue padrão dos PDFs atuais em `src/lib/`): capa, dados da empresa, dados do trabalhador/função, atividades, riscos, EPIs, medidas, proibições, procedimentos, responsabilidades, campo de assinatura
-- 3 modos: **por funcionário**, **por função**, **por GES**
-
-### 5. Versionamento comum
-
-Todo documento gerado grava:
-- Tipo, empresa, GES usados, data emissão, versão, usuário, responsável técnico, PDF, status.
-
-Reutilizo o padrão já existente de `pgr_pdf_versoes` / `ltcat_pdf_versoes` para OS (`ordens_servico_sst_pdf_versoes`).
-
-### 6. Regra de revisão técnica
-
-Fase A não gera conclusão técnica automática. LTCAT/Insalubridade/Periculosidade ficarão nas fases seguintes exatamente por causa dessa responsabilidade — o botão do documento na tela "Gerar" mostra "Requer revisão técnica" e permanece desabilitado até Fase C.
-
----
-
-## O que NÃO vou fazer nesta entrega
-
-- Não mexer em EPIs, Entregas, Inspeções, Exames operacionais, Storage, RH, Termos, MFA.
-- Não recriar PGR/PCMSO/LTCAT — apenas plugar o GES/GHE neles.
-- Não implementar PCMSO/LTCAT/Insalubridade/Periculosidade novos — Fase B e C.
-- Não gerar conclusão técnica automática em nenhum laudo.
-
----
+- **Sugestão automática de ações** para riscos Moderado/Substancial/Intolerável (item 10). Precisa de UX de aprovação em lote — merece PR próprio.
+- **Geração de PGR consolidado "todas as unidades"** (item 3, terceira opção). Hoje o PGR é por empresa/unidade; consolidar exige nova modelagem de escopo.
+- **Editor rich-text (WYSIWYG)** dos textos. Fase 1 usa `<Textarea>` grande — funcional e sem dependências novas.
+- **Assinatura digital com imagem** no PDF (item 4 "assinatura, se existir"). Já temos `pgr_assinaturas`; incorporar imagem no PDF pode ir na fase 2.
 
 ## Detalhes técnicos
 
-**Migrations (1 sozinha, com todos os GRANT + RLS):**
-1. `ALTER TABLE ghe_ges ADD COLUMN ...` para os campos complementares.
-2. `CREATE TABLE public.ordens_servico_sst` + GRANT authenticated/service_role + RLS por `empresa_id` (mesmo padrão de `pgr_documentos`).
-3. `CREATE TABLE public.ordens_servico_sst_assinaturas` + GRANT + RLS.
-4. `CREATE TABLE public.ordens_servico_sst_pdf_versoes` + GRANT + RLS.
-5. Trigger `updated_at`.
+### Migração SQL
+```sql
+CREATE TABLE public.pgr_textos (
+  id uuid PK default gen_random_uuid(),
+  pgr_id uuid NOT NULL REFERENCES pgr_documentos(id) ON DELETE CASCADE,
+  empresa_id uuid NOT NULL,
+  secao text NOT NULL,          -- 'introducao','apresentacao',...
+  conteudo text NOT NULL,
+  updated_at timestamptz default now(),
+  UNIQUE (pgr_id, secao)
+);
+GRANT SELECT,INSERT,UPDATE,DELETE ON public.pgr_textos TO authenticated;
+GRANT ALL ON public.pgr_textos TO service_role;
+ALTER TABLE public.pgr_textos ENABLE ROW LEVEL SECURITY;
+-- policies usando is_in_user_company_tree(empresa_id)
 
-**Novos arquivos:**
-- `src/lib/gesFicha.ts` — loader unificado do GES completo (riscos + exames + funções).
-- `src/lib/osTypes.ts`, `src/lib/osPdf.ts` — tipos e gerador de PDF da OS.
-- `src/pages/programas/GerarDocumentos.tsx` — nova tela.
-- `src/pages/programas/OrdemServico.tsx` — substitui o stub, implementação real.
-- `src/pages/programas/OrdemServicoNovo.tsx`, `OrdemServicoDetalhe.tsx`.
-- `src/components/pgr/ImportarGheDialog.tsx` — já existe; vou estender para popular inventário automaticamente a partir do GES.
+-- Função pgr_seed_textos(_pgr_id uuid) SECURITY DEFINER: cria linhas padrão.
+-- Trigger AFTER INSERT em pgr_documentos que chama pgr_seed_textos.
+```
 
-**Roteamento (`src/App.tsx`):**
-- `/programas/gerar` → GerarDocumentos.
-- `/programas/ordem-servico/novo`, `/programas/ordem-servico/:id`.
+### Arquivos previstos
+- `supabase/migrations/…_pgr_textos.sql`
+- `src/lib/pgrTextosPadrao.ts` (conteúdo default de cada seção)
+- `src/lib/pgrMatriz.ts` (adicionar `classificarRiscoPGR`, labels Trivial/Tolerável/…)
+- `src/components/pgr/TextosTab.tsx` (nova aba)
+- `src/components/pgr/QuadroEpisTab.tsx` (nova aba)
+- `src/lib/pgrPdf.ts` (reescrita do layout — mantém API pública)
+- `src/pages/pgr/PgrDetalhe.tsx` (adicionar as duas abas)
 
-**Sidebar (`src/components/AppLayout.tsx`):**
-- Sob "Programas", adicionar "Gerar Documentos" no topo.
+### O que **não** será alterado
+`src/components/pgr/InventarioTab.tsx` (mantém como está — já importa GES corretamente). Regras de importação de GES, dedup e RLS permanecem intactas.
 
-**Segurança:** RLS multi-tenant por `empresa_id` idêntica ao PGR. Nada exposto a `anon`.
+## Confirmações antes de começar
 
----
+1. Ok classificar risco pelo seu padrão (Trivial→Intolerável) como **default do PGR**, mantendo o antigo apenas como legado nos itens já salvos?
+2. Ok usar `<Textarea>` grande para editar os textos nesta fase (sem WYSIWYG)?
+3. Confirma que **não** quero neste PR: sugestão automática de plano de ação, PGR consolidado multi-unidade e assinatura por imagem no PDF (ficam para próxima iteração)?
 
-## Resultado esperado
-
-Ao fim desta entrega:
-- Você abre um GES/GHE, completa os campos técnicos uma vez.
-- Vai em **Programas → Gerar Documentos**, escolhe PGR ou Ordem de Serviço, escolhe o GES, revisa, e gera o PDF.
-- No PGR existente, um botão "Importar do GES/GHE" popula o inventário sem redigitação.
-- Fases B (PCMSO) e C (LTCAT + Laudos) já têm a base pronta — só faltará plugar os geradores.
-
-Confirma que sigo com a **Fase A** exatamente assim?
+Assim que você confirmar, executo a migração, escrevo os arquivos acima e reescrevo o PDF.

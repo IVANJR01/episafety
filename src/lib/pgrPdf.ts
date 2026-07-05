@@ -65,6 +65,14 @@ export interface PgrAssinaturaItem {
   mfa_verificado: boolean;
 }
 
+export interface PgrQuadroEpiLinha {
+  ghe_codigo: string;
+  ghe_nome: string;
+  funcao: string;
+  medida_controle: string;
+  epis: string;
+}
+
 export interface PgrPdfContext {
   doc: PgrDocumento;
   empresaNome: string | null;
@@ -76,6 +84,8 @@ export interface PgrPdfContext {
   revisoes: PgrRevisaoItem[];
   assinaturas: PgrAssinaturaItem[];
   ghes: Record<string, string>;
+  textos?: Record<string, string>;
+  quadroEpis?: PgrQuadroEpiLinha[];
 }
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
@@ -193,6 +203,43 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
 
   pdf.addPage(); b.y = 15;
 
+  // Controle de revisões (visível logo após a capa)
+  title(b, "Controle de Revisões");
+  if (!ctx.revisoes || ctx.revisoes.length === 0) {
+    para(b, "00 — Elaboração do Programa de Gerenciamento de Riscos");
+  } else {
+    ctx.revisoes.slice().reverse().forEach((r, idx) => {
+      ensure(b, 6);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+      const rev = String(idx).padStart(2, "0");
+      const desc = r.motivo || (r.acao === "publicar" ? "Publicação da versão" : r.acao);
+      const ll = pdf.splitTextToSize(`${rev}  ·  ${fmtDate(r.created_at)}  ·  ${desc}`, 186);
+      pdf.text(ll, 12, b.y + 3); b.y += 3 + ll.length * 3.2;
+    });
+  }
+
+  // Textos padrão editáveis (introdução, objetivos, responsabilidades etc.)
+  const T = ctx.textos || {};
+  const secoesTexto: Array<[string, string]> = [
+    ["introducao", "Introdução"],
+    ["apresentacao", "Apresentação"],
+    ["registro_divulgacao", "Registro e divulgação dos dados"],
+    ["objetivo_geral", "Objetivo geral"],
+    ["objetivos_especificos", "Objetivos específicos"],
+    ["politica_seguranca", "Política de segurança"],
+    ["resp_empregador", "Cabe ao empregador"],
+    ["resp_empregados", "Cabe aos empregados"],
+    ["seguranca_trabalho", "Segurança do Trabalho"],
+    ["cipa", "CIPA, quando aplicável"],
+    ["consideracoes_preliminares", "Considerações preliminares"],
+  ];
+  secoesTexto.forEach(([k, tit]) => {
+    const conteudo = (T[k] || "").trim();
+    if (!conteudo) return;
+    title(b, tit);
+    para(b, conteudo, 9, [40, 40, 40]);
+  });
+
   // 1. Escopo e metodologia
   title(b, "1. Escopo");
   kv(b, "Escopo do PGR", pgr.escopo || "—", true);
@@ -239,6 +286,37 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
       }
     });
     b.y += 2;
+  }
+
+  // Quadro Sinóptico de EPIs
+  if (ctx.quadroEpis && ctx.quadroEpis.length > 0) {
+    pdf.addPage(); b.y = 15;
+    title(b, "Quadro Sinóptico de Utilização de EPIs");
+    // Cabeçalho da tabela
+    ensure(b, 8);
+    pdf.setFillColor(240, 240, 240); pdf.rect(10, b.y, 190, 6, "F");
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(30);
+    pdf.text("GES", 12, b.y + 4);
+    pdf.text("Função", 55, b.y + 4);
+    pdf.text("Medida de controle existente", 100, b.y + 4);
+    pdf.text("EPIs indicados", 155, b.y + 4);
+    b.y += 7;
+    pdf.setTextColor(0);
+    ctx.quadroEpis.forEach((l) => {
+      const gesTxt = pdf.splitTextToSize(`${l.ghe_codigo}\n${l.ghe_nome}`, 41);
+      const funcTxt = pdf.splitTextToSize(l.funcao, 43);
+      const medTxt = pdf.splitTextToSize(l.medida_controle, 53);
+      const epiTxt = pdf.splitTextToSize(l.epis, 43);
+      const h = Math.max(gesTxt.length, funcTxt.length, medTxt.length, epiTxt.length) * 3.4 + 3;
+      ensure(b, h + 1);
+      pdf.setDrawColor(220); pdf.line(10, b.y, 200, b.y);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
+      pdf.text(gesTxt, 12, b.y + 3);
+      pdf.text(funcTxt, 55, b.y + 3);
+      pdf.text(medTxt, 100, b.y + 3);
+      pdf.text(epiTxt, 155, b.y + 3);
+      b.y += h;
+    });
   }
 
   // 5. Plano de ação 5W2H
@@ -324,6 +402,21 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     pdf.text(`Hash assinado: ${a.pdf_hash}`, 12, b.y + 22);
     b.y += 26;
   });
+
+  // Seções finais (textos padrão editáveis)
+  const secoesFim: Array<[string, string]> = [
+    ["area_abrangencia", "Área de abrangência do PGR na empresa"],
+    ["recomendacoes", "Recomendações à empresa"],
+    ["consideracoes_finais", "Considerações finais"],
+    ["encerramento", "Encerramento"],
+  ];
+  secoesFim.forEach(([k, tit]) => {
+    const conteudo = ((ctx.textos || {})[k] || "").trim();
+    if (!conteudo) return;
+    title(b, tit);
+    para(b, conteudo, 9, [40, 40, 40]);
+  });
+
 
   // Rodapé com QR + hash + marca d'água
   const qrDataUrl = await QRCode.toDataURL(opts.qrUrl, { margin: 0, width: 220 });

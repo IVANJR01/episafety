@@ -72,17 +72,57 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     new Date((pgr as any).conteudo_atualizado_em).getTime() > new Date(ultima.gerado_em).getTime() + 500;
 
   async function carregarContexto() {
-    const [emp, uni, inv, acoes, evid, rev, ghes] = await Promise.all([
+    const [emp, uni, inv, acoes, evid, rev, ghes, textos] = await Promise.all([
       (supabase.from as any)("empresa_config").select("nome, cnpj").eq("id", pgr.empresa_id).maybeSingle(),
       pgr.unidade_id ? (supabase.from as any)("empresa_config").select("nome").eq("id", pgr.unidade_id).maybeSingle() : Promise.resolve({ data: null }),
       (supabase.from as any)("pgr_inventario_itens").select("*").eq("pgr_id", pgr.id).order("classificacao"),
       (supabase.from as any)("pgr_acoes").select("*").eq("pgr_id", pgr.id).order("prazo"),
       (supabase.from as any)("pgr_acao_evidencias").select("*").eq("pgr_id", pgr.id),
       (supabase.from as any)("pgr_revisoes").select("*").eq("pgr_id", pgr.id).order("created_at", { ascending: false }),
-      (supabase.from as any)("ghe_ges").select("id,nome").eq("empresa_id", pgr.empresa_id),
+      (supabase.from as any)("ghe_ges").select("id,nome,codigo").eq("empresa_id", pgr.empresa_id),
+      (supabase.from as any)("pgr_textos").select("secao,conteudo").eq("pgr_id", pgr.id),
     ]);
     const ghesMap: Record<string, string> = {};
-    (ghes.data || []).forEach((g: any) => { ghesMap[g.id] = g.nome; });
+    const ghesInfo: Record<string, { codigo: string; nome: string }> = {};
+    (ghes.data || []).forEach((g: any) => {
+      ghesMap[g.id] = g.nome;
+      ghesInfo[g.id] = { codigo: g.codigo || "", nome: g.nome || "" };
+    });
+    const textosMap: Record<string, string> = {};
+    (textos.data || []).forEach((t: any) => { textosMap[t.secao] = t.conteudo || ""; });
+
+    // Quadro sinóptico de EPIs
+    const gheIdsInv = Array.from(new Set((inv.data || []).map((i: any) => i.ghe_id).filter(Boolean))) as string[];
+    let quadroEpis: any[] = [];
+    if (gheIdsInv.length > 0) {
+      const [funcRes, riscosRes] = await Promise.all([
+        (supabase.from as any)("ghe_funcoes").select("ghe_id, funcao_nome").in("ghe_id", gheIdsInv),
+        (supabase.from as any)("ghe_riscos").select("ghe_id, epis_recomendados").in("ghe_id", gheIdsInv),
+      ]);
+      const controleMap = new Map<string, string>();
+      (inv.data || []).forEach((i: any) => {
+        if (i.ghe_id && i.controles_existentes && !controleMap.has(i.ghe_id)) controleMap.set(i.ghe_id, i.controles_existentes);
+      });
+      const funcMap = new Map<string, string[]>();
+      (funcRes.data || []).forEach((f: any) => {
+        if (!funcMap.has(f.ghe_id)) funcMap.set(f.ghe_id, []);
+        funcMap.get(f.ghe_id)!.push(f.funcao_nome);
+      });
+      const epiMap = new Map<string, Set<string>>();
+      (riscosRes.data || []).forEach((r: any) => {
+        const lst: string[] = Array.isArray(r.epis_recomendados) ? r.epis_recomendados : [];
+        if (!epiMap.has(r.ghe_id)) epiMap.set(r.ghe_id, new Set());
+        lst.forEach((e) => epiMap.get(r.ghe_id)!.add(String(e)));
+      });
+      quadroEpis = gheIdsInv.map((gid) => ({
+        ghe_codigo: ghesInfo[gid]?.codigo || "—",
+        ghe_nome: ghesInfo[gid]?.nome || "—",
+        funcao: (funcMap.get(gid) || []).join(", ") || "—",
+        medida_controle: controleMap.get(gid) || "—",
+        epis: Array.from(epiMap.get(gid) || []).join(", ") || "—",
+      }));
+    }
+
     return {
       doc: pgr,
       empresaNome: emp.data?.nome ?? null,
@@ -98,6 +138,8 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       revisoes: rev.data || [],
       assinaturas: assinaturas as any[],
       ghes: ghesMap,
+      textos: textosMap,
+      quadroEpis,
     };
   }
 
