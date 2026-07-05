@@ -232,78 +232,10 @@ export default function CentralPPP() {
     setLoading(false);
   }
 
-  // === RISCOS CRUD ===
-  function openNewRisco() {
-    setEditingRisco(null);
-    if (!hasRiscoDraft()) resetRiscoForm();
-    setRiscoOpen(true);
-  }
-  function openEditRisco(r: RiscoCargo) {
-    setEditingRisco(r);
-    resetRiscoForm({
-      cargo: r.cargo,
-      tipo_risco: r.tipo_risco,
-      fator_risco: r.fator_risco,
-      intensidade_concentracao: r.intensidade_concentracao || "",
-      tecnica_utilizada: r.tecnica_utilizada || "",
-      epc_eficaz: r.epc_eficaz,
-      epi_eficaz: r.epi_eficaz,
-      ca_epi: r.ca_epi || "",
-      profissiografia: r.profissiografia || "",
-      cbo: r.cbo || "",
-      cargos_multi: [],
-      ausencia_risco: r.fator_risco === AUSENCIA_FATOR,
-    });
-    setRiscoOpen(true);
-  }
+  // === RISCOS ===
+  // O cadastro/edição/exclusão manual foi removido. Fonte oficial: LTCAT.
+  // As linhas em ppp_riscos_cargo são mantidas apenas por sincronização.
 
-  async function saveRisco() {
-    const isEditing = !!editingRisco;
-    // In edit mode use single cargo; in create mode use multi or single
-    const cargosList = isEditing
-      ? [riscoForm.cargo.trim()]
-      : riscoForm.cargos_multi.length > 0
-        ? riscoForm.cargos_multi.map((c) => c.trim())
-        : riscoForm.cargo.trim() ? [riscoForm.cargo.trim()] : [];
-
-    if (cargosList.length === 0 || !riscoForm.fator_risco) {
-      toast.error("Preencha cargo(s) e fator de risco");
-      return;
-    }
-
-    const basePayload = {
-      tipo_risco: riscoForm.tipo_risco as "fisico" | "quimico" | "biologico" | "ergonomico" | "acidente",
-      fator_risco: riscoForm.fator_risco.trim(),
-      intensidade_concentracao: riscoForm.intensidade_concentracao || null,
-      tecnica_utilizada: riscoForm.tecnica_utilizada || null,
-      epc_eficaz: riscoForm.epc_eficaz,
-      epi_eficaz: riscoForm.epi_eficaz,
-      ca_epi: riscoForm.ca_epi || null,
-      profissiografia: riscoForm.profissiografia || null,
-      cbo: riscoForm.cbo || null,
-      empresa_id: empresaId,
-    };
-
-    if (isEditing) {
-      const { error } = await supabase.from("ppp_riscos_cargo").update({ ...basePayload, cargo: cargosList[0] }).eq("id", editingRisco!.id);
-      if (error) { toast.error("Erro ao atualizar"); return; }
-      toast.success("Risco atualizado");
-    } else {
-      const rows = cargosList.map((cargo) => ({ ...basePayload, cargo }));
-      const { error } = await supabase.from("ppp_riscos_cargo").insert(rows);
-      if (error) { toast.error("Erro ao cadastrar"); return; }
-      toast.success(`${rows.length} risco(s) cadastrado(s) com sucesso`);
-    }
-    clearRiscoDraft();
-    setRiscoOpen(false);
-    loadAll();
-  }
-
-  async function deleteRisco(id: string) {
-    await supabase.from("ppp_riscos_cargo").delete().eq("id", id);
-    toast.success("Risco removido");
-    loadAll();
-  }
 
   // === SINCRONIZAR RISCOS DO LTCAT ===
   // Fonte oficial dos agentes previdenciários. O PPP apenas espelha.
