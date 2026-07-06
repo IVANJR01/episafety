@@ -164,11 +164,21 @@ export default function InventarioTab({
                 </thead>
                 <tbody>
                   {filtrados.map((i: any, idx: number) => {
-                    const prev = idx > 0 ? filtrados[idx - 1] : null;
                     const ambiente = ambienteDe(i);
                     const gesCod = i.ghe?.codigo || "";
-                    const sameAmbiente = prev && ambienteDe(prev) === ambiente && (prev.ghe?.codigo || "") === gesCod;
-                    const sameGes = prev && (prev.ghe?.codigo || "") === gesCod && ambienteDe(prev) === ambiente;
+                    const groupKey = `${gesCod}||${ambiente}`;
+                    const prev = idx > 0 ? filtrados[idx - 1] : null;
+                    const prevKey = prev ? `${prev.ghe?.codigo || ""}||${ambienteDe(prev)}` : null;
+                    const isFirstOfGroup = groupKey !== prevKey;
+                    let rowSpan = 1;
+                    if (isFirstOfGroup) {
+                      for (let j = idx + 1; j < filtrados.length; j++) {
+                        const n = filtrados[j];
+                        const nKey = `${n.ghe?.codigo || ""}||${ambienteDe(n)}`;
+                        if (nKey === groupKey) rowSpan++;
+                        else break;
+                      }
+                    }
                     const clsPgr = classificarRiscoPGR(i.severidade, i.probabilidade);
                     const total = i.nivel_risco ?? i.severidade * i.probabilidade;
                     const controles = Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
@@ -178,9 +188,17 @@ export default function InventarioTab({
                     const intensidade = i.medicao_valor != null
                       ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
                     return (
-                      <tr key={i.id} className={`border-t hover:bg-muted/40 align-top ${sameAmbiente ? "" : "border-t-2 border-t-amber-300"}`}>
-                        <td className={`p-2 border ${sameAmbiente ? "text-transparent border-t-0" : ""}`}>{ambiente || NA}</td>
-                        <td className={`p-2 border text-center font-semibold ${sameGes ? "text-transparent border-t-0" : ""}`}>{gesCod || NA}</td>
+                      <tr key={i.id} className={`hover:bg-muted/40 align-top ${isFirstOfGroup ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
+                        {isFirstOfGroup && (
+                          <td rowSpan={rowSpan} className="p-2 border border-amber-300 align-top bg-amber-50/40 font-medium text-[11px] leading-snug">
+                            {ambiente || NA}
+                          </td>
+                        )}
+                        {isFirstOfGroup && (
+                          <td rowSpan={rowSpan} className="p-2 border border-amber-300 align-middle text-center font-bold text-sm bg-amber-50/60">
+                            {gesCod || NA}
+                          </td>
+                        )}
                         <td className="p-2 border">{val(i.setor)}</td>
                         <td className="p-2 border">{funcoes}</td>
                         <td className="p-2 border">{val(i.processo)}</td>
