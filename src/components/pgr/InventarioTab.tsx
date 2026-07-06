@@ -305,12 +305,10 @@ export default function InventarioTab({
                           <td rowSpan={riskRowSpan} className="p-2 border text-right whitespace-nowrap align-middle bg-amber-50/30">
                             {editavel && (
                               <>
-                                <Button size="icon" variant="ghost" onClick={() => { setEditId(i.id); setDialogOpen(true); }}>
+                                <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Editar grupo (${groupIds.length} setores)` : "Editar item"} onClick={() => { setEditId(i.id); setEditGroupIds(groupIds); setDialogOpen(true); }}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button size="icon" variant="ghost" onClick={() => {
-                                  if (confirm("Deseja excluir este item do inventário? Isso não remove o GES original.")) excluir(i.id);
-                                }}>
+                                <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Excluir grupo (${groupIds.length} setores)` : "Excluir item"} onClick={() => setDelState({ ids: groupIds, setores: groupSetores })}>
                                   <Trash2 className="h-3.5 w-3.5 text-red-600" />
                                 </Button>
                               </>
