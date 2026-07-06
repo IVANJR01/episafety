@@ -41,14 +41,24 @@ export default function InventarioTab({
     },
   });
 
+  const ambienteDe = (i: any): string =>
+    i.descricao_ambiente || i.ghe?.descricao_ambiente || i.ghe?.ambiente || "";
+
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase();
-    if (!q) return itens;
-    return itens.filter((i: any) =>
+    const base = !q ? itens : itens.filter((i: any) =>
       i.perigo_descricao?.toLowerCase().includes(q) ||
       i.fonte_geradora?.toLowerCase().includes(q) ||
       i.ghe?.codigo?.toLowerCase().includes(q) ||
       i.ghe?.nome?.toLowerCase().includes(q));
+    // Ordenar por GES + ambiente + setor para permitir agrupamento visual
+    return [...base].sort((a: any, b: any) => {
+      const ga = a.ghe?.codigo || ""; const gb = b.ghe?.codigo || "";
+      if (ga !== gb) return ga.localeCompare(gb);
+      const aa = ambienteDe(a); const ab = ambienteDe(b);
+      if (aa !== ab) return aa.localeCompare(ab);
+      return (a.setor || "").localeCompare(b.setor || "");
+    });
   }, [itens, busca]);
 
   const stats = useMemo(() => {
