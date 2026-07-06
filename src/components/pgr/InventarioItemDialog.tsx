@@ -203,12 +203,11 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="px-4 sm:px-6 pt-3 border-b shrink-0 overflow-x-auto">
-            <TabsList className="inline-flex sm:grid sm:grid-cols-5 sm:w-full min-w-max sm:min-w-0">
+            <TabsList className="inline-flex sm:grid sm:grid-cols-4 sm:w-full min-w-max sm:min-w-0">
               <TabsTrigger value="estrutura" className="whitespace-nowrap">1. Estrutura</TabsTrigger>
-              <TabsTrigger value="setor" className="whitespace-nowrap">2. Setor / Função</TabsTrigger>
-              <TabsTrigger value="risco" className="whitespace-nowrap">3. Risco</TabsTrigger>
-              <TabsTrigger value="exposicao" className="whitespace-nowrap">4. Exposição e Medidas</TabsTrigger>
-              <TabsTrigger value="classif" className="whitespace-nowrap">5. Classificação</TabsTrigger>
+              <TabsTrigger value="risco" className="whitespace-nowrap">2. Risco</TabsTrigger>
+              <TabsTrigger value="exposicao" className="whitespace-nowrap">3. Exposição e Medidas</TabsTrigger>
+              <TabsTrigger value="classif" className="whitespace-nowrap">4. Classificação</TabsTrigger>
             </TabsList>
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 min-h-0">
@@ -229,27 +228,12 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                   </SelectContent>
                 </Select>
               </div>
+              <div className="md:col-span-2 text-xs text-muted-foreground border rounded p-2 bg-muted/40">
+                Setor, funções expostas e processo são definidos na Estrutura do GES.
+              </div>
             </div>
           </TabsContent>
 
-          {/* Aba 2 — Setor / Função */}
-          <TabsContent value="setor" className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Setor</Label>
-                <Input value={form.setor} onChange={upd("setor")} placeholder="Ex.: FINANCEIRO" />
-              </div>
-              <div>
-                <Label className="text-xs">Processo</Label>
-                <Input value={form.processo} onChange={upd("processo")} placeholder="Ex.: Rotinas administrativas" />
-              </div>
-              <div className="md:col-span-2">
-                <Label className="text-xs">Função / Funções expostas <span className="text-muted-foreground">(uma por linha)</span></Label>
-                <Textarea rows={4} value={form.funcoes_text} onChange={upd("funcoes_text")}
-                  placeholder={"Assistente Financeiro\nAuxiliar Financeiro\nAuxiliar Administrativo"} />
-              </div>
-            </div>
-          </TabsContent>
 
 
           {/* Aba 2 — Risco */}
