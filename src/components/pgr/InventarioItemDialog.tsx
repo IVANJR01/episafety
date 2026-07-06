@@ -202,12 +202,15 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="estrutura">1. Estrutura</TabsTrigger>
-            <TabsTrigger value="risco">2. Risco</TabsTrigger>
-            <TabsTrigger value="exposicao">3. Exposição e Medidas</TabsTrigger>
-            <TabsTrigger value="classif">4. Classificação</TabsTrigger>
-          </TabsList>
+          <div className="px-4 sm:px-6 pt-3 border-b shrink-0 overflow-x-auto">
+            <TabsList className="inline-flex sm:grid sm:grid-cols-4 sm:w-full min-w-max sm:min-w-0">
+              <TabsTrigger value="estrutura" className="whitespace-nowrap">1. Estrutura</TabsTrigger>
+              <TabsTrigger value="risco" className="whitespace-nowrap">2. Risco</TabsTrigger>
+              <TabsTrigger value="exposicao" className="whitespace-nowrap">3. Exposição e Medidas</TabsTrigger>
+              <TabsTrigger value="classif" className="whitespace-nowrap">4. Classificação</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 min-h-0">
 
           {/* Aba 1 — Estrutura */}
           <TabsContent value="estrutura" className="space-y-3">
