@@ -190,13 +190,18 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{itemId ? "Editar item do inventário" : "Novo item do inventário"}</DialogTitle>
-          <DialogDescription>Campos alinhados à planilha do Inventário de Riscos. Vazios são salvos como N.A.</DialogDescription>
+      <DialogContent
+        className="p-0 gap-0 overflow-hidden
+          w-screen h-[100dvh] max-w-none rounded-none translate-x-0 translate-y-0 left-0 top-0
+          sm:w-[90vw] sm:h-auto sm:max-w-[1150px] sm:max-h-[90vh] sm:rounded-lg sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]
+          flex flex-col"
+      >
+        <DialogHeader className="px-4 sm:px-6 pt-4 pb-3 border-b shrink-0">
+          <DialogTitle className="text-base sm:text-lg">{itemId ? "Editar item do inventário" : "Novo item do inventário"}</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">Campos alinhados à planilha do Inventário de Riscos. Vazios são salvos como N.A.</DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="estrutura">1. Estrutura</TabsTrigger>
             <TabsTrigger value="risco">2. Risco</TabsTrigger>
