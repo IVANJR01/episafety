@@ -290,18 +290,22 @@ export default function InventarioTab({
                           </td>
                         )}
 
-                        <td className="p-2 border text-right whitespace-nowrap align-top">
-                          {editavel && (
-                            <>
-                              <Button size="icon" variant="ghost" onClick={() => { setEditId(i.id); setDialogOpen(true); }}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => excluir(i.id)}>
-                                <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                              </Button>
-                            </>
-                          )}
-                        </td>
+                        {isFirstOfRisk && (
+                          <td rowSpan={riskRowSpan} className="p-2 border text-right whitespace-nowrap align-middle bg-amber-50/30">
+                            {editavel && (
+                              <>
+                                <Button size="icon" variant="ghost" onClick={() => { setEditId(i.id); setDialogOpen(true); }}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => {
+                                  if (confirm("Deseja excluir este item do inventário? Isso não remove o GES original.")) excluir(i.id);
+                                }}>
+                                  <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                                </Button>
+                              </>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
