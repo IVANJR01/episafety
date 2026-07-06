@@ -337,13 +337,41 @@ export default function InventarioTab({
       </Card>
 
       <InventarioItemDialog
-        open={dialogOpen} onOpenChange={setDialogOpen}
-        pgrId={pgrId} empresaId={empresaId} itemId={editId} onSaved={onSaved}
+        open={dialogOpen}
+        onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditGroupIds([]); }}
+        pgrId={pgrId} empresaId={empresaId} itemId={editId}
+        groupItemIds={editGroupIds}
+        onSaved={onSaved}
       />
       <ImportarGheDialog
         open={importOpen} onOpenChange={setImportOpen}
         pgrId={pgrId} onImported={onSaved}
       />
+
+      <AlertDialog open={!!delState} onOpenChange={(o) => { if (!o) setDelState(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir risco do inventário?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>Isso removerá o risco dos setores vinculados neste grupo, mas <b>não apagará</b> o GES, os setores ou as funções cadastradas.</p>
+                {delState && (
+                  <div className="border rounded p-2 bg-muted/40 text-xs">
+                    <div><b>Setores afetados ({delState.ids.length}):</b></div>
+                    <div className="mt-1">{delState.setores.join(", ")}</div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => delState && excluirGrupo(delState.ids)} className="bg-red-600 hover:bg-red-700">
+              Excluir do inventário
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
