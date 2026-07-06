@@ -346,11 +346,12 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
               </div>
             </div>
           </TabsContent>
+          </div>
         </Tabs>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={salvar} disabled={busy}>{itemId ? "Salvar alterações" : "Adicionar item"}</Button>
+        <DialogFooter className="px-4 sm:px-6 py-3 border-t shrink-0 bg-background flex-col-reverse sm:flex-row gap-2 sm:gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto min-h-11">Cancelar</Button>
+          <Button onClick={salvar} disabled={busy} className="w-full sm:w-auto min-h-11">{itemId ? "Salvar alterações" : "Adicionar item"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
