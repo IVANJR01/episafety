@@ -32,17 +32,22 @@ export default function InventarioTab({
   const [importOpen, setImportOpen] = useState(false);
 
   const { data: itens = [], isLoading } = useQuery({
-    queryKey: ["pgr-inventario", pgrId],
+    queryKey: ["pgr-inventario", pgrId, "v2-ambiente"],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("pgr_inventario_itens")
         .select("*, ghe:ghe_id(id, codigo, nome, descricao_ambiente, ambiente, setor, processo)")
         .eq("pgr_id", pgrId).order("created_at", { ascending: false });
       return data || [];
     },
+    staleTime: 0,
   });
 
+  const clean = (v: any) => {
+    const s = (v ?? "").toString().trim();
+    return s && s.toUpperCase() !== "N.A" && s.toUpperCase() !== "N/A" ? s : "";
+  };
   const ambienteDe = (i: any): string =>
-    i.descricao_ambiente || i.ghe?.descricao_ambiente || i.ghe?.ambiente || "";
+    clean(i.descricao_ambiente) || clean(i.ghe?.descricao_ambiente) || clean(i.ghe?.ambiente) || "";
 
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase();
