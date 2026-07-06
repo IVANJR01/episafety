@@ -6208,12 +6208,15 @@ export type Database = {
       }
       pgr_inventario_itens: {
         Row: {
+          atenuacao: string | null
           avaliacao_tipo: Database["public"]["Enums"]["pgr_avaliacao_tipo"]
           classificacao: Database["public"]["Enums"]["pgr_risco_classe"] | null
           controles_existentes: string[] | null
           created_at: string
           created_by: string | null
+          descricao_ambiente: string | null
           empresa_id: string
+          epi: string | null
           excedente: boolean | null
           fonte_geradora: string | null
           funcao_id: string | null
@@ -6221,7 +6224,9 @@ export type Database = {
           ghe_id: string | null
           grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id: string
+          intensidade: string | null
           justificativa: string | null
+          lesoes: string | null
           limite_tolerancia: string | null
           medicao_unidade: string | null
           medicao_valor: number | null
@@ -6235,6 +6240,9 @@ export type Database = {
           processo: string | null
           setor: string | null
           severidade: number
+          tecnica_utilizada: string | null
+          tempo_exposicao: string | null
+          tipo_agente: string | null
           tipo_exposicao: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual: boolean
           trabalhadores_calculados: number | null
@@ -6242,12 +6250,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          atenuacao?: string | null
           avaliacao_tipo?: Database["public"]["Enums"]["pgr_avaliacao_tipo"]
           classificacao?: Database["public"]["Enums"]["pgr_risco_classe"] | null
           controles_existentes?: string[] | null
           created_at?: string
           created_by?: string | null
+          descricao_ambiente?: string | null
           empresa_id: string
+          epi?: string | null
           excedente?: boolean | null
           fonte_geradora?: string | null
           funcao_id?: string | null
@@ -6255,7 +6266,9 @@ export type Database = {
           ghe_id?: string | null
           grupo: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id?: string
+          intensidade?: string | null
           justificativa?: string | null
+          lesoes?: string | null
           limite_tolerancia?: string | null
           medicao_unidade?: string | null
           medicao_valor?: number | null
@@ -6269,6 +6282,9 @@ export type Database = {
           processo?: string | null
           setor?: string | null
           severidade?: number
+          tecnica_utilizada?: string | null
+          tempo_exposicao?: string | null
+          tipo_agente?: string | null
           tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual?: boolean
           trabalhadores_calculados?: number | null
@@ -6276,12 +6292,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          atenuacao?: string | null
           avaliacao_tipo?: Database["public"]["Enums"]["pgr_avaliacao_tipo"]
           classificacao?: Database["public"]["Enums"]["pgr_risco_classe"] | null
           controles_existentes?: string[] | null
           created_at?: string
           created_by?: string | null
+          descricao_ambiente?: string | null
           empresa_id?: string
+          epi?: string | null
           excedente?: boolean | null
           fonte_geradora?: string | null
           funcao_id?: string | null
@@ -6289,7 +6308,9 @@ export type Database = {
           ghe_id?: string | null
           grupo?: Database["public"]["Enums"]["pgr_perigo_grupo"]
           id?: string
+          intensidade?: string | null
           justificativa?: string | null
+          lesoes?: string | null
           limite_tolerancia?: string | null
           medicao_unidade?: string | null
           medicao_valor?: number | null
@@ -6303,6 +6324,9 @@ export type Database = {
           processo?: string | null
           setor?: string | null
           severidade?: number
+          tecnica_utilizada?: string | null
+          tempo_exposicao?: string | null
+          tipo_agente?: string | null
           tipo_exposicao?: Database["public"]["Enums"]["pgr_exposicao_tipo"]
           trabalhadores_ajuste_manual?: boolean
           trabalhadores_calculados?: number | null
