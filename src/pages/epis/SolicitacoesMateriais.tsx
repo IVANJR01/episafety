@@ -133,7 +133,7 @@ export default function SolicitacoesMateriais() {
       // Try get empresa
       let empresaNome: string | null = null;
       let empresaCnpj: string | null = null;
-      const { data: emp } = await supabase.from("empresa_config").select("nome_fantasia, cnpj").eq("empresa_id", s.empresa_id).maybeSingle();
+      const { data: emp } = await (supabase.from as any)("empresa_config").select("nome_fantasia, cnpj").eq("empresa_id", s.empresa_id).maybeSingle();
       if (emp) { empresaNome = (emp as any).nome_fantasia; empresaCnpj = (emp as any).cnpj; }
       gerarSolicitacaoPdf({
         empresa_nome: empresaNome,
