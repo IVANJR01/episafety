@@ -19,6 +19,7 @@ interface Props {
   pgrId: string;
   empresaId: string;
   itemId?: string | null;
+  groupItemIds?: string[];
   onSaved: () => void;
 }
 
