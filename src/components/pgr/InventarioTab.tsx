@@ -42,8 +42,12 @@ export default function InventarioTab({
     staleTime: 0,
   });
 
+  const clean = (v: any) => {
+    const s = (v ?? "").toString().trim();
+    return s && s.toUpperCase() !== "N.A" && s.toUpperCase() !== "N/A" ? s : "";
+  };
   const ambienteDe = (i: any): string =>
-    i.descricao_ambiente || i.ghe?.descricao_ambiente || i.ghe?.ambiente || "";
+    clean(i.descricao_ambiente) || clean(i.ghe?.descricao_ambiente) || clean(i.ghe?.ambiente) || "";
 
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase();
