@@ -15,6 +15,7 @@ import InstallBanner from "@/components/InstallBanner";
 import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import ControleEstoqueContrato from "@/pages/ControleEstoqueContrato";
+import SolicitacoesMateriais from "@/pages/epis/SolicitacoesMateriais";
 import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
 import Relatorios from "@/pages/Relatorios";
