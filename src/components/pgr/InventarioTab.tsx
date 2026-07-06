@@ -11,10 +11,13 @@ import InventarioItemDialog from "./InventarioItemDialog";
 import ImportarGheDialog from "./ImportarGheDialog";
 import MatrizRisco from "./MatrizRisco";
 import {
-  classificarRisco, CLASSE_TEXT, CLASSE_LABEL, GRUPO_LABEL,
-  EXPOSICAO_LABEL, AVALIACAO_LABEL,
+  classificarRisco, CLASSE_TEXT, GRUPO_LABEL,
+  classificarRiscoPGR, CLASSE_PGR_LABEL, CLASSE_PGR_TEXT,
 } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
+
+const NA = "N.A";
+const val = (v: any) => (v === null || v === undefined || v === "" ? NA : v);
 
 export default function InventarioTab({
   pgrId, empresaId, status, canEdit,
@@ -119,62 +122,66 @@ export default function InventarioTab({
               {editavel && <p className="text-xs text-muted-foreground mt-1">Use “Importar GES” ou “Novo item”.</p>}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="p-2 text-left">GES</th>
-                    <th className="p-2 text-left">Setor</th>
-                    <th className="p-2 text-left">Funções expostas</th>
-                    <th className="p-2 text-left">Processo</th>
-                    <th className="p-2 text-left">Grupo</th>
-                    <th className="p-2 text-left">Perigo</th>
-                    <th className="p-2 text-left">Fonte</th>
-                    <th className="p-2 text-left">Exposição</th>
-                    <th className="p-2 text-left">Aval.</th>
-                    <th className="p-2 text-center">S×P</th>
-                    <th className="p-2 text-center">Nível</th>
-                    <th className="p-2 text-left">Classificação</th>
-                    <th className="p-2 text-center">Exp.</th>
-                    <th className="p-2 text-center">Ação?</th>
-                    <th className="p-2"></th>
+            <div className="overflow-x-auto -mx-3 px-3">
+              <table className="w-full text-xs border-collapse min-w-[1800px]">
+                <thead className="bg-amber-100 sticky top-0">
+                  <tr className="text-amber-900">
+                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Descrição do ambiente</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Setor</th>
+                    <th className="p-2 text-center border border-amber-300 w-[60px]">GES</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Função</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[200px]">Processo</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Agente</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[150px]">Tipo de agente</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Perigo / Fonte</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Possíveis lesões</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[100px]">Limite exp.</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Intensidade</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[120px]">Tipo/tempo exp.</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Medidas existentes</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[100px]">EPI</th>
+                    <th className="p-2 text-center border border-amber-300 w-[50px]">Prob.</th>
+                    <th className="p-2 text-center border border-amber-300 w-[50px]">Sev.</th>
+                    <th className="p-2 text-center border border-amber-300 w-[50px]">Total</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[120px]">Classificação</th>
+                    <th className="p-2 border border-amber-300 w-[70px]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtrados.map((i: any) => {
-                    const cls = (i.classificacao || classificarRisco(i.severidade, i.probabilidade)) as keyof typeof CLASSE_TEXT;
+                    const clsPgr = classificarRiscoPGR(i.severidade, i.probabilidade);
+                    const total = i.nivel_risco ?? i.severidade * i.probabilidade;
+                    const controles = Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
+                      ? i.controles_existentes.join("; ") : NA;
+                    const funcoes = Array.isArray(i.funcoes_snapshot) && i.funcoes_snapshot.length > 0
+                      ? i.funcoes_snapshot.join(", ") : NA;
+                    const intensidade = i.medicao_valor != null
+                      ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
                     return (
                       <tr key={i.id} className="border-t hover:bg-muted/40 align-top">
-                        <td className="p-2">{i.ghe ? `${i.ghe.codigo} — ${i.ghe.nome}` : "—"}</td>
-                        <td className="p-2">{i.setor || "—"}</td>
-                        <td className="p-2 max-w-[200px]">
-                          {Array.isArray(i.funcoes_snapshot) && i.funcoes_snapshot.length > 0 ? (
-                            <span title={i.funcoes_snapshot.join(", ")}>
-                              {i.funcoes_snapshot.slice(0, 3).join(", ")}
-                              {i.funcoes_snapshot.length > 3 && <span className="text-muted-foreground"> +{i.funcoes_snapshot.length - 3}</span>}
-                            </span>
-                          ) : "—"}
+                        <td className="p-2 border">{val(i.descricao_ambiente)}</td>
+                        <td className="p-2 border">{val(i.setor)}</td>
+                        <td className="p-2 border text-center font-semibold">{i.ghe?.codigo || NA}</td>
+                        <td className="p-2 border">{funcoes}</td>
+                        <td className="p-2 border">{val(i.processo)}</td>
+                        <td className="p-2 border">{GRUPO_LABEL[i.grupo] || NA}</td>
+                        <td className="p-2 border">{val(i.perigo_descricao)}</td>
+                        <td className="p-2 border">{val(i.fonte_geradora)}</td>
+                        <td className="p-2 border">{val(i.lesoes)}</td>
+                        <td className="p-2 border">{val(i.limite_tolerancia)}</td>
+                        <td className="p-2 border">{intensidade}</td>
+                        <td className="p-2 border">{val(i.tipo_exposicao)}</td>
+                        <td className="p-2 border">{controles}</td>
+                        <td className="p-2 border">{val(i.epi)}</td>
+                        <td className="p-2 border text-center">{i.probabilidade}</td>
+                        <td className="p-2 border text-center">{i.severidade}</td>
+                        <td className="p-2 border text-center font-semibold">{total}</td>
+                        <td className="p-2 border">
+                          <Badge className={CLASSE_PGR_TEXT[clsPgr]} variant="outline">
+                            {CLASSE_PGR_LABEL[clsPgr]}
+                          </Badge>
                         </td>
-                        <td className="p-2 max-w-[180px] truncate" title={i.processo || ""}>{i.processo || "—"}</td>
-                        <td className="p-2">{GRUPO_LABEL[i.grupo] || i.grupo}</td>
-                        <td className="p-2 max-w-[200px] truncate" title={i.perigo_descricao}>{i.perigo_descricao}</td>
-                        <td className="p-2 max-w-[140px] truncate" title={i.fonte_geradora || ""}>{i.fonte_geradora || "—"}</td>
-                        <td className="p-2">{EXPOSICAO_LABEL[i.tipo_exposicao] || i.tipo_exposicao}</td>
-                        <td className="p-2">
-                          {AVALIACAO_LABEL[i.avaliacao_tipo]}
-                          {i.avaliacao_tipo === "quantitativa" && i.excedente && (
-                            <Badge className="ml-1 bg-red-100 text-red-800 border-red-300" variant="outline">excede LT</Badge>
-                          )}
-                        </td>
-                        <td className="p-2 text-center">{i.severidade}×{i.probabilidade}</td>
-                        <td className="p-2 text-center font-semibold">{i.nivel_risco ?? i.severidade*i.probabilidade}</td>
-                        <td className="p-2"><Badge className={CLASSE_TEXT[cls]} variant="outline">{CLASSE_LABEL[cls]}</Badge></td>
-                        <td className="p-2 text-center">
-                          {i.trabalhadores_expostos}
-                          {i.trabalhadores_ajuste_manual && <span className="text-amber-700 ml-1" title={i.justificativa || ""}>*</span>}
-                        </td>
-                        <td className="p-2 text-center">{i.necessita_acao ? "✓" : "—"}</td>
-                        <td className="p-2 text-right">
+                        <td className="p-2 border text-right whitespace-nowrap">
                           {editavel && (
                             <>
                               <Button size="icon" variant="ghost" onClick={() => { setEditId(i.id); setDialogOpen(true); }}>
@@ -191,7 +198,10 @@ export default function InventarioTab({
                   })}
                 </tbody>
               </table>
-              <p className="text-[10px] text-muted-foreground mt-2">* trabalhadores expostos com ajuste manual (passe o mouse para ver justificativa).</p>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Classificação PGR — Trivial (1-3) · Tolerável (4-8) · Moderado (9-12) · Substancial (13-15) · Intolerável (16-25).
+                Campos sem dado exibem <b>N.A</b>.
+              </p>
             </div>
           )}
         </CardContent>
