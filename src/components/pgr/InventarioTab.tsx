@@ -35,7 +35,7 @@ export default function InventarioTab({
     queryKey: ["pgr-inventario", pgrId],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("pgr_inventario_itens")
-        .select("*, ghe:ghe_id(id, codigo, nome)")
+        .select("*, ghe:ghe_id(id, codigo, nome, descricao_ambiente, ambiente, setor, processo)")
         .eq("pgr_id", pgrId).order("created_at", { ascending: false });
       return data || [];
     },
