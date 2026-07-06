@@ -35,20 +35,30 @@ export default function InventarioTab({
     queryKey: ["pgr-inventario", pgrId],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("pgr_inventario_itens")
-        .select("*, ghe:ghe_id(id, codigo, nome)")
+        .select("*, ghe:ghe_id(id, codigo, nome, descricao_ambiente, ambiente, setor, processo)")
         .eq("pgr_id", pgrId).order("created_at", { ascending: false });
       return data || [];
     },
   });
 
+  const ambienteDe = (i: any): string =>
+    i.descricao_ambiente || i.ghe?.descricao_ambiente || i.ghe?.ambiente || "";
+
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase();
-    if (!q) return itens;
-    return itens.filter((i: any) =>
+    const base = !q ? itens : itens.filter((i: any) =>
       i.perigo_descricao?.toLowerCase().includes(q) ||
       i.fonte_geradora?.toLowerCase().includes(q) ||
       i.ghe?.codigo?.toLowerCase().includes(q) ||
       i.ghe?.nome?.toLowerCase().includes(q));
+    // Ordenar por GES + ambiente + setor para permitir agrupamento visual
+    return [...base].sort((a: any, b: any) => {
+      const ga = a.ghe?.codigo || ""; const gb = b.ghe?.codigo || "";
+      if (ga !== gb) return ga.localeCompare(gb);
+      const aa = ambienteDe(a); const ab = ambienteDe(b);
+      if (aa !== ab) return aa.localeCompare(ab);
+      return (a.setor || "").localeCompare(b.setor || "");
+    });
   }, [itens, busca]);
 
   const stats = useMemo(() => {
@@ -126,9 +136,9 @@ export default function InventarioTab({
               <table className="w-full text-xs border-collapse min-w-[1800px]">
                 <thead className="bg-amber-100 sticky top-0">
                   <tr className="text-amber-900">
-                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Descrição do ambiente</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Setor</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[220px]">Descrição do ambiente</th>
                     <th className="p-2 text-center border border-amber-300 w-[60px]">GES</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Setor</th>
                     <th className="p-2 text-left border border-amber-300 min-w-[180px]">Função</th>
                     <th className="p-2 text-left border border-amber-300 min-w-[200px]">Processo</th>
                     <th className="p-2 text-left border border-amber-300 min-w-[110px]">Agente</th>
@@ -148,7 +158,12 @@ export default function InventarioTab({
                   </tr>
                 </thead>
                 <tbody>
-                  {filtrados.map((i: any) => {
+                  {filtrados.map((i: any, idx: number) => {
+                    const prev = idx > 0 ? filtrados[idx - 1] : null;
+                    const ambiente = ambienteDe(i);
+                    const gesCod = i.ghe?.codigo || "";
+                    const sameAmbiente = prev && ambienteDe(prev) === ambiente && (prev.ghe?.codigo || "") === gesCod;
+                    const sameGes = prev && (prev.ghe?.codigo || "") === gesCod && ambienteDe(prev) === ambiente;
                     const clsPgr = classificarRiscoPGR(i.severidade, i.probabilidade);
                     const total = i.nivel_risco ?? i.severidade * i.probabilidade;
                     const controles = Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
@@ -158,10 +173,10 @@ export default function InventarioTab({
                     const intensidade = i.medicao_valor != null
                       ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
                     return (
-                      <tr key={i.id} className="border-t hover:bg-muted/40 align-top">
-                        <td className="p-2 border">{val(i.descricao_ambiente)}</td>
+                      <tr key={i.id} className={`border-t hover:bg-muted/40 align-top ${sameAmbiente ? "" : "border-t-2 border-t-amber-300"}`}>
+                        <td className={`p-2 border ${sameAmbiente ? "text-transparent border-t-0" : ""}`}>{ambiente || NA}</td>
+                        <td className={`p-2 border text-center font-semibold ${sameGes ? "text-transparent border-t-0" : ""}`}>{gesCod || NA}</td>
                         <td className="p-2 border">{val(i.setor)}</td>
-                        <td className="p-2 border text-center font-semibold">{i.ghe?.codigo || NA}</td>
                         <td className="p-2 border">{funcoes}</td>
                         <td className="p-2 border">{val(i.processo)}</td>
                         <td className="p-2 border">{GRUPO_LABEL[i.grupo] || NA}</td>
