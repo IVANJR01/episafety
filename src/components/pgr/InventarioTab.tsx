@@ -158,7 +158,12 @@ export default function InventarioTab({
                   </tr>
                 </thead>
                 <tbody>
-                  {filtrados.map((i: any) => {
+                  {filtrados.map((i: any, idx: number) => {
+                    const prev = idx > 0 ? filtrados[idx - 1] : null;
+                    const ambiente = ambienteDe(i);
+                    const gesCod = i.ghe?.codigo || "";
+                    const sameAmbiente = prev && ambienteDe(prev) === ambiente && (prev.ghe?.codigo || "") === gesCod;
+                    const sameGes = prev && (prev.ghe?.codigo || "") === gesCod && ambienteDe(prev) === ambiente;
                     const clsPgr = classificarRiscoPGR(i.severidade, i.probabilidade);
                     const total = i.nivel_risco ?? i.severidade * i.probabilidade;
                     const controles = Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
@@ -168,10 +173,10 @@ export default function InventarioTab({
                     const intensidade = i.medicao_valor != null
                       ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
                     return (
-                      <tr key={i.id} className="border-t hover:bg-muted/40 align-top">
-                        <td className="p-2 border">{val(i.descricao_ambiente)}</td>
+                      <tr key={i.id} className={`border-t hover:bg-muted/40 align-top ${sameAmbiente ? "" : "border-t-2 border-t-amber-300"}`}>
+                        <td className={`p-2 border ${sameAmbiente ? "text-transparent border-t-0" : ""}`}>{ambiente || NA}</td>
+                        <td className={`p-2 border text-center font-semibold ${sameGes ? "text-transparent border-t-0" : ""}`}>{gesCod || NA}</td>
                         <td className="p-2 border">{val(i.setor)}</td>
-                        <td className="p-2 border text-center font-semibold">{i.ghe?.codigo || NA}</td>
                         <td className="p-2 border">{funcoes}</td>
                         <td className="p-2 border">{val(i.processo)}</td>
                         <td className="p-2 border">{GRUPO_LABEL[i.grupo] || NA}</td>
