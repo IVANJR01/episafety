@@ -15,6 +15,10 @@ import {
   classificarRiscoPGR, CLASSE_PGR_LABEL, CLASSE_PGR_TEXT,
 } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const NA = "N.A";
 const val = (v: any) => (v === null || v === undefined || v === "" ? NA : v);
