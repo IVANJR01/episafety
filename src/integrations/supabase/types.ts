@@ -7697,6 +7697,173 @@ export type Database = {
           },
         ]
       }
+      solicitacoes_materiais: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          aprovado_por_nome: string | null
+          comprada_em: string | null
+          contrato_id: string | null
+          created_at: string
+          created_by: string | null
+          data_necessidade: string | null
+          data_solicitacao: string
+          empresa_id: string
+          id: string
+          justificativa: string | null
+          local_obra: string | null
+          motivo_recusa: string | null
+          nota_fiscal: string | null
+          numero_solicitacao: string
+          obra_id: string | null
+          observacoes: string | null
+          prioridade: string
+          recebida_em: string | null
+          recebida_por_nome: string | null
+          setor: string | null
+          solicitante_id: string | null
+          solicitante_nome: string | null
+          status: string
+          titulo: string
+          unidade_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          aprovado_por_nome?: string | null
+          comprada_em?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_necessidade?: string | null
+          data_solicitacao?: string
+          empresa_id: string
+          id?: string
+          justificativa?: string | null
+          local_obra?: string | null
+          motivo_recusa?: string | null
+          nota_fiscal?: string | null
+          numero_solicitacao: string
+          obra_id?: string | null
+          observacoes?: string | null
+          prioridade?: string
+          recebida_em?: string | null
+          recebida_por_nome?: string | null
+          setor?: string | null
+          solicitante_id?: string | null
+          solicitante_nome?: string | null
+          status?: string
+          titulo: string
+          unidade_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          aprovado_por_nome?: string | null
+          comprada_em?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_necessidade?: string | null
+          data_solicitacao?: string
+          empresa_id?: string
+          id?: string
+          justificativa?: string | null
+          local_obra?: string | null
+          motivo_recusa?: string | null
+          nota_fiscal?: string | null
+          numero_solicitacao?: string
+          obra_id?: string | null
+          observacoes?: string | null
+          prioridade?: string
+          recebida_em?: string | null
+          recebida_por_nome?: string | null
+          setor?: string | null
+          solicitante_id?: string | null
+          solicitante_nome?: string | null
+          status?: string
+          titulo?: string
+          unidade_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      solicitacoes_materiais_itens: {
+        Row: {
+          ca: string | null
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          epi_id: string | null
+          id: string
+          justificativa_item: string | null
+          nome_item: string
+          observacoes: string | null
+          ordem: number
+          prioridade_item: string | null
+          quantidade_aprovada: number | null
+          quantidade_comprada: number | null
+          quantidade_recebida: number | null
+          quantidade_solicitada: number
+          solicitacao_id: string
+          tipo_item: string
+          unidade_medida: string
+          updated_at: string
+        }
+        Insert: {
+          ca?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          epi_id?: string | null
+          id?: string
+          justificativa_item?: string | null
+          nome_item: string
+          observacoes?: string | null
+          ordem?: number
+          prioridade_item?: string | null
+          quantidade_aprovada?: number | null
+          quantidade_comprada?: number | null
+          quantidade_recebida?: number | null
+          quantidade_solicitada?: number
+          solicitacao_id: string
+          tipo_item?: string
+          unidade_medida?: string
+          updated_at?: string
+        }
+        Update: {
+          ca?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          epi_id?: string | null
+          id?: string
+          justificativa_item?: string | null
+          nome_item?: string
+          observacoes?: string | null
+          ordem?: number
+          prioridade_item?: string | null
+          quantidade_aprovada?: number | null
+          quantidade_comprada?: number | null
+          quantidade_recebida?: number | null
+          quantidade_solicitada?: number
+          solicitacao_id?: string
+          tipo_item?: string
+          unidade_medida?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_materiais_itens_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes_materiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       termos_aceites: {
         Row: {
           aceito_em: string
@@ -8418,6 +8585,10 @@ export type Database = {
         Returns: Json
       }
       ppp_publicar: { Args: { _ppp_id: string }; Returns: Json }
+      proximo_numero_solicitacao_material: {
+        Args: { _empresa_id: string }
+        Returns: string
+      }
       resolve_contrato_target_for_entrega: {
         Args: {
           _funcionario_id: string
