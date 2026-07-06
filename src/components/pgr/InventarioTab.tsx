@@ -138,28 +138,30 @@ export default function InventarioTab({
             </div>
           ) : (
             <div className="overflow-x-auto -mx-3 px-3">
-              <table className="w-full text-xs border-collapse min-w-[1800px]">
-                <thead className="bg-amber-100 sticky top-0">
-                  <tr className="text-amber-900">
-                    <th className="p-2 text-left border border-amber-300 min-w-[220px]">Descrição do ambiente</th>
-                    <th className="p-2 text-center border border-amber-300 w-[60px]">GES</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Setor</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Função</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[200px]">Processo</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Agente</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[150px]">Tipo de agente</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Perigo / Fonte</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Possíveis lesões</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[100px]">Limite exp.</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Intensidade</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[120px]">Tipo/tempo exp.</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Medidas existentes</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[100px]">EPI</th>
-                    <th className="p-2 text-center border border-amber-300 w-[50px]">Prob.</th>
-                    <th className="p-2 text-center border border-amber-300 w-[50px]">Sev.</th>
-                    <th className="p-2 text-center border border-amber-300 w-[50px]">Total</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[120px]">Classificação</th>
-                    <th className="p-2 border border-amber-300 w-[70px]"></th>
+              <table className="w-full text-[11px] border-collapse min-w-[2100px]">
+                <thead className="bg-amber-200 sticky top-0 z-10">
+                  <tr className="text-amber-950">
+                    <th className="p-2 text-left border border-amber-400 min-w-[200px]">Descrição do ambiente</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">Setor</th>
+                    <th className="p-2 text-center border border-amber-400 w-[60px]">GES</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[170px]">Função</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[180px]">Processo</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">Agente</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[130px]">Tipo de Agente</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[170px]">Perigo / Fonte Exposição</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[170px]">Possíveis Lesões ou<br/>Agravos à Saúde</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[100px]">Limite de<br/>Exposição</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">Intensidade /<br/>Concentração</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[120px]">Tipo / Tempo<br/>de Exposição</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">Técnica<br/>Utilizada</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[200px]">Proc. Administrativo / EPC /<br/>Organização do Trabalho</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">EPI</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[100px]">Atenuação /<br/>Fator de Proteção</th>
+                    <th className="p-2 text-center border border-amber-400 w-[55px]">Prob.</th>
+                    <th className="p-2 text-center border border-amber-400 w-[55px]">Sev.</th>
+                    <th className="p-2 text-center border border-amber-400 w-[55px]">Total</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[120px]">Classificação<br/>do Risco</th>
+                    <th className="p-2 border border-amber-400 w-[70px]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,39 +189,43 @@ export default function InventarioTab({
                       ? i.funcoes_snapshot.join(", ") : NA;
                     const intensidade = i.medicao_valor != null
                       ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
+                    const tecnica = val(i.metodologia_avaliacao ?? i.tecnica_utilizada ?? i.tipo_avaliacao);
+                    const atenuacao = val(i.atenuacao ?? i.fator_protecao ?? i.epi_fator_protecao);
                     return (
                       <tr key={i.id} className={`hover:bg-muted/40 align-top ${isFirstOfGroup ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
                         {isFirstOfGroup && (
-                          <td rowSpan={rowSpan} className="p-2 border border-amber-300 align-top bg-amber-50/40 font-medium text-[11px] leading-snug">
+                          <td rowSpan={rowSpan} className="p-2 border border-amber-300 align-top bg-amber-50/60 font-medium text-[11px] leading-snug">
                             {ambiente || NA}
                           </td>
                         )}
+                        <td className="p-2 border align-top">{val(i.setor)}</td>
                         {isFirstOfGroup && (
-                          <td rowSpan={rowSpan} className="p-2 border border-amber-300 align-middle text-center font-bold text-sm bg-amber-50/60">
+                          <td rowSpan={rowSpan} className="p-2 border border-amber-300 align-middle text-center font-bold text-sm bg-amber-50/80">
                             {gesCod || NA}
                           </td>
                         )}
-                        <td className="p-2 border">{val(i.setor)}</td>
-                        <td className="p-2 border">{funcoes}</td>
-                        <td className="p-2 border">{val(i.processo)}</td>
-                        <td className="p-2 border">{GRUPO_LABEL[i.grupo] || NA}</td>
-                        <td className="p-2 border">{val(i.perigo_descricao)}</td>
-                        <td className="p-2 border">{val(i.fonte_geradora)}</td>
-                        <td className="p-2 border">{val(i.lesoes)}</td>
-                        <td className="p-2 border">{val(i.limite_tolerancia)}</td>
-                        <td className="p-2 border">{intensidade}</td>
-                        <td className="p-2 border">{val(i.tipo_exposicao)}</td>
-                        <td className="p-2 border">{controles}</td>
-                        <td className="p-2 border">{val(i.epi)}</td>
-                        <td className="p-2 border text-center">{i.probabilidade}</td>
-                        <td className="p-2 border text-center">{i.severidade}</td>
-                        <td className="p-2 border text-center font-semibold">{total}</td>
-                        <td className="p-2 border">
+                        <td className="p-2 border align-top">{funcoes}</td>
+                        <td className="p-2 border align-top">{val(i.processo)}</td>
+                        <td className="p-2 border align-top">{GRUPO_LABEL[i.grupo] || NA}</td>
+                        <td className="p-2 border align-top">{val(i.perigo_descricao)}</td>
+                        <td className="p-2 border align-top">{val(i.fonte_geradora)}</td>
+                        <td className="p-2 border align-top">{val(i.lesoes)}</td>
+                        <td className="p-2 border align-top">{val(i.limite_tolerancia)}</td>
+                        <td className="p-2 border align-top">{intensidade}</td>
+                        <td className="p-2 border align-top">{val(i.tipo_exposicao)}</td>
+                        <td className="p-2 border align-top">{tecnica}</td>
+                        <td className="p-2 border align-top">{controles}</td>
+                        <td className="p-2 border align-top">{val(i.epi)}</td>
+                        <td className="p-2 border align-top">{atenuacao}</td>
+                        <td className="p-2 border text-center align-middle">{i.probabilidade}</td>
+                        <td className="p-2 border text-center align-middle">{i.severidade}</td>
+                        <td className="p-2 border text-center align-middle font-semibold">{total}</td>
+                        <td className="p-2 border align-middle">
                           <Badge className={CLASSE_PGR_TEXT[clsPgr]} variant="outline">
                             {CLASSE_PGR_LABEL[clsPgr]}
                           </Badge>
                         </td>
-                        <td className="p-2 border text-right whitespace-nowrap">
+                        <td className="p-2 border text-right whitespace-nowrap align-top">
                           {editavel && (
                             <>
                               <Button size="icon" variant="ghost" onClick={() => { setEditId(i.id); setDialogOpen(true); }}>
