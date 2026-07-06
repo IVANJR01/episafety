@@ -11,15 +11,10 @@ interface PreviewItem {
   ghe_id: string;
   ghe_codigo?: string;
   ghe_nome?: string;
+  descricao_ambiente?: string | null;
   setor?: string | null;
   processo?: string | null;
   funcoes_snapshot?: string[] | null;
-  perigo_descricao: string;
-  grupo?: string;
-  fonte_geradora?: string;
-  exposicao?: string;
-  severidade?: number;
-  probabilidade?: number;
   acao: "criar" | "ignorar";
 }
 interface PreviewResp {
@@ -35,7 +30,8 @@ interface GheOption {
   codigo: string;
   nome: string;
   setor: string | null;
-  riscos_count: number;
+  setores_count: number;
+  funcoes_count: number;
 }
 
 type Step = "select" | "preview";
@@ -63,7 +59,6 @@ export default function ImportarGheDialog({
   const loadGhes = async () => {
     setBusy(true);
     try {
-      // Empresa do PGR
       const { data: pgr, error: pgrErr } = await (supabase as any)
         .from("pgr_documentos").select("empresa_id").eq("id", pgrId).maybeSingle();
       if (pgrErr) throw pgrErr;
@@ -71,14 +66,15 @@ export default function ImportarGheDialog({
 
       const { data, error } = await (supabase as any)
         .from("ghe_ges")
-        .select("id, codigo, nome, setor, ghe_riscos(id)")
+        .select("id, codigo, nome, setor, ghe_setores(id), ghe_funcoes(id)")
         .eq("empresa_id", pgr.empresa_id)
         .eq("status", "ativo")
         .order("codigo");
       if (error) throw error;
       setGhes((data || []).map((g: any) => ({
         id: g.id, codigo: g.codigo, nome: g.nome, setor: g.setor,
-        riscos_count: (g.ghe_riscos || []).length,
+        setores_count: (g.ghe_setores || []).length,
+        funcoes_count: (g.ghe_funcoes || []).length,
       })));
     } catch (e: any) {
       toast.error(e.message || "Falha ao carregar GES");
@@ -118,7 +114,7 @@ export default function ImportarGheDialog({
       });
       if (error) throw error;
       const r = data as PreviewResp;
-      toast.success(`Importação concluída — ${r.criar} criados, ${r.ignorar} já existiam`);
+      toast.success(`Estrutura importada — ${r.criar} linha(s) criada(s), ${r.ignorar} já existia(m). Cadastre os riscos no Inventário.`);
       onImported();
       onOpenChange(false);
     } catch (e: any) {
@@ -130,11 +126,11 @@ export default function ImportarGheDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Importar GES → Inventário do PGR</DialogTitle>
+          <DialogTitle>Importar estrutura do GES → Inventário do PGR</DialogTitle>
           <DialogDescription>
             {step === "select"
-              ? "Selecione os GES cujos riscos você deseja importar para o inventário deste PGR."
-              : "Confira a prévia. Nada será gravado até você confirmar. Itens duplicados são ignorados automaticamente."}
+              ? "Selecione os GES cuja estrutura (ambiente, setor, funções e processo) você deseja importar. Os riscos serão cadastrados depois, dentro do Inventário do PGR."
+              : "Confira a prévia da estrutura a ser importada. Nada será gravado até você confirmar. Linhas duplicadas (mesmo GES + setor + processo + funções) são ignoradas."}
           </DialogDescription>
         </DialogHeader>
 
@@ -164,15 +160,17 @@ export default function ImportarGheDialog({
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-semibold text-sm">{g.codigo}</span>
                           <span className="text-sm">— {g.nome}</span>
-                          <Badge variant="outline" className="text-[10px]">{g.riscos_count} risco(s)</Badge>
+                          <Badge variant="outline" className="text-[10px]">{g.setores_count} setor(es)</Badge>
+                          <Badge variant="outline" className="text-[10px]">{g.funcoes_count} função(ões)</Badge>
+                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">Estrutura pronta</Badge>
                         </div>
-                        {g.setor && <div className="text-xs text-muted-foreground mt-0.5">Setor: {g.setor}</div>}
+                        {g.setor && <div className="text-xs text-muted-foreground mt-0.5">Setor padrão: {g.setor}</div>}
                       </div>
                     </label>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {selected.size} selecionado(s). A importação puxa: perigo, fonte, exposição, medidas de controle (existentes/EPCs/recomendadas) e severidade×probabilidade do GES.
+                  {selected.size} selecionado(s). A importação traz apenas a <b>estrutura</b> (ambiente, GES, setor, funções e processo). Os campos de risco (agente, perigo, severidade, probabilidade, classificação) devem ser preenchidos no Inventário do PGR após a importação.
                 </p>
               </>
             )}
@@ -191,12 +189,10 @@ export default function ImportarGheDialog({
                 <thead className="bg-muted sticky top-0">
                   <tr>
                     <th className="p-2 text-left">GES</th>
+                    <th className="p-2 text-left">Descrição do ambiente</th>
                     <th className="p-2 text-left">Setor</th>
                     <th className="p-2 text-left">Funções expostas</th>
                     <th className="p-2 text-left">Processo</th>
-                    <th className="p-2 text-left">Perigo</th>
-                    <th className="p-2 text-left">Fonte</th>
-                    <th className="p-2 text-center">S×P</th>
                     <th className="p-2 text-left">Ação</th>
                   </tr>
                 </thead>
@@ -209,6 +205,7 @@ export default function ImportarGheDialog({
                         <div className="font-medium">{it.ghe_codigo || "—"}</div>
                         <div className="text-muted-foreground text-[10px]">{it.ghe_nome}</div>
                       </td>
+                      <td className="p-2 max-w-[220px] truncate" title={it.descricao_ambiente || ""}>{it.descricao_ambiente || "—"}</td>
                       <td className="p-2">{it.setor || "—"}</td>
                       <td className="p-2 max-w-[220px]">
                         {funcs.length > 0 ? (
@@ -219,11 +216,6 @@ export default function ImportarGheDialog({
                         ) : "—"}
                       </td>
                       <td className="p-2 max-w-[180px] truncate" title={it.processo || ""}>{it.processo || "—"}</td>
-                      <td className="p-2">{it.perigo_descricao}</td>
-                      <td className="p-2 text-muted-foreground">{it.fonte_geradora || "—"}</td>
-                      <td className="p-2 text-center">
-                        {it.severidade && it.probabilidade ? `${it.severidade}×${it.probabilidade}` : "—"}
-                      </td>
                       <td className="p-2">
                         {it.acao === "criar"
                           ? <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">criar</Badge>
@@ -233,11 +225,14 @@ export default function ImportarGheDialog({
                     );
                   })}
                   {preview.itens.length === 0 && (
-                    <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">Os GES selecionados não possuem riscos cadastrados.</td></tr>
+                    <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Os GES selecionados não possuem estrutura (setores/funções) cadastrada.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Após confirmar, cada linha aparecerá no Inventário como <b>“Pendente de risco”</b>. Clique no lápis para preencher agente, perigo/fonte, severidade, probabilidade e classificação.
+            </p>
           </div>
         )}
 
@@ -257,7 +252,7 @@ export default function ImportarGheDialog({
           {step === "preview" && preview && (
             <Button onClick={confirmar} disabled={busy || preview.criar === 0}>
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Confirmar — criar {preview.criar} item(ns)
+              Confirmar — criar {preview.criar} linha(s) de estrutura
             </Button>
           )}
         </DialogFooter>
