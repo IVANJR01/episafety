@@ -32,8 +32,10 @@ export default function InventarioTab({
   const editavel = isEditavel(status) && canEdit;
   const [busca, setBusca] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
+  const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
 
   const { data: itens = [], isLoading } = useQuery({
     queryKey: ["pgr-inventario", pgrId, "v2-ambiente"],
