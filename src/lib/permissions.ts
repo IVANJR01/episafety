@@ -61,6 +61,7 @@ export const MODULOS = [
   { key: "dashboard", label: "Dashboard", path: "/" },
   { key: "epis", label: "Controle de EPI", path: "/epis" },
   { key: "estoque_contrato", label: "Estoque por Unidade", path: "/epis/controle-contrato" },
+  { key: "solicitacoes_materiais", label: "Solicitação de Materiais", path: "/epis/solicitacoes-materiais" },
   { key: "entregas", label: "Entregas", path: "/entregas" },
   { key: "relatorios", label: "Relatórios", path: "/relatorios" },
   { key: "cadastro_empresas", label: "Cadastro → Empresas", path: "/cadastro/empresas" },

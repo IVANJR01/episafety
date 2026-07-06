@@ -15,6 +15,7 @@ import InstallBanner from "@/components/InstallBanner";
 import Dashboard from "@/pages/Dashboard";
 import EPIs from "@/pages/EPIs";
 import ControleEstoqueContrato from "@/pages/ControleEstoqueContrato";
+import SolicitacoesMateriais from "@/pages/epis/SolicitacoesMateriais";
 import Funcionarios from "@/pages/Funcionarios";
 import Entregas from "@/pages/Entregas";
 import Relatorios from "@/pages/Relatorios";
@@ -257,6 +258,7 @@ function ProtectedRoute() {
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
         <Route path="/epis" element={<EPIs />} />
         <Route path="/epis/controle-contrato" element={<NetworkErrorBoundary><ControleEstoqueContrato /></NetworkErrorBoundary>} />
+        <Route path="/epis/solicitacoes-materiais" element={<SolicitacoesMateriais />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/cadastro" element={<CadastroDashboard />} />

@@ -32,6 +32,7 @@ const epiItems: NavItem[] = [
   { path: "/epis", label: "Cadastro de EPIs", icon: Package, moduleKey: "epis" },
   { path: "/epis/controle-contrato", label: "Estoque por Unidade", icon: Boxes, moduleKey: "estoque_contrato" },
   { path: "/entregas", label: "Entregas", icon: ClipboardList, moduleKey: "entregas" },
+  { path: "/epis/solicitacoes-materiais", label: "Solicitação de Materiais", icon: ClipboardList, moduleKey: "solicitacoes_materiais" },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
 ];
 
