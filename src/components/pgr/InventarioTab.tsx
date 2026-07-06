@@ -191,6 +191,68 @@ export default function InventarioTab({
                       ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
                     const tecnica = val(i.metodologia_avaliacao ?? i.tecnica_utilizada ?? i.tipo_avaliacao);
                     const atenuacao = val(i.atenuacao ?? i.fator_protecao ?? i.epi_fator_protecao);
+
+                    // Chave de agrupamento do risco (dentro do mesmo GES+ambiente)
+                    const riskKey = [
+                      groupKey,
+                      i.grupo ?? "",
+                      i.perigo_descricao ?? "",
+                      i.fonte_geradora ?? "",
+                      i.lesoes ?? "",
+                      i.limite_tolerancia ?? "",
+                      intensidade,
+                      i.tipo_exposicao ?? "",
+                      tecnica,
+                      controles,
+                      i.epi ?? "",
+                      atenuacao,
+                      i.probabilidade ?? "",
+                      i.severidade ?? "",
+                    ].join("§");
+                    const prevRiskKey = prev ? [
+                      prevKey,
+                      prev.grupo ?? "",
+                      prev.perigo_descricao ?? "",
+                      prev.fonte_geradora ?? "",
+                      prev.lesoes ?? "",
+                      prev.limite_tolerancia ?? "",
+                      prev.medicao_valor != null ? `${prev.medicao_valor}${prev.medicao_unidade ? " " + prev.medicao_unidade : ""}` : NA,
+                      prev.tipo_exposicao ?? "",
+                      val(prev.metodologia_avaliacao ?? prev.tecnica_utilizada ?? prev.tipo_avaliacao),
+                      Array.isArray(prev.controles_existentes) && prev.controles_existentes.length > 0 ? prev.controles_existentes.join("; ") : NA,
+                      prev.epi ?? "",
+                      val(prev.atenuacao ?? prev.fator_protecao ?? prev.epi_fator_protecao),
+                      prev.probabilidade ?? "",
+                      prev.severidade ?? "",
+                    ].join("§") : null;
+                    const isFirstOfRisk = riskKey !== prevRiskKey;
+                    let riskRowSpan = 1;
+                    if (isFirstOfRisk) {
+                      for (let j = idx + 1; j < filtrados.length; j++) {
+                        const n = filtrados[j];
+                        const nAmb = ambienteDe(n);
+                        const nGroupKey = `${n.ghe?.codigo || ""}||${nAmb}`;
+                        const nIntensidade = n.medicao_valor != null ? `${n.medicao_valor}${n.medicao_unidade ? " " + n.medicao_unidade : ""}` : NA;
+                        const nKey = [
+                          nGroupKey,
+                          n.grupo ?? "",
+                          n.perigo_descricao ?? "",
+                          n.fonte_geradora ?? "",
+                          n.lesoes ?? "",
+                          n.limite_tolerancia ?? "",
+                          nIntensidade,
+                          n.tipo_exposicao ?? "",
+                          val(n.metodologia_avaliacao ?? n.tecnica_utilizada ?? n.tipo_avaliacao),
+                          Array.isArray(n.controles_existentes) && n.controles_existentes.length > 0 ? n.controles_existentes.join("; ") : NA,
+                          n.epi ?? "",
+                          val(n.atenuacao ?? n.fator_protecao ?? n.epi_fator_protecao),
+                          n.probabilidade ?? "",
+                          n.severidade ?? "",
+                        ].join("§");
+                        if (nKey === riskKey) riskRowSpan++;
+                        else break;
+                      }
+                    }
                     return (
                       <tr key={i.id} className={`hover:bg-muted/40 align-top ${isFirstOfGroup ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
                         {isFirstOfGroup && (
@@ -206,25 +268,28 @@ export default function InventarioTab({
                         )}
                         <td className="p-2 border align-top">{funcoes}</td>
                         <td className="p-2 border align-top">{val(i.processo)}</td>
-                        <td className="p-2 border align-top">{GRUPO_LABEL[i.grupo] || NA}</td>
-                        <td className="p-2 border align-top">{val(i.perigo_descricao)}</td>
-                        <td className="p-2 border align-top">{val(i.fonte_geradora)}</td>
-                        <td className="p-2 border align-top">{val(i.lesoes)}</td>
-                        <td className="p-2 border align-top">{val(i.limite_tolerancia)}</td>
-                        <td className="p-2 border align-top">{intensidade}</td>
-                        <td className="p-2 border align-top">{val(i.tipo_exposicao)}</td>
-                        <td className="p-2 border align-top">{tecnica}</td>
-                        <td className="p-2 border align-top">{controles}</td>
-                        <td className="p-2 border align-top">{val(i.epi)}</td>
-                        <td className="p-2 border align-top">{atenuacao}</td>
-                        <td className="p-2 border text-center align-middle">{i.probabilidade}</td>
-                        <td className="p-2 border text-center align-middle">{i.severidade}</td>
-                        <td className="p-2 border text-center align-middle font-semibold">{total}</td>
-                        <td className="p-2 border align-middle">
-                          <Badge className={CLASSE_PGR_TEXT[clsPgr]} variant="outline">
-                            {CLASSE_PGR_LABEL[clsPgr]}
-                          </Badge>
-                        </td>
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.perigo_descricao)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.fonte_geradora)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.lesoes)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{intensidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{tecnica}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{controles}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.epi)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{atenuacao}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle bg-amber-50/30">{i.probabilidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle bg-amber-50/30">{i.severidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle font-semibold bg-amber-50/30">{total}</td>}
+                        {isFirstOfRisk && (
+                          <td rowSpan={riskRowSpan} className="p-2 border align-middle bg-amber-50/30">
+                            <Badge className={CLASSE_PGR_TEXT[clsPgr]} variant="outline">
+                              {CLASSE_PGR_LABEL[clsPgr]}
+                            </Badge>
+                          </td>
+                        )}
+
                         <td className="p-2 border text-right whitespace-nowrap align-top">
                           {editavel && (
                             <>
