@@ -258,6 +258,7 @@ function ProtectedRoute() {
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
         <Route path="/epis" element={<EPIs />} />
         <Route path="/epis/controle-contrato" element={<NetworkErrorBoundary><ControleEstoqueContrato /></NetworkErrorBoundary>} />
+        <Route path="/epis/solicitacoes-materiais" element={<SolicitacoesMateriais />} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/cadastro" element={<CadastroDashboard />} />
