@@ -82,11 +82,14 @@ export default function InventarioTab({
     return s;
   }, [itens]);
 
-  const excluir = async (id: string) => {
-    if (!confirm("Excluir este item do inventário?")) return;
-    const { error } = await (supabase.from as any)("pgr_inventario_itens").delete().eq("id", id);
+  const excluirGrupo = async (ids: string[]) => {
+    const { error } = await (supabase.from as any)("pgr_inventario_itens").delete().in("id", ids);
     if (error) toast.error(error.message);
-    else { toast.success("Item excluído"); qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] }); }
+    else {
+      toast.success(ids.length > 1 ? `${ids.length} itens excluídos` : "Item excluído");
+      qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
+    }
+    setDelState(null);
   };
 
   const onSaved = () => qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
