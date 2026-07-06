@@ -11,10 +11,13 @@ import InventarioItemDialog from "./InventarioItemDialog";
 import ImportarGheDialog from "./ImportarGheDialog";
 import MatrizRisco from "./MatrizRisco";
 import {
-  classificarRisco, CLASSE_TEXT, CLASSE_LABEL, GRUPO_LABEL,
-  EXPOSICAO_LABEL, AVALIACAO_LABEL,
+  classificarRisco, CLASSE_TEXT, GRUPO_LABEL,
+  classificarRiscoPGR, CLASSE_PGR_LABEL, CLASSE_PGR_TEXT,
 } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
+
+const NA = "N.A";
+const val = (v: any) => (v === null || v === undefined || v === "" ? NA : v);
 
 export default function InventarioTab({
   pgrId, empresaId, status, canEdit,
