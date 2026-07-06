@@ -46,7 +46,7 @@ const toSave = (v: any) => {
   return c === "" ? NA : c;
 };
 
-export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, onSaved }: Props) {
+export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, groupItemIds = [], onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState("estrutura");
   const [form, setForm] = useState<any>({
