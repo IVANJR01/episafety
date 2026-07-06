@@ -15,6 +15,10 @@ import {
   classificarRiscoPGR, CLASSE_PGR_LABEL, CLASSE_PGR_TEXT,
 } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const NA = "N.A";
 const val = (v: any) => (v === null || v === undefined || v === "" ? NA : v);
@@ -28,8 +32,10 @@ export default function InventarioTab({
   const editavel = isEditavel(status) && canEdit;
   const [busca, setBusca] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
+  const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
 
   const { data: itens = [], isLoading } = useQuery({
     queryKey: ["pgr-inventario", pgrId, "v2-ambiente"],
@@ -76,11 +82,14 @@ export default function InventarioTab({
     return s;
   }, [itens]);
 
-  const excluir = async (id: string) => {
-    if (!confirm("Excluir este item do inventário?")) return;
-    const { error } = await (supabase.from as any)("pgr_inventario_itens").delete().eq("id", id);
+  const excluirGrupo = async (ids: string[]) => {
+    const { error } = await (supabase.from as any)("pgr_inventario_itens").delete().in("id", ids);
     if (error) toast.error(error.message);
-    else { toast.success("Item excluído"); qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] }); }
+    else {
+      toast.success(ids.length > 1 ? `${ids.length} itens excluídos` : "Item excluído");
+      qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
+    }
+    setDelState(null);
   };
 
   const onSaved = () => qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
@@ -227,6 +236,8 @@ export default function InventarioTab({
                     ].join("§") : null;
                     const isFirstOfRisk = riskKey !== prevRiskKey;
                     let riskRowSpan = 1;
+                    const groupIds: string[] = [i.id];
+                    const groupSetores: string[] = [i.setor || NA];
                     if (isFirstOfRisk) {
                       for (let j = idx + 1; j < filtrados.length; j++) {
                         const n = filtrados[j];
@@ -249,7 +260,7 @@ export default function InventarioTab({
                           n.probabilidade ?? "",
                           n.severidade ?? "",
                         ].join("§");
-                        if (nKey === riskKey) riskRowSpan++;
+                        if (nKey === riskKey) { riskRowSpan++; groupIds.push(n.id); groupSetores.push(n.setor || NA); }
                         else break;
                       }
                     }
@@ -294,12 +305,10 @@ export default function InventarioTab({
                           <td rowSpan={riskRowSpan} className="p-2 border text-right whitespace-nowrap align-middle bg-amber-50/30">
                             {editavel && (
                               <>
-                                <Button size="icon" variant="ghost" onClick={() => { setEditId(i.id); setDialogOpen(true); }}>
+                                <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Editar grupo (${groupIds.length} setores)` : "Editar item"} onClick={() => { setEditId(i.id); setEditGroupIds(groupIds); setDialogOpen(true); }}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button size="icon" variant="ghost" onClick={() => {
-                                  if (confirm("Deseja excluir este item do inventário? Isso não remove o GES original.")) excluir(i.id);
-                                }}>
+                                <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Excluir grupo (${groupIds.length} setores)` : "Excluir item"} onClick={() => setDelState({ ids: groupIds, setores: groupSetores })}>
                                   <Trash2 className="h-3.5 w-3.5 text-red-600" />
                                 </Button>
                               </>
@@ -328,13 +337,41 @@ export default function InventarioTab({
       </Card>
 
       <InventarioItemDialog
-        open={dialogOpen} onOpenChange={setDialogOpen}
-        pgrId={pgrId} empresaId={empresaId} itemId={editId} onSaved={onSaved}
+        open={dialogOpen}
+        onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditGroupIds([]); }}
+        pgrId={pgrId} empresaId={empresaId} itemId={editId}
+        groupItemIds={editGroupIds}
+        onSaved={onSaved}
       />
       <ImportarGheDialog
         open={importOpen} onOpenChange={setImportOpen}
         pgrId={pgrId} onImported={onSaved}
       />
+
+      <AlertDialog open={!!delState} onOpenChange={(o) => { if (!o) setDelState(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir risco do inventário?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>Isso removerá o risco dos setores vinculados neste grupo, mas <b>não apagará</b> o GES, os setores ou as funções cadastradas.</p>
+                {delState && (
+                  <div className="border rounded p-2 bg-muted/40 text-xs">
+                    <div><b>Setores afetados ({delState.ids.length}):</b></div>
+                    <div className="mt-1">{delState.setores.join(", ")}</div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => delState && excluirGrupo(delState.ids)} className="bg-red-600 hover:bg-red-700">
+              Excluir do inventário
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

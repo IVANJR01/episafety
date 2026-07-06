@@ -19,6 +19,7 @@ interface Props {
   pgrId: string;
   empresaId: string;
   itemId?: string | null;
+  groupItemIds?: string[];
   onSaved: () => void;
 }
 
@@ -45,7 +46,7 @@ const toSave = (v: any) => {
   return c === "" ? NA : c;
 };
 
-export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, onSaved }: Props) {
+export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, groupItemIds = [], onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState("estrutura");
   const [form, setForm] = useState<any>({
@@ -171,9 +172,19 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
       };
 
       if (itemId) {
-        const { error } = await (supabase.from as any)("pgr_inventario_itens").update(payload).eq("id", itemId);
-        if (error) throw error;
-        toast.success("Item atualizado");
+        const idsToUpdate = groupItemIds && groupItemIds.length > 1 ? groupItemIds : [itemId];
+        if (idsToUpdate.length > 1) {
+          // Atualiza somente campos compartilhados do grupo de risco.
+          // Preserva por-linha: ghe_id, descricao_ambiente, setor, processo, funcoes_snapshot.
+          const { ghe_id, descricao_ambiente, setor, processo, funcoes_snapshot, ...shared } = payload;
+          const { error } = await (supabase.from as any)("pgr_inventario_itens").update(shared).in("id", idsToUpdate);
+          if (error) throw error;
+          toast.success(`Grupo atualizado (${idsToUpdate.length} setores)`);
+        } else {
+          const { error } = await (supabase.from as any)("pgr_inventario_itens").update(payload).eq("id", itemId);
+          if (error) throw error;
+          toast.success("Item atualizado");
+        }
       } else {
         const { error } = await (supabase.from as any)("pgr_inventario_itens").insert(payload);
         if (error) throw error;
