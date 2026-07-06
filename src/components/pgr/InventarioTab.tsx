@@ -236,6 +236,8 @@ export default function InventarioTab({
                     ].join("§") : null;
                     const isFirstOfRisk = riskKey !== prevRiskKey;
                     let riskRowSpan = 1;
+                    const groupIds: string[] = [i.id];
+                    const groupSetores: string[] = [i.setor || NA];
                     if (isFirstOfRisk) {
                       for (let j = idx + 1; j < filtrados.length; j++) {
                         const n = filtrados[j];
@@ -258,7 +260,7 @@ export default function InventarioTab({
                           n.probabilidade ?? "",
                           n.severidade ?? "",
                         ].join("§");
-                        if (nKey === riskKey) riskRowSpan++;
+                        if (nKey === riskKey) { riskRowSpan++; groupIds.push(n.id); groupSetores.push(n.setor || NA); }
                         else break;
                       }
                     }
