@@ -255,10 +255,6 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                 <Textarea rows={2} value={form.perigo_descricao} onChange={upd("perigo_descricao")} />
               </div>
               <div className="md:col-span-2">
-                <Label className="text-xs">Fonte geradora (opcional / complementar)</Label>
-                <Input value={form.fonte_geradora} onChange={upd("fonte_geradora")} />
-              </div>
-              <div className="md:col-span-2">
                 <Label className="text-xs">Possíveis Lesões ou Agravos à Saúde</Label>
                 <Textarea rows={2} value={form.lesoes} onChange={upd("lesoes")} placeholder="Ex.: LER/DORT, fadiga visual" />
               </div>
