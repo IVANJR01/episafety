@@ -136,9 +136,9 @@ export default function InventarioTab({
               <table className="w-full text-xs border-collapse min-w-[1800px]">
                 <thead className="bg-amber-100 sticky top-0">
                   <tr className="text-amber-900">
-                    <th className="p-2 text-left border border-amber-300 min-w-[180px]">Descrição do ambiente</th>
-                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Setor</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[220px]">Descrição do ambiente</th>
                     <th className="p-2 text-center border border-amber-300 w-[60px]">GES</th>
+                    <th className="p-2 text-left border border-amber-300 min-w-[110px]">Setor</th>
                     <th className="p-2 text-left border border-amber-300 min-w-[180px]">Função</th>
                     <th className="p-2 text-left border border-amber-300 min-w-[200px]">Processo</th>
                     <th className="p-2 text-left border border-amber-300 min-w-[110px]">Agente</th>
