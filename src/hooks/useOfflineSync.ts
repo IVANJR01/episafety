@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSyncQueue, removeFromSyncQueue, preCacheAllData, SyncOperation } from "@/lib/offlineStorage";
 import { useToast } from "@/hooks/use-toast";
 import { uploadInspecaoPhoto } from "@/lib/inspecoesStorage";
+import {
+  isOfflinePhotoMarker,
+  getOfflinePhotoBlob,
+  deleteOfflinePhoto,
+} from "@/lib/inspecoesOfflinePhotos";
 
 // Tables that may contain base64 photo fields needing upload
 const PHOTO_FIELDS: Record<string, string[]> = {
