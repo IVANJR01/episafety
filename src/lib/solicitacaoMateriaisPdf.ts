@@ -59,16 +59,31 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   const M = 15;
   const isDraft = (s.status_key || "").toLowerCase() === "rascunho";
 
+  const hasLogo = !!s.empresa_logo_dataurl;
+  const logoW = 22;
+  const logoH = 18;
+  const titleX = hasLogo ? M + logoW + 4 : M;
+
   const drawHeader = () => {
     doc.setFillColor(234, 88, 12);
     doc.rect(0, 0, W, 22, "F");
+    if (hasLogo) {
+      // White plate under logo to keep it readable over the orange band
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(M, 2, logoW, logoH, 1.5, 1.5, "F");
+      try {
+        doc.addImage(s.empresa_logo_dataurl as string, "PNG", M + 1, 3, logoW - 2, logoH - 2, undefined, "FAST");
+      } catch (e) {
+        // ignore render failure
+      }
+    }
     doc.setTextColor(255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
-    doc.text("SOLICITAÇÃO DE MATERIAIS DE SEGURANÇA", M, 10);
+    doc.text("SOLICITAÇÃO DE MATERIAIS DE SEGURANÇA", titleX, 10);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Nº ${s.numero}   •   ${fmtDate(s.data_solicitacao)}   •   ${(s.status || "").toUpperCase()}`, M, 17);
+    doc.text(`Nº ${s.numero}   •   ${fmtDate(s.data_solicitacao)}   •   ${(s.status || "").toUpperCase()}`, titleX, 17);
     doc.setTextColor(0);
   };
 
