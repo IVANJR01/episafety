@@ -83,7 +83,19 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
     doc.text("SOLICITAÇÃO DE MATERIAIS DE SEGURANÇA", titleX, 10);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Nº ${s.numero}   •   ${fmtDate(s.data_solicitacao)}   •   ${(s.status || "").toUpperCase()}`, titleX, 17);
+    doc.text(`Nº ${s.numero}   •   ${fmtDate(s.data_solicitacao)}`, titleX, 17);
+    // Badge de status
+    const statusTxt = (s.status || "N.A").toUpperCase();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    const badgeW = doc.getTextWidth(statusTxt) + 8;
+    const badgeH = 7;
+    const badgeX = W - M - badgeW;
+    const badgeY = 7;
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.5, 1.5, "F");
+    doc.setTextColor(234, 88, 12);
+    doc.text(statusTxt, badgeX + badgeW / 2, badgeY + 5, { align: "center" });
     doc.setTextColor(0);
   };
 
@@ -201,7 +213,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
         it.ca || "-",
         it.unidade_medida,
         String(it.quantidade_solicitada),
-        it.quantidade_aprovada != null ? String(it.quantidade_aprovada) : "-",
+        it.quantidade_aprovada != null ? String(it.quantidade_aprovada) : "Aguardando",
         it.justificativa_item || "-",
       ];
     }),
@@ -240,7 +252,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   const totQtd = s.itens.reduce((acc, i) => acc + (Number(i.quantidade_solicitada) || 0), 0);
   const totAprov = s.itens.reduce((acc, i) => acc + (Number(i.quantidade_aprovada) || 0), 0);
 
-  if (yEnd > H - 70) { doc.addPage(); yEnd = 30; drawHeader(); drawWatermark(); }
+  if (yEnd > H - 55) { doc.addPage(); yEnd = 30; drawHeader(); drawWatermark(); }
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -248,7 +260,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   yEnd += 3;
   doc.setDrawColor(200);
   doc.line(M, yEnd, W - M, yEnd);
-  yEnd += 5;
+  yEnd += 4;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   const resumo = [
@@ -265,13 +277,13 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   resumo.forEach((txt, i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
-    doc.text(txt, M + col * colWidth, yEnd + row * 5);
+    doc.text(txt, M + col * colWidth, yEnd + row * 4.5);
   });
-  yEnd += Math.ceil(resumo.length / 2) * 5 + 8;
+  yEnd += Math.ceil(resumo.length / 2) * 4.5 + 4;
 
   // Assinaturas
-  if (yEnd > H - 45) { doc.addPage(); yEnd = 40; drawHeader(); drawWatermark(); }
-  yEnd += 12;
+  if (yEnd > H - 35) { doc.addPage(); yEnd = 40; drawHeader(); drawWatermark(); }
+  yEnd += 10;
   const half = (W - M * 2) / 2;
   doc.setDrawColor(120);
   doc.line(M, yEnd, M + half - 5, yEnd);
