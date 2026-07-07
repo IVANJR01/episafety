@@ -403,7 +403,7 @@ export default function InspecoesSE() {
     const nextNumero = (cached.length > 0 ? Math.max(...cached.map(i => i.numero || 0)) : 0) + 1;
     const offlineRecord = {
       ...payload,
-      id: crypto.randomUUID(),
+      id: payload.id || crypto.randomUUID(),
       numero: nextNumero,
       created_at: new Date().toISOString(),
     } as Conformidade;
