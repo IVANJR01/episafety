@@ -130,14 +130,26 @@ export default function SolicitacoesMateriais() {
   async function handleExportPdf(s: Solicitacao) {
     try {
       const itens = await loadItens(s.id);
-      // Try get empresa
-      let empresaNome: string | null = null;
-      let empresaCnpj: string | null = null;
-      const { data: emp } = await (supabase.from as any)("empresa_config").select("nome_fantasia, cnpj").eq("empresa_id", s.empresa_id).maybeSingle();
-      if (emp) { empresaNome = (emp as any).nome_fantasia; empresaCnpj = (emp as any).cnpj; }
+      const [{ data: emp }, { data: full }] = await Promise.all([
+        (supabase.from as any)("empresa_config").select("nome, cnpj, endereco, telefone").eq("id", s.empresa_id).maybeSingle(),
+        supabase.from("solicitacoes_materiais").select("unidade_id, contrato_id, obra_id, aprovado_em, comprada_em, recebida_em, nota_fiscal").eq("id", s.id).maybeSingle(),
+      ]);
+      const unidadeId = (full as any)?.unidade_id;
+      const contratoId = (full as any)?.contrato_id;
+      const obraId = (full as any)?.obra_id;
+      const [uniRes, contRes, obraRes] = await Promise.all([
+        unidadeId ? (supabase.from as any)("empresa_config").select("nome").eq("id", unidadeId).maybeSingle() : Promise.resolve({ data: null }),
+        contratoId ? (supabase.from as any)("contratos").select("nome").eq("id", contratoId).maybeSingle() : Promise.resolve({ data: null }),
+        obraId ? (supabase.from as any)("obras").select("nome").eq("id", obraId).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
       gerarSolicitacaoPdf({
-        empresa_nome: empresaNome,
-        empresa_cnpj: empresaCnpj,
+        empresa_nome: (emp as any)?.nome || null,
+        empresa_cnpj: (emp as any)?.cnpj || null,
+        empresa_endereco: (emp as any)?.endereco || null,
+        empresa_telefone: (emp as any)?.telefone || null,
+        unidade_nome: (uniRes.data as any)?.nome || null,
+        contrato_nome: (contRes.data as any)?.nome || null,
+        obra_nome: (obraRes.data as any)?.nome || null,
         numero: s.numero_solicitacao,
         titulo: s.titulo,
         data_solicitacao: s.data_solicitacao,
@@ -147,12 +159,18 @@ export default function SolicitacoesMateriais() {
         local_obra: s.local_obra,
         prioridade: s.prioridade,
         status: STATUS_LABEL[s.status] || s.status,
+        status_key: s.status,
         justificativa: s.justificativa,
         observacoes: s.observacoes,
         aprovador: s.aprovado_por_nome,
+        aprovado_em: (full as any)?.aprovado_em || s.aprovado_em,
+        comprada_em: (full as any)?.comprada_em || s.comprada_em,
+        recebida_em: (full as any)?.recebida_em || s.recebida_em,
+        nota_fiscal: (full as any)?.nota_fiscal || s.nota_fiscal,
         itens: (itens as any[]).map((i) => ({
           tipo_item: i.tipo_item,
           nome_item: i.nome_item,
+          descricao: i.descricao,
           ca: i.ca,
           unidade_medida: i.unidade_medida,
           quantidade_solicitada: Number(i.quantidade_solicitada || 0),
