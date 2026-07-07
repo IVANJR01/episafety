@@ -252,7 +252,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   const totQtd = s.itens.reduce((acc, i) => acc + (Number(i.quantidade_solicitada) || 0), 0);
   const totAprov = s.itens.reduce((acc, i) => acc + (Number(i.quantidade_aprovada) || 0), 0);
 
-  if (yEnd > H - 70) { doc.addPage(); yEnd = 30; drawHeader(); drawWatermark(); }
+  if (yEnd > H - 55) { doc.addPage(); yEnd = 30; drawHeader(); drawWatermark(); }
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -260,7 +260,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   yEnd += 3;
   doc.setDrawColor(200);
   doc.line(M, yEnd, W - M, yEnd);
-  yEnd += 5;
+  yEnd += 4;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   const resumo = [
@@ -277,13 +277,13 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   resumo.forEach((txt, i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
-    doc.text(txt, M + col * colWidth, yEnd + row * 5);
+    doc.text(txt, M + col * colWidth, yEnd + row * 4.5);
   });
-  yEnd += Math.ceil(resumo.length / 2) * 5 + 8;
+  yEnd += Math.ceil(resumo.length / 2) * 4.5 + 4;
 
   // Assinaturas
-  if (yEnd > H - 45) { doc.addPage(); yEnd = 40; drawHeader(); drawWatermark(); }
-  yEnd += 12;
+  if (yEnd > H - 35) { doc.addPage(); yEnd = 40; drawHeader(); drawWatermark(); }
+  yEnd += 10;
   const half = (W - M * 2) / 2;
   doc.setDrawColor(120);
   doc.line(M, yEnd, M + half - 5, yEnd);
