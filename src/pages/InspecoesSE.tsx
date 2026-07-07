@@ -144,6 +144,10 @@ export default function InspecoesSE() {
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
   const [existingFotoAntesPath, setExistingFotoAntesPath] = useState<string | null>(null);
   const [existingFotoDepoisPath, setExistingFotoDepoisPath] = useState<string | null>(null);
+  // Snapshots dos paths originais no Storage ao abrir edição — usados para
+  // apagar do bucket a foto substituída/removida após salvar com sucesso.
+  const originalFotoAntesPathRef = useRef<string | null>(null);
+  const originalFotoDepoisPathRef = useRef<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
   const antesGalleryRef = useRef<HTMLInputElement>(null);
