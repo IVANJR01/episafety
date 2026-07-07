@@ -550,6 +550,20 @@ export default function InspecoesSE() {
         .eq("empresa_id", empresaId);
       if (upErr) throw upErr;
 
+      // C1 — Limpa fotos antigas do bucket que foram substituídas ou removidas.
+      // Só apagamos APÓS o DB ter sido atualizado com sucesso, garantindo que a
+      // inspeção nunca fique sem foto por causa de uma falha intermediária.
+      const originalAntes = originalFotoAntesPathRef.current;
+      const originalDepois = originalFotoDepoisPathRef.current;
+      if (originalAntes && originalAntes !== foto_antes_path) {
+        deleteInspecaoPhoto(originalAntes).catch(() => {});
+      }
+      if (originalDepois && originalDepois !== foto_depois_path) {
+        deleteInspecaoPhoto(originalDepois).catch(() => {});
+      }
+      originalFotoAntesPathRef.current = foto_antes_path;
+      originalFotoDepoisPathRef.current = foto_depois_path;
+
       toast({ title: editingId ? "Registro atualizado!" : "Registro criado!" });
       resetDraft();
       setDialogOpen(false);
