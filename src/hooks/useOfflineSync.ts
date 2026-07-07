@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSyncQueue, removeFromSyncQueue, preCacheAllData, SyncOperation } from "@/lib/offlineStorage";
 import { useToast } from "@/hooks/use-toast";
 import { uploadInspecaoPhoto } from "@/lib/inspecoesStorage";
+import {
+  isOfflinePhotoMarker,
+  getOfflinePhotoBlob,
+  deleteOfflinePhoto,
+} from "@/lib/inspecoesOfflinePhotos";
 
 // Tables that may contain base64 photo fields needing upload
 const PHOTO_FIELDS: Record<string, string[]> = {
@@ -62,12 +67,38 @@ async function processPhotoFields(op: SyncOperation): Promise<SyncOperation> {
 
     for (const field of ["foto_antes", "foto_depois"] as const) {
       const value = updatedPayload[field];
+
+      // Caso 1: marcador IndexedDB (novo formato offline)
+      if (isOfflinePhotoMarker(value)) {
+        const label = field === "foto_antes" ? "antes" : "depois";
+        try {
+          const blob = await getOfflinePhotoBlob(value);
+          if (!blob) {
+            // Sem blob correspondente — descarta marcador para não travar o sync.
+            updatedPayload[field] = null;
+            changed = true;
+            continue;
+          }
+          const { path } = await uploadInspecaoPhoto(blob, empresaId, inspectionId, label);
+          updatedPayload[`${field}_path`] = path;
+          updatedPayload[field] = null;
+          changed = true;
+          // Blob subiu com sucesso — libera espaço no IDB.
+          await deleteOfflinePhoto(value);
+        } catch (err) {
+          console.error("[useOfflineSync] Falha ao subir foto IDB da inspeção:", err);
+          return op; // mantém para retry
+        }
+        continue;
+      }
+
+      // Caso 2 (legado): base64 direto no payload
       if (isBase64DataUrl(value)) {
         const label = field === "foto_antes" ? "antes" : "depois";
         const path = await uploadBase64ToInspecoesStorage(value, empresaId, inspectionId, label);
         if (path) {
           updatedPayload[`${field}_path`] = path;
-          updatedPayload[field] = null; // limpa base64/URL legado
+          updatedPayload[field] = null;
           changed = true;
         } else {
           return op; // retry later

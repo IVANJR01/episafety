@@ -22,7 +22,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import InspecaoImage from "@/components/InspecaoImage";
-import { uploadInspecaoPhoto, getInspecaoPhotoSignedUrl } from "@/lib/inspecoesStorage";
+import { uploadInspecaoPhoto, getInspecaoPhotoSignedUrl, deleteInspecaoPhoto } from "@/lib/inspecoesStorage";
+import { saveOfflinePhoto, deleteOfflinePhoto } from "@/lib/inspecoesOfflinePhotos";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
@@ -143,6 +144,10 @@ export default function InspecoesSE() {
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
   const [existingFotoAntesPath, setExistingFotoAntesPath] = useState<string | null>(null);
   const [existingFotoDepoisPath, setExistingFotoDepoisPath] = useState<string | null>(null);
+  // Snapshots dos paths originais no Storage ao abrir edição — usados para
+  // apagar do bucket a foto substituída/removida após salvar com sucesso.
+  const originalFotoAntesPathRef = useRef<string | null>(null);
+  const originalFotoDepoisPathRef = useRef<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
   const depoisRef = useRef<HTMLInputElement>(null);
   const antesGalleryRef = useRef<HTMLInputElement>(null);
@@ -261,6 +266,8 @@ export default function InspecoesSE() {
     if (!hasDraft()) resetDraft();
     else setForm(form); // keep draft
     clearPhotoPreviews();
+    originalFotoAntesPathRef.current = null;
+    originalFotoDepoisPathRef.current = null;
     setDialogOpen(true);
   }
 
@@ -285,6 +292,8 @@ export default function InspecoesSE() {
     setExistingFotoDepois(item.foto_depois);
     setExistingFotoAntesPath(item.foto_antes_path || null);
     setExistingFotoDepoisPath(item.foto_depois_path || null);
+    originalFotoAntesPathRef.current = item.foto_antes_path || null;
+    originalFotoDepoisPathRef.current = item.foto_depois_path || null;
     setFotoAntesFile(null);
     setFotoAntesPreview(null);
     setFotoDepoisFile(null);
@@ -394,7 +403,7 @@ export default function InspecoesSE() {
     const nextNumero = (cached.length > 0 ? Math.max(...cached.map(i => i.numero || 0)) : 0) + 1;
     const offlineRecord = {
       ...payload,
-      id: crypto.randomUUID(),
+      id: payload.id || crypto.randomUUID(),
       numero: nextNumero,
       created_at: new Date().toISOString(),
     } as Conformidade;
@@ -435,20 +444,43 @@ export default function InspecoesSE() {
 
     setSaving(true);
     try {
-      // OFFLINE — grava base64 no cache e delega upload à fila (usa Supabase Storage no sync).
+      // OFFLINE — grava foto em IndexedDB (evita perder evidência se localStorage for limpo).
       if (!isOnline()) {
+        const offlineId = editingId || crypto.randomUUID();
+        let antesMarker: string | null = existingFotoAntes;
+        let depoisMarker: string | null = form.status === "SOLUCIONADO" ? existingFotoDepois : null;
+        try {
+          if (fotoAntesFile) {
+            antesMarker = await saveOfflinePhoto(offlineId, "antes", fotoAntesFile);
+          }
+          if (form.status === "SOLUCIONADO" && fotoDepoisFile) {
+            depoisMarker = await saveOfflinePhoto(offlineId, "depois", fotoDepoisFile);
+          }
+        } catch (idbErr) {
+          console.error("[Inspecoes] Falha ao salvar foto no IndexedDB:", idbErr);
+          toast({
+            title: "Não foi possível armazenar a foto no dispositivo",
+            description: "Tente novamente ou libere espaço no aparelho.",
+            variant: "destructive",
+          });
+          setSaving(false);
+          return;
+        }
         const payload = buildPayload(
-          fotoAntesPreview || existingFotoAntes || null,
-          (fotoDepoisPreview && form.status === "SOLUCIONADO") ? fotoDepoisPreview : existingFotoDepois,
+          antesMarker,
+          depoisMarker,
           existingFotoAntesPath,
           form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null,
         );
+        if (!editingId) (payload as any).id = offlineId;
         saveOffline(payload);
+        toast({ title: "Inspeção salva offline", description: "As fotos serão enviadas quando a conexão voltar." });
         resetDraft();
         setDialogOpen(false);
         setSaving(false);
         return;
       }
+
 
       // ONLINE — fluxo Storage do backend
       const shouldUploadDepois = form.status === "SOLUCIONADO" && !!fotoDepoisFile;
@@ -518,19 +550,46 @@ export default function InspecoesSE() {
         .eq("empresa_id", empresaId);
       if (upErr) throw upErr;
 
+      // C1 — Limpa fotos antigas do bucket que foram substituídas ou removidas.
+      // Só apagamos APÓS o DB ter sido atualizado com sucesso, garantindo que a
+      // inspeção nunca fique sem foto por causa de uma falha intermediária.
+      const originalAntes = originalFotoAntesPathRef.current;
+      const originalDepois = originalFotoDepoisPathRef.current;
+      if (originalAntes && originalAntes !== foto_antes_path) {
+        deleteInspecaoPhoto(originalAntes).catch(() => {});
+      }
+      if (originalDepois && originalDepois !== foto_depois_path) {
+        deleteInspecaoPhoto(originalDepois).catch(() => {});
+      }
+      originalFotoAntesPathRef.current = foto_antes_path;
+      originalFotoDepoisPathRef.current = foto_depois_path;
+
       toast({ title: editingId ? "Registro atualizado!" : "Registro criado!" });
       resetDraft();
       setDialogOpen(false);
       void loadData();
     } catch (err: any) {
       if (isNetworkFailure(err) || err?.message?.includes("fetch")) {
+        const offlineId = editingId || crypto.randomUUID();
+        let antesMarker: string | null = existingFotoAntes;
+        let depoisMarker: string | null = form.status === "SOLUCIONADO" ? existingFotoDepois : null;
+        try {
+          if (fotoAntesFile) antesMarker = await saveOfflinePhoto(offlineId, "antes", fotoAntesFile);
+          if (form.status === "SOLUCIONADO" && fotoDepoisFile) {
+            depoisMarker = await saveOfflinePhoto(offlineId, "depois", fotoDepoisFile);
+          }
+        } catch (idbErr) {
+          console.error("[Inspecoes] Falha ao salvar foto no IndexedDB (fallback):", idbErr);
+        }
         const payload = buildPayload(
-          fotoAntesPreview || existingFotoAntes || null,
-          (fotoDepoisPreview && form.status === "SOLUCIONADO") ? fotoDepoisPreview : existingFotoDepois,
+          antesMarker,
+          depoisMarker,
           existingFotoAntesPath,
           form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null,
         );
+        if (!editingId) (payload as any).id = offlineId;
         saveOffline(payload);
+        toast({ title: "Sem conexão", description: "Inspeção salva no dispositivo. Enviaremos as fotos quando a rede voltar." });
         resetDraft();
         setDialogOpen(false);
       } else {
@@ -542,10 +601,20 @@ export default function InspecoesSE() {
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir este registro?")) return;
+    // Captura paths antes de remover para conseguir apagar as fotos do bucket.
+    const target = items.find(i => i.id === id);
+    const antesPath = target?.foto_antes_path || null;
+    const depoisPath = target?.foto_depois_path || null;
+    // Também limpa qualquer foto pendente no IDB (caso o registro seja offline).
+    deleteOfflinePhoto(`idbphoto://${id}__antes`).catch(() => {});
+    deleteOfflinePhoto(`idbphoto://${id}__depois`).catch(() => {});
     try {
       if (isOnline()) {
         const { error } = await (supabase.from as any)("conformidades").delete().eq("id", id).eq("empresa_id", empresaId);
         if (error) throw error;
+        // C1 — melhor esforço: apaga fotos órfãs do bucket após remoção no DB.
+        if (antesPath) deleteInspecaoPhoto(antesPath).catch(() => {});
+        if (depoisPath) deleteInspecaoPhoto(depoisPath).catch(() => {});
       }
       toast({ title: "Registro excluído" });
       void loadData();
