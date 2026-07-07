@@ -292,6 +292,8 @@ export default function InspecoesSE() {
     setExistingFotoDepois(item.foto_depois);
     setExistingFotoAntesPath(item.foto_antes_path || null);
     setExistingFotoDepoisPath(item.foto_depois_path || null);
+    originalFotoAntesPathRef.current = item.foto_antes_path || null;
+    originalFotoDepoisPathRef.current = item.foto_depois_path || null;
     setFotoAntesFile(null);
     setFotoAntesPreview(null);
     setFotoDepoisFile(null);
