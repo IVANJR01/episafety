@@ -444,20 +444,43 @@ export default function InspecoesSE() {
 
     setSaving(true);
     try {
-      // OFFLINE — grava base64 no cache e delega upload à fila (usa Supabase Storage no sync).
+      // OFFLINE — grava foto em IndexedDB (evita perder evidência se localStorage for limpo).
       if (!isOnline()) {
+        const offlineId = editingId || crypto.randomUUID();
+        let antesMarker: string | null = existingFotoAntes;
+        let depoisMarker: string | null = form.status === "SOLUCIONADO" ? existingFotoDepois : null;
+        try {
+          if (fotoAntesFile) {
+            antesMarker = await saveOfflinePhoto(offlineId, "antes", fotoAntesFile);
+          }
+          if (form.status === "SOLUCIONADO" && fotoDepoisFile) {
+            depoisMarker = await saveOfflinePhoto(offlineId, "depois", fotoDepoisFile);
+          }
+        } catch (idbErr) {
+          console.error("[Inspecoes] Falha ao salvar foto no IndexedDB:", idbErr);
+          toast({
+            title: "Não foi possível armazenar a foto no dispositivo",
+            description: "Tente novamente ou libere espaço no aparelho.",
+            variant: "destructive",
+          });
+          setSaving(false);
+          return;
+        }
         const payload = buildPayload(
-          fotoAntesPreview || existingFotoAntes || null,
-          (fotoDepoisPreview && form.status === "SOLUCIONADO") ? fotoDepoisPreview : existingFotoDepois,
+          antesMarker,
+          depoisMarker,
           existingFotoAntesPath,
           form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null,
         );
+        if (!editingId) (payload as any).id = offlineId;
         saveOffline(payload);
+        toast({ title: "Inspeção salva offline", description: "As fotos serão enviadas quando a conexão voltar." });
         resetDraft();
         setDialogOpen(false);
         setSaving(false);
         return;
       }
+
 
       // ONLINE — fluxo Storage do backend
       const shouldUploadDepois = form.status === "SOLUCIONADO" && !!fotoDepoisFile;
