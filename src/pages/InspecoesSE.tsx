@@ -570,13 +570,26 @@ export default function InspecoesSE() {
       void loadData();
     } catch (err: any) {
       if (isNetworkFailure(err) || err?.message?.includes("fetch")) {
+        const offlineId = editingId || crypto.randomUUID();
+        let antesMarker: string | null = existingFotoAntes;
+        let depoisMarker: string | null = form.status === "SOLUCIONADO" ? existingFotoDepois : null;
+        try {
+          if (fotoAntesFile) antesMarker = await saveOfflinePhoto(offlineId, "antes", fotoAntesFile);
+          if (form.status === "SOLUCIONADO" && fotoDepoisFile) {
+            depoisMarker = await saveOfflinePhoto(offlineId, "depois", fotoDepoisFile);
+          }
+        } catch (idbErr) {
+          console.error("[Inspecoes] Falha ao salvar foto no IndexedDB (fallback):", idbErr);
+        }
         const payload = buildPayload(
-          fotoAntesPreview || existingFotoAntes || null,
-          (fotoDepoisPreview && form.status === "SOLUCIONADO") ? fotoDepoisPreview : existingFotoDepois,
+          antesMarker,
+          depoisMarker,
           existingFotoAntesPath,
           form.status === "SOLUCIONADO" ? existingFotoDepoisPath : null,
         );
+        if (!editingId) (payload as any).id = offlineId;
         saveOffline(payload);
+        toast({ title: "Sem conexão", description: "Inspeção salva no dispositivo. Enviaremos as fotos quando a rede voltar." });
         resetDraft();
         setDialogOpen(false);
       } else {
