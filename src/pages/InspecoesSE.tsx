@@ -601,10 +601,20 @@ export default function InspecoesSE() {
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir este registro?")) return;
+    // Captura paths antes de remover para conseguir apagar as fotos do bucket.
+    const target = items.find(i => i.id === id);
+    const antesPath = target?.foto_antes_path || null;
+    const depoisPath = target?.foto_depois_path || null;
+    // Também limpa qualquer foto pendente no IDB (caso o registro seja offline).
+    deleteOfflinePhoto(`idbphoto://${id}__antes`).catch(() => {});
+    deleteOfflinePhoto(`idbphoto://${id}__depois`).catch(() => {});
     try {
       if (isOnline()) {
         const { error } = await (supabase.from as any)("conformidades").delete().eq("id", id).eq("empresa_id", empresaId);
         if (error) throw error;
+        // C1 — melhor esforço: apaga fotos órfãs do bucket após remoção no DB.
+        if (antesPath) deleteInspecaoPhoto(antesPath).catch(() => {});
+        if (depoisPath) deleteInspecaoPhoto(depoisPath).catch(() => {});
       }
       toast({ title: "Registro excluído" });
       void loadData();
