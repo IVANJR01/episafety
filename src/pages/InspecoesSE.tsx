@@ -266,6 +266,8 @@ export default function InspecoesSE() {
     if (!hasDraft()) resetDraft();
     else setForm(form); // keep draft
     clearPhotoPreviews();
+    originalFotoAntesPathRef.current = null;
+    originalFotoDepoisPathRef.current = null;
     setDialogOpen(true);
   }
 
