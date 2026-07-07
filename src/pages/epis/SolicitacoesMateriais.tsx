@@ -127,26 +127,56 @@ export default function SolicitacoesMateriais() {
     return data || [];
   }
 
+  async function loadLogoDataUrl(url?: string | null): Promise<string | null> {
+    if (!url) return null;
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      const blob = await res.blob();
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const im = new Image();
+        im.crossOrigin = "anonymous";
+        im.onload = () => resolve(im);
+        im.onerror = reject;
+        im.src = URL.createObjectURL(blob);
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || 300;
+      canvas.height = img.naturalHeight || 300;
+      const ctx = canvas.getContext("2d")!;
+      // Flatten transparency onto white background to avoid black bg in PDF
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      return canvas.toDataURL("image/png");
+    } catch (e) {
+      console.warn("[logo] falha ao carregar logo para PDF", e);
+      return null;
+    }
+  }
+
   async function handleExportPdf(s: Solicitacao) {
     try {
       const itens = await loadItens(s.id);
       const [{ data: emp }, { data: full }] = await Promise.all([
-        (supabase.from as any)("empresa_config").select("nome, cnpj, endereco, telefone").eq("id", s.empresa_id).maybeSingle(),
+        (supabase.from as any)("empresa_config").select("nome, cnpj, endereco, telefone, logo_url").eq("id", s.empresa_id).maybeSingle(),
         supabase.from("solicitacoes_materiais").select("unidade_id, contrato_id, obra_id, aprovado_em, comprada_em, recebida_em, nota_fiscal").eq("id", s.id).maybeSingle(),
       ]);
       const unidadeId = (full as any)?.unidade_id;
       const contratoId = (full as any)?.contrato_id;
       const obraId = (full as any)?.obra_id;
-      const [uniRes, contRes, obraRes] = await Promise.all([
+      const [uniRes, contRes, obraRes, logoDataUrl] = await Promise.all([
         unidadeId ? (supabase.from as any)("empresa_config").select("nome").eq("id", unidadeId).maybeSingle() : Promise.resolve({ data: null }),
         contratoId ? (supabase.from as any)("contratos").select("nome").eq("id", contratoId).maybeSingle() : Promise.resolve({ data: null }),
         obraId ? (supabase.from as any)("obras").select("nome").eq("id", obraId).maybeSingle() : Promise.resolve({ data: null }),
+        loadLogoDataUrl((emp as any)?.logo_url),
       ]);
       gerarSolicitacaoPdf({
+        empresa_logo_dataurl: logoDataUrl,
         empresa_nome: (emp as any)?.nome || null,
         empresa_cnpj: (emp as any)?.cnpj || null,
         empresa_endereco: (emp as any)?.endereco || null,
         empresa_telefone: (emp as any)?.telefone || null,
+
         unidade_nome: (uniRes.data as any)?.nome || null,
         contrato_nome: (contRes.data as any)?.nome || null,
         obra_nome: (obraRes.data as any)?.nome || null,
