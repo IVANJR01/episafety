@@ -213,7 +213,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
         it.ca || "-",
         it.unidade_medida,
         String(it.quantidade_solicitada),
-        it.quantidade_aprovada != null ? String(it.quantidade_aprovada) : "Aguardando",
+        it.quantidade_aprovada != null ? String(it.quantidade_aprovada) : "Pendente",
         it.justificativa_item || "-",
       ];
     }),
@@ -231,6 +231,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
       7: { cellWidth: "auto" },
     },
     margin: { left: M, right: M, top: 28, bottom: 15 },
+    rowPageBreak: "avoid",
     showHead: "everyPage",
     didDrawPage: () => {
       // Redraw header + watermark on every page
