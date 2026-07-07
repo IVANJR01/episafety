@@ -213,7 +213,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
         it.ca || "-",
         it.unidade_medida,
         String(it.quantidade_solicitada),
-        it.quantidade_aprovada != null ? String(it.quantidade_aprovada) : "-",
+        it.quantidade_aprovada != null ? String(it.quantidade_aprovada) : "Aguardando",
         it.justificativa_item || "-",
       ];
     }),
