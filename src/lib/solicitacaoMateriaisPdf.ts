@@ -14,6 +14,7 @@ export interface SolicitacaoPdfItem {
 }
 
 export interface SolicitacaoPdfInput {
+  empresa_logo_dataurl?: string | null;
   empresa_nome?: string | null;
   empresa_cnpj?: string | null;
   empresa_endereco?: string | null;
