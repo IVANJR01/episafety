@@ -16,8 +16,28 @@ import {
   ArrowLeft, Save, Send, CheckCircle2, XCircle, Ban, FileDown, FileSpreadsheet,
   MessageCircle, Mail, Plus, Trash2, Eye,
 } from "lucide-react";
-import { formatBRL, calcularTotais, calcularTotalItem, DescontoTipo } from "@/lib/orcamentoCalc";
+import { formatBRL, calcularTotais, calcularTotalItem, formatDate, DescontoTipo } from "@/lib/orcamentoCalc";
 import { OrcamentoStatus, TIPOS_ITEM } from "@/lib/orcamentoTypes";
+
+const FINAL_STATUSES: OrcamentoStatus[] = ["aprovado", "recusado", "cancelado"];
+
+const TRANSICOES_PERMITIDAS: Record<OrcamentoStatus, OrcamentoStatus[]> = {
+  rascunho: ["enviado", "cancelado"],
+  enviado: ["visualizado", "aprovado", "recusado", "cancelado"],
+  visualizado: ["aprovado", "recusado", "cancelado"],
+  vencido: ["aprovado", "recusado", "cancelado"],
+  aprovado: [],
+  recusado: [],
+  cancelado: [],
+};
+
+function normalizarTelefoneBR(tel: string): string {
+  const digits = (tel || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) return digits;
+  if (digits.length === 10 || digits.length === 11) return "55" + digits;
+  return digits;
+}
 import { StatusBadgeOrcamento } from "@/components/comercial/StatusBadgeOrcamento";
 import { gerarOrcamentoPdf } from "@/lib/orcamentoPdf";
 import { exportarOrcamentoExcel } from "@/lib/orcamentoExcel";
