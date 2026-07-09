@@ -433,7 +433,9 @@ export default function OrcamentoEditor() {
               </div>
 
               <div className="grid gap-2">
-                <Button onClick={() => save()} disabled={saving}><Save className="w-4 h-4 mr-2" />Salvar</Button>
+                {!isFinalizado && (
+                  <Button onClick={() => save()} disabled={saving}><Save className="w-4 h-4 mr-2" />Salvar</Button>
+                )}
                 {!isNew && (
                   <>
                     <Button variant="outline" onClick={baixarPdf}><FileDown className="w-4 h-4 mr-2" />PDF</Button>
@@ -446,26 +448,40 @@ export default function OrcamentoEditor() {
                 )}
               </div>
 
-              {!isNew && (
-                <div className="border-t pt-2 grid gap-1.5">
-                  <div className="text-xs font-semibold text-muted-foreground">Status</div>
-                  <Button size="sm" variant="outline" onClick={() => changeStatus("enviado", { enviado_em: new Date().toISOString() })}>
-                    <Send className="w-3.5 h-3.5 mr-1" />Marcar enviado
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => changeStatus("visualizado", { visualizado_em: new Date().toISOString() })}>
-                    <Eye className="w-3.5 h-3.5 mr-1" />Marcar visualizado
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => changeStatus("aprovado", { aprovado_em: new Date().toISOString() })}>
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-green-600" />Aprovar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setRecusarOpen(true)}>
-                    <XCircle className="w-3.5 h-3.5 mr-1 text-red-600" />Recusar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => changeStatus("cancelado", { cancelado_em: new Date().toISOString() })}>
-                    <Ban className="w-3.5 h-3.5 mr-1" />Cancelar
-                  </Button>
-                </div>
-              )}
+              {!isNew && !isFinalizado && (() => {
+                const permitidas = TRANSICOES_PERMITIDAS[form.status as OrcamentoStatus] || [];
+                if (permitidas.length === 0) return null;
+                return (
+                  <div className="border-t pt-2 grid gap-1.5">
+                    <div className="text-xs font-semibold text-muted-foreground">Status</div>
+                    {permitidas.includes("enviado") && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus("enviado", { enviado_em: new Date().toISOString() })}>
+                        <Send className="w-3.5 h-3.5 mr-1" />Marcar enviado
+                      </Button>
+                    )}
+                    {permitidas.includes("visualizado") && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus("visualizado", { visualizado_em: new Date().toISOString() })}>
+                        <Eye className="w-3.5 h-3.5 mr-1" />Marcar visualizado
+                      </Button>
+                    )}
+                    {permitidas.includes("aprovado") && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus("aprovado", { aprovado_em: new Date().toISOString() })}>
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-green-600" />Aprovar
+                      </Button>
+                    )}
+                    {permitidas.includes("recusado") && (
+                      <Button size="sm" variant="outline" onClick={() => setRecusarOpen(true)}>
+                        <XCircle className="w-3.5 h-3.5 mr-1 text-red-600" />Recusar
+                      </Button>
+                    )}
+                    {permitidas.includes("cancelado") && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus("cancelado", { cancelado_em: new Date().toISOString() })}>
+                        <Ban className="w-3.5 h-3.5 mr-1" />Cancelar
+                      </Button>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
