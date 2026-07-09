@@ -197,7 +197,26 @@ export function gerarOrcamentoPdf(
     y += 5;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    if (orc.condicoes_pagamento) { doc.text(`Pagamento: ${orc.condicoes_pagamento}`, marginX, y); y += 4; }
+    const formas = orc.formas_pagamento || [];
+    if (formas.length) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Formas de pagamento aceitas:", marginX, y); y += 4;
+      doc.setFont("helvetica", "normal");
+      for (const f of formas) {
+        if (f === "Cartão de crédito" && orc.cartao_credito_config) {
+          const cc = orc.cartao_credito_config;
+          const linha = cc.tipo === "com_juros"
+            ? `• Cartão de crédito: até ${cc.parcelas}x com juros de ${cc.juros_mensal.toFixed(2)}% a.m. — ${cc.parcelas}x de ${formatBRL(cc.valor_parcela)} — Total ${formatBRL(cc.total_com_juros)}`
+            : `• Cartão de crédito: até ${cc.parcelas}x sem juros de ${formatBRL(cc.valor_parcela)}`;
+          const wrap = doc.splitTextToSize(linha, pageW - marginX * 2);
+          doc.text(wrap, marginX, y); y += wrap.length * 4;
+        } else {
+          doc.text(`• ${f}: ${formatBRL(orc.total)}`, marginX, y); y += 4;
+        }
+      }
+    } else if (orc.condicoes_pagamento) {
+      doc.text(`Pagamento: ${orc.condicoes_pagamento}`, marginX, y); y += 4;
+    }
     if (orc.condicoes_pagamento_detalhe) {
       const det = doc.splitTextToSize(`Detalhes: ${orc.condicoes_pagamento_detalhe}`, pageW - marginX * 2);
       doc.text(det, marginX, y); y += det.length * 4;
