@@ -299,7 +299,13 @@ export default function OrcamentoEditor() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      {isFinalizado && (
+        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 text-amber-900 px-3 py-2 text-sm dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800">
+          Esta proposta está finalizada ({form.status}). Para alterar, duplique a proposta.
+        </div>
+      )}
+
+      <fieldset disabled={isFinalizado} className="grid gap-4 lg:grid-cols-3 disabled:opacity-95">
         <div className="lg:col-span-2 space-y-4">
           {/* Cliente */}
           <Card>
