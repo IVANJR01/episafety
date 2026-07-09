@@ -369,7 +369,28 @@ export default function OrcamentoEditor() {
               <div><Label>Data de emissão</Label><Input type="date" value={form.data_emissao} onChange={(e) => setForm({ ...form, data_emissao: e.target.value })} /></div>
               <div><Label>Validade</Label><Input type="date" value={form.data_validade || ""} onChange={(e) => setForm({ ...form, data_validade: e.target.value })} /></div>
               <div><Label>Prazo de execução</Label><Input value={form.prazo_execucao || ""} onChange={(e) => setForm({ ...form, prazo_execucao: e.target.value })} placeholder="ex: 30 dias" /></div>
-              <div><Label>Condições de pagamento</Label><Input value={form.condicoes_pagamento || ""} onChange={(e) => setForm({ ...form, condicoes_pagamento: e.target.value })} placeholder="ex: 50% + 50%" /></div>
+              <div className="sm:col-span-2">
+                <Label>Condições de pagamento *</Label>
+                <Select
+                  value={CONDICOES_PAGAMENTO.includes(form.condicoes_pagamento as any) ? form.condicoes_pagamento : (form.condicoes_pagamento ? "A combinar" : "")}
+                  onValueChange={(v) => setForm({ ...form, condicoes_pagamento: v, condicoes_pagamento_detalhe: CONDICOES_COM_DETALHE.has(v) ? (form.condicoes_pagamento_detalhe || "") : "" })}
+                >
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Selecionar condição..." /></SelectTrigger>
+                  <SelectContent>
+                    {CONDICOES_PAGAMENTO.map((c) => <SelectItem key={c} value={c} className="py-3">{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {CONDICOES_COM_DETALHE.has(form.condicoes_pagamento) && (
+                  <div className="mt-2">
+                    <Label>Detalhes da condição *</Label>
+                    <Input
+                      value={form.condicoes_pagamento_detalhe || ""}
+                      onChange={(e) => setForm({ ...form, condicoes_pagamento_detalhe: e.target.value })}
+                      placeholder="ex: Entrada de R$ 500,00 + 2 parcelas"
+                    />
+                  </div>
+                )}
+              </div>
               <div className="sm:col-span-2"><Label>Observações</Label><Textarea value={form.observacoes || ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} rows={3} /></div>
             </CardContent>
           </Card>
