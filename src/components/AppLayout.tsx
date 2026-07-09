@@ -68,6 +68,14 @@ const programasItems: NavItem[] = [
   { path: "/central-ppp", label: "PPP", icon: FileText, moduleKey: "ppp" },
 ];
 
+// Comercial — Orçamentos, Clientes, Catálogo
+const comercialItems: NavItem[] = [
+  { path: "/comercial", label: "Dashboard Comercial", icon: LayoutDashboard, moduleKey: "comercial" },
+  { path: "/comercial/orcamentos", label: "Orçamentos e Cotações", icon: FileText, moduleKey: "comercial" },
+  { path: "/comercial/clientes", label: "Clientes", icon: Users, moduleKey: "comercial" },
+  { path: "/comercial/catalogo", label: "Catálogo de Serviços", icon: BookOpen, moduleKey: "comercial" },
+];
+
 // eSocial técnico / stub
 const esocialItems: NavItem[] = [
   { path: "/cat/esocial/config", label: "S-2210 — CAT (config)", icon: Settings, moduleKey: "cat" },
