@@ -68,6 +68,14 @@ const programasItems: NavItem[] = [
   { path: "/central-ppp", label: "PPP", icon: FileText, moduleKey: "ppp" },
 ];
 
+// Comercial — Orçamentos, Clientes, Catálogo
+const comercialItems: NavItem[] = [
+  { path: "/comercial", label: "Dashboard Comercial", icon: LayoutDashboard, moduleKey: "comercial" },
+  { path: "/comercial/orcamentos", label: "Orçamentos e Cotações", icon: FileText, moduleKey: "comercial" },
+  { path: "/comercial/clientes", label: "Clientes", icon: Users, moduleKey: "comercial" },
+  { path: "/comercial/catalogo", label: "Catálogo de Serviços", icon: BookOpen, moduleKey: "comercial" },
+];
+
 // eSocial técnico / stub
 const esocialItems: NavItem[] = [
   { path: "/cat/esocial/config", label: "S-2210 — CAT (config)", icon: Settings, moduleKey: "cat" },
@@ -154,6 +162,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   void esocialItems;
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
   const visibleProgramasItems = programasItems.filter((i) => canAccess(i.moduleKey));
+  const visibleComercialItems = comercialItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
@@ -163,6 +172,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
   const isProgramasActive = location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat");
+  const isComercialActive = location.pathname.startsWith("/comercial");
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
   const [asoOpen, setAsoOpen] = useState(isAsoActive);
@@ -171,6 +181,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
   const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
+  const [comercialOpen, setComercialOpen] = useState(isComercialActive);
 
   // Bottom nav items for mobile
   const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
@@ -471,6 +482,48 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </>
           )}
+
+          {visibleComercialItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setComercialOpen(!comercialOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isComercialActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Briefcase className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Comercial</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${comercialOpen ? "rotate-180" : ""}`} />
+              </button>
+              {comercialOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleComercialItems.map((item) => {
+                    const active =
+                      location.pathname === item.path ||
+                      (item.path === "/comercial/orcamentos" && location.pathname.startsWith("/comercial/orcamentos"));
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
 
           {visibleGestaoDocItems.length > 0 && (
             <>
