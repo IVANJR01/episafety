@@ -183,24 +183,35 @@ export default function OrcamentoEditor() {
         const { data, error } = await (supabase.from as any)("orcamentos").insert(payload).select("id").single();
         if (error) throw error;
         orcId = data.id;
+
+        const itensPayload = itens
+          .filter((i) => i.descricao.trim())
+          .map((i, idx) => ({
+            empresa_id: empresaId, orcamento_id: orcId,
+            tipo: i.tipo, codigo: i.codigo || null, descricao: i.descricao, detalhe: i.detalhe || null,
+            unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario,
+            desconto: i.desconto, total_item: i.total_item, ordem: idx,
+          }));
+        if (itensPayload.length) {
+          const { error } = await (supabase.from as any)("orcamentos_itens").insert(itensPayload);
+          if (error) throw error;
+        }
       } else {
         const { error } = await (supabase.from as any)("orcamentos").update(payload).eq("id", orcId);
         if (error) throw error;
-        await (supabase.from as any)("orcamentos_itens").delete().eq("orcamento_id", orcId);
-      }
 
-      const itensPayload = itens
-        .filter((i) => i.descricao.trim())
-        .map((i, idx) => ({
-          empresa_id: empresaId,
-          orcamento_id: orcId,
-          tipo: i.tipo, codigo: i.codigo || null, descricao: i.descricao, detalhe: i.detalhe || null,
-          unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario,
-          desconto: i.desconto, total_item: i.total_item, ordem: idx,
-        }));
-      if (itensPayload.length) {
-        const { error } = await (supabase.from as any)("orcamentos_itens").insert(itensPayload);
-        if (error) throw error;
+        // Substitui itens atomicamente via RPC (rollback em caso de falha)
+        const itensJson = itens
+          .filter((i) => i.descricao.trim())
+          .map((i, idx) => ({
+            tipo: i.tipo, codigo: i.codigo || null, descricao: i.descricao, detalhe: i.detalhe || null,
+            unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario,
+            desconto: i.desconto, total_item: i.total_item, ordem: idx,
+          }));
+        const { error: eRpc } = await (supabase as any).rpc("salvar_orcamento_itens", {
+          _orcamento_id: orcId, _itens: itensJson,
+        });
+        if (eRpc) throw eRpc;
       }
 
       toast.success("Orçamento salvo");
@@ -215,8 +226,20 @@ export default function OrcamentoEditor() {
     }
   };
 
+  const isFinalizado = FINAL_STATUSES.includes(form.status as OrcamentoStatus);
+
   const changeStatus = async (novo: OrcamentoStatus, extra: Record<string, any> = {}) => {
     if (isNew) { toast.error("Salve primeiro"); return; }
+    const atual = form.status as OrcamentoStatus;
+    const permitidas = TRANSICOES_PERMITIDAS[atual] || [];
+    if (!permitidas.includes(novo)) {
+      toast.error("Não é possível alterar o status de uma proposta finalizada.");
+      return;
+    }
+    if (novo === "aprovado" && form.data_validade && form.data_validade < new Date().toISOString().slice(0, 10)) {
+      toast.error("Validade expirada. Atualize a validade antes de aprovar.");
+      return;
+    }
     const { error } = await (supabase.from as any)("orcamentos").update({ status: novo, ...extra }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     setForm((f: any) => ({ ...f, status: novo, ...extra }));
