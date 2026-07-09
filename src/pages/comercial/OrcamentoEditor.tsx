@@ -82,7 +82,10 @@ export default function OrcamentoEditor() {
     data_emissao: new Date().toISOString().slice(0, 10),
     data_validade: "",
     status: "rascunho" as OrcamentoStatus,
-    observacoes: "", condicoes_pagamento: "", condicoes_pagamento_detalhe: "", prazo_execucao: "", validade_proposta: "",
+    observacoes: "", condicoes_pagamento: "", condicoes_pagamento_detalhe: "",
+    formas_pagamento: [] as string[],
+    cartao_credito_config: null as CartaoConfig | null,
+    prazo_execucao: "", validade_proposta: "",
     desconto_tipo: "valor" as DescontoTipo, desconto_valor: 0, impostos_valor: 0, taxa_extra: 0,
   });
   const [itens, setItens] = useState<Item[]>([emptyItem(0)]);
