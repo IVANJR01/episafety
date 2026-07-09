@@ -375,7 +375,17 @@ export default function OrcamentoEditor() {
                       <Label className="text-xs">Catálogo</Label>
                       <Select value="" onValueChange={(v) => pickCatalogo(idx, v)}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="Escolher do catálogo..." /></SelectTrigger>
-                        <SelectContent>{catalogo.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome} — {formatBRL(s.valor_padrao)}</SelectItem>)}</SelectContent>
+                        <SelectContent>
+                          {catalogo.length === 0 ? (
+                            <div className="px-2 py-4 text-xs text-muted-foreground text-center">
+                              Nenhum item ativo encontrado no catálogo desta empresa.
+                            </div>
+                          ) : catalogo.map((s: any) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.nome}{s.categoria ? ` · ${s.categoria}` : ""} — {formatBRL(s.valor_padrao)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
                       </Select>
                     </div>
                   </div>
