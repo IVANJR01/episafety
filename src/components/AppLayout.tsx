@@ -182,14 +182,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
   const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
   const [comercialOpen, setComercialOpen] = useState(isComercialActive);
-  const [epiOpen, setEpiOpen] = useState(true);
-  const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
-  const [asoOpen, setAsoOpen] = useState(isAsoActive);
-  const [portalRhOpen, setPortalRhOpen] = useState(isPortalRhActive);
-  const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
-  const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
-  const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
-  const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
 
   // Bottom nav items for mobile
   const visibleMobileBottomItems = mobileBottomItems.filter((i) => canAccess(i.moduleKey));
