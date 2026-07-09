@@ -94,13 +94,15 @@ export default function PortalRH() {
     setValidadeTipoSel(validade_tipo);
   }, [tipoExame, dataEmissao]);
 
-  // Funcionários da empresa
+  // Funcionários da empresa (todos os ativos, com ou sem GHE — o alerta aparece após seleção)
   const { data: funcionarios = [] } = useQuery({
-    queryKey: ["rh-funcionarios-ghe", empresaScopeIds.join(",")],
+    queryKey: ["portal-rh-aso-colaboradores", empresaScopeIds.join(",")],
+    enabled: (empresaScopeIds?.length ?? 0) > 0,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       let q = supabase.from("funcionarios")
-        .select("id, nome, cpf, cargo, setor, matricula, data_admissao, empresa_id, ghe_id, ghe_ges!inner(id, codigo, nome, setor), empresa_config:empresa_id(id, nome, cnpj)")
-        .not("ghe_id", "is", null)
+        .select("id, nome, cpf, cargo, setor, matricula, data_admissao, empresa_id, ghe_id, ghe_ges:ghe_id(id, codigo, nome, setor), empresa_config:empresa_id(id, nome, cnpj)")
         .is("data_demissao", null)
         .order("nome");
       const ids = (empresaScopeIds || []);
@@ -110,6 +112,7 @@ export default function PortalRH() {
       return data || [];
     },
   });
+
 
   const { data: medicos = [] } = useQuery({
     queryKey: ["rh-medicos", empresaScopeIds.join(",")],
@@ -381,13 +384,14 @@ export default function PortalRH() {
             {funcionarios.length === 0 && (
               <Card><CardContent className="p-6 text-center text-sm space-y-2">
                 <AlertTriangle className="h-6 w-6 mx-auto text-orange-500" />
-                <p className="font-medium">Nenhum colaborador vinculado ao GHE/GES.</p>
+                <p className="font-medium">Nenhum colaborador ativo encontrado nesta empresa.</p>
                 <p className="text-muted-foreground">
-                  Vincule colaboradores na <b>Gestão de ASO → PCMSO / GHE</b> antes de emitir o ASO.<br />
-                  <span className="text-xs">RH: solicite ao setor de Segurança do Trabalho a vinculação do colaborador ao GHE/GES.</span>
+                  Cadastre colaboradores em <b>Cadastro → Funcionários</b>.<br />
+                  <span className="text-xs">Colaboradores sem GHE/GES também aparecem na busca — o alerta é exibido após a seleção.</span>
                 </p>
               </CardContent></Card>
             )}
+
 
             {funcionarios.length > 0 && (
               <div className="grid lg:grid-cols-2 gap-4">
