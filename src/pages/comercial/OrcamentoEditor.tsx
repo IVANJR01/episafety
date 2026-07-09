@@ -286,6 +286,7 @@ export default function OrcamentoEditor() {
     cliente_email: form.cliente_email, cliente_telefone: form.cliente_telefone,
     cliente_endereco: form.cliente_endereco, responsavel_cliente: form.responsavel_cliente,
     observacoes: form.observacoes, condicoes_pagamento: form.condicoes_pagamento,
+    condicoes_pagamento_detalhe: form.condicoes_pagamento_detalhe,
     prazo_execucao: form.prazo_execucao, validade_proposta: form.validade_proposta,
     subtotal: totais.subtotal, desconto_tipo: form.desconto_tipo, desconto_valor: form.desconto_valor,
     impostos_valor: form.impostos_valor, taxa_extra: form.taxa_extra, total: totais.total,
