@@ -469,7 +469,7 @@ export default function OrcamentoEditor() {
             </CardContent>
           </Card>
         </div>
-      </fieldset>
+      </div>
 
       <Dialog open={recusarOpen} onOpenChange={setRecusarOpen}>
         <DialogContent>
