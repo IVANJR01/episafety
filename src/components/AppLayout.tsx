@@ -162,6 +162,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   void esocialItems;
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
   const visibleProgramasItems = programasItems.filter((i) => canAccess(i.moduleKey));
+  const visibleComercialItems = comercialItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
@@ -171,6 +172,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
   const isProgramasActive = location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat");
+  const isComercialActive = location.pathname.startsWith("/comercial");
+  const [epiOpen, setEpiOpen] = useState(true);
+  const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
+  const [asoOpen, setAsoOpen] = useState(isAsoActive);
+  const [portalRhOpen, setPortalRhOpen] = useState(isPortalRhActive);
+  const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
+  const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
+  const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
+  const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
+  const [comercialOpen, setComercialOpen] = useState(isComercialActive);
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
   const [asoOpen, setAsoOpen] = useState(isAsoActive);
