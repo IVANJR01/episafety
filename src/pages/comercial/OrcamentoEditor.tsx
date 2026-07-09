@@ -185,9 +185,18 @@ export default function OrcamentoEditor() {
   const save = async (newStatus?: OrcamentoStatus): Promise<string | null> => {
     if (!empresaId) { toast.error("Empresa ativa não definida"); return null; }
     if (!form.titulo?.trim()) { toast.error("Informe o título da proposta"); return null; }
-    if (!form.condicoes_pagamento) { toast.error("Selecione uma condição de pagamento"); return null; }
-    if (CONDICOES_COM_DETALHE.has(form.condicoes_pagamento) && !form.condicoes_pagamento_detalhe?.trim()) {
+    const formas: string[] = form.formas_pagamento || [];
+    if (!formas.length) { toast.error("Selecione ao menos uma forma de pagamento"); return null; }
+    const precisaDetalhe = formas.some((f) => FORMAS_COM_DETALHE.has(f));
+    if (precisaDetalhe && !form.condicoes_pagamento_detalhe?.trim()) {
       toast.error("Preencha os detalhes da condição de pagamento"); return null;
+    }
+    if (formas.includes(CARTAO_CREDITO_KEY)) {
+      const cc = form.cartao_credito_config as CartaoConfig | null;
+      if (!cc || !cc.parcelas) { toast.error("Configure as parcelas do cartão de crédito"); return null; }
+      if (cc.tipo === "com_juros" && (cc.juros_mensal === undefined || cc.juros_mensal < 0)) {
+        toast.error("Informe o percentual de juros ao mês"); return null;
+      }
     }
     if (!itens.some((i) => i.descricao.trim())) { toast.error("Adicione ao menos um item"); return null; }
     setSaving(true);
