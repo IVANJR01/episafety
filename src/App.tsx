@@ -42,6 +42,11 @@ import Backups from "@/pages/Backups";
 import VideoTreinamentos from "@/pages/VideoTreinamentos";
 import PortalTreinamentos from "@/pages/PortalTreinamentos";
 import PortalRH from "@/pages/rh/PortalRH";
+import ComercialDashboard from "@/pages/comercial/ComercialDashboard";
+import Orcamentos from "@/pages/comercial/Orcamentos";
+import OrcamentoEditor from "@/pages/comercial/OrcamentoEditor";
+import Clientes from "@/pages/comercial/Clientes";
+import Catalogo from "@/pages/comercial/Catalogo";
 
 import Faturas from "@/pages/Faturas";
 import AsoModule from "@/pages/aso/AsoModule";
