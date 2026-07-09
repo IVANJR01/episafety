@@ -94,13 +94,15 @@ export default function PortalRH() {
     setValidadeTipoSel(validade_tipo);
   }, [tipoExame, dataEmissao]);
 
-  // Funcionários da empresa
+  // Funcionários da empresa (todos os ativos, com ou sem GHE — o alerta aparece após seleção)
   const { data: funcionarios = [] } = useQuery({
-    queryKey: ["rh-funcionarios-ghe", empresaScopeIds.join(",")],
+    queryKey: ["portal-rh-aso-colaboradores", empresaScopeIds.join(",")],
+    enabled: (empresaScopeIds?.length ?? 0) > 0,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       let q = supabase.from("funcionarios")
-        .select("id, nome, cpf, cargo, setor, matricula, data_admissao, empresa_id, ghe_id, ghe_ges!inner(id, codigo, nome, setor), empresa_config:empresa_id(id, nome, cnpj)")
-        .not("ghe_id", "is", null)
+        .select("id, nome, cpf, cargo, setor, matricula, data_admissao, empresa_id, ghe_id, ghe_ges:ghe_id(id, codigo, nome, setor), empresa_config:empresa_id(id, nome, cnpj)")
         .is("data_demissao", null)
         .order("nome");
       const ids = (empresaScopeIds || []);
@@ -110,6 +112,7 @@ export default function PortalRH() {
       return data || [];
     },
   });
+
 
   const { data: medicos = [] } = useQuery({
     queryKey: ["rh-medicos", empresaScopeIds.join(",")],
