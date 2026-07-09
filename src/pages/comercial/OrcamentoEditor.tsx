@@ -10,8 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import {
+  FORMAS_PAGAMENTO, FORMAS_COM_DETALHE, calcularParcelamentoCartao,
+  parseFormasPagamento, CartaoConfig, CartaoTipoJuros,
+} from "@/lib/orcamentoPagamento";
 import {
   ArrowLeft, Save, Send, CheckCircle2, XCircle, Ban, FileDown, FileSpreadsheet,
   MessageCircle, Mail, Plus, Trash2, Eye,
