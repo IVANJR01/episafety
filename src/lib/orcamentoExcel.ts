@@ -13,6 +13,7 @@ interface OrcamentoExcelData {
   cliente_telefone?: string | null;
   responsavel_cliente?: string | null;
   condicoes_pagamento?: string | null;
+  condicoes_pagamento_detalhe?: string | null;
   prazo_execucao?: string | null;
   observacoes?: string | null;
   subtotal: number;
