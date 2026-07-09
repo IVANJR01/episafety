@@ -190,7 +190,7 @@ export function gerarOrcamentoPdf(
   y += 44;
 
   // Condições comerciais
-  if (orc.condicoes_pagamento || orc.prazo_execucao || orc.validade_proposta) {
+  if ((orc.formas_pagamento && orc.formas_pagamento.length) || orc.condicoes_pagamento || orc.prazo_execucao || orc.validade_proposta) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Condições Comerciais", marginX, y);
