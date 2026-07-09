@@ -393,7 +393,7 @@ export default function OrcamentoEditor() {
               ))}
             </CardContent>
           </Card>
-        </div>
+        </fieldset>
 
         {/* Lateral: totais + ações */}
         <div className="space-y-4">
