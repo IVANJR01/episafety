@@ -25,6 +25,7 @@ interface OrcamentoPdfData {
   responsavel_cliente?: string | null;
   observacoes?: string | null;
   condicoes_pagamento?: string | null;
+  condicoes_pagamento_detalhe?: string | null;
   prazo_execucao?: string | null;
   validade_proposta?: string | null;
   subtotal: number;
