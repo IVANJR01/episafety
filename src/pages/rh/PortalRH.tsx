@@ -188,12 +188,17 @@ export default function PortalRH() {
 
   const filteredFuncs = useMemo(() => {
     if (!funcSearch) return funcionarios.slice(0, 50);
-    const q = funcSearch.toLowerCase();
+    // Normaliza acentos/caixa para que "fabio" case com "FÁBIO", "antonio" com "ANTÔNIO", etc.
+    const norm = (s: string) =>
+      (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const q = norm(funcSearch);
     const digits = funcSearch.replace(/\D/g, "");
     return funcionarios.filter((f: any) =>
-      f.nome?.toLowerCase().includes(q) ||
+      norm(f.nome || "").includes(q) ||
+      norm(f.cargo || "").includes(q) ||
+      norm(f.setor || "").includes(q) ||
       (digits && f.cpf?.replace(/\D/g, "").includes(digits)) ||
-      f.matricula?.toLowerCase().includes(q)
+      norm(f.matricula || "").includes(q)
     ).slice(0, 50);
   }, [funcionarios, funcSearch]);
 
