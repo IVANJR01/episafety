@@ -14,6 +14,14 @@ interface OrcamentoExcelData {
   responsavel_cliente?: string | null;
   condicoes_pagamento?: string | null;
   condicoes_pagamento_detalhe?: string | null;
+  formas_pagamento?: string[] | null;
+  cartao_credito_config?: {
+    parcelas: number;
+    tipo: "sem_juros" | "com_juros";
+    juros_mensal: number;
+    valor_parcela: number;
+    total_com_juros: number;
+  } | null;
   prazo_execucao?: string | null;
   observacoes?: string | null;
   subtotal: number;
