@@ -14,6 +14,14 @@ interface OrcamentoExcelData {
   responsavel_cliente?: string | null;
   condicoes_pagamento?: string | null;
   condicoes_pagamento_detalhe?: string | null;
+  formas_pagamento?: string[] | null;
+  cartao_credito_config?: {
+    parcelas: number;
+    tipo: "sem_juros" | "com_juros";
+    juros_mensal: number;
+    valor_parcela: number;
+    total_com_juros: number;
+  } | null;
   prazo_execucao?: string | null;
   observacoes?: string | null;
   subtotal: number;
@@ -48,7 +56,14 @@ export function exportarOrcamentoExcel(orc: OrcamentoExcelData, itens: Orcamento
     ["Responsável", orc.responsavel_cliente || ""],
     ["Telefone", orc.cliente_telefone || ""],
     ["E-mail", orc.cliente_email || ""],
-    ["Condições de pagamento", orc.condicoes_pagamento || ""],
+    ["Condições de pagamento", (orc.formas_pagamento && orc.formas_pagamento.length ? orc.formas_pagamento.join(" | ") : (orc.condicoes_pagamento || ""))],
+    ["Formas de pagamento", (orc.formas_pagamento || []).join(", ")],
+    ["Aceita cartão de crédito", orc.cartao_credito_config ? "Sim" : "Não"],
+    ["Parcelas cartão", orc.cartao_credito_config?.parcelas ?? ""],
+    ["Tipo de juros", orc.cartao_credito_config ? (orc.cartao_credito_config.tipo === "com_juros" ? "Com juros" : "Sem juros") : ""],
+    ["Juros mensal (%)", orc.cartao_credito_config?.juros_mensal ?? ""],
+    ["Valor da parcela", orc.cartao_credito_config?.valor_parcela ?? ""],
+    ["Total com juros", orc.cartao_credito_config?.total_com_juros ?? ""],
     ["Detalhes da condição", orc.condicoes_pagamento_detalhe || ""],
     ["Prazo de execução", orc.prazo_execucao || ""],
     ["Observações", orc.observacoes || ""],

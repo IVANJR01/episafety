@@ -5620,6 +5620,7 @@ export type Database = {
         Row: {
           aprovado_em: string | null
           cancelado_em: string | null
+          cartao_credito_config: Json | null
           cliente_cnpj_cpf: string | null
           cliente_email: string | null
           cliente_endereco: string | null
@@ -5636,6 +5637,7 @@ export type Database = {
           desconto_valor: number
           empresa_id: string
           enviado_em: string | null
+          formas_pagamento: Json
           id: string
           impostos_valor: number
           modelo: string | null
@@ -5658,6 +5660,7 @@ export type Database = {
         Insert: {
           aprovado_em?: string | null
           cancelado_em?: string | null
+          cartao_credito_config?: Json | null
           cliente_cnpj_cpf?: string | null
           cliente_email?: string | null
           cliente_endereco?: string | null
@@ -5674,6 +5677,7 @@ export type Database = {
           desconto_valor?: number
           empresa_id: string
           enviado_em?: string | null
+          formas_pagamento?: Json
           id?: string
           impostos_valor?: number
           modelo?: string | null
@@ -5696,6 +5700,7 @@ export type Database = {
         Update: {
           aprovado_em?: string | null
           cancelado_em?: string | null
+          cartao_credito_config?: Json | null
           cliente_cnpj_cpf?: string | null
           cliente_email?: string | null
           cliente_endereco?: string | null
@@ -5712,6 +5717,7 @@ export type Database = {
           desconto_valor?: number
           empresa_id?: string
           enviado_em?: string | null
+          formas_pagamento?: Json
           id?: string
           impostos_valor?: number
           modelo?: string | null
