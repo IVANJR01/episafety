@@ -145,33 +145,61 @@ export default function Orcamentos() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((o) => (
-                  <tr key={o.id} className="border-t hover:bg-muted/30">
-                    <td className="px-3 py-2 font-mono text-xs">{o.numero_orcamento}</td>
-                    <td className="px-3 py-2">{o.cliente_nome || "—"}</td>
-                    <td className="px-3 py-2 truncate max-w-[240px]">{o.titulo}</td>
-                    <td className="px-3 py-2">{formatDate(o.data_emissao)}</td>
-                    <td className="px-3 py-2">{formatDate(o.data_validade)}</td>
-                    <td className="px-3 py-2 text-right font-semibold">{formatBRL(o.total)}</td>
-                    <td className="px-3 py-2"><StatusBadgeOrcamento status={o.status} validade={o.data_validade} /></td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
-                      <Button size="sm" variant="ghost" onClick={() => nav(`/comercial/orcamentos/${o.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => duplicar.mutate(o.id)}><Copy className="w-3.5 h-3.5" /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => confirm("Excluir orçamento?") && del.mutate(o.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                    </td>
-                  </tr>
-                ))}
+                <TooltipProvider delayDuration={300}>
+                {filtered.map((o) => {
+                  const isRascunho = o.status === "rascunho";
+                  const abrir = () => nav(`/comercial/orcamentos/${o.id}`);
+                  return (
+                  <Tooltip key={o.id}>
+                    <TooltipTrigger asChild>
+                      <tr
+                        className="border-t hover:bg-muted/30 cursor-pointer"
+                        onClick={abrir}
+                      >
+                        <td className="px-3 py-2 font-mono text-xs">{o.numero_orcamento}</td>
+                        <td className="px-3 py-2">{o.cliente_nome || "—"}</td>
+                        <td className="px-3 py-2 truncate max-w-[240px]">{o.titulo}</td>
+                        <td className="px-3 py-2">{formatDate(o.data_emissao)}</td>
+                        <td className="px-3 py-2">{formatDate(o.data_validade)}</td>
+                        <td className="px-3 py-2 text-right font-semibold">{formatBRL(o.total)}</td>
+                        <td className="px-3 py-2"><StatusBadgeOrcamento status={o.status} validade={o.data_validade} /></td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          {isRascunho ? (
+                            <Button
+                              size="sm"
+                              className="bg-orange-500 hover:bg-orange-600 text-white mr-1"
+                              onClick={abrir}
+                            >
+                              <Pencil className="w-3.5 h-3.5 mr-1" />Continuar edição
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" className="mr-1" onClick={abrir}>
+                              <Eye className="w-3.5 h-3.5 mr-1" />Visualizar
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" title="Duplicar" onClick={() => duplicar.mutate(o.id)}><Copy className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="ghost" title="Excluir" onClick={() => confirm("Excluir orçamento?") && del.mutate(o.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                        </td>
+                      </tr>
+                    </TooltipTrigger>
+                    <TooltipContent>Clique para abrir o orçamento</TooltipContent>
+                  </Tooltip>
+                  );
+                })}
+                </TooltipProvider>
               </tbody>
             </table>
           </div>
 
           {/* Mobile */}
           <div className="md:hidden grid gap-3">
-            {filtered.map((o) => (
+            {filtered.map((o) => {
+              const isRascunho = o.status === "rascunho";
+              return (
               <Card key={o.id}>
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-2 gap-2">
-                    <div className="min-w-0">
+                    <div className="min-w-0" onClick={() => nav(`/comercial/orcamentos/${o.id}`)}>
                       <div className="font-mono text-xs text-muted-foreground">{o.numero_orcamento}</div>
                       <div className="font-semibold truncate">{o.cliente_nome || "Sem cliente"}</div>
                       <div className="text-xs text-muted-foreground truncate">{o.titulo}</div>
@@ -183,14 +211,27 @@ export default function Orcamentos() {
                     <div className="font-semibold">{formatBRL(o.total)}</div>
                   </div>
                   <div className="flex gap-2 mt-3">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => nav(`/comercial/orcamentos/${o.id}`)}>Abrir</Button>
-                    <Button size="sm" variant="outline" onClick={() => duplicar.mutate(o.id)}><Copy className="w-3.5 h-3.5" /></Button>
-                    <Button size="sm" variant="outline" onClick={() => confirm("Excluir?") && del.mutate(o.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                    {isRascunho ? (
+                      <Button
+                        className="flex-1 min-h-11 bg-orange-500 hover:bg-orange-600 text-white"
+                        onClick={() => nav(`/comercial/orcamentos/${o.id}`)}
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />Continuar edição
+                      </Button>
+                    ) : (
+                      <Button variant="outline" className="flex-1 min-h-11" onClick={() => nav(`/comercial/orcamentos/${o.id}`)}>
+                        <Eye className="w-4 h-4 mr-1" />Visualizar
+                      </Button>
+                    )}
+                    <Button variant="outline" className="min-h-11 min-w-11" title="Duplicar" onClick={() => duplicar.mutate(o.id)}><Copy className="w-4 h-4" /></Button>
+                    <Button variant="outline" className="min-h-11 min-w-11" title="Excluir" onClick={() => confirm("Excluir?") && del.mutate(o.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
+
         </>
       )}
     </div>
