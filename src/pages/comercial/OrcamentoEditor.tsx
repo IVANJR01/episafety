@@ -26,24 +26,8 @@ import { OrcamentoStatus, TIPOS_ITEM } from "@/lib/orcamentoTypes";
 
 const FINAL_STATUSES: OrcamentoStatus[] = ["aprovado", "recusado", "cancelado"];
 
-const CONDICOES_PAGAMENTO = [
-  "À vista",
-  "PIX",
-  "Cartão de crédito",
-  "Cartão de débito",
-  "Boleto bancário",
-  "50% na aprovação + 50% na entrega",
-  "30% na aprovação + 70% na entrega",
-  "Entrada + parcelamento",
-  "Mensalidade recorrente",
-  "A combinar",
-] as const;
+const CARTAO_CREDITO_KEY = "Cartão de crédito";
 
-const CONDICOES_COM_DETALHE = new Set<string>([
-  "Entrada + parcelamento",
-  "Mensalidade recorrente",
-  "A combinar",
-]);
 
 const TRANSICOES_PERMITIDAS: Record<OrcamentoStatus, OrcamentoStatus[]> = {
   rascunho: ["enviado", "cancelado"],
