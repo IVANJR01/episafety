@@ -93,10 +93,18 @@ export default function OrcamentoEditor() {
   });
 
   const { data: catalogo = [] } = useQuery({
-    queryKey: ["comercial_catalogo_min", empresaId],
+    queryKey: ["catalogo_servicos", empresaId],
     enabled: !!empresaId,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    staleTime: 0,
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("catalogo_servicos").select("id,nome,categoria,unidade,valor_padrao,descricao").eq("ativo", true).order("nome");
+      const { data, error } = await (supabase.from as any)("catalogo_servicos")
+        .select("id,nome,categoria,unidade,valor_padrao,descricao,ativo,empresa_id")
+        .eq("empresa_id", empresaId)
+        .eq("ativo", true)
+        .order("nome");
+      if (error) { console.error("[catalogo_servicos]", error); return []; }
       return data || [];
     },
   });
