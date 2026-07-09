@@ -135,7 +135,13 @@ export default function OrcamentoEditor() {
       const { data: orc, error } = await (supabase.from as any)("orcamentos").select("*").eq("id", id).single();
       if (error) { toast.error("Orçamento não encontrado"); nav("/comercial/orcamentos"); return; }
       const { data: its } = await (supabase.from as any)("orcamentos_itens").select("*").eq("orcamento_id", id).order("ordem");
-      setForm({ ...orc, data_validade: orc.data_validade || "" });
+      const formas = parseFormasPagamento(orc.formas_pagamento, orc.condicoes_pagamento);
+      setForm({
+        ...orc,
+        data_validade: orc.data_validade || "",
+        formas_pagamento: formas,
+        cartao_credito_config: orc.cartao_credito_config || null,
+      });
       setItens((its || []).length ? (its as Item[]) : [emptyItem(0)]);
       setLoaded(true);
     })();
