@@ -270,15 +270,18 @@ export default function OrcamentoEditor() {
   };
 
   const enviarWhatsapp = () => {
-    const msg = `Olá! Segue a proposta nº ${form.numero_orcamento || "(pendente)"} referente a ${form.titulo}. Valor total: ${formatBRL(totais.total)}.${form.data_validade ? ` Validade: ${form.data_validade}.` : ""}`;
-    const tel = (form.cliente_telefone || "").replace(/\D/g, "");
-    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, "_blank");
+    const validadeTxt = form.data_validade ? ` Validade: ${formatDate(form.data_validade)}.` : "";
+    const msg = `Olá! Segue a proposta nº ${form.numero_orcamento || "(pendente)"} referente a ${form.titulo}. Valor total: ${formatBRL(totais.total)}.${validadeTxt}`;
+    const tel = normalizarTelefoneBR(form.cliente_telefone || "");
+    if (!tel) { toast.error("Telefone do cliente não informado"); return; }
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };
 
   const enviarEmail = () => {
     const subject = `Proposta ${form.numero_orcamento || ""} — ${form.titulo}`;
-    const body = `Olá,\n\nSegue proposta nº ${form.numero_orcamento || ""} no valor total de ${formatBRL(totais.total)}.\n\nAtenciosamente.`;
-    window.location.href = `mailto:${form.cliente_email || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const body = `Olá,\n\nSegue proposta nº ${form.numero_orcamento || ""} no valor total de ${formatBRL(totais.total)}.${form.data_validade ? `\nValidade: ${formatDate(form.data_validade)}.` : ""}\n\nAtenciosamente.`;
+    const url = `mailto:${form.cliente_email || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   if (!loaded) return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
