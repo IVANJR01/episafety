@@ -21,6 +21,25 @@ import { OrcamentoStatus, TIPOS_ITEM } from "@/lib/orcamentoTypes";
 
 const FINAL_STATUSES: OrcamentoStatus[] = ["aprovado", "recusado", "cancelado"];
 
+const CONDICOES_PAGAMENTO = [
+  "À vista",
+  "PIX",
+  "Cartão de crédito",
+  "Cartão de débito",
+  "Boleto bancário",
+  "50% na aprovação + 50% na entrega",
+  "30% na aprovação + 70% na entrega",
+  "Entrada + parcelamento",
+  "Mensalidade recorrente",
+  "A combinar",
+] as const;
+
+const CONDICOES_COM_DETALHE = new Set<string>([
+  "Entrada + parcelamento",
+  "Mensalidade recorrente",
+  "A combinar",
+]);
+
 const TRANSICOES_PERMITIDAS: Record<OrcamentoStatus, OrcamentoStatus[]> = {
   rascunho: ["enviado", "cancelado"],
   enviado: ["visualizado", "aprovado", "recusado", "cancelado"],
@@ -74,7 +93,7 @@ export default function OrcamentoEditor() {
     data_emissao: new Date().toISOString().slice(0, 10),
     data_validade: "",
     status: "rascunho" as OrcamentoStatus,
-    observacoes: "", condicoes_pagamento: "", prazo_execucao: "", validade_proposta: "",
+    observacoes: "", condicoes_pagamento: "", condicoes_pagamento_detalhe: "", prazo_execucao: "", validade_proposta: "",
     desconto_tipo: "valor" as DescontoTipo, desconto_valor: 0, impostos_valor: 0, taxa_extra: 0,
   });
   const [itens, setItens] = useState<Item[]>([emptyItem(0)]);
@@ -168,6 +187,10 @@ export default function OrcamentoEditor() {
   const save = async (newStatus?: OrcamentoStatus): Promise<string | null> => {
     if (!empresaId) { toast.error("Empresa ativa não definida"); return null; }
     if (!form.titulo?.trim()) { toast.error("Informe o título da proposta"); return null; }
+    if (!form.condicoes_pagamento) { toast.error("Selecione uma condição de pagamento"); return null; }
+    if (CONDICOES_COM_DETALHE.has(form.condicoes_pagamento) && !form.condicoes_pagamento_detalhe?.trim()) {
+      toast.error("Preencha os detalhes da condição de pagamento"); return null;
+    }
     if (!itens.some((i) => i.descricao.trim())) { toast.error("Adicione ao menos um item"); return null; }
     setSaving(true);
     try {
@@ -263,6 +286,7 @@ export default function OrcamentoEditor() {
     cliente_email: form.cliente_email, cliente_telefone: form.cliente_telefone,
     cliente_endereco: form.cliente_endereco, responsavel_cliente: form.responsavel_cliente,
     observacoes: form.observacoes, condicoes_pagamento: form.condicoes_pagamento,
+    condicoes_pagamento_detalhe: form.condicoes_pagamento_detalhe,
     prazo_execucao: form.prazo_execucao, validade_proposta: form.validade_proposta,
     subtotal: totais.subtotal, desconto_tipo: form.desconto_tipo, desconto_valor: form.desconto_valor,
     impostos_valor: form.impostos_valor, taxa_extra: form.taxa_extra, total: totais.total,
@@ -345,7 +369,28 @@ export default function OrcamentoEditor() {
               <div><Label>Data de emissão</Label><Input type="date" value={form.data_emissao} onChange={(e) => setForm({ ...form, data_emissao: e.target.value })} /></div>
               <div><Label>Validade</Label><Input type="date" value={form.data_validade || ""} onChange={(e) => setForm({ ...form, data_validade: e.target.value })} /></div>
               <div><Label>Prazo de execução</Label><Input value={form.prazo_execucao || ""} onChange={(e) => setForm({ ...form, prazo_execucao: e.target.value })} placeholder="ex: 30 dias" /></div>
-              <div><Label>Condições de pagamento</Label><Input value={form.condicoes_pagamento || ""} onChange={(e) => setForm({ ...form, condicoes_pagamento: e.target.value })} placeholder="ex: 50% + 50%" /></div>
+              <div className="sm:col-span-2">
+                <Label>Condições de pagamento *</Label>
+                <Select
+                  value={CONDICOES_PAGAMENTO.includes(form.condicoes_pagamento as any) ? form.condicoes_pagamento : (form.condicoes_pagamento ? "A combinar" : "")}
+                  onValueChange={(v) => setForm({ ...form, condicoes_pagamento: v, condicoes_pagamento_detalhe: CONDICOES_COM_DETALHE.has(v) ? (form.condicoes_pagamento_detalhe || "") : "" })}
+                >
+                  <SelectTrigger className="h-11"><SelectValue placeholder="Selecionar condição..." /></SelectTrigger>
+                  <SelectContent>
+                    {CONDICOES_PAGAMENTO.map((c) => <SelectItem key={c} value={c} className="py-3">{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {CONDICOES_COM_DETALHE.has(form.condicoes_pagamento) && (
+                  <div className="mt-2">
+                    <Label>Detalhes da condição *</Label>
+                    <Input
+                      value={form.condicoes_pagamento_detalhe || ""}
+                      onChange={(e) => setForm({ ...form, condicoes_pagamento_detalhe: e.target.value })}
+                      placeholder="ex: Entrada de R$ 500,00 + 2 parcelas"
+                    />
+                  </div>
+                )}
+              </div>
               <div className="sm:col-span-2"><Label>Observações</Label><Textarea value={form.observacoes || ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} rows={3} /></div>
             </CardContent>
           </Card>

@@ -25,6 +25,7 @@ interface OrcamentoPdfData {
   responsavel_cliente?: string | null;
   observacoes?: string | null;
   condicoes_pagamento?: string | null;
+  condicoes_pagamento_detalhe?: string | null;
   prazo_execucao?: string | null;
   validade_proposta?: string | null;
   subtotal: number;
@@ -189,6 +190,10 @@ export function gerarOrcamentoPdf(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     if (orc.condicoes_pagamento) { doc.text(`Pagamento: ${orc.condicoes_pagamento}`, marginX, y); y += 4; }
+    if (orc.condicoes_pagamento_detalhe) {
+      const det = doc.splitTextToSize(`Detalhes: ${orc.condicoes_pagamento_detalhe}`, pageW - marginX * 2);
+      doc.text(det, marginX, y); y += det.length * 4;
+    }
     if (orc.prazo_execucao) { doc.text(`Prazo de execução: ${orc.prazo_execucao}`, marginX, y); y += 4; }
     if (orc.validade_proposta) { doc.text(`Validade: ${orc.validade_proposta}`, marginX, y); y += 4; }
   }
