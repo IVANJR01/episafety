@@ -5627,6 +5627,7 @@ export type Database = {
           cliente_nome: string | null
           cliente_telefone: string | null
           condicoes_pagamento: string | null
+          condicoes_pagamento_detalhe: string | null
           created_at: string
           created_by: string | null
           data_emissao: string
@@ -5664,6 +5665,7 @@ export type Database = {
           cliente_nome?: string | null
           cliente_telefone?: string | null
           condicoes_pagamento?: string | null
+          condicoes_pagamento_detalhe?: string | null
           created_at?: string
           created_by?: string | null
           data_emissao?: string
@@ -5701,6 +5703,7 @@ export type Database = {
           cliente_nome?: string | null
           cliente_telefone?: string | null
           condicoes_pagamento?: string | null
+          condicoes_pagamento_detalhe?: string | null
           created_at?: string
           created_by?: string | null
           data_emissao?: string
