@@ -16,8 +16,28 @@ import {
   ArrowLeft, Save, Send, CheckCircle2, XCircle, Ban, FileDown, FileSpreadsheet,
   MessageCircle, Mail, Plus, Trash2, Eye,
 } from "lucide-react";
-import { formatBRL, calcularTotais, calcularTotalItem, DescontoTipo } from "@/lib/orcamentoCalc";
+import { formatBRL, calcularTotais, calcularTotalItem, formatDate, DescontoTipo } from "@/lib/orcamentoCalc";
 import { OrcamentoStatus, TIPOS_ITEM } from "@/lib/orcamentoTypes";
+
+const FINAL_STATUSES: OrcamentoStatus[] = ["aprovado", "recusado", "cancelado"];
+
+const TRANSICOES_PERMITIDAS: Record<OrcamentoStatus, OrcamentoStatus[]> = {
+  rascunho: ["enviado", "cancelado"],
+  enviado: ["visualizado", "aprovado", "recusado", "cancelado"],
+  visualizado: ["aprovado", "recusado", "cancelado"],
+  vencido: ["aprovado", "recusado", "cancelado"],
+  aprovado: [],
+  recusado: [],
+  cancelado: [],
+};
+
+function normalizarTelefoneBR(tel: string): string {
+  const digits = (tel || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) return digits;
+  if (digits.length === 10 || digits.length === 11) return "55" + digits;
+  return digits;
+}
 import { StatusBadgeOrcamento } from "@/components/comercial/StatusBadgeOrcamento";
 import { gerarOrcamentoPdf } from "@/lib/orcamentoPdf";
 import { exportarOrcamentoExcel } from "@/lib/orcamentoExcel";
@@ -163,24 +183,35 @@ export default function OrcamentoEditor() {
         const { data, error } = await (supabase.from as any)("orcamentos").insert(payload).select("id").single();
         if (error) throw error;
         orcId = data.id;
+
+        const itensPayload = itens
+          .filter((i) => i.descricao.trim())
+          .map((i, idx) => ({
+            empresa_id: empresaId, orcamento_id: orcId,
+            tipo: i.tipo, codigo: i.codigo || null, descricao: i.descricao, detalhe: i.detalhe || null,
+            unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario,
+            desconto: i.desconto, total_item: i.total_item, ordem: idx,
+          }));
+        if (itensPayload.length) {
+          const { error } = await (supabase.from as any)("orcamentos_itens").insert(itensPayload);
+          if (error) throw error;
+        }
       } else {
         const { error } = await (supabase.from as any)("orcamentos").update(payload).eq("id", orcId);
         if (error) throw error;
-        await (supabase.from as any)("orcamentos_itens").delete().eq("orcamento_id", orcId);
-      }
 
-      const itensPayload = itens
-        .filter((i) => i.descricao.trim())
-        .map((i, idx) => ({
-          empresa_id: empresaId,
-          orcamento_id: orcId,
-          tipo: i.tipo, codigo: i.codigo || null, descricao: i.descricao, detalhe: i.detalhe || null,
-          unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario,
-          desconto: i.desconto, total_item: i.total_item, ordem: idx,
-        }));
-      if (itensPayload.length) {
-        const { error } = await (supabase.from as any)("orcamentos_itens").insert(itensPayload);
-        if (error) throw error;
+        // Substitui itens atomicamente via RPC (rollback em caso de falha)
+        const itensJson = itens
+          .filter((i) => i.descricao.trim())
+          .map((i, idx) => ({
+            tipo: i.tipo, codigo: i.codigo || null, descricao: i.descricao, detalhe: i.detalhe || null,
+            unidade: i.unidade, quantidade: i.quantidade, valor_unitario: i.valor_unitario,
+            desconto: i.desconto, total_item: i.total_item, ordem: idx,
+          }));
+        const { error: eRpc } = await (supabase as any).rpc("salvar_orcamento_itens", {
+          _orcamento_id: orcId, _itens: itensJson,
+        });
+        if (eRpc) throw eRpc;
       }
 
       toast.success("Orçamento salvo");
@@ -195,8 +226,20 @@ export default function OrcamentoEditor() {
     }
   };
 
+  const isFinalizado = FINAL_STATUSES.includes(form.status as OrcamentoStatus);
+
   const changeStatus = async (novo: OrcamentoStatus, extra: Record<string, any> = {}) => {
     if (isNew) { toast.error("Salve primeiro"); return; }
+    const atual = form.status as OrcamentoStatus;
+    const permitidas = TRANSICOES_PERMITIDAS[atual] || [];
+    if (!permitidas.includes(novo)) {
+      toast.error("Não é possível alterar o status de uma proposta finalizada.");
+      return;
+    }
+    if (novo === "aprovado" && form.data_validade && form.data_validade < new Date().toISOString().slice(0, 10)) {
+      toast.error("Validade expirada. Atualize a validade antes de aprovar.");
+      return;
+    }
     const { error } = await (supabase.from as any)("orcamentos").update({ status: novo, ...extra }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     setForm((f: any) => ({ ...f, status: novo, ...extra }));
@@ -227,15 +270,18 @@ export default function OrcamentoEditor() {
   };
 
   const enviarWhatsapp = () => {
-    const msg = `Olá! Segue a proposta nº ${form.numero_orcamento || "(pendente)"} referente a ${form.titulo}. Valor total: ${formatBRL(totais.total)}.${form.data_validade ? ` Validade: ${form.data_validade}.` : ""}`;
-    const tel = (form.cliente_telefone || "").replace(/\D/g, "");
-    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, "_blank");
+    const validadeTxt = form.data_validade ? ` Validade: ${formatDate(form.data_validade)}.` : "";
+    const msg = `Olá! Segue a proposta nº ${form.numero_orcamento || "(pendente)"} referente a ${form.titulo}. Valor total: ${formatBRL(totais.total)}.${validadeTxt}`;
+    const tel = normalizarTelefoneBR(form.cliente_telefone || "");
+    if (!tel) { toast.error("Telefone do cliente não informado"); return; }
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
   };
 
   const enviarEmail = () => {
     const subject = `Proposta ${form.numero_orcamento || ""} — ${form.titulo}`;
-    const body = `Olá,\n\nSegue proposta nº ${form.numero_orcamento || ""} no valor total de ${formatBRL(totais.total)}.\n\nAtenciosamente.`;
-    window.location.href = `mailto:${form.cliente_email || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const body = `Olá,\n\nSegue proposta nº ${form.numero_orcamento || ""} no valor total de ${formatBRL(totais.total)}.${form.data_validade ? `\nValidade: ${formatDate(form.data_validade)}.` : ""}\n\nAtenciosamente.`;
+    const url = `mailto:${form.cliente_email || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   if (!loaded) return <div className="p-6 text-sm text-muted-foreground">Carregando...</div>;
@@ -253,8 +299,14 @@ export default function OrcamentoEditor() {
         }
       />
 
+      {isFinalizado && (
+        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 text-amber-900 px-3 py-2 text-sm dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800">
+          Esta proposta está finalizada ({form.status}). Para alterar, duplique a proposta.
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
+        <fieldset disabled={isFinalizado} className="lg:col-span-2 space-y-4 min-w-0">
           {/* Cliente */}
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Cliente</CardTitle></CardHeader>
@@ -341,7 +393,7 @@ export default function OrcamentoEditor() {
               ))}
             </CardContent>
           </Card>
-        </div>
+        </fieldset>
 
         {/* Lateral: totais + ações */}
         <div className="space-y-4">
@@ -381,7 +433,9 @@ export default function OrcamentoEditor() {
               </div>
 
               <div className="grid gap-2">
-                <Button onClick={() => save()} disabled={saving}><Save className="w-4 h-4 mr-2" />Salvar</Button>
+                {!isFinalizado && (
+                  <Button onClick={() => save()} disabled={saving}><Save className="w-4 h-4 mr-2" />Salvar</Button>
+                )}
                 {!isNew && (
                   <>
                     <Button variant="outline" onClick={baixarPdf}><FileDown className="w-4 h-4 mr-2" />PDF</Button>
@@ -394,26 +448,40 @@ export default function OrcamentoEditor() {
                 )}
               </div>
 
-              {!isNew && (
-                <div className="border-t pt-2 grid gap-1.5">
-                  <div className="text-xs font-semibold text-muted-foreground">Status</div>
-                  <Button size="sm" variant="outline" onClick={() => changeStatus("enviado", { enviado_em: new Date().toISOString() })}>
-                    <Send className="w-3.5 h-3.5 mr-1" />Marcar enviado
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => changeStatus("visualizado", { visualizado_em: new Date().toISOString() })}>
-                    <Eye className="w-3.5 h-3.5 mr-1" />Marcar visualizado
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => changeStatus("aprovado", { aprovado_em: new Date().toISOString() })}>
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-green-600" />Aprovar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setRecusarOpen(true)}>
-                    <XCircle className="w-3.5 h-3.5 mr-1 text-red-600" />Recusar
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => changeStatus("cancelado", { cancelado_em: new Date().toISOString() })}>
-                    <Ban className="w-3.5 h-3.5 mr-1" />Cancelar
-                  </Button>
-                </div>
-              )}
+              {!isNew && !isFinalizado && (() => {
+                const permitidas = TRANSICOES_PERMITIDAS[form.status as OrcamentoStatus] || [];
+                if (permitidas.length === 0) return null;
+                return (
+                  <div className="border-t pt-2 grid gap-1.5">
+                    <div className="text-xs font-semibold text-muted-foreground">Status</div>
+                    {permitidas.includes("enviado") && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus("enviado", { enviado_em: new Date().toISOString() })}>
+                        <Send className="w-3.5 h-3.5 mr-1" />Marcar enviado
+                      </Button>
+                    )}
+                    {permitidas.includes("visualizado") && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus("visualizado", { visualizado_em: new Date().toISOString() })}>
+                        <Eye className="w-3.5 h-3.5 mr-1" />Marcar visualizado
+                      </Button>
+                    )}
+                    {permitidas.includes("aprovado") && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus("aprovado", { aprovado_em: new Date().toISOString() })}>
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-green-600" />Aprovar
+                      </Button>
+                    )}
+                    {permitidas.includes("recusado") && (
+                      <Button size="sm" variant="outline" onClick={() => setRecusarOpen(true)}>
+                        <XCircle className="w-3.5 h-3.5 mr-1 text-red-600" />Recusar
+                      </Button>
+                    )}
+                    {permitidas.includes("cancelado") && (
+                      <Button size="sm" variant="outline" onClick={() => changeStatus("cancelado", { cancelado_em: new Date().toISOString() })}>
+                        <Ban className="w-3.5 h-3.5 mr-1" />Cancelar
+                      </Button>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
