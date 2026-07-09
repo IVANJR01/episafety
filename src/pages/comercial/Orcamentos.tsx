@@ -64,9 +64,9 @@ export default function Orcamentos() {
       if (e2) throw e2;
       const { data: numero, error: e3 } = await (supabase as any).rpc("next_orcamento_numero", { _empresa_id: empresaId });
       if (e3) throw e3;
-      const { id: _oid, created_at, updated_at, numero_orcamento, aprovado_em, recusado_em, cancelado_em, enviado_em, visualizado_em, ...rest } = orig;
+      const { id: _oid, created_at, updated_at, numero_orcamento, aprovado_em, recusado_em, cancelado_em, enviado_em, visualizado_em, motivo_recusa, ...rest } = orig;
       const { data: novo, error: e4 } = await (supabase.from as any)("orcamentos")
-        .insert({ ...rest, numero_orcamento: numero, status: "rascunho", titulo: (orig.titulo || "") + " (cópia)" })
+        .insert({ ...rest, numero_orcamento: numero, status: "rascunho", motivo_recusa: null, titulo: (orig.titulo || "") + " (cópia)" })
         .select("id").single();
       if (e4) throw e4;
       if (itens?.length) {
