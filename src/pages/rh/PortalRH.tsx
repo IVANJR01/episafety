@@ -384,13 +384,14 @@ export default function PortalRH() {
             {funcionarios.length === 0 && (
               <Card><CardContent className="p-6 text-center text-sm space-y-2">
                 <AlertTriangle className="h-6 w-6 mx-auto text-orange-500" />
-                <p className="font-medium">Nenhum colaborador vinculado ao GHE/GES.</p>
+                <p className="font-medium">Nenhum colaborador ativo encontrado nesta empresa.</p>
                 <p className="text-muted-foreground">
-                  Vincule colaboradores na <b>Gestão de ASO → PCMSO / GHE</b> antes de emitir o ASO.<br />
-                  <span className="text-xs">RH: solicite ao setor de Segurança do Trabalho a vinculação do colaborador ao GHE/GES.</span>
+                  Cadastre colaboradores em <b>Cadastro → Funcionários</b>.<br />
+                  <span className="text-xs">Colaboradores sem GHE/GES também aparecem na busca — o alerta é exibido após a seleção.</span>
                 </p>
               </CardContent></Card>
             )}
+
 
             {funcionarios.length > 0 && (
               <div className="grid lg:grid-cols-2 gap-4">
