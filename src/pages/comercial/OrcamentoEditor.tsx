@@ -305,8 +305,8 @@ export default function OrcamentoEditor() {
         </div>
       )}
 
-      <fieldset disabled={isFinalizado} className="grid gap-4 lg:grid-cols-3 disabled:opacity-95">
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <fieldset disabled={isFinalizado} className="lg:col-span-2 space-y-4 min-w-0">
           {/* Cliente */}
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-base">Cliente</CardTitle></CardHeader>
