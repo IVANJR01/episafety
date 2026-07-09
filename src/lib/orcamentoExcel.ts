@@ -49,6 +49,7 @@ export function exportarOrcamentoExcel(orc: OrcamentoExcelData, itens: Orcamento
     ["Telefone", orc.cliente_telefone || ""],
     ["E-mail", orc.cliente_email || ""],
     ["Condições de pagamento", orc.condicoes_pagamento || ""],
+    ["Detalhes da condição", orc.condicoes_pagamento_detalhe || ""],
     ["Prazo de execução", orc.prazo_execucao || ""],
     ["Observações", orc.observacoes || ""],
   ];
