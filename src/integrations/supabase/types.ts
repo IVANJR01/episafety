@@ -8981,6 +8981,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      salvar_orcamento_itens: {
+        Args: { _itens: Json; _orcamento_id: string }
+        Returns: undefined
+      }
       storage_path_empresa_id: { Args: { _name: string }; Returns: string }
       transfer_epi_between_contracts: {
         Args: {
