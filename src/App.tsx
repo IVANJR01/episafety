@@ -281,6 +281,12 @@ function ProtectedRoute() {
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
         <Route path="/rh/asos" element={<PortalRH />} />
+        <Route path="/comercial" element={<ComercialDashboard />} />
+        <Route path="/comercial/orcamentos" element={<Orcamentos />} />
+        <Route path="/comercial/orcamentos/novo" element={<OrcamentoEditor />} />
+        <Route path="/comercial/orcamentos/:id" element={<OrcamentoEditor />} />
+        <Route path="/comercial/clientes" element={<Clientes />} />
+        <Route path="/comercial/catalogo" element={<Catalogo />} />
         <Route path="/cat" element={<CatModule />} />
         <Route path="/cat/novo" element={<CatNovo />} />
         <Route path="/cat/:id" element={<CatDetalhe />} />
