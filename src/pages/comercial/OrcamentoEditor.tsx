@@ -206,6 +206,9 @@ export default function OrcamentoEditor() {
         ...form,
         empresa_id: empresaId,
         data_validade: form.data_validade || null,
+        formas_pagamento: formas,
+        cartao_credito_config: formas.includes(CARTAO_CREDITO_KEY) ? form.cartao_credito_config : null,
+        condicoes_pagamento: formas.join(" | "),
         subtotal: totais.subtotal,
         total: totais.total,
       };
