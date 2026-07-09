@@ -1347,6 +1347,130 @@ export type Database = {
           },
         ]
       }
+      catalogo_servicos: {
+        Row: {
+          ativo: boolean
+          categoria: string | null
+          created_at: string
+          created_by: string | null
+          custo_estimado: number | null
+          descricao: string | null
+          empresa_id: string
+          id: string
+          margem_padrao: number | null
+          nome: string
+          unidade: string | null
+          updated_at: string
+          valor_padrao: number
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string | null
+          created_at?: string
+          created_by?: string | null
+          custo_estimado?: number | null
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          margem_padrao?: number | null
+          nome: string
+          unidade?: string | null
+          updated_at?: string
+          valor_padrao?: number
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string | null
+          created_at?: string
+          created_by?: string | null
+          custo_estimado?: number | null
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          margem_padrao?: number | null
+          nome?: string
+          unidade?: string | null
+          updated_at?: string
+          valor_padrao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogo_servicos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes_comerciais: {
+        Row: {
+          ativo: boolean
+          cidade: string | null
+          cnpj_cpf: string | null
+          contato_responsavel: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          empresa_id: string
+          endereco: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          razao_social: string | null
+          segmento: string | null
+          telefone: string | null
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cidade?: string | null
+          cnpj_cpf?: string | null
+          contato_responsavel?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          empresa_id: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          razao_social?: string | null
+          segmento?: string | null
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cidade?: string | null
+          cnpj_cpf?: string | null
+          contato_responsavel?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          empresa_id?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          razao_social?: string | null
+          segmento?: string | null
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_comerciais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conferencia_itens: {
         Row: {
           conferencia_id: string
@@ -5492,6 +5616,207 @@ export type Database = {
         }
         Relationships: []
       }
+      orcamentos: {
+        Row: {
+          aprovado_em: string | null
+          cancelado_em: string | null
+          cliente_cnpj_cpf: string | null
+          cliente_email: string | null
+          cliente_endereco: string | null
+          cliente_id: string | null
+          cliente_nome: string | null
+          cliente_telefone: string | null
+          condicoes_pagamento: string | null
+          created_at: string
+          created_by: string | null
+          data_emissao: string
+          data_validade: string | null
+          desconto_tipo: string | null
+          desconto_valor: number
+          empresa_id: string
+          enviado_em: string | null
+          id: string
+          impostos_valor: number
+          modelo: string | null
+          motivo_recusa: string | null
+          numero_orcamento: string
+          observacoes: string | null
+          prazo_execucao: string | null
+          prioridade: string | null
+          recusado_em: string | null
+          responsavel_cliente: string | null
+          status: string
+          subtotal: number
+          taxa_extra: number
+          titulo: string
+          total: number
+          updated_at: string
+          validade_proposta: string | null
+          visualizado_em: string | null
+        }
+        Insert: {
+          aprovado_em?: string | null
+          cancelado_em?: string | null
+          cliente_cnpj_cpf?: string | null
+          cliente_email?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          cliente_telefone?: string | null
+          condicoes_pagamento?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string
+          data_validade?: string | null
+          desconto_tipo?: string | null
+          desconto_valor?: number
+          empresa_id: string
+          enviado_em?: string | null
+          id?: string
+          impostos_valor?: number
+          modelo?: string | null
+          motivo_recusa?: string | null
+          numero_orcamento: string
+          observacoes?: string | null
+          prazo_execucao?: string | null
+          prioridade?: string | null
+          recusado_em?: string | null
+          responsavel_cliente?: string | null
+          status?: string
+          subtotal?: number
+          taxa_extra?: number
+          titulo: string
+          total?: number
+          updated_at?: string
+          validade_proposta?: string | null
+          visualizado_em?: string | null
+        }
+        Update: {
+          aprovado_em?: string | null
+          cancelado_em?: string | null
+          cliente_cnpj_cpf?: string | null
+          cliente_email?: string | null
+          cliente_endereco?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string | null
+          cliente_telefone?: string | null
+          condicoes_pagamento?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string
+          data_validade?: string | null
+          desconto_tipo?: string | null
+          desconto_valor?: number
+          empresa_id?: string
+          enviado_em?: string | null
+          id?: string
+          impostos_valor?: number
+          modelo?: string | null
+          motivo_recusa?: string | null
+          numero_orcamento?: string
+          observacoes?: string | null
+          prazo_execucao?: string | null
+          prioridade?: string | null
+          recusado_em?: string | null
+          responsavel_cliente?: string | null
+          status?: string
+          subtotal?: number
+          taxa_extra?: number
+          titulo?: string
+          total?: number
+          updated_at?: string
+          validade_proposta?: string | null
+          visualizado_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_comerciais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamentos_itens: {
+        Row: {
+          codigo: string | null
+          created_at: string
+          desconto: number
+          descricao: string
+          detalhe: string | null
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          orcamento_id: string
+          ordem: number
+          quantidade: number
+          tipo: string | null
+          total_item: number
+          unidade: string | null
+          updated_at: string
+          valor_unitario: number
+        }
+        Insert: {
+          codigo?: string | null
+          created_at?: string
+          desconto?: number
+          descricao: string
+          detalhe?: string | null
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          orcamento_id: string
+          ordem?: number
+          quantidade?: number
+          tipo?: string | null
+          total_item?: number
+          unidade?: string | null
+          updated_at?: string
+          valor_unitario?: number
+        }
+        Update: {
+          codigo?: string | null
+          created_at?: string
+          desconto?: number
+          descricao?: string
+          detalhe?: string | null
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          orcamento_id?: string
+          ordem?: number
+          quantidade?: number
+          tipo?: string | null
+          total_item?: number
+          unidade?: string | null
+          updated_at?: string
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_itens_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           created_at: string
@@ -8500,6 +8825,7 @@ export type Database = {
         Returns: Json
       }
       mfa_required_for_current_user: { Args: never; Returns: Json }
+      next_orcamento_numero: { Args: { _empresa_id: string }; Returns: string }
       pgr_abrir_revisao: {
         Args: { _motivo: string; _pgr_id: string }
         Returns: Json
