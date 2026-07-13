@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -408,6 +408,9 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
+                    <div className="sm:col-span-6">
+                      <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
+                    </div>
                     <div className="sm:col-span-2">
                       <Label className="text-xs">Tipo</Label>
                       <Select value={it.tipo_item} onValueChange={(v) => updateItem(idx, { tipo_item: v, epi_id: v === "EPI" ? it.epi_id : null })} disabled={readOnly}>
@@ -454,9 +457,6 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Label className="text-xs">Qtd solicitada *</Label>
                       <Input type="number" min={0} step={1} value={it.quantidade_solicitada} onChange={(e) => updateItem(idx, { quantidade_solicitada: Number(e.target.value) })} disabled={readOnly} />
                     </div>
-                    <div className="sm:col-span-6">
-                      <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
-                    </div>
                     <div className="sm:col-span-3">
                       <Label className="text-xs">Justificativa do item</Label>
                       <Input value={it.justificativa_item} onChange={(e) => updateItem(idx, { justificativa_item: e.target.value })} disabled={readOnly} />
@@ -500,10 +500,16 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   const hasImage = !!((item.imagem_preview_url || item.imagem_path) && !item.imagem_remove);
   const inputId = `img-file-${item._key}`;
   const cameraId = `img-cam-${item._key}`;
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleGalleryClick = () => galleryInputRef.current?.click();
+  const handleCameraClick = () => cameraInputRef.current?.click();
+
   return (
     <div className="rounded-md border bg-muted/20 p-3">
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm font-medium">Imagem do material</Label>
+        <Label className="text-sm font-medium">Colocar foto do material</Label>
         {hasImage && !readOnly && (
           <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => onClear(idx)}>
             <X className="w-4 h-4 mr-1" /> Remover
@@ -525,18 +531,18 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
 
         {!readOnly && (
           <div className="min-w-0 space-y-2">
-            <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+            <input ref={galleryInputRef} id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
               onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
-            <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
+            <input ref={cameraInputRef} id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
               onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
 
             <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-              <label htmlFor={inputId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar imagem" : "Escolher da galeria"}
-              </label>
-              <label htmlFor={cameraId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={handleGalleryClick}>
+                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar foto" : "Colocar foto"}
+              </Button>
+              <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={handleCameraClick}>
                 <Camera className="w-4 h-4" /> Tirar foto
-              </label>
+              </Button>
             </div>
             <div className="text-[11px] text-muted-foreground">
               {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "Use a câmera ou escolha JPG, PNG ou WEBP até 5 MB."}
