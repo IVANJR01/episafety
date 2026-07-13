@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -185,8 +184,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
   async function handlePickImage(idx: number, file: File | null) {
     if (!file) return;
-    if (!ACCEPTED_IMG_TYPES.includes(file.type)) { toast.error("Formato inválido. Use JPG, PNG ou WEBP."); return; }
-    if (file.size > MAX_IMG_BYTES) { toast.error("Imagem acima de 5 MB."); return; }
+    if (!file.type.startsWith("image/") && !ACCEPTED_IMG_TYPES.includes(file.type)) { toast.error("Formato inválido. Use uma imagem da câmera ou galeria."); return; }
+    if (file.size > MAX_IMG_BYTES) { toast.error("Imagem acima de 20 MB."); return; }
     const previewUrl = URL.createObjectURL(file);
     updateItem(idx, {
       imagem_file: file,
@@ -199,7 +198,10 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   }
 
   function handleClearImage(idx: number) {
+    const current = itens[idx];
+    if (current?.imagem_path) removeItemImage(current.imagem_path).catch(() => {});
     updateItem(idx, {
+      imagem_path: null,
       imagem_file: null,
       imagem_preview_url: null,
       imagem_nome: null,
@@ -499,26 +501,16 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   const hasImage = !!((item.imagem_preview_url || item.imagem_path) && !item.imagem_remove);
   const inputId = `img-file-${item._key}`;
   const cameraId = `img-cam-${item._key}`;
-  const cameraAppId = `img-cam-app-${item._key}`;
-  const galleryInputRef = useRef<HTMLInputElement | null>(null);
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
-  const cameraAppInputRef = useRef<HTMLInputElement | null>(null);
-  const [cameraChooserOpen, setCameraChooserOpen] = useState(false);
-
-  const handleGalleryClick = () => galleryInputRef.current?.click();
-  const handleCameraClick = () => setCameraChooserOpen(true);
 
   return (
-    <div className="rounded-md border bg-muted/20 p-3 space-y-2">
-      <input ref={galleryInputRef} id={inputId} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
+    <div className="rounded-md border-2 border-primary/40 bg-primary/5 p-3 space-y-3">
+      <input id={inputId} type="file" accept="image/*" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
-      <input ref={cameraInputRef} id={cameraId} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
-      <input ref={cameraAppInputRef} id={cameraAppId} type="file" accept="image/*" className="hidden"
+      <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
 
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm font-semibold">Imagem do material</Label>
+        <Label className="text-sm font-semibold text-primary">Colocar foto do material</Label>
         {hasImage && !readOnly && (
           <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => onClear(idx)}>
             <X className="w-4 h-4 mr-1" /> Remover foto
@@ -553,55 +545,24 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
 
       {!readOnly && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Button type="button" variant="outline" size="sm" className="min-h-[44px] w-full gap-2" onClick={handleCameraClick}>
-            <Camera className="w-4 h-4" /> Câmera
-          </Button>
-          <Button type="button" variant="outline" size="sm" className="min-h-[44px] w-full gap-2 text-primary border-primary/30" onClick={handleGalleryClick}>
+          <Label
+            htmlFor={cameraId}
+            className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+          >
+            <Camera className="w-4 h-4" /> Tirar foto
+          </Label>
+          <Label
+            htmlFor={inputId}
+            className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-primary/40 bg-background px-3 py-2 text-sm font-medium text-primary hover:bg-accent hover:text-accent-foreground"
+          >
             <ImageIcon className="w-4 h-4" /> Galeria
-          </Button>
+          </Label>
         </div>
       )}
 
       <div className="text-[11px] text-muted-foreground">
-        {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "Tire uma foto ou escolha JPG, PNG ou WEBP até 5 MB."}
+        {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "Use a câmera ou escolha uma imagem da galeria até 20 MB."}
       </div>
-
-      <Dialog open={cameraChooserOpen} onOpenChange={setCameraChooserOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Como deseja tirar a foto?</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 mt-2">
-            <Button
-              type="button"
-              className="w-full min-h-[48px] justify-start"
-              onClick={() => {
-                setCameraChooserOpen(false);
-                setTimeout(() => cameraInputRef.current?.click(), 50);
-              }}
-            >
-              <Camera className="w-4 h-4 mr-2" /> Câmera do celular
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full min-h-[48px] justify-start"
-              onClick={() => {
-                setCameraChooserOpen(false);
-                setTimeout(() => cameraAppInputRef.current?.click(), 50);
-              }}
-            >
-              <ImageIcon className="w-4 h-4 mr-2" /> Escolher aplicativo de câmera
-            </Button>
-            <p className="text-xs text-muted-foreground px-1">
-              Caso o aplicativo de câmera não apareça, tire a foto pelo aplicativo e depois envie pela Galeria.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" className="w-full" onClick={() => setCameraChooserOpen(false)}>Cancelar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

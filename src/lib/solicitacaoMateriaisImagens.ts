@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export const SOLIC_MAT_IMG_BUCKET = "solicitacoes-materiais-imagens";
-export const MAX_IMG_BYTES = 5 * 1024 * 1024; // 5MB
+export const MAX_IMG_BYTES = 20 * 1024 * 1024; // 20MB antes da compressão
 export const ACCEPTED_IMG_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /** Comprime imagem para no máximo `maxSide` px no maior lado, retornando JPEG blob. */
