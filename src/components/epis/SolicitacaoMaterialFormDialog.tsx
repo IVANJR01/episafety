@@ -463,6 +463,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Input value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
                     </div>
                   </div>
+                  <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
                 </CardContent>
               </Card>
             ))}
