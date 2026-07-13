@@ -242,6 +242,7 @@ export default function SolicitacoesMateriais() {
           quantidade_recebida: i.quantidade_recebida != null ? Number(i.quantidade_recebida) : null,
           justificativa_item: i.justificativa_item,
           observacoes: i.observacoes,
+          imagem: i.imagem_path || null,
         })),
       });
     } catch (e: any) {
