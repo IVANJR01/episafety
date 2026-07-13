@@ -186,15 +186,21 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     if (!file) return;
     if (!file.type.startsWith("image/") && !ACCEPTED_IMG_TYPES.includes(file.type)) { toast.error("Formato inválido. Use uma imagem da câmera ou galeria."); return; }
     if (file.size > MAX_IMG_BYTES) { toast.error("Imagem acima de 20 MB."); return; }
-    const previewUrl = URL.createObjectURL(file);
+    // Preview leve (thumbnail) para não travar mobile; upload usa o arquivo original.
     updateItem(idx, {
       imagem_file: file,
-      imagem_preview_url: previewUrl,
       imagem_nome: file.name,
       imagem_tipo: file.type,
       imagem_tamanho: file.size,
       imagem_remove: false,
+      imagem_preview_url: null,
     });
+    try {
+      const thumb = await makeThumbnailDataUrl(file, 480, 0.7);
+      updateItem(idx, { imagem_preview_url: thumb });
+    } catch {
+      updateItem(idx, { imagem_preview_url: URL.createObjectURL(file) });
+    }
   }
 
   function handleClearImage(idx: number) {
