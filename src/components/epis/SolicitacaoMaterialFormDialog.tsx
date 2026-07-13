@@ -176,7 +176,37 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     updateItem(idx, { epi_id: epi.id, nome_item: epi.nome, ca: epi.ca || "" });
   }
   function addItem() { setItens((p) => [...p, emptyItem()]); }
-  function removeItem(idx: number) { setItens((p) => p.filter((_, i) => i !== idx)); }
+  function removeItem(idx: number) {
+    const it = itens[idx];
+    if (it?.imagem_path) removeItemImage(it.imagem_path).catch(() => {});
+    setItens((p) => p.filter((_, i) => i !== idx));
+  }
+
+  async function handlePickImage(idx: number, file: File | null) {
+    if (!file) return;
+    if (!ACCEPTED_IMG_TYPES.includes(file.type)) { toast.error("Formato inválido. Use JPG, PNG ou WEBP."); return; }
+    if (file.size > MAX_IMG_BYTES) { toast.error("Imagem acima de 5 MB."); return; }
+    const previewUrl = URL.createObjectURL(file);
+    updateItem(idx, {
+      imagem_file: file,
+      imagem_preview_url: previewUrl,
+      imagem_nome: file.name,
+      imagem_tipo: file.type,
+      imagem_tamanho: file.size,
+      imagem_remove: false,
+    });
+  }
+
+  function handleClearImage(idx: number) {
+    updateItem(idx, {
+      imagem_file: null,
+      imagem_preview_url: null,
+      imagem_nome: null,
+      imagem_tipo: null,
+      imagem_tamanho: null,
+      imagem_remove: true,
+    });
+  }
 
   async function save(nextStatus: "rascunho" | "enviada") {
     if (!empresaId) { toast.error("Empresa não selecionada"); return; }
