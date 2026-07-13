@@ -24,6 +24,7 @@ interface Props {
 }
 
 type ItemForm = {
+  _key: string;
   id?: string;
   tipo_item: string;
   epi_id: string | null;
@@ -39,10 +40,14 @@ type ItemForm = {
   imagem_tipo: string | null;
   imagem_tamanho: number | null;
   imagem_preview_url?: string | null;
-  _uploading?: boolean;
+  imagem_file?: File | null;
+  imagem_remove?: boolean;
 };
 
+const newKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+
 const emptyItem = (): ItemForm => ({
+  _key: newKey(),
   tipo_item: "EPI",
   epi_id: null,
   nome_item: "",
