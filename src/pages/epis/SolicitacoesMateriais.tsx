@@ -198,7 +198,7 @@ export default function SolicitacoesMateriais() {
         comprada_em: (full as any)?.comprada_em || s.comprada_em,
         recebida_em: (full as any)?.recebida_em || s.recebida_em,
         nota_fiscal: (full as any)?.nota_fiscal || s.nota_fiscal,
-        itens: (itens as any[]).map((i) => ({
+        itens: await Promise.all((itens as any[]).map(async (i) => ({
           tipo_item: i.tipo_item,
           nome_item: i.nome_item,
           descricao: i.descricao,
@@ -208,7 +208,8 @@ export default function SolicitacoesMateriais() {
           quantidade_aprovada: i.quantidade_aprovada != null ? Number(i.quantidade_aprovada) : null,
           justificativa_item: i.justificativa_item,
           observacoes: i.observacoes,
-        })),
+          imagem_dataurl: i.imagem_path ? await loadImageAsDataUrl(i.imagem_path) : null,
+        }))),
       });
     } catch (e: any) {
       toast.error("Erro ao gerar PDF", { description: e.message });
