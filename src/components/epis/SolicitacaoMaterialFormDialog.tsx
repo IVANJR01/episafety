@@ -454,6 +454,9 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Label className="text-xs">Qtd solicitada *</Label>
                       <Input type="number" min={0} step={1} value={it.quantidade_solicitada} onChange={(e) => updateItem(idx, { quantidade_solicitada: Number(e.target.value) })} disabled={readOnly} />
                     </div>
+                    <div className="sm:col-span-6">
+                      <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
+                    </div>
                     <div className="sm:col-span-3">
                       <Label className="text-xs">Justificativa do item</Label>
                       <Input value={it.justificativa_item} onChange={(e) => updateItem(idx, { justificativa_item: e.target.value })} disabled={readOnly} />
@@ -463,7 +466,6 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Input value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
                     </div>
                   </div>
-                  <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
                 </CardContent>
               </Card>
             ))}
@@ -499,7 +501,7 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   const inputId = `img-file-${item._key}`;
   const cameraId = `img-cam-${item._key}`;
   return (
-    <div className="mt-3 rounded-md border bg-muted/20 p-3">
+    <div className="rounded-md border bg-muted/20 p-3">
       <div className="flex items-center justify-between gap-2">
         <Label className="text-sm font-medium">Imagem do material</Label>
         {hasImage && !readOnly && (
@@ -529,10 +531,10 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
               onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
 
             <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-              <label htmlFor={inputId} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar foto" : "Adicionar foto"}
+              <label htmlFor={inputId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar imagem" : "Galeria"}
               </label>
-              <label htmlFor={cameraId} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <label htmlFor={cameraId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                 <Camera className="w-4 h-4" /> Tirar foto
               </label>
             </div>
