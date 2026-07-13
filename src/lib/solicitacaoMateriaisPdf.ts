@@ -11,6 +11,7 @@ export interface SolicitacaoPdfItem {
   quantidade_aprovada?: number | null;
   justificativa_item?: string | null;
   observacoes?: string | null;
+  imagem_dataurl?: string | null;
 }
 
 export interface SolicitacaoPdfInput {
