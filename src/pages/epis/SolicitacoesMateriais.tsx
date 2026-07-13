@@ -254,7 +254,11 @@ export default function SolicitacoesMateriais() {
     if (!confirmDelete) return;
     const { error } = await supabase.from("solicitacoes_materiais").delete().eq("id", confirmDelete.id);
     if (error) toast.error("Erro ao excluir", { description: error.message });
-    else { toast.success("Solicitação excluída"); load(); }
+    else {
+      removeSolicitacaoImages(confirmDelete.empresa_id, confirmDelete.id).catch(() => {});
+      toast.success("Solicitação excluída");
+      load();
+    }
     setConfirmDelete(null);
   }
 
