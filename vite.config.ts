@@ -90,7 +90,7 @@ export default defineConfig(({ mode }) => ({
         display: "standalone",
         orientation: "any",
         scope: "/",
-        start_url: "/?v=1.3.0",
+        start_url: "/?v=1.3.2",
         icons: [
           {
             src: "/pwa-192x192.png",

@@ -408,6 +408,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
             {itens.map((it, idx) => (
               <Card key={idx}>
                 <CardContent className="p-3 space-y-2">
+                  <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
+
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono text-muted-foreground">Item #{idx + 1}</span>
                     {!readOnly && itens.length > 1 && (
@@ -416,7 +418,6 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       </Button>
                     )}
                   </div>
-                  <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
                   <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
                     <div className="sm:col-span-2">
                       <Label className="text-xs">Tipo</Label>
@@ -509,14 +510,14 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   const cameraId = `img-cam-${item._key}`;
 
   return (
-    <div className="rounded-md border-2 border-primary/40 bg-primary/5 p-3 space-y-3">
+    <div className="rounded-md border-2 border-primary/40 bg-primary/5 p-3 space-y-3" data-solmat-image-block="true">
       <input id={inputId} type="file" accept="image/*" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
       <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
 
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm font-semibold text-primary">Colocar foto do material</Label>
+        <Label className="text-sm font-semibold text-primary">Imagem do material</Label>
         {hasImage && !readOnly && (
           <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => onClear(idx)}>
             <X className="w-4 h-4 mr-1" /> Remover foto
@@ -555,7 +556,7 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
             htmlFor={cameraId}
             className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
           >
-            <Camera className="w-4 h-4" /> Tirar foto
+            <Camera className="w-4 h-4" /> Câmera
           </Label>
           <Label
             htmlFor={inputId}
