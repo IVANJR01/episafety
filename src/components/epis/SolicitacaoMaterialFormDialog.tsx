@@ -133,11 +133,33 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         quantidade_solicitada: Number(i.quantidade_solicitada || 0),
         justificativa_item: i.justificativa_item || "",
         observacoes: i.observacoes || "",
+        imagem_path: i.imagem_path || null,
+        imagem_nome: i.imagem_nome || null,
+        imagem_tipo: i.imagem_tipo || null,
+        imagem_tamanho: i.imagem_tamanho ?? null,
+        imagem_preview_url: null,
       })));
       if (!(is as any[])?.length) setItens([emptyItem()]);
       setLoading(false);
     })();
   }, [open, solicitacaoId, user]);
+
+  // Resolve signed URLs for existing item images when loaded
+  useEffect(() => {
+    (async () => {
+      const targets = itens
+        .map((it, idx) => ({ idx, path: it.imagem_path }))
+        .filter((t) => t.path && !itens[t.idx].imagem_preview_url);
+      if (!targets.length) return;
+      const resolved = await Promise.all(targets.map((t) => getSignedImageUrl(t.path as string, 600)));
+      setItens((prev) => prev.map((it, i) => {
+        const found = targets.findIndex((t) => t.idx === i);
+        if (found === -1) return it;
+        return { ...it, imagem_preview_url: resolved[found] };
+      }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens.map((i) => i.imagem_path).join("|")]);
 
   function updateItem(idx: number, patch: Partial<ItemForm>) {
     setItens((prev) => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
