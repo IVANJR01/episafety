@@ -23,6 +23,23 @@ export async function compressImage(file: File, maxSide = 1600, quality = 0.85):
   }
 }
 
+/** Gera thumbnail leve (dataURL) para preview em tela, sem travar mobile. */
+export async function makeThumbnailDataUrl(file: File, maxSide = 480, quality = 0.7): Promise<string> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const ratio = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * ratio));
+    const h = Math.max(1, Math.round(bitmap.height * ratio));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", quality);
+  } catch {
+    return URL.createObjectURL(file);
+  }
+}
+
 export function buildItemImagePath(empresaId: string, solicitacaoId: string, itemKey: string, ext: string) {
   const safeExt = ext.replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
   const stamp = Date.now();
