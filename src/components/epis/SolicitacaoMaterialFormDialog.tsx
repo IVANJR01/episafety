@@ -487,3 +487,53 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     </Sheet>
   );
 }
+
+function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
+  item: ItemForm;
+  idx: number;
+  readOnly: boolean;
+  onPick: (idx: number, file: File | null) => void;
+  onClear: (idx: number) => void;
+}) {
+  const hasImage = !!(item.imagem_preview_url || item.imagem_path);
+  const inputId = `img-file-${item._key}`;
+  const cameraId = `img-cam-${item._key}`;
+  return (
+    <div className="mt-2 pt-2 border-t">
+      <Label className="text-xs">Imagem do material</Label>
+      <div className="flex items-start gap-3 mt-1">
+        <div className="w-20 h-20 rounded border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+          {item.imagem_preview_url ? (
+            <img src={item.imagem_preview_url} alt={item.imagem_nome || "Imagem"} className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="w-6 h-6 text-muted-foreground" />
+          )}
+        </div>
+        {!readOnly && (
+          <div className="flex-1 flex flex-col gap-1.5">
+            <div className="flex flex-wrap gap-2">
+              <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+              <input id={cameraId} type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+              <label htmlFor={cameraId} className="inline-flex items-center gap-1 min-h-11 px-3 rounded-md border text-sm cursor-pointer hover:bg-muted sm:hidden">
+                <Camera className="w-4 h-4" /> Tirar foto
+              </label>
+              <label htmlFor={inputId} className="inline-flex items-center gap-1 min-h-11 px-3 rounded-md border text-sm cursor-pointer hover:bg-muted">
+                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar imagem" : "Adicionar imagem"}
+              </label>
+              {hasImage && (
+                <Button type="button" size="sm" variant="ghost" className="text-destructive min-h-11" onClick={() => onClear(idx)}>
+                  <X className="w-4 h-4 mr-1" /> Remover
+                </Button>
+              )}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "JPG, PNG ou WEBP até 5 MB."}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
