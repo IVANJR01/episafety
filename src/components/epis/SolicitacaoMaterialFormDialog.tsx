@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
   compressImage, buildItemImagePath, uploadItemImage,
-  getSignedImageUrl, removeItemImage,
+  getSignedImageUrl, removeItemImage, makeThumbnailDataUrl,
 } from "@/lib/solicitacaoMateriaisImagens";
 
 interface Props {
