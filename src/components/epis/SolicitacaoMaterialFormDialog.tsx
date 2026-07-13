@@ -499,38 +499,52 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   const inputId = `img-file-${item._key}`;
   const cameraId = `img-cam-${item._key}`;
   return (
-    <div className="mt-2 pt-2 border-t">
-      <Label className="text-xs">Imagem do material</Label>
-      <div className="flex items-start gap-3 mt-1">
-        <div className="w-20 h-20 rounded border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+    <div className="mt-3 rounded-md border bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <Label className="text-sm font-medium">Imagem do material</Label>
+        {hasImage && !readOnly && (
+          <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => onClear(idx)}>
+            <X className="w-4 h-4 mr-1" /> Remover
+          </Button>
+        )}
+      </div>
+
+      <div className="mt-2 grid grid-cols-1 sm:grid-cols-[112px_1fr] gap-3 items-start">
+        <div className="w-28 h-28 rounded-md border bg-background flex items-center justify-center overflow-hidden">
           {item.imagem_preview_url ? (
             <img src={item.imagem_preview_url} alt={item.imagem_nome || "Imagem"} className="w-full h-full object-cover" />
           ) : (
-            <ImageIcon className="w-6 h-6 text-muted-foreground" />
+            <div className="text-center text-muted-foreground space-y-1 px-2">
+              <ImageIcon className="w-7 h-7 mx-auto" />
+              <div className="text-[11px] leading-tight">Sem foto</div>
+            </div>
           )}
         </div>
+
         {!readOnly && (
-          <div className="flex-1 flex flex-col gap-1.5">
-            <div className="flex flex-wrap gap-2">
-              <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-                onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
-              <input id={cameraId} type="file" accept="image/*" capture="environment" className="hidden"
-                onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
-              <label htmlFor={cameraId} className="inline-flex items-center gap-1 min-h-11 px-3 rounded-md border text-sm cursor-pointer hover:bg-muted sm:hidden">
+          <div className="min-w-0 space-y-2">
+            <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+              onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+            <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
+              onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+              <label htmlFor={inputId} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar foto" : "Adicionar foto"}
+              </label>
+              <label htmlFor={cameraId} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                 <Camera className="w-4 h-4" /> Tirar foto
               </label>
-              <label htmlFor={inputId} className="inline-flex items-center gap-1 min-h-11 px-3 rounded-md border text-sm cursor-pointer hover:bg-muted">
-                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar imagem" : "Adicionar imagem"}
-              </label>
-              {hasImage && (
-                <Button type="button" size="sm" variant="ghost" className="text-destructive min-h-11" onClick={() => onClear(idx)}>
-                  <X className="w-4 h-4 mr-1" /> Remover
-                </Button>
-              )}
             </div>
             <div className="text-[11px] text-muted-foreground">
-              {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "JPG, PNG ou WEBP até 5 MB."}
+              {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "Use a câmera ou escolha JPG, PNG ou WEBP até 5 MB."}
             </div>
+          </div>
+        )}
+
+        {readOnly && (
+          <div className="text-[11px] text-muted-foreground">
+            {item.imagem_nome || (hasImage ? "Imagem anexada" : "Nenhuma imagem anexada")}
           </div>
         )}
       </div>
