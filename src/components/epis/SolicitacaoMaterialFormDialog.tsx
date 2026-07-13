@@ -34,6 +34,12 @@ type ItemForm = {
   quantidade_solicitada: number;
   justificativa_item: string;
   observacoes: string;
+  imagem_path: string | null;
+  imagem_nome: string | null;
+  imagem_tipo: string | null;
+  imagem_tamanho: number | null;
+  imagem_preview_url?: string | null;
+  _uploading?: boolean;
 };
 
 const emptyItem = (): ItemForm => ({
@@ -46,6 +52,11 @@ const emptyItem = (): ItemForm => ({
   quantidade_solicitada: 1,
   justificativa_item: "",
   observacoes: "",
+  imagem_path: null,
+  imagem_nome: null,
+  imagem_tipo: null,
+  imagem_tamanho: null,
+  imagem_preview_url: null,
 });
 
 const emptyHead = () => ({
