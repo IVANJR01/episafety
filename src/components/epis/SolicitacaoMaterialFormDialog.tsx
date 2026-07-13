@@ -259,7 +259,33 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         await supabase.from("solicitacoes_materiais_itens").delete().eq("solicitacao_id", solicId);
       }
 
-      const toInsert = itens.map((i, idx) => ({
+      const finalItems = await Promise.all(itens.map(async (i) => {
+        let newPath: string | null = i.imagem_path;
+        let newNome: string | null = i.imagem_nome;
+        let newTipo: string | null = i.imagem_tipo;
+        let newTam: number | null = i.imagem_tamanho;
+        // Remoção explícita
+        if (i.imagem_remove && i.imagem_path) {
+          await removeItemImage(i.imagem_path);
+          newPath = null; newNome = null; newTipo = null; newTam = null;
+        }
+        // Upload de novo arquivo (substituindo eventual antigo)
+        if (i.imagem_file) {
+          const { blob, type, ext } = await compressImage(i.imagem_file);
+          const path = buildItemImagePath(empresaId, solicId!, i._key, ext);
+          await uploadItemImage(path, blob, type);
+          if (i.imagem_path && i.imagem_path !== path) {
+            removeItemImage(i.imagem_path).catch(() => {});
+          }
+          newPath = path;
+          newNome = i.imagem_nome || i.imagem_file.name;
+          newTipo = type;
+          newTam = blob.size;
+        }
+        return { i, newPath, newNome, newTipo, newTam };
+      }));
+
+      const toInsert = finalItems.map(({ i, newPath, newNome, newTipo, newTam }, idx) => ({
         solicitacao_id: solicId!,
         empresa_id: empresaId,
         tipo_item: i.tipo_item,
@@ -272,6 +298,10 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         justificativa_item: i.justificativa_item || null,
         observacoes: i.observacoes || null,
         ordem: idx,
+        imagem_path: newPath,
+        imagem_nome: newNome,
+        imagem_tipo: newTipo,
+        imagem_tamanho: newTam,
       }));
       const { error: itErr } = await supabase.from("solicitacoes_materiais_itens").insert(toInsert);
       if (itErr) throw itErr;
