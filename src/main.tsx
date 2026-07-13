@@ -43,23 +43,31 @@ let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
 if (!isNativeApp) {
   updateSW = registerSW({
     onNeedRefresh() {
-      // Auto-reload when a new version is detected and the page is not visible
-      // or dispatch event so UpdateBanner can show the prompt
-      if (document.hidden) {
-        updateSW?.(true);
-      } else {
-        window.dispatchEvent(
-          new CustomEvent("sw-update-available", {
-            detail: (reloadPage?: boolean) => updateSW?.(reloadPage),
-          })
-        );
-      }
+      // Fully automatic update: reload immediately without user interaction
+      void updateSW?.(true);
+    },
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
+      // Poll the SW for updates every 20s
+      setInterval(() => {
+        registration.update().catch(() => {});
+      }, 20 * 1000);
     },
     onOfflineReady() {
       console.log("PWA pronto para uso offline");
     },
     immediate: true,
   });
+
+  // Reload the page as soon as a new SW takes control
+  if ("serviceWorker" in navigator) {
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+  }
 
   // Check for updates every 30 seconds instead of 60
   window.setInterval(() => {
