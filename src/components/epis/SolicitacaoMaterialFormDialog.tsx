@@ -128,6 +128,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         });
       }
       setItens(((is as any[]) || []).map((i) => ({
+        _key: newKey(),
         id: i.id,
         tipo_item: i.tipo_item,
         epi_id: i.epi_id,
