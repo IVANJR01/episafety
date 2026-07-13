@@ -497,7 +497,7 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   onPick: (idx: number, file: File | null) => void;
   onClear: (idx: number) => void;
 }) {
-  const hasImage = !!(item.imagem_preview_url || item.imagem_path);
+  const hasImage = !!((item.imagem_preview_url || item.imagem_path) && !item.imagem_remove);
   const inputId = `img-file-${item._key}`;
   const cameraId = `img-cam-${item._key}`;
   return (
@@ -513,7 +513,7 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
 
       <div className="mt-2 grid grid-cols-1 sm:grid-cols-[112px_1fr] gap-3 items-start">
         <div className="w-28 h-28 rounded-md border bg-background flex items-center justify-center overflow-hidden">
-          {item.imagem_preview_url ? (
+          {hasImage && item.imagem_preview_url ? (
             <img src={item.imagem_preview_url} alt={item.imagem_nome || "Imagem"} className="w-full h-full object-cover" />
           ) : (
             <div className="text-center text-muted-foreground space-y-1 px-2">
@@ -532,7 +532,7 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
 
             <div className="flex flex-col sm:flex-row flex-wrap gap-2">
               <label htmlFor={inputId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar imagem" : "Galeria"}
+                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar imagem" : "Escolher da galeria"}
               </label>
               <label htmlFor={cameraId} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                 <Camera className="w-4 h-4" /> Tirar foto
