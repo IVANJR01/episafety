@@ -23,6 +23,7 @@ export interface SolicitacaoXlsxInput {
     quantidade_recebida?: number | null;
     justificativa_item?: string | null;
     observacoes?: string | null;
+    imagem?: string | null;
   }[];
 }
 
@@ -49,19 +50,20 @@ export function exportarSolicitacaoExcel(s: SolicitacaoXlsxInput) {
   const header = [
     "Tipo", "Item", "CA", "Unidade",
     "Qtd Solicitada", "Qtd Aprovada", "Qtd Comprada", "Qtd Recebida",
-    "Justificativa", "Observações",
+    "Justificativa", "Observações", "Imagem",
   ];
   const rows = s.itens.map((it) => [
     it.tipo_item, it.nome_item, it.ca || "", it.unidade_medida,
     it.quantidade_solicitada, it.quantidade_aprovada ?? "",
     it.quantidade_comprada ?? "", it.quantidade_recebida ?? "",
     it.justificativa_item || "", it.observacoes || "",
+    it.imagem ? "Imagem anexada" : "",
   ]);
   const ws2 = XLSX.utils.aoa_to_sheet([header, ...rows]);
   ws2["!cols"] = [
     { wch: 18 }, { wch: 36 }, { wch: 12 }, { wch: 10 },
     { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
-    { wch: 30 }, { wch: 30 },
+    { wch: 30 }, { wch: 30 }, { wch: 16 },
   ];
   XLSX.utils.book_append_sheet(wb, ws2, "Itens");
 

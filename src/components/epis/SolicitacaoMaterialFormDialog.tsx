@@ -8,8 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Save, Send, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
+import {
+  ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
+  compressImage, buildItemImagePath, uploadItemImage,
+  getSignedImageUrl, removeItemImage,
+} from "@/lib/solicitacaoMateriaisImagens";
 
 interface Props {
   open: boolean;
@@ -19,6 +24,7 @@ interface Props {
 }
 
 type ItemForm = {
+  _key: string;
   id?: string;
   tipo_item: string;
   epi_id: string | null;
@@ -29,9 +35,19 @@ type ItemForm = {
   quantidade_solicitada: number;
   justificativa_item: string;
   observacoes: string;
+  imagem_path: string | null;
+  imagem_nome: string | null;
+  imagem_tipo: string | null;
+  imagem_tamanho: number | null;
+  imagem_preview_url?: string | null;
+  imagem_file?: File | null;
+  imagem_remove?: boolean;
 };
 
+const newKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+
 const emptyItem = (): ItemForm => ({
+  _key: newKey(),
   tipo_item: "EPI",
   epi_id: null,
   nome_item: "",
@@ -41,6 +57,11 @@ const emptyItem = (): ItemForm => ({
   quantidade_solicitada: 1,
   justificativa_item: "",
   observacoes: "",
+  imagem_path: null,
+  imagem_nome: null,
+  imagem_tipo: null,
+  imagem_tamanho: null,
+  imagem_preview_url: null,
 });
 
 const emptyHead = () => ({
@@ -107,6 +128,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         });
       }
       setItens(((is as any[]) || []).map((i) => ({
+        _key: newKey(),
         id: i.id,
         tipo_item: i.tipo_item,
         epi_id: i.epi_id,
@@ -117,11 +139,33 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         quantidade_solicitada: Number(i.quantidade_solicitada || 0),
         justificativa_item: i.justificativa_item || "",
         observacoes: i.observacoes || "",
+        imagem_path: i.imagem_path || null,
+        imagem_nome: i.imagem_nome || null,
+        imagem_tipo: i.imagem_tipo || null,
+        imagem_tamanho: i.imagem_tamanho ?? null,
+        imagem_preview_url: null,
       })));
       if (!(is as any[])?.length) setItens([emptyItem()]);
       setLoading(false);
     })();
   }, [open, solicitacaoId, user]);
+
+  // Resolve signed URLs for existing item images when loaded
+  useEffect(() => {
+    (async () => {
+      const targets = itens
+        .map((it, idx) => ({ idx, path: it.imagem_path }))
+        .filter((t) => t.path && !itens[t.idx].imagem_preview_url);
+      if (!targets.length) return;
+      const resolved = await Promise.all(targets.map((t) => getSignedImageUrl(t.path as string, 600)));
+      setItens((prev) => prev.map((it, i) => {
+        const found = targets.findIndex((t) => t.idx === i);
+        if (found === -1) return it;
+        return { ...it, imagem_preview_url: resolved[found] };
+      }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens.map((i) => i.imagem_path).join("|")]);
 
   function updateItem(idx: number, patch: Partial<ItemForm>) {
     setItens((prev) => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
@@ -132,7 +176,37 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     updateItem(idx, { epi_id: epi.id, nome_item: epi.nome, ca: epi.ca || "" });
   }
   function addItem() { setItens((p) => [...p, emptyItem()]); }
-  function removeItem(idx: number) { setItens((p) => p.filter((_, i) => i !== idx)); }
+  function removeItem(idx: number) {
+    const it = itens[idx];
+    if (it?.imagem_path) removeItemImage(it.imagem_path).catch(() => {});
+    setItens((p) => p.filter((_, i) => i !== idx));
+  }
+
+  async function handlePickImage(idx: number, file: File | null) {
+    if (!file) return;
+    if (!ACCEPTED_IMG_TYPES.includes(file.type)) { toast.error("Formato inválido. Use JPG, PNG ou WEBP."); return; }
+    if (file.size > MAX_IMG_BYTES) { toast.error("Imagem acima de 5 MB."); return; }
+    const previewUrl = URL.createObjectURL(file);
+    updateItem(idx, {
+      imagem_file: file,
+      imagem_preview_url: previewUrl,
+      imagem_nome: file.name,
+      imagem_tipo: file.type,
+      imagem_tamanho: file.size,
+      imagem_remove: false,
+    });
+  }
+
+  function handleClearImage(idx: number) {
+    updateItem(idx, {
+      imagem_file: null,
+      imagem_preview_url: null,
+      imagem_nome: null,
+      imagem_tipo: null,
+      imagem_tamanho: null,
+      imagem_remove: true,
+    });
+  }
 
   async function save(nextStatus: "rascunho" | "enviada") {
     if (!empresaId) { toast.error("Empresa não selecionada"); return; }
@@ -185,7 +259,33 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         await supabase.from("solicitacoes_materiais_itens").delete().eq("solicitacao_id", solicId);
       }
 
-      const toInsert = itens.map((i, idx) => ({
+      const finalItems = await Promise.all(itens.map(async (i) => {
+        let newPath: string | null = i.imagem_path;
+        let newNome: string | null = i.imagem_nome;
+        let newTipo: string | null = i.imagem_tipo;
+        let newTam: number | null = i.imagem_tamanho;
+        // Remoção explícita
+        if (i.imagem_remove && i.imagem_path) {
+          await removeItemImage(i.imagem_path);
+          newPath = null; newNome = null; newTipo = null; newTam = null;
+        }
+        // Upload de novo arquivo (substituindo eventual antigo)
+        if (i.imagem_file) {
+          const { blob, type, ext } = await compressImage(i.imagem_file);
+          const path = buildItemImagePath(empresaId, solicId!, i._key, ext);
+          await uploadItemImage(path, blob, type);
+          if (i.imagem_path && i.imagem_path !== path) {
+            removeItemImage(i.imagem_path).catch(() => {});
+          }
+          newPath = path;
+          newNome = i.imagem_nome || i.imagem_file.name;
+          newTipo = type;
+          newTam = blob.size;
+        }
+        return { i, newPath, newNome, newTipo, newTam };
+      }));
+
+      const toInsert = finalItems.map(({ i, newPath, newNome, newTipo, newTam }, idx) => ({
         solicitacao_id: solicId!,
         empresa_id: empresaId,
         tipo_item: i.tipo_item,
@@ -198,6 +298,10 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         justificativa_item: i.justificativa_item || null,
         observacoes: i.observacoes || null,
         ordem: idx,
+        imagem_path: newPath,
+        imagem_nome: newNome,
+        imagem_tipo: newTipo,
+        imagem_tamanho: newTam,
       }));
       const { error: itErr } = await supabase.from("solicitacoes_materiais_itens").insert(toInsert);
       if (itErr) throw itErr;
@@ -359,6 +463,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Input value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
                     </div>
                   </div>
+                  <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
                 </CardContent>
               </Card>
             ))}
@@ -380,5 +485,55 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
+  item: ItemForm;
+  idx: number;
+  readOnly: boolean;
+  onPick: (idx: number, file: File | null) => void;
+  onClear: (idx: number) => void;
+}) {
+  const hasImage = !!(item.imagem_preview_url || item.imagem_path);
+  const inputId = `img-file-${item._key}`;
+  const cameraId = `img-cam-${item._key}`;
+  return (
+    <div className="mt-2 pt-2 border-t">
+      <Label className="text-xs">Imagem do material</Label>
+      <div className="flex items-start gap-3 mt-1">
+        <div className="w-20 h-20 rounded border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+          {item.imagem_preview_url ? (
+            <img src={item.imagem_preview_url} alt={item.imagem_nome || "Imagem"} className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="w-6 h-6 text-muted-foreground" />
+          )}
+        </div>
+        {!readOnly && (
+          <div className="flex-1 flex flex-col gap-1.5">
+            <div className="flex flex-wrap gap-2">
+              <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+              <input id={cameraId} type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+              <label htmlFor={cameraId} className="inline-flex items-center gap-1 min-h-11 px-3 rounded-md border text-sm cursor-pointer hover:bg-muted sm:hidden">
+                <Camera className="w-4 h-4" /> Tirar foto
+              </label>
+              <label htmlFor={inputId} className="inline-flex items-center gap-1 min-h-11 px-3 rounded-md border text-sm cursor-pointer hover:bg-muted">
+                <ImageIcon className="w-4 h-4" /> {hasImage ? "Trocar imagem" : "Adicionar imagem"}
+              </label>
+              {hasImage && (
+                <Button type="button" size="sm" variant="ghost" className="text-destructive min-h-11" onClick={() => onClear(idx)}>
+                  <X className="w-4 h-4 mr-1" /> Remover
+                </Button>
+              )}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "JPG, PNG ou WEBP até 5 MB."}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

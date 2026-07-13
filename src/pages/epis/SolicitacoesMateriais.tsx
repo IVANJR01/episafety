@@ -17,6 +17,7 @@ import SolicitacaoAprovacaoDialog from "@/components/epis/SolicitacaoAprovacaoDi
 import SolicitacaoRecebimentoDialog from "@/components/epis/SolicitacaoRecebimentoDialog";
 import { gerarSolicitacaoPdf } from "@/lib/solicitacaoMateriaisPdf";
 import { exportarSolicitacaoExcel } from "@/lib/solicitacaoMateriaisExcel";
+import { loadImageAsDataUrl, removeSolicitacaoImages } from "@/lib/solicitacaoMateriaisImagens";
 
 type Solicitacao = {
   id: string;
@@ -197,7 +198,7 @@ export default function SolicitacoesMateriais() {
         comprada_em: (full as any)?.comprada_em || s.comprada_em,
         recebida_em: (full as any)?.recebida_em || s.recebida_em,
         nota_fiscal: (full as any)?.nota_fiscal || s.nota_fiscal,
-        itens: (itens as any[]).map((i) => ({
+        itens: await Promise.all((itens as any[]).map(async (i) => ({
           tipo_item: i.tipo_item,
           nome_item: i.nome_item,
           descricao: i.descricao,
@@ -207,7 +208,8 @@ export default function SolicitacoesMateriais() {
           quantidade_aprovada: i.quantidade_aprovada != null ? Number(i.quantidade_aprovada) : null,
           justificativa_item: i.justificativa_item,
           observacoes: i.observacoes,
-        })),
+          imagem_dataurl: i.imagem_path ? await loadImageAsDataUrl(i.imagem_path) : null,
+        }))),
       });
     } catch (e: any) {
       toast.error("Erro ao gerar PDF", { description: e.message });
@@ -240,6 +242,7 @@ export default function SolicitacoesMateriais() {
           quantidade_recebida: i.quantidade_recebida != null ? Number(i.quantidade_recebida) : null,
           justificativa_item: i.justificativa_item,
           observacoes: i.observacoes,
+          imagem: i.imagem_path || null,
         })),
       });
     } catch (e: any) {
@@ -251,7 +254,11 @@ export default function SolicitacoesMateriais() {
     if (!confirmDelete) return;
     const { error } = await supabase.from("solicitacoes_materiais").delete().eq("id", confirmDelete.id);
     if (error) toast.error("Erro ao excluir", { description: error.message });
-    else { toast.success("Solicitação excluída"); load(); }
+    else {
+      removeSolicitacaoImages(confirmDelete.empresa_id, confirmDelete.id).catch(() => {});
+      toast.success("Solicitação excluída");
+      load();
+    }
     setConfirmDelete(null);
   }
 

@@ -8132,6 +8132,11 @@ export type Database = {
           empresa_id: string
           epi_id: string | null
           id: string
+          imagem_nome: string | null
+          imagem_path: string | null
+          imagem_tamanho: number | null
+          imagem_tipo: string | null
+          imagem_url_legado: string | null
           justificativa_item: string | null
           nome_item: string
           observacoes: string | null
@@ -8153,6 +8158,11 @@ export type Database = {
           empresa_id: string
           epi_id?: string | null
           id?: string
+          imagem_nome?: string | null
+          imagem_path?: string | null
+          imagem_tamanho?: number | null
+          imagem_tipo?: string | null
+          imagem_url_legado?: string | null
           justificativa_item?: string | null
           nome_item: string
           observacoes?: string | null
@@ -8174,6 +8184,11 @@ export type Database = {
           empresa_id?: string
           epi_id?: string | null
           id?: string
+          imagem_nome?: string | null
+          imagem_path?: string | null
+          imagem_tamanho?: number | null
+          imagem_tipo?: string | null
+          imagem_url_legado?: string | null
           justificativa_item?: string | null
           nome_item?: string
           observacoes?: string | null

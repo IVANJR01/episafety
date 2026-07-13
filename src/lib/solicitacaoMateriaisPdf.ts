@@ -11,6 +11,7 @@ export interface SolicitacaoPdfItem {
   quantidade_aprovada?: number | null;
   justificativa_item?: string | null;
   observacoes?: string | null;
+  imagem_dataurl?: string | null;
 }
 
 export interface SolicitacaoPdfInput {
@@ -281,6 +282,44 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
     doc.text(txt, M + col * colWidth, yEnd + row * 4.5);
   });
   yEnd += Math.ceil(resumo.length / 2) * 4.5 + 4;
+
+  // Imagens dos Materiais
+  const comImagens = s.itens
+    .map((it, i) => ({ it, i }))
+    .filter((x) => !!x.it.imagem_dataurl);
+  if (comImagens.length) {
+    if (yEnd > H - 60) { doc.addPage(); yEnd = 30; drawHeader(); drawWatermark(); }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Imagens dos Materiais", M, yEnd);
+    yEnd += 3;
+    doc.setDrawColor(200);
+    doc.line(M, yEnd, W - M, yEnd);
+    yEnd += 4;
+
+    const cellW = (W - M * 2 - 8) / 3; // 3 por linha
+    const imgH = 30;
+    const rowH = imgH + 10;
+    let col = 0;
+    for (const { it, i } of comImagens) {
+      if (yEnd + rowH > H - 20) { doc.addPage(); yEnd = 30; drawHeader(); drawWatermark(); col = 0; }
+      const x = M + col * (cellW + 4);
+      try {
+        const fmt = /png/i.test(String(it.imagem_dataurl)) ? "PNG" : "JPEG";
+        doc.addImage(it.imagem_dataurl as string, fmt, x, yEnd, cellW, imgH, undefined, "FAST");
+      } catch (e) {
+        doc.setDrawColor(200); doc.rect(x, yEnd, cellW, imgH);
+      }
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      const labelLines = doc.splitTextToSize(`#${i + 1} — ${it.nome_item}`, cellW);
+      doc.text(labelLines.slice(0, 2), x, yEnd + imgH + 4);
+      col++;
+      if (col >= 3) { col = 0; yEnd += rowH; }
+    }
+    if (col > 0) yEnd += rowH;
+    yEnd += 2;
+  }
 
   // Assinaturas
   if (yEnd > H - 35) { doc.addPage(); yEnd = 40; drawHeader(); drawWatermark(); }
