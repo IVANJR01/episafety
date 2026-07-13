@@ -17,6 +17,7 @@ import SolicitacaoAprovacaoDialog from "@/components/epis/SolicitacaoAprovacaoDi
 import SolicitacaoRecebimentoDialog from "@/components/epis/SolicitacaoRecebimentoDialog";
 import { gerarSolicitacaoPdf } from "@/lib/solicitacaoMateriaisPdf";
 import { exportarSolicitacaoExcel } from "@/lib/solicitacaoMateriaisExcel";
+import { loadImageAsDataUrl, removeSolicitacaoImages } from "@/lib/solicitacaoMateriaisImagens";
 
 type Solicitacao = {
   id: string;
