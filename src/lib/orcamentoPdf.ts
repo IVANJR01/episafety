@@ -234,26 +234,21 @@ export function gerarOrcamentoPdf(
     if (pc && formas.includes("Cartão de crédito")) {
       const base = orc.total;
 
-      const tabela = gerarTabelaParcelas(base, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
+      const modo = pc.cartao.modo || "juros_composto";
+      const tabela = gerarTabelaParcelas(base, pc.cartao);
       y += 2;
       autoTable(doc, {
         startY: y,
-        head: [["Parcela", "Valor", "Total", "Juros"]],
-        body: tabela.map((p) => [
-          `${p.n}x`,
-          formatBRL(p.valor_parcela),
-          formatBRL(p.total),
-          p.tem_juros ? "com juros" : "sem juros",
-        ]),
+        head: [modo === "taxa_por_parcela" ? ["Parcela", "Taxa", "Valor", "Total", "Juros"] : ["Parcela", "Valor", "Total", "Juros"]],
+        body: tabela.map((p) => modo === "taxa_por_parcela"
+          ? [`${p.n}x`, `${(p.taxa ?? 0).toFixed(2)}%`, formatBRL(p.valor_parcela), formatBRL(p.total), p.tem_juros ? "com juros" : "sem juros"]
+          : [`${p.n}x`, formatBRL(p.valor_parcela), formatBRL(p.total), p.tem_juros ? "com juros" : "sem juros"]),
         theme: "grid",
         headStyles: { fillColor: [234, 88, 12], textColor: 255 },
         styles: { fontSize: 8, cellPadding: 1.5 },
-        columnStyles: {
-          0: { cellWidth: 20, halign: "center" },
-          1: { halign: "right" },
-          2: { halign: "right" },
-          3: { halign: "left" },
-        },
+        columnStyles: modo === "taxa_por_parcela"
+          ? { 0: { cellWidth: 18, halign: "center" }, 1: { cellWidth: 20, halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "left" } }
+          : { 0: { cellWidth: 20, halign: "center" }, 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "left" } },
         margin: { left: marginX, right: marginX },
       });
       // @ts-ignore
