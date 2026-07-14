@@ -8,14 +8,46 @@ const APP_CACHE_NAME_PATTERNS = [
   /precache/i,
   /runtime/i,
   /googleAnalytics/i,
-  /supabase-api-cache/i,
-  /supabase-storage-cache/i,
-  /gdrive-thumbnails/i,
-  /gdrive-proxy-images/i,
+  /vite-pwa/i,
+  /app-shell/i,
 ];
+
+const APP_SERVICE_WORKER_PATHS = ["/sw.js", "/service-worker.js"];
 
 function isAppCache(name: string) {
   return APP_CACHE_NAME_PATTERNS.some((pattern) => pattern.test(name));
+}
+
+function getRegistrationScriptUrls(registration: ServiceWorkerRegistration) {
+  return [
+    registration.active?.scriptURL,
+    registration.waiting?.scriptURL,
+    registration.installing?.scriptURL,
+  ].filter(Boolean) as string[];
+}
+
+function isAppServiceWorkerRegistration(registration: ServiceWorkerRegistration) {
+  return getRegistrationScriptUrls(registration).some((scriptURL) => {
+    try {
+      const url = new URL(scriptURL);
+      return url.origin === window.location.origin && APP_SERVICE_WORKER_PATHS.includes(url.pathname);
+    } catch {
+      return APP_SERVICE_WORKER_PATHS.some((path) => scriptURL.includes(path));
+    }
+  });
+}
+
+async function requestImmediateActivation(registration: ServiceWorkerRegistration) {
+  await registration.update().catch(() => undefined);
+
+  const workers = [registration.waiting, registration.installing, registration.active].filter(Boolean) as ServiceWorker[];
+  workers.forEach((worker) => {
+    try {
+      worker.postMessage({ type: "SKIP_WAITING" });
+    } catch {
+      // Ignore workers that are already gone.
+    }
+  });
 }
 
 export async function purgeAppCaches() {
@@ -35,26 +67,28 @@ export async function unregisterAppServiceWorkers() {
   if (!("serviceWorker" in navigator)) return [];
 
   const registrations = await navigator.serviceWorker.getRegistrations();
-  const appRegistrations = registrations.filter((registration) => {
-    const scriptURL = registration.active?.scriptURL
-      || registration.waiting?.scriptURL
-      || registration.installing?.scriptURL
-      || "";
+  const appRegistrations = registrations.filter(isAppServiceWorkerRegistration);
 
-    return scriptURL.endsWith("/sw.js") || scriptURL.endsWith("/service-worker.js");
-  });
-
-  await Promise.allSettled(appRegistrations.map((registration) => registration.unregister()));
+  await Promise.allSettled(
+    appRegistrations.map(async (registration) => {
+      await requestImmediateActivation(registration);
+      await registration.unregister();
+    }),
+  );
   return appRegistrations;
 }
 
 export async function forceAppUpdate() {
+  localStorage.setItem(APP_CACHE_PURGE_VERSION_KEY, APP_VERSION);
+  sessionStorage.setItem(APP_CACHE_PURGE_RELOAD_KEY, APP_VERSION);
   await purgeAppCaches();
   await unregisterAppServiceWorkers();
+  await purgeAppCaches();
 
   const url = new URL(window.location.href);
   url.searchParams.set("v", APP_VERSION);
   url.searchParams.set("sw", "off");
+  url.searchParams.set("t", Date.now().toString());
   window.location.replace(url.toString());
 }
 

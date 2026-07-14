@@ -1,6 +1,5 @@
-// Temporary app-shell Service Worker kill-switch.
-// It clears stale Workbox/app caches, takes control, reloads open pages once,
-// then unregisters itself so the browser fetches the newest bundle from network.
+// Temporary app-shell Service Worker kill-switch for legacy registrations.
+// Keep this in sync with /sw.js while stale PWA clients are being cleaned up.
 function isWorkboxCacheForThisRegistration(name) {
   return /(^|-)precache-v\d+|(^|-)runtime|(^|-)googleAnalytics|workbox|vite-pwa|app-shell/i.test(name);
 }
