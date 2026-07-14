@@ -121,9 +121,9 @@ export function exportarOrcamentoExcel(orc: OrcamentoExcelData, itens: Orcamento
 
 
 
-    const tabela = gerarTabelaParcelas(base, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
-    const parc: (string | number)[][] = [["Parcela", "Valor da parcela", "Total", "Com juros"]];
-    for (const p of tabela) parc.push([`${p.n}x`, p.valor_parcela, p.total, p.tem_juros ? "Sim" : "Não"]);
+    const tabela = gerarTabelaParcelas(base, pc.cartao);
+    const parc: (string | number)[][] = [["Parcela", "Taxa (%)", "Valor da parcela", "Total", "Com juros"]];
+    for (const p of tabela) parc.push([`${p.n}x`, p.taxa ?? 0, p.valor_parcela, p.total, p.tem_juros ? "Sim" : "Não"]);
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(parc), "Parcelamento");
   }
 

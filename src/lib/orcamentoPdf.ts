@@ -208,11 +208,14 @@ export function gerarOrcamentoPdf(
       for (const f of formas) {
         if (f === "Cartão de crédito" && pc) {
           const c = pc.cartao;
-          const linhaCartao = c.parcelas_sem_juros >= c.max_parcelas
-            ? `• Cartão de crédito: até ${c.max_parcelas}x sem juros`
-            : c.parcelas_sem_juros > 0
-              ? `• Cartão de crédito: até ${c.parcelas_sem_juros}x sem juros; de ${c.parcelas_sem_juros + 1}x a ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`
-              : `• Cartão de crédito: até ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`;
+          const modo = c.modo || "juros_composto";
+          const linhaCartao = modo === "taxa_por_parcela"
+            ? `• Cartão de crédito: parcelamento em até ${c.max_parcelas}x conforme tabela de taxas abaixo.`
+            : c.parcelas_sem_juros >= c.max_parcelas
+              ? `• Cartão de crédito: até ${c.max_parcelas}x sem juros`
+              : c.parcelas_sem_juros > 0
+                ? `• Cartão de crédito: até ${c.parcelas_sem_juros}x sem juros; de ${c.parcelas_sem_juros + 1}x a ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`
+                : `• Cartão de crédito: até ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`;
           const wrap = doc.splitTextToSize(linhaCartao, pageW - marginX * 2);
           doc.text(wrap, marginX, y); y += wrap.length * 4;
         } else if ((f === "À vista" || (f === "PIX" && pc?.avista.aplica_pix)) && pc && pc.avista.desconto_valor > 0) {
@@ -231,26 +234,21 @@ export function gerarOrcamentoPdf(
     if (pc && formas.includes("Cartão de crédito")) {
       const base = orc.total;
 
-      const tabela = gerarTabelaParcelas(base, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
+      const modo = pc.cartao.modo || "juros_composto";
+      const tabela = gerarTabelaParcelas(base, pc.cartao);
       y += 2;
       autoTable(doc, {
         startY: y,
-        head: [["Parcela", "Valor", "Total", "Juros"]],
-        body: tabela.map((p) => [
-          `${p.n}x`,
-          formatBRL(p.valor_parcela),
-          formatBRL(p.total),
-          p.tem_juros ? "com juros" : "sem juros",
-        ]),
+        head: [modo === "taxa_por_parcela" ? ["Parcela", "Taxa", "Valor", "Total", "Juros"] : ["Parcela", "Valor", "Total", "Juros"]],
+        body: tabela.map((p) => modo === "taxa_por_parcela"
+          ? [`${p.n}x`, `${(p.taxa ?? 0).toFixed(2)}%`, formatBRL(p.valor_parcela), formatBRL(p.total), p.tem_juros ? "com juros" : "sem juros"]
+          : [`${p.n}x`, formatBRL(p.valor_parcela), formatBRL(p.total), p.tem_juros ? "com juros" : "sem juros"]),
         theme: "grid",
         headStyles: { fillColor: [234, 88, 12], textColor: 255 },
         styles: { fontSize: 8, cellPadding: 1.5 },
-        columnStyles: {
-          0: { cellWidth: 20, halign: "center" },
-          1: { halign: "right" },
-          2: { halign: "right" },
-          3: { halign: "left" },
-        },
+        columnStyles: modo === "taxa_por_parcela"
+          ? { 0: { cellWidth: 18, halign: "center" }, 1: { cellWidth: 20, halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "left" } }
+          : { 0: { cellWidth: 20, halign: "center" }, 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "left" } },
         margin: { left: marginX, right: marginX },
       });
       // @ts-ignore
