@@ -85,8 +85,7 @@ export default function OrcamentoEditor() {
     data_validade: "",
     status: "rascunho" as OrcamentoStatus,
     observacoes: "", condicoes_pagamento: "", condicoes_pagamento_detalhe: "",
-    formas_pagamento: [] as string[],
-    cartao_credito_config: null as CartaoConfig | null,
+    pagamento_config: { formas: [], avista: { ...DEFAULT_AVISTA }, cartao: { ...DEFAULT_CARTAO } } as PagamentoConfig,
     prazo_execucao: "", validade_proposta: "",
     desconto_tipo: "valor" as DescontoTipo, desconto_valor: 0, impostos_valor: 0, taxa_extra: 0,
   });
