@@ -60,17 +60,34 @@ export function exportarOrcamentoExcel(orc: OrcamentoExcelData, itens: Orcamento
     ["E-mail", orc.cliente_email || ""],
     ["Condições de pagamento", (orc.formas_pagamento && orc.formas_pagamento.length ? orc.formas_pagamento.join(" | ") : (orc.condicoes_pagamento || ""))],
     ["Formas de pagamento", (orc.formas_pagamento || []).join(", ")],
-    ["Aceita cartão de crédito", orc.cartao_credito_config ? "Sim" : "Não"],
-    ["Parcelas cartão", orc.cartao_credito_config?.parcelas ?? ""],
-    ["Tipo de juros", orc.cartao_credito_config ? (orc.cartao_credito_config.tipo === "com_juros" ? "Com juros" : "Sem juros") : ""],
-    ["Juros mensal (%)", orc.cartao_credito_config?.juros_mensal ?? ""],
-    ["Valor da parcela", orc.cartao_credito_config?.valor_parcela ?? ""],
-    ["Total com juros", orc.cartao_credito_config?.total_com_juros ?? ""],
+  ];
+
+  const pc = orc.pagamento_config || null;
+  if (pc) {
+    const usaAvista = pc.formas.includes("À vista") || (pc.formas.includes("PIX") && pc.avista.aplica_pix);
+    if (usaAvista) {
+      const d = calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor);
+      proposta.push(
+        ["Desconto à vista/PIX", pc.avista.desconto_tipo === "percentual" ? `${pc.avista.desconto_valor}%` : d.desconto],
+        ["Valor final à vista/PIX", d.valor_final],
+      );
+    }
+    if (pc.formas.includes("Cartão de crédito")) {
+      proposta.push(
+        ["Máximo de parcelas", pc.cartao.max_parcelas],
+        ["Sem juros até", pc.cartao.parcelas_sem_juros],
+        ["Juros mensal (%)", pc.cartao.juros_mensal],
+      );
+    }
+  }
+
+  proposta.push(
     ["Detalhes da condição", orc.condicoes_pagamento_detalhe || ""],
     ["Prazo de execução", orc.prazo_execucao || ""],
     ["Observações", orc.observacoes || ""],
-  ];
+  );
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(proposta), "Proposta");
+
 
   const head = [["#", "Tipo", "Descrição", "Unidade", "Quantidade", "Valor Unitário", "Desconto", "Total"]];
   const body = itens.map((it, i) => [
