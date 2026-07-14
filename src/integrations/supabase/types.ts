@@ -5644,6 +5644,7 @@ export type Database = {
           motivo_recusa: string | null
           numero_orcamento: string
           observacoes: string | null
+          pagamento_config: Json | null
           prazo_execucao: string | null
           prioridade: string | null
           recusado_em: string | null
@@ -5684,6 +5685,7 @@ export type Database = {
           motivo_recusa?: string | null
           numero_orcamento: string
           observacoes?: string | null
+          pagamento_config?: Json | null
           prazo_execucao?: string | null
           prioridade?: string | null
           recusado_em?: string | null
@@ -5724,6 +5726,7 @@ export type Database = {
           motivo_recusa?: string | null
           numero_orcamento?: string
           observacoes?: string | null
+          pagamento_config?: Json | null
           prazo_execucao?: string | null
           prioridade?: string | null
           recusado_em?: string | null

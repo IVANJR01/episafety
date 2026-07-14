@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatBRL, formatDate } from "./orcamentoCalc";
 import { STATUS_LABEL, OrcamentoStatus } from "./orcamentoTypes";
+import { calcularDescontoAvista, gerarTabelaParcelas, PagamentoConfig } from "./orcamentoPagamento";
 
 interface EmpresaHeader {
   nome?: string | null;
@@ -34,6 +35,7 @@ interface OrcamentoPdfData {
     valor_parcela: number;
     total_com_juros: number;
   } | null;
+  pagamento_config?: PagamentoConfig | null;
   prazo_execucao?: string | null;
   validade_proposta?: string | null;
   subtotal: number;
@@ -193,23 +195,29 @@ export function gerarOrcamentoPdf(
   if ((orc.formas_pagamento && orc.formas_pagamento.length) || orc.condicoes_pagamento || orc.prazo_execucao || orc.validade_proposta) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("Condições Comerciais", marginX, y);
+    doc.text("Condições de Pagamento", marginX, y);
     y += 5;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     const formas = orc.formas_pagamento || [];
+    const pc = orc.pagamento_config || null;
+    const usaAvista = pc && (formas.includes("À vista") || (formas.includes("PIX") && pc.avista.aplica_pix));
+
     if (formas.length) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Formas de pagamento aceitas:", marginX, y); y += 4;
-      doc.setFont("helvetica", "normal");
       for (const f of formas) {
-        if (f === "Cartão de crédito" && orc.cartao_credito_config) {
-          const cc = orc.cartao_credito_config;
-          const linha = cc.tipo === "com_juros"
-            ? `• Cartão de crédito: até ${cc.parcelas}x com juros de ${cc.juros_mensal.toFixed(2)}% a.m. — ${cc.parcelas}x de ${formatBRL(cc.valor_parcela)} — Total ${formatBRL(cc.total_com_juros)}`
-            : `• Cartão de crédito: até ${cc.parcelas}x sem juros de ${formatBRL(cc.valor_parcela)}`;
-          const wrap = doc.splitTextToSize(linha, pageW - marginX * 2);
+        if (f === "Cartão de crédito" && pc) {
+          const c = pc.cartao;
+          const linhaCartao = c.parcelas_sem_juros >= c.max_parcelas
+            ? `• Cartão de crédito: até ${c.max_parcelas}x sem juros`
+            : c.parcelas_sem_juros > 0
+              ? `• Cartão de crédito: até ${c.parcelas_sem_juros}x sem juros; de ${c.parcelas_sem_juros + 1}x a ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`
+              : `• Cartão de crédito: até ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`;
+          const wrap = doc.splitTextToSize(linhaCartao, pageW - marginX * 2);
           doc.text(wrap, marginX, y); y += wrap.length * 4;
+        } else if ((f === "À vista" || (f === "PIX" && pc?.avista.aplica_pix)) && pc && pc.avista.desconto_valor > 0) {
+          const d = calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor);
+          const label = pc.avista.desconto_tipo === "percentual" ? `${pc.avista.desconto_valor}%` : formatBRL(pc.avista.desconto_valor);
+          doc.text(`• ${f} com ${label} de desconto: ${formatBRL(d.valor_final)}`, marginX, y); y += 4;
         } else {
           doc.text(`• ${f}: ${formatBRL(orc.total)}`, marginX, y); y += 4;
         }
@@ -217,6 +225,36 @@ export function gerarOrcamentoPdf(
     } else if (orc.condicoes_pagamento) {
       doc.text(`Pagamento: ${orc.condicoes_pagamento}`, marginX, y); y += 4;
     }
+
+    // Tabela de parcelamento
+    if (pc && formas.includes("Cartão de crédito")) {
+      const base = usaAvista ? calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor).valor_final : orc.total;
+      const tabela = gerarTabelaParcelas(base, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [["Parcela", "Valor", "Total", "Juros"]],
+        body: tabela.map((p) => [
+          `${p.n}x`,
+          formatBRL(p.valor_parcela),
+          formatBRL(p.total),
+          p.tem_juros ? "com juros" : "sem juros",
+        ]),
+        theme: "grid",
+        headStyles: { fillColor: [234, 88, 12], textColor: 255 },
+        styles: { fontSize: 8, cellPadding: 1.5 },
+        columnStyles: {
+          0: { cellWidth: 20, halign: "center" },
+          1: { halign: "right" },
+          2: { halign: "right" },
+          3: { halign: "left" },
+        },
+        margin: { left: marginX, right: marginX },
+      });
+      // @ts-ignore
+      y = (doc as any).lastAutoTable.finalY + 4;
+    }
+
     if (orc.condicoes_pagamento_detalhe) {
       const det = doc.splitTextToSize(`Detalhes: ${orc.condicoes_pagamento_detalhe}`, pageW - marginX * 2);
       doc.text(det, marginX, y); y += det.length * 4;
@@ -224,6 +262,7 @@ export function gerarOrcamentoPdf(
     if (orc.prazo_execucao) { doc.text(`Prazo de execução: ${orc.prazo_execucao}`, marginX, y); y += 4; }
     if (orc.validade_proposta) { doc.text(`Validade: ${orc.validade_proposta}`, marginX, y); y += 4; }
   }
+
 
   // Assinaturas
   const pageH = doc.internal.pageSize.getHeight();
