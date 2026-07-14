@@ -14,8 +14,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  FORMAS_PAGAMENTO, FORMAS_COM_DETALHE, calcularParcelamentoCartao,
-  parseFormasPagamento, CartaoConfig, CartaoTipoJuros,
+  FORMAS_PAGAMENTO, FORMAS_COM_DETALHE,
+  CartaoConfig,
+  PagamentoConfig, DEFAULT_AVISTA, DEFAULT_CARTAO,
+  calcularDescontoAvista, gerarTabelaParcelas, hydratePagamentoConfig,
 } from "@/lib/orcamentoPagamento";
 import {
   ArrowLeft, Save, Send, CheckCircle2, XCircle, Ban, FileDown, FileSpreadsheet,
