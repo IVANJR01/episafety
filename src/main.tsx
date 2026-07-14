@@ -20,7 +20,7 @@ if (Capacitor.isNativePlatform()) {
 
 const isNativeApp = Capacitor.isNativePlatform();
 
-// One-time hard cache purge per app version (forces stuck notebooks to pick up new bundle)
+// One-time hard cache purge + SW unregister per app version (kill-switch/force update)
 if (typeof window !== "undefined") {
   void (async () => {
     try {
@@ -29,9 +29,28 @@ if (typeof window !== "undefined") {
       const last = localStorage.getItem(key);
       if (last !== APP_VERSION) {
         localStorage.setItem(key, APP_VERSION);
+
+        // 1) Wipe all Cache Storage buckets (Workbox precache + runtime)
         if ("caches" in window) {
           const names = await caches.keys();
           await Promise.allSettled(names.map((n) => caches.delete(n)));
+        }
+
+        // 2) Unregister every existing service worker so the next load fetches
+        //    the fresh /sw.js and new hashed JS/CSS assets from the network.
+        if ("serviceWorker" in navigator) {
+          try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.allSettled(regs.map((r) => r.unregister()));
+          } catch {}
+        }
+
+        // 3) Hard reload once so the page is served without the old SW in control.
+        const reloadKey = "app-cache-purge-reloaded";
+        if (sessionStorage.getItem(reloadKey) !== APP_VERSION) {
+          sessionStorage.setItem(reloadKey, APP_VERSION);
+          window.location.reload();
+          return;
         }
       }
     } catch {}
