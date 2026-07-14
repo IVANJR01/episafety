@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import {
   FORMAS_PAGAMENTO, FORMAS_COM_DETALHE,
-  CartaoConfig,
+  CartaoConfig, CartaoModo, CartaoPreset, CARTAO_PRESET_LABEL, taxasDoPreset,
   PagamentoConfig, DEFAULT_AVISTA, DEFAULT_CARTAO,
   calcularDescontoAvista, gerarTabelaParcelas, hydratePagamentoConfig,
 } from "@/lib/orcamentoPagamento";
