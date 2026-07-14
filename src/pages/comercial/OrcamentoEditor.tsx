@@ -675,10 +675,11 @@ export default function OrcamentoEditor() {
               </div>
               <div className="border-t pt-2 space-y-1 text-sm">
                 <div className="flex justify-between"><span>Subtotal</span><span>{formatBRL(totais.subtotal)}</span></div>
-                <div className="flex justify-between text-muted-foreground"><span>Desconto</span><span>- {formatBRL(totais.descontoAplicado)}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>Desconto comercial</span><span>- {formatBRL(totais.descontoAplicado)}</span></div>
                 <div className="flex justify-between text-muted-foreground"><span>Impostos</span><span>{formatBRL(totais.impostos)}</span></div>
                 <div className="flex justify-between text-muted-foreground"><span>Taxa</span><span>{formatBRL(totais.taxa)}</span></div>
-                <div className="flex justify-between font-bold text-base border-t pt-2"><span>TOTAL</span><span>{formatBRL(totais.total)}</span></div>
+                <div className="flex justify-between font-bold text-base border-t pt-2"><span>Total base da proposta</span><span>{formatBRL(totais.total)}</span></div>
+
               </div>
 
               <div className="grid gap-2">
