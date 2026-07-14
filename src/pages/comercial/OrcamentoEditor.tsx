@@ -422,7 +422,7 @@ export default function OrcamentoEditor() {
                   const formasSel = pc.formas || [];
                   const showAvista = formasSel.includes("À vista") || (formasSel.includes("PIX") && pc.avista.aplica_pix);
                   const descAv = calcularDescontoAvista(totais.total, pc.avista.desconto_tipo, pc.avista.desconto_valor);
-                  const tabela = gerarTabelaParcelas(totais.total, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
+                  const tabela = gerarTabelaParcelas(totais.total, pc.cartao);
                   return (
                     <>
                       <div className="grid gap-2 sm:grid-cols-2 mt-1">
