@@ -47,7 +47,7 @@ interface OrcamentoExcelItem {
 export function exportarOrcamentoExcel(orc: OrcamentoExcelData, itens: OrcamentoExcelItem[]) {
   const wb = XLSX.utils.book_new();
 
-  const proposta = [
+  const proposta: (string | number)[][] = [
     ["Número", orc.numero_orcamento],
     ["Título", orc.titulo],
     ["Status", orc.status],
