@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatBRL, formatDate } from "./orcamentoCalc";
 import { STATUS_LABEL, OrcamentoStatus } from "./orcamentoTypes";
+import { calcularDescontoAvista, gerarTabelaParcelas, PagamentoConfig } from "./orcamentoPagamento";
 
 interface EmpresaHeader {
   nome?: string | null;
