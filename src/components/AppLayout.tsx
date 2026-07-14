@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
 import { APP_VERSION } from "@/lib/version";
+import { forceAppUpdate } from "@/lib/appUpdate";
 import SuporteButton from "@/components/SuporteButton";
 import TermsAcceptanceBanner from "@/components/TermsAcceptanceBanner";
 
@@ -225,21 +226,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const handleCheckUpdate = async () => {
     setChecking(true);
     try {
-      const reg = await navigator.serviceWorker?.getRegistration();
-      if (reg) {
-        await reg.update();
-        // Give a moment for the SW to detect changes
-        await new Promise((r) => setTimeout(r, 1500));
-        if (reg.waiting) {
-          toast.info("Nova versão disponível! Atualizando...");
-          reg.waiting.postMessage({ type: "SKIP_WAITING" });
-          window.location.reload();
-        } else {
-          toast.success("Você já está na versão mais recente ✓");
-        }
-      } else {
-        toast.success("Você já está na versão mais recente ✓");
-      }
+      toast.info("Limpando cache e carregando a versão mais recente...");
+      await forceAppUpdate();
     } catch {
       toast.error("Erro ao verificar atualizações");
     } finally {
