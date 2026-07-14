@@ -505,9 +505,14 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   onPick: (idx: number, file: File | null) => void;
   onClear: (idx: number) => void;
 }) {
+  if (typeof window !== "undefined") {
+    // eslint-disable-next-line no-console
+    console.log("[Solicitação Materiais] ItemImageField renderizado", { idx });
+  }
   const hasImage = !!((item.imagem_preview_url || item.imagem_path) && !item.imagem_remove);
   const inputId = `img-file-${item._key}`;
   const cameraId = `img-cam-${item._key}`;
+
 
   return (
     <div className="rounded-md border-2 border-primary/40 bg-primary/5 p-3 space-y-3" data-solmat-image-block="true">
