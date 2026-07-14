@@ -491,15 +491,48 @@ export default function OrcamentoEditor() {
                         </div>
                       )}
 
-                      {formasSel.includes(CARTAO_CREDITO_KEY) && (
+                      {formasSel.includes(CARTAO_CREDITO_KEY) && (() => {
+                        const modo: CartaoModo = pc.cartao.modo || "juros_composto";
+                        const preset: CartaoPreset = pc.cartao.preset || "personalizado";
+                        const maxP = pc.cartao.max_parcelas;
+                        const taxas = pc.cartao.taxas || {};
+                        const setPreset = (p: CartaoPreset) => {
+                          const novasTaxas = p === "personalizado" ? { ...taxas } : taxasDoPreset(p, maxP);
+                          setCartao({ preset: p, taxas: novasTaxas });
+                        };
+                        const setTaxa = (n: number, v: number) => {
+                          setCartao({ preset: "personalizado", taxas: { ...taxas, [n]: v } });
+                        };
+                        return (
                         <div className="mt-3 border rounded-md p-3 bg-muted/20 space-y-3">
-                          <div className="text-xs font-semibold text-muted-foreground">Parcelamento no cartão de crédito</div>
+                          <div className="flex flex-wrap items-center gap-2 justify-between">
+                            <div className="text-xs font-semibold text-muted-foreground">Parcelamento no cartão de crédito</div>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs">Modo</Label>
+                              <Select value={modo} onValueChange={(v: CartaoModo) => {
+                                if (v === "taxa_por_parcela" && (!pc.cartao.taxas || Object.keys(pc.cartao.taxas).length === 0)) {
+                                  setCartao({ modo: v, preset: "nubank_cnpj_atual", taxas: taxasDoPreset("nubank_cnpj_atual", maxP) });
+                                } else {
+                                  setCartao({ modo: v });
+                                }
+                              }}>
+                                <SelectTrigger className="h-8 w-[220px]"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="juros_composto">Juros compostos (mensal)</SelectItem>
+                                  <SelectItem value="taxa_por_parcela">Taxa por parcela (tabela)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
                           <div className="grid gap-2 sm:grid-cols-3">
                             <div>
                               <Label className="text-xs">Máximo de parcelas</Label>
-                              <Select value={String(pc.cartao.max_parcelas)} onValueChange={(v) => {
+                              <Select value={String(maxP)} onValueChange={(v) => {
                                 const max = Number(v);
-                                setCartao({ max_parcelas: max, parcelas_sem_juros: Math.min(pc.cartao.parcelas_sem_juros, max) });
+                                const novasTaxas: Record<number, number> = {};
+                                for (let n = 1; n <= max; n++) novasTaxas[n] = Number(taxas[n] ?? 0);
+                                setCartao({ max_parcelas: max, parcelas_sem_juros: Math.min(pc.cartao.parcelas_sem_juros, max), taxas: novasTaxas });
                               }}>
                                 <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -509,25 +542,61 @@ export default function OrcamentoEditor() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div>
-                              <Label className="text-xs">Sem juros até</Label>
-                              <Select value={String(pc.cartao.parcelas_sem_juros)} onValueChange={(v) => setCartao({ parcelas_sem_juros: Number(v) })}>
-                                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: pc.cartao.max_parcelas + 1 }, (_, i) => i).map((n) => (
-                                    <SelectItem key={n} value={String(n)}>{n === 0 ? "Nenhuma" : `${n}x`}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Juros ao mês (%)</Label>
-                              <Input type="number" step="0.01" min={0}
-                                disabled={pc.cartao.parcelas_sem_juros >= pc.cartao.max_parcelas}
-                                value={pc.cartao.juros_mensal}
-                                onChange={(e) => setCartao({ juros_mensal: Number(e.target.value) })} />
-                            </div>
+                            {modo === "juros_composto" ? (
+                              <>
+                                <div>
+                                  <Label className="text-xs">Sem juros até</Label>
+                                  <Select value={String(pc.cartao.parcelas_sem_juros)} onValueChange={(v) => setCartao({ parcelas_sem_juros: Number(v) })}>
+                                    <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from({ length: maxP + 1 }, (_, i) => i).map((n) => (
+                                        <SelectItem key={n} value={String(n)}>{n === 0 ? "Nenhuma" : `${n}x`}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Juros ao mês (%)</Label>
+                                  <Input type="number" step="0.01" min={0}
+                                    disabled={pc.cartao.parcelas_sem_juros >= maxP}
+                                    value={pc.cartao.juros_mensal}
+                                    onChange={(e) => setCartao({ juros_mensal: Number(e.target.value) })} />
+                                </div>
+                              </>
+                            ) : (
+                              <div className="sm:col-span-2">
+                                <Label className="text-xs">Preset de taxas</Label>
+                                <Select value={preset} onValueChange={(v: CartaoPreset) => setPreset(v)}>
+                                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {(Object.keys(CARTAO_PRESET_LABEL) as CartaoPreset[]).map((p) => (
+                                      <SelectItem key={p} value={p}>{CARTAO_PRESET_LABEL[p]}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                           </div>
+
+                          {modo === "taxa_por_parcela" && (
+                            <div className="border-t pt-2 space-y-2">
+                              <div className="text-xs font-semibold text-muted-foreground">Taxas por parcela (%)</div>
+                              <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6">
+                                {Array.from({ length: maxP }, (_, i) => i + 1).map((n) => (
+                                  <div key={n} className="flex items-center gap-1">
+                                    <span className="text-xs w-8 text-right font-medium">{n}x</span>
+                                    <Input type="number" step="0.01" min={0} className="h-8 text-xs"
+                                      value={taxas[n] ?? 0}
+                                      onChange={(e) => setTaxa(n, Number(e.target.value))} />
+                                    <span className="text-xs text-muted-foreground">%</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">
+                                As taxas podem variar conforme sua conta e devem ser conferidas no app Nubank antes do envio da proposta.
+                              </div>
+                            </div>
+                          )}
 
                           <div className="border-t pt-2">
                             <div className="text-xs font-semibold text-muted-foreground mb-1">Tabela de parcelas</div>
@@ -537,6 +606,7 @@ export default function OrcamentoEditor() {
                                 <thead className="bg-muted/40 sticky top-0">
                                   <tr>
                                     <th className="text-left px-2 py-1">Parcela</th>
+                                    {modo === "taxa_por_parcela" && <th className="text-right px-2 py-1">Taxa</th>}
                                     <th className="text-right px-2 py-1">Valor</th>
                                     <th className="text-right px-2 py-1">Total</th>
                                     <th className="text-left px-2 py-1">Juros</th>
@@ -546,6 +616,7 @@ export default function OrcamentoEditor() {
                                   {tabela.map((p) => (
                                     <tr key={p.n} className="border-t">
                                       <td className="px-2 py-1">{p.n}x</td>
+                                      {modo === "taxa_por_parcela" && <td className="px-2 py-1 text-right">{(p.taxa ?? 0).toFixed(2)}%</td>}
                                       <td className="px-2 py-1 text-right">{formatBRL(p.valor_parcela)}</td>
                                       <td className="px-2 py-1 text-right">{formatBRL(p.total)}</td>
                                       <td className={`px-2 py-1 ${p.tem_juros ? "text-orange-700 dark:text-orange-400" : "text-emerald-700 dark:text-emerald-400"}`}>
@@ -560,7 +631,7 @@ export default function OrcamentoEditor() {
                             <div className="sm:hidden space-y-1.5">
                               {tabela.map((p) => (
                                 <div key={p.n} className={`rounded border px-2 py-1.5 text-xs flex items-center justify-between ${p.tem_juros ? "border-orange-300 bg-orange-50 dark:bg-orange-950/20" : "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20"}`}>
-                                  <div className="font-semibold">{p.n}x</div>
+                                  <div className="font-semibold">{p.n}x{modo === "taxa_por_parcela" && ` · ${(p.taxa ?? 0).toFixed(2)}%`}</div>
                                   <div className="text-right">
                                     <div>{formatBRL(p.valor_parcela)}</div>
                                     <div className="text-[10px] text-muted-foreground">Total {formatBRL(p.total)} {p.tem_juros ? "· c/ juros" : "· s/ juros"}</div>
@@ -570,7 +641,8 @@ export default function OrcamentoEditor() {
                             </div>
                           </div>
                         </div>
-                      )}
+                        );
+                      })()}
                     </>
                   );
                 })()}
