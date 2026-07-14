@@ -208,11 +208,14 @@ export function gerarOrcamentoPdf(
       for (const f of formas) {
         if (f === "Cartão de crédito" && pc) {
           const c = pc.cartao;
-          const linhaCartao = c.parcelas_sem_juros >= c.max_parcelas
-            ? `• Cartão de crédito: até ${c.max_parcelas}x sem juros`
-            : c.parcelas_sem_juros > 0
-              ? `• Cartão de crédito: até ${c.parcelas_sem_juros}x sem juros; de ${c.parcelas_sem_juros + 1}x a ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`
-              : `• Cartão de crédito: até ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`;
+          const modo = c.modo || "juros_composto";
+          const linhaCartao = modo === "taxa_por_parcela"
+            ? `• Cartão de crédito: parcelamento em até ${c.max_parcelas}x conforme tabela de taxas abaixo.`
+            : c.parcelas_sem_juros >= c.max_parcelas
+              ? `• Cartão de crédito: até ${c.max_parcelas}x sem juros`
+              : c.parcelas_sem_juros > 0
+                ? `• Cartão de crédito: até ${c.parcelas_sem_juros}x sem juros; de ${c.parcelas_sem_juros + 1}x a ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`
+                : `• Cartão de crédito: até ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`;
           const wrap = doc.splitTextToSize(linhaCartao, pageW - marginX * 2);
           doc.text(wrap, marginX, y); y += wrap.length * 4;
         } else if ((f === "À vista" || (f === "PIX" && pc?.avista.aplica_pix)) && pc && pc.avista.desconto_valor > 0) {
