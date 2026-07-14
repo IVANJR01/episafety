@@ -405,102 +405,172 @@ export default function OrcamentoEditor() {
               <div><Label>Prazo de execução</Label><Input value={form.prazo_execucao || ""} onChange={(e) => setForm({ ...form, prazo_execucao: e.target.value })} placeholder="ex: 30 dias" /></div>
               <div className="sm:col-span-2">
                 <Label>Formas de pagamento *</Label>
-                <div className="grid gap-2 sm:grid-cols-2 mt-1">
-                  {FORMAS_PAGAMENTO.map((f) => {
-                    const checked = (form.formas_pagamento || []).includes(f);
-                    return (
-                      <label
-                        key={f}
-                        className={`flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer min-h-11 ${checked ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(v) => {
-                            const current: string[] = form.formas_pagamento || [];
-                            const next = v ? [...current, f] : current.filter((x) => x !== f);
-                            const patch: any = { formas_pagamento: next };
-                            if (f === CARTAO_CREDITO_KEY) {
-                              if (v && !form.cartao_credito_config) {
-                                const calc = calcularParcelamentoCartao(totais.total, 1, "sem_juros", 0);
-                                patch.cartao_credito_config = { parcelas: 1, tipo: "sem_juros" as CartaoTipoJuros, juros_mensal: 0, ...calc };
-                              } else if (!v) {
-                                patch.cartao_credito_config = null;
-                              }
-                            }
-                            setForm({ ...form, ...patch });
-                          }}
-                        />
-                        <span className="text-sm">{f}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                {(form.formas_pagamento || []).some((f: string) => FORMAS_COM_DETALHE.has(f)) && (
-                  <div className="mt-3">
-                    <Label>Detalhes da condição *</Label>
-                    <Input
-                      value={form.condicoes_pagamento_detalhe || ""}
-                      onChange={(e) => setForm({ ...form, condicoes_pagamento_detalhe: e.target.value })}
-                      placeholder="ex: Entrada de R$ 500,00 + 2 parcelas mensais"
-                    />
-                  </div>
-                )}
-                {(form.formas_pagamento || []).includes(CARTAO_CREDITO_KEY) && (() => {
-                  const cc: CartaoConfig = form.cartao_credito_config || { parcelas: 1, tipo: "sem_juros", juros_mensal: 0, valor_parcela: 0, total_com_juros: 0 };
-                  const recalc = (patch: Partial<CartaoConfig>) => {
-                    const merged = { ...cc, ...patch };
-                    const r = calcularParcelamentoCartao(totais.total, merged.parcelas, merged.tipo, merged.juros_mensal);
-                    setForm({ ...form, cartao_credito_config: { ...merged, ...r } });
+                {(() => {
+                  const pc: PagamentoConfig = form.pagamento_config || { formas: [], avista: { ...DEFAULT_AVISTA }, cartao: { ...DEFAULT_CARTAO } };
+                  const setPc = (patch: Partial<PagamentoConfig>) => setForm({ ...form, pagamento_config: { ...pc, ...patch } });
+                  const setAvista = (patch: Partial<typeof pc.avista>) => setPc({ avista: { ...pc.avista, ...patch } });
+                  const setCartao = (patch: Partial<typeof pc.cartao>) => setPc({ cartao: { ...pc.cartao, ...patch } });
+                  const toggleForma = (f: string, on: boolean) => {
+                    const next = on ? [...pc.formas, f] : pc.formas.filter((x) => x !== f);
+                    setPc({ formas: next });
                   };
-                  const preview = calcularParcelamentoCartao(totais.total, cc.parcelas, cc.tipo, cc.juros_mensal);
+                  const formasSel = pc.formas || [];
+                  const showAvista = formasSel.includes("À vista") || (formasSel.includes("PIX") && pc.avista.aplica_pix);
+                  const descAv = calcularDescontoAvista(totais.total, pc.avista.desconto_tipo, pc.avista.desconto_valor);
+                  const tabela = gerarTabelaParcelas(totais.total, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
                   return (
-                    <div className="mt-3 border rounded-md p-3 bg-muted/20 space-y-3">
-                      <div className="text-xs font-semibold text-muted-foreground">Configuração do cartão de crédito</div>
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        <div>
-                          <Label className="text-xs">Parcelas (1 a 12)</Label>
-                          <Select value={String(cc.parcelas)} onValueChange={(v) => recalc({ parcelas: Number(v) })}>
-                            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                                <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Tipo</Label>
-                          <Select value={cc.tipo} onValueChange={(v: CartaoTipoJuros) => recalc({ tipo: v, juros_mensal: v === "sem_juros" ? 0 : cc.juros_mensal })}>
-                            <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="sem_juros">Sem juros</SelectItem>
-                              <SelectItem value="com_juros">Com juros</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Juros ao mês (%)</Label>
+                    <>
+                      <div className="grid gap-2 sm:grid-cols-2 mt-1">
+                        {FORMAS_PAGAMENTO.map((f) => {
+                          const checked = formasSel.includes(f);
+                          return (
+                            <label key={f} className={`flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer min-h-11 ${checked ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}>
+                              <Checkbox checked={checked} onCheckedChange={(v) => toggleForma(f, !!v)} />
+                              <span className="text-sm">{f}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+
+                      {formasSel.some((f) => FORMAS_COM_DETALHE.has(f)) && (
+                        <div className="mt-3">
+                          <Label>Detalhes da condição *</Label>
                           <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            disabled={cc.tipo === "sem_juros"}
-                            value={cc.juros_mensal}
-                            onChange={(e) => recalc({ juros_mensal: Number(e.target.value) })}
+                            value={form.condicoes_pagamento_detalhe || ""}
+                            onChange={(e) => setForm({ ...form, condicoes_pagamento_detalhe: e.target.value })}
+                            placeholder="ex: Entrada de R$ 500,00 + 2 parcelas mensais"
                           />
                         </div>
-                      </div>
-                      <div className="text-sm space-y-0.5 border-t pt-2">
-                        <div className="flex justify-between"><span className="text-muted-foreground">Valor à vista:</span><span>{formatBRL(totais.total)}</span></div>
-                        <div className="flex justify-between font-medium"><span>Parcela:</span><span>{cc.parcelas}x de {formatBRL(preview.valor_parcela)}</span></div>
-                        {cc.tipo === "com_juros" && (
-                          <div className="flex justify-between text-orange-700 dark:text-orange-400 font-semibold"><span>Total com juros:</span><span>{formatBRL(preview.total_com_juros)}</span></div>
-                        )}
-                      </div>
-                    </div>
+                      )}
+
+                      {showAvista && (
+                        <div className="mt-3 border rounded-md p-3 bg-muted/20 space-y-3">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="text-xs font-semibold text-muted-foreground">Desconto à vista / PIX</div>
+                            {formasSel.includes("PIX") && (
+                              <label className="flex items-center gap-2 text-xs">
+                                <Checkbox
+                                  checked={pc.avista.aplica_pix}
+                                  onCheckedChange={(v) => setAvista({ aplica_pix: !!v })}
+                                />
+                                Aplicar no PIX também
+                              </label>
+                            )}
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-3">
+                            <div>
+                              <Label className="text-xs">Tipo</Label>
+                              <Select value={pc.avista.desconto_tipo} onValueChange={(v: DescontoTipo) => setAvista({ desconto_tipo: v })}>
+                                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="percentual">% (percentual)</SelectItem>
+                                  <SelectItem value="valor">R$ (valor)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Valor do desconto</Label>
+                              <Input type="number" step="0.01" min={0} value={pc.avista.desconto_valor}
+                                onChange={(e) => setAvista({ desconto_valor: Number(e.target.value) })} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Valor final</Label>
+                              <div className="h-10 flex items-center justify-end px-2 border rounded-md bg-background font-semibold text-sm text-emerald-700 dark:text-emerald-400">
+                                {formatBRL(descAv.valor_final)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Economia de {formatBRL(descAv.desconto)} sobre {formatBRL(totais.total)}
+                          </div>
+                        </div>
+                      )}
+
+                      {formasSel.includes(CARTAO_CREDITO_KEY) && (
+                        <div className="mt-3 border rounded-md p-3 bg-muted/20 space-y-3">
+                          <div className="text-xs font-semibold text-muted-foreground">Parcelamento no cartão de crédito</div>
+                          <div className="grid gap-2 sm:grid-cols-3">
+                            <div>
+                              <Label className="text-xs">Máximo de parcelas</Label>
+                              <Select value={String(pc.cartao.max_parcelas)} onValueChange={(v) => {
+                                const max = Number(v);
+                                setCartao({ max_parcelas: max, parcelas_sem_juros: Math.min(pc.cartao.parcelas_sem_juros, max) });
+                              }}>
+                                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                                    <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Sem juros até</Label>
+                              <Select value={String(pc.cartao.parcelas_sem_juros)} onValueChange={(v) => setCartao({ parcelas_sem_juros: Number(v) })}>
+                                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: pc.cartao.max_parcelas + 1 }, (_, i) => i).map((n) => (
+                                    <SelectItem key={n} value={String(n)}>{n === 0 ? "Nenhuma" : `${n}x`}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Juros ao mês (%)</Label>
+                              <Input type="number" step="0.01" min={0}
+                                disabled={pc.cartao.parcelas_sem_juros >= pc.cartao.max_parcelas}
+                                value={pc.cartao.juros_mensal}
+                                onChange={(e) => setCartao({ juros_mensal: Number(e.target.value) })} />
+                            </div>
+                          </div>
+
+                          <div className="border-t pt-2">
+                            <div className="text-xs font-semibold text-muted-foreground mb-1">Tabela de parcelas</div>
+                            {/* Desktop */}
+                            <div className="hidden sm:block max-h-56 overflow-y-auto rounded border">
+                              <table className="w-full text-xs">
+                                <thead className="bg-muted/40 sticky top-0">
+                                  <tr>
+                                    <th className="text-left px-2 py-1">Parcela</th>
+                                    <th className="text-right px-2 py-1">Valor</th>
+                                    <th className="text-right px-2 py-1">Total</th>
+                                    <th className="text-left px-2 py-1">Juros</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {tabela.map((p) => (
+                                    <tr key={p.n} className="border-t">
+                                      <td className="px-2 py-1">{p.n}x</td>
+                                      <td className="px-2 py-1 text-right">{formatBRL(p.valor_parcela)}</td>
+                                      <td className="px-2 py-1 text-right">{formatBRL(p.total)}</td>
+                                      <td className={`px-2 py-1 ${p.tem_juros ? "text-orange-700 dark:text-orange-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+                                        {p.tem_juros ? "com juros" : "sem juros"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            {/* Mobile cards */}
+                            <div className="sm:hidden space-y-1.5">
+                              {tabela.map((p) => (
+                                <div key={p.n} className={`rounded border px-2 py-1.5 text-xs flex items-center justify-between ${p.tem_juros ? "border-orange-300 bg-orange-50 dark:bg-orange-950/20" : "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20"}`}>
+                                  <div className="font-semibold">{p.n}x</div>
+                                  <div className="text-right">
+                                    <div>{formatBRL(p.valor_parcela)}</div>
+                                    <div className="text-[10px] text-muted-foreground">Total {formatBRL(p.total)} {p.tem_juros ? "· c/ juros" : "· s/ juros"}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
               </div>
+
               <div className="sm:col-span-2"><Label>Observações</Label><Textarea value={form.observacoes || ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} rows={3} /></div>
             </CardContent>
           </Card>
