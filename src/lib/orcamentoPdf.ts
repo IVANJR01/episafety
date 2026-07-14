@@ -181,13 +181,14 @@ export function gerarOrcamentoPdf(
     doc.text(value, boxX + 68, y + off, { align: "right" });
   };
   drawLine("Subtotal", formatBRL(orc.subtotal), 6);
-  const descLabel = orc.desconto_tipo === "percentual" ? `Desconto (${orc.desconto_valor}%)` : "Desconto";
+  const descLabel = orc.desconto_tipo === "percentual" ? `Desconto comercial (${orc.desconto_valor}%)` : "Desconto comercial";
   drawLine(descLabel, `- ${formatBRL(
     orc.desconto_tipo === "percentual" ? (orc.subtotal * orc.desconto_valor) / 100 : orc.desconto_valor,
   )}`, 12);
   drawLine("Impostos", formatBRL(orc.impostos_valor), 18);
   drawLine("Taxa extra", formatBRL(orc.taxa_extra), 24);
-  drawLine("TOTAL", formatBRL(orc.total), 32, true);
+  drawLine("Total base", formatBRL(orc.total), 32, true);
+
 
   y += 44;
 
@@ -226,9 +227,10 @@ export function gerarOrcamentoPdf(
       doc.text(`Pagamento: ${orc.condicoes_pagamento}`, marginX, y); y += 4;
     }
 
-    // Tabela de parcelamento
+    // Cartão SEMPRE usa o Total base da proposta (nunca o valor com desconto PIX/à vista).
     if (pc && formas.includes("Cartão de crédito")) {
-      const base = usaAvista ? calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor).valor_final : orc.total;
+      const base = orc.total;
+
       const tabela = gerarTabelaParcelas(base, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
       y += 2;
       autoTable(doc, {

@@ -650,7 +650,7 @@ export default function OrcamentoEditor() {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label className="text-xs">Tipo desconto</Label>
+                  <Label className="text-xs">Tipo do desconto comercial</Label>
                   <Select value={form.desconto_tipo} onValueChange={(v: DescontoTipo) => setForm({ ...form, desconto_tipo: v })}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -660,8 +660,9 @@ export default function OrcamentoEditor() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Desconto</Label>
+                  <Label className="text-xs">Desconto comercial</Label>
                   <Input type="number" step="0.01" value={form.desconto_valor} onChange={(e) => setForm({ ...form, desconto_valor: Number(e.target.value) })} />
+
                 </div>
                 <div>
                   <Label className="text-xs">Impostos (R$)</Label>
@@ -674,10 +675,11 @@ export default function OrcamentoEditor() {
               </div>
               <div className="border-t pt-2 space-y-1 text-sm">
                 <div className="flex justify-between"><span>Subtotal</span><span>{formatBRL(totais.subtotal)}</span></div>
-                <div className="flex justify-between text-muted-foreground"><span>Desconto</span><span>- {formatBRL(totais.descontoAplicado)}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>Desconto comercial</span><span>- {formatBRL(totais.descontoAplicado)}</span></div>
                 <div className="flex justify-between text-muted-foreground"><span>Impostos</span><span>{formatBRL(totais.impostos)}</span></div>
                 <div className="flex justify-between text-muted-foreground"><span>Taxa</span><span>{formatBRL(totais.taxa)}</span></div>
-                <div className="flex justify-between font-bold text-base border-t pt-2"><span>TOTAL</span><span>{formatBRL(totais.total)}</span></div>
+                <div className="flex justify-between font-bold text-base border-t pt-2"><span>Total base da proposta</span><span>{formatBRL(totais.total)}</span></div>
+
               </div>
 
               <div className="grid gap-2">
