@@ -1,106 +1,92 @@
+# Plano — Condições de pagamento profissionais no módulo Orçamentos
 
-# Módulo Comercial — Orçamentos e Cotações (Fase 1)
+Escopo restrito a **Comercial → Orçamentos e Cotações**. Nada em EPIs, Solicitação de Materiais, Inspeções, PGR, LTCAT, PPP, Portal RH, MFA, Termos.
 
-Novo módulo isolado. Não toca EPIs, Entregas, Inspeções, ASO, PGR/LTCAT/PPP, Portal RH, MFA, Termos nem storage existente.
+## 1. Modelo de dados
 
-## 1. Banco (migration única)
+Adicionar 1 coluna JSONB em `orcamentos`:
 
-4 tabelas novas em `public`, todas com `empresa_id`, `created_at`, `updated_at`, RLS ativa e GRANTs corretos:
+- `pagamento_config jsonb` — guarda toda a nova configuração.
 
-- **`clientes_comerciais`** — cadastro de clientes (nome, razão social, CNPJ/CPF, contato, endereço, segmento, ativo).
-- **`catalogo_servicos`** — serviços padrão (nome, categoria, descrição, unidade, valor padrão, custo, margem, ativo).
-- **`orcamentos`** — proposta (número, título, cliente denormalizado, datas, status, condições, subtotal/desconto/taxa/impostos/total, aprovação/recusa, created_by).
-- **`orcamentos_itens`** — itens da proposta (tipo, código, descrição, detalhe, unidade, qtd, valor unit., desconto, total, ordem).
+Manter `formas_pagamento`, `condicoes_pagamento`, `cartao_credito_config` existentes para retrocompatibilidade (leitura), mas gravação nova passa por `pagamento_config`.
 
-RLS: `empresa_id = get_active_empresa_id()` (mesmo padrão dos outros módulos), SELECT/INSERT/UPDATE/DELETE para `authenticated` respeitando empresa ativa; Super Admin também segue empresa ativa. Trigger `updated_at`. Sequência de numeração por empresa (função helper que gera `ORC-YYYY-NNNN`).
+Formato:
 
-## 2. Permissões
-
-Nova chave de permissão `comercial` com ações `view`, `create`, `edit`, `delete`, `approve`. Liberada por padrão para Super Admin e Principal; Admin/Consultor/Comercial ganham via tela de permissões existente.
-
-## 3. Menu
-
-Novo grupo **Comercial** no sidebar (`AppLayout.tsx` / config de menu), 3 itens:
-
-- Dashboard Comercial → `/comercial`
-- Orçamentos e Cotações → `/comercial/orcamentos`
-- Clientes → `/comercial/clientes`
-- Catálogo de Serviços → `/comercial/catalogo`
-
-Guardas via `canAccessModule("comercial")` e fallback no `DashboardGuard`.
-
-## 4. Rotas e páginas
-
-```text
-src/pages/comercial/
-  ComercialDashboard.tsx     # KPIs + gráficos
-  Orcamentos.tsx             # lista + filtros + ações
-  OrcamentoNovo.tsx          # wizard (Cliente → Dados → Itens → Totais → Revisão)
-  OrcamentoDetalhe.tsx       # visualização + PDF/Excel/status
-  Clientes.tsx               # CRUD
-  Catalogo.tsx               # CRUD de serviços
+```json
+{
+  "formas": ["PIX", "Cartão de crédito"],
+  "avista": {
+    "desconto_tipo": "percentual",
+    "desconto_valor": 5,
+    "valor_final": 3025.75,
+    "aplica_pix": true
+  },
+  "pix": { "desconto_tipo": "percentual", "desconto_valor": 5, "valor_final": 3025.75 },
+  "cartao": {
+    "max_parcelas": 12,
+    "parcelas_sem_juros": 2,
+    "juros_mensal": 2.99,
+    "tabela": [ { "n": 1, "valor_parcela": 3185, "total": 3185, "tem_juros": false }, ... ]
+  }
+}
 ```
 
-Registro em `src/App.tsx` dentro de `ProtectedRoute`.
+## 2. Helper central
 
-## 5. Componentes
+Novo arquivo `src/lib/orcamentoPagamento.ts` (estender o existente):
 
-```text
-src/components/comercial/
-  ClienteFormDialog.tsx
-  ServicoCatalogoDialog.tsx
-  OrcamentoItemRow.tsx        # linha editável com autocomplete no catálogo
-  OrcamentoTotais.tsx         # subtotal/desconto/taxa/total ao vivo
-  StatusBadgeOrcamento.tsx
-  RecusarDialog.tsx           # motivo obrigatório
+- `calcularDescontoAvista(total, tipo, valor)` → `{ desconto, valor_final }`
+- `calcularParcelasCartao(total, maxParcelas, parcelasSemJuros, jurosMensal)` → array `{ n, valor_parcela, total, tem_juros }`
+  - Sem juros: `total / n`
+  - Com juros: Price `PMT = total * i / (1 - (1+i)^-n)`; `total_com_juros = PMT * n`
+- `montarPagamentoConfig(...)` centraliza a saída para gravar no banco.
+
+## 3. UI — `OrcamentoEditor.tsx`
+
+Substituir a seção atual "Formas de pagamento" por:
+
+- Checkboxes das formas (mantém as atuais).
+- Se **À vista** ou **PIX** marcado → bloco "Desconto à vista/PIX":
+  - Tipo (percentual/valor), valor, valor final calculado, toggle "Usar mesmo desconto no PIX".
+- Se **Cartão de crédito** marcado → bloco "Parcelamento no cartão":
+  - Máximo de parcelas (1–12), Sem juros até (1–max), Juros ao mês (%).
+  - Preview: tabela de parcelas (desktop) / cards empilhados (mobile <640px), sem scroll horizontal.
+
+Validações: total > 0, desconto ≤ total, se cartão marcado exigir os 3 campos.
+
+## 4. PDF — `orcamentoPdf.ts`
+
+Nova seção "Condições de pagamento":
+
+```
+PIX / À vista com 5% de desconto: R$ 3.025,75
+Cartão de crédito:
+  até 2x sem juros
+  de 3x a 12x com juros de 2,99% a.m.
+
+Tabela de parcelamento:
+  1x de R$ 3.185,00 sem juros
+  ...
+  12x de R$ X — Total R$ Y (com juros)
 ```
 
-## 6. Lógica financeira (`src/lib/orcamentoCalc.ts`)
+## 5. Excel — `orcamentoExcel.ts`
 
-- `total_item = qtd * valor_unit - desconto_item`
-- `subtotal = Σ total_item`
-- desconto geral percentual OU valor
-- `total = subtotal - desconto + impostos + taxa_extra`
-- Tudo em `Intl.NumberFormat pt-BR`, moeda BRL.
+Na aba Proposta, incluir: valor original, desconto à vista/PIX, valor final, max parcelas, sem juros até, juros mensal. Nova aba **Parcelamento** com colunas: Nº, Valor parcela, Total, Com juros.
 
-## 7. Status
+## 6. Retrocompatibilidade
 
-Fluxo: rascunho → enviado → visualizado → aprovado/recusado, com vencido automático (data_validade < hoje) e cancelado manual. Ações: marcar enviado, marcar visualizado, aprovar, recusar (motivo), cancelar, duplicar.
+Ao abrir orçamento antigo:
+- Se `pagamento_config` nulo mas houver `cartao_credito_config` / `condicoes_pagamento`, mapear para a nova estrutura em memória (não regravar automaticamente).
 
-## 8. PDF profissional (`src/lib/orcamentoPdf.ts`)
+## 7. Passos de execução
 
-`jspdf` + `jspdf-autotable` (já usados no projeto). Cabeçalho com logo/empresa, dados do cliente, escopo, tabela de itens, resumo financeiro, condições, assinaturas, rodapé "SafetySoluções — Página X de Y". Marca d'água diagonal "RASCUNHO" quando status = rascunho.
+1. Migração SQL: adicionar `pagamento_config jsonb` em `orcamentos`.
+2. Estender `src/lib/orcamentoPagamento.ts` com helpers de desconto e Price.
+3. Refatorar bloco Formas de pagamento em `src/pages/comercial/OrcamentoEditor.tsx` (UI + preview + validação).
+4. Atualizar `orcamentoPdf.ts` (nova seção + tabela) e `orcamentoExcel.ts` (nova aba).
+5. Verificar tipos e rodar tsgo.
 
-## 9. Excel (`src/lib/orcamentoExcel.ts`)
+## Fora de escopo
 
-`xlsx` (padrão do projeto): 3 abas — Proposta, Itens, Resumo.
-
-## 10. Envio
-
-- **WhatsApp:** botão abre `https://wa.me/?text=...` com mensagem pronta.
-- **E-mail:** `mailto:` com assunto/corpo pré-preenchidos.
-- (Rastreio, aceite online e conversão em OS ficam para Fase 2.)
-
-## 11. Dashboard Comercial
-
-Cards: total de propostas, valor em aberto, aprovadas, recusadas, vencidas, taxa de conversão, valor aprovado no mês, ticket médio. Gráficos (recharts, já usado): por status, previsão por mês, por cliente, serviços mais cotados.
-
-## 12. UX
-
-- Desktop: tabela + filtros no topo.
-- Mobile: cards, wizard em etapas, botões grandes, sem scroll horizontal.
-- Usa `PageHeader`, `EmptyState`, `StatusBadge`, skeletons e cor primária (laranja) para ação principal — padrão do sistema.
-
-## Ordem de execução
-
-1. Migration (4 tabelas + RLS + GRANTs + numeração).
-2. Tipos regenerados → helpers (`orcamentoCalc`, `orcamentoPdf`, `orcamentoExcel`).
-3. Páginas Clientes e Catálogo (dependências do wizard).
-4. Página Orçamentos (lista + wizard + detalhe).
-5. Dashboard Comercial.
-6. Menu + permissão + rotas.
-7. Smoke test build/tsgo.
-
-## Fora de escopo (Fase 2)
-
-Rastreio de visualização, portal público de aceite, assinatura digital, conversão em OS, integração financeiro, templates avançados de proposta.
+Não altero fluxos de aprovação, envio por e-mail, catálogo, clientes, ou qualquer módulo fora de Orçamentos.
