@@ -115,5 +115,16 @@ export function exportarOrcamentoExcel(orc: OrcamentoExcelData, itens: Orcamento
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), "Resumo");
 
+  if (pc && pc.formas.includes("Cartão de crédito")) {
+    const usaAvista = pc.formas.includes("À vista") || (pc.formas.includes("PIX") && pc.avista.aplica_pix);
+    const base = usaAvista
+      ? calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor).valor_final
+      : orc.total;
+    const tabela = gerarTabelaParcelas(base, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
+    const parc: (string | number)[][] = [["Parcela", "Valor da parcela", "Total", "Com juros"]];
+    for (const p of tabela) parc.push([`${p.n}x`, p.valor_parcela, p.total, p.tem_juros ? "Sim" : "Não"]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(parc), "Parcelamento");
+  }
+
   XLSX.writeFile(wb, `orcamento-${orc.numero_orcamento}.xlsx`);
 }
