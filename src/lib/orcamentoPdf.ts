@@ -226,9 +226,10 @@ export function gerarOrcamentoPdf(
       doc.text(`Pagamento: ${orc.condicoes_pagamento}`, marginX, y); y += 4;
     }
 
-    // Tabela de parcelamento
+    // Cartão SEMPRE usa o Total base da proposta (nunca o valor com desconto PIX/à vista).
     if (pc && formas.includes("Cartão de crédito")) {
-      const base = usaAvista ? calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor).valor_final : orc.total;
+      const base = orc.total;
+
       const tabela = gerarTabelaParcelas(base, pc.cartao.max_parcelas, pc.cartao.parcelas_sem_juros, pc.cartao.juros_mensal);
       y += 2;
       autoTable(doc, {
