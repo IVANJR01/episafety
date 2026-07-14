@@ -159,15 +159,30 @@ export function calcularDescontoAvista(
 
 export function gerarTabelaParcelas(
   total: number,
-  maxParcelas: number,
-  parcelasSemJuros: number,
-  jurosMensal: number,
+  cartaoOrMax: CartaoParcelamentoConfig | number,
+  parcelasSemJuros?: number,
+  jurosMensal?: number,
 ): ParcelaCartao[] {
-  const max = Math.max(1, Math.min(12, Math.floor(maxParcelas || 1)));
-  const semJuros = Math.max(0, Math.min(max, Math.floor(parcelasSemJuros || 0)));
-  const i = Math.max(0, Number(jurosMensal) || 0) / 100;
+  const cartao: CartaoParcelamentoConfig = typeof cartaoOrMax === "number"
+    ? { modo: "juros_composto", max_parcelas: cartaoOrMax, parcelas_sem_juros: parcelasSemJuros ?? 0, juros_mensal: jurosMensal ?? 0 }
+    : cartaoOrMax;
+  const max = Math.max(1, Math.min(12, Math.floor(cartao.max_parcelas || 1)));
   const t = Math.max(0, Number(total) || 0);
   const out: ParcelaCartao[] = [];
+
+  if ((cartao.modo || "juros_composto") === "taxa_por_parcela") {
+    const taxas = cartao.taxas || {};
+    for (let n = 1; n <= max; n++) {
+      const taxa = Math.max(0, Number(taxas[n]) || 0);
+      const totalComTaxa = +(t * (1 + taxa / 100)).toFixed(2);
+      const parcela = +(totalComTaxa / n).toFixed(2);
+      out.push({ n, valor_parcela: parcela, total: totalComTaxa, tem_juros: taxa > 0, taxa });
+    }
+    return out;
+  }
+
+  const semJuros = Math.max(0, Math.min(max, Math.floor(cartao.parcelas_sem_juros || 0)));
+  const i = Math.max(0, Number(cartao.juros_mensal) || 0) / 100;
   for (let n = 1; n <= max; n++) {
     const temJuros = n > semJuros;
     if (!temJuros || i <= 0) {
@@ -181,8 +196,6 @@ export function gerarTabelaParcelas(
   }
   return out;
 }
-
-/** Deriva a estrutura nova a partir dos campos legados (leitura de orçamentos antigos). */
 export function hydratePagamentoConfig(orc: {
   formas_pagamento?: string[] | null;
   condicoes_pagamento?: string | null;
