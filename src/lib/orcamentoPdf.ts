@@ -35,6 +35,7 @@ interface OrcamentoPdfData {
     valor_parcela: number;
     total_com_juros: number;
   } | null;
+  pagamento_config?: PagamentoConfig | null;
   prazo_execucao?: string | null;
   validade_proposta?: string | null;
   subtotal: number;
