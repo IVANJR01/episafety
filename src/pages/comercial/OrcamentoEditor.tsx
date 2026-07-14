@@ -185,29 +185,49 @@ export default function OrcamentoEditor() {
   const save = async (newStatus?: OrcamentoStatus): Promise<string | null> => {
     if (!empresaId) { toast.error("Empresa ativa não definida"); return null; }
     if (!form.titulo?.trim()) { toast.error("Informe o título da proposta"); return null; }
-    const formas: string[] = form.formas_pagamento || [];
+    const pc: PagamentoConfig = form.pagamento_config || { formas: [], avista: { ...DEFAULT_AVISTA }, cartao: { ...DEFAULT_CARTAO } };
+    const formas: string[] = pc.formas || [];
     if (!formas.length) { toast.error("Selecione ao menos uma forma de pagamento"); return null; }
     const precisaDetalhe = formas.some((f) => FORMAS_COM_DETALHE.has(f));
     if (precisaDetalhe && !form.condicoes_pagamento_detalhe?.trim()) {
       toast.error("Preencha os detalhes da condição de pagamento"); return null;
     }
+    const usaAvista = formas.includes("À vista") || (formas.includes("PIX") && pc.avista.aplica_pix);
+    if (usaAvista && pc.avista.desconto_valor < 0) {
+      toast.error("Desconto à vista não pode ser negativo"); return null;
+    }
+    if (usaAvista && pc.avista.desconto_tipo === "percentual" && pc.avista.desconto_valor > 100) {
+      toast.error("Desconto percentual não pode passar de 100%"); return null;
+    }
     if (formas.includes(CARTAO_CREDITO_KEY)) {
-      const cc = form.cartao_credito_config as CartaoConfig | null;
-      if (!cc || !cc.parcelas) { toast.error("Configure as parcelas do cartão de crédito"); return null; }
-      if (cc.tipo === "com_juros" && (cc.juros_mensal === undefined || cc.juros_mensal < 0)) {
-        toast.error("Informe o percentual de juros ao mês"); return null;
+      const cc = pc.cartao;
+      if (!cc.max_parcelas || cc.max_parcelas < 1 || cc.max_parcelas > 12) { toast.error("Máximo de parcelas inválido"); return null; }
+      if (cc.parcelas_sem_juros < 0 || cc.parcelas_sem_juros > cc.max_parcelas) { toast.error("Parcelas sem juros inválidas"); return null; }
+      if (cc.parcelas_sem_juros < cc.max_parcelas && (cc.juros_mensal === undefined || cc.juros_mensal < 0)) {
+        toast.error("Informe o juros ao mês"); return null;
       }
     }
-    if (!itens.some((i) => i.descricao.trim())) { toast.error("Adicione ao menos um item"); return null; }
+    if (!itens.some((i) => i.descricao.trim())) { toast.error("Adicione ao meno um item"); return null; }
     setSaving(true);
     try {
       let orcId = isNew ? null : id!;
+      // Legado (retrocompat leitura antiga)
+      const legacyCartao: CartaoConfig | null = formas.includes(CARTAO_CREDITO_KEY)
+        ? {
+            parcelas: pc.cartao.max_parcelas,
+            tipo: pc.cartao.parcelas_sem_juros >= pc.cartao.max_parcelas ? "sem_juros" : "com_juros",
+            juros_mensal: pc.cartao.juros_mensal,
+            valor_parcela: +(totais.total / pc.cartao.max_parcelas).toFixed(2),
+            total_com_juros: totais.total,
+          }
+        : null;
       const payload: any = {
         ...form,
         empresa_id: empresaId,
         data_validade: form.data_validade || null,
         formas_pagamento: formas,
-        cartao_credito_config: formas.includes(CARTAO_CREDITO_KEY) ? form.cartao_credito_config : null,
+        pagamento_config: pc,
+        cartao_credito_config: legacyCartao,
         condicoes_pagamento: formas.join(" | "),
         subtotal: totais.subtotal,
         total: totais.total,
@@ -216,6 +236,8 @@ export default function OrcamentoEditor() {
       delete payload.id;
       delete payload.created_at;
       delete payload.updated_at;
+
+
 
       if (isNew) {
         const { data: numero, error: e0 } = await (supabase as any).rpc("next_orcamento_numero", { _empresa_id: empresaId });
