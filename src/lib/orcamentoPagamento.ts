@@ -74,10 +74,23 @@ export interface AvistaConfig {
   aplica_pix: boolean;
 }
 
+export type CartaoModo = "juros_composto" | "taxa_por_parcela";
+
+export type CartaoPreset =
+  | "nubank_link_publico"
+  | "nubank_tap_publico"
+  | "nupay_publico"
+  | "nubank_cnpj_atual"
+  | "personalizado";
+
 export interface CartaoParcelamentoConfig {
+  modo?: CartaoModo;
+  preset?: CartaoPreset;
   max_parcelas: number;
   parcelas_sem_juros: number;
   juros_mensal: number;
+  /** Taxa (%) por número de parcelas quando modo = "taxa_por_parcela". Ex: {1:0, 2:2.01, 12:14.77} */
+  taxas?: Record<number, number>;
 }
 
 export interface ParcelaCartao {
@@ -85,12 +98,37 @@ export interface ParcelaCartao {
   valor_parcela: number;
   total: number;
   tem_juros: boolean;
+  taxa?: number;
 }
 
 export interface PagamentoConfig {
   formas: string[];
   avista: AvistaConfig;
   cartao: CartaoParcelamentoConfig;
+}
+
+export const PRESETS_CARTAO: Record<Exclude<CartaoPreset, "personalizado">, Record<number, number>> = {
+  // Valores públicos aproximados — servem como ponto de partida e devem ser conferidos no app antes do envio.
+  nubank_link_publico: { 1: 4.29, 2: 6.5, 3: 7.5, 4: 8.5, 5: 9.5, 6: 10.5, 7: 11.5, 8: 12.5, 9: 13.5, 10: 14.5, 11: 15.5, 12: 16.66 },
+  nubank_tap_publico: { 1: 1.39, 2: 4.5, 3: 5.5, 4: 6.5, 5: 7.5, 6: 8.5, 7: 9.5, 8: 10.5, 9: 11.5, 10: 12.5, 11: 13.5, 12: 15.0 },
+  nupay_publico: { 1: 1.99, 2: 3.5, 3: 4.5, 4: 5.3, 5: 6.2, 6: 7.1, 7: 8.0, 8: 8.9, 9: 9.8, 10: 10.7, 11: 11.8, 12: 13.0 },
+  // Exemplo enviado pelo usuário; totalmente editável.
+  nubank_cnpj_atual: { 1: 0, 2: 2.01, 3: 3.02, 4: 4.03, 5: 5.05, 6: 6.08, 7: 7.11, 8: 8.15, 9: 9.19, 10: 12.79, 11: 13.77, 12: 14.77 },
+};
+
+export const CARTAO_PRESET_LABEL: Record<CartaoPreset, string> = {
+  nubank_link_publico: "Nubank Link de Pagamento — Público",
+  nubank_tap_publico: "Nubank Tap to Pay — Público",
+  nupay_publico: "NuPay — Público",
+  nubank_cnpj_atual: "Nubank CNPJ — Minha taxa atual",
+  personalizado: "Personalizado",
+};
+
+export function taxasDoPreset(preset: CartaoPreset, max: number = 12): Record<number, number> {
+  const base = preset === "personalizado" ? {} : PRESETS_CARTAO[preset];
+  const out: Record<number, number> = {};
+  for (let n = 1; n <= max; n++) out[n] = Number(base?.[n] ?? 0);
+  return out;
 }
 
 export const DEFAULT_AVISTA: AvistaConfig = {
