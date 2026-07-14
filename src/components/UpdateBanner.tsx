@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Download, X, Sparkles } from "lucide-react";
 import { APP_VERSION } from "@/lib/version";
+import { forceAppUpdate } from "@/lib/appUpdate";
 
 export default function UpdateBanner() {
   const [showUpdate, setShowUpdate] = useState(false);
@@ -20,7 +21,7 @@ export default function UpdateBanner() {
     if (updateSW) {
       updateSW(true);
     } else {
-      window.location.reload();
+      void forceAppUpdate();
     }
   }, [updateSW]);
 
