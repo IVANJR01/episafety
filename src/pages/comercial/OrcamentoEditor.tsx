@@ -310,21 +310,26 @@ export default function OrcamentoEditor() {
     toast.success(`Status: ${novo}`);
   };
 
-  const buildPdfData = () => ({
-    numero_orcamento: form.numero_orcamento || "PREVIEW",
-    titulo: form.titulo, status: form.status,
-    data_emissao: form.data_emissao, data_validade: form.data_validade || null,
-    cliente_nome: form.cliente_nome, cliente_cnpj_cpf: form.cliente_cnpj_cpf,
-    cliente_email: form.cliente_email, cliente_telefone: form.cliente_telefone,
-    cliente_endereco: form.cliente_endereco, responsavel_cliente: form.responsavel_cliente,
-    observacoes: form.observacoes, condicoes_pagamento: form.condicoes_pagamento,
-    condicoes_pagamento_detalhe: form.condicoes_pagamento_detalhe,
-    formas_pagamento: form.formas_pagamento || [],
-    cartao_credito_config: form.cartao_credito_config || null,
-    prazo_execucao: form.prazo_execucao, validade_proposta: form.validade_proposta,
-    subtotal: totais.subtotal, desconto_tipo: form.desconto_tipo, desconto_valor: form.desconto_valor,
-    impostos_valor: form.impostos_valor, taxa_extra: form.taxa_extra, total: totais.total,
-  });
+  const buildPdfData = () => {
+    const pc: PagamentoConfig = form.pagamento_config || { formas: [], avista: { ...DEFAULT_AVISTA }, cartao: { ...DEFAULT_CARTAO } };
+    return {
+      numero_orcamento: form.numero_orcamento || "PREVIEW",
+      titulo: form.titulo, status: form.status,
+      data_emissao: form.data_emissao, data_validade: form.data_validade || null,
+      cliente_nome: form.cliente_nome, cliente_cnpj_cpf: form.cliente_cnpj_cpf,
+      cliente_email: form.cliente_email, cliente_telefone: form.cliente_telefone,
+      cliente_endereco: form.cliente_endereco, responsavel_cliente: form.responsavel_cliente,
+      observacoes: form.observacoes, condicoes_pagamento: form.condicoes_pagamento,
+      condicoes_pagamento_detalhe: form.condicoes_pagamento_detalhe,
+      formas_pagamento: pc.formas,
+      pagamento_config: pc,
+      cartao_credito_config: null,
+      prazo_execucao: form.prazo_execucao, validade_proposta: form.validade_proposta,
+      subtotal: totais.subtotal, desconto_tipo: form.desconto_tipo, desconto_valor: form.desconto_valor,
+      impostos_valor: form.impostos_valor, taxa_extra: form.taxa_extra, total: totais.total,
+    };
+  };
+
 
   const baixarPdf = () => {
     const doc = gerarOrcamentoPdf(buildPdfData(), itens, empresa || {});
