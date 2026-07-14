@@ -108,14 +108,17 @@ export function exportarOrcamentoExcel(orc: OrcamentoExcelData, itens: Orcamento
       : orc.desconto_valor || 0;
   const resumo = [
     ["Subtotal", orc.subtotal],
-    [orc.desconto_tipo === "percentual" ? `Desconto (${orc.desconto_valor}%)` : "Desconto", descontoAplicado],
+    [orc.desconto_tipo === "percentual" ? `Desconto comercial (${orc.desconto_valor}%)` : "Desconto comercial", descontoAplicado],
     ["Impostos", orc.impostos_valor],
     ["Taxa extra", orc.taxa_extra],
-    ["TOTAL", orc.total],
+    ["Total base da proposta", orc.total],
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), "Resumo");
 
   if (pc && pc.formas.includes("Cartão de crédito")) {
+    // Cartão SEMPRE usa o Total base da proposta (nunca o valor com desconto PIX/à vista).
+    const base = orc.total;
+
     const usaAvista = pc.formas.includes("À vista") || (pc.formas.includes("PIX") && pc.avista.aplica_pix);
     const base = usaAvista
       ? calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor).valor_final
