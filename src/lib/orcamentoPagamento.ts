@@ -138,9 +138,12 @@ export const DEFAULT_AVISTA: AvistaConfig = {
 };
 
 export const DEFAULT_CARTAO: CartaoParcelamentoConfig = {
+  modo: "juros_composto",
+  preset: "personalizado",
   max_parcelas: 12,
   parcelas_sem_juros: 2,
   juros_mensal: 2.99,
+  taxas: {},
 };
 
 export function calcularDescontoAvista(
