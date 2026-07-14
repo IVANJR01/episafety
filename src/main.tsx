@@ -20,6 +20,24 @@ if (Capacitor.isNativePlatform()) {
 
 const isNativeApp = Capacitor.isNativePlatform();
 
+// One-time hard cache purge per app version (forces stuck notebooks to pick up new bundle)
+if (typeof window !== "undefined") {
+  void (async () => {
+    try {
+      const { APP_VERSION } = await import("@/lib/version");
+      const key = "app-cache-purge-version";
+      const last = localStorage.getItem(key);
+      if (last !== APP_VERSION) {
+        localStorage.setItem(key, APP_VERSION);
+        if ("caches" in window) {
+          const names = await caches.keys();
+          await Promise.allSettled(names.map((n) => caches.delete(n)));
+        }
+      }
+    } catch {}
+  })();
+}
+
 // Purge stale media caches from older releases (keep app/offline data intact)
 if (typeof window !== "undefined" && "caches" in window) {
   void (async () => {
@@ -37,6 +55,7 @@ if (typeof window !== "undefined" && "caches" in window) {
     );
   })().catch(() => {});
 }
+
 
 let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
 
