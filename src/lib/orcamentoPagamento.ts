@@ -278,8 +278,10 @@ export function calcularInfinitepay(liquido: number, taxa: number, parcelas: num
   const l = Math.max(0, Number(liquido) || 0);
   const x = Math.max(0, Math.min(99.99, Number(taxa) || 0));
   const n = Math.max(1, Math.floor(parcelas || 1));
-  const cobrado = +(l / (1 - x / 100)).toFixed(2);
-  const parc = +(cobrado / n).toFixed(2);
+  // Arredonda a parcela primeiro e recompõe o total, para que parcela × n == cliente paga (sem diferença de centavos).
+  const cobradoBruto = l / (1 - x / 100);
+  const parc = +(cobradoBruto / n).toFixed(2);
+  const cobrado = +(parc * n).toFixed(2);
   return { n, taxa: x, valor_cobrado: cobrado, valor_parcela: parc, liquido: l };
 }
 
