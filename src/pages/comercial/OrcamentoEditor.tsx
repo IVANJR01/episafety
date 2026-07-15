@@ -14,10 +14,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  FORMAS_PAGAMENTO, FORMAS_COM_DETALHE,
+  FORMAS_PAGAMENTO, FORMAS_COM_DETALHE, NUPAY_KEY,
   CartaoConfig, CartaoModo, CartaoPreset, CARTAO_PRESET_LABEL, taxasDoPreset,
-  PagamentoConfig, DEFAULT_AVISTA, DEFAULT_CARTAO,
-  calcularDescontoAvista, gerarTabelaParcelas, hydratePagamentoConfig,
+  PagamentoConfig, DEFAULT_AVISTA, DEFAULT_CARTAO, DEFAULT_NUPAY,
+  calcularDescontoAvista, calcularNupay, gerarTabelaParcelas, hydratePagamentoConfig,
 } from "@/lib/orcamentoPagamento";
 import {
   ArrowLeft, Save, Send, CheckCircle2, XCircle, Ban, FileDown, FileSpreadsheet,
