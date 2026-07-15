@@ -222,6 +222,8 @@ export function gerarOrcamentoPdf(
           const taxa = pc.nupay?.taxa ?? 0;
           const np = calcularNupay(orc.total, taxa);
           doc.text(`• ${f}: ${formatBRL(np.valor_final)} (taxa ${taxa.toFixed(2)}%)`, marginX, y); y += 4;
+        } else if (f === INFINITEPAY_LINK_KEY && pc) {
+          doc.text(`• ${f}: valor líquido ${formatBRL(orc.total)} (repasse de taxa — tabela abaixo)`, marginX, y); y += 4;
         } else if ((f === "À vista" || (f === "PIX" && pc?.avista.aplica_pix)) && pc && pc.avista.desconto_valor > 0) {
           const d = calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor);
           const label = pc.avista.desconto_tipo === "percentual" ? `${pc.avista.desconto_valor}%` : formatBRL(pc.avista.desconto_valor);
