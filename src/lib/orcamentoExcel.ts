@@ -127,5 +127,12 @@ export function exportarOrcamentoExcel(orc: OrcamentoExcelData, itens: Orcamento
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(parc), "Parcelamento");
   }
 
+  if (pc && pc.infinitepay && pc.formas.includes(INFINITEPAY_LINK_KEY)) {
+    const tabInf = gerarTabelaInfinitepay(orc.total, pc.infinitepay);
+    const parc: (string | number)[][] = [["Parcela", "Taxa (%)", "Cliente paga", "Valor da parcela", "Você recebe (líquido)"]];
+    for (const p of tabInf) parc.push([`${p.n}x`, p.taxa, p.valor_cobrado, p.valor_parcela, p.liquido]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(parc), "Parcelamento InfinitePay");
+  }
+
   XLSX.writeFile(wb, `orcamento-${orc.numero_orcamento}.xlsx`);
 }
