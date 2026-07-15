@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { formatDate } from "./orcamentoCalc";
-import { calcularDescontoAvista, gerarTabelaParcelas, PagamentoConfig } from "./orcamentoPagamento";
+import { calcularDescontoAvista, gerarTabelaParcelas, gerarTabelaInfinitepay, INFINITEPAY_LINK_KEY, PagamentoConfig } from "./orcamentoPagamento";
 
 interface OrcamentoExcelData {
   numero_orcamento: string;
