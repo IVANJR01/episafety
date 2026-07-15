@@ -238,7 +238,10 @@ export function hydratePagamentoConfig(orc: {
     cartao = { ...DEFAULT_CARTAO };
   }
   const nupay: NupayConfig = pc?.nupay ? { taxa: Number(pc.nupay.taxa) || 0 } : { taxa: 2.76 };
-  return { formas, avista, cartao, nupay };
+  const infinitepay: InfinitepayConfig = pc?.infinitepay
+    ? { preset: pc.infinitepay.preset || "infinitepay_link_1du", max_parcelas: pc.infinitepay.max_parcelas || 12, taxas: { ...INFINITEPAY_LINK_1DU_TAXAS, ...(pc.infinitepay.taxas || {}) } }
+    : { ...DEFAULT_INFINITEPAY };
+  return { formas, avista, cartao, nupay, infinitepay };
 }
 
 export const DEFAULT_NUPAY: NupayConfig = { taxa: 2.76 };
@@ -249,3 +252,43 @@ export function calcularNupay(total: number, taxa: number): { valor_final: numbe
   const vf = +(t * (1 + x / 100)).toFixed(2);
   return { valor_final: vf, acrescimo: +(vf - t).toFixed(2) };
 }
+
+// --- InfinitePay Link de Pagamento — repasse de taxa -------------------------
+// Fórmula: valor_cobrado = valor_liquido / (1 - taxa/100)
+export const INFINITEPAY_LINK_1DU_TAXAS: Record<number, number> = {
+  1: 4.20, 2: 6.09, 3: 7.01, 4: 7.91, 5: 8.80, 6: 9.67,
+  7: 12.59, 8: 13.42, 9: 14.25, 10: 15.06, 11: 15.87, 12: 16.66,
+};
+
+export const DEFAULT_INFINITEPAY: InfinitepayConfig = {
+  preset: "infinitepay_link_1du",
+  max_parcelas: 12,
+  taxas: { ...INFINITEPAY_LINK_1DU_TAXAS },
+};
+
+export interface ParcelaInfinitepay {
+  n: number;
+  taxa: number;
+  valor_cobrado: number;
+  valor_parcela: number;
+  liquido: number;
+}
+
+export function calcularInfinitepay(liquido: number, taxa: number, parcelas: number): ParcelaInfinitepay {
+  const l = Math.max(0, Number(liquido) || 0);
+  const x = Math.max(0, Math.min(99.99, Number(taxa) || 0));
+  const n = Math.max(1, Math.floor(parcelas || 1));
+  const cobrado = +(l / (1 - x / 100)).toFixed(2);
+  const parc = +(cobrado / n).toFixed(2);
+  return { n, taxa: x, valor_cobrado: cobrado, valor_parcela: parc, liquido: l };
+}
+
+export function gerarTabelaInfinitepay(liquido: number, cfg: InfinitepayConfig): ParcelaInfinitepay[] {
+  const max = Math.max(1, Math.min(12, Math.floor(cfg.max_parcelas || 12)));
+  const out: ParcelaInfinitepay[] = [];
+  for (let n = 1; n <= max; n++) {
+    out.push(calcularInfinitepay(liquido, Number(cfg.taxas?.[n] ?? 0), n));
+  }
+  return out;
+}
+
