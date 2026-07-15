@@ -110,11 +110,18 @@ export interface NupayConfig {
   taxa: number; // % sobre total base
 }
 
+export interface InfinitepayConfig {
+  preset: "infinitepay_link_1du" | "personalizado";
+  max_parcelas: number;
+  taxas: Record<number, number>;
+}
+
 export interface PagamentoConfig {
   formas: string[];
   avista: AvistaConfig;
   cartao: CartaoParcelamentoConfig;
   nupay?: NupayConfig;
+  infinitepay?: InfinitepayConfig;
 }
 
 export const PRESETS_CARTAO: Record<Exclude<CartaoPreset, "personalizado">, Record<number, number>> = {
