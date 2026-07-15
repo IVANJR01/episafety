@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatBRL, formatDate } from "./orcamentoCalc";
 import { STATUS_LABEL, OrcamentoStatus } from "./orcamentoTypes";
-import { calcularDescontoAvista, calcularNupay, gerarTabelaParcelas, NUPAY_KEY, PagamentoConfig } from "./orcamentoPagamento";
+import { calcularDescontoAvista, calcularNupay, gerarTabelaParcelas, gerarTabelaInfinitepay, NUPAY_KEY, INFINITEPAY_LINK_KEY, PagamentoConfig } from "./orcamentoPagamento";
 
 interface EmpresaHeader {
   nome?: string | null;
@@ -222,6 +222,8 @@ export function gerarOrcamentoPdf(
           const taxa = pc.nupay?.taxa ?? 0;
           const np = calcularNupay(orc.total, taxa);
           doc.text(`• ${f}: ${formatBRL(np.valor_final)} (taxa ${taxa.toFixed(2)}%)`, marginX, y); y += 4;
+        } else if (f === INFINITEPAY_LINK_KEY && pc) {
+          doc.text(`• ${f}: valor líquido ${formatBRL(orc.total)} (repasse de taxa — tabela abaixo)`, marginX, y); y += 4;
         } else if ((f === "À vista" || (f === "PIX" && pc?.avista.aplica_pix)) && pc && pc.avista.desconto_valor > 0) {
           const d = calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor);
           const label = pc.avista.desconto_tipo === "percentual" ? `${pc.avista.desconto_valor}%` : formatBRL(pc.avista.desconto_valor);
@@ -253,6 +255,29 @@ export function gerarOrcamentoPdf(
         columnStyles: modo === "taxa_por_parcela"
           ? { 0: { cellWidth: 18, halign: "center" }, 1: { cellWidth: 20, halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "left" } }
           : { 0: { cellWidth: 20, halign: "center" }, 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "left" } },
+        margin: { left: marginX, right: marginX },
+      });
+      // @ts-ignore
+      y = (doc as any).lastAutoTable.finalY + 4;
+    }
+
+    if (pc && pc.infinitepay && formas.includes(INFINITEPAY_LINK_KEY)) {
+      const tabInf = gerarTabelaInfinitepay(orc.total, pc.infinitepay);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [["Parcela", "Taxa", "Cliente paga", "Valor parcela", "Você recebe"]],
+        body: tabInf.map((p) => [
+          `${p.n}x`, `${p.taxa.toFixed(2)}%`, formatBRL(p.valor_cobrado), formatBRL(p.valor_parcela), formatBRL(p.liquido),
+        ]),
+        theme: "grid",
+        headStyles: { fillColor: [147, 51, 234], textColor: 255 },
+        styles: { fontSize: 8, cellPadding: 1.5 },
+        columnStyles: {
+          0: { cellWidth: 18, halign: "center" },
+          1: { cellWidth: 20, halign: "right" },
+          2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" },
+        },
         margin: { left: marginX, right: marginX },
       });
       // @ts-ignore
