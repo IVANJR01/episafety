@@ -12,9 +12,10 @@ export type FormaPagamento =
   | "Mensalidade recorrente"
   | "A combinar";
 
-export const FORMAS_PAGAMENTO: FormaPagamento[] = [
+export const FORMAS_PAGAMENTO: (FormaPagamento | "Pagar com Nubank / NuPay")[] = [
   "À vista",
   "PIX",
+  "Pagar com Nubank / NuPay",
   "Boleto bancário",
   "Cartão de débito",
   "Cartão de crédito",
@@ -24,6 +25,8 @@ export const FORMAS_PAGAMENTO: FormaPagamento[] = [
   "Mensalidade recorrente",
   "A combinar",
 ];
+
+export const NUPAY_KEY = "Pagar com Nubank / NuPay";
 
 export const FORMAS_COM_DETALHE = new Set<string>([
   "Entrada + parcelamento",
