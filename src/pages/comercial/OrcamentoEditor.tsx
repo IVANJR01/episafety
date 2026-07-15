@@ -520,6 +520,86 @@ export default function OrcamentoEditor() {
                         );
                       })()}
 
+                      {formasSel.includes(INFINITEPAY_LINK_KEY) && (() => {
+                        const cfg = pc.infinitepay ?? { ...DEFAULT_INFINITEPAY };
+                        const setInfini = (patch: Partial<typeof cfg>) => setPc({ infinitepay: { ...cfg, ...patch } });
+                        const setTaxa = (n: number, v: number) =>
+                          setInfini({ taxas: { ...cfg.taxas, [n]: v } });
+                        const tabelaInf = gerarTabelaInfinitepay(totais.total, cfg);
+                        return (
+                          <div className="mt-3 border rounded-md p-3 bg-muted/20 space-y-3">
+                            <div className="text-xs font-semibold text-muted-foreground">
+                              Link de Pagamento InfinitePay — Repasse de taxa
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              Fórmula InfinitePay: valor cobrado = valor líquido ÷ (1 - taxa%). Valor líquido base: <b>{formatBRL(totais.total)}</b>.
+                            </div>
+                            <div>
+                              <Label className="text-xs">Máximo de parcelas</Label>
+                              <Select value={String(cfg.max_parcelas)} onValueChange={(v) => setInfini({ max_parcelas: Number(v) })}>
+                                <SelectTrigger className="h-9 w-32"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                                    <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="border-t pt-2 space-y-2">
+                              <div className="text-xs font-semibold text-muted-foreground">Taxas por parcela (%) — editáveis</div>
+                              <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6">
+                                {Array.from({ length: cfg.max_parcelas }, (_, i) => i + 1).map((n) => (
+                                  <div key={n} className="flex items-center gap-1">
+                                    <span className="text-xs w-8 text-right font-medium">{n}x</span>
+                                    <Input type="number" step="0.01" min={0} className="h-8 text-xs"
+                                      value={cfg.taxas[n] ?? 0}
+                                      onChange={(e) => setTaxa(n, Number(e.target.value))} />
+                                    <span className="text-xs text-muted-foreground">%</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="hidden sm:block max-h-56 overflow-y-auto rounded border">
+                              <table className="w-full text-xs">
+                                <thead className="bg-muted/40 sticky top-0">
+                                  <tr>
+                                    <th className="text-left px-2 py-1">Parcela</th>
+                                    <th className="text-right px-2 py-1">Taxa</th>
+                                    <th className="text-right px-2 py-1">Cliente paga</th>
+                                    <th className="text-right px-2 py-1">Parcela</th>
+                                    <th className="text-right px-2 py-1">Você recebe</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {tabelaInf.map((p) => (
+                                    <tr key={p.n} className="border-t">
+                                      <td className="px-2 py-1">{p.n}x</td>
+                                      <td className="px-2 py-1 text-right">{p.taxa.toFixed(2)}%</td>
+                                      <td className="px-2 py-1 text-right">{formatBRL(p.valor_cobrado)}</td>
+                                      <td className="px-2 py-1 text-right">{formatBRL(p.valor_parcela)}</td>
+                                      <td className="px-2 py-1 text-right text-emerald-700 dark:text-emerald-400">{formatBRL(p.liquido)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            <div className="sm:hidden space-y-1.5">
+                              {tabelaInf.map((p) => (
+                                <div key={p.n} className="rounded border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1.5 text-xs">
+                                  <div className="flex justify-between font-semibold"><span>{p.n}x · {p.taxa.toFixed(2)}%</span><span>{formatBRL(p.valor_parcela)}</span></div>
+                                  <div className="text-[10px] text-muted-foreground flex justify-between">
+                                    <span>Cliente paga {formatBRL(p.valor_cobrado)}</span>
+                                    <span>Líquido {formatBRL(p.liquido)}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+
+
 
                       {formasSel.includes(CARTAO_CREDITO_KEY) && (() => {
                         const modo: CartaoModo = pc.cartao.modo || "juros_composto";
