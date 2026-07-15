@@ -14,10 +14,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  FORMAS_PAGAMENTO, FORMAS_COM_DETALHE,
+  FORMAS_PAGAMENTO, FORMAS_COM_DETALHE, NUPAY_KEY,
   CartaoConfig, CartaoModo, CartaoPreset, CARTAO_PRESET_LABEL, taxasDoPreset,
-  PagamentoConfig, DEFAULT_AVISTA, DEFAULT_CARTAO,
-  calcularDescontoAvista, gerarTabelaParcelas, hydratePagamentoConfig,
+  PagamentoConfig, DEFAULT_AVISTA, DEFAULT_CARTAO, DEFAULT_NUPAY,
+  calcularDescontoAvista, calcularNupay, gerarTabelaParcelas, hydratePagamentoConfig,
 } from "@/lib/orcamentoPagamento";
 import {
   ArrowLeft, Save, Send, CheckCircle2, XCircle, Ban, FileDown, FileSpreadsheet,
@@ -490,6 +490,36 @@ export default function OrcamentoEditor() {
                           </div>
                         </div>
                       )}
+
+                      {formasSel.includes(NUPAY_KEY) && (() => {
+                        const taxa = pc.nupay?.taxa ?? DEFAULT_NUPAY.taxa;
+                        const np = calcularNupay(totais.total, taxa);
+                        const setNupay = (patch: Partial<NonNullable<typeof pc.nupay>>) => setPc({ nupay: { taxa, ...(pc.nupay || {}), ...patch } });
+                        return (
+                          <div className="mt-3 border rounded-md p-3 bg-muted/20 space-y-3">
+                            <div className="text-xs font-semibold text-muted-foreground">Pagar com Nubank / NuPay</div>
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              <div>
+                                <Label className="text-xs">Taxa real (%)</Label>
+                                <Input type="number" step="0.01" min={0} value={taxa}
+                                  onChange={(e) => setNupay({ taxa: Number(e.target.value) })} />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Acréscimo</Label>
+                                <div className="h-10 flex items-center justify-end px-2 border rounded-md bg-background text-sm">{formatBRL(np.acrescimo)}</div>
+                              </div>
+                              <div>
+                                <Label className="text-xs">Valor final</Label>
+                                <div className="h-10 flex items-center justify-end px-2 border rounded-md bg-background font-semibold text-sm text-primary">{formatBRL(np.valor_final)}</div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Base {formatBRL(totais.total)} × (1 + {taxa.toFixed(2)}%) = {formatBRL(np.valor_final)}. Confira a taxa real no seu checkout Nubank antes de enviar.
+                            </div>
+                          </div>
+                        );
+                      })()}
+
 
                       {formasSel.includes(CARTAO_CREDITO_KEY) && (() => {
                         const modo: CartaoModo = pc.cartao.modo || "juros_composto";

@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatBRL, formatDate } from "./orcamentoCalc";
 import { STATUS_LABEL, OrcamentoStatus } from "./orcamentoTypes";
-import { calcularDescontoAvista, gerarTabelaParcelas, PagamentoConfig } from "./orcamentoPagamento";
+import { calcularDescontoAvista, calcularNupay, gerarTabelaParcelas, NUPAY_KEY, PagamentoConfig } from "./orcamentoPagamento";
 
 interface EmpresaHeader {
   nome?: string | null;
@@ -218,6 +218,10 @@ export function gerarOrcamentoPdf(
                 : `• Cartão de crédito: até ${c.max_parcelas}x com juros de ${c.juros_mensal.toFixed(2)}% a.m.`;
           const wrap = doc.splitTextToSize(linhaCartao, pageW - marginX * 2);
           doc.text(wrap, marginX, y); y += wrap.length * 4;
+        } else if (f === NUPAY_KEY && pc) {
+          const taxa = pc.nupay?.taxa ?? 0;
+          const np = calcularNupay(orc.total, taxa);
+          doc.text(`• ${f}: ${formatBRL(np.valor_final)} (taxa ${taxa.toFixed(2)}%)`, marginX, y); y += 4;
         } else if ((f === "À vista" || (f === "PIX" && pc?.avista.aplica_pix)) && pc && pc.avista.desconto_valor > 0) {
           const d = calcularDescontoAvista(orc.total, pc.avista.desconto_tipo, pc.avista.desconto_valor);
           const label = pc.avista.desconto_tipo === "percentual" ? `${pc.avista.desconto_valor}%` : formatBRL(pc.avista.desconto_valor);

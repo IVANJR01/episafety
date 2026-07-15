@@ -12,9 +12,10 @@ export type FormaPagamento =
   | "Mensalidade recorrente"
   | "A combinar";
 
-export const FORMAS_PAGAMENTO: FormaPagamento[] = [
+export const FORMAS_PAGAMENTO: (FormaPagamento | "Pagar com Nubank / NuPay")[] = [
   "À vista",
   "PIX",
+  "Pagar com Nubank / NuPay",
   "Boleto bancário",
   "Cartão de débito",
   "Cartão de crédito",
@@ -24,6 +25,8 @@ export const FORMAS_PAGAMENTO: FormaPagamento[] = [
   "Mensalidade recorrente",
   "A combinar",
 ];
+
+export const NUPAY_KEY = "Pagar com Nubank / NuPay";
 
 export const FORMAS_COM_DETALHE = new Set<string>([
   "Entrada + parcelamento",
@@ -101,10 +104,15 @@ export interface ParcelaCartao {
   taxa?: number;
 }
 
+export interface NupayConfig {
+  taxa: number; // % sobre total base
+}
+
 export interface PagamentoConfig {
   formas: string[];
   avista: AvistaConfig;
   cartao: CartaoParcelamentoConfig;
+  nupay?: NupayConfig;
 }
 
 export const PRESETS_CARTAO: Record<Exclude<CartaoPreset, "personalizado">, Record<number, number>> = {
@@ -112,9 +120,8 @@ export const PRESETS_CARTAO: Record<Exclude<CartaoPreset, "personalizado">, Reco
   nubank_link_publico: { 1: 4.29, 2: 6.5, 3: 7.5, 4: 8.5, 5: 9.5, 6: 10.5, 7: 11.5, 8: 12.5, 9: 13.5, 10: 14.5, 11: 15.5, 12: 16.66 },
   nubank_tap_publico: { 1: 1.39, 2: 4.5, 3: 5.5, 4: 6.5, 5: 7.5, 6: 8.5, 7: 9.5, 8: 10.5, 9: 11.5, 10: 12.5, 11: 13.5, 12: 15.0 },
   nupay_publico: { 1: 1.99, 2: 3.5, 3: 4.5, 4: 5.3, 5: 6.2, 6: 7.1, 7: 8.0, 8: 8.9, 9: 9.8, 10: 10.7, 11: 11.8, 12: 13.0 },
-  // Exemplo enviado pelo usuário; totalmente editável.
-  // Valores confirmados no checkout Nubank CNPJ (print do cliente).
-  nubank_cnpj_atual: { 1: 0, 2: 2.01, 3: 3.02, 4: 4.03, 5: 5.05, 6: 6.08, 7: 7.11, 8: 10.65, 9: 11.72, 10: 12.79, 11: 13.87, 12: 14.77 },
+  // Valores confirmados no checkout Nubank CNPJ (print do cliente). 1x NÃO é sem juros.
+  nubank_cnpj_atual: { 1: 4.38, 2: 6.20, 3: 7.20, 4: 8.24, 5: 9.28, 6: 10.34, 7: 11.42, 8: 10.65, 9: 11.72, 10: 12.79, 11: 13.87, 12: 14.77 },
 };
 
 export const CARTAO_PRESET_LABEL: Record<CartaoPreset, string> = {
@@ -221,5 +228,15 @@ export function hydratePagamentoConfig(orc: {
   } else {
     cartao = { ...DEFAULT_CARTAO };
   }
-  return { formas, avista, cartao };
+  const nupay: NupayConfig = pc?.nupay ? { taxa: Number(pc.nupay.taxa) || 0 } : { taxa: 2.76 };
+  return { formas, avista, cartao, nupay };
+}
+
+export const DEFAULT_NUPAY: NupayConfig = { taxa: 2.76 };
+
+export function calcularNupay(total: number, taxa: number): { valor_final: number; acrescimo: number } {
+  const t = Math.max(0, Number(total) || 0);
+  const x = Math.max(0, Number(taxa) || 0);
+  const vf = +(t * (1 + x / 100)).toFixed(2);
+  return { valor_final: vf, acrescimo: +(vf - t).toFixed(2) };
 }
