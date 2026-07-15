@@ -228,5 +228,15 @@ export function hydratePagamentoConfig(orc: {
   } else {
     cartao = { ...DEFAULT_CARTAO };
   }
-  return { formas, avista, cartao };
+  const nupay: NupayConfig = pc?.nupay ? { taxa: Number(pc.nupay.taxa) || 0 } : { taxa: 2.76 };
+  return { formas, avista, cartao, nupay };
+}
+
+export const DEFAULT_NUPAY: NupayConfig = { taxa: 2.76 };
+
+export function calcularNupay(total: number, taxa: number): { valor_final: number; acrescimo: number } {
+  const t = Math.max(0, Number(total) || 0);
+  const x = Math.max(0, Number(taxa) || 0);
+  const vf = +(t * (1 + x / 100)).toFixed(2);
+  return { valor_final: vf, acrescimo: +(vf - t).toFixed(2) };
 }
