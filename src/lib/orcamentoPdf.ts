@@ -261,6 +261,29 @@ export function gerarOrcamentoPdf(
       y = (doc as any).lastAutoTable.finalY + 4;
     }
 
+    if (pc && pc.infinitepay && formas.includes(INFINITEPAY_LINK_KEY)) {
+      const tabInf = gerarTabelaInfinitepay(orc.total, pc.infinitepay);
+      y += 2;
+      autoTable(doc, {
+        startY: y,
+        head: [["Parcela", "Taxa", "Cliente paga", "Valor parcela", "Você recebe"]],
+        body: tabInf.map((p) => [
+          `${p.n}x`, `${p.taxa.toFixed(2)}%`, formatBRL(p.valor_cobrado), formatBRL(p.valor_parcela), formatBRL(p.liquido),
+        ]),
+        theme: "grid",
+        headStyles: { fillColor: [147, 51, 234], textColor: 255 },
+        styles: { fontSize: 8, cellPadding: 1.5 },
+        columnStyles: {
+          0: { cellWidth: 18, halign: "center" },
+          1: { cellWidth: 20, halign: "right" },
+          2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" },
+        },
+        margin: { left: marginX, right: marginX },
+      });
+      // @ts-ignore
+      y = (doc as any).lastAutoTable.finalY + 4;
+    }
+
     if (orc.condicoes_pagamento_detalhe) {
       const det = doc.splitTextToSize(`Detalhes: ${orc.condicoes_pagamento_detalhe}`, pageW - marginX * 2);
       doc.text(det, marginX, y); y += det.length * 4;
