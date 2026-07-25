@@ -127,12 +127,12 @@ export default function Dashboard() {
             .order("created_at", { ascending: true })
         ),
       ]);
-      setAllMovimentacoes(movResult.data);
-      setAllContratos(contResult.data);
-      setProfiles(profResult.data);
-      setAllContratoEpis(ceResult.data);
-      setAllUnidades(uniResult.data);
-      setAllEstoqueMovimentacoes(emResult.data);
+      setAllMovimentacoes(movResult.data || []);
+      setAllContratos(contResult.data || []);
+      setProfiles(profResult.data || []);
+      setAllContratoEpis(ceResult.data || []);
+      setAllUnidades(uniResult.data || []);
+      setAllEstoqueMovimentacoes(emResult.data || []);
     }
 
     hydrateFromCache();
