@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.local
+.env.*.local
+BACKUP_*
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +26,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+backup_*.sql
+
+*.dump
+
+conteudo_backup_auth.txt
+
+*.bundle
+
+EVIDENCIA_NPM_CI.txt
+EVIDENCIAS_INSTALACAO_LIMPA.txt
+diff_package_lock.txt
+supabase/.temp/
