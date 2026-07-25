@@ -137,12 +137,8 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     }
 
     errorToastShownRef.current = true;
-    toast({
-      title: "Erro ao carregar",
-      description: query.error instanceof Error ? query.error.message : "Não foi possível carregar os dados.",
-      variant: "destructive",
-    });
-  }, [query.error, toast]);
+    console.warn(`[useSupabaseQuery] Erro ao carregar dados da tabela "${table}":`, query.error);
+  }, [query.error, table]);
 
   return {
     data: query.data || [],
