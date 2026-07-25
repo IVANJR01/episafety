@@ -150,61 +150,70 @@ export default function Dashboard() {
   const companyTreeIds = useMemo(() => {
     if (!empresaId) return new Set<string>();
     const ids = new Set<string>([empresaId]);
-    allUnidades.forEach(u => {
-      if (u.empresa_pai_id === empresaId) ids.add(u.id);
+    (allUnidades || []).forEach(u => {
+      if (u && u.empresa_pai_id === empresaId) ids.add(u.id);
     });
     return ids;
   }, [empresaId, allUnidades]);
 
   // Filter all data by the user's company tree
   const epis = useMemo(() => {
-    if (!empresaId) return allEpis;
-    return allEpis.filter(e => !e.empresa_id || companyTreeIds.has(e.empresa_id));
+    const list = allEpis || [];
+    if (!empresaId) return list;
+    return list.filter(e => e && (!e.empresa_id || companyTreeIds.has(e.empresa_id)));
   }, [allEpis, empresaId, companyTreeIds]);
 
   const unidades = useMemo(() => {
-    if (!empresaId) return allUnidades;
-    return allUnidades.filter(u => companyTreeIds.has(u.id));
+    const list = allUnidades || [];
+    if (!empresaId) return list;
+    return list.filter(u => u && companyTreeIds.has(u.id));
   }, [allUnidades, empresaId, companyTreeIds]);
 
   const contratos = useMemo(() => {
-    if (!empresaId) return allContratos;
-    const unidadeIds = new Set(unidades.map(u => u.id));
-    return allContratos.filter(c => unidadeIds.has(c.unidade_id));
+    const list = allContratos || [];
+    if (!empresaId) return list;
+    const unidadeIds = new Set((unidades || []).map(u => u.id));
+    return list.filter(c => c && unidadeIds.has(c.unidade_id));
   }, [allContratos, empresaId, unidades]);
 
   const contratoEpis = useMemo(() => {
-    if (!empresaId) return allContratoEpis;
-    const contratoIds = new Set(contratos.map(c => c.id));
-    return allContratoEpis.filter(ce => contratoIds.has(ce.contrato_id));
+    const list = allContratoEpis || [];
+    if (!empresaId) return list;
+    const contratoIds = new Set((contratos || []).map(c => c.id));
+    return list.filter(ce => ce && contratoIds.has(ce.contrato_id));
   }, [allContratoEpis, empresaId, contratos]);
 
   const movimentacoes = useMemo(() => {
-    if (!empresaId) return allMovimentacoes;
-    const contratoIds = new Set(contratos.map(c => c.id));
-    return allMovimentacoes.filter(m => 
-      contratoIds.has(m.contrato_id) || (m.empresa_id && companyTreeIds.has(m.empresa_id))
+    const list = allMovimentacoes || [];
+    if (!empresaId) return list;
+    const contratoIds = new Set((contratos || []).map(c => c.id));
+    return list.filter(m => 
+      m && (contratoIds.has(m.contrato_id) || (m.empresa_id && companyTreeIds.has(m.empresa_id)))
     );
   }, [allMovimentacoes, empresaId, contratos, companyTreeIds]);
 
   const entregas = useMemo(() => {
-    if (!empresaId) return allEntregas;
-    return allEntregas.filter(e => e.empresa_id && companyTreeIds.has(e.empresa_id));
+    const list = allEntregas || [];
+    if (!empresaId) return list;
+    return list.filter(e => e && e.empresa_id && companyTreeIds.has(e.empresa_id));
   }, [allEntregas, empresaId, companyTreeIds]);
 
   const estoqueMovimentacoes = useMemo(() => {
-    if (!empresaId) return allEstoqueMovimentacoes;
-    return allEstoqueMovimentacoes.filter(m => m.empresa_id && companyTreeIds.has(m.empresa_id));
+    const list = allEstoqueMovimentacoes || [];
+    if (!empresaId) return list;
+    return list.filter(m => m && m.empresa_id && companyTreeIds.has(m.empresa_id));
   }, [allEstoqueMovimentacoes, empresaId, companyTreeIds]);
 
   const asos = useMemo(() => {
-    if (!empresaId) return allAsos;
-    return allAsos.filter(a => a.empresa_id && companyTreeIds.has(a.empresa_id));
+    const list = allAsos || [];
+    if (!empresaId) return list;
+    return list.filter(a => a && a.empresa_id && companyTreeIds.has(a.empresa_id));
   }, [allAsos, empresaId, companyTreeIds]);
 
   const treinamentos = useMemo(() => {
-    if (!empresaId) return allTreinamentos;
-    return allTreinamentos.filter(t => t.empresa_id && companyTreeIds.has(t.empresa_id));
+    const list = allTreinamentos || [];
+    if (!empresaId) return list;
+    return list.filter(t => t && t.empresa_id && companyTreeIds.has(t.empresa_id));
   }, [allTreinamentos, empresaId, companyTreeIds]);
 
   // Consolidated stock: epis.estoque (geral) + contrato_epis.estoque per EPI
