@@ -10,38 +10,47 @@ type NetworkErrorBoundaryState = {
   hasError: boolean;
   isNetworkError: boolean;
   errorMessage: string;
+  errorStack: string;
+  componentStack: string;
+};
+
+const EMPTY_STATE: NetworkErrorBoundaryState = {
+  hasError: false,
+  isNetworkError: false,
+  errorMessage: "",
+  errorStack: "",
+  componentStack: "",
 };
 
 export default class NetworkErrorBoundary extends Component<NetworkErrorBoundaryProps, NetworkErrorBoundaryState> {
-  state: NetworkErrorBoundaryState = {
-    hasError: false,
-    isNetworkError: false,
-    errorMessage: "",
-  };
+  state: NetworkErrorBoundaryState = EMPTY_STATE;
 
   static getDerivedStateFromError(error: unknown): NetworkErrorBoundaryState {
     const msg = error instanceof Error ? error.message : String(error ?? "");
+    const stack = error instanceof Error ? (error.stack ?? "") : "";
     return {
       hasError: true,
       isNetworkError: isNetworkFailure(error),
       errorMessage: msg,
+      errorStack: stack,
+      componentStack: "",
     };
   }
 
   componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
-    // Log com contexto para o console — indispensável para diagnosticar em produção.
     console.error("[NetworkErrorBoundary] Erro capturado:", error);
     console.error("[NetworkErrorBoundary] Component stack:", errorInfo.componentStack);
+    this.setState({ componentStack: errorInfo.componentStack ?? "" });
   }
 
   componentDidUpdate(prevProps: NetworkErrorBoundaryProps) {
     if (this.state.hasError && prevProps.children !== this.props.children) {
-      this.setState({ hasError: false, isNetworkError: false, errorMessage: "" });
+      this.setState(EMPTY_STATE);
     }
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, isNetworkError: false, errorMessage: "" });
+    this.setState(EMPTY_STATE);
   };
 
   handleReload = () => {
@@ -66,11 +75,32 @@ export default class NetworkErrorBoundary extends Component<NetworkErrorBoundary
                 : "Ocorreu um erro inesperado ao carregar esta seção. Tente novamente ou recarregue a página."}
             </p>
             {!this.state.isNetworkError && this.state.errorMessage && (
-              <details className="mt-3 text-xs text-muted-foreground">
+              <details className="mt-3 text-xs text-muted-foreground" open>
                 <summary className="cursor-pointer hover:text-foreground">Detalhes técnicos</summary>
-                <pre className="mt-2 whitespace-pre-wrap break-words rounded bg-background p-2 border border-border font-mono text-[10px]">
-                  {this.state.errorMessage}
-                </pre>
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-1">Erro</div>
+                    <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 border border-border font-mono text-[10px]">
+                      {this.state.errorMessage}
+                    </pre>
+                  </div>
+                  {this.state.errorStack && (
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-1">Stack</div>
+                      <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 border border-border font-mono text-[10px] max-h-64 overflow-auto">
+                        {this.state.errorStack}
+                      </pre>
+                    </div>
+                  )}
+                  {this.state.componentStack && (
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mb-1">Componente</div>
+                      <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 border border-border font-mono text-[10px] max-h-48 overflow-auto">
+                        {this.state.componentStack}
+                      </pre>
+                    </div>
+                  )}
+                </div>
               </details>
             )}
           </div>
