@@ -19,20 +19,24 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 export default function CadastroGhe() {
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId, empresasIds, isSuperAdmin } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [empresaSel, setEmpresaSel] = useState<string>(empresaId || "");
   const [busca, setBusca] = useState("");
   const [openQuick, setOpenQuick] = useState(false);
 
+  useEffect(() => {
+    if (empresaId) setEmpresaSel(empresaId);
+  }, [empresaId]);
+
   const irParaEstrutura = (id: string) => navigate(`/cadastro/ghe/${id}/estrutura`);
 
   const { data: empresas = [] } = useQuery({
-    queryKey: ["cad-ghe-empresas", empresaScopeIds.join(",")],
+    queryKey: ["cad-ghe-empresas", isSuperAdmin ? "all" : empresasIds.join(",")],
     queryFn: async () => {
-      let q = supabase.from("empresa_config").select("id, nome").order("nome");
-      if (isSuperAdmin && empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
+      let q = (supabase.from as any)("empresa_config").select("id, nome").order("nome");
+      if (!isSuperAdmin && empresasIds.length > 0) q = q.in("id", empresasIds);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
