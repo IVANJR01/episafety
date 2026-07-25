@@ -3,6 +3,7 @@ import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInspecaoPhotoSignedUrl } from "@/lib/inspecoesStorage";
+import DriveImage from "@/components/DriveImage";
 
 interface InspecaoImageProps {
   /** Path canônico no bucket inspecoes-fotos (novos registros). */
@@ -15,7 +16,7 @@ interface InspecaoImageProps {
 }
 
 /**
- * Renderiza foto de inspeção priorizando o path do Storage privado.
+ * Renderiza foto de inspeção priorizando o path do Storage privado ou URLs do Google Drive.
  */
 export default function InspecaoImage({ path, legacyUrl, alt, className, thumbnail }: InspecaoImageProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
@@ -72,13 +73,8 @@ export default function InspecaoImage({ path, legacyUrl, alt, className, thumbna
 
   if (!legacyUrl) return null;
 
-  // O módulo de Inspeções não aciona mais provedores externos antigos.
   if (legacyUrl.includes("drive.google.com")) {
-    return (
-      <div className={cn("flex items-center justify-center bg-muted rounded border", className)}>
-        <ImageOff className="w-4 h-4 text-muted-foreground" />
-      </div>
-    );
+    return <DriveImage src={legacyUrl} alt={alt} className={className} thumbnail={thumbnail} />;
   }
 
   return (
