@@ -148,17 +148,25 @@ async function loadUserEmpresas(email: string | undefined): Promise<string[]> {
   return [];
 }
 
-async function checkSuperAdmin(userId: string): Promise<boolean> {
+async function checkSuperAdmin(userId: string, email?: string): Promise<boolean> {
   try {
     const { data } = await (supabase.from as any)("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .eq("role", "super_admin")
+      .in("role", ["super_admin", "superadmin", "admin"])
       .limit(1);
-    return data && data.length > 0;
-  } catch {
-    return false;
-  }
+    if (data && data.length > 0) return true;
+
+    if (email) {
+      const { data: ul } = await (supabase.from as any)("usuarios_liberados")
+        .select("is_principal")
+        .eq("email", email.toLowerCase())
+        .eq("is_principal", true)
+        .limit(1);
+      if (ul && ul.length > 0) return true;
+    }
+  } catch {}
+  return false;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -263,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (saved && cachedEmpresas.includes(saved)) {
         setEmpresaId(saved);
       } else {
-        setEmpresaId(cached.empresaId);
+        setEmpresaId(cached.empresaId || cachedEmpresas[0] || null);
       }
     };
 
@@ -281,30 +289,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             Promise.all([
               checkAuthorized(currentUser.email),
               loadProfile(currentUser.id, currentUser.email),
-              checkSuperAdmin(currentUser.id),
+              checkSuperAdmin(currentUser.id, currentUser.email),
               loadUserEmpresas(currentUser.email),
             ]),
             authCheckTimeout.then(() => { throw new Error("timeout"); }),
           ]) as [Awaited<ReturnType<typeof checkAuthorized>>, Awaited<ReturnType<typeof loadProfile>>, boolean, string[]];
 
           // Build empresas list: merge profile empresa + usuario_empresas
-          const allEmpresas = Array.from(new Set([
+          let allEmpresas = Array.from(new Set([
             ...(profileResult.empresaId ? [profileResult.empresaId] : []),
             ...userEmpresas,
           ]));
+
+          const isSuper = superAdmin || authResult.isPrincipal;
+          if (isSuper || allEmpresas.length === 0) {
+            try {
+              const { data: allEmp } = await (supabase.from as any)("empresa_config")
+                .select("id")
+                .order("nome");
+              if (allEmp && allEmp.length > 0) {
+                allEmpresas = Array.from(new Set([...allEmpresas, ...allEmp.map((e: any) => e.id as string)]));
+              }
+            } catch {}
+          }
 
           // Resolve active empresa
           const saved = loadActiveEmpresaId();
           const activeEmpresa = (saved && allEmpresas.includes(saved))
             ? saved
-            : profileResult.empresaId;
+            : (profileResult.empresaId || allEmpresas[0] || null);
 
           const nextState: AuthCache = {
-            authorized: superAdmin || authResult.authorized,
-            modulos: superAdmin ? [] : authResult.modulos,
+            authorized: isSuper || authResult.authorized,
+            modulos: isSuper ? [] : authResult.modulos,
             empresaId: activeEmpresa,
             contratoId: authResult.contratoId,
-            isSuperAdmin: superAdmin,
+            isSuperAdmin: isSuper,
             isPrincipal: authResult.isPrincipal,
             empresasIds: allEmpresas,
           };
