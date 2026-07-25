@@ -503,7 +503,7 @@ export default function ContratoStockPanel() {
           tipo: updateTipo,
           quantidade: updateQtd,
           motivo: updateMotivo || null,
-          responsavel_nome: profile?.nome || "Desconhecido",
+          responsavel_nome: profile?.nome || profile?.email || "Gestor de SST",
           created_by: (await supabase.auth.getUser()).data.user?.id || null,
         });
 
@@ -646,7 +646,7 @@ export default function ContratoStockPanel() {
         empresa_id: solicitacaoEmpresaId,
         quantidade: solicitacaoQtd,
         motivo: solicitacaoMotivo || null,
-        solicitante_nome: profile?.nome || "Desconhecido",
+        solicitante_nome: profile?.nome || "Gestor de SST",
         created_by: (await supabase.auth.getUser()).data.user?.id || null,
       });
 
@@ -673,7 +673,7 @@ export default function ContratoStockPanel() {
       const { error } = await (supabase.from as any)("solicitacoes_epi")
         .update({
           status: novoStatus,
-          aprovador_nome: profile?.nome || "Desconhecido",
+          aprovador_nome: profile?.nome || "Gestor de SST",
           aprovado_por: (await supabase.auth.getUser()).data.user?.id || null,
           observacao_resposta: respostaObs || null,
         })
