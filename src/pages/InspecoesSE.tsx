@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
+import { CG3_SEED_INSPECOES } from "@/lib/cg3InspecoesSeed";
 import jsPDF from "jspdf";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
@@ -171,10 +172,19 @@ export default function InspecoesSE() {
       return;
     }
 
+    const mergeCg3Seed = (list: Conformidade[]) => {
+      if (targetIds.includes("814c58d9-17c9-4e18-8d19-9d0e07210834") || targetIds.includes("75447c33-0960-46db-ba59-00327575fe44")) {
+        const existingNums = new Set(list.map(r => r.numero));
+        const toAdd = (CG3_SEED_INSPECOES as Conformidade[]).filter(s => !existingNums.has(s.numero));
+        return [...list, ...toAdd].sort((a, b) => (a.numero || 0) - (b.numero || 0));
+      }
+      return list;
+    };
+
     if (!isOnline()) {
       const cached = getCachedData<Conformidade>("conformidades") || [];
       const filtered = cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
-      setItems(filtered);
+      setItems(mergeCg3Seed(filtered));
       setLoading(false);
       return;
     }
@@ -190,11 +200,12 @@ export default function InspecoesSE() {
       if (error) throw error;
 
       const records = (data || []) as Conformidade[];
-      setItems(records);
-      setCachedData("conformidades", records);
+      const merged = mergeCg3Seed(records);
+      setItems(merged);
+      setCachedData("conformidades", merged);
     } catch (error) {
       const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
-      setItems(cached);
+      setItems(mergeCg3Seed(cached));
     } finally {
       setLoading(false);
     }
