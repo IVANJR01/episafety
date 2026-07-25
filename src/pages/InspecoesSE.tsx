@@ -124,7 +124,7 @@ const emptyForm = {
 };
 
 export default function InspecoesSE() {
-  const { user, empresaId, empresaScopeIds } = useAuth();
+  const { user, empresaId, empresasIds, empresaScopeIds, isSuperAdmin, isPrincipal } = useAuth();
   const { canCreate, canDelete } = usePermissions("inspecoes_se");
   const [items, setItems] = useState<Conformidade[]>([]);
   const [obras, setObras] = useState<ObraOption[]>([]);
@@ -144,8 +144,6 @@ export default function InspecoesSE() {
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
   const [existingFotoAntesPath, setExistingFotoAntesPath] = useState<string | null>(null);
   const [existingFotoDepoisPath, setExistingFotoDepoisPath] = useState<string | null>(null);
-  // Snapshots dos paths originais no Storage ao abrir edição — usados para
-  // apagar do bucket a foto substituída/removida após salvar com sucesso.
   const originalFotoAntesPathRef = useRef<string | null>(null);
   const originalFotoDepoisPathRef = useRef<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
@@ -166,43 +164,35 @@ export default function InspecoesSE() {
   const loadData = useCallback(async () => {
     setLoading(true);
     const targetIds = empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
-    const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
-
-    if (targetIds.length === 0) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
+    const isPowerUser = isSuperAdmin || isPrincipal;
 
     if (!isOnline()) {
-      setItems(cached);
+      const cached = getCachedData<Conformidade>("conformidades") || [];
+      const filtered = isPowerUser ? cached : cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
+      setItems(filtered);
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await withTimeout(
-        (supabase.from as any)("conformidades")
-          .select("*")
-          .in("empresa_id", targetIds)
-          .order("numero", { ascending: true })
-      ) as any;
+      let query = (supabase.from as any)("conformidades").select("*").order("numero", { ascending: true });
+      if (!isPowerUser && targetIds.length > 0) {
+        query = query.in("empresa_id", targetIds);
+      }
 
+      const { data, error } = await withTimeout(query) as any;
       if (error) throw error;
 
       const records = (data || []) as Conformidade[];
       setItems(records);
       setCachedData("conformidades", records);
     } catch (error) {
-      if (cached.length > 0 || isNetworkFailure(error)) {
-        setItems(cached);
-      } else {
-        setItems([]);
-      }
+      const cached = getCachedData<Conformidade>("conformidades") || [];
+      setItems(cached);
     } finally {
       setLoading(false);
     }
-  }, [empresaId, empresaScopeIds]);
+  }, [empresaId, empresaScopeIds, isSuperAdmin, isPrincipal]);
 
   useEffect(() => {
     void loadData();
