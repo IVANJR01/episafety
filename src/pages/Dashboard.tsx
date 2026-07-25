@@ -67,7 +67,7 @@ export default function Dashboard() {
   const { data: allEntregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
 
   const { data: allAsos } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
-  const { data: allTreinamentos } = useSupabaseQuery<Treinamento>("treinamentos", "data_treinamento", undefined, "id, status, data_treinamento, empresa_id");
+  const { data: allTreinamentos } = useSupabaseQuery<Treinamento>("treinamentos", "created_at", undefined, "id, status, data, created_at, empresa_id");
 
   const [allMovimentacoes, setAllMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [allContratos, setAllContratos] = useState<Contrato[]>([]);
