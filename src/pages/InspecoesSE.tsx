@@ -124,7 +124,7 @@ const emptyForm = {
 };
 
 export default function InspecoesSE() {
-  const { user, empresaId } = useAuth();
+  const { user, empresaId, empresaScopeIds } = useAuth();
   const { canCreate, canDelete } = usePermissions("inspecoes_se");
   const [items, setItems] = useState<Conformidade[]>([]);
   const [obras, setObras] = useState<ObraOption[]>([]);
@@ -165,9 +165,10 @@ export default function InspecoesSE() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id === empresaId);
+    const targetIds = empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
+    const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
 
-    if (!empresaId) {
+    if (targetIds.length === 0) {
       setItems([]);
       setLoading(false);
       return;
@@ -183,7 +184,7 @@ export default function InspecoesSE() {
       const { data, error } = await withTimeout(
         (supabase.from as any)("conformidades")
           .select("*")
-          .eq("empresa_id", empresaId)
+          .in("empresa_id", targetIds)
           .order("numero", { ascending: true })
       ) as any;
 
@@ -201,7 +202,7 @@ export default function InspecoesSE() {
     } finally {
       setLoading(false);
     }
-  }, [empresaId]);
+  }, [empresaId, empresaScopeIds]);
 
   useEffect(() => {
     void loadData();
