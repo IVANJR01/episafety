@@ -4459,6 +4459,181 @@ export type Database = {
           },
         ]
       }
+      laudos_insalubridade: {
+        Row: {
+          agentes: Json
+          base_legal: string | null
+          caracterizado: boolean
+          created_at: string
+          created_by: string | null
+          data_avaliacao: string | null
+          data_emissao: string | null
+          empresa_id: string
+          fundamentacao: string | null
+          funcao: string | null
+          funcionario_id: string | null
+          grau_conclusao: string
+          id: string
+          metodologia: string | null
+          pdf_gerado_em: string | null
+          percentual_aplicavel: number
+          recomendacoes: string | null
+          responsavel_tecnico_nome: string | null
+          responsavel_tecnico_registro: string | null
+          setor: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          versao: number
+        }
+        Insert: {
+          agentes?: Json
+          base_legal?: string | null
+          caracterizado?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_avaliacao?: string | null
+          data_emissao?: string | null
+          empresa_id: string
+          fundamentacao?: string | null
+          funcao?: string | null
+          funcionario_id?: string | null
+          grau_conclusao?: string
+          id?: string
+          metodologia?: string | null
+          pdf_gerado_em?: string | null
+          percentual_aplicavel?: number
+          recomendacoes?: string | null
+          responsavel_tecnico_nome?: string | null
+          responsavel_tecnico_registro?: string | null
+          setor?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          versao?: number
+        }
+        Update: {
+          agentes?: Json
+          base_legal?: string | null
+          caracterizado?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_avaliacao?: string | null
+          data_emissao?: string | null
+          empresa_id?: string
+          fundamentacao?: string | null
+          funcao?: string | null
+          funcionario_id?: string | null
+          grau_conclusao?: string
+          id?: string
+          metodologia?: string | null
+          pdf_gerado_em?: string | null
+          percentual_aplicavel?: number
+          recomendacoes?: string | null
+          responsavel_tecnico_nome?: string | null
+          responsavel_tecnico_registro?: string | null
+          setor?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laudos_insalubridade_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      laudos_periculosidade: {
+        Row: {
+          atividades: Json
+          base_legal: string | null
+          caracterizado: boolean
+          created_at: string
+          created_by: string | null
+          data_avaliacao: string | null
+          data_emissao: string | null
+          empresa_id: string
+          fundamentacao: string | null
+          funcao: string | null
+          funcionario_id: string | null
+          id: string
+          metodologia: string | null
+          pdf_gerado_em: string | null
+          percentual_aplicavel: number
+          recomendacoes: string | null
+          responsavel_tecnico_nome: string | null
+          responsavel_tecnico_registro: string | null
+          setor: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          versao: number
+        }
+        Insert: {
+          atividades?: Json
+          base_legal?: string | null
+          caracterizado?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_avaliacao?: string | null
+          data_emissao?: string | null
+          empresa_id: string
+          fundamentacao?: string | null
+          funcao?: string | null
+          funcionario_id?: string | null
+          id?: string
+          metodologia?: string | null
+          pdf_gerado_em?: string | null
+          percentual_aplicavel?: number
+          recomendacoes?: string | null
+          responsavel_tecnico_nome?: string | null
+          responsavel_tecnico_registro?: string | null
+          setor?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          versao?: number
+        }
+        Update: {
+          atividades?: Json
+          base_legal?: string | null
+          caracterizado?: boolean
+          created_at?: string
+          created_by?: string | null
+          data_avaliacao?: string | null
+          data_emissao?: string | null
+          empresa_id?: string
+          fundamentacao?: string | null
+          funcao?: string | null
+          funcionario_id?: string | null
+          id?: string
+          metodologia?: string | null
+          pdf_gerado_em?: string | null
+          percentual_aplicavel?: number
+          recomendacoes?: string | null
+          responsavel_tecnico_nome?: string | null
+          responsavel_tecnico_registro?: string | null
+          setor?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laudos_periculosidade_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locais_emissao_aso: {
         Row: {
           ativo: boolean

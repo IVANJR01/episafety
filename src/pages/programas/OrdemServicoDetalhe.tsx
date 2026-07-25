@@ -31,7 +31,7 @@ export default function OrdemServicoDetalhe() {
     setOs(d);
 
     const [emp, g, f, fun] = await Promise.all([
-      (supabase as any).from("empresas").select("nome, cnpj").eq("id", d.empresa_id).maybeSingle(),
+      (supabase as any).from("empresa_config").select("nome, cnpj").eq("id", d.empresa_id).maybeSingle(),
       d.ghe_id ? (supabase as any).from("ghe_ges").select("codigo, nome").eq("id", d.ghe_id).maybeSingle() : Promise.resolve({ data: null }),
       d.funcao_id ? (supabase as any).from("ghe_funcoes").select("nome_funcao").eq("id", d.funcao_id).maybeSingle() : Promise.resolve({ data: null }),
       d.funcionario_id ? (supabase as any).from("funcionarios").select("nome, matricula").eq("id", d.funcionario_id).maybeSingle() : Promise.resolve({ data: null }),

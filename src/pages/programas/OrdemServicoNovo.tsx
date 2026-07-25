@@ -51,7 +51,7 @@ export default function OrdemServicoNovo() {
   // Empresas do escopo
   useEffect(() => {
     (async () => {
-      let q = (supabase as any).from("empresas").select("id, nome").eq("ativo", true).order("nome");
+      let q = (supabase as any).from("empresa_config").select("id, nome").order("nome");
       if (empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
       const { data } = await q;
       setEmpresas((data || []) as any);

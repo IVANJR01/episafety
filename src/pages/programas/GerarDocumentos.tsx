@@ -19,8 +19,8 @@ const DOCUMENTOS: { key: DocKey; nome: string; icon: any; disponivel: boolean; n
   { key: "os", nome: "Ordem de Serviço", icon: ClipboardList, disponivel: true, nota: "Gera OS pronta a partir do GES/GHE." },
   { key: "pcmso", nome: "PCMSO", icon: Stethoscope, disponivel: false, nota: "Fase B — em breve." },
   { key: "ltcat", nome: "LTCAT", icon: FileText, disponivel: false, nota: "Fase C — requer revisão técnica." },
-  { key: "insalubridade", nome: "Laudo de Insalubridade", icon: Flame, disponivel: false, nota: "Fase C — requer revisão técnica." },
-  { key: "periculosidade", nome: "Laudo de Periculosidade", icon: Zap, disponivel: false, nota: "Fase C — requer revisão técnica." },
+  { key: "insalubridade", nome: "Laudo de Insalubridade", icon: Flame, disponivel: true, nota: "Requer revisão e assinatura do responsável técnico." },
+  { key: "periculosidade", nome: "Laudo de Periculosidade", icon: Zap, disponivel: true, nota: "Requer revisão e assinatura do responsável técnico." },
 ];
 
 export default function GerarDocumentos() {
@@ -37,7 +37,7 @@ export default function GerarDocumentos() {
 
   useEffect(() => {
     (async () => {
-      let q = (supabase as any).from("empresas").select("id, nome").eq("ativo", true).order("nome");
+      let q = (supabase as any).from("empresa_config").select("id, nome").order("nome");
       if (empresaScopeIds.length > 0) q = q.in("id", empresaScopeIds);
       const { data } = await q;
       setEmpresas((data || []) as any);
@@ -63,7 +63,7 @@ export default function GerarDocumentos() {
     loadGheFicha(gheSel).then(setFicha).catch((e) => toast.error(e.message || "Falha ao carregar GES")).finally(() => setLoading(false));
   }, [gheSel]);
 
-  const podeGerar = docSel && (docSel === "pgr" || (docSel === "os" && gheSel && empresaSel));
+  const podeGerar = docSel && (docSel === "pgr" || docSel === "insalubridade" || docSel === "periculosidade" || (docSel === "os" && gheSel && empresaSel));
 
   const gerar = () => {
     if (docSel === "os") {
@@ -72,6 +72,10 @@ export default function GerarDocumentos() {
     } else if (docSel === "pgr") {
       // Vai para lista PGR — usuário abre um PGR e usa "Importar GHE/GES"
       nav("/pgr");
+    } else if (docSel === "insalubridade") {
+      nav("/programas/laudo-insalubridade");
+    } else if (docSel === "periculosidade") {
+      nav("/programas/laudo-periculosidade");
     }
   };
 
