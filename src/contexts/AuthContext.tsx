@@ -192,20 +192,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { clearAllCachedData(); } catch {}
   }, [empresasIds, isSuperAdmin, isPrincipal, empresaId]);
 
-  // Resolve empresa scope (matriz + filiais) for client-side filtering.
-  // Necessário porque a RLS de Super Admin libera tudo — sem este filtro,
-  // queries retornariam dados de todas as empresas mesmo após selecionar uma.
+  // Resolve empresa scope (matriz + todas as filiais da mesma árvore) para isolamento estrito por empresa.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!empresaId) { setEmpresaScopeIds([]); return; }
       try {
-        const { data } = await (supabase.from as any)("empresa_config")
-          .select("id")
-          .eq("empresa_pai_id", empresaId);
+        const { data: current } = await (supabase.from as any)("empresa_config")
+          .select("id, empresa_pai_id")
+          .eq("id", empresaId)
+          .limit(1);
         if (cancelled) return;
-        const filiais = (data || []).map((f: any) => f.id as string);
-        setEmpresaScopeIds([empresaId, ...filiais]);
+        const rootId = current?.[0]?.empresa_pai_id || empresaId;
+
+        const { data: tree } = await (supabase.from as any)("empresa_config")
+          .select("id")
+          .or(`id.eq.${rootId},empresa_pai_id.eq.${rootId}`);
+        if (cancelled) return;
+        const scope = (tree || []).map((f: any) => f.id as string);
+        setEmpresaScopeIds(scope.length > 0 ? Array.from(new Set([empresaId, rootId, ...scope])) : [empresaId]);
       } catch {
         if (!cancelled) setEmpresaScopeIds([empresaId]);
       }

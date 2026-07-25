@@ -164,35 +164,41 @@ export default function InspecoesSE() {
   const loadData = useCallback(async () => {
     setLoading(true);
     const targetIds = empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
-    const isPowerUser = isSuperAdmin || isPrincipal;
+
+    if (targetIds.length === 0) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
 
     if (!isOnline()) {
       const cached = getCachedData<Conformidade>("conformidades") || [];
-      const filtered = isPowerUser ? cached : cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
+      const filtered = cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
       setItems(filtered);
       setLoading(false);
       return;
     }
 
     try {
-      let query = (supabase.from as any)("conformidades").select("*").order("numero", { ascending: true });
-      if (!isPowerUser && targetIds.length > 0) {
-        query = query.in("empresa_id", targetIds);
-      }
+      const { data, error } = await withTimeout(
+        (supabase.from as any)("conformidades")
+          .select("*")
+          .in("empresa_id", targetIds)
+          .order("numero", { ascending: true })
+      ) as any;
 
-      const { data, error } = await withTimeout(query) as any;
       if (error) throw error;
 
       const records = (data || []) as Conformidade[];
       setItems(records);
       setCachedData("conformidades", records);
     } catch (error) {
-      const cached = getCachedData<Conformidade>("conformidades") || [];
+      const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
       setItems(cached);
     } finally {
       setLoading(false);
     }
-  }, [empresaId, empresaScopeIds, isSuperAdmin, isPrincipal]);
+  }, [empresaId, empresaScopeIds]);
 
   useEffect(() => {
     void loadData();

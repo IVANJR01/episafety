@@ -77,10 +77,9 @@ function buildStats(data: ConformidadeResumo[]): Stats {
 }
 
 export default function InspecoesDashboard() {
-  const { empresaId, empresaScopeIds, isSuperAdmin, isPrincipal } = useAuth();
+  const { empresaId, empresaScopeIds } = useAuth();
   const [stats, setStats] = useState<Stats>({ total: 0, pendentes: 0, solucionados: 0, byGravidade: [], byStatus: [] });
   const [loading, setLoading] = useState(true);
-  const isPowerUser = isSuperAdmin || isPrincipal;
 
   const targetIds = useMemo(() => {
     return empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
@@ -88,11 +87,17 @@ export default function InspecoesDashboard() {
 
   const cachedData = useMemo(() => {
     const cached = getCachedData<ConformidadeResumo>("conformidades") || [];
-    return isPowerUser ? cached : (targetIds.length > 0 ? cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id)) : cached);
-  }, [targetIds, isPowerUser]);
+    return targetIds.length > 0 ? cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id)) : [];
+  }, [targetIds]);
 
   useEffect(() => {
     async function load() {
+      if (targetIds.length === 0) {
+        setStats(buildStats([]));
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
 
       if (!isOnline()) {
@@ -102,12 +107,12 @@ export default function InspecoesDashboard() {
       }
 
       try {
-        let query = (supabase.from as any)("conformidades").select("status, gravidade, empresa_id");
-        if (!isPowerUser && targetIds.length > 0) {
-          query = query.in("empresa_id", targetIds);
-        }
-
-        const { data, error } = await withTimeout(query) as any;
+        const { data, error } = await withTimeout(
+          (supabase
+            .from("conformidades")
+            .select("status, gravidade, empresa_id")
+            .in("empresa_id", targetIds)) as any
+        ) as any;
 
         if (error) throw error;
 
