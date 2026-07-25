@@ -114,9 +114,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [empresasNomes, setEmpresasNomes] = useState<Record<string, string>>({});
 
   // Load empresa names for the switcher
-  const showEmpresaSwitcher = empresasIds.length > 1;
+  const showEmpresaSwitcher = empresasIds.length > 0 || isSuperAdmin || isPrincipal;
   useEffect(() => {
-    if (!showEmpresaSwitcher) return;
+    if (empresasIds.length === 0) return;
     supabase.from("empresa_config").select("id, nome").in("id", empresasIds).then(({ data }) => {
       if (data) {
         const map: Record<string, string> = {};
@@ -124,7 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setEmpresasNomes(map);
       }
     });
-  }, [empresasIds, showEmpresaSwitcher]);
+  }, [empresasIds]);
 
   // Busca contagem de faturas pendentes/vencidas para o badge no sidebar
   useEffect(() => {
