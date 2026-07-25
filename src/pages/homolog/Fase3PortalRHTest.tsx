@@ -255,7 +255,7 @@ export default function Fase3PortalRHTest() {
       try {
         const { data: sess } = await supabase.auth.getSession();
         const token = sess?.session?.access_token;
-        const url = `https://bccqjqimbjzskyexpjca.supabase.co/functions/v1/portal-rh-aso-download`;
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-rh-aso-download`;
         const res = await fetch(url, {
           method: "POST",
           headers: {

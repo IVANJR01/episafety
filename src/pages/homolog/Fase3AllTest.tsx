@@ -15,7 +15,7 @@ const EMPRESA_B      = "d3419ac5-f4fe-4309-bf45-0e104ac04f3a"; // Empresa B (hom
 const ASO_RASCUNHO_A = "aaaaaaa1-0000-4000-8000-000000000001";
 const ASO_LIBERADO_A = "aaaaaaa1-0000-4000-8000-000000000002";
 const ASO_EMPRESA_B  = "aaaaaaa1-0000-4000-8000-000000000003";
-const EDGE_URL = `https://bccqjqimbjzskyexpjca.supabase.co/functions/v1/portal-rh-aso-download`;
+const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portal-rh-aso-download`;
 
 type Status = "PASS" | "FAIL" | "SKIPPED_SAFE" | "SKIPPED_SCHEMA";
 type CheckResult = {
