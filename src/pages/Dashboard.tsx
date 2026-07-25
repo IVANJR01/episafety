@@ -59,15 +59,24 @@ interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: stri
 interface Aso { id: string; status: string; data_emissao: string; created_at: string; empresa_id: string; }
 interface Treinamento { id: string; status: string; data_treinamento: string; empresa_id: string; }
 
+interface UsuarioLiberado {
+  id: string;
+  email?: string;
+  nome?: string;
+  empresa_id?: string;
+}
+
 export default function Dashboard() {
   const isMobile = useIsMobile();
-  const { empresaId } = useAuth();
-  const { data: allEpis } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
-  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome");
-  const { data: allEntregas } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
+  const { user, empresaId } = useAuth();
+  const [activeTab, setActiveTab] = useState("overview");
 
-  const { data: allAsos } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
-  const { data: allTreinamentos } = useSupabaseQuery<Treinamento>("treinamentos", "created_at", undefined, "id, status, data, created_at, empresa_id");
+  const { data: allEpis = [] } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
+  const { data: funcionarios = [] } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome");
+  const { data: allEntregas = [] } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
+
+  const { data: allAsos = [] } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
+  const { data: allTreinamentos = [] } = useSupabaseQuery<Treinamento>("treinamentos", "created_at", undefined, "id, status, data_treinamento, created_at, empresa_id");
 
   const [allMovimentacoes, setAllMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [allContratos, setAllContratos] = useState<Contrato[]>([]);
@@ -521,18 +530,17 @@ export default function Dashboard() {
 
   // Entregas por responsável (usuário que registrou a entrega)
   const entregasPorResponsavel = useMemo(() => {
-    const profileMap = new Map(profiles.map(p => [p.user_id, p.nome || p.email || "Desconhecido"]));
     const contagem: Record<string, number> = {};
     entregas.forEach(e => {
-      const userId = (e as any).created_by;
-      if (!userId) return;
-      const nome = profileMap.get(userId) || "Desconhecido";
-      contagem[nome] = (contagem[nome] || 0) + e.quantidade;
+      const userId = (e as any).created_by || (e as any).usuario_id || (e as any).responsavel_id;
+      const empId = e.empresa_id || empresaId;
+      const nome = resolveResponsavelName(userId, empId, profiles, usuariosLiberados);
+      contagem[nome] = (contagem[nome] || 0) + (e.quantidade || 1);
     });
     return Object.entries(contagem)
       .map(([nome, quantidade]) => ({ nome: nome.length > 20 ? nome.substring(0, 18) + "..." : nome, quantidade }))
       .sort((a, b) => b.quantidade - a.quantidade);
-  }, [entregas, profiles]);
+  }, [entregas, profiles, usuariosLiberados, empresaId]);
 
   const recentEntregas = entregas.slice(0, 20).map(e => ({
     ...e,
