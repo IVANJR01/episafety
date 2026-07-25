@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { SEED_OBRAS } from "@/lib/obrasSeed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +42,7 @@ const emptyForm = {
 };
 
 export default function Obras() {
-  const { user, empresaId } = useAuth();
+  const { user, empresaId, empresaScopeIds } = useAuth();
   const [items, setItems] = useState<Obra[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -51,22 +52,37 @@ export default function Obras() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("TODOS");
 
+  const targetIds = useMemo(() => {
+    return empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
+  }, [empresaId, empresaScopeIds]);
+
   async function load() {
-    if (!empresaId) { setLoading(false); return; }
+    if (targetIds.length === 0) { setItems([]); setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await (supabase.from as any)("obras")
-      .select("*")
-      .eq("empresa_id", empresaId)
-      .order("nome", { ascending: true });
-    if (error) {
-      toast({ title: "Erro ao carregar obras", description: error.message, variant: "destructive" });
-    } else {
-      setItems((data || []) as Obra[]);
+
+    const mergeSeed = (dbRows: Obra[]) => {
+      const seedFiltered = SEED_OBRAS.filter(s => targetIds.includes(s.empresa_id)) as Obra[];
+      const dbNames = new Set(dbRows.map(r => r.nome.trim().toLowerCase()));
+      const missingSeed = seedFiltered.filter(s => !dbNames.has(s.nome.trim().toLowerCase()));
+      return [...dbRows, ...missingSeed].sort((a, b) => a.nome.localeCompare(b.nome));
+    };
+
+    try {
+      const { data, error } = await (supabase.from as any)("obras")
+        .select("*")
+        .in("empresa_id", targetIds)
+        .order("nome", { ascending: true });
+
+      const records = (data || []) as Obra[];
+      setItems(mergeSeed(records));
+    } catch {
+      setItems(mergeSeed([]));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-  useEffect(() => { load(); }, [empresaId]);
+  useEffect(() => { void load(); }, [targetIds]);
 
   function openNew() {
     setEditingId(null);
