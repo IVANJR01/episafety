@@ -48,6 +48,67 @@ export function useNucleoMestreSst() {
   const { data: exposicoes = [], isLoading: loadingExposicoes } =
     useSupabaseQuery<SstExposicao>("sst_exposicoes");
 
+  // LEGACY FALLBACK QUERIES (Sincronização Automática de Unidades, CNO/CNPJ e GHEs Existentes)
+  const { data: legacyEmpresasConfig = [] } = useSupabaseQuery<any>("empresa_config", "nome", true);
+  const { data: legacyGhe = [] } = useSupabaseQuery<any>("ghe_ges", "nome", true);
+  const { data: legacySetores = [] } = useSupabaseQuery<any>("aso_setores", "nome", true);
+  const { data: legacyFuncoes = [] } = useSupabaseQuery<any>("aso_funcoes", "nome", true);
+  const { data: legacyInventario = [] } = useSupabaseQuery<any>("pgr_inventario_itens");
+
+  const effectiveEstabelecimentos = estabelecimentos.length > 0 ? estabelecimentos : legacyEmpresasConfig.map((ec: any) => ({
+    id: ec.id,
+    empresa_id: ec.empresa_pai_id || ec.id,
+    codigo: ec.cno ? `CNO-${ec.cno}` : (ec.tipo === "matriz" || !ec.empresa_pai_id ? "SEDE-MATRIZ" : `FILIAL-${ec.nome.substring(0, 5).toUpperCase()}`),
+    nome: ec.nome,
+    tipo_inscricao: ec.cno ? "cno" : "cnpj",
+    numero_inscricao: ec.cno || ec.cnpj || "00.000.000/0000-00",
+    cnae: ec.cnae || "4120-4/00",
+    grau_risco: ec.grau_risco || 2,
+    endereco_completo: ec.endereco || "Endereço principal cadastrado na unidade",
+    cidade: ec.cidade || "João Pessoa",
+    uf: ec.uf || "PB",
+  }));
+
+  const effectiveGesList = gesList.length > 0 ? gesList : legacyGhe.map((g: any) => ({
+    id: g.id,
+    empresa_id: g.empresa_id,
+    codigo: g.codigo || `GHE-${g.nome.substring(0, 5).toUpperCase()}`,
+    nome: g.nome,
+    descricao: g.descricao || g.descricao_ambiente || "GHE importado da base legada",
+    criterio_agrupamento: g.processo ? `Processo: ${g.processo}` : "Importado automaticamente do cadastro de GHE existente",
+    validade_inicio: g.created_at ? g.created_at.substring(0, 10) : new Date().toISOString().substring(0, 10),
+  }));
+
+  const effectiveSetores = setores.length > 0 ? setores : legacySetores.map((s: any) => ({
+    id: s.id,
+    empresa_id: s.empresa_id,
+    nome: s.nome,
+    descricao: s.descricao || "Setor importado do cadastro existente",
+  }));
+
+  const effectiveFuncoes = funcoes.length > 0 ? funcoes : legacyFuncoes.map((f: any) => ({
+    id: f.id,
+    empresa_id: f.empresa_id,
+    nome: f.nome,
+    cbo: f.cbo || "-",
+    descricao_atividades: f.descricao_atividades || "Atividades importadas da função existente",
+    exige_nr10: !!f.exige_nr10,
+    exige_nr33: !!f.exige_nr33,
+    exige_nr35: !!f.exige_nr35,
+  }));
+
+  const effectiveExposicoes = exposicoes.length > 0 ? exposicoes : legacyInventario.map((inv: any) => ({
+    id: inv.id,
+    empresa_id: inv.empresa_id,
+    nivel_origem: inv.ghe_id ? "ges" : "funcao",
+    ges_id: inv.ghe_id || null,
+    fonte_geradora: inv.perigo_descricao || inv.fonte_geradora || "Perigo Mapeado",
+    tipo_exposicao: inv.tipo_exposicao || "habitual_permanente",
+    severidade: inv.severidade || 3,
+    probabilidade: inv.probabilidade || 2,
+    epi_eficacia_conclusao: inv.epi ? "eficaz" : "nao_avaliada",
+  }));
+
   // SAVE ESTABELECIMENTO MUTATION
   const saveEstabelecimentoMutation = useMutation({
     mutationFn: async (estabelecimento: Partial<SstEstabelecimento>) => {
@@ -231,15 +292,15 @@ export function useNucleoMestreSst() {
   });
 
   return {
-    estabelecimentos,
+    estabelecimentos: effectiveEstabelecimentos,
     ambientes,
-    setores,
+    setores: effectiveSetores,
     processos,
-    funcoes,
-    gesList,
+    funcoes: effectiveFuncoes,
+    gesList: effectiveGesList,
     gesVinculos,
     perigosCatalogo,
-    exposicoes,
+    exposicoes: effectiveExposicoes,
     isLoading:
       loadingEstabelecimentos ||
       loadingAmbientes ||
