@@ -32,7 +32,7 @@ self.addEventListener("activate", (event) =>
         await Promise.allSettled(
           windowClients.map((client) => {
             const url = new URL(client.url);
-            url.searchParams.set("v", "1.3.8");
+            url.searchParams.set("v", "1.3.10");
             url.searchParams.set("sw", "off");
             url.searchParams.set("t", Date.now().toString());
             return client.navigate(url.toString());

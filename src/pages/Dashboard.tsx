@@ -10,18 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes, Building2, MapPin } from "lucide-react";
-import { useSupabaseQuery } from "@/hooks/useSupabaseData";
-import { supabase } from "@/integrations/supabase/client";
-import { cachedQuery, getCachedData } from "@/lib/offlineStorage";
-import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area, ComposedChart, Line, ReferenceLine } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";

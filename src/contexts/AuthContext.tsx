@@ -148,6 +148,15 @@ async function loadUserEmpresas(email: string | undefined): Promise<string[]> {
 }
 
 async function checkSuperAdmin(userId: string, email?: string): Promise<boolean> {
+  // Prefer the server-side RPC so malformed PostgREST role filters cannot
+  // block the dashboard for an otherwise valid super administrator.
+  try {
+    const { data, error } = await (supabase.rpc as any)("is_super_admin", { _user_id: userId });
+    if (!error && data === true) return true;
+  } catch {
+    // Older environments may not expose this RPC; use the legacy lookup below.
+  }
+
   try {
     const { data } = await (supabase.from as any)("user_roles")
       .select("role")

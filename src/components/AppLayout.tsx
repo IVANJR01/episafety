@@ -63,6 +63,7 @@ const gestaoDocItems: NavItem[] = [
 
 // Programas — PGR, PCMSO, LTCAT, laudos técnicos e PPP (previdenciário, puxa dados do LTCAT)
 const programasItems: NavItem[] = [
+  { path: "/documentacao-sst", label: "Documentação SST (Mestre)", icon: ShieldCheck, moduleKey: "pgr" },
   { path: "/programas", label: "Visão Geral", icon: LayoutDashboard, moduleKey: "pgr" },
   { path: "/programas/gerar", label: "Gerar Documentos", icon: Bell, moduleKey: "pgr" },
   { path: "/pgr", label: "PGR", icon: ShieldCheck, moduleKey: "pgr" },
@@ -805,9 +806,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 onChange={(e) => setActiveEmpresaId(e.target.value)}
                 className="text-[10px] bg-muted border-none rounded-md px-1.5 py-1 focus:ring-1 focus:ring-primary max-w-[100px] truncate"
               >
-                {empresasIds.map(id => (
+                {empresasSwitcherIds.map(id => (
                   <option key={id} value={id}>
-                    {empresasNomes[id] || "..."}
+                    {empresasInfo[id]?.nome || "..."}
                   </option>
                 ))}
               </select>

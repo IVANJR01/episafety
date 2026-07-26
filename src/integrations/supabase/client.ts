@@ -2,13 +2,30 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const env = import.meta.env as Record<string, string | undefined>;
+const SUPABASE_URL = (env.VITE_SUPABASE_URL || 'https://estmuducawmftvpbeutm.supabase.co')
+  .trim()
+  .replace(/\/+$/, '');
+const SUPABASE_KEY = (
+  env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  env.VITE_SUPABASE_ANON_KEY ||
+  env.VITE_SUPABASE_KEY ||
+  ''
+).trim();
+
+if (!/^https:\/\/[^\s/]+\.supabase\.co$/i.test(SUPABASE_URL)) {
+  console.error('[Supabase] VITE_SUPABASE_URL inválida:', SUPABASE_URL);
+}
+if (!SUPABASE_KEY) {
+  console.error(
+    '[Supabase] Chave pública ausente. Configure VITE_SUPABASE_PUBLISHABLE_KEY (ou VITE_SUPABASE_ANON_KEY) no ambiente Preview da Vercel.'
+  );
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,

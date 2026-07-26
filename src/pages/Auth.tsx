@@ -100,7 +100,12 @@ export default function Auth() {
       }
 
     } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      const rawMessage = error instanceof Error ? error.message : String(error ?? "");
+      const description = /failed to fetch|networkerror|load failed/i.test(rawMessage)
+        ? "Não foi possível conectar ao Supabase. Verifique as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no ambiente Preview da Vercel."
+        : rawMessage || "Não foi possível concluir a autenticação.";
+      console.error("[AUTH_LOGIN_ERROR]", { name: error?.name, message: rawMessage });
+      toast({ title: "Erro de conexão", description, variant: "destructive" });
     } finally {
       setLoading(false);
     }
