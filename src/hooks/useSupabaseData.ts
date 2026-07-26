@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData, addToSyncQueue, isOnline } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
 
-const QUERY_TIMEOUT_MS = 3000;
+const QUERY_TIMEOUT_MS = 10000;
 const QUERY_GC_MS = 24 * 60 * 60 * 1000;
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs = QUERY_TIMEOUT_MS) => {
@@ -101,10 +101,6 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
           return cached;
         }
 
-        if (isNetworkFailure(error)) {
-          return [];
-        }
-
         throw error;
       }
     },
@@ -143,6 +139,8 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
   return {
     data: query.data || [],
     loading: query.isLoading && query.data === undefined,
+    refreshing: query.isFetching,
+    error: query.error,
     refetch: fetch,
   };
 }

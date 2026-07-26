@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
-import { preCacheAllData, setCacheUserScope, clearAllCachedData } from "@/lib/offlineStorage";
+import { setCacheUserScope, clearAllCachedData } from "@/lib/offlineStorage";
 import { clearCachedSession, loadCachedSession, saveCachedSession } from "@/lib/authSessionCache";
 import { resolveOfflineSession } from "@/lib/authState";
-import { prefetchDashboardOfflineData, prefetchStockOfflineData } from "@/lib/stockOfflinePrefetch";
 import { purgeQueryCache } from "@/lib/queryClient";
 
 interface AuthContextType {
@@ -342,35 +341,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setEmpresasIds(allEmpresas);
           saveAuthCache(currentUser.email, nextState);
 
-          // Pre-cache — same logic as before
-          const isVideoOnly = !nextState.isSuperAdmin && !nextState.isPrincipal &&
-            nextState.modulos.length > 0 && nextState.modulos.every(p => p.startsWith("video_treinamentos"));
-          if (!isVideoOnly) {
-            const deferPrefetch = () => {
-              preCacheAllData().catch(() => {});
-              setTimeout(() => prefetchDashboardOfflineData().catch(() => {}), 3000);
-
-              const hasGestaoEstoque = nextState.isSuperAdmin || nextState.isPrincipal ||
-                nextState.modulos.includes("epis:gestao_estoque") || nextState.modulos.includes("epis");
-              const hasEstoqueContrato = nextState.modulos.includes("estoque_contrato") ||
-                nextState.modulos.some((modulo) => modulo.startsWith("estoque_contrato:"));
-              const canAccessStock = hasGestaoEstoque || hasEstoqueContrato || !!nextState.contratoId;
-
-              if (canAccessStock) {
-                setTimeout(() => prefetchStockOfflineData({
-                  empresaId: nextState.empresaId,
-                  contratoId: nextState.contratoId,
-                  restricted: !hasGestaoEstoque && (hasEstoqueContrato || !!nextState.contratoId),
-                }).catch(() => {}), 6000);
-              }
-            };
-
-            if (typeof requestIdleCallback === "function") {
-              requestIdleCallback(() => deferPrefetch(), { timeout: 8000 });
-            } else {
-              setTimeout(deferPrefetch, 2000);
-            }
-          }
+          // Each visited screen now warms its own scoped cache. Preloading the whole
+          // application here created dozens of concurrent requests during login and
+          // competed with the dashboard's critical data.
         }
       } catch {
         applyCachedState(loadAuthCache(currentUser.email));
