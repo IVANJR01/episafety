@@ -61,18 +61,10 @@ const gestaoDocItems: NavItem[] = [
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
-// Programas — PGR, PCMSO, LTCAT, laudos técnicos e PPP (previdenciário, puxa dados do LTCAT)
+// Programas — Módulo Mestre Unificado
 const programasItems: NavItem[] = [
-  { path: "/documentacao-sst", label: "Documentação SST (Mestre)", icon: ShieldCheck, moduleKey: "pgr" },
-  { path: "/programas", label: "Visão Geral", icon: LayoutDashboard, moduleKey: "pgr" },
-  { path: "/programas/gerar", label: "Gerar Documentos", icon: Bell, moduleKey: "pgr" },
-  { path: "/pgr", label: "PGR", icon: ShieldCheck, moduleKey: "pgr" },
-  { path: "/programas/ordem-servico", label: "Ordem de Serviço", icon: ClipboardList, moduleKey: "pgr" },
-  { path: "/aso", label: "PCMSO", icon: Stethoscope, moduleKey: "aso" },
-  { path: "/ltcat", label: "LTCAT", icon: FileText, moduleKey: "ltcat" },
-  { path: "/programas/laudo-insalubridade", label: "Laudo de Insalubridade", icon: Flame, moduleKey: "pgr" },
-  { path: "/programas/laudo-periculosidade", label: "Laudo de Periculosidade", icon: Zap, moduleKey: "pgr" },
-  { path: "/central-ppp", label: "PPP", icon: FileText, moduleKey: "ppp" },
+  { path: "/documentacao-sst", label: "Central Documentação SST", icon: ShieldCheck, moduleKey: "pgr" },
+  { path: "/programas/ordem-servico", label: "Ordens de Serviço", icon: ClipboardList, moduleKey: "pgr" },
 ];
 
 // Comercial — Orçamentos, Clientes, Catálogo

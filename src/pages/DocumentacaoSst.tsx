@@ -23,12 +23,18 @@ import {
   Radio,
 } from "lucide-react";
 
+import PgrDashboard from "@/pages/pgr/PgrDashboard";
+import AsoModule from "@/pages/aso/AsoModule";
+import LtcatDashboard from "@/pages/ltcat/LtcatDashboard";
+import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
+import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
+import CentralPPP from "@/pages/CentralPPP";
+
 export default function DocumentacaoSst() {
   const [activeTab, setActiveTab] = useState("central");
 
   return (
-    <AppLayout>
-      <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
         {/* HEADER GERAL */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
@@ -100,65 +106,29 @@ export default function DocumentacaoSst() {
             <GesExposicoesTab />
           </TabsContent>
 
-          {/* SUBMÓDULOS DE DOCUMENTOS ESPECÍFICOS */}
+          {/* SUBMÓDULOS DE DOCUMENTOS ESPECÍFICOS INTEGRADOS */}
           <TabsContent value="pgr" className="mt-4">
-            <Card className="p-6 text-center space-y-3">
-              <FileText className="w-12 h-12 text-emerald-600 mx-auto" />
-              <CardTitle>Módulo PGR Mestre (NR-01)</CardTitle>
-              <CardDescription>
-                Consome o Núcleo Mestre para gerar o Inventário de Riscos GRO e o Plano de Ação.
-              </CardDescription>
-            </Card>
+            <PgrDashboard />
           </TabsContent>
 
           <TabsContent value="pcmso" className="mt-4">
-            <Card className="p-6 text-center space-y-3">
-              <Stethoscope className="w-12 h-12 text-blue-600 mx-auto" />
-              <CardTitle>Módulo PCMSO Mestre (NR-07)</CardTitle>
-              <CardDescription>
-                Matriz de exames e condutas clínicas médica sob responsabilidade do Médico cadastrado.
-              </CardDescription>
-            </Card>
+            <AsoModule />
           </TabsContent>
 
           <TabsContent value="ltcat" className="mt-4">
-            <Card className="p-6 text-center space-y-3">
-              <ShieldCheck className="w-12 h-12 text-purple-600 mx-auto" />
-              <CardTitle>Módulo LTCAT Previdenciário (Lei 8.213/91)</CardTitle>
-              <CardDescription>
-                Avaliação de agentes nocivos e conclusões de aposentadoria especial assinadas por Engenheiro/Médico.
-              </CardDescription>
-            </Card>
+            <LtcatDashboard />
           </TabsContent>
 
           <TabsContent value="insalubridade" className="mt-4">
-            <Card className="p-6 text-center space-y-3">
-              <FileSpreadsheet className="w-12 h-12 text-amber-600 mx-auto" />
-              <CardTitle>Laudo Técnico de Insalubridade (NR-15)</CardTitle>
-              <CardDescription>
-                Análise técnica por anexo com determinação dos graus (10%, 20%, 40%) e comprovação de neutralização.
-              </CardDescription>
-            </Card>
+            <LaudoInsalubridade />
           </TabsContent>
 
           <TabsContent value="periculosidade" className="mt-4">
-            <Card className="p-6 text-center space-y-3">
-              <AlertTriangle className="w-12 h-12 text-red-600 mx-auto" />
-              <CardTitle>Laudo Técnico de Periculosidade (NR-16)</CardTitle>
-              <CardDescription>
-                Operações perigosas, delimitação de áreas de risco, croquis e laudo do adicional de 30%.
-              </CardDescription>
-            </Card>
+            <LaudoPericulosidade />
           </TabsContent>
 
           <TabsContent value="ppp" className="mt-4">
-            <Card className="p-6 text-center space-y-3">
-              <Users className="w-12 h-12 text-indigo-600 mx-auto" />
-              <CardTitle>Módulo PPP & Validador eSocial S-2240</CardTitle>
-              <CardDescription>
-                Linha do tempo histórica de exposição por funcionário e conferência para transmissão oficial.
-              </CardDescription>
-            </Card>
+            <CentralPPP />
           </TabsContent>
 
           <TabsContent value="responsaveis" className="mt-4">
@@ -182,6 +152,5 @@ export default function DocumentacaoSst() {
           </TabsContent>
         </Tabs>
       </div>
-    </AppLayout>
   );
 }
