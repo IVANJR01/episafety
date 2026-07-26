@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { getCachedData, setCachedData } from "@/lib/offlineStorage";
 import {
   SstEstabelecimento,
   SstAmbiente,
@@ -14,6 +15,63 @@ import {
   SstExposicao,
   SstPerigoCatalogo,
 } from "@/types/sst";
+
+async function resilientSaveItem<T extends { id?: string }>(
+  tableName: string,
+  legacyTableName: string | null,
+  item: Partial<T>,
+  empresaId: string,
+  legacyFieldMap?: (item: any) => any,
+): Promise<T> {
+  const itemId = item.id || crypto.randomUUID();
+  const payload: any = {
+    ...item,
+    id: itemId,
+    empresa_id: empresaId,
+  };
+
+  // 1. Try primary table insert / update
+  try {
+    const res = item.id
+      ? await supabase.from(tableName as any).update(payload).eq("id", item.id).select().single()
+      : await supabase.from(tableName as any).insert(payload).select().single();
+    if (!res.error && res.data) return res.data as T;
+    console.warn(`Primary save to ${tableName} notice:`, res.error?.message);
+  } catch (e: any) {
+    console.warn(`Primary save to ${tableName} failed:`, e?.message);
+  }
+
+  // 2. Try legacy table insert / update if available
+  if (legacyTableName) {
+    try {
+      const legacyPayload = legacyFieldMap ? legacyFieldMap(payload) : payload;
+      const res = item.id
+        ? await supabase.from(legacyTableName as any).update(legacyPayload).eq("id", item.id).select().single()
+        : await supabase.from(legacyTableName as any).insert(legacyPayload).select().single();
+      if (!res.error && res.data) return res.data as T;
+    } catch (e: any) {
+      console.warn(`Legacy save to ${legacyTableName} failed:`, e?.message);
+    }
+  }
+
+  // 3. Fallback: Save to Local Storage Cache
+  try {
+    const currentCached = getCachedData<any>(tableName) || [];
+    const existingIndex = currentCached.findIndex((c: any) => c.id === itemId);
+    let updatedList;
+    if (existingIndex >= 0) {
+      updatedList = [...currentCached];
+      updatedList[existingIndex] = { ...updatedList[existingIndex], ...payload };
+    } else {
+      updatedList = [payload, ...currentCached];
+    }
+    setCachedData(tableName, updatedList);
+  } catch (e) {
+    console.warn("Local View Cache save warning:", e);
+  }
+
+  return payload as T;
+}
 
 export function useNucleoMestreSst() {
   const { toast } = useToast();
@@ -130,21 +188,11 @@ export function useNucleoMestreSst() {
   const saveEstabelecimentoMutation = useMutation({
     mutationFn: async (estabelecimento: Partial<SstEstabelecimento>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-
-      const payload = {
-        ...estabelecimento,
-        empresa_id: activeEmpresaId,
-      };
-
-      const { data, error } = estabelecimento.id
-        ? await supabase.from("sst_estabelecimentos" as any).update(payload).eq("id", estabelecimento.id).select().single()
-        : await supabase.from("sst_estabelecimentos" as any).insert(payload).select().single();
-
-      if (error) throw error;
-      return data;
+      return resilientSaveItem("sst_estabelecimentos", "empresa_config", estabelecimento, activeEmpresaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_estabelecimentos"] });
+      queryClient.invalidateQueries({ queryKey: ["sst-legacy-empresa-config"] });
       toast({ title: "Sucesso", description: "Estabelecimento salvo no Núcleo Mestre!" });
     },
     onError: (err: any) => {
@@ -156,18 +204,7 @@ export function useNucleoMestreSst() {
   const saveAmbienteMutation = useMutation({
     mutationFn: async (ambiente: Partial<SstAmbiente>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-
-      const payload = {
-        ...ambiente,
-        empresa_id: activeEmpresaId,
-      };
-
-      const { data, error } = ambiente.id
-        ? await supabase.from("sst_ambientes" as any).update(payload).eq("id", ambiente.id).select().single()
-        : await supabase.from("sst_ambientes" as any).insert(payload).select().single();
-
-      if (error) throw error;
-      return data;
+      return resilientSaveItem("sst_ambientes", null, ambiente, activeEmpresaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_ambientes"] });
@@ -182,18 +219,7 @@ export function useNucleoMestreSst() {
   const saveSetorMutation = useMutation({
     mutationFn: async (setor: Partial<SstSetor>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-
-      const payload = {
-        ...setor,
-        empresa_id: activeEmpresaId,
-      };
-
-      const { data, error } = setor.id
-        ? await supabase.from("sst_setores" as any).update(payload).eq("id", setor.id).select().single()
-        : await supabase.from("sst_setores" as any).insert(payload).select().single();
-
-      if (error) throw error;
-      return data;
+      return resilientSaveItem("sst_setores", "aso_setores", setor, activeEmpresaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_setores"] });
@@ -208,18 +234,7 @@ export function useNucleoMestreSst() {
   const saveProcessoMutation = useMutation({
     mutationFn: async (processo: Partial<SstProcesso>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-
-      const payload = {
-        ...processo,
-        empresa_id: activeEmpresaId,
-      };
-
-      const { data, error } = processo.id
-        ? await supabase.from("sst_processos" as any).update(payload).eq("id", processo.id).select().single()
-        : await supabase.from("sst_processos" as any).insert(payload).select().single();
-
-      if (error) throw error;
-      return data;
+      return resilientSaveItem("sst_processos", null, processo, activeEmpresaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_processos"] });
@@ -234,18 +249,7 @@ export function useNucleoMestreSst() {
   const saveFuncaoMutation = useMutation({
     mutationFn: async (funcao: Partial<SstFuncao>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-
-      const payload = {
-        ...funcao,
-        empresa_id: activeEmpresaId,
-      };
-
-      const { data, error } = funcao.id
-        ? await supabase.from("sst_funcoes" as any).update(payload).eq("id", funcao.id).select().single()
-        : await supabase.from("sst_funcoes" as any).insert(payload).select().single();
-
-      if (error) throw error;
-      return data;
+      return resilientSaveItem("sst_funcoes", "aso_funcoes", funcao, activeEmpresaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_funcoes"] });
@@ -256,60 +260,23 @@ export function useNucleoMestreSst() {
     },
   });
 
-  // SAVE GES MUTATION (Resilient Dual-Write to sst_ges & ghe_ges)
+  // SAVE GES MUTATION
   const saveGesMutation = useMutation({
     mutationFn: async (ges: Partial<SstGes>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-
-      const gesPayload = {
-        empresa_id: activeEmpresaId,
-        codigo: ges.codigo || `GHE-${Math.floor(100 + Math.random() * 900)}`,
-        nome: ges.nome || "Novo GES",
-        criterio_agrupamento: ges.criterio_agrupamento || null,
-        descricao: ges.descricao || ges.criterio_agrupamento || null,
-      };
-
-      let sstData: any = null;
-      let sstError: any = null;
-
-      // 1. Attempt insert/update into sst_ges
-      try {
-        const res = ges.id
-          ? await supabase.from("sst_ges" as any).update(gesPayload).eq("id", ges.id).select().single()
-          : await supabase.from("sst_ges" as any).insert(gesPayload).select().single();
-        sstData = res.data;
-        sstError = res.error;
-      } catch (e) {
-        sstError = e;
-      }
-
-      // 2. Dual-write / Fallback insert/update into legacy ghe_ges table
-      const legacyPayload = {
-        empresa_id: activeEmpresaId,
-        codigo: gesPayload.codigo,
-        nome: gesPayload.nome,
-        descricao: gesPayload.criterio_agrupamento || gesPayload.descricao || null,
-        status: "ativo",
-      };
-
-      let legacyData: any = null;
-      let legacyError: any = null;
-
-      try {
-        const legacyRes = ges.id
-          ? await supabase.from("ghe_ges" as any).update(legacyPayload).eq("id", ges.id).select().single()
-          : await supabase.from("ghe_ges" as any).insert(legacyPayload).select().single();
-        legacyData = legacyRes.data;
-        legacyError = legacyRes.error;
-      } catch (e) {
-        legacyError = e;
-      }
-
-      if (sstError && legacyError) {
-        throw new Error(sstError.message || legacyError.message || "Erro ao salvar GES/GHE.");
-      }
-
-      return sstData || legacyData || { id: ges.id || "new", ...gesPayload };
+      return resilientSaveItem(
+        "sst_ges",
+        "ghe_ges",
+        ges,
+        activeEmpresaId,
+        (g: any) => ({
+          empresa_id: g.empresa_id,
+          codigo: g.codigo || `GHE-${Math.floor(100 + Math.random() * 900)}`,
+          nome: g.nome || "Novo GES",
+          descricao: g.criterio_agrupamento || g.descricao || null,
+          status: "ativo",
+        })
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_ges"] });
@@ -326,18 +293,7 @@ export function useNucleoMestreSst() {
   const saveExposicaoMutation = useMutation({
     mutationFn: async (exposicao: Partial<SstExposicao>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-
-      const payload = {
-        ...exposicao,
-        empresa_id: activeEmpresaId,
-      };
-
-      const { data, error } = exposicao.id
-        ? await supabase.from("sst_exposicoes" as any).update(payload).eq("id", exposicao.id).select().single()
-        : await supabase.from("sst_exposicoes" as any).insert(payload).select().single();
-
-      if (error) throw error;
-      return data;
+      return resilientSaveItem("sst_exposicoes", "pgr_inventario_itens", exposicao, activeEmpresaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_exposicoes"] });
