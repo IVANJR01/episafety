@@ -405,68 +405,186 @@ export function GesExposicoesTab() {
 
       {/* MODAL EXPOSICAO / INVENTÁRIO PLANILHA */}
       <Dialog open={openExposicaoModal} onOpenChange={setOpenExposicaoModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-6">
           <DialogHeader>
-            <DialogTitle>{exposicaoFormData.id ? "Editar" : "Cadastrar Risco no"} Inventário Mestre (Planilha NR-01)</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-amber-600" />
+              {exposicaoFormData.id ? "Editar Risco" : "Cadastrar Risco"} no Inventário Mestre (Planilha NR-01)
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSaveExposicao} className="space-y-4 text-sm">
-            <div className="bg-amber-50 p-3 rounded-md border border-amber-200 text-xs font-semibold text-amber-900 mb-2">
-              Preencha os campos abaixo conforme a estrutura da planilha. Ao salvar, as informações alimentarão automaticamente a tabela do Inventário NR-01.
+          <form onSubmit={handleSaveExposicao} className="space-y-5 text-sm mt-2">
+            <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 text-xs font-medium text-amber-900 flex items-center justify-between">
+              <span>
+                💡 <strong>Dica SST:</strong> Selecione os elementos já cadastrados na <strong>Estrutura (Ambientes, Setores, Processos, Funções)</strong> para preencher a planilha automaticamente sem redigitar!
+              </span>
             </div>
 
             {/* SEÇÃO 1: ESTRUTURA */}
-            <div className="border border-slate-200 rounded p-3 bg-slate-50/50 space-y-3">
-              <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wide">1. Identificação de Estrutura & Agrupamento</h4>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <h4 className="font-bold text-xs text-indigo-900 uppercase tracking-wide flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-indigo-600" /> 1. Identificação de Estrutura & Agrupamento Ocupacional
+                </h4>
+                <Badge variant="outline" className="text-[10px] bg-indigo-50 border-indigo-200 text-indigo-700">Estrutura Mestre</Badge>
+              </div>
+
+              {/* SELETORES DE ESTRUTURA RÁPIDA */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Descrição do Ambiente *</Label>
-                  <Input
-                    value={exposicaoFormData.ambiente_nome || ""}
-                    onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, ambiente_nome: e.target.value })}
-                    placeholder="Ex: Ambiente interno, pé-direito 3m, piso cerâmico..."
-                  />
+                  <Label className="text-xs font-semibold text-slate-700">Vincular a um GES / GHE (Grupo de Exposição)</Label>
+                  <Select
+                    value={exposicaoFormData.ges_id || ""}
+                    onValueChange={(val) => {
+                      const selectedGes = gesList.find((g) => g.id === val);
+                      setExposicaoFormData({
+                        ...exposicaoFormData,
+                        ges_id: val === "none" ? null : val,
+                        tipo_agente: selectedGes ? `GES: ${selectedGes.codigo}` : exposicaoFormData.tipo_agente
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Selecione um GES cadastrado (opcional)..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">-- Sem GES (Exposição Específica) --</SelectItem>
+                      {gesList.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>{g.codigo} - {g.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+
                 <div>
-                  <Label>Setor *</Label>
-                  <Input
-                    value={exposicaoFormData.setor_nome || ""}
-                    onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, setor_nome: e.target.value })}
-                    placeholder="Ex: PCP, Financeiro, SESMT"
-                  />
+                  <Label className="text-xs font-semibold text-slate-700">Selecionar Ambiente Cadastrado (Preenchimento Rápido)</Label>
+                  <Select
+                    onValueChange={(val) => {
+                      const amb = ambientes.find((a) => a.id === val);
+                      if (amb) {
+                        const desc = `${amb.nome} (Pé-direito: ${amb.pe_direito || "Padrão"}, Piso: ${amb.piso || "Cerâmico/Concreto"}, Ventilação: ${amb.ventilacao || "Natural"}, Iluminação: ${amb.iluminacao || "Artificial LED"})`;
+                        setExposicaoFormData({
+                          ...exposicaoFormData,
+                          ambiente_id: amb.id,
+                          ambiente_nome: desc
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Selecione um ambiente cadastrado..." /></SelectTrigger>
+                    <SelectContent>
+                      {ambientes.length === 0 ? (
+                        <SelectItem value="empty" disabled>Nenhum ambiente em Estrutura</SelectItem>
+                      ) : (
+                        ambientes.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* CAMPOS TEXTO COMPATÍVEIS COM A PLANILHA */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Funções Abrangidas</Label>
+                  <Label className="text-xs font-bold text-slate-800">Descrição do Ambiente *</Label>
+                  <Textarea
+                    rows={2}
+                    value={exposicaoFormData.ambiente_nome || ""}
+                    onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, ambiente_nome: e.target.value })}
+                    className="mt-1 bg-white text-xs"
+                    placeholder="Ex: Ambiente de trabalho interno, pé-direito ~3m, piso cerâmico, iluminação artificial por lâmpadas fluorescentes..."
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-bold text-slate-800">Setor *</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Select
+                        onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, setor_nome: val })}
+                      >
+                        <SelectTrigger className="w-[140px] bg-white text-xs"><SelectValue placeholder="Puxar..." /></SelectTrigger>
+                        <SelectContent>
+                          {setores.map((s) => (
+                            <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        value={exposicaoFormData.setor_nome || ""}
+                        onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, setor_nome: e.target.value })}
+                        className="bg-white text-xs flex-1"
+                        placeholder="Ex: PCP, Financeiro, SESMT, Costura"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-bold text-slate-800">Processo / Atividade *</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Select
+                        onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, processo_nome: val })}
+                      >
+                        <SelectTrigger className="w-[140px] bg-white text-xs"><SelectValue placeholder="Puxar..." /></SelectTrigger>
+                        <SelectContent>
+                          {processos.map((p) => (
+                            <SelectItem key={p.id} value={p.nome}>{p.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        value={exposicaoFormData.processo_nome || ""}
+                        onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, processo_nome: e.target.value })}
+                        className="bg-white text-xs flex-1"
+                        placeholder="Ex: Gerenciamento do processo produtivo / Costura"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-bold text-slate-800">Funções Abrangidas</Label>
+                <div className="flex gap-2 mt-1">
+                  <Select
+                    onValueChange={(val) => {
+                      const current = exposicaoFormData.funcao_nome ? `${exposicaoFormData.funcao_nome}, ${val}` : val;
+                      setExposicaoFormData({ ...exposicaoFormData, funcao_nome: current });
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px] bg-white text-xs"><SelectValue placeholder="+ Adicionar Função..." /></SelectTrigger>
+                    <SelectContent>
+                      {funcoes.map((f) => (
+                        <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     value={exposicaoFormData.funcao_nome || ""}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, funcao_nome: e.target.value })}
-                    placeholder="Ex: Supervisão de Produção, Auxiliar Adm"
-                  />
-                </div>
-                <div>
-                  <Label>Processo / Atividade</Label>
-                  <Input
-                    value={exposicaoFormData.processo_nome || ""}
-                    onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, processo_nome: e.target.value })}
-                    placeholder="Ex: Gerenciamento do processo produtivo"
+                    className="bg-white text-xs flex-1"
+                    placeholder="Ex: Supervisão de Produção, Cronometrista, Auxiliar Adm..."
                   />
                 </div>
               </div>
             </div>
 
             {/* SEÇÃO 2: AGENTE & PERIGO */}
-            <div className="border border-slate-200 rounded p-3 bg-slate-50/50 space-y-3">
-              <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wide">2. Agente, Perigo & Agravos</h4>
-              <div className="grid grid-cols-3 gap-3">
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <h4 className="font-bold text-xs text-amber-900 uppercase tracking-wide flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" /> 2. Agente, Perigo & Danos à Saúde
+                </h4>
+                <Badge variant="outline" className="text-[10px] bg-amber-50 border-amber-200 text-amber-800">Perigos GRO</Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label>Agente *</Label>
+                  <Label className="text-xs font-bold text-slate-800">Agente *</Label>
                   <Select
                     value={exposicaoFormData.agente_categoria || "Ergonômico"}
                     onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, agente_categoria: val })}
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1 bg-white text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Ergonômico">Ergonômico</SelectItem>
                       <SelectItem value="Físico">Físico</SelectItem>
@@ -478,59 +596,70 @@ export function GesExposicoesTab() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Tipo de Agente</Label>
+                  <Label className="text-xs font-bold text-slate-800">Tipo de Agente</Label>
                   <Input
                     value={exposicaoFormData.tipo_agente || ""}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, tipo_agente: e.target.value })}
-                    placeholder="Ex: Monotonia e Repetitividade, Postura Inadequada"
+                    className="mt-1 bg-white text-xs"
+                    placeholder="Ex: Monotonia e Repetitividade, Ruído Contínuo"
                   />
                 </div>
                 <div>
-                  <Label>Perigo / Fonte Exposição *</Label>
+                  <Label className="text-xs font-bold text-slate-800">Perigo / Fonte Exposição *</Label>
                   <Input
                     value={exposicaoFormData.fonte_geradora || ""}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, fonte_geradora: e.target.value })}
                     required
-                    placeholder="Ex: Mobiliário, Computadores"
+                    className="mt-1 bg-white text-xs"
+                    placeholder="Ex: Mobiliário, Máquinas, Ruído 88 dB"
                   />
                 </div>
               </div>
 
               <div>
-                <Label>Possíveis Lesões ou Agravos à Saúde</Label>
+                <Label className="text-xs font-bold text-slate-800">Possíveis Lesões ou Agravos à Saúde</Label>
                 <Input
                   value={exposicaoFormData.possiveis_lesoes || ""}
                   onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, possiveis_lesoes: e.target.value })}
-                  placeholder="Ex: Lesões por Esforços Repetitivos, DORT, dores lombares"
+                  className="mt-1 bg-white text-xs"
+                  placeholder="Ex: Lesões por Esforços Repetitivos (LER), DORT, estresse ocupacional..."
                 />
               </div>
             </div>
 
             {/* SEÇÃO 3: EXPOSIÇÃO & MEDIDAS */}
-            <div className="border border-slate-200 rounded p-3 bg-slate-50/50 space-y-3">
-              <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wide">3. Avaliação de Exposição & Medidas de Prevenção</h4>
-              <div className="grid grid-cols-4 gap-3">
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <h4 className="font-bold text-xs text-emerald-900 uppercase tracking-wide flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-600" /> 3. Avaliação de Exposição & Medidas de Prevenção
+                </h4>
+                <Badge variant="outline" className="text-[10px] bg-emerald-50 border-emerald-200 text-emerald-800">Controles & EPI</Badge>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <Label>Limite Exposição</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Limite Exposição</Label>
                   <Input
                     value={exposicaoFormData.limite_exposicao || "N.A"}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, limite_exposicao: e.target.value })}
+                    className="mt-1 bg-white text-xs"
                   />
                 </div>
                 <div>
-                  <Label>Intensidade / Conc.</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Intensidade / Conc.</Label>
                   <Input
                     value={exposicaoFormData.intensidade_concentracao || "N.A"}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, intensidade_concentracao: e.target.value })}
+                    className="mt-1 bg-white text-xs"
                   />
                 </div>
                 <div>
-                  <Label>Tipo Exposição</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Tipo Exposição</Label>
                   <Select
                     value={exposicaoFormData.tipo_exposicao || "intermitente"}
                     onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, tipo_exposicao: val })}
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1 bg-white text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="intermitente">Intermitente</SelectItem>
                       <SelectItem value="habitual_permanente">Habitual e Permanente</SelectItem>
@@ -539,70 +668,86 @@ export function GesExposicoesTab() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Técnica Utilizada</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Técnica Utilizada</Label>
                   <Input
                     value={exposicaoFormData.tecnica_utilizada || "Avaliação Qualitativa"}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, tecnica_utilizada: e.target.value })}
+                    className="mt-1 bg-white text-xs"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <Label>Procedimento ADM / EPC / Org. Trabalho</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Procedimento ADM / EPC / Org. Trabalho</Label>
                   <Input
                     value={exposicaoFormData.procedimento_adm || ""}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, procedimento_adm: e.target.value })}
+                    className="mt-1 bg-white text-xs"
                     placeholder="Ex: Revezamento de posições, assentos NR-17"
                   />
                 </div>
                 <div>
-                  <Label>EPI</Label>
+                  <Label className="text-xs font-semibold text-slate-700">EPI</Label>
                   <Input
                     value={exposicaoFormData.epi_nome || "N.A"}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, epi_nome: e.target.value })}
+                    className="mt-1 bg-white text-xs"
                   />
                 </div>
                 <div>
-                  <Label>Atenuação / Fator Proteção</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Atenuação / Fator Proteção</Label>
                   <Input
                     value={exposicaoFormData.atenuacao_fator_protecao || "N.A"}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, atenuacao_fator_protecao: e.target.value })}
+                    className="mt-1 bg-white text-xs"
                   />
                 </div>
               </div>
             </div>
 
             {/* SEÇÃO 4: MATRIZ DE RISCO (GRO) */}
-            <div className="border border-amber-200 bg-amber-50/40 rounded p-3 space-y-3">
-              <h4 className="font-bold text-xs text-amber-900 uppercase tracking-wide">4. Matriz de Risco Ocupacional (GRO)</h4>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-4 space-y-3">
+              <h4 className="font-bold text-xs text-amber-900 uppercase tracking-wide flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-amber-600" /> 4. Matriz de Risco Ocupacional (GRO)
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
-                  <Label>Probabilidade (1 a 5)</Label>
+                  <Label className="text-xs font-bold text-slate-800">Probabilidade (1 a 5)</Label>
                   <Input
                     type="number"
                     min={1}
                     max={5}
                     value={exposicaoFormData.probabilidade || 1}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, probabilidade: parseInt(e.target.value) || 1 })}
+                    className="mt-1 bg-white"
                   />
                 </div>
                 <div>
-                  <Label>Severidade (1 a 5)</Label>
+                  <Label className="text-xs font-bold text-slate-800">Severidade (1 a 5)</Label>
                   <Input
                     type="number"
                     min={1}
                     max={5}
                     value={exposicaoFormData.severidade || 1}
                     onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, severidade: parseInt(e.target.value) || 1 })}
+                    className="mt-1 bg-white"
                   />
+                </div>
+                <div className="flex flex-col justify-center items-center bg-white p-2 rounded-lg border border-amber-200">
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Cálculo Risco</span>
+                  <span className="text-sm font-black text-amber-900">
+                    Prob ({(exposicaoFormData.probabilidade || 1)}) x Sev ({(exposicaoFormData.severidade || 1)}) = {(exposicaoFormData.probabilidade || 1) * (exposicaoFormData.severidade || 1)}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setOpenExposicaoModal(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white">Salvar no Inventário Planilha</Button>
+              <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6">
+                Salvar no Inventário Planilha
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
