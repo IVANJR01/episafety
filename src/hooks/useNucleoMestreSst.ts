@@ -18,7 +18,9 @@ import {
 export function useNucleoMestreSst() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { activeEmpresaId } = useAuth();
+  const { empresaId: authEmpresaId } = useAuth();
+  const searchEmpresaId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("empresa_id") : null;
+  const activeEmpresaId = searchEmpresaId || authEmpresaId;
 
   // READ QUERIES
   const { data: estabelecimentos = [], isLoading: loadingEstabelecimentos } =
@@ -72,8 +74,8 @@ export function useNucleoMestreSst() {
 
   const effectiveEstabelecimentos = estabelecimentos.length > 0 ? estabelecimentos : legacyEmpresasConfig.map((ec: any) => ({
     id: ec.id,
-    empresa_id: ec.empresa_pai_id || ec.id,
-    codigo: ec.cno ? `CNO-${ec.cno}` : (ec.tipo === "matriz" || !ec.empresa_pai_id ? "SEDE-MATRIZ" : `FILIAL-${ec.nome.substring(0, 5).toUpperCase()}`),
+    empresa_id: activeEmpresaId || ec.id,
+    codigo: ec.cno ? `CNO-${ec.cno}` : (ec.tipo === "matriz" || !ec.empresa_pai_id ? "SEDE-MATRIZ" : `FILIAL-${(ec.nome || "EST").substring(0, 5).toUpperCase()}`),
     nome: ec.nome,
     tipo_inscricao: ec.cno ? "cno" : "cnpj",
     numero_inscricao: ec.cno || ec.cnpj || "00.000.000/0000-00",
