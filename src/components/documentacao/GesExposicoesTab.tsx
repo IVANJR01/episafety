@@ -68,16 +68,189 @@ export function GesExposicoesTab() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 w-full bg-slate-100 p-1 rounded-lg">
+        <TabsList className="grid grid-cols-3 w-full bg-slate-100 p-1 rounded-lg">
+          <TabsTrigger value="inventario" className="text-xs font-semibold flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-amber-600" /> Inventário Mestre NR-01 (Planilha)
+          </TabsTrigger>
           <TabsTrigger value="ges" className="text-xs font-semibold flex items-center gap-2">
-            <Layers className="w-4 h-4" /> Cadastro de GES / GHE Transversal
+            <Layers className="w-4 h-4 text-indigo-600" /> Cadastro de GES / GHE
           </TabsTrigger>
           <TabsTrigger value="exposicoes" className="text-xs font-semibold flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4" /> Matriz Mestre de Exposições & Riscos
+            <Shield className="w-4 h-4 text-emerald-600" /> Matriz Resumida de Exposições
           </TabsTrigger>
         </TabsList>
 
-        {/* TAB 1: GES / GHE */}
+        {/* TAB 1: INVENTÁRIO MESTRE DE RISCOS OCUPACIONAIS (EXCEL STYLE) */}
+        <TabsContent value="inventario" className="mt-4 space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                INVENTÁRIO DE RISCOS OCUPACIONAIS (NR-01 / GRO)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Identificação de perigos e classificação de riscos por GES - Grupo de Exposição Similar
+              </p>
+            </div>
+            <Button onClick={() => { setExposicaoFormData({ nivel_origem: "ges", severidade: 3, probabilidade: 2, epi_eficacia_conclusao: "nao_avaliada" }); setOpenExposicaoModal(true); }} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white">
+              <Plus className="w-4 h-4 mr-1" /> Adicionar Risco ao Inventário
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto border border-amber-300 rounded-lg shadow-sm bg-white">
+            {/* EXCEL HEADER TOP BANNER */}
+            <div className="bg-amber-400 text-slate-900 p-3 text-center border-b border-amber-500">
+              <div className="font-black text-sm tracking-wide uppercase">INVENTÁRIO DE RISCOS OCUPACIONAIS</div>
+              <div className="text-[11px] font-bold text-slate-800">IDENTIFICAÇÃO DE PERIGOS E CLASSIFICAÇÃO DE RISCOS POR GES - GRUPO DE EXPOSIÇÃO SIMILAR</div>
+            </div>
+
+            <Table className="text-[11px] border-collapse min-w-[1400px]">
+              <TableHeader>
+                <TableRow className="bg-amber-300 text-slate-900 font-bold border-b border-amber-400">
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[160px] text-center uppercase">Descrição do Ambiente</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[80px] text-center uppercase">Setor</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[40px] text-center uppercase">GES</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[140px] text-center uppercase">Função</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[140px] text-center uppercase">Processo</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[90px] text-center uppercase bg-amber-400">Agente</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[110px] text-center uppercase">Tipo de Agente</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[120px] text-center uppercase">Perigo / Fonte Exposição</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[140px] text-center uppercase">Possíveis Lesões ou Agravos à Saúde</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[60px] text-center uppercase">Limite Exposição</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[60px] text-center uppercase">Intens. / Conc.</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[70px] text-center uppercase">Tipo / Tempo Exposição</TableHead>
+                  <TableHead className="border-r border-amber-400 text-slate-900 font-extrabold w-[80px] text-center uppercase">Técnica Utilizada</TableHead>
+                  <TableHead colSpan={3} className="border-r border-amber-400 text-slate-900 font-extrabold text-center uppercase bg-amber-200">MEDIDAS DE PREVENÇÃO EXISTENTES</TableHead>
+                  <TableHead colSpan={4} className="text-slate-900 font-extrabold text-center uppercase bg-sky-200">CLASSIFICAÇÃO DO RISCO (GRO)</TableHead>
+                </TableRow>
+                <TableRow className="bg-amber-200 text-slate-800 font-bold border-b border-amber-300">
+                  <TableHead colSpan={13} className="border-r border-amber-300 text-center font-bold text-[10px]">DADOS IDENTIFICADORES E AVALIAÇÃO DE EXPOSIÇÃO</TableHead>
+                  <TableHead className="border-r border-amber-300 text-slate-900 text-center text-[10px] w-[140px]">Procedimento ADM / EPC / Org. Trabalho</TableHead>
+                  <TableHead className="border-r border-amber-300 text-slate-900 text-center text-[10px] w-[60px]">EPI</TableHead>
+                  <TableHead className="border-r border-amber-300 text-slate-900 text-center text-[10px] w-[70px]">Atenuação / Fator Proteção</TableHead>
+                  <TableHead className="border-r border-amber-300 text-slate-900 text-center text-[10px] w-[40px]">PROB</TableHead>
+                  <TableHead className="border-r border-amber-300 text-slate-900 text-center text-[10px] w-[40px]">SEV</TableHead>
+                  <TableHead className="border-r border-amber-300 text-slate-900 text-center text-[10px] w-[40px]">TOTAL</TableHead>
+                  <TableHead className="text-slate-900 text-center text-[10px] w-[90px] bg-sky-300">CLASSIFICAÇÃO</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {/* SAMPLE / REAL INVENTORY ROWS */}
+                <TableRow className="hover:bg-amber-50 border-b border-slate-200">
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Ambiente de trabalho interno, pé-direito ~3m, piso cerâmico, iluminação artificial por lâmpadas fluorescentes, teto de gesso com laje.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top font-bold text-center">PCP</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top font-bold text-center">1</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Supervisão de Produção, Cronometrista, Gerente de Produção, Auxiliar Adm, Assistente Fiscal.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Gerenciamento de todo o processo produtivo da empresa.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold bg-amber-100 text-amber-900">
+                    Ergonômico
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">Monotonia e Repetitividade</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">Mobiliário, Máquina e Equipamento</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Lesões por Esforços Repetitivos e Distúrbios Osteomusculares (DORT)
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">Intermitente</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">Avaliação Qualitativa</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Revezamento do posicionamento das atividades utilizando posições diferentes.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">1</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">1</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">1</TableCell>
+                  <TableCell className="p-2 align-top text-center font-extrabold bg-sky-500 text-white">
+                    TRIVIAL
+                  </TableCell>
+                </TableRow>
+
+                <TableRow className="hover:bg-amber-50 border-b border-slate-200">
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Escritório administrativo climatizado, iluminação fluorescente LED.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top font-bold text-center">FINANCEIRO</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top font-bold text-center">1</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Assistente Financeiro, Auxiliar Financeiro, Auxiliar Administrativo.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Apurar e projetar o saldo disponível na empresa para fluxo de caixa.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold bg-amber-100 text-amber-900">
+                    Ergonômico
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">Postura Inadequada</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">Mobiliário e Computadores</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Dores nos membros superiores, dor na coluna vertebral.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">Intermitente</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">Avaliação Qualitativa</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Assentos padrão NR-17, suporte de monitor e apoio de pés.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">1</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">1</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">1</TableCell>
+                  <TableCell className="p-2 align-top text-center font-extrabold bg-sky-500 text-white">
+                    TRIVIAL
+                  </TableCell>
+                </TableRow>
+
+                <TableRow className="hover:bg-amber-50 border-b border-slate-200">
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Setor de Recursos Humanos, ambiente climatizado.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top font-bold text-center">SESMT</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top font-bold text-center">1</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Técnico em Segurança do Trabalho, Engenheiro SST.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Vistoria nos setores da empresa e elaboração de documentos SST.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold bg-purple-100 text-purple-900">
+                    Psicossocial
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">Excesso de Demanda</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">Sobrecarga de Trabalho</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Transtorno mental, estresse ocupacional, DORT.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">Intermitente</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">AEP Psicossocial + Entrevistas</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-slate-700">
+                    Divulgação de cartazes educativos sobre ergonomia, postura e acompanhamento.
+                  </TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center">N.A</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">3</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">3</TableCell>
+                  <TableCell className="border-r border-slate-200 p-2 align-top text-center font-bold">9</TableCell>
+                  <TableCell className="p-2 align-top text-center font-extrabold bg-amber-400 text-slate-900">
+                    MODERADO
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* TAB 2: GES / GHE */}
         <TabsContent value="ges" className="mt-4 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-slate-800">Grupos Homogêneos de Exposição</h3>
