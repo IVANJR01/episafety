@@ -14,6 +14,7 @@ import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area, ComposedChart, Line, ReferenceLine } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { EmptyState } from "@/components/ui/empty-state";
+import { resolveResponsavelName } from "@/lib/userResolver";
 
 const MotionCard = motion.create(Card);
 
@@ -34,7 +35,7 @@ const staggerContainer = {
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; tamanho?: string | null; }
 interface Funcionario { id: string; nome: string; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; empresa_id?: string | null; }
-interface Profile { id: string; user_id: string; nome: string; email: string | null; }
+interface Profile { id: string; user_id: string; nome: string; email: string | null; empresa_id?: string | null; }
 interface ContratoMovimentacao {
   id: string;
   contrato_id: string;
@@ -57,7 +58,7 @@ interface Contrato { id: string; nome: string; unidade_id: string; }
 interface ContratoEpi { id: string; contrato_id: string; epi_id: string; estoque: number; empresa_id: string | null; }
 interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: string | null; }
 interface Aso { id: string; status: string; data_emissao: string; created_at: string; empresa_id: string; }
-interface Treinamento { id: string; status: string; data_treinamento: string; empresa_id: string; }
+interface Treinamento { id: string; status: string; data: string; empresa_id: string; }
 
 interface UsuarioLiberado {
   id: string;
@@ -68,15 +69,16 @@ interface UsuarioLiberado {
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
-  const { user, empresaId } = useAuth();
+  const { user, empresaId, empresaScopeIds } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { data: allEpis = [] } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
-  const { data: funcionarios = [] } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome");
-  const { data: allEntregas = [] } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
+  const { data: allEpis = [], loading: episLoading, error: episError } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
+  const { data: funcionarios = [], loading: funcionariosLoading, error: funcionariosError } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome, empresa_id");
+  const { data: allEntregas = [], loading: entregasLoading, error: entregasError } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
 
-  const { data: allAsos = [] } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
-  const { data: allTreinamentos = [] } = useSupabaseQuery<Treinamento>("treinamentos", "created_at", undefined, "id, status, data_treinamento, created_at, empresa_id");
+  const { data: allAsos = [], loading: asosLoading, error: asosError } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
+  const { data: allTreinamentos = [], loading: treinamentosLoading, error: treinamentosError } = useSupabaseQuery<Treinamento>("treinamentos", "created_at", undefined, "id, status, data, created_at, empresa_id");
+  const { data: usuariosLiberados = [] } = useSupabaseQuery<UsuarioLiberado>("usuarios_liberados", undefined, undefined, "id, email, nome, empresa_id");
 
   const [allMovimentacoes, setAllMovimentacoes] = useState<ContratoMovimentacao[]>([]);
   const [allContratos, setAllContratos] = useState<Contrato[]>([]);
@@ -84,52 +86,57 @@ export default function Dashboard() {
   const [allContratoEpis, setAllContratoEpis] = useState<ContratoEpi[]>([]);
   const [allUnidades, setAllUnidades] = useState<Unidade[]>([]);
   const [allEstoqueMovimentacoes, setAllEstoqueMovimentacoes] = useState<EstoqueMovimentacao[]>([]);
+  const empresaScopeKey = empresaScopeIds.join(",");
 
   useEffect(() => {
+    let cancelled = false;
+    const scopeIds = empresaScopeKey ? empresaScopeKey.split(",") : [];
+    const scopeSuffix = scopeIds.length > 0 ? scopeIds.join("_") : "global";
+    const cacheKey = (name: string) => `dashboard_${scopeSuffix}_${name}`;
+    const applyScope = (query: any, column = "empresa_id") =>
+      scopeIds.length > 0 ? query.in(column, scopeIds) : query;
+
     const hydrateFromCache = () => {
-      const cachedMovimentacoes = getCachedData<ContratoMovimentacao>("dashboard_movimentacoes");
-      const cachedContratos = getCachedData<Contrato>("dashboard_contratos");
-      const cachedProfiles = getCachedData<Profile>("dashboard_profiles");
-      const cachedContratoEpis = getCachedData<ContratoEpi>("dashboard_contrato_epis");
-      const cachedUnidades = getCachedData<Unidade>("dashboard_unidades");
-      const cachedEstoqueMovimentacoes = getCachedData<EstoqueMovimentacao>("dashboard_estoque_mov");
+      const cachedMovimentacoes = getCachedData<ContratoMovimentacao>(cacheKey("movimentacoes"));
+      const cachedContratos = getCachedData<Contrato>(cacheKey("contratos"));
+      const cachedContratoEpis = getCachedData<ContratoEpi>(cacheKey("contrato_epis"));
+      const cachedUnidades = getCachedData<Unidade>(cacheKey("unidades"));
+      const cachedEstoqueMovimentacoes = getCachedData<EstoqueMovimentacao>(cacheKey("estoque_mov"));
 
       if (cachedMovimentacoes) setAllMovimentacoes(cachedMovimentacoes);
       if (cachedContratos) setAllContratos(cachedContratos);
-      if (cachedProfiles) setProfiles(cachedProfiles);
       if (cachedContratoEpis) setAllContratoEpis(cachedContratoEpis);
       if (cachedUnidades) setAllUnidades(cachedUnidades);
       if (cachedEstoqueMovimentacoes) setAllEstoqueMovimentacoes(cachedEstoqueMovimentacoes);
     };
 
     async function fetchContractData() {
-      const [movResult, contResult, profResult, ceResult, uniResult, emResult] = await Promise.all([
-        cachedQuery<ContratoMovimentacao>("dashboard_movimentacoes", () =>
-          (supabase.from as any)("contrato_epis_movimentacoes")
+      const [movResult, contResult, ceResult, uniResult, emResult] = await Promise.all([
+        cachedQuery<ContratoMovimentacao>(cacheKey("movimentacoes"), () =>
+          applyScope((supabase.from as any)("contrato_epis_movimentacoes")
             .select("id, contrato_id, epi_id, tipo, quantidade, created_at, empresa_id")
-            .order("created_at", { ascending: true })
+            .order("created_at", { ascending: true }))
         ),
-        cachedQuery<Contrato>("dashboard_contratos", () =>
-          (supabase.from as any)("contratos").select("id, nome, unidade_id")
+        cachedQuery<Contrato>(cacheKey("contratos"), () =>
+          applyScope((supabase.from as any)("contratos").select("id, nome, unidade_id"), "unidade_id")
         ),
-        cachedQuery<Profile>("dashboard_profiles", () =>
-          supabase.from("profiles").select("id, user_id, nome, email") as any
+        cachedQuery<ContratoEpi>(cacheKey("contrato_epis"), () =>
+          applyScope((supabase.from as any)("contrato_epis").select("id, contrato_id, epi_id, estoque, empresa_id"))
         ),
-        cachedQuery<ContratoEpi>("dashboard_contrato_epis", () =>
-          (supabase.from as any)("contrato_epis").select("id, contrato_id, epi_id, estoque, empresa_id")
+        cachedQuery<Unidade>(cacheKey("unidades"), () =>
+          scopeIds.length > 0
+            ? (supabase.from as any)("empresa_config").select("id, nome, tipo, empresa_pai_id").in("id", scopeIds)
+            : (supabase.from as any)("empresa_config").select("id, nome, tipo, empresa_pai_id")
         ),
-        cachedQuery<Unidade>("dashboard_unidades", () =>
-          (supabase.from as any)("empresa_config").select("id, nome, tipo, empresa_pai_id")
-        ),
-        cachedQuery<EstoqueMovimentacao>("dashboard_estoque_mov", () =>
-          (supabase.from as any)("estoque_movimentacoes")
+        cachedQuery<EstoqueMovimentacao>(cacheKey("estoque_mov"), () =>
+          applyScope((supabase.from as any)("estoque_movimentacoes")
             .select("id, epi_id, quantidade, valor_unitario, tipo, created_at, empresa_id")
-            .order("created_at", { ascending: true })
+            .order("created_at", { ascending: true }))
         ),
       ]);
+      if (cancelled) return;
       setAllMovimentacoes(movResult.data || []);
       setAllContratos(contResult.data || []);
-      setProfiles(profResult.data || []);
       setAllContratoEpis(ceResult.data || []);
       setAllUnidades(uniResult.data || []);
       setAllEstoqueMovimentacoes(emResult.data || []);
@@ -143,8 +150,11 @@ export default function Dashboard() {
     };
 
     window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, []);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [empresaScopeKey]);
 
   // Build the set of empresa IDs in the user's company tree (empresa + filiais)
   const companyTreeIds = useMemo(() => {
@@ -197,6 +207,35 @@ export default function Dashboard() {
     if (!empresaId) return list;
     return list.filter(e => e && e.empresa_id && companyTreeIds.has(e.empresa_id));
   }, [allEntregas, empresaId, companyTreeIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const creatorIds = Array.from(new Set(
+      entregas.map((entrega) => entrega.created_by).filter((id): id is string => Boolean(id)),
+    )).sort();
+
+    if (creatorIds.length === 0) {
+      setProfiles([]);
+      return;
+    }
+
+    const key = `dashboard_${empresaScopeKey || "global"}_delivery_creators_${creatorIds.join("_")}`;
+    const cached = getCachedData<Profile>(key);
+    if (cached) setProfiles(cached);
+
+    void cachedQuery<Profile>(key, () =>
+      supabase
+        .from("profiles")
+        .select("id, user_id, nome, email")
+        .in("user_id", creatorIds) as any
+    ).then((result) => {
+      if (!cancelled) setProfiles(result.data || []);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [entregas, empresaScopeKey]);
 
   const estoqueMovimentacoes = useMemo(() => {
     const list = allEstoqueMovimentacoes || [];
@@ -614,6 +653,8 @@ export default function Dashboard() {
       textColor: "text-white",
     },
   ];
+  const dashboardLoading = episLoading || funcionariosLoading || entregasLoading || asosLoading || treinamentosLoading;
+  const dashboardError = episError || funcionariosError || entregasError || asosError || treinamentosError;
 
   return (
     <motion.div
@@ -652,6 +693,12 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
+      {dashboardError && (
+        <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Não foi possível carregar todos os indicadores. Verifique a conexão e atualize a página.
+        </div>
+      )}
+
       {/* Hero Stats */}
       <motion.div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" variants={staggerContainer}>
         {heroStats.map((s, i) => (
@@ -669,7 +716,7 @@ export default function Dashboard() {
                 <s.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <p className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-sm">{s.value}</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-sm">{dashboardLoading ? "…" : s.value}</p>
                 <p className="text-[10px] sm:text-xs text-white/80 leading-tight font-medium">{s.label}</p>
               </div>
             </CardContent>
