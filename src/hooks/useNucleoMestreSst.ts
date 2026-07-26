@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useToast } from "@/hooks/use-toast";
@@ -49,7 +49,22 @@ export function useNucleoMestreSst() {
     useSupabaseQuery<SstExposicao>("sst_exposicoes");
 
   // LEGACY FALLBACK QUERIES (Sincronização Automática de Unidades, CNO/CNPJ e GHEs Existentes)
-  const { data: legacyEmpresasConfig = [] } = useSupabaseQuery<any>("empresa_config", "nome", true);
+  const { data: legacyEmpresasConfig = [] } = useQuery({
+    queryKey: ["sst-legacy-empresa-config", activeEmpresaId],
+    enabled: !!activeEmpresaId,
+    queryFn: async () => {
+      if (!activeEmpresaId) return [];
+      const { data, error } = await supabase
+        .from("empresa_config")
+        .select("*")
+        .or(`id.eq.${activeEmpresaId},empresa_pai_id.eq.${activeEmpresaId}`);
+      if (error) {
+        console.error("Error fetching empresa_config for SST:", error);
+        return [];
+      }
+      return data || [];
+    },
+  });
   const { data: legacyGhe = [] } = useSupabaseQuery<any>("ghe_ges", "nome", true);
   const { data: legacySetores = [] } = useSupabaseQuery<any>("aso_setores", "nome", true);
   const { data: legacyFuncoes = [] } = useSupabaseQuery<any>("aso_funcoes", "nome", true);
