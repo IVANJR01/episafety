@@ -10,10 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
-import { Layers, ShieldAlert, Plus, Edit2, Shield, CheckCircle, AlertTriangle } from "lucide-react";
+import { Layers, ShieldAlert, Plus, Edit2, Shield, CheckCircle, AlertTriangle, Building2 } from "lucide-react";
 
 export function GesExposicoesTab() {
-  const { gesList, funcoes, ambientes, setores, exposicoes, perigosCatalogo, saveGes, saveExposicao } = useNucleoMestreSst();
+  const { gesList, funcoes, ambientes, setores, processos, estabelecimentos, exposicoes, perigosCatalogo, saveGes, saveExposicao } = useNucleoMestreSst();
   const [activeTab, setActiveTab] = useState("ges");
 
   // DIALOG STATES
@@ -419,125 +419,160 @@ export function GesExposicoesTab() {
               </span>
             </div>
 
-            {/* SEÇÃO 1: ESTRUTURA */}
-            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-4 shadow-sm">
+            {/* SEÇÃO 1A: DADOS DA EMPRESA / ESTABELECIMENTO (reaproveita cadastro existente) */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-3 shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <h4 className="font-bold text-xs text-indigo-900 uppercase tracking-wide flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-indigo-600" /> 1. Identificação de Estrutura & Agrupamento Ocupacional
+                <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-slate-700" /> 1. Dados da Empresa / Estabelecimento
                 </h4>
-                <Badge variant="outline" className="text-[10px] bg-indigo-50 border-indigo-200 text-indigo-700">Estrutura Mestre</Badge>
+                <Badge variant="outline" className="text-[10px] bg-slate-100 border-slate-300 text-slate-700">Reaproveita cadastro</Badge>
               </div>
 
-              {/* SELETORES DE ESTRUTURA RÁPIDA */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {estabelecimentos.length > 0 ? (
                 <div>
-                  <Label className="text-xs font-semibold text-slate-700">Vincular a um GES / GHE (Grupo de Exposição)</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Estabelecimento já cadastrado (usar dados existentes)</Label>
                   <Select
-                    value={exposicaoFormData.ges_id || ""}
-                    onValueChange={(val) => {
-                      const selectedGes = gesList.find((g) => g.id === val);
-                      setExposicaoFormData({
-                        ...exposicaoFormData,
-                        ges_id: val === "none" ? null : val,
-                        tipo_agente: selectedGes ? `GES: ${selectedGes.codigo}` : exposicaoFormData.tipo_agente
-                      });
-                    }}
+                    value={exposicaoFormData.estabelecimento_id || ""}
+                    onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, estabelecimento_id: val })}
                   >
-                    <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Selecione um GES cadastrado (opcional)..." /></SelectTrigger>
+                    <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Selecione o estabelecimento (matriz ou filial)..." /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">-- Sem GES (Exposição Específica) --</SelectItem>
-                      {gesList.map((g) => (
-                        <SelectItem key={g.id} value={g.id}>{g.codigo} - {g.nome}</SelectItem>
+                      {estabelecimentos.map((e: any) => (
+                        <SelectItem key={e.id} value={e.id}>{e.nome}{e.codigo ? ` (${e.codigo})` : ""}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Nenhum estabelecimento cadastrado ainda em <strong>Estrutura → Estabelecimentos</strong>. Cadastre lá para reaproveitar aqui automaticamente.
+                </p>
+              )}
+            </div>
 
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Selecionar Ambiente Cadastrado (Preenchimento Rápido)</Label>
-                  <Select
-                    onValueChange={(val) => {
-                      const amb = ambientes.find((a) => a.id === val);
-                      if (amb) {
-                        const desc = `${amb.nome} (Pé-direito: ${amb.pe_direito || "Padrão"}, Piso: ${amb.piso || "Cerâmico/Concreto"}, Ventilação: ${amb.ventilacao || "Natural"}, Iluminação: ${amb.iluminacao || "Artificial LED"})`;
-                        setExposicaoFormData({
-                          ...exposicaoFormData,
-                          ambiente_id: amb.id,
-                          ambiente_nome: desc
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Selecione um ambiente cadastrado..." /></SelectTrigger>
-                    <SelectContent>
-                      {ambientes.length === 0 ? (
-                        <SelectItem value="empty" disabled>Nenhum ambiente em Estrutura</SelectItem>
-                      ) : (
-                        ambientes.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* SEÇÃO 1B: DESCRIÇÃO DO AMBIENTE */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <h4 className="font-bold text-xs text-indigo-900 uppercase tracking-wide flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-indigo-600" /> 2. Descrição do Ambiente
+                </h4>
+                <Badge variant="outline" className="text-[10px] bg-indigo-50 border-indigo-200 text-indigo-700">Estrutura Mestre</Badge>
               </div>
 
-              {/* CAMPOS TEXTO COMPATÍVEIS COM A PLANILHA */}
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Selecionar Ambiente Cadastrado (Preenchimento Rápido)</Label>
+                <Select
+                  onValueChange={(val) => {
+                    const amb = ambientes.find((a) => a.id === val);
+                    if (amb) {
+                      const desc = `${amb.nome} (Pé-direito: ${amb.pe_direito || "Padrão"}, Piso: ${amb.piso || "Cerâmico/Concreto"}, Ventilação: ${amb.ventilacao || "Natural"}, Iluminação: ${amb.iluminacao || "Artificial LED"})`;
+                      setExposicaoFormData({
+                        ...exposicaoFormData,
+                        ambiente_id: amb.id,
+                        ambiente_nome: desc
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Selecione um ambiente cadastrado..." /></SelectTrigger>
+                  <SelectContent>
+                    {ambientes.length === 0 ? (
+                      <SelectItem value="empty" disabled>Nenhum ambiente em Estrutura</SelectItem>
+                    ) : (
+                      ambientes.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-bold text-slate-800">Descrição do Ambiente *</Label>
+                <Textarea
+                  rows={2}
+                  value={exposicaoFormData.ambiente_nome || ""}
+                  onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, ambiente_nome: e.target.value })}
+                  className="mt-1 bg-white text-xs"
+                  placeholder="Ex: Ambiente de trabalho interno, pé-direito ~3m, piso cerâmico, iluminação artificial por lâmpadas fluorescentes..."
+                />
+              </div>
+            </div>
+
+            {/* SEÇÃO 1C: GES E SETORES */}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <h4 className="font-bold text-xs text-indigo-900 uppercase tracking-wide flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-indigo-600" /> 3. GES e Setores
+                </h4>
+                <Badge variant="outline" className="text-[10px] bg-indigo-50 border-indigo-200 text-indigo-700">Agrupamento Ocupacional</Badge>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Vincular a um GES / GHE (Grupo de Exposição)</Label>
+                <Select
+                  value={exposicaoFormData.ges_id || ""}
+                  onValueChange={(val) => {
+                    const selectedGes = gesList.find((g) => g.id === val);
+                    setExposicaoFormData({
+                      ...exposicaoFormData,
+                      ges_id: val === "none" ? null : val,
+                      tipo_agente: selectedGes ? `GES: ${selectedGes.codigo}` : exposicaoFormData.tipo_agente
+                    });
+                  }}
+                >
+                  <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Selecione um GES cadastrado (opcional)..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Sem GES (Exposição Específica) --</SelectItem>
+                    {gesList.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.codigo} - {g.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs font-bold text-slate-800">Descrição do Ambiente *</Label>
-                  <Textarea
-                    rows={2}
-                    value={exposicaoFormData.ambiente_nome || ""}
-                    onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, ambiente_nome: e.target.value })}
-                    className="mt-1 bg-white text-xs"
-                    placeholder="Ex: Ambiente de trabalho interno, pé-direito ~3m, piso cerâmico, iluminação artificial por lâmpadas fluorescentes..."
-                  />
+                  <Label className="text-xs font-bold text-slate-800">Setor *</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Select
+                      onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, setor_nome: val })}
+                    >
+                      <SelectTrigger className="w-[140px] bg-white text-xs"><SelectValue placeholder="Puxar..." /></SelectTrigger>
+                      <SelectContent>
+                        {setores.map((s) => (
+                          <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={exposicaoFormData.setor_nome || ""}
+                      onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, setor_nome: e.target.value })}
+                      className="bg-white text-xs flex-1"
+                      placeholder="Ex: PCP, Financeiro, SESMT, Costura"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs font-bold text-slate-800">Setor *</Label>
-                    <div className="flex gap-2 mt-1">
-                      <Select
-                        onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, setor_nome: val })}
-                      >
-                        <SelectTrigger className="w-[140px] bg-white text-xs"><SelectValue placeholder="Puxar..." /></SelectTrigger>
-                        <SelectContent>
-                          {setores.map((s) => (
-                            <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        value={exposicaoFormData.setor_nome || ""}
-                        onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, setor_nome: e.target.value })}
-                        className="bg-white text-xs flex-1"
-                        placeholder="Ex: PCP, Financeiro, SESMT, Costura"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs font-bold text-slate-800">Processo / Atividade *</Label>
-                    <div className="flex gap-2 mt-1">
-                      <Select
-                        onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, processo_nome: val })}
-                      >
-                        <SelectTrigger className="w-[140px] bg-white text-xs"><SelectValue placeholder="Puxar..." /></SelectTrigger>
-                        <SelectContent>
-                          {processos.map((p) => (
-                            <SelectItem key={p.id} value={p.nome}>{p.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        value={exposicaoFormData.processo_nome || ""}
-                        onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, processo_nome: e.target.value })}
-                        className="bg-white text-xs flex-1"
-                        placeholder="Ex: Gerenciamento do processo produtivo / Costura"
-                      />
-                    </div>
+                <div>
+                  <Label className="text-xs font-bold text-slate-800">Processo / Atividade *</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Select
+                      onValueChange={(val) => setExposicaoFormData({ ...exposicaoFormData, processo_nome: val })}
+                    >
+                      <SelectTrigger className="w-[140px] bg-white text-xs"><SelectValue placeholder="Puxar..." /></SelectTrigger>
+                      <SelectContent>
+                        {processos.map((p) => (
+                          <SelectItem key={p.id} value={p.nome}>{p.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={exposicaoFormData.processo_nome || ""}
+                      onChange={(e) => setExposicaoFormData({ ...exposicaoFormData, processo_nome: e.target.value })}
+                      className="bg-white text-xs flex-1"
+                      placeholder="Ex: Gerenciamento do processo produtivo / Costura"
+                    />
                   </div>
                 </div>
               </div>
@@ -568,11 +603,11 @@ export function GesExposicoesTab() {
               </div>
             </div>
 
-            {/* SEÇÃO 2: AGENTE & PERIGO */}
+            {/* SEÇÃO 2: RISCOS — AGENTE & PERIGO */}
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-4 shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <h4 className="font-bold text-xs text-amber-900 uppercase tracking-wide flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" /> 2. Agente, Perigo & Danos à Saúde
+                  <AlertTriangle className="w-4 h-4 text-amber-600" /> 4. Riscos: Agente, Perigo & Danos à Saúde
                 </h4>
                 <Badge variant="outline" className="text-[10px] bg-amber-50 border-amber-200 text-amber-800">Perigos GRO</Badge>
               </div>
@@ -631,7 +666,7 @@ export function GesExposicoesTab() {
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-4 shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <h4 className="font-bold text-xs text-emerald-900 uppercase tracking-wide flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-emerald-600" /> 3. Avaliação de Exposição & Medidas de Prevenção
+                  <Shield className="w-4 h-4 text-emerald-600" /> 5. Avaliação de Exposição & Medidas de Prevenção
                 </h4>
                 <Badge variant="outline" className="text-[10px] bg-emerald-50 border-emerald-200 text-emerald-800">Controles & EPI</Badge>
               </div>
@@ -709,7 +744,7 @@ export function GesExposicoesTab() {
             {/* SEÇÃO 4: MATRIZ DE RISCO (GRO) */}
             <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-4 space-y-3">
               <h4 className="font-bold text-xs text-amber-900 uppercase tracking-wide flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-amber-600" /> 4. Matriz de Risco Ocupacional (GRO)
+                <CheckCircle className="w-4 h-4 text-amber-600" /> 6. Matriz de Risco Ocupacional (GRO)
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
