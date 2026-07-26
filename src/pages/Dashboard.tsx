@@ -10,6 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Package, Users, ClipboardList, AlertTriangle, DollarSign, TrendingUp, FileBarChart, ShieldCheck, ArrowUpRight, ArrowDownRight, Boxes, Building2, MapPin } from "lucide-react";
+import { useSupabaseQuery } from "@/hooks/useSupabaseData";
+import { supabase } from "@/integrations/supabase/client";
+import { cachedQuery, getCachedData } from "@/lib/offlineStorage";
+import { motion } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { useMemo, useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, AreaChart, Area, ComposedChart, Line, ReferenceLine } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -33,7 +45,7 @@ const staggerContainer = {
 };
 
 interface EPI { id: string; nome: string; estoque: number; estoque_minimo: number; valor: number | null; empresa_id: string | null; tamanho?: string | null; }
-interface Funcionario { id: string; nome: string; }
+interface Funcionario { id: string; nome: string; empresa_id?: string | null; }
 interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; created_at: string; tipo: string; created_by?: string | null; empresa_id?: string | null; }
 interface Profile { id: string; user_id: string; nome: string; email: string | null; empresa_id?: string | null; }
 interface ContratoMovimentacao {
@@ -58,7 +70,7 @@ interface Contrato { id: string; nome: string; unidade_id: string; }
 interface ContratoEpi { id: string; contrato_id: string; epi_id: string; estoque: number; empresa_id: string | null; }
 interface Unidade { id: string; nome: string; tipo: string; empresa_pai_id: string | null; }
 interface Aso { id: string; status: string; data_emissao: string; created_at: string; empresa_id: string; }
-interface Treinamento { id: string; status: string; data: string; empresa_id: string; }
+interface Treinamento { id: string; status: string; data: string; created_at: string; empresa_id: string; }
 
 interface UsuarioLiberado {
   id: string;
@@ -73,7 +85,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const { data: allEpis = [], loading: episLoading, error: episError } = useSupabaseQuery<EPI>("epis", undefined, undefined, "id, nome, estoque, estoque_minimo, valor, empresa_id, tamanho");
-  const { data: funcionarios = [], loading: funcionariosLoading, error: funcionariosError } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome, empresa_id");
+  const { data: allFuncionarios = [], loading: funcionariosLoading, error: funcionariosError } = useSupabaseQuery<Funcionario>("funcionarios", undefined, undefined, "id, nome, empresa_id");
   const { data: allEntregas = [], loading: entregasLoading, error: entregasError } = useSupabaseQuery<Entrega>("entregas", "created_at", undefined, "id, funcionario_id, epi_id, quantidade, data, created_at, tipo, created_by, empresa_id");
 
   const { data: allAsos = [], loading: asosLoading, error: asosError } = useSupabaseQuery<Aso>("asos", "created_at", undefined, "id, status, data_emissao, created_at, empresa_id");
@@ -178,6 +190,12 @@ export default function Dashboard() {
     if (!empresaId) return list;
     return list.filter(u => u && companyTreeIds.has(u.id));
   }, [allUnidades, empresaId, companyTreeIds]);
+
+  const funcionarios = useMemo(() => {
+    const list = allFuncionarios || [];
+    if (!empresaId) return list;
+    return list.filter(f => f && (!f.empresa_id || companyTreeIds.has(f.empresa_id)));
+  }, [allFuncionarios, empresaId, companyTreeIds]);
 
   const contratos = useMemo(() => {
     const list = allContratos || [];
