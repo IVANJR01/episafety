@@ -1,265 +1,163 @@
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
-  FileText,
-  ShieldCheck,
-  Stethoscope,
-  FileSpreadsheet,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
-  Users,
-  Building2,
-  ArrowRight,
-  Layers,
+  AlertTriangle, ArrowRight, FileSpreadsheet, FileText, Loader2, Plus,
+  ShieldCheck, Stethoscope, Users,
 } from "lucide-react";
 
-interface CentralDocumentacaoTabProps {
-  onNavigateSubmodulo: (submodulo: string) => void;
+interface Props {
+  /** Mantido por compatibilidade; a lista navega por rota própria de cada módulo. */
+  onNavigateSubmodulo?: (submodulo: string) => void;
 }
 
-export function CentralDocumentacaoTab({ onNavigateSubmodulo }: CentralDocumentacaoTabProps) {
-  const fluxoEtapas = [
-    { id: 1, nome: "Cadastro", submodulo: "estrutura", status: "concluido", icon: Building2 },
-    { id: 2, nome: "Levantamento", submodulo: "ges", status: "concluido", icon: Layers },
-    { id: 3, nome: "Avaliação", submodulo: "exposicoes", status: "em_andamento", icon: AlertTriangle },
-    { id: 4, nome: "Revisão Técnica", submodulo: "documentos", status: "pendente", icon: Clock },
-    { id: 5, nome: "Assinatura", submodulo: "assinaturas", status: "pendente", icon: FileText },
-    { id: 6, nome: "Emissão", submodulo: "emitidos", status: "pendente", icon: CheckCircle2 },
+/**
+ * Lista dos documentos legais da empresa.
+ *
+ * Cada linha mostra APENAS contagens reais consultadas no banco. Antes esta tela
+ * exibia números e nomes fixos no código — "24 Agentes", "Dr. Roberto Lima",
+ * "12 Exames Mapeados", "8 Agentes", "01 Função Elegível" — que não vinham de
+ * lugar nenhum. Um responsável técnico inexistente aparecia como se estivesse
+ * cadastrado, e o fluxo de 6 etapas tinha os status "concluído"/"em andamento"
+ * escritos à mão, independentes do estado real de qualquer documento.
+ */
+export function CentralDocumentacaoTab(_props: Props = {}) {
+  const navigate = useNavigate();
+  const { empresaId } = useAuth();
+
+  const { data: c, isLoading } = useQuery({
+    queryKey: ["doc-contagens", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      /** Devolve null (e não 0) quando a consulta falha: "não sei" difere de "nenhum". */
+      const conta = async (tabela: string, extra?: [string, string]) => {
+        let q = (supabase.from as any)(tabela)
+          .select("id", { count: "exact", head: true }).eq("empresa_id", empresaId);
+        if (extra) q = q.eq(extra[0], extra[1]);
+        const { count, error } = await q;
+        return error ? null : (count ?? 0);
+      };
+      const [pgr, pgrVigentes, aso, ltcat, ppp] = await Promise.all([
+        conta("pgr_documentos"),
+        conta("pgr_documentos", ["status", "vigente"]),
+        conta("asos"),
+        conta("ltcat_documentos"),
+        conta("ppp_documentos"),
+      ]);
+      return { pgr, pgrVigentes, aso, ltcat, ppp };
+    },
+  });
+
+  const DOCS = [
+    {
+      key: "pgr", nome: "PGR", norma: "NR-01",
+      descricao: "Programa de Gerenciamento de Riscos",
+      icone: FileText, cor: "text-emerald-600",
+      total: c?.pgr, vigentes: c?.pgrVigentes,
+      abrir: () => navigate("/pgr"),
+    },
+    {
+      key: "pcmso", nome: "PCMSO", norma: "NR-07",
+      descricao: "Controle Médico de Saúde Ocupacional",
+      icone: Stethoscope, cor: "text-blue-600",
+      total: c?.aso, rotulo: "ASO(s)",
+      abrir: () => navigate("/aso"),
+    },
+    {
+      key: "ltcat", nome: "LTCAT", norma: "Lei 8.213",
+      descricao: "Laudo Técnico das Condições Ambientais do Trabalho",
+      icone: ShieldCheck, cor: "text-purple-600",
+      total: c?.ltcat,
+      abrir: () => navigate("/ltcat"),
+    },
+    {
+      key: "insalubridade", nome: "Laudo de Insalubridade", norma: "NR-15",
+      descricao: "Caracterização de atividades insalubres",
+      icone: FileSpreadsheet, cor: "text-amber-600",
+      abrir: () => navigate("/programas/laudo-insalubridade"),
+    },
+    {
+      key: "periculosidade", nome: "Laudo de Periculosidade", norma: "NR-16",
+      descricao: "Caracterização de atividades perigosas",
+      icone: AlertTriangle, cor: "text-red-600",
+      abrir: () => navigate("/programas/laudo-periculosidade"),
+    },
+    {
+      key: "ppp", nome: "PPP", norma: "eSocial",
+      descricao: "Perfil Profissiográfico Previdenciário",
+      icone: Users, cor: "text-indigo-600",
+      total: c?.ppp,
+      abrir: () => navigate("/ppp"),
+    },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* HEADER DA CENTRAL */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-slate-900 text-white p-6 rounded-xl shadow-lg border border-slate-800">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-emerald-500 text-white hover:bg-emerald-600">Núcleo Mestre SST</Badge>
-            <span className="text-xs text-slate-400">Ativo & Sincronizado</span>
-          </div>
-          <h2 className="text-2xl font-bold mt-1">Central de Documentação Legal SST</h2>
-          <p className="text-sm text-slate-300">
-            Gerenciamento unificado de PGR, PCMSO, LTCAT, Laudos NR-15/16, PPP e eSocial a partir do Núcleo Mestre.
+          <h2 className="text-lg font-semibold">Documentos da empresa</h2>
+          <p className="text-sm text-muted-foreground">
+            Escolha o documento que quer elaborar ou consultar.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => onNavigateSubmodulo("pgr")} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-            <FileText className="w-4 h-4 mr-2" />
-            Elaborar PGR
-          </Button>
-          <Button onClick={() => onNavigateSubmodulo("ltcat")} variant="outline" className="border-slate-700 text-slate-200 hover:bg-slate-800">
-            <ShieldCheck className="w-4 h-4 mr-2" />
-            Elaborar LTCAT
-          </Button>
-        </div>
+        <Button onClick={() => navigate("/pgr/novo")} size="lg" className="w-full sm:w-auto">
+          <Plus className="h-4 w-4 mr-2" /> Novo PGR
+        </Button>
       </div>
 
-      {/* FLUXO VISUAL DE TRABALHO */}
-      <Card className="border border-slate-200 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Layers className="w-5 h-5 text-indigo-600" />
-            Fluxo de Elaboração & Ciclo de Vida Documental
-          </CardTitle>
-          <CardDescription>
-            Acompanhe as etapas de qualificação dos dados antes da geração dos snapshots e assinaturas imutáveis.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-            {fluxoEtapas.map((etapa) => {
-              const Icon = etapa.icon;
-              return (
-                <div
-                  key={etapa.id}
-                  onClick={() => onNavigateSubmodulo(etapa.submodulo)}
-                  className="cursor-pointer border rounded-lg p-3 text-center transition-all hover:border-indigo-500 hover:shadow-md bg-white flex flex-col items-center justify-between min-h-[110px]"
-                >
-                  <div className="flex items-center justify-between w-full text-xs text-slate-400">
-                    <span>Etapa {etapa.id}</span>
-                    {etapa.status === "concluido" ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    ) : etapa.status === "em_andamento" ? (
-                      <Clock className="w-4 h-4 text-amber-500" />
+      {isLoading ? (
+        <Card><CardContent className="p-8 flex items-center justify-center text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando documentos…
+        </CardContent></Card>
+      ) : (
+        <div className="space-y-2">
+          {DOCS.map((d) => {
+            const Icone = d.icone;
+            return (
+              <Card key={d.key} className="hover:border-primary/40 transition">
+                <CardContent className="p-4 flex items-center gap-3 sm:gap-4">
+                  <Icone className={`h-6 w-6 shrink-0 ${d.cor}`} />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{d.nome}</span>
+                      <Badge variant="outline" className="text-[11px] font-mono">{d.norma}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{d.descricao}</p>
+                  </div>
+
+                  <div className="hidden sm:block text-right shrink-0 min-w-[104px]">
+                    {d.total == null ? (
+                      <span className="text-xs text-muted-foreground">—</span>
                     ) : (
-                      <div className="w-2 h-2 rounded-full bg-slate-300" />
+                      <>
+                        <div className="text-lg font-semibold leading-none">{d.total}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {d.rotulo || "documento(s)"}
+                          {d.vigentes ? ` · ${d.vigentes} vigente(s)` : ""}
+                        </div>
+                      </>
                     )}
                   </div>
-                  <Icon className="w-6 h-6 my-2 text-slate-700" />
-                  <span className="text-xs font-semibold text-slate-800">{etapa.nome}</span>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* RESUMO DOS 6 DOCUMENTOS LEGAIS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* PGR */}
-        <Card className="border-l-4 border-l-emerald-500 shadow-sm hover:shadow transition-shadow">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <FileText className="w-5 h-5 text-emerald-600" />
-                PGR (NR-01)
-              </CardTitle>
-              <Badge variant="outline" className="border-emerald-500 text-emerald-700">GRO Vigente</Badge>
-            </div>
-            <CardDescription className="text-xs">Programa de Gerenciamento de Riscos</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Inventário de Riscos:</span>
-              <span className="font-semibold text-slate-800">24 Agentes</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Plano de Ação:</span>
-              <span className="font-semibold text-amber-600">3 Ações Pendentes</span>
-            </div>
-            <Button onClick={() => onNavigateSubmodulo("pgr")} variant="ghost" size="sm" className="w-full mt-2 text-xs text-emerald-700 hover:text-emerald-800">
-              Acessar PGR Mestre <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
+                  <Button variant="ghost" size="sm" onClick={d.abrir} className="shrink-0 h-10">
+                    Abrir <ArrowRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-        {/* PCMSO */}
-        <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow transition-shadow">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Stethoscope className="w-5 h-5 text-blue-600" />
-                PCMSO (NR-07)
-              </CardTitle>
-              <Badge variant="outline" className="border-blue-500 text-blue-700">Médico Ativo</Badge>
-            </div>
-            <CardDescription className="text-xs">Controle Médico de Saúde Ocupacional</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Médico Responsável:</span>
-              <span className="font-semibold text-slate-800">Dr. Roberto Lima</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Matriz de Exames:</span>
-              <span className="font-semibold text-slate-800">12 Exames Mapeados</span>
-            </div>
-            <Button onClick={() => onNavigateSubmodulo("pcmso")} variant="ghost" size="sm" className="w-full mt-2 text-xs text-blue-700 hover:text-blue-800">
-              Acessar PCMSO Mestre <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* LTCAT */}
-        <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow transition-shadow">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-purple-600" />
-                LTCAT (Lei 8.213)
-              </CardTitle>
-              <Badge variant="outline" className="border-purple-500 text-purple-700">Previdenciário</Badge>
-            </div>
-            <CardDescription className="text-xs">Laudo Técnico Condições Ambientais</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Agentes Previdenciários:</span>
-              <span className="font-semibold text-slate-800">8 Agentes</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Aposentadoria Especial:</span>
-              <span className="font-semibold text-emerald-600">01 Função Elegível</span>
-            </div>
-            <Button onClick={() => onNavigateSubmodulo("ltcat")} variant="ghost" size="sm" className="w-full mt-2 text-xs text-purple-700 hover:text-purple-800">
-              Acessar LTCAT Mestre <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* LAUDO INSALUBRIDADE */}
-        <Card className="border-l-4 border-l-amber-500 shadow-sm hover:shadow transition-shadow">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-amber-600" />
-                Insalubridade (NR-15)
-              </CardTitle>
-              <Badge variant="outline" className="border-amber-500 text-amber-700">Laudo Técnico</Badge>
-            </div>
-            <CardDescription className="text-xs">Análise por Anexo da NR-15</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Funções Analisadas:</span>
-              <span className="font-semibold text-slate-800">14 Funções</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Grau Médio (20%):</span>
-              <span className="font-semibold text-amber-600">02 Caracterizações</span>
-            </div>
-            <Button onClick={() => onNavigateSubmodulo("insalubridade")} variant="ghost" size="sm" className="w-full mt-2 text-xs text-amber-700 hover:text-amber-800">
-              Acessar Laudo NR-15 <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* LAUDO PERICULOSIDADE */}
-        <Card className="border-l-4 border-l-red-500 shadow-sm hover:shadow transition-shadow">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                Periculosidade (NR-16)
-              </CardTitle>
-              <Badge variant="outline" className="border-red-500 text-red-700">Laudo Técnico</Badge>
-            </div>
-            <CardDescription className="text-xs">Operações & Áreas de Risco</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Áreas de Risco:</span>
-              <span className="font-semibold text-slate-800">03 Locais</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Adicional 30%:</span>
-              <span className="font-semibold text-emerald-600">Não Caracterizado</span>
-            </div>
-            <Button onClick={() => onNavigateSubmodulo("periculosidade")} variant="ghost" size="sm" className="w-full mt-2 text-xs text-red-700 hover:text-red-800">
-              Acessar Laudo NR-16 <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* PPP / ESOCIAL */}
-        <Card className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow transition-shadow">
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Users className="w-5 h-5 text-indigo-600" />
-                PPP / eSocial S-2240
-              </CardTitle>
-              <Badge variant="outline" className="border-indigo-500 text-indigo-700">eSocial Oficial</Badge>
-            </div>
-            <CardDescription className="text-xs">Perfil Profissiográfico Previdenciário</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Trabalhadores Mapeados:</span>
-              <span className="font-semibold text-slate-800">42 Ativos</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Eventos S-2240 Prontos:</span>
-              <span className="font-semibold text-emerald-600">42 Validados</span>
-            </div>
-            <Button onClick={() => onNavigateSubmodulo("ppp")} variant="ghost" size="sm" className="w-full mt-2 text-xs text-indigo-700 hover:text-indigo-800">
-              Acessar PPP & eSocial <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Ambientes, setores, GES e funções são cadastrados uma única vez e alimentam todos os
+        documentos. Você também pode preenchê-los dentro do assistente do PGR.
+      </p>
     </div>
   );
 }

@@ -13,7 +13,18 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { Building2, Home, LayoutGrid, Workflow, Briefcase, Plus, Edit2, Loader2 } from "lucide-react";
 
-export function EstruturaOcupacionalTab() {
+type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes";
+
+interface EstruturaProps {
+  /**
+   * Restringe a exibição a uma única seção. Usado pelo assistente do PGR, que
+   * mostra uma etapa por vez — reaproveita os mesmos formulários em vez de
+   * duplicá-los, para que a correção de um campo valha nos dois lugares.
+   */
+  only?: SecaoEstrutura;
+}
+
+export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
   const {
     estabelecimentos,
     ambientes,
@@ -28,7 +39,7 @@ export function EstruturaOcupacionalTab() {
     saveFuncao,
   } = useNucleoMestreSst();
 
-  const [activeSubTab, setActiveSubTab] = useState("estabelecimentos");
+  const [activeSubTab, setActiveSubTab] = useState<string>(only || "estabelecimentos");
 
   // DIALOG STATES
   const [openModal, setOpenModal] = useState(false);
@@ -86,7 +97,7 @@ export function EstruturaOcupacionalTab() {
       </div>
 
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
-        <TabsList className="grid grid-cols-5 w-full bg-slate-100 p-1 rounded-lg">
+        <TabsList className={`grid grid-cols-5 w-full bg-slate-100 p-1 rounded-lg${only ? " hidden" : ""}`}>
           <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">
             <Building2 className="w-4 h-4" /> 1. Estabelecimentos
           </TabsTrigger>

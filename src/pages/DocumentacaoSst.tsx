@@ -11,24 +11,8 @@ import {
   FileText,
   Building2,
   Layers,
-  ShieldCheck,
-  Stethoscope,
-  FileSpreadsheet,
-  AlertTriangle,
-  Users,
-  CheckCircle2,
-  Award,
-  History,
-  Lock,
-  Radio,
 } from "lucide-react";
 
-import PgrDashboard from "@/pages/pgr/PgrDashboard";
-import AsoModule from "@/pages/aso/AsoModule";
-import LtcatDashboard from "@/pages/ltcat/LtcatDashboard";
-import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
-import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
-import CentralPPP from "@/pages/CentralPPP";
 
 export default function DocumentacaoSst() {
   const [activeTab, setActiveTab] = useState("central");
@@ -38,55 +22,27 @@ export default function DocumentacaoSst() {
         {/* HEADER GERAL */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
-            <div className="flex items-center gap-2">
-              <Badge className="bg-indigo-600 text-white">Módulo Mestre</Badge>
-              <span className="text-xs text-slate-500 font-mono">NR-01 • NR-07 • NR-15 • NR-16 • Lei 8.213</span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-1">
-              Plataforma de Documentação SST
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Documentação
             </h1>
             <p className="text-sm text-slate-500">
-              Cadastre a estrutura ocupacional e exposições uma única vez no Núcleo Mestre para emitir os 6 documentos sem duplicação de dados.
+              Documentos legais de segurança e saúde no trabalho da empresa.
             </p>
           </div>
         </div>
 
         {/* NAVEGAÇÃO DOS SUBMÓDULOS */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="overflow-x-auto pb-2">
-            <TabsList className="flex w-max min-w-full bg-slate-100 p-1.5 rounded-xl gap-1">
-              <TabsTrigger value="central" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-indigo-600" /> 1. Central
+          <div className="pb-2">
+            <TabsList className="grid grid-cols-3 w-full bg-slate-100 p-1.5 rounded-xl gap-1">
+              <TabsTrigger value="central" className="text-sm font-medium px-4 py-2.5 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-600" /> Documentos
               </TabsTrigger>
-              <TabsTrigger value="estrutura" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-slate-600" /> 2. Estrutura
+              <TabsTrigger value="estrutura" className="text-sm font-medium px-4 py-2.5 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-slate-600" /> Estrutura
               </TabsTrigger>
-              <TabsTrigger value="ges" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-slate-600" /> 3. GES / Exposições
-              </TabsTrigger>
-              <TabsTrigger value="pgr" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-emerald-600" /> 5. PGR
-              </TabsTrigger>
-              <TabsTrigger value="pcmso" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <Stethoscope className="w-4 h-4 text-blue-600" /> 6. PCMSO
-              </TabsTrigger>
-              <TabsTrigger value="ltcat" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-purple-600" /> 7. LTCAT
-              </TabsTrigger>
-              <TabsTrigger value="insalubridade" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <FileSpreadsheet className="w-4 h-4 text-amber-600" /> 8. NR-15
-              </TabsTrigger>
-              <TabsTrigger value="periculosidade" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-red-600" /> 9. NR-16
-              </TabsTrigger>
-              <TabsTrigger value="ppp" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-indigo-600" /> 10. PPP / eSocial
-              </TabsTrigger>
-              <TabsTrigger value="responsaveis" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-slate-600" /> 11. Habilitados
-              </TabsTrigger>
-              <TabsTrigger value="emitidos" className="text-xs font-semibold px-3 py-2 flex items-center gap-1.5">
-                <Lock className="w-4 h-4 text-slate-600" /> 12. Snapshots
+              <TabsTrigger value="ges" className="text-sm font-medium px-4 py-2.5 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-slate-600" /> GES
               </TabsTrigger>
             </TabsList>
           </div>
@@ -107,49 +63,6 @@ export default function DocumentacaoSst() {
           </TabsContent>
 
           {/* SUBMÓDULOS DE DOCUMENTOS ESPECÍFICOS INTEGRADOS */}
-          <TabsContent value="pgr" className="mt-4">
-            <PgrDashboard />
-          </TabsContent>
-
-          <TabsContent value="pcmso" className="mt-4">
-            <AsoModule />
-          </TabsContent>
-
-          <TabsContent value="ltcat" className="mt-4">
-            <LtcatDashboard />
-          </TabsContent>
-
-          <TabsContent value="insalubridade" className="mt-4">
-            <LaudoInsalubridade />
-          </TabsContent>
-
-          <TabsContent value="periculosidade" className="mt-4">
-            <LaudoPericulosidade />
-          </TabsContent>
-
-          <TabsContent value="ppp" className="mt-4">
-            <CentralPPP />
-          </TabsContent>
-
-          <TabsContent value="responsaveis" className="mt-4">
-            <Card className="p-6 text-center space-y-3">
-              <Award className="w-12 h-12 text-slate-700 mx-auto" />
-              <CardTitle>Responsáveis Técnicos e Assinantes Habilitados</CardTitle>
-              <CardDescription>
-                Cadastro de Engenheiros de Segurança (CREA) e Médicos do Trabalho (CRM/RQE) com assinaturas digitais.
-              </CardDescription>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="emitidos" className="mt-4">
-            <Card className="p-6 text-center space-y-3">
-              <Lock className="w-12 h-12 text-slate-700 mx-auto" />
-              <CardTitle>Repositório de Snapshots Imutáveis & PDFs Emitidos</CardTitle>
-              <CardDescription>
-                Histórico imutável com hashes SHA-256 e validação de autenticidade de documentos emitidos.
-              </CardDescription>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
   );
