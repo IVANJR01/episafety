@@ -121,8 +121,22 @@ export default function PgrNovo() {
         qc.invalidateQueries({ queryKey: ["pgr-detalhe", id] });
         navigate(`/pgr/${id}`);
       } else {
+        // Trava a matriz de risco na criação. A partir daqui todos os itens do
+        // inventário herdam esta versão, o que impede misturar metodologias
+        // dentro do mesmo PGR. Preferência: matriz própria da empresa; se não
+        // houver, a padrão global do sistema.
+        const { data: versoes } = await (supabase.from as any)("sst_matriz_versoes")
+          .select("id, metodo:metodo_id(empresa_id)")
+          .eq("status", "vigente");
+        const daEmpresa = (versoes || []).find((v: any) => v.metodo?.empresa_id === empresaId);
+        const global = (versoes || []).find((v: any) => v.metodo?.empresa_id == null);
+        const matrizVersaoId = daEmpresa?.id ?? global?.id ?? null;
+
         const { data, error } = await (supabase.from as any)("pgr_documentos")
-          .insert({ ...payload, versao: 1, status: "rascunho", created_by: user?.id })
+          .insert({
+            ...payload, versao: 1, status: "rascunho", created_by: user?.id,
+            matriz_versao_id: matrizVersaoId,
+          })
           .select("id").single();
         if (error) throw error;
         toast.success("PGR criado em rascunho");

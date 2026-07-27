@@ -61,6 +61,7 @@ import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
 import PgrValidar from "@/pages/pgr/PgrValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
+import MatrizRiscoAdmin from "@/pages/cadastro/MatrizRiscoAdmin";
 import LtcatModule from "@/pages/ltcat/LtcatModule";
 import LtcatNovo from "@/pages/ltcat/LtcatNovo";
 import LtcatDetalhe from "@/pages/ltcat/LtcatDetalhe";
@@ -297,6 +298,7 @@ function ProtectedRoute() {
         <Route path="/cat/esocial/config" element={<EsocialConfig />} />
         <Route path="/pgr" element={<PgrModule />} />
         <Route path="/pgr/dashboard" element={<PgrDashboard />} />
+        <Route path="/pgr/matriz" element={<MatrizRiscoAdmin />} />
         <Route path="/pgr/novo" element={<PgrNovo />} />
         <Route path="/pgr/:id" element={<PgrDetalhe />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
