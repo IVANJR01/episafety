@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import MatrizRisco from "./MatrizRisco";
+import ItemMedicoesPanel from "./ItemMedicoesPanel";
+import ItemControlesPanel from "./ItemControlesPanel";
 import {
   GRUPO_LABEL, CLASSE_TEXT, CLASSE_DECISAO, classeLabel, classificarRisco,
 } from "@/lib/pgrMatriz";
@@ -255,11 +257,13 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="px-4 sm:px-6 pt-3 border-b shrink-0 overflow-x-auto">
-            <TabsList className="inline-flex sm:grid sm:grid-cols-4 sm:w-full min-w-max sm:min-w-0">
+            <TabsList className="inline-flex sm:grid sm:grid-cols-6 sm:w-full min-w-max sm:min-w-0">
               <TabsTrigger value="estrutura" className="whitespace-nowrap">1. Estrutura</TabsTrigger>
               <TabsTrigger value="risco" className="whitespace-nowrap">2. Risco</TabsTrigger>
               <TabsTrigger value="exposicao" className="whitespace-nowrap">3. Exposição e Medidas</TabsTrigger>
               <TabsTrigger value="classif" className="whitespace-nowrap">4. Classificação</TabsTrigger>
+              <TabsTrigger value="medicoes" className="whitespace-nowrap">5. Medições</TabsTrigger>
+              <TabsTrigger value="controles" className="whitespace-nowrap">6. Controles</TabsTrigger>
             </TabsList>
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 min-h-0">
@@ -490,6 +494,21 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                 controles de hoje. <b>Residual</b> = esperado após concluir o plano de ação.
               </p>
             </fieldset>
+          </TabsContent>
+
+          {/* Aba 5 — Medições. Substitui o par escalar medicao_valor/unidade:
+              um mesmo agente costuma ter várias medições. */}
+          <TabsContent value="medicoes">
+            <ItemMedicoesPanel
+              pgrId={pgrId} empresaId={empresaId} itemId={itemId || null} canEdit
+            />
+          </TabsContent>
+
+          {/* Aba 6 — Controles classificados na hierarquia da NR-01. */}
+          <TabsContent value="controles">
+            <ItemControlesPanel
+              pgrId={pgrId} empresaId={empresaId} itemId={itemId || null} canEdit
+            />
           </TabsContent>
           </div>
         </Tabs>

@@ -15,6 +15,7 @@ import {
 import { ArrowLeft, Pencil, GitBranch, Send, FileText, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
+import LevantamentoPreliminarTab from "@/components/pgr/LevantamentoPreliminarTab";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
@@ -129,6 +130,7 @@ export default function PgrDetalhe() {
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
           <TabsTrigger value="textos">Textos</TabsTrigger>
+          <TabsTrigger value="levantamento">Levantamento</TabsTrigger>
           <TabsTrigger value="inventario">Inventário</TabsTrigger>
           <TabsTrigger value="epis">EPIs</TabsTrigger>
           <TabsTrigger value="acoes">Plano de Ação</TabsTrigger>
@@ -188,6 +190,11 @@ export default function PgrDetalhe() {
 
         <TabsContent value="textos">
           <TextosTab pgrId={id!} empresaId={doc.empresa_id} canEdit={perms.canEdit && isEditavel(status)} />
+        </TabsContent>
+
+        <TabsContent value="levantamento">
+          <LevantamentoPreliminarTab pgrId={id!} empresaId={doc.empresa_id}
+            canEdit={perms.canEdit && isEditavel(status)} />
         </TabsContent>
 
         <TabsContent value="inventario">
