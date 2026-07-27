@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import PgrAcaoDialog from "./PgrAcaoDialog";
 import {
   ACAO_STATUS_LABEL, ACAO_STATUS_COLOR, MEDIDA_LABEL, PgrAcaoStatus, isAtrasada,
-  prazoSugerido, PRIORIDADE_POR_CLASSE,
+  prazoSugerido, prioridadeSugerida, ACAO_KANBAN_COLS,
 } from "@/lib/pgrAcoes";
 import { classificarRisco, necessitaAcao, PgrClasse } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
@@ -26,7 +26,9 @@ interface Props {
   pgr: any;
 }
 
-const STATUS_COLS: PgrAcaoStatus[] = ["pendente","em_andamento","atrasada","concluida","cancelada"];
+// Colunas do Kanban vêm de pgrAcoes para não divergirem dos status aceitos
+// pelo CHECK do banco quando o vocabulário mudar de novo.
+const STATUS_COLS: PgrAcaoStatus[] = ACAO_KANBAN_COLS;
 
 export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canEdit, pgr }: Props) {
   const qc = useQueryClient();
@@ -104,12 +106,12 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
       inventario_item_id: item.id,
       descricao: `Controle para: ${item.perigo_descricao}`,
       tipo: "engenharia",
-      prioridade: PRIORIDADE_POR_CLASSE[item.classe as keyof typeof PRIORIDADE_POR_CLASSE] ?? 3,
+      prioridade: prioridadeSugerida(item.classe, item.trabalhadores_expostos),
       prazo: prazo || "",
       responsavel_nome: pgr?.resp_tec_nome || "",
       responsavel_id: pgr?.responsavel_tecnico_id || null,
       what: `Implantar controle do risco "${item.perigo_descricao}"`,
-      why: `Risco classificado como ${item.classe.toUpperCase()} no inventário.`,
+      why: `Risco classificado como ${String(item.classe || "").toUpperCase()} no inventário.`,
       where_local: item.fonte_geradora || "",
     });
     setDialogOpen(true);
@@ -156,7 +158,9 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-2">
               <Wand2 className="h-4 w-4 text-orange-700" />
-              <div className="font-semibold text-sm">Sugestões automáticas — riscos Alto/Crítico sem ação ({sugestoes.length})</div>
+              <div className="font-semibold text-sm">
+                Sugestões automáticas — riscos que exigem ação, ainda sem ação ({sugestoes.length})
+              </div>
             </div>
             <ul className="divide-y">
               {sugestoes.slice(0, 8).map((it: any) => (
@@ -164,7 +168,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
                   <div className="min-w-0">
                     <div className="font-medium truncate">{it.perigo_descricao}</div>
                     <div className="text-[11px] text-muted-foreground truncate">
-                      Classe <b className="uppercase">{it.classe}</b> · SLA sugerido até {prazoSugerido(it.classe) && new Date(prazoSugerido(it.classe)!+"T00:00:00").toLocaleDateString("pt-BR")} · prioridade {PRIORIDADE_POR_CLASSE[it.classe as keyof typeof PRIORIDADE_POR_CLASSE]}
+                      Classe <b className="uppercase">{it.classe}</b>{prazoSugerido(it.classe) ? ` · SLA sugerido até ${new Date(prazoSugerido(it.classe)!+"T00:00:00").toLocaleDateString("pt-BR")}` : " · sem SLA automático"} · prioridade {prioridadeSugerida(it.classe, it.trabalhadores_expostos)}
                     </div>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => aceitarSugestao(it)}>Criar ação</Button>
@@ -206,7 +210,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
           </div>
 
           {vista === "kanban" ? (
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
               {STATUS_COLS.map(col => (
                 <div key={col} className="bg-muted/40 rounded p-2 min-h-[200px]">
                   <div className="flex items-center justify-between mb-2">

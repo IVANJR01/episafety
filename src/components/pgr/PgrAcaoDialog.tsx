@@ -17,6 +17,9 @@ import {
   ACAO_STATUS_LABEL, ACAO_STATUS_COLOR, MEDIDA_LABEL,
   PgrAcaoStatus, isAtrasada,
 } from "@/lib/pgrAcoes";
+import { PGR_HIERARQUIA_LABEL, PGR_HIERARQUIA_ORDENADA } from "@/lib/pgrTypes";
+
+const MESES = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
 
 interface Props {
   open: boolean;
@@ -42,6 +45,13 @@ export default function PgrAcaoDialog({
     descricao: "", tipo: "engenharia", responsavel_id: null, responsavel_nome: "",
     prazo: "", prioridade: 3, custo_estimado: "", inventario_item_id: null,
     what: "", why: "", where_local: "", how: "",
+    corresponsavel_nome: "", responsavel_setor: "", quanto_texto: "",
+    meses_execucao: [] as number[],
+    objetivo: "", justificativa: "", hierarquia_medida: "",
+    data_abertura: "", data_inicio: "", percentual_execucao: 0,
+    indicador: "", meta_criterio: "", forma_acompanhamento: "",
+    evidencia_esperada: "", recursos_necessarios: "",
+    trabalhadores_atingidos: "", data_reavaliacao_residual: "",
   });
   const [showProrrog, setShowProrrog] = useState(false);
   const [novoPrazo, setNovoPrazo] = useState("");
@@ -58,7 +68,13 @@ export default function PgrAcaoDialog({
     if (acaoId) {
       (async () => {
         const { data } = await (supabase.from as any)("pgr_acoes").select("*").eq("id", acaoId).maybeSingle();
-        if (data) setForm({ ...data, custo_estimado: data.custo_estimado ?? "" });
+        if (data) setForm({
+          ...data,
+          custo_estimado: data.custo_estimado ?? "",
+          meses_execucao: data.meses_execucao ?? [],
+          percentual_execucao: data.percentual_execucao ?? 0,
+          trabalhadores_atingidos: data.trabalhadores_atingidos ?? "",
+        });
       })();
     } else if (defaults) {
       setForm((f: any) => ({ ...f, ...defaults }));
@@ -114,6 +130,26 @@ export default function PgrAcaoDialog({
         custo_estimado: form.custo_estimado !== "" ? Number(form.custo_estimado) : null,
         what: form.what || null, why: form.why || null,
         where_local: form.where_local || null, how: form.how || null,
+        corresponsavel_nome: form.corresponsavel_nome || null,
+        responsavel_setor: form.responsavel_setor || null,
+        quanto_texto: form.quanto_texto || null,
+        // Array vazio vira null: [] e "sem cronograma" são a mesma coisa aqui,
+        // e null deixa isso explícito no banco.
+        meses_execucao: (form.meses_execucao || []).length ? form.meses_execucao : null,
+        objetivo: form.objetivo || null,
+        justificativa: form.justificativa || null,
+        hierarquia_medida: form.hierarquia_medida || null,
+        data_abertura: form.data_abertura || null,
+        data_inicio: form.data_inicio || null,
+        percentual_execucao: Number(form.percentual_execucao) || 0,
+        indicador: form.indicador || null,
+        meta_criterio: form.meta_criterio || null,
+        forma_acompanhamento: form.forma_acompanhamento || null,
+        evidencia_esperada: form.evidencia_esperada || null,
+        recursos_necessarios: form.recursos_necessarios || null,
+        trabalhadores_atingidos:
+          form.trabalhadores_atingidos !== "" ? Number(form.trabalhadores_atingidos) : null,
+        data_reavaliacao_residual: form.data_reavaliacao_residual || null,
       };
       if (acaoId) {
         const { error } = await (supabase.from as any)("pgr_acoes").update(payload).eq("id", acaoId);
@@ -242,6 +278,7 @@ export default function PgrAcaoDialog({
           <TabsList>
             <TabsTrigger value="dados">Dados</TabsTrigger>
             <TabsTrigger value="5w2h">5W2H</TabsTrigger>
+            <TabsTrigger value="acomp">Acompanhamento</TabsTrigger>
             <TabsTrigger value="evid" disabled={!acaoId}>Evidências ({evidencias.length})</TabsTrigger>
             <TabsTrigger value="hist" disabled={!acaoId}>Histórico ({historico.length})</TabsTrigger>
           </TabsList>
@@ -298,6 +335,164 @@ export default function PgrAcaoDialog({
             <div>
               <Label className="text-xs">How — Como será feito</Label>
               <Textarea rows={3} value={form.how || ""} onChange={(e) => setForm({ ...form, how: e.target.value })} disabled={!editavel} />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Who — Corresponsável</Label>
+                <Input value={form.corresponsavel_nome || ""}
+                  onChange={(e) => setForm({ ...form, corresponsavel_nome: e.target.value })}
+                  disabled={!editavel} placeholder="Quem apoia a execução" />
+              </div>
+              <div>
+                <Label className="text-xs">Where — Setor / GES</Label>
+                <Input value={form.responsavel_setor || ""}
+                  onChange={(e) => setForm({ ...form, responsavel_setor: e.target.value })}
+                  disabled={!editavel} />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">How much — Detalhamento do custo</Label>
+              <Input value={form.quanto_texto || ""}
+                onChange={(e) => setForm({ ...form, quanto_texto: e.target.value })}
+                disabled={!editavel}
+                placeholder="Ex.: 2 orçamentos, mão de obra própria, sem custo direto" />
+            </div>
+
+            {/* Cronograma mensal do 5W2H. O plano NÃO se resume a marcações "X":
+                as datas, marcos e prazo continuam sendo a fonte de controle —
+                isto é a visão de calendário exigida pela planilha do cliente. */}
+            <div>
+              <Label className="text-xs">When — Meses previstos de execução</Label>
+              <div className="grid grid-cols-6 sm:grid-cols-12 gap-1 mt-1">
+                {MESES.map((m, i) => {
+                  const num = i + 1;
+                  const marcado = (form.meses_execucao || []).includes(num);
+                  return (
+                    <button
+                      key={m} type="button" disabled={!editavel}
+                      onClick={() => {
+                        const atual: number[] = form.meses_execucao || [];
+                        setForm({
+                          ...form,
+                          meses_execucao: marcado
+                            ? atual.filter((x) => x !== num)
+                            : [...atual, num].sort((a, b) => a - b),
+                        });
+                      }}
+                      className={`text-[10px] py-1.5 rounded border transition ${
+                        marcado
+                          ? "bg-primary text-primary-foreground border-primary font-semibold"
+                          : "bg-muted/40 hover:bg-muted"
+                      } ${!editavel ? "opacity-60 cursor-not-allowed" : ""}`}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="acomp" className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Concluir a ação não encerra o risco: a verificação de eficácia é aberta
+              automaticamente e o risco residual só é confirmado depois dela.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Objetivo</Label>
+                <Input value={form.objetivo || ""}
+                  onChange={(e) => setForm({ ...form, objetivo: e.target.value })} disabled={!editavel} />
+              </div>
+              <div>
+                <Label className="text-xs">Hierarquia da medida (NR-01)</Label>
+                <Select value={form.hierarquia_medida || ""}
+                  onValueChange={(v) => setForm({ ...form, hierarquia_medida: v })} disabled={!editavel}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {PGR_HIERARQUIA_ORDENADA.map((h) => (
+                      <SelectItem key={h} value={h}>{PGR_HIERARQUIA_LABEL[h]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">Justificativa</Label>
+              <Textarea rows={2} value={form.justificativa || ""}
+                onChange={(e) => setForm({ ...form, justificativa: e.target.value })} disabled={!editavel} />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Data de abertura</Label>
+                <Input type="date" value={form.data_abertura || ""}
+                  onChange={(e) => setForm({ ...form, data_abertura: e.target.value })} disabled={!editavel} />
+              </div>
+              <div>
+                <Label className="text-xs">Data de início</Label>
+                <Input type="date" value={form.data_inicio || ""}
+                  onChange={(e) => setForm({ ...form, data_inicio: e.target.value })} disabled={!editavel} />
+              </div>
+              <div>
+                <Label className="text-xs">Execução (%)</Label>
+                <Input type="number" min={0} max={100} value={form.percentual_execucao ?? 0}
+                  onChange={(e) => setForm({ ...form, percentual_execucao: e.target.value })}
+                  disabled={!editavel} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Indicador</Label>
+                <Input value={form.indicador || ""}
+                  onChange={(e) => setForm({ ...form, indicador: e.target.value })} disabled={!editavel} />
+              </div>
+              <div>
+                <Label className="text-xs">Meta / critério de aceitação</Label>
+                <Input value={form.meta_criterio || ""}
+                  onChange={(e) => setForm({ ...form, meta_criterio: e.target.value })} disabled={!editavel} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Forma de acompanhamento</Label>
+                <Input value={form.forma_acompanhamento || ""}
+                  onChange={(e) => setForm({ ...form, forma_acompanhamento: e.target.value })} disabled={!editavel} />
+              </div>
+              <div>
+                <Label className="text-xs">Evidência esperada</Label>
+                <Input value={form.evidencia_esperada || ""}
+                  onChange={(e) => setForm({ ...form, evidencia_esperada: e.target.value })} disabled={!editavel} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Recursos necessários</Label>
+                <Input value={form.recursos_necessarios || ""}
+                  onChange={(e) => setForm({ ...form, recursos_necessarios: e.target.value })} disabled={!editavel} />
+              </div>
+              <div>
+                <Label className="text-xs">Trabalhadores atingidos</Label>
+                <Input type="number" min={0} value={form.trabalhadores_atingidos ?? ""}
+                  onChange={(e) => setForm({ ...form, trabalhadores_atingidos: e.target.value })}
+                  disabled={!editavel} />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Eleva a prioridade da ação, não a pontuação do risco.
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs">Reavaliar risco residual em</Label>
+                <Input type="date" value={form.data_reavaliacao_residual || ""}
+                  onChange={(e) => setForm({ ...form, data_reavaliacao_residual: e.target.value })}
+                  disabled={!editavel} />
+              </div>
             </div>
           </TabsContent>
 
