@@ -434,6 +434,108 @@ export function useNucleoMestreSst() {
     },
   });
 
+  // DELETE MUTATIONS
+  const deleteEstabelecimentoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const ehProprio = estabelecimentos.find((e) => e.id === id)?.tipo === "proprio";
+      await supabase.from("sst_estabelecimentos").delete().eq("id", id);
+      if (ehProprio) {
+        await supabase.from("empresa_config").delete().eq("id", id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_estabelecimentos"] });
+      queryClient.invalidateQueries({ queryKey: ["sst-legacy-empresa-config"] });
+      toast({ title: "Sucesso", description: "Estabelecimento removido." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteAmbienteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sst_ambientes").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_ambientes"] });
+      toast({ title: "Sucesso", description: "Ambiente removido." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteSetorMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sst_setores").delete().eq("id", id);
+      await supabase.from("aso_setores").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_setores"] });
+      toast({ title: "Sucesso", description: "Setor removido." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteProcessoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sst_processos").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_processos"] });
+      toast({ title: "Sucesso", description: "Processo removido." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteFuncaoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sst_funcoes").delete().eq("id", id);
+      await supabase.from("aso_funcoes").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_funcoes"] });
+      toast({ title: "Sucesso", description: "Função removida." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteGesMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sst_ges").delete().eq("id", id);
+      await supabase.from("ghe_ges").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_ges"] });
+      queryClient.invalidateQueries({ queryKey: ["supabase", "ghe_ges"] });
+      queryClient.invalidateQueries({ queryKey: ["cad-ghe-list"] });
+      toast({ title: "Sucesso", description: "GES/GHE removido." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteExposicaoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sst_exposicoes").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_exposicoes"] });
+      toast({ title: "Sucesso", description: "Exposição removida." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
   return {
     estabelecimentos: effectiveEstabelecimentos,
     ambientes,
@@ -461,5 +563,12 @@ export function useNucleoMestreSst() {
     saveFuncao: saveFuncaoMutation.mutateAsync,
     saveGes: saveGesMutation.mutateAsync,
     saveExposicao: saveExposicaoMutation.mutateAsync,
+    deleteEstabelecimento: deleteEstabelecimentoMutation.mutateAsync,
+    deleteAmbiente: deleteAmbienteMutation.mutateAsync,
+    deleteSetor: deleteSetorMutation.mutateAsync,
+    deleteProcesso: deleteProcessoMutation.mutateAsync,
+    deleteFuncao: deleteFuncaoMutation.mutateAsync,
+    deleteGes: deleteGesMutation.mutateAsync,
+    deleteExposicao: deleteExposicaoMutation.mutateAsync,
   };
 }

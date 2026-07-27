@@ -7,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
-import { Building2, Home, LayoutGrid, Workflow, Briefcase, Plus, Edit2, Loader2 } from "lucide-react";
+import { Building2, Home, LayoutGrid, Workflow, Briefcase, Plus, Edit2, Loader2, Trash2 } from "lucide-react";
 
 export function EstruturaOcupacionalTab() {
   const {
@@ -26,6 +27,11 @@ export function EstruturaOcupacionalTab() {
     saveSetor,
     saveProcesso,
     saveFuncao,
+    deleteEstabelecimento,
+    deleteAmbiente,
+    deleteSetor,
+    deleteProcesso,
+    deleteFuncao,
   } = useNucleoMestreSst();
 
   const [activeSubTab, setActiveSubTab] = useState("estabelecimentos");
@@ -34,6 +40,12 @@ export function EstruturaOcupacionalTab() {
   const [openModal, setOpenModal] = useState(false);
   const [modalType, setModalType] = useState<"estabelecimento" | "ambiente" | "setor" | "processo" | "funcao">("estabelecimento");
   const [formData, setFormData] = useState<any>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; type: string; id: string; nome: string }>({
+    open: false,
+    type: "",
+    id: "",
+    nome: "",
+  });
 
   const handleOpenModal = (type: any, item?: any) => {
     setModalType(type);
@@ -57,6 +69,19 @@ export function EstruturaOcupacionalTab() {
       if (modalType === "processo") await saveProcesso(formData);
       if (modalType === "funcao") await saveFuncao(formData);
       setOpenModal(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      if (deleteConfirm.type === "estabelecimento") await deleteEstabelecimento(deleteConfirm.id);
+      if (deleteConfirm.type === "ambiente") await deleteAmbiente(deleteConfirm.id);
+      if (deleteConfirm.type === "setor") await deleteSetor(deleteConfirm.id);
+      if (deleteConfirm.type === "processo") await deleteProcesso(deleteConfirm.id);
+      if (deleteConfirm.type === "funcao") await deleteFuncao(deleteConfirm.id);
+      setDeleteConfirm({ open: false, type: "", id: "", nome: "" });
     } catch (err) {
       console.error(err);
     }
@@ -153,9 +178,14 @@ export function EstruturaOcupacionalTab() {
                       </TableCell>
                       <TableCell className="text-right">{est.qtd_trabalhadores ?? "-"}</TableCell>
                       <TableCell className="text-right">
-                        <Button onClick={() => handleOpenModal("estabelecimento", est)} variant="ghost" size="sm">
-                          <Edit2 className="w-4 h-4 text-slate-600" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button onClick={() => handleOpenModal("estabelecimento", est)} variant="ghost" size="sm">
+                            <Edit2 className="w-4 h-4 text-slate-600" />
+                          </Button>
+                          <Button onClick={() => setDeleteConfirm({ open: true, type: "estabelecimento", id: est.id, nome: est.nome })} variant="ghost" size="sm">
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -199,9 +229,14 @@ export function EstruturaOcupacionalTab() {
                       <TableCell>{amb.pe_direito ? `Alt: ${amb.pe_direito}` : "-"} {amb.piso ? `(${amb.piso})` : ""}</TableCell>
                       <TableCell>{amb.ventilacao || "-"} / {amb.iluminacao || "-"}</TableCell>
                       <TableCell className="text-right">
-                        <Button onClick={() => handleOpenModal("ambiente", amb)} variant="ghost" size="sm">
-                          <Edit2 className="w-4 h-4 text-slate-600" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button onClick={() => handleOpenModal("ambiente", amb)} variant="ghost" size="sm">
+                            <Edit2 className="w-4 h-4 text-slate-600" />
+                          </Button>
+                          <Button onClick={() => setDeleteConfirm({ open: true, type: "ambiente", id: amb.id, nome: amb.nome })} variant="ghost" size="sm">
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -245,9 +280,14 @@ export function EstruturaOcupacionalTab() {
                         <TableCell>{ambName}</TableCell>
                         <TableCell>{set.responsavel_setor || "-"}</TableCell>
                         <TableCell className="text-right">
-                          <Button onClick={() => handleOpenModal("setor", set)} variant="ghost" size="sm">
-                            <Edit2 className="w-4 h-4 text-slate-600" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button onClick={() => handleOpenModal("setor", set)} variant="ghost" size="sm">
+                              <Edit2 className="w-4 h-4 text-slate-600" />
+                            </Button>
+                            <Button onClick={() => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })} variant="ghost" size="sm">
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -294,9 +334,14 @@ export function EstruturaOcupacionalTab() {
                         <TableCell><Badge variant="outline">{proc.caracteristica_atividade}</Badge></TableCell>
                         <TableCell>{proc.maquinas_equipamentos || "-"}</TableCell>
                         <TableCell className="text-right">
-                          <Button onClick={() => handleOpenModal("processo", proc)} variant="ghost" size="sm">
-                            <Edit2 className="w-4 h-4 text-slate-600" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button onClick={() => handleOpenModal("processo", proc)} variant="ghost" size="sm">
+                              <Edit2 className="w-4 h-4 text-slate-600" />
+                            </Button>
+                            <Button onClick={() => setDeleteConfirm({ open: true, type: "processo", id: proc.id, nome: proc.nome })} variant="ghost" size="sm">
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -350,9 +395,14 @@ export function EstruturaOcupacionalTab() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button onClick={() => handleOpenModal("funcao", func)} variant="ghost" size="sm">
-                            <Edit2 className="w-4 h-4 text-slate-600" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button onClick={() => handleOpenModal("funcao", func)} variant="ghost" size="sm">
+                              <Edit2 className="w-4 h-4 text-slate-600" />
+                            </Button>
+                            <Button onClick={() => setDeleteConfirm({ open: true, type: "funcao", id: func.id, nome: func.nome })} variant="ghost" size="sm">
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -363,6 +413,24 @@ export function EstruturaOcupacionalTab() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* CONFIRMATION DIALOG DE EXCLUSÃO */}
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover "{deleteConfirm.nome}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O registro será removido permanentemente do Núcleo Mestre.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* DIALOG DE CADASTRO E EDIÇÃO */}
       <Dialog open={openModal} onOpenChange={setOpenModal}>
