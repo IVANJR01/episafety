@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
+import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { Building2, Home, LayoutGrid, Workflow, Briefcase, Plus, Edit2, Loader2 } from "lucide-react";
 
 export function EstruturaOcupacionalTab() {
@@ -39,6 +40,13 @@ export function EstruturaOcupacionalTab() {
     setFormData(item || {});
     setOpenModal(true);
   };
+
+  /** Atualiza uma sub-chave do endereço jsonb sem perder as demais. */
+  const setEndereco = (campo: keyof EnderecoEstruturado, valor: string) =>
+    setFormData((prev: any) => ({
+      ...prev,
+      endereco: { ...(prev.endereco || {}), [campo]: valor },
+    }));
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,23 +120,38 @@ export function EstruturaOcupacionalTab() {
                   <TableHead>Tipo</TableHead>
                   <TableHead>CNPJ / CNO</TableHead>
                   <TableHead>CNAE / Grau Risco</TableHead>
+                  <TableHead>Endereço</TableHead>
+                  <TableHead className="text-right">Trab.</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {estabelecimentos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-slate-400">
+                    <TableCell colSpan={7} className="text-center py-6 text-slate-400">
                       Nenhum estabelecimento cadastrado.
                     </TableCell>
                   </TableRow>
                 ) : (
                   estabelecimentos.map((est) => (
                     <TableRow key={est.id}>
-                      <TableCell className="font-medium text-slate-900">{est.nome}</TableCell>
+                      <TableCell className="font-medium text-slate-900">
+                        {est.nome}
+                        {est.nome_fantasia && (
+                          <span className="block text-xs font-normal text-slate-500">{est.nome_fantasia}</span>
+                        )}
+                      </TableCell>
                       <TableCell><Badge variant="outline">{est.tipo}</Badge></TableCell>
                       <TableCell>{est.cnpj || est.cno || "-"}</TableCell>
-                      <TableCell>{est.cnae_principal ? `${est.cnae_principal} (Grau ${est.grau_risco || 1})` : "-"}</TableCell>
+                      <TableCell>
+                        {est.cnae_principal
+                          ? `${est.cnae_principal}${est.grau_risco ? ` (Grau ${est.grau_risco})` : ""}`
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-600 max-w-[220px]">
+                        {formatarEndereco(est.endereco) || "-"}
+                      </TableCell>
+                      <TableCell className="text-right">{est.qtd_trabalhadores ?? "-"}</TableCell>
                       <TableCell className="text-right">
                         <Button onClick={() => handleOpenModal("estabelecimento", est)} variant="ghost" size="sm">
                           <Edit2 className="w-4 h-4 text-slate-600" />
@@ -362,29 +385,187 @@ export function EstruturaOcupacionalTab() {
 
             {modalType === "estabelecimento" && (
               <>
-                <div>
-                  <Label>Tipo de Estabelecimento</Label>
-                  <Select
-                    value={formData.tipo || "proprio"}
-                    onValueChange={(val) => setFormData({ ...formData, tipo: val })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="proprio">Próprio (Matriz/Filial)</SelectItem>
-                      <SelectItem value="terceiro">Terceiro / Cliente</SelectItem>
-                      <SelectItem value="obra">Canteiro de Obra (CNO)</SelectItem>
-                      <SelectItem value="administrativo">Escritório Administrativo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Tipo de Estabelecimento</Label>
+                    <Select
+                      value={formData.tipo || "proprio"}
+                      onValueChange={(val) => setFormData({ ...formData, tipo: val })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="proprio">Próprio (Matriz/Filial)</SelectItem>
+                        <SelectItem value="terceiro">Terceiro / Cliente</SelectItem>
+                        <SelectItem value="obra">Canteiro de Obra (CNO)</SelectItem>
+                        <SelectItem value="administrativo">Escritório Administrativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Nome Fantasia</Label>
+                    <Input
+                      value={formData.nome_fantasia || ""}
+                      onChange={(e) => setFormData({ ...formData, nome_fantasia: e.target.value })}
+                      placeholder="Como a unidade é conhecida"
+                    />
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>CNPJ</Label>
+                    <Input
+                      value={formData.cnpj || ""}
+                      onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                      placeholder="00.000.000/0000-00"
+                    />
+                  </div>
+                  <div>
+                    <Label>CNO {formData.tipo === "obra" && <span className="text-red-500">*</span>}</Label>
+                    <Input
+                      value={formData.cno || ""}
+                      onChange={(e) => setFormData({ ...formData, cno: e.target.value })}
+                      placeholder="Cadastro Nacional de Obras"
+                      required={formData.tipo === "obra"}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <Label>CNAE Principal</Label>
+                    <Input
+                      value={formData.cnae_principal || ""}
+                      onChange={(e) => setFormData({ ...formData, cnae_principal: e.target.value })}
+                      placeholder="0000-0/00"
+                    />
+                  </div>
+                  <div>
+                    <Label>Grau de Risco (NR-04)</Label>
+                    <Select
+                      value={formData.grau_risco ? String(formData.grau_risco) : ""}
+                      onValueChange={(val) => setFormData({ ...formData, grau_risco: Number(val) })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 — Risco baixo</SelectItem>
+                        <SelectItem value="2">2 — Risco médio</SelectItem>
+                        <SelectItem value="3">3 — Risco alto</SelectItem>
+                        <SelectItem value="4">4 — Risco máximo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Nº de Trabalhadores</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={formData.qtd_trabalhadores ?? ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        qtd_trabalhadores: e.target.value === "" ? null : Number(e.target.value),
+                      })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <Label>CNPJ ou CNO</Label>
+                  <Label>CNAEs Secundários</Label>
                   <Input
-                    value={formData.cnpj || formData.cno || ""}
-                    onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
-                    placeholder="00.000.000/0000-00"
+                    value={(formData.cnae_secundario || []).join(", ")}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      cnae_secundario: e.target.value
+                        .split(",").map((s: string) => s.trim()).filter(Boolean),
+                    })}
+                    placeholder="0000-0/00, 1111-1/11 (separados por vírgula)"
                   />
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Telefone</Label>
+                    <Input
+                      value={formData.telefone || ""}
+                      onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                  <div>
+                    <Label>E-mail</Label>
+                    <Input
+                      type="email"
+                      value={formData.email || ""}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="unidade@empresa.com.br"
+                    />
+                  </div>
+                </div>
+
+                <fieldset className="border rounded-md p-3 space-y-3">
+                  <legend className="px-1 text-xs font-semibold text-slate-600">Endereço</legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="sm:col-span-3">
+                      <Label>Logradouro</Label>
+                      <Input
+                        value={formData.endereco?.logradouro || ""}
+                        onChange={(e) => setEndereco("logradouro", e.target.value)}
+                        placeholder="Rua / Avenida"
+                      />
+                    </div>
+                    <div>
+                      <Label>Número</Label>
+                      <Input
+                        value={formData.endereco?.numero || ""}
+                        onChange={(e) => setEndereco("numero", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label>Complemento</Label>
+                      <Input
+                        value={formData.endereco?.complemento || ""}
+                        onChange={(e) => setEndereco("complemento", e.target.value)}
+                        placeholder="Galpão, sala, bloco"
+                      />
+                    </div>
+                    <div>
+                      <Label>Bairro</Label>
+                      <Input
+                        value={formData.endereco?.bairro || ""}
+                        onChange={(e) => setEndereco("bairro", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div className="sm:col-span-2">
+                      <Label>Cidade</Label>
+                      <Input
+                        value={formData.endereco?.cidade || ""}
+                        onChange={(e) => setEndereco("cidade", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>UF</Label>
+                      <Input
+                        value={formData.endereco?.uf || ""}
+                        onChange={(e) => setEndereco("uf", e.target.value.toUpperCase().slice(0, 2))}
+                        maxLength={2}
+                        placeholder="PE"
+                      />
+                    </div>
+                    <div>
+                      <Label>CEP</Label>
+                      <Input
+                        value={formData.endereco?.cep || ""}
+                        onChange={(e) => setEndereco("cep", e.target.value)}
+                        placeholder="00000-000"
+                      />
+                    </div>
+                  </div>
+                </fieldset>
               </>
             )}
 

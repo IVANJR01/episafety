@@ -7,20 +7,65 @@ export type NivelOrigemRisco = "ges" | "ambiente" | "setor" | "processo" | "func
 export type TipoExposicaoRisco = "habitual_permanente" | "intermitente" | "eventual";
 export type EficaciaEpiConclusao = "nao_avaliada" | "insuficiente" | "parcialmente_eficaz" | "eficaz" | "nao_aplicavel";
 
+export type TipoEstabelecimento = "proprio" | "terceiro" | "obra" | "administrativo";
+
+/** Endereço decomposto — mesmas chaves em empresa_config (colunas) e em
+ *  sst_estabelecimentos.endereco / pgr_documentos.endereco_snapshot (jsonb). */
+export interface EnderecoEstruturado {
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  cep?: string | null;
+}
+
+export interface ResponsavelLegal {
+  nome?: string | null;
+  cpf?: string | null;
+  cargo?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+}
+
 export interface SstEstabelecimento {
   id: string;
   empresa_id: string;
   nome: string;
-  tipo: "proprio" | "terceiro" | "obra" | "administrativo";
+  /** Para tipo='proprio' o id é o MESMO de empresa_config (espelhamento). */
+  tipo: TipoEstabelecimento;
+  nome_fantasia?: string | null;
   cnpj?: string | null;
+  /** Cadastro Nacional de Obras — aplicável a tipo='obra'. */
   cno?: string | null;
   cnae_principal?: string | null;
+  cnae_secundario?: string[] | null;
+  /** Grau de risco da NR-04: 1 a 4. */
   grau_risco?: number | null;
-  endereco?: Record<string, any> | null;
-  responsavel_legal?: Record<string, any> | null;
+  telefone?: string | null;
+  email?: string | null;
+  endereco?: EnderecoEstruturado | null;
+  responsavel_legal?: ResponsavelLegal | null;
   qtd_trabalhadores?: number;
   created_at?: string;
   updated_at?: string;
+}
+
+/** Monta o endereço em uma linha, com fallback para o texto legado. */
+export function formatarEndereco(
+  end?: EnderecoEstruturado | null,
+  legado?: string | null,
+): string {
+  if (!end) return legado || "";
+  const linha1 = [end.logradouro, end.numero].filter(Boolean).join(", ");
+  const partes = [
+    [linha1, end.complemento].filter(Boolean).join(" - "),
+    end.bairro,
+    [end.cidade, end.uf].filter(Boolean).join("/"),
+    end.cep,
+  ].filter((p) => p && String(p).trim());
+  return partes.length > 0 ? partes.join(" · ") : legado || "";
 }
 
 export interface SstAmbiente {

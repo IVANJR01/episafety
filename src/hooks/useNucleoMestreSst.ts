@@ -14,7 +14,52 @@ import {
   SstGesVinculo,
   SstExposicao,
   SstPerigoCatalogo,
+  formatarEndereco,
 } from "@/types/sst";
+
+/**
+ * Traduz um estabelecimento do Núcleo Mestre para o formato de empresa_config.
+ *
+ * Não é uma cópia campo-a-campo: os dois cadastros usam vocabulários diferentes.
+ *  - `tipo` em sst_estabelecimentos é proprio|terceiro|obra|administrativo;
+ *    em empresa_config é matriz|filial. Copiar direto corromperia o cadastro
+ *    de empresas e a árvore usada pela RLS.
+ *  - `endereco` é jsonb de um lado e colunas decompostas + texto legado do outro.
+ *  - `empresa_id`, `cno` e `qtd_trabalhadores` não existem em empresa_config e
+ *    precisam ser removidos, sob pena de o upsert falhar por coluna inexistente.
+ */
+function mapEstabelecimentoParaEmpresaConfig(activeEmpresaId: string) {
+  return (payload: any) => {
+    const ehMatriz = payload.id === activeEmpresaId;
+    const end = payload.endereco || {};
+    const resp = payload.responsavel_legal || {};
+    return {
+      id: payload.id,
+      nome: payload.nome,
+      nome_fantasia: payload.nome_fantasia ?? null,
+      cnpj: payload.cnpj ?? null,
+      cnae_principal: payload.cnae_principal ?? null,
+      cnae_secundario: payload.cnae_secundario ?? null,
+      grau_risco: payload.grau_risco ?? null,
+      telefone: payload.telefone ?? null,
+      email: payload.email ?? null,
+      // Endereço decomposto + texto corrido mantido para leitores legados.
+      logradouro: end.logradouro ?? null,
+      numero: end.numero ?? null,
+      complemento: end.complemento ?? null,
+      bairro: end.bairro ?? null,
+      cidade: end.cidade ?? null,
+      uf: end.uf ?? null,
+      cep: end.cep ?? null,
+      endereco: formatarEndereco(end) || null,
+      nome_representante_legal: resp.nome ?? null,
+      cpf_representante_legal: resp.cpf ?? null,
+      // A matriz nunca vira filial de si mesma.
+      tipo: ehMatriz ? "matriz" : "filial",
+      empresa_pai_id: ehMatriz ? null : activeEmpresaId,
+    };
+  };
+}
 
 async function resilientSaveItem<T extends { id?: string }>(
   tableName: string,
@@ -166,24 +211,41 @@ export function useNucleoMestreSst() {
   const { data: legacyFuncoes = [] } = useSupabaseQuery<any>("aso_funcoes", "nome", true);
   const { data: legacyInventario = [] } = useSupabaseQuery<any>("pgr_inventario_itens");
 
-  // NOTA: estabelecimentos usa "ou" (não "união") de propósito — legacyEmpresasConfig
-  // é derivado 1:1 de empresa_config (matriz + filiais), então uma vez que o
-  // Núcleo Mestre tenha estabelecimentos próprios cadastrados eles substituem
-  // a visão sintética. Os demais (GES, setores, funções, exposições) usam
-  // união por id para nunca esconder cadastros antigos feitos fora do Núcleo Mestre.
-  const effectiveEstabelecimentos = estabelecimentos.length > 0 ? estabelecimentos : legacyEmpresasConfig.map((ec: any) => ({
+  // empresa_config projetada como estabelecimento tipo='proprio'. Como o
+  // espelhamento usa o MESMO id nas duas tabelas, a união por id converge:
+  // o registro do Núcleo Mestre tem precedência e o de empresa_config só
+  // aparece enquanto ainda não foi espelhado.
+  //
+  // Campos ausentes ficam null de propósito — não se inventa CNPJ, CNAE nem
+  // cidade para preencher tela: dado ausente precisa aparecer como ausente.
+  const legacyEmpresasAsSst: SstEstabelecimento[] = legacyEmpresasConfig.map((ec: any) => ({
     id: ec.id,
     empresa_id: activeEmpresaId || ec.id,
-    codigo: ec.cno ? `CNO-${ec.cno}` : (ec.tipo === "matriz" || !ec.empresa_pai_id ? "SEDE-MATRIZ" : `FILIAL-${(ec.nome || "EST").substring(0, 5).toUpperCase()}`),
     nome: ec.nome,
-    tipo_inscricao: ec.cno ? "cno" : "cnpj",
-    numero_inscricao: ec.cno || ec.cnpj || "00.000.000/0000-00",
-    cnae: ec.cnae || "4120-4/00",
-    grau_risco: ec.grau_risco || 2,
-    endereco_completo: ec.endereco || "Endereço principal cadastrado na unidade",
-    cidade: ec.cidade || "João Pessoa",
-    uf: ec.uf || "PB",
+    tipo: "proprio",
+    nome_fantasia: ec.nome_fantasia ?? null,
+    cnpj: ec.cnpj ?? null,
+    cno: null,
+    cnae_principal: ec.cnae_principal ?? null,
+    cnae_secundario: ec.cnae_secundario ?? null,
+    grau_risco: ec.grau_risco ?? null,
+    telefone: ec.telefone ?? null,
+    email: ec.email ?? null,
+    endereco: {
+      logradouro: ec.logradouro ?? null,
+      numero: ec.numero ?? null,
+      complemento: ec.complemento ?? null,
+      bairro: ec.bairro ?? null,
+      cidade: ec.cidade ?? null,
+      uf: ec.uf ?? null,
+      cep: ec.cep ?? null,
+    },
+    responsavel_legal: {
+      nome: ec.nome_representante_legal ?? null,
+      cpf: ec.cpf_representante_legal ?? null,
+    },
   }));
+  const effectiveEstabelecimentos = unionById(estabelecimentos, legacyEmpresasAsSst);
 
   const legacyGesAsSst = legacyGhe.map((g: any) => ({
     id: g.id,
@@ -230,10 +292,27 @@ export function useNucleoMestreSst() {
   const effectiveExposicoes = unionById(exposicoes, legacyExposicoesAsSst);
 
   // SAVE ESTABELECIMENTO MUTATION
+  //
+  // FONTE ÚNICA: empresa_config é a tabela de identidade da empresa — é dela que
+  // o PGR, o LTCAT, o PPP, o dashboard e as políticas de RLS já leem. Um
+  // estabelecimento tipo='proprio' (matriz ou filial) é, portanto, espelhado em
+  // empresa_config com o MESMO id, para que o usuário digite uma única vez.
+  //
+  // Os demais tipos (terceiro, obra, administrativo) NÃO são espelhados: eles não
+  // são pessoas jurídicas do tenant e criariam empresas fantasma no cadastro,
+  // poluindo seletores de empresa e a árvore usada pela RLS.
   const saveEstabelecimentoMutation = useMutation({
     mutationFn: async (estabelecimento: Partial<SstEstabelecimento>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-      return resilientSaveItem("sst_estabelecimentos", "empresa_config", estabelecimento, activeEmpresaId);
+      const ehProprio = (estabelecimento.tipo || "proprio") === "proprio";
+      return resilientSaveItem(
+        "sst_estabelecimentos",
+        ehProprio ? "empresa_config" : null,
+        estabelecimento,
+        activeEmpresaId,
+        mapEstabelecimentoParaEmpresaConfig(activeEmpresaId),
+        ehProprio,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_estabelecimentos"] });
