@@ -1,9 +1,20 @@
 import type { EnderecoEstruturado } from "@/types/sst";
 
-export type PgrStatus = "rascunho" | "em_revisao" | "vigente" | "substituido" | "arquivado";
+export type PgrStatus =
+  | "rascunho"
+  | "em_revisao_tecnica"
+  | "aguardando_aprovacao"
+  | "aguardando_assinatura"
+  | "vigente"
+  | "em_revisao"
+  | "substituido"
+  | "arquivado";
 
 export const PGR_STATUS_LABEL: Record<PgrStatus, string> = {
   rascunho: "Rascunho",
+  em_revisao_tecnica: "Em revisão técnica",
+  aguardando_aprovacao: "Aguardando aprovação",
+  aguardando_assinatura: "Aguardando assinatura",
   em_revisao: "Em Revisão",
   vigente: "Vigente",
   substituido: "Substituído",
@@ -12,6 +23,9 @@ export const PGR_STATUS_LABEL: Record<PgrStatus, string> = {
 
 export const PGR_STATUS_COLOR: Record<PgrStatus, string> = {
   rascunho: "bg-slate-100 text-slate-700 border-slate-300",
+  em_revisao_tecnica: "bg-sky-100 text-sky-800 border-sky-300",
+  aguardando_aprovacao: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  aguardando_assinatura: "bg-violet-100 text-violet-800 border-violet-300",
   em_revisao: "bg-amber-100 text-amber-800 border-amber-300",
   vigente: "bg-emerald-100 text-emerald-800 border-emerald-300",
   substituido: "bg-zinc-100 text-zinc-600 border-zinc-300",
@@ -188,7 +202,17 @@ export interface PgrRevisao {
   created_at: string;
 }
 
-export const PGR_IMMUTABLE_STATUSES: PgrStatus[] = ["vigente", "substituido", "arquivado"];
+// Estados que congelam o conteúdo. Os intermediários do fluxo de aprovação
+// (revisão técnica, aguardando aprovação) ainda permitem correção — travar antes
+// da assinatura obrigaria abrir revisão para consertar um typo apontado pelo revisor.
+export const PGR_IMMUTABLE_STATUSES: PgrStatus[] = [
+  "aguardando_assinatura", "vigente", "substituido", "arquivado",
+];
+
+/** Ordem do fluxo de aprovação, para exibir progresso. */
+export const PGR_FLUXO: PgrStatus[] = [
+  "rascunho", "em_revisao_tecnica", "aguardando_aprovacao", "aguardando_assinatura", "vigente",
+];
 export const isEditavel = (s: PgrStatus) => !PGR_IMMUTABLE_STATUSES.includes(s);
 
 export interface PgrLevantamentoPreliminar {
