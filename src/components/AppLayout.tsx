@@ -18,6 +18,11 @@ interface NavItem {
   description?: string;
 }
 
+interface EmpresaSwitcherInfo {
+  nome: string;
+  empresa_pai_id: string | null;
+}
+
 const mainNavItems: NavItem[] = [];
 
 // Bottom nav: key shortcuts for mobile
@@ -56,17 +61,10 @@ const gestaoDocItems: NavItem[] = [
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
-// Programas — PGR, PCMSO, LTCAT, laudos técnicos e PPP (previdenciário, puxa dados do LTCAT)
+// Programas — Módulo Mestre Unificado
 const programasItems: NavItem[] = [
-  { path: "/programas", label: "Visão Geral", icon: LayoutDashboard, moduleKey: "pgr" },
-  { path: "/programas/gerar", label: "Gerar Documentos", icon: Bell, moduleKey: "pgr" },
-  { path: "/pgr", label: "PGR", icon: ShieldCheck, moduleKey: "pgr" },
-  { path: "/programas/ordem-servico", label: "Ordem de Serviço", icon: ClipboardList, moduleKey: "pgr" },
-  { path: "/aso", label: "PCMSO", icon: Stethoscope, moduleKey: "aso" },
-  { path: "/ltcat", label: "LTCAT", icon: FileText, moduleKey: "ltcat" },
-  { path: "/programas/laudo-insalubridade", label: "Laudo de Insalubridade", icon: Flame, moduleKey: "pgr" },
-  { path: "/programas/laudo-periculosidade", label: "Laudo de Periculosidade", icon: Zap, moduleKey: "pgr" },
-  { path: "/central-ppp", label: "PPP", icon: FileText, moduleKey: "ppp" },
+  { path: "/documentacao-sst", label: "Central Documentação SST", icon: ShieldCheck, moduleKey: "pgr" },
+  { path: "/programas/ordem-servico", label: "Ordens de Serviço", icon: ClipboardList, moduleKey: "pgr" },
 ];
 
 // Comercial — Orçamentos, Clientes, Catálogo
@@ -111,20 +109,49 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [faturasAlerta, setFaturasAlerta] = useState(0);
   const [checking, setChecking] = useState(false);
-  const [empresasNomes, setEmpresasNomes] = useState<Record<string, string>>({});
+  const [empresasInfo, setEmpresasInfo] = useState<Record<string, EmpresaSwitcherInfo>>({});
 
   // Load empresa names for the switcher
-  const showEmpresaSwitcher = empresasIds.length > 1;
+  const showEmpresaSwitcher = empresasIds.length > 0 || isSuperAdmin || isPrincipal;
   useEffect(() => {
-    if (!showEmpresaSwitcher) return;
-    supabase.from("empresa_config").select("id, nome").in("id", empresasIds).then(({ data }) => {
+    if (empresasIds.length === 0) return;
+    supabase.from("empresa_config").select("id, nome, empresa_pai_id").in("id", empresasIds).then(({ data }) => {
       if (data) {
-        const map: Record<string, string> = {};
-        data.forEach((e: any) => { map[e.id] = e.nome; });
-        setEmpresasNomes(map);
+        const map: Record<string, EmpresaSwitcherInfo> = {};
+        data.forEach((e: any) => {
+          map[e.id] = {
+            nome: e.nome,
+            empresa_pai_id: e.empresa_pai_id || null,
+          };
+        });
+        setEmpresasInfo(map);
       }
     });
-  }, [empresasIds, showEmpresaSwitcher]);
+  }, [empresasIds]);
+
+  const empresasSwitcherIds = useMemo(() => {
+    if (!isSuperAdmin && !isPrincipal) return empresasIds;
+
+    // Administradores alternam somente entre matrizes. Filiais continuam
+    // dentro do escopo da matriz e permanecem disponíveis nos módulos.
+    return empresasIds.filter((id) => {
+      const empresa = empresasInfo[id];
+      return empresa && !empresa.empresa_pai_id;
+    });
+  }, [empresasIds, empresasInfo, isSuperAdmin, isPrincipal]);
+
+  const empresaSelecionadaId = useMemo(() => {
+    if (!empresaId || (!isSuperAdmin && !isPrincipal)) return empresaId;
+    return empresasInfo[empresaId]?.empresa_pai_id || empresaId;
+  }, [empresaId, empresasInfo, isSuperAdmin, isPrincipal]);
+
+  useEffect(() => {
+    if (!empresaId || (!isSuperAdmin && !isPrincipal)) return;
+    const matrizId = empresasInfo[empresaId]?.empresa_pai_id;
+    if (matrizId && matrizId !== empresaId) {
+      setActiveEmpresaId(matrizId);
+    }
+  }, [empresaId, empresasInfo, isSuperAdmin, isPrincipal, setActiveEmpresaId]);
 
   // Busca contagem de faturas pendentes/vencidas para o badge no sidebar
   useEffect(() => {
@@ -708,18 +735,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 Empresa Ativa
               </label>
               <select
-                value={empresaId || ""}
+                value={empresaSelecionadaId || ""}
                 onChange={(e) => setActiveEmpresaId(e.target.value)}
                 className="w-full text-xs bg-sidebar-accent text-sidebar-foreground rounded-md px-2 py-2 border border-sidebar-border focus:outline-none focus:ring-1 focus:ring-primary truncate font-medium"
                 title="Alternar empresa ativa"
               >
-                {!empresaId && <option value="">Selecione...</option>}
-                {isSuperAdmin && !empresasIds.includes(empresaId || "") && empresaId && (
-                  <option value={empresaId}>{empresasNomes[empresaId] || "Empresa Atual"}</option>
-                )}
-                {empresasIds.map(id => (
+                {!empresaSelecionadaId && <option value="">Selecione...</option>}
+                {empresasSwitcherIds.map(id => (
                   <option key={id} value={id}>
-                    {empresasNomes[id] || id}
+                    {empresasInfo[id]?.nome || id}
                   </option>
                 ))}
               </select>
@@ -774,9 +798,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 onChange={(e) => setActiveEmpresaId(e.target.value)}
                 className="text-[10px] bg-muted border-none rounded-md px-1.5 py-1 focus:ring-1 focus:ring-primary max-w-[100px] truncate"
               >
-                {empresasIds.map(id => (
+                {empresasSwitcherIds.map(id => (
                   <option key={id} value={id}>
-                    {empresasNomes[id] || "..."}
+                    {empresasInfo[id]?.nome || "..."}
                   </option>
                 ))}
               </select>

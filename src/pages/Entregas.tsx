@@ -462,9 +462,13 @@ export default function Entregas() {
   }, [entregas, funcionarios, searchTerm]);
 
   const fichaFilteredFuncs = useMemo(() => {
-    if (!fichaSearch) return funcionarios;
-    return funcionarios.filter(f => matchFunc(f, fichaSearch));
-  }, [funcionarios, fichaSearch]);
+    const base = fichaSearch ? funcionarios.filter(f => matchFunc(f, fichaSearch)) : funcionarios;
+    return [...base].sort((a, b) => {
+      const countA = entregas.filter(e => e.funcionario_id === a.id).length;
+      const countB = entregas.filter(e => e.funcionario_id === b.id).length;
+      return countB - countA;
+    });
+  }, [funcionarios, fichaSearch, entregas]);
 
   const [formFuncSearch, setFormFuncSearch] = useState("");
   const formFilteredFuncs = useMemo(() => {
@@ -1655,14 +1659,22 @@ export default function Entregas() {
                 onChange={e => { setFichaSearch(e.target.value); setFichaFuncId(""); }} className="mb-2" />
               {fichaSearch && fichaFilteredFuncs.length > 0 && !fichaFuncId && (
                 <div className="border rounded-md max-h-40 overflow-y-auto">
-                  {fichaFilteredFuncs.map(f => (
-                    <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
-                      onClick={() => { setFichaFuncId(f.id); setFichaSearch(f.nome); }}>
-                      <span className="font-medium">{f.nome}</span>
-                      {f.cpf && <span className="text-muted-foreground ml-2">CPF: {f.cpf}</span>}
-                      {f.matricula && <span className="text-muted-foreground ml-2">Mat: {f.matricula}</span>}
-                    </button>
-                  ))}
+                  {fichaFilteredFuncs.map(f => {
+                    const count = entregas.filter(e => e.funcionario_id === f.id).length;
+                    return (
+                      <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
+                        onClick={() => { setFichaFuncId(f.id); setFichaSearch(f.nome); }}>
+                        <div>
+                          <span className="font-medium">{f.nome}</span>
+                          {f.cpf && <span className="text-muted-foreground text-xs ml-2">CPF: {f.cpf}</span>}
+                          {f.matricula && <span className="text-muted-foreground text-xs ml-2">Mat: {f.matricula}</span>}
+                        </div>
+                        <Badge variant={count > 0 ? "default" : "outline"} className="text-xs">
+                          {count} {count === 1 ? "entrega" : "entregas"}
+                        </Badge>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
               {fichaFuncId && (

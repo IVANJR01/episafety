@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
-import { preCacheAllData, setCacheUserScope, clearAllCachedData } from "@/lib/offlineStorage";
+import { setCacheUserScope, clearAllCachedData } from "@/lib/offlineStorage";
 import { clearCachedSession, loadCachedSession, saveCachedSession } from "@/lib/authSessionCache";
 import { resolveOfflineSession } from "@/lib/authState";
-import { prefetchDashboardOfflineData, prefetchStockOfflineData } from "@/lib/stockOfflinePrefetch";
 import { purgeQueryCache } from "@/lib/queryClient";
 
 interface AuthContextType {
@@ -148,17 +147,34 @@ async function loadUserEmpresas(email: string | undefined): Promise<string[]> {
   return [];
 }
 
-async function checkSuperAdmin(userId: string): Promise<boolean> {
+async function checkSuperAdmin(userId: string, email?: string): Promise<boolean> {
+  // Prefer the server-side RPC so malformed PostgREST role filters cannot
+  // block the dashboard for an otherwise valid super administrator.
+  try {
+    const { data, error } = await (supabase.rpc as any)("is_super_admin", { _user_id: userId });
+    if (!error && data === true) return true;
+  } catch {
+    // Older environments may not expose this RPC; use the legacy lookup below.
+  }
+
   try {
     const { data } = await (supabase.from as any)("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .eq("role", "super_admin")
+      .in("role", ["super_admin", "superadmin", "admin"])
       .limit(1);
-    return data && data.length > 0;
-  } catch {
-    return false;
-  }
+    if (data && data.length > 0) return true;
+
+    if (email) {
+      const { data: ul } = await (supabase.from as any)("usuarios_liberados")
+        .select("is_principal")
+        .eq("email", email.toLowerCase())
+        .eq("is_principal", true)
+        .limit(1);
+      if (ul && ul.length > 0) return true;
+    }
+  } catch {}
+  return false;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -175,30 +191,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [empresaScopeIds, setEmpresaScopeIds] = useState<string[]>([]);
 
   const setActiveEmpresaId = useCallback((id: string) => {
-    if (!(empresasIds.includes(id) || isSuperAdmin)) return;
+    if (!id) return;
+    if (!(empresasIds.includes(id) || isSuperAdmin || isPrincipal)) return;
     if (id === empresaId) return;
-    // P0 #1 — Troca de empresa DEVE limpar todos os caches tenant-scoped
-    // antes de aplicar o novo escopo, para nunca vazar dados da empresa anterior.
+    saveActiveEmpresaId(id);
+    setEmpresaId(id);
     try { purgeQueryCache(); } catch {}
     try { clearAllCachedData(); } catch {}
-    setEmpresaId(id);
-    saveActiveEmpresaId(id);
-  }, [empresasIds, isSuperAdmin, empresaId]);
+  }, [empresasIds, isSuperAdmin, isPrincipal, empresaId]);
 
-  // Resolve empresa scope (matriz + filiais) for client-side filtering.
-  // Necessário porque a RLS de Super Admin libera tudo — sem este filtro,
-  // queries retornariam dados de todas as empresas mesmo após selecionar uma.
+  // Resolve empresa scope (matriz + todas as filiais da mesma árvore) para isolamento estrito por empresa.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!empresaId) { setEmpresaScopeIds([]); return; }
       try {
-        const { data } = await (supabase.from as any)("empresa_config")
-          .select("id")
-          .eq("empresa_pai_id", empresaId);
+        const { data: current } = await (supabase.from as any)("empresa_config")
+          .select("id, empresa_pai_id")
+          .eq("id", empresaId)
+          .limit(1);
         if (cancelled) return;
-        const filiais = (data || []).map((f: any) => f.id as string);
-        setEmpresaScopeIds([empresaId, ...filiais]);
+        const rootId = current?.[0]?.empresa_pai_id || empresaId;
+
+        const { data: tree } = await (supabase.from as any)("empresa_config")
+          .select("id")
+          .or(`id.eq.${rootId},empresa_pai_id.eq.${rootId}`);
+        if (cancelled) return;
+        const scope = (tree || []).map((f: any) => f.id as string);
+        setEmpresaScopeIds(scope.length > 0 ? Array.from(new Set([empresaId, rootId, ...scope])) : [empresaId]);
       } catch {
         if (!cancelled) setEmpresaScopeIds([empresaId]);
       }
@@ -263,7 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (saved && cachedEmpresas.includes(saved)) {
         setEmpresaId(saved);
       } else {
-        setEmpresaId(cached.empresaId);
+        setEmpresaId(cached.empresaId || cachedEmpresas[0] || null);
       }
     };
 
@@ -281,30 +301,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             Promise.all([
               checkAuthorized(currentUser.email),
               loadProfile(currentUser.id, currentUser.email),
-              checkSuperAdmin(currentUser.id),
+              checkSuperAdmin(currentUser.id, currentUser.email),
               loadUserEmpresas(currentUser.email),
             ]),
             authCheckTimeout.then(() => { throw new Error("timeout"); }),
           ]) as [Awaited<ReturnType<typeof checkAuthorized>>, Awaited<ReturnType<typeof loadProfile>>, boolean, string[]];
 
           // Build empresas list: merge profile empresa + usuario_empresas
-          const allEmpresas = Array.from(new Set([
+          let allEmpresas = Array.from(new Set([
             ...(profileResult.empresaId ? [profileResult.empresaId] : []),
             ...userEmpresas,
           ]));
+
+          const isSuper = superAdmin || authResult.isPrincipal;
+          if (isSuper || allEmpresas.length === 0) {
+            try {
+              const { data: allEmp } = await (supabase.from as any)("empresa_config")
+                .select("id")
+                .order("nome");
+              if (allEmp && allEmp.length > 0) {
+                allEmpresas = Array.from(new Set([...allEmpresas, ...allEmp.map((e: any) => e.id as string)]));
+              }
+            } catch {}
+          }
 
           // Resolve active empresa
           const saved = loadActiveEmpresaId();
           const activeEmpresa = (saved && allEmpresas.includes(saved))
             ? saved
-            : profileResult.empresaId;
+            : (profileResult.empresaId || allEmpresas[0] || null);
 
           const nextState: AuthCache = {
-            authorized: superAdmin || authResult.authorized,
-            modulos: superAdmin ? [] : authResult.modulos,
+            authorized: isSuper || authResult.authorized,
+            modulos: isSuper ? [] : authResult.modulos,
             empresaId: activeEmpresa,
             contratoId: authResult.contratoId,
-            isSuperAdmin: superAdmin,
+            isSuperAdmin: isSuper,
             isPrincipal: authResult.isPrincipal,
             empresasIds: allEmpresas,
           };
@@ -318,35 +350,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setEmpresasIds(allEmpresas);
           saveAuthCache(currentUser.email, nextState);
 
-          // Pre-cache — same logic as before
-          const isVideoOnly = !nextState.isSuperAdmin && !nextState.isPrincipal &&
-            nextState.modulos.length > 0 && nextState.modulos.every(p => p.startsWith("video_treinamentos"));
-          if (!isVideoOnly) {
-            const deferPrefetch = () => {
-              preCacheAllData().catch(() => {});
-              setTimeout(() => prefetchDashboardOfflineData().catch(() => {}), 3000);
-
-              const hasGestaoEstoque = nextState.isSuperAdmin || nextState.isPrincipal ||
-                nextState.modulos.includes("epis:gestao_estoque") || nextState.modulos.includes("epis");
-              const hasEstoqueContrato = nextState.modulos.includes("estoque_contrato") ||
-                nextState.modulos.some((modulo) => modulo.startsWith("estoque_contrato:"));
-              const canAccessStock = hasGestaoEstoque || hasEstoqueContrato || !!nextState.contratoId;
-
-              if (canAccessStock) {
-                setTimeout(() => prefetchStockOfflineData({
-                  empresaId: nextState.empresaId,
-                  contratoId: nextState.contratoId,
-                  restricted: !hasGestaoEstoque && (hasEstoqueContrato || !!nextState.contratoId),
-                }).catch(() => {}), 6000);
-              }
-            };
-
-            if (typeof requestIdleCallback === "function") {
-              requestIdleCallback(() => deferPrefetch(), { timeout: 8000 });
-            } else {
-              setTimeout(deferPrefetch, 2000);
-            }
-          }
+          // Each visited screen now warms its own scoped cache. Preloading the whole
+          // application here created dozens of concurrent requests during login and
+          // competed with the dashboard's critical data.
         }
       } catch {
         applyCachedState(loadAuthCache(currentUser.email));

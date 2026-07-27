@@ -39,3 +39,6 @@ EVIDENCIA_NPM_CI.txt
 EVIDENCIAS_INSTALACAO_LIMPA.txt
 diff_package_lock.txt
 supabase/.temp/
+.vercel
+.env*
+.pnpm-store/

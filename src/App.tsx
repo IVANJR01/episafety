@@ -81,6 +81,7 @@ import GerarDocumentos from "@/pages/programas/GerarDocumentos";
 import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
 import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
 
+import DocumentacaoSst from "@/pages/DocumentacaoSst";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
@@ -261,6 +262,7 @@ function ProtectedRoute() {
       <MfaGate>
       <Routes>
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
+        <Route path="/documentacao-sst" element={<DocumentacaoSst />} />
         <Route path="/epis" element={<EPIs />} />
         <Route path="/epis/controle-contrato" element={<NetworkErrorBoundary><ControleEstoqueContrato /></NetworkErrorBoundary>} />
         <Route path="/epis/solicitacoes-materiais" element={<SolicitacoesMateriais />} />

@@ -77,17 +77,22 @@ function buildStats(data: ConformidadeResumo[]): Stats {
 }
 
 export default function InspecoesDashboard() {
-  const { empresaId } = useAuth();
+  const { empresaId, empresaScopeIds } = useAuth();
   const [stats, setStats] = useState<Stats>({ total: 0, pendentes: 0, solucionados: 0, byGravidade: [], byStatus: [] });
   const [loading, setLoading] = useState(true);
+
+  const targetIds = useMemo(() => {
+    return empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
+  }, [empresaId, empresaScopeIds]);
+
   const cachedData = useMemo(() => {
     const cached = getCachedData<ConformidadeResumo>("conformidades") || [];
-    return empresaId ? cached.filter(item => item.empresa_id === empresaId) : cached;
-  }, [empresaId]);
+    return targetIds.length > 0 ? cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id)) : [];
+  }, [targetIds]);
 
   useEffect(() => {
     async function load() {
-      if (!empresaId) {
+      if (targetIds.length === 0) {
         setStats(buildStats([]));
         setLoading(false);
         return;
@@ -106,18 +111,14 @@ export default function InspecoesDashboard() {
           (supabase
             .from("conformidades")
             .select("status, gravidade, empresa_id")
-            .eq("empresa_id", empresaId)) as any
+            .in("empresa_id", targetIds)) as any
         ) as any;
 
         if (error) throw error;
 
         setStats(buildStats((data || []) as ConformidadeResumo[]));
       } catch (error) {
-        if (cachedData.length > 0 || isNetworkFailure(error)) {
-          setStats(buildStats(cachedData));
-        } else {
-          setStats(buildStats([]));
-        }
+        setStats(buildStats(cachedData));
       } finally {
         setLoading(false);
       }
@@ -128,7 +129,7 @@ export default function InspecoesDashboard() {
     const handleOnline = () => void load();
     window.addEventListener("online", handleOnline);
     return () => window.removeEventListener("online", handleOnline);
-  }, [cachedData, empresaId]);
+  }, [cachedData, targetIds]);
 
   if (loading) {
     return (

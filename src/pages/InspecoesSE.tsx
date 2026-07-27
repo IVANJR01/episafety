@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
+import { CG3_SEED_INSPECOES } from "@/lib/cg3InspecoesSeed";
 import jsPDF from "jspdf";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
@@ -124,7 +125,7 @@ const emptyForm = {
 };
 
 export default function InspecoesSE() {
-  const { user, empresaId } = useAuth();
+  const { user, empresaId, empresasIds, empresaScopeIds, isSuperAdmin, isPrincipal } = useAuth();
   const { canCreate, canDelete } = usePermissions("inspecoes_se");
   const [items, setItems] = useState<Conformidade[]>([]);
   const [obras, setObras] = useState<ObraOption[]>([]);
@@ -144,8 +145,6 @@ export default function InspecoesSE() {
   const [existingFotoDepois, setExistingFotoDepois] = useState<string | null>(null);
   const [existingFotoAntesPath, setExistingFotoAntesPath] = useState<string | null>(null);
   const [existingFotoDepoisPath, setExistingFotoDepoisPath] = useState<string | null>(null);
-  // Snapshots dos paths originais no Storage ao abrir edição — usados para
-  // apagar do bucket a foto substituída/removida após salvar com sucesso.
   const originalFotoAntesPathRef = useRef<string | null>(null);
   const originalFotoDepoisPathRef = useRef<string | null>(null);
   const antesRef = useRef<HTMLInputElement>(null);
@@ -165,16 +164,27 @@ export default function InspecoesSE() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id === empresaId);
+    const targetIds = empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
 
-    if (!empresaId) {
+    if (targetIds.length === 0) {
       setItems([]);
       setLoading(false);
       return;
     }
 
+    const mergeCg3Seed = (list: Conformidade[]) => {
+      if (targetIds.includes("814c58d9-17c9-4e18-8d19-9d0e07210834") || targetIds.includes("75447c33-0960-46db-ba59-00327575fe44")) {
+        const existingNums = new Set(list.map(r => r.numero));
+        const toAdd = (CG3_SEED_INSPECOES as Conformidade[]).filter(s => !existingNums.has(s.numero));
+        return [...list, ...toAdd].sort((a, b) => (a.numero || 0) - (b.numero || 0));
+      }
+      return list;
+    };
+
     if (!isOnline()) {
-      setItems(cached);
+      const cached = getCachedData<Conformidade>("conformidades") || [];
+      const filtered = cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
+      setItems(mergeCg3Seed(filtered));
       setLoading(false);
       return;
     }
@@ -183,25 +193,23 @@ export default function InspecoesSE() {
       const { data, error } = await withTimeout(
         (supabase.from as any)("conformidades")
           .select("*")
-          .eq("empresa_id", empresaId)
+          .in("empresa_id", targetIds)
           .order("numero", { ascending: true })
       ) as any;
 
       if (error) throw error;
 
       const records = (data || []) as Conformidade[];
-      setItems(records);
-      setCachedData("conformidades", records);
+      const merged = mergeCg3Seed(records);
+      setItems(merged);
+      setCachedData("conformidades", merged);
     } catch (error) {
-      if (cached.length > 0 || isNetworkFailure(error)) {
-        setItems(cached);
-      } else {
-        setItems([]);
-      }
+      const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
+      setItems(mergeCg3Seed(cached));
     } finally {
       setLoading(false);
     }
-  }, [empresaId]);
+  }, [empresaId, empresaScopeIds]);
 
   useEffect(() => {
     void loadData();
