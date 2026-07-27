@@ -11,8 +11,8 @@ import InventarioItemDialog from "./InventarioItemDialog";
 import ImportarGheDialog from "./ImportarGheDialog";
 import MatrizRisco from "./MatrizRisco";
 import {
-  classificarRisco, CLASSE_TEXT, GRUPO_LABEL,
-  classificarRiscoPGR, CLASSE_PGR_LABEL, CLASSE_PGR_TEXT,
+  classificarRisco, classeLabel, CLASSE_LABEL, CLASSE_TEXT,
+  CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse,
 } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
 import {
@@ -73,13 +73,19 @@ export default function InventarioTab({
   }, [itens, busca]);
 
   const stats = useMemo(() => {
-    const s = { total: itens.length, baixo: 0, moderado: 0, alto: 0, critico: 0, acao: 0 };
+    const porClasse: Record<PgrClasse, number> = {
+      trivial: 0, toleravel: 0, moderado: 0, substancial: 0, intoleravel: 0,
+    };
+    let naoAvaliado = 0;
+    let acao = 0;
     itens.forEach((i: any) => {
-      const c = i.classificacao || classificarRisco(i.severidade, i.probabilidade);
-      (s as any)[c]++;
-      if (i.necessita_acao) s.acao++;
+      const c = (i.classificacao as PgrClasse | null)
+        ?? classificarRisco(i.severidade, i.probabilidade);
+      if (c && porClasse[c] != null) porClasse[c]++;
+      else naoAvaliado++;
+      if (i.necessita_acao) acao++;
     });
-    return s;
+    return { total: itens.length, porClasse, naoAvaliado, acao };
   }, [itens]);
 
   const excluirGrupo = async (ids: string[]) => {
@@ -109,10 +115,16 @@ export default function InventarioTab({
         <CardContent className="p-3 flex flex-wrap gap-2 items-center justify-between">
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">Total: {stats.total}</Badge>
-            <Badge className={CLASSE_TEXT.baixo} variant="outline">Baixo: {stats.baixo}</Badge>
-            <Badge className={CLASSE_TEXT.moderado} variant="outline">Moderado: {stats.moderado}</Badge>
-            <Badge className={CLASSE_TEXT.alto} variant="outline">Alto: {stats.alto}</Badge>
-            <Badge className={CLASSE_TEXT.critico} variant="outline">Crítico: {stats.critico}</Badge>
+            {CLASSES_ORDENADAS.map((c) => (
+              <Badge key={c} className={CLASSE_TEXT[c]} variant="outline">
+                {CLASSE_LABEL[c]}: {stats.porClasse[c]}
+              </Badge>
+            ))}
+            {stats.naoAvaliado > 0 && (
+              <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300">
+                Não avaliado: {stats.naoAvaliado}
+              </Badge>
+            )}
             <Badge className="bg-orange-100 text-orange-800 border-orange-300" variant="outline">
               Requer ação: {stats.acao}
             </Badge>
@@ -190,7 +202,10 @@ export default function InventarioTab({
                         else break;
                       }
                     }
-                    const clsPgr = classificarRiscoPGR(i.severidade, i.probabilidade);
+                    // O valor gravado pelo trigger tem precedência; o cálculo local
+                    // é apenas fallback para itens ainda não persistidos.
+                    const clsPgr = (i.classificacao as PgrClasse | null)
+                      ?? classificarRisco(i.severidade, i.probabilidade);
                     const total = i.nivel_risco ?? i.severidade * i.probabilidade;
                     const controles = Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
                       ? i.controles_existentes.join("; ") : NA;
@@ -295,8 +310,11 @@ export default function InventarioTab({
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle font-semibold bg-amber-50/30">{total}</td>}
                         {isFirstOfRisk && (
                           <td rowSpan={riskRowSpan} className="p-2 border align-middle bg-amber-50/30">
-                            <Badge className={CLASSE_PGR_TEXT[clsPgr]} variant="outline">
-                              {CLASSE_PGR_LABEL[clsPgr]}
+                            <Badge
+                              className={clsPgr ? CLASSE_TEXT[clsPgr] : "bg-slate-100 text-slate-700 border-slate-300"}
+                              variant="outline"
+                            >
+                              {classeLabel(clsPgr)}
                             </Badge>
                           </td>
                         )}

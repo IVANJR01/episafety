@@ -6,8 +6,14 @@ import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { PgrDocumento, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
-import { CLASSE_LABEL as CLASSIF_LABEL, classificarRisco as classificarMatriz, PgrClasse } from "@/lib/pgrMatriz";
-const ACAO_CLASSE_LABEL = CLASSIF_LABEL;
+import {
+  CLASSE_LABEL as CLASSIF_LABEL,
+  CLASSE_HEX,
+  CLASSES_ORDENADAS,
+  classeLabel,
+  classificarRisco as classificarMatriz,
+  PgrClasse,
+} from "@/lib/pgrMatriz";
 
 export interface PgrInventarioItem {
   id: string;
@@ -29,13 +35,15 @@ export interface PgrAcaoItem {
   descricao: string;
   what: string | null;
   why: string | null;
-  who: string | null;
   where_local: string | null;
-  when_inicio: string | null;
   prazo: string | null;
   how: string | null;
-  how_much: number | null;
   status: string;
+  /** Coluna real: responsavel_nome. Preenchido por carregarContexto(). */
+  who: string | null;
+  /** Coluna real: custo_estimado. Preenchido por carregarContexto(). */
+  how_much: number | null;
+  /** Derivado: classificação do item de inventário vinculado (não é coluna de pgr_acoes). */
   classe_risco: string | null;
   prioridade: number | null;
   data_conclusao: string | null;
@@ -130,10 +138,7 @@ function drawMatriz(b: B) {
   for (let s = 5; s >= 1; s--) {
     for (let p = 1; p <= 5; p++) {
       const c = classificarMatriz(s, p);
-      const rgb: Record<string, [number, number, number]> = {
-        baixo: [34, 197, 94], moderado: [234, 179, 8], alto: [249, 115, 22], critico: [220, 38, 38],
-      };
-      const [r, g, bl] = rgb[c] || [200, 200, 200];
+      const [r, g, bl] = (c && CLASSE_HEX[c]) || [200, 200, 200];
       b.doc.setFillColor(r, g, bl);
       const px = x0 + (p - 1) * cs;
       const py = y0 + (5 - s) * cs;
@@ -249,13 +254,22 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
 
   // 3. Resumo quantitativo
   title(b, "3. Resumo quantitativo dos riscos");
-  const counts = { baixo: 0, moderado: 0, alto: 0, critico: 0 } as Record<string, number>;
-  ctx.inventario.forEach((i) => { counts[i.classificacao] = (counts[i.classificacao] || 0) + 1; });
+  const counts: Record<string, number> = {};
+  let semAvaliacao = 0;
+  ctx.inventario.forEach((i) => {
+    if (i.classificacao) counts[i.classificacao] = (counts[i.classificacao] || 0) + 1;
+    else semAvaliacao++;
+  });
   pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
-  (["baixo", "moderado", "alto", "critico"] as const).forEach((c, i) => {
-    pdf.text(`${CLASSIF_LABEL[c]}: ${counts[c] || 0}`, 12 + i * 45, b.y + 4);
+  CLASSES_ORDENADAS.forEach((c, i) => {
+    pdf.text(`${CLASSIF_LABEL[c]}: ${counts[c] || 0}`, 12 + i * 37, b.y + 4);
   });
   b.y += 9;
+  if (semAvaliacao > 0) {
+    pdf.setFontSize(8); pdf.setTextColor(100);
+    pdf.text(`Itens sem avaliação de severidade/probabilidade: ${semAvaliacao}`, 12, b.y + 2);
+    pdf.setTextColor(0); b.y += 6;
+  }
 
   // 4. Inventário por GHE
   title(b, "4. Inventário de riscos por GES");
@@ -277,7 +291,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
       pdf.text(`• ${i.perigo_descricao} [${i.grupo}]`, 12, b.y + 4);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      const cls = CLASSIF_LABEL[i.classificacao as keyof typeof CLASSIF_LABEL] || i.classificacao;
+      const cls = classeLabel(i.classificacao);
       pdf.text(`Sev ${i.severidade} × Prob ${i.probabilidade} = ${i.severidade * i.probabilidade}  ·  ${cls}  ·  ${i.trabalhadores_expostos ?? 0} expostos`, 12, b.y + 8);
       if (i.fonte_geradora) { pdf.text(`Fonte: ${i.fonte_geradora}`, 12, b.y + 11.5); b.y += 14; } else { b.y += 11; }
       if (i.controles_existentes) {
@@ -331,14 +345,14 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
     pdf.text(`• ${a.descricao}`, 12, b.y + 4);
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    const risco = a.classe_risco ? ACAO_CLASSE_LABEL[a.classe_risco as keyof typeof ACAO_CLASSE_LABEL] : "—";
+    const risco = a.classe_risco ? classeLabel(a.classe_risco) : "—";
     pdf.text(`Status: ${a.status}  ·  Risco: ${risco}  ·  Prazo: ${fmtDate(a.prazo)}  ·  Conclusão: ${fmtDate(a.data_conclusao)}`, 12, b.y + 8);
     const linhas = [
       a.what && `What: ${a.what}`,
       a.why && `Why: ${a.why}`,
       a.who && `Who: ${a.who}`,
       a.where_local && `Where: ${a.where_local}`,
-      a.when_inicio && `When: ${fmtDate(a.when_inicio)}`,
+      a.prazo && `When: até ${fmtDate(a.prazo)}`,
       a.how && `How: ${a.how}`,
       a.how_much != null && `How much: R$ ${Number(a.how_much).toFixed(2)}`,
     ].filter(Boolean) as string[];

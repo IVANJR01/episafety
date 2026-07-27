@@ -23,7 +23,8 @@ export default function MatrizRisco({ severidade, probabilidade, onSelect, compa
               <tr key={s}>
                 <td className="text-[10px] text-muted-foreground pr-1 text-right">{s}</td>
                 {probs.map((p) => {
-                  const cls = classificarRisco(s, p);
+                  // s e p vêm de listas fixas 1..5, portanto nunca resulta em null.
+                  const cls = classificarRisco(s, p)!;
                   const isSel = s === severidade && p === probabilidade;
                   const sz = compact ? "w-7 h-7 text-[10px]" : "w-10 h-10 text-xs";
                   return (

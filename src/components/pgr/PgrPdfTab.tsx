@@ -123,13 +123,28 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       }));
     }
 
+    // Campos 5W2H que o PDF consome mas que NÃO são colunas de pgr_acoes.
+    // "who" e "how much" moram em responsavel_nome/custo_estimado; a classe de risco
+    // vem do item de inventário vinculado. Sem este mapeamento o PDF imprimia
+    // Who/How much em branco e a coluna Risco sempre como "—".
+    const classePorItem = new Map<string, string | null>();
+    (inv.data || []).forEach((i: any) => classePorItem.set(i.id, i.classificacao ?? null));
+    const acoesEnriquecidas = (acoes.data || []).map((a: any) => ({
+      ...a,
+      who: a.responsavel_nome ?? null,
+      how_much: a.custo_estimado ?? null,
+      classe_risco: a.inventario_item_id
+        ? classePorItem.get(a.inventario_item_id) ?? null
+        : null,
+    }));
+
     return {
       doc: pgr,
       empresaNome: emp.data?.nome ?? null,
       empresaCnpj: emp.data?.cnpj ?? null,
       unidadeNome: uni?.data?.nome ?? null,
       inventario: inv.data || [],
-      acoes: acoes.data || [],
+      acoes: acoesEnriquecidas,
       evidencias: (evid.data || []).map((e: any) => ({
         id: e.id, acao_id: e.acao_id, nome_arquivo: e.nome_arquivo,
         uploaded_at: e.created_at, uploaded_by_email: e.uploaded_by_email,

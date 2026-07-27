@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, ShieldCheck, AlertTriangle, FileText, ListChecks, Send, PenLine, Activity } from "lucide-react";
 import { PgrDocumento, PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
 import { isAtrasada } from "@/lib/pgrAcoes";
-import { CLASSE_LABEL, CLASSE_TEXT, PgrClasse } from "@/lib/pgrMatriz";
+import { CLASSE_LABEL, CLASSE_TEXT, CLASSES_ORDENADAS, PgrClasse } from "@/lib/pgrMatriz";
 import { downloadCsv } from "@/lib/csvExport";
 
 export default function PgrDashboard() {
@@ -150,7 +150,9 @@ export default function PgrDashboard() {
     return dias >= 0 && dias <= 60 && p.status === "vigente";
   });
 
-  const riscoCount: Record<PgrClasse, number> = { baixo: 0, moderado: 0, alto: 0, critico: 0 };
+  const riscoCount: Record<PgrClasse, number> = {
+    trivial: 0, toleravel: 0, moderado: 0, substancial: 0, intoleravel: 0,
+  };
   invFilt.forEach((i: any) => { if (riscoCount[i.classificacao as PgrClasse] != null) riscoCount[i.classificacao as PgrClasse]++; });
 
   const acoesAtivas = acoesFilt.filter((a) => a.status !== "cancelada");
@@ -351,8 +353,8 @@ export default function PgrDashboard() {
         <Kpi icon={AlertTriangle} label="Vigentes vencidos" value={vencidos} tone={vencidos > 0 ? "fail" : "ok"} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {(["baixo","moderado","alto","critico"] as PgrClasse[]).map((c) => (
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        {CLASSES_ORDENADAS.map((c) => (
           <Card key={c} className="border">
             <CardContent className="p-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground">

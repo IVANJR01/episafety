@@ -14,7 +14,7 @@ import {
   ACAO_STATUS_LABEL, ACAO_STATUS_COLOR, MEDIDA_LABEL, PgrAcaoStatus, isAtrasada,
   prazoSugerido, PRIORIDADE_POR_CLASSE,
 } from "@/lib/pgrAcoes";
-import { classificarRisco } from "@/lib/pgrMatriz";
+import { classificarRisco, necessitaAcao, PgrClasse } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
 
 interface Props {
@@ -62,12 +62,14 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
     const idsComAcao = new Set(acoes.map((a: any) => a.inventario_item_id).filter(Boolean));
     return inventario
       .filter((i: any) => {
-        const cls = i.classificacao || classificarRisco(i.severidade, i.probabilidade);
-        return (cls === "alto" || cls === "critico") && !idsComAcao.has(i.id);
+        const cls = (i.classificacao as PgrClasse | null)
+          ?? classificarRisco(i.severidade, i.probabilidade);
+        return necessitaAcao(cls) && !idsComAcao.has(i.id);
       })
       .map((i: any) => ({
         ...i,
-        classe: i.classificacao || classificarRisco(i.severidade, i.probabilidade),
+        classe: (i.classificacao as PgrClasse | null)
+          ?? classificarRisco(i.severidade, i.probabilidade),
       }));
   }, [inventario, acoes]);
 

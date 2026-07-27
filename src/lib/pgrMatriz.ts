@@ -1,42 +1,109 @@
-// Matriz 5x5 espelhando a função SQL public.pgr_classificar_risco
-export type PgrClasse = "baixo" | "moderado" | "alto" | "critico";
+// Matriz de risco 5x5 do PGR.
+//
+// FONTE ÚNICA DE VERDADE — espelha exatamente a função SQL
+// public.pgr_classificar_risco(severidade, probabilidade).
+// Qualquer alteração aqui exige a migration correspondente, e vice-versa.
+//
+// Escala oficial (nivel_risco = severidade x probabilidade):
+//   1-3 Trivial | 4-8 Tolerável | 9-12 Moderado | 13-15 Substancial | 16-25 Intolerável
+
+export type PgrClasse =
+  | "trivial"
+  | "toleravel"
+  | "moderado"
+  | "substancial"
+  | "intoleravel";
+
+/** Ordem crescente de gravidade — use para iterar, nunca Object.keys. */
+export const CLASSES_ORDENADAS: PgrClasse[] = [
+  "trivial",
+  "toleravel",
+  "moderado",
+  "substancial",
+  "intoleravel",
+];
 
 export const CLASSE_LABEL: Record<PgrClasse, string> = {
-  baixo: "Baixo",
+  trivial: "Trivial",
+  toleravel: "Tolerável",
   moderado: "Moderado",
-  alto: "Alto",
-  critico: "Crítico",
+  substancial: "Substancial",
+  intoleravel: "Intolerável",
 };
 
+/** Preenchimento sólido — células da matriz. */
 export const CLASSE_BG: Record<PgrClasse, string> = {
-  baixo: "bg-emerald-500",
+  trivial: "bg-emerald-500",
+  toleravel: "bg-lime-500",
   moderado: "bg-yellow-500",
-  alto: "bg-orange-500",
-  critico: "bg-red-600",
+  substancial: "bg-orange-500",
+  intoleravel: "bg-red-600",
 };
 
+/** Badge/etiqueta — fundo claro com texto legível. */
 export const CLASSE_TEXT: Record<PgrClasse, string> = {
-  baixo: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  trivial: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  toleravel: "bg-lime-100 text-lime-800 border-lime-300",
   moderado: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  alto: "bg-orange-100 text-orange-800 border-orange-300",
-  critico: "bg-red-100 text-red-800 border-red-300",
+  substancial: "bg-orange-100 text-orange-800 border-orange-300",
+  intoleravel: "bg-red-100 text-red-800 border-red-300",
 };
 
-/** Replica EXATAMENTE public.pgr_classificar_risco(severidade, probabilidade). */
-export function classificarRisco(sev: number, prob: number): PgrClasse {
-  const n = sev * prob;
-  if (n <= 4) return "baixo";
-  if (n <= 9) return "moderado";
-  if (n <= 16) return "alto";
-  return "critico";
-}
+/** Cor hexadecimal para o PDF (jsPDF não entende classes Tailwind). */
+export const CLASSE_HEX: Record<PgrClasse, [number, number, number]> = {
+  trivial: [16, 185, 129],
+  toleravel: [132, 204, 22],
+  moderado: [234, 179, 8],
+  substancial: [249, 115, 22],
+  intoleravel: [220, 38, 38],
+};
+
+/** Decisão associada a cada faixa (NR-01 1.5.4.4.3). */
+export const CLASSE_DECISAO: Record<PgrClasse, string> = {
+  trivial: "Não requer ação adicional; manter os controles existentes.",
+  toleravel:
+    "Manter monitoramento e os controles existentes; avaliar melhorias de baixo custo.",
+  moderado:
+    "Requer plano de ação com prazo definido para reduzir o risco.",
+  substancial:
+    "Requer ação prioritária; não iniciar ou não manter a atividade sem controles adicionais.",
+  intoleravel:
+    "Interromper a atividade até que o risco seja reduzido; ação imediata.",
+};
 
 export function nivelRisco(sev: number, prob: number) {
   return sev * prob;
 }
 
-export function necessitaAcao(classe: PgrClasse) {
-  return classe === "alto" || classe === "critico";
+/**
+ * Replica EXATAMENTE public.pgr_classificar_risco(severidade, probabilidade).
+ * Retorna null quando não há avaliação — não rebaixa para a menor classe.
+ */
+export function classificarRisco(
+  sev: number | null | undefined,
+  prob: number | null | undefined,
+): PgrClasse | null {
+  if (sev == null || prob == null) return null;
+  if (sev < 1 || sev > 5 || prob < 1 || prob > 5) return null;
+  const n = sev * prob;
+  if (n <= 3) return "trivial";
+  if (n <= 8) return "toleravel";
+  if (n <= 12) return "moderado";
+  if (n <= 15) return "substancial";
+  return "intoleravel";
+}
+
+/** Espelha necessita_acao do trigger pgr_child_guard: moderado e acima. */
+export function necessitaAcao(classe: PgrClasse | null | undefined) {
+  return (
+    classe === "moderado" || classe === "substancial" || classe === "intoleravel"
+  );
+}
+
+/** Rótulo seguro para classes vindas do banco (inclui dados legados). */
+export function classeLabel(classe: string | null | undefined): string {
+  if (!classe) return "Não avaliado";
+  return CLASSE_LABEL[classe as PgrClasse] ?? classe;
 }
 
 export const SEVERIDADE_LABEL: Record<number, string> = {
@@ -60,31 +127,11 @@ export const AVALIACAO_LABEL: Record<string, string> = {
   qualitativa: "Qualitativa", quantitativa: "Quantitativa",
 };
 
-// Classificação PGR — padrão SafetySoluções (5x5)
-// 1-3 Trivial · 4-8 Tolerável · 9-12 Moderado · 13-15 Substancial · 16-25 Intolerável
-export type PgrClassePGR = "trivial" | "toleravel" | "moderado" | "substancial" | "intoleravel";
-
-export const CLASSE_PGR_LABEL: Record<PgrClassePGR, string> = {
-  trivial: "Trivial",
-  toleravel: "Tolerável",
-  moderado: "Moderado",
-  substancial: "Substancial",
-  intoleravel: "Intolerável",
-};
-
-export const CLASSE_PGR_TEXT: Record<PgrClassePGR, string> = {
-  trivial: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  toleravel: "bg-lime-100 text-lime-800 border-lime-300",
-  moderado: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  substancial: "bg-orange-100 text-orange-800 border-orange-300",
-  intoleravel: "bg-red-100 text-red-800 border-red-300",
-};
-
-export function classificarRiscoPGR(sev: number, prob: number): PgrClassePGR {
-  const n = sev * prob;
-  if (n <= 3) return "trivial";
-  if (n <= 8) return "toleravel";
-  if (n <= 12) return "moderado";
-  if (n <= 15) return "substancial";
-  return "intoleravel";
-}
+// ---------------------------------------------------------------------------
+// Compatibilidade — nomes usados antes da unificação da escala.
+// @deprecated Use PgrClasse / classificarRisco / CLASSE_LABEL / CLASSE_TEXT.
+// ---------------------------------------------------------------------------
+/** @deprecated */ export type PgrClassePGR = PgrClasse;
+/** @deprecated */ export const CLASSE_PGR_LABEL = CLASSE_LABEL;
+/** @deprecated */ export const CLASSE_PGR_TEXT = CLASSE_TEXT;
+/** @deprecated */ export const classificarRiscoPGR = classificarRisco;
