@@ -81,6 +81,53 @@ export interface PgrQuadroEpiLinha {
   epis: string;
 }
 
+/** Unidade (matriz ou filial) com os campos de identificação exigidos na Etapa 1. */
+export interface PgrUnidadeItem {
+  id: string;
+  nome: string;
+  nome_fantasia?: string | null;
+  cnpj?: string | null;
+  cnae_principal?: string | null;
+  grau_risco?: number | null;
+  telefone?: string | null;
+  email?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  cep?: string | null;
+  /** Texto corrido legado, usado como fallback quando não há endereço decomposto. */
+  endereco?: string | null;
+  empresa_pai_id?: string | null;
+}
+
+export interface PgrResponsavelItem {
+  papel: string;
+  nome: string;
+  cpf?: string | null;
+  profissao?: string | null;
+  registro_profissional?: string | null;
+  uf_registro?: string | null;
+  numero_art?: string | null;
+  ordem: number;
+}
+
+export interface PgrCenarioItem {
+  nome: string;
+  tipo: string;
+  descricao?: string | null;
+  grande_magnitude: boolean;
+  procedimento_resposta?: string | null;
+  primeiros_socorros?: string | null;
+  meios_recursos?: string | null;
+  responsaveis?: string | null;
+  abandono_ponto_encontro?: string | null;
+  periodicidade_simulado?: string | null;
+  ultimo_simulado?: string | null;
+}
+
 export interface PgrPdfContext {
   doc: PgrDocumento;
   empresaNome: string | null;
@@ -94,7 +141,22 @@ export interface PgrPdfContext {
   ghes: Record<string, string>;
   textos?: Record<string, string>;
   quadroEpis?: PgrQuadroEpiLinha[];
+  /** Matriz + filiais, para a seção de identificação. */
+  unidades?: PgrUnidadeItem[];
+  responsaveis?: PgrResponsavelItem[];
+  cenarios?: PgrCenarioItem[];
 }
+
+/** Rótulos dos papéis de responsável, para o PDF (jsPDF não importa a UI). */
+const PAPEL_PDF_LABEL: Record<string, string> = {
+  elaborador: "Elaborador",
+  responsavel_tecnico: "Responsável Técnico",
+  revisor_tecnico: "Revisor Técnico",
+  aprovador: "Aprovador",
+  responsavel_organizacao: "Responsável pela Organização",
+};
+
+const MESES_PDF = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", buf);
@@ -223,12 +285,97 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     });
   }
 
-  // Textos padrão editáveis (introdução, objetivos, responsabilidades etc.)
+  // Identificação da empresa e dos estabelecimentos abrangidos.
+  // Fica logo após o controle de revisões porque é o que identifica o documento;
+  // vem dos campos de escopo travados na emissão, não do cadastro atual.
+  title(b, "Identificação da Empresa e do Estabelecimento");
+  const unidades = ctx.unidades && ctx.unidades.length > 0 ? ctx.unidades : null;
+  if (!unidades) {
+    kv(b, "Razão social", ctx.empresaNome || "—");
+    kv(b, "CNPJ", ctx.empresaCnpj || "—");
+  } else {
+    unidades.forEach((u, idx) => {
+      ensure(b, 26);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+      pdf.setTextColor(15, 23, 42);
+      pdf.text(
+        `${u.empresa_pai_id ? "Filial" : "Matriz"}: ${u.nome_fantasia || u.nome}`,
+        12, b.y + 4,
+      );
+      pdf.setTextColor(0); b.y += 6;
+      if (u.nome_fantasia && u.nome_fantasia !== u.nome) kv(b, "Razão social", u.nome);
+      kv(b, "CNPJ", u.cnpj || "—");
+      if (u.cnae_principal || u.grau_risco != null) {
+        kv(b, "CNAE / Grau de risco",
+          `${u.cnae_principal || "—"}${u.grau_risco != null ? `  ·  Grau ${u.grau_risco}` : ""}`);
+      }
+      const linha1 = [u.logradouro, u.numero].filter(Boolean).join(", ");
+      const endDecomposto = [
+        [linha1, u.complemento].filter(Boolean).join(" - "),
+        u.bairro,
+        [u.cidade, u.uf].filter(Boolean).join("/"),
+        u.cep,
+      ].filter((x) => x && String(x).trim()).join(" · ");
+      kv(b, "Endereço", endDecomposto || u.endereco || "—", true);
+      if (u.telefone || u.email) {
+        kv(b, "Contato", [u.telefone, u.email].filter(Boolean).join("  ·  ") || "—");
+      }
+      if (idx < unidades.length - 1) b.y += 2;
+    });
+  }
+  if (pgr.qtd_trabalhadores != null) kv(b, "Trabalhadores", String(pgr.qtd_trabalhadores));
+  if (pgr.jornada_turnos) kv(b, "Jornada / turnos", pgr.jornada_turnos, true);
+  if (pgr.cno) kv(b, "CNO", pgr.cno);
+  if (pgr.contratante_nome) {
+    kv(b, "Contratante", `${pgr.contratante_nome}${pgr.contratante_cnpj ? ` (${pgr.contratante_cnpj})` : ""}`);
+    if (pgr.contrato_numero) kv(b, "Contrato", pgr.contrato_numero);
+    if (pgr.local_prestacao) kv(b, "Local de prestação", pgr.local_prestacao, true);
+  }
+  if (pgr.periodo_ref_inicio || pgr.periodo_ref_fim) {
+    kv(b, "Período de referência", `${fmtDate(pgr.periodo_ref_inicio)} a ${fmtDate(pgr.periodo_ref_fim)}`);
+  }
+  if (pgr.data_levantamento) kv(b, "Data do levantamento", fmtDate(pgr.data_levantamento));
+  if (pgr.proxima_revisao) {
+    kv(b, "Próxima revisão", `${fmtDate(pgr.proxima_revisao)}${
+      pgr.sgsst_certificado ? "  (prazo de 3 anos — organização certificada em SGSST)" : ""}`, true);
+  }
+  if (pgr.sgsst_certificado) {
+    kv(b, "Certificação SGSST",
+      [pgr.sgsst_norma, pgr.sgsst_certificadora, pgr.sgsst_validade ? `válida até ${fmtDate(pgr.sgsst_validade)}` : null]
+        .filter(Boolean).join("  ·  ") || "Sim", true);
+  }
+
+  // Elaboração e habilidade técnica — quem elaborou, revisou e aprovou.
+  title(b, "Elaboração e Habilidade Técnica");
   const T = ctx.textos || {};
+  const textoHab = (T["elaboracao_habilidade"] || "").trim();
+  if (textoHab) para(b, textoHab, 9, [40, 40, 40]);
+  const resps = ctx.responsaveis || [];
+  if (resps.length === 0) {
+    kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");
+    kv(b, "Registro Profissional", pgr.resp_tec_registro || "—");
+  } else {
+    resps.forEach((r) => {
+      ensure(b, 10);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+      pdf.text(`${PAPEL_PDF_LABEL[r.papel] || r.papel}: ${r.nome}`, 12, b.y + 4);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+      const det = [
+        r.profissao,
+        r.registro_profissional ? `Registro ${r.registro_profissional}${r.uf_registro ? `/${r.uf_registro}` : ""}` : null,
+        r.numero_art ? `ART ${r.numero_art}` : null,
+      ].filter(Boolean).join("  ·  ");
+      if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
+    });
+  }
+
+  // Textos institucionais editáveis, na ordem do documento oficial.
+  // "registro_divulgacao" saiu daqui e foi para o fim: divulgar é o que se faz
+  // DEPOIS de o programa existir, não antes de apresentá-lo.
   const secoesTexto: Array<[string, string]> = [
     ["introducao", "Introdução"],
     ["apresentacao", "Apresentação"],
-    ["registro_divulgacao", "Registro e divulgação dos dados"],
+    ["objetivos", "Objetivos"],
     ["objetivo_geral", "Objetivo geral"],
     ["objetivos_especificos", "Objetivos específicos"],
     ["politica_seguranca", "Política de segurança"],
@@ -245,15 +392,14 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     para(b, conteudo, 9, [40, 40, 40]);
   });
 
-  // 1. Escopo e metodologia
-  title(b, "1. Escopo");
+  title(b, "Escopo");
   kv(b, "Escopo do PGR", pgr.escopo || "—", true);
-  title(b, "2. Metodologia de avaliação");
+  title(b, "Critérios e Metodologia de Avaliação");
   kv(b, "Método", pgr.metodologia_avaliacao || "Matriz 5×5 (Severidade × Probabilidade)", true);
   drawMatriz(b);
 
   // 3. Resumo quantitativo
-  title(b, "3. Resumo quantitativo dos riscos");
+  title(b, "Resumo quantitativo dos riscos");
   const counts: Record<string, number> = {};
   let semAvaliacao = 0;
   ctx.inventario.forEach((i) => {
@@ -272,7 +418,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   }
 
   // 4. Inventário por GHE
-  title(b, "4. Inventário de riscos por GES");
+  title(b, "Inventário de Riscos Ocupacionais");
   const byGhe = new Map<string, PgrInventarioItem[]>();
   ctx.inventario.forEach((i) => {
     const k = i.ghe_id || "_";
@@ -335,7 +481,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
 
   // 5. Plano de ação 5W2H
   pdf.addPage(); b.y = 15;
-  title(b, "5. Plano de Ação (5W2H)");
+  title(b, "Plano de Ação (5W2H)");
   const hoje = new Date().toISOString().slice(0, 10);
   const atrasadas = ctx.acoes.filter((a) => a.prazo && a.prazo < hoje && a.status !== "concluida" && a.status !== "cancelada");
   if (ctx.acoes.length === 0) para(b, "Nenhuma ação registrada.");
@@ -363,6 +509,27 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
       pdf.text(ll, 12, b.y);
       b.y += ll.length * 3.3 + 1;
     });
+    // Cronograma mensal — mini-tabela JAN..DEZ com "X" nos meses previstos,
+    // no formato da planilha 5W2H do cliente.
+    const meses: number[] = (a as any).meses_execucao || [];
+    if (meses.length > 0) {
+      ensure(b, 12);
+      const cw = 14.5, x0 = 12, yTop = b.y + 1;
+      pdf.setFontSize(6); pdf.setFont("helvetica", "normal");
+      MESES_PDF.forEach((m, i) => {
+        const x = x0 + i * cw;
+        const marcado = meses.includes(i + 1);
+        pdf.setDrawColor(190);
+        if (marcado) { pdf.setFillColor(15, 23, 42); pdf.rect(x, yTop, cw, 7, "F"); }
+        else pdf.rect(x, yTop, cw, 7, "S");
+        pdf.setTextColor(marcado ? 255 : 90);
+        pdf.text(m, x + cw / 2, yTop + 3, { align: "center" });
+        if (marcado) pdf.text("X", x + cw / 2, yTop + 6, { align: "center" });
+        pdf.setTextColor(0);
+      });
+      b.y = yTop + 9;
+    }
+
     // evidências da ação (apenas metadados)
     const evs = ctx.evidencias.filter((e) => e.acao_id === a.id);
     if (evs.length > 0) {
@@ -380,7 +547,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   });
 
   // 6. Ações atrasadas
-  title(b, "6. Ações atrasadas");
+  title(b, "Apêndice A — Ações atrasadas");
   if (atrasadas.length === 0) para(b, "Nenhuma ação atrasada.");
   else atrasadas.forEach((a) => {
     ensure(b, 6);
@@ -390,7 +557,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   });
 
   // 7. Revisões
-  title(b, "7. Histórico de revisões");
+  title(b, "Apêndice B — Histórico de revisões");
   if (ctx.revisoes.length === 0) para(b, "Sem revisões.");
   ctx.revisoes.forEach((r) => {
     ensure(b, 6);
@@ -403,7 +570,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   });
 
   // 8. Assinaturas visuais
-  title(b, "8. Assinatura visual do responsável técnico");
+  title(b, "Assinaturas");
   para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
   if (ctx.assinaturas.length === 0) para(b, "Nenhuma assinatura visual registrada até a geração deste PDF.");
   ctx.assinaturas.forEach((a) => {
@@ -418,8 +585,40 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   });
 
   // Seções finais (textos padrão editáveis)
+  // Preparação e resposta a emergências (Etapa 7), antes das seções de fecho.
+  if (ctx.cenarios && ctx.cenarios.length > 0) {
+    title(b, "Preparação e Resposta a Emergências");
+    ctx.cenarios.forEach((c) => {
+      ensure(b, 16);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+      pdf.text(`• ${c.nome}${c.grande_magnitude ? "  (grande magnitude)" : ""}`, 12, b.y + 4);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+      b.y += 6;
+      const campos: Array<[string, string | null | undefined]> = [
+        ["Procedimento de resposta", c.procedimento_resposta],
+        ["Primeiros socorros", c.primeiros_socorros],
+        ["Meios e recursos", c.meios_recursos],
+        ["Responsáveis", c.responsaveis],
+        ["Abandono / ponto de encontro", c.abandono_ponto_encontro],
+        ["Simulados", [c.periodicidade_simulado,
+          c.ultimo_simulado ? `último em ${fmtDate(c.ultimo_simulado)}` : null]
+          .filter(Boolean).join("  ·  ") || null],
+      ];
+      campos.forEach(([rot, val]) => {
+        if (!val) return;
+        const ll = pdf.splitTextToSize(`${rot}: ${val}`, 184);
+        ensure(b, ll.length * 3.5 + 2);
+        pdf.text(ll, 14, b.y); b.y += ll.length * 3.3 + 1;
+      });
+      b.y += 2;
+    });
+  }
+
   const secoesFim: Array<[string, string]> = [
     ["area_abrangencia", "Área de abrangência do PGR na empresa"],
+    // Divulgar é o que se faz DEPOIS de o programa existir: esta seção estava
+    // no início do documento, antes mesmo da apresentação.
+    ["registro_divulgacao", "Registro e Divulgação dos Dados"],
     ["recomendacoes", "Recomendações à empresa"],
     ["consideracoes_finais", "Considerações finais"],
     ["encerramento", "Encerramento"],

@@ -123,6 +123,26 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       }));
     }
 
+    // Identificação completa (matriz + filiais), responsáveis e cenários de
+    // emergência — dados das Fases 1, 5 e 6 que o PDF passou a exigir.
+    // Tolerantes a falha: se uma tabela ainda não existir no ambiente, o PDF
+    // cai no comportamento antigo em vez de não ser gerado.
+    const [unidadesRes, respRes, cenariosRes] = await Promise.all([
+      (supabase.from as any)("empresa_config")
+        .select("id,nome,nome_fantasia,cnpj,cnae_principal,grau_risco,telefone,email,logradouro,numero,complemento,bairro,cidade,uf,cep,endereco,empresa_pai_id")
+        .or(`id.eq.${pgr.empresa_id},empresa_pai_id.eq.${pgr.empresa_id}`),
+      (supabase.from as any)("pgr_responsaveis")
+        .select("papel,nome,cpf,profissao,registro_profissional,uf_registro,numero_art,ordem")
+        .eq("pgr_id", pgr.id).order("ordem"),
+      (supabase.from as any)("pgr_cenarios_emergencia")
+        .select("*").eq("pgr_id", pgr.id).order("nome"),
+    ]);
+
+    // Matriz primeiro, filiais depois — a ordem do documento oficial.
+    const unidades = ((unidadesRes.data || []) as any[]).sort(
+      (a, b) => (a.empresa_pai_id ? 1 : 0) - (b.empresa_pai_id ? 1 : 0),
+    );
+
     // Campos 5W2H que o PDF consome mas que NÃO são colunas de pgr_acoes.
     // "who" e "how much" moram em responsavel_nome/custo_estimado; a classe de risco
     // vem do item de inventário vinculado. Sem este mapeamento o PDF imprimia
@@ -155,6 +175,9 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       ghes: ghesMap,
       textos: textosMap,
       quadroEpis,
+      unidades,
+      responsaveis: respRes.data || [],
+      cenarios: cenariosRes.data || [],
     };
   }
 

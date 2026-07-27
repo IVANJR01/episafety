@@ -27,6 +27,18 @@ export const PGR_SECOES: PgrSecaoDef[] = [
       "O PGR e seus documentos correlatos estarão disponíveis para consulta dos trabalhadores, representantes da CIPA, auditorias e órgãos fiscalizadores. As informações serão divulgadas por meio de treinamentos, diálogos diários de segurança (DDS) e demais canais de comunicação interna.",
   },
   {
+    key: "elaboracao_habilidade",
+    titulo: "Elaboração e habilidade técnica",
+    padrao:
+      "Este Programa foi elaborado por profissional legalmente habilitado em Segurança e Saúde no Trabalho, com registro no respectivo conselho de classe, conforme relação de responsáveis apresentada a seguir. A elaboração observou os requisitos da NR-01, com levantamento realizado in loco, análise das atividades e participação dos trabalhadores.",
+  },
+  {
+    key: "objetivos",
+    titulo: "Objetivos",
+    padrao:
+      "Os objetivos deste Programa estão organizados em um objetivo geral, que expressa a finalidade do gerenciamento de riscos na organização, e em objetivos específicos, que detalham as ações necessárias para alcançá-lo.",
+  },
+  {
     key: "objetivo_geral",
     titulo: "Objetivo geral",
     padrao:
