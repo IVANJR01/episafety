@@ -19,6 +19,8 @@ import {
 } from "@/lib/pgrAcoes";
 import { PGR_HIERARQUIA_LABEL, PGR_HIERARQUIA_ORDENADA } from "@/lib/pgrTypes";
 
+import ItemEficaciaPanel from "./ItemEficaciaPanel";
+
 const MESES = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
 
 interface Props {
@@ -279,6 +281,7 @@ export default function PgrAcaoDialog({
             <TabsTrigger value="dados">Dados</TabsTrigger>
             <TabsTrigger value="5w2h">5W2H</TabsTrigger>
             <TabsTrigger value="acomp">Acompanhamento</TabsTrigger>
+            <TabsTrigger value="eficacia" disabled={!acaoId}>Eficácia</TabsTrigger>
             <TabsTrigger value="evid" disabled={!acaoId}>Evidências ({evidencias.length})</TabsTrigger>
             <TabsTrigger value="hist" disabled={!acaoId}>Histórico ({historico.length})</TabsTrigger>
           </TabsList>
@@ -494,6 +497,10 @@ export default function PgrAcaoDialog({
                   disabled={!editavel} />
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="eficacia">
+            <ItemEficaciaPanel acaoId={acaoId || null} canEdit={editavel} />
           </TabsContent>
 
           <TabsContent value="evid" className="space-y-3">

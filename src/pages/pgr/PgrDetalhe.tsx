@@ -16,6 +16,8 @@ import { ArrowLeft, Pencil, GitBranch, Send, FileText, ListChecks } from "lucide
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import LevantamentoPreliminarTab from "@/components/pgr/LevantamentoPreliminarTab";
+import EmergenciasTab from "@/components/pgr/EmergenciasTab";
+import GovernancaTab from "@/components/pgr/GovernancaTab";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
@@ -134,6 +136,8 @@ export default function PgrDetalhe() {
           <TabsTrigger value="inventario">Inventário</TabsTrigger>
           <TabsTrigger value="epis">EPIs</TabsTrigger>
           <TabsTrigger value="acoes">Plano de Ação</TabsTrigger>
+          <TabsTrigger value="emergencias">Emergências</TabsTrigger>
+          <TabsTrigger value="governanca">Governança</TabsTrigger>
           <TabsTrigger value="pdf">PDF</TabsTrigger>
           <TabsTrigger value="checklist">Checklist</TabsTrigger>
         </TabsList>
@@ -208,6 +212,15 @@ export default function PgrDetalhe() {
         <TabsContent value="acoes">
           <PlanoAcaoTab pgrId={id!} empresaId={doc.empresa_id} pgrVersao={doc.versao}
             status={status} canEdit={perms.canEdit} pgr={doc} />
+        </TabsContent>
+
+        <TabsContent value="emergencias">
+          <EmergenciasTab pgrId={id!} empresaId={doc.empresa_id}
+            canEdit={perms.canEdit && isEditavel(status)} />
+        </TabsContent>
+
+        <TabsContent value="governanca">
+          <GovernancaTab pgr={doc} canEdit={perms.canEdit && isEditavel(status)} />
         </TabsContent>
 
         <TabsContent value="pdf">
