@@ -11,7 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import MatrizRisco from "./MatrizRisco";
-import { GRUPO_LABEL } from "@/lib/pgrMatriz";
+import {
+  GRUPO_LABEL, CLASSE_TEXT, CLASSE_DECISAO, classeLabel, classificarRisco,
+} from "@/lib/pgrMatriz";
 
 interface Props {
   open: boolean;
@@ -24,27 +26,22 @@ interface Props {
 }
 
 const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "acidente", "psicossocial", "outro"];
-const NA = "N.A";
 
-// Classificação por faixas do usuário (Total = Prob × Sev, 1..25)
-function classifPorTotal(total: number): { label: string; className: string } {
-  if (total <= 3) return { label: "Trivial", className: "bg-slate-100 text-slate-700 border-slate-300" };
-  if (total <= 8) return { label: "Tolerável", className: "bg-green-100 text-green-800 border-green-300" };
-  if (total <= 12) return { label: "Moderado", className: "bg-yellow-100 text-yellow-800 border-yellow-300" };
-  if (total <= 15) return { label: "Substancial", className: "bg-orange-100 text-orange-800 border-orange-300" };
-  return { label: "Intolerável", className: "bg-red-100 text-red-800 border-red-300" };
-}
-
+/** Normaliza leitura: sentinelas legados ("N.A", "N/A") viram vazio. */
 const clean = (v: any) => {
   const s = (v ?? "").toString().trim();
   if (!s) return "";
   const up = s.toUpperCase();
-  return up === "N.A" || up === "N/A" ? "" : s;
+  return up === "N.A" || up === "N.A." || up === "N/A" || up === "NA" ? "" : s;
 };
-const toSave = (v: any) => {
-  const c = clean(v);
-  return c === "" ? NA : c;
-};
+
+/**
+ * Campo em branco é gravado como NULL, nunca como "N.A".
+ * O sentinela mascarava informação faltante — não distinguia "não aplicável" de
+ * "não avaliado" nem de "não informado", e fazia campo vazio parecer preenchido
+ * em auditoria. O estado real da avaliação vive em `avaliacao_estado`.
+ */
+const toSave = (v: any) => clean(v) || null;
 
 export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, groupItemIds = [], onSaved }: Props) {
   const [busy, setBusy] = useState(false);
@@ -69,6 +66,13 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
     atenuacao: "",
     severidade: 3,
     probabilidade: 3,
+    justificativa_severidade: "",
+    justificativa_probabilidade: "",
+    avaliacao_estado: "avaliado",
+    severidade_inicial: null,
+    probabilidade_inicial: null,
+    severidade_residual: null,
+    probabilidade_residual: null,
   });
 
   const { data: ghes = [] } = useQuery({
@@ -82,6 +86,19 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
     },
     enabled: open && !!empresaId,
   });
+
+  // Ids que já existem no Núcleo Mestre — usado para decidir se é seguro
+  // preencher ges_id (FK para sst_ges) sem violar a integridade.
+  const { data: gesNucleo = [] } = useQuery({
+    queryKey: ["pgr-sst-ges-ids", empresaId],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("sst_ges")
+        .select("id").eq("empresa_id", empresaId);
+      return data || [];
+    },
+    enabled: open && !!empresaId,
+  });
+  const gesNucleoIds = new Set<string>((gesNucleo as any[]).map((g) => g.id));
 
   useEffect(() => {
     if (!open) return;
@@ -112,6 +129,13 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
             atenuacao: clean(data.atenuacao),
             severidade: data.severidade ?? 3,
             probabilidade: data.probabilidade ?? 3,
+            justificativa_severidade: clean(data.justificativa_severidade),
+            justificativa_probabilidade: clean(data.justificativa_probabilidade),
+            avaliacao_estado: data.avaliacao_estado || "avaliado",
+            severidade_inicial: data.severidade_inicial ?? null,
+            probabilidade_inicial: data.probabilidade_inicial ?? null,
+            severidade_residual: data.severidade_residual ?? null,
+            probabilidade_residual: data.probabilidade_residual ?? null,
           });
         }
       })();
@@ -134,7 +158,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
   }, [form.ghe_id, ghes, itemId]);
 
   const total = Number(form.severidade) * Number(form.probabilidade);
-  const classif = classifPorTotal(total);
+  const classe = classificarRisco(Number(form.severidade), Number(form.probabilidade));
 
   const salvar = async () => {
     if (!form.perigo_descricao || form.perigo_descricao.trim().length < 2) {
@@ -169,6 +193,18 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
         atenuacao: toSave(form.atenuacao),
         severidade: Number(form.severidade),
         probabilidade: Number(form.probabilidade),
+        justificativa_severidade: toSave(form.justificativa_severidade),
+        justificativa_probabilidade: toSave(form.justificativa_probabilidade),
+        avaliacao_estado: form.avaliacao_estado || "avaliado",
+        severidade_inicial: form.severidade_inicial ?? null,
+        probabilidade_inicial: form.probabilidade_inicial ?? null,
+        severidade_residual: form.severidade_residual ?? null,
+        probabilidade_residual: form.probabilidade_residual ?? null,
+        // Núcleo Mestre: só grava ges_id se o GES realmente existir em sst_ges.
+        // O espelhamento garante id idêntico nas duas tabelas, mas GHEs legados
+        // criados antes do espelhamento existem apenas em ghe_ges — gravar o id
+        // deles violaria a FK. ghe_id segue preenchido como fallback.
+        ges_id: form.ghe_id && gesNucleoIds.has(form.ghe_id) ? form.ghe_id : null,
       };
 
       if (itemId) {
@@ -198,6 +234,11 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
   };
 
   const upd = (k: string) => (e: any) => setForm({ ...form, [k]: e?.target ? e.target.value : e });
+  /** Campo numérico opcional: vazio precisa virar null, não 0. */
+  const updNum = (k: string) => (e: any) => {
+    const v = e?.target?.value ?? "";
+    setForm({ ...form, [k]: v === "" ? null : Number(v) });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -335,15 +376,120 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                   <div>
                     <Label className="text-xs">Classificação do Risco</Label>
                     <div className="mt-1">
-                      <Badge variant="outline" className={`${classif.className} text-sm px-3 py-1`}>{classif.label}</Badge>
+                      <Badge
+                        variant="outline"
+                        className={`${classe ? CLASSE_TEXT[classe] : "bg-slate-100 text-slate-700 border-slate-300"} text-sm px-3 py-1`}
+                      >
+                        {classeLabel(classe)}
+                      </Badge>
                     </div>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground border rounded p-2 bg-muted/40">
                   <b>Faixas:</b> 1–3 Trivial · 4–8 Tolerável · 9–12 Moderado · 13–15 Substancial · 16–25 Intolerável
                 </div>
+                {classe && (
+                  <div className="text-xs border rounded p-2 bg-blue-50/60 text-blue-900">
+                    <b>Decisão:</b> {CLASSE_DECISAO[classe]}
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Justificativa técnica — a NR-01 exige critério documentado, não
+                apenas o número escolhido na matriz. */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Justificativa da Probabilidade</Label>
+                <Textarea
+                  rows={2}
+                  value={form.justificativa_probabilidade}
+                  onChange={upd("justificativa_probabilidade")}
+                  placeholder="Por que esta probabilidade? Frequência, histórico, controles existentes..."
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Justificativa da Severidade</Label>
+                <Textarea
+                  rows={2}
+                  value={form.justificativa_severidade}
+                  onChange={upd("justificativa_severidade")}
+                  placeholder="Por que esta severidade? Consequência de maior magnitude considerada..."
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">Estado da Avaliação</Label>
+              <Select
+                value={form.avaliacao_estado}
+                onValueChange={(v) => setForm({ ...form, avaliacao_estado: v })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="avaliado">Avaliado</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="nao_avaliado">Não avaliado</SelectItem>
+                  <SelectItem value="nao_aplicavel">Não aplicável</SelectItem>
+                  <SelectItem value="sem_exposicao_identificada">Sem exposição identificada</SelectItem>
+                  <SelectItem value="informacao_nao_disponivel">Informação não disponível</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Campo em branco fica vazio, não vira “N.A”. Use este estado para dizer
+                <i> por que</i> a informação não está preenchida.
+              </p>
+            </div>
+
+            {/* Risco inicial (antes dos controles) e residual (esperado após as ações).
+                Ambos opcionais: ficam nulos até que exista avaliação real. */}
+            <fieldset className="border rounded-md p-3">
+              <legend className="px-1 text-xs font-semibold text-slate-600">
+                Cenários comparativos (opcional)
+              </legend>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-xs">Sev. inicial</Label>
+                  <Input
+                    type="number" min={1} max={5}
+                    value={form.severidade_inicial ?? ""}
+                    onChange={updNum("severidade_inicial")}
+                    placeholder="antes"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Prob. inicial</Label>
+                  <Input
+                    type="number" min={1} max={5}
+                    value={form.probabilidade_inicial ?? ""}
+                    onChange={updNum("probabilidade_inicial")}
+                    placeholder="antes"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Sev. residual</Label>
+                  <Input
+                    type="number" min={1} max={5}
+                    value={form.severidade_residual ?? ""}
+                    onChange={updNum("severidade_residual")}
+                    placeholder="após ações"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Prob. residual</Label>
+                  <Input
+                    type="number" min={1} max={5}
+                    value={form.probabilidade_residual ?? ""}
+                    onChange={updNum("probabilidade_residual")}
+                    placeholder="após ações"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                <b>Inicial</b> = cenário antes dos controles. <b>Atual</b> = matriz acima, com os
+                controles de hoje. <b>Residual</b> = esperado após concluir o plano de ação.
+              </p>
+            </fieldset>
           </TabsContent>
           </div>
         </Tabs>
