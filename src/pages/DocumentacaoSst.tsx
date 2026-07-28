@@ -35,7 +35,7 @@ export default function DocumentacaoSst() {
         {/* NAVEGAÇÃO DOS SUBMÓDULOS */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="pb-2">
-            <TabsList className="grid grid-cols-3 w-full bg-slate-100 p-1.5 rounded-xl gap-1">
+            <TabsList className="grid grid-cols-3 w-full sm:inline-flex sm:w-auto bg-slate-100 p-1.5 rounded-xl gap-1 h-auto">
               <TabsTrigger value="central" className="text-sm font-medium px-4 py-2.5 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-indigo-600" /> Documentos
               </TabsTrigger>

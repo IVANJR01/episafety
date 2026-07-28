@@ -57,26 +57,31 @@ export function GesExposicoesTab() {
 
   return (
     <div className="space-y-6">
+      {/* Título e abas em linguagem comum. Antes: "GES / GHE & Matriz Mestre de
+          Exposições" e "Configure exposições nos 6 níveis de herança" — quem
+          preenche um PGR não sabe o que é nível de herança, e o rótulo escondia
+          a única coisa que importa aqui: quem tem a mesma exposição. */}
       <div>
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <Layers className="w-6 h-6 text-indigo-600" />
-          GES / GHE & Matriz Mestre de Exposições
+          <Layers className="w-6 h-6 text-slate-700" />
+          Grupos de exposição (GES)
         </h2>
         <p className="text-sm text-slate-500">
-          O GES/GHE é um grupo técnico transversal (não dependente do setor). Configure exposições nos 6 níveis de herança.
+          Um GES reúne trabalhadores expostos aos mesmos agentes, na mesma intensidade.
+          Não é o mesmo que setor: pessoas de setores diferentes podem estar no mesmo GES.
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 w-full bg-slate-100 p-1 rounded-lg">
-          <TabsTrigger value="inventario" className="text-xs font-semibold flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-amber-600" /> Inventário Mestre NR-01 (Planilha)
+        <TabsList className="grid grid-cols-3 w-full sm:inline-flex sm:w-auto bg-slate-100 p-1 rounded-lg h-auto">
+          <TabsTrigger value="inventario" className="text-xs font-medium flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4" /> Riscos
           </TabsTrigger>
-          <TabsTrigger value="ges" className="text-xs font-semibold flex items-center gap-2">
-            <Layers className="w-4 h-4 text-indigo-600" /> Cadastro de GES / GHE
+          <TabsTrigger value="ges" className="text-xs font-medium flex items-center gap-2">
+            <Layers className="w-4 h-4" /> Grupos
           </TabsTrigger>
-          <TabsTrigger value="exposicoes" className="text-xs font-semibold flex items-center gap-2">
-            <Shield className="w-4 h-4 text-emerald-600" /> Matriz Resumida de Exposições
+          <TabsTrigger value="exposicoes" className="text-xs font-medium flex items-center gap-2">
+            <Shield className="w-4 h-4" /> Exposições
           </TabsTrigger>
         </TabsList>
 
@@ -259,9 +264,9 @@ export function GesExposicoesTab() {
         {/* TAB 2: GES / GHE */}
         <TabsContent value="ges" className="mt-4 space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800">Grupos Homogêneos de Exposição</h3>
-            <Button onClick={() => { setGesFormData({}); setOpenGesModal(true); }} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
-              <Plus className="w-4 h-4 mr-1" /> Criar Novo GES / GHE
+            <h3 className="font-semibold text-slate-800">Grupos cadastrados</h3>
+            <Button onClick={() => { setGesFormData({}); setOpenGesModal(true); }} size="sm">
+              <Plus className="w-4 h-4 mr-1" /> Novo grupo
             </Button>
           </div>
 
@@ -283,16 +288,20 @@ export function GesExposicoesTab() {
                         <Edit2 className="w-4 h-4 text-slate-600" />
                       </Button>
                     </div>
-                    <CardDescription className="text-xs">{ges.criterio_agrupamento || "Critério não especificado"}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2 text-xs">
-                    <div className="p-2 bg-slate-50 rounded border text-slate-600">
-                      <strong>Descrição:</strong> {ges.descricao || "Sem observações registradas."}
-                    </div>
-                    <div className="flex justify-between text-slate-500 pt-1">
-                      <span>Validade Inicial: {ges.validade_inicio || "-"}</span>
-                      <span>Inspetor: {ges.responsavel_inspecao || "Técnico SST"}</span>
-                    </div>
+                    {/* O critério é o que separa um GES de um setor renomeado.
+                        Quando falta, o card avisa e diz o que fazer, em vez de
+                        estampar "Critério não especificado" e seguir. */}
+                    {ges.criterio_agrupamento ? (
+                      <p className="text-slate-600">{ges.criterio_agrupamento}</p>
+                    ) : (
+                      <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+                        Falta dizer <b>por que</b> estas pessoas têm a mesma exposição.
+                        Sem isso, o grupo é apenas um setor com outro nome.
+                      </p>
+                    )}
+                    {ges.descricao && <p className="text-slate-500">{ges.descricao}</p>}
                   </CardContent>
                 </Card>
               ))
@@ -304,7 +313,7 @@ export function GesExposicoesTab() {
         <TabsContent value="exposicoes" className="mt-4 space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="font-semibold text-slate-800">Matriz de Exposições (Herança em 6 Níveis)</h3>
-            <Button onClick={() => { setExposicaoFormData({ nivel_origem: "ges", severidade: 3, probabilidade: 2, epi_eficacia_conclusao: "nao_avaliada" }); setOpenExposicaoModal(true); }} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+            <Button onClick={() => { setExposicaoFormData({ nivel_origem: "ges", severidade: 3, probabilidade: 2, epi_eficacia_conclusao: "nao_avaliada" }); setOpenExposicaoModal(true); }} size="sm">
               <Plus className="w-4 h-4 mr-1" /> Adicionar Perigo / Exposição
             </Button>
           </div>
@@ -325,7 +334,7 @@ export function GesExposicoesTab() {
                 {exposicoes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-6 text-slate-400">
-                      Nenhuma exposição cadastrada na Matriz Mestre.
+                      Nenhuma exposição cadastrada.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -397,7 +406,7 @@ export function GesExposicoesTab() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenGesModal(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">Salvar GES/GHE</Button>
+              <Button type="submit">Salvar grupo</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -409,7 +418,7 @@ export function GesExposicoesTab() {
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-amber-600" />
-              {exposicaoFormData.id ? "Editar Risco" : "Cadastrar Risco"} no Inventário Mestre (Planilha NR-01)
+              {exposicaoFormData.id ? "Editar Risco" : "Cadastrar Risco"} do inventário
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSaveExposicao} className="space-y-5 text-sm mt-2">

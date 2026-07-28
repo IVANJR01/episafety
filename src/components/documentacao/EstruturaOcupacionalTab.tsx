@@ -136,7 +136,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
         {!only && (
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 w-full bg-slate-100 p-1 rounded-lg h-auto">
+          <TabsList className="grid grid-cols-3 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
             <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">
               <Building2 className="w-4 h-4" /> Estabelecimentos
             </TabsTrigger>

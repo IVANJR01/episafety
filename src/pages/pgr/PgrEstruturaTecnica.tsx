@@ -279,9 +279,16 @@ export default function PgrEstruturaTecnica() {
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row gap-5 p-3 sm:p-5 max-w-[1700px] mx-auto items-start">
+      {/* Grade em vez de flex-row. Com a barra lateral do app ocupando ~250px,
+          três colunas nunca cabiam: as media queries do Tailwind medem a
+          JANELA, não o espaço restante, então "2xl" disparava a 1536px mesmo
+          com só ~1280px disponíveis e a tabela e a régua de abas ficavam com
+          barra de rolagem própria. Ficaram duas colunas — árvore e conteúdo —
+          e o resumo passou para dentro do painel, onde sempre cabe. */}
+      <div className="grid gap-5 p-3 sm:p-5 max-w-[1700px] mx-auto items-start
+                      lg:grid-cols-[260px_minmax(0,1fr)]">
         {/* ÁRVORE */}
-        <aside className="w-full lg:w-[340px] shrink-0 bg-card border rounded-xl p-4 lg:sticky lg:top-[84px]">
+        <aside className="min-w-0 bg-card border rounded-xl p-4 lg:sticky lg:top-[84px]">
           <div className="flex items-start justify-between gap-2 mb-3">
             {/* Sem truncate: o título encurtado para "Estrutura do le…" não diz
                 nada. Se faltar largura, ele quebra em duas linhas. */}
@@ -390,7 +397,7 @@ export default function PgrEstruturaTecnica() {
             em coluna (celular) o flex dimensiona o item pelo conteúdo, e sem
             isso a tabela empurra a largura e o texto some sob a borda direita.
             A rolagem horizontal fica no container da própria tabela. */}
-        <main className="flex-1 min-w-0 w-full max-w-full overflow-hidden bg-card border rounded-xl">
+        <main className="min-w-0 w-full max-w-full overflow-hidden bg-card border rounded-xl">
           <div className="p-5 sm:p-6 flex items-center gap-4 flex-wrap">
             <span className="h-16 w-16 rounded-full border grid place-items-center shrink-0">
               <IconeSel className="h-7 w-7 text-primary" />
@@ -408,8 +415,22 @@ export default function PgrEstruturaTecnica() {
             </div>
           </div>
 
-          <div className="border-b px-2 sm:px-5 overflow-x-auto">
-            <div className="flex gap-1 min-w-max">
+          {/* Resumo em faixa, dentro do painel: como coluna própria ele nunca
+              cabia junto da árvore e da tabela. */}
+          <div className="px-5 sm:px-6 pb-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Stat icone={Users} cor="text-sky-600 bg-sky-50" rotulo="Funções"
+              valor={meta.funcoes ?? funcoes.length} />
+            <Stat icone={Users} cor="text-emerald-600 bg-emerald-50" rotulo="Trabalhadores"
+              valor={meta.trabalhadores} />
+            <Stat icone={TriangleAlert} cor="text-amber-600 bg-amber-50" rotulo="Perigos"
+              valor={dados.inv.length + dados.lev.length} />
+            <Stat icone={ListChecks} cor="text-red-600 bg-red-50" rotulo="Pendências"
+              valor={dados.pendencias} />
+          </div>
+
+          {/* Abas quebram em vez de rolar: rolagem escondia "Controles". */}
+          <div className="border-b px-2 sm:px-5">
+            <div className="flex flex-wrap gap-1">
               {ABAS.map((a) => {
                 const I = a.icone;
                 const ativa = aba === a.id;
@@ -667,44 +688,24 @@ export default function PgrEstruturaTecnica() {
               </div>
             )}
           </div>
-        </main>
 
-        {/* RESUMO */}
-        <aside className="w-full xl:w-[280px] shrink-0 space-y-4 xl:sticky xl:top-[84px]">
-          <div className="bg-card border rounded-xl p-5">
-            <h2 className="font-semibold mb-4">Resumo {sel.tipo === "empresa" ? "geral" : `do ${ROTULO[sel.tipo].toLowerCase()}`}</h2>
-            <div className="grid grid-cols-2 xl:grid-cols-1 gap-3">
-              <Stat icone={Users} cor="text-sky-600 bg-sky-50" rotulo="Funções"
-                valor={meta.funcoes ?? funcoes.length} />
-              <Stat icone={Users} cor="text-emerald-600 bg-emerald-50" rotulo="Trabalhadores"
-                valor={meta.trabalhadores} />
-              <Stat icone={TriangleAlert} cor="text-amber-600 bg-amber-50" rotulo="Perigos"
-                valor={dados.inv.length + dados.lev.length} />
-              <Stat icone={ListChecks} cor="text-red-600 bg-red-50" rotulo="Pendências"
-                valor={dados.pendencias} />
-            </div>
-          </div>
-
+          {/* Próxima etapa no rodapé do painel: era a terceira coluna, que foi
+              removida por não caber junto da árvore. */}
           <button
             onClick={() => navigate(`/pgr/${pgrId}?etapa=${dados.lev.length > 0 ? "inventario" : "perigos"}`)}
-            className="w-full text-left bg-sky-50 border border-sky-200 rounded-xl p-5 flex items-start gap-3 hover:bg-sky-100 transition"
+            className="w-full text-left border-t p-5 flex items-center gap-3 hover:bg-muted/50 transition"
           >
             <span className="h-10 w-10 rounded-full bg-primary grid place-items-center shrink-0">
               <ArrowRight className="h-5 w-5 text-primary-foreground" />
             </span>
             <span className="min-w-0">
-              <span className="block text-sm text-muted-foreground">Próxima etapa:</span>
-              <span className="block text-lg font-bold leading-tight">
-                {dados.lev.length > 0 ? "avaliar riscos" : "cadastrar perigos"}
-              </span>
-              <span className="block text-xs text-muted-foreground mt-1">
-                {dados.lev.length > 0
-                  ? "Registre as avaliações dos riscos identificados."
-                  : "Comece pelas atividades de maior risco."}
+              <span className="block text-xs text-muted-foreground">Próxima etapa</span>
+              <span className="block font-semibold leading-tight">
+                {dados.lev.length > 0 ? "Avaliar riscos" : "Cadastrar perigos"}
               </span>
             </span>
           </button>
-        </aside>
+        </main>
       </div>
     </div>
   );
