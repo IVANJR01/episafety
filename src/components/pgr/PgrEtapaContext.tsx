@@ -1,17 +1,22 @@
 import {
-  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState,
 } from "react";
 
 /**
- * Ações que a etapa ativa expõe para o rodapé do assistente.
+ * Ações que os formulários da etapa ativa expõem para o rodapé do assistente.
  *
  * O rodapé ("Voltar · Salvar rascunho · Salvar e continuar") é único e fica no
- * mesmo cartão do formulário, como manda o desenho. Mas quem sabe salvar é a
- * etapa, não o assistente. Em vez de duplicar um rodapé por etapa, cada etapa
- * registra aqui o que sabe fazer, e o rodapé habilita só o que existe.
+ * mesmo cartão do formulário, como manda o desenho. Mas quem sabe salvar é o
+ * formulário, não o assistente.
+ *
+ * Uma etapa pode ter MAIS DE UM formulário — a etapa 1 tem o bloco de empresa e
+ * o de datas, a de ambientes tem ambientes e processos. Por isso o registro é
+ * uma coleção: "Salvar e continuar" grava todos e só avança se todos passarem.
+ * Com um único registrante, o segundo formulário sobrescreveria o primeiro e o
+ * botão salvaria metade da tela em silêncio.
  */
 export interface AcoesEtapa {
-  /** Grava e devolve true quando pode avançar. Ausente = etapa sem formulário. */
+  /** Grava e devolve true quando pode avançar. */
   salvar?: () => Promise<boolean>;
   /** Grava sem exigir os campos obrigatórios. */
   salvarRascunho?: () => Promise<void>;
@@ -20,35 +25,35 @@ export interface AcoesEtapa {
 }
 
 interface Registro {
-  /** O que o rodapé desenha. */
   flags: { temSalvar: boolean; temRascunho: boolean; ocupado: boolean };
-  /** O que o rodapé executa — sempre a closure mais recente da etapa. */
-  atual: React.MutableRefObject<AcoesEtapa | null>;
-  registrar: (a: AcoesEtapa | null) => void;
+  registrados: React.MutableRefObject<Map<string, AcoesEtapa>>;
+  registrar: (chave: string, a: AcoesEtapa | null) => void;
 }
 
 const VAZIO = { temSalvar: false, temRascunho: false, ocupado: false };
 
 const Ctx = createContext<Registro>({
   flags: VAZIO,
-  atual: { current: null },
+  registrados: { current: new Map() },
   registrar: () => {},
 });
 
 export function PgrEtapaProvider({ children }: { children: React.ReactNode }) {
-  const atual = useRef<AcoesEtapa | null>(null);
+  const registrados = useRef<Map<string, AcoesEtapa>>(new Map());
   const [flags, setFlags] = useState(VAZIO);
 
-  // A etapa chama isto a cada render para manter a closure fresca. O estado só
-  // é atualizado quando algo visível muda, senão todo render do formulário
-  // dispararia um render do assistente inteiro.
-  const registrar = useCallback((a: AcoesEtapa | null) => {
-    atual.current = a;
+  const registrar = useCallback((chave: string, a: AcoesEtapa | null) => {
+    if (a) registrados.current.set(chave, a);
+    else registrados.current.delete(chave);
+
+    const todos = [...registrados.current.values()];
     const novo = {
-      temSalvar: !!a?.salvar,
-      temRascunho: !!a?.salvarRascunho,
-      ocupado: !!a?.ocupado,
+      temSalvar: todos.some((x) => x.salvar),
+      temRascunho: todos.some((x) => x.salvarRascunho),
+      ocupado: todos.some((x) => x.ocupado),
     };
+    // Só atualiza quando algo visível muda, senão cada render do formulário
+    // dispararia um render do assistente inteiro.
     setFlags((ant) =>
       ant.temSalvar === novo.temSalvar
       && ant.temRascunho === novo.temRascunho
@@ -58,31 +63,48 @@ export function PgrEtapaProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const valor = useMemo(() => ({ flags, atual, registrar }), [flags, registrar]);
+  const valor = useMemo(() => ({ flags, registrados, registrar }), [flags, registrar]);
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
 
 /** Lido pelo rodapé do assistente. */
 export function useAcoesEtapa() {
-  const { flags, atual } = useContext(Ctx);
+  const { flags, registrados } = useContext(Ctx);
   return {
     ...flags,
-    salvar: () => atual.current?.salvar?.() ?? Promise.resolve(true),
-    salvarRascunho: () => atual.current?.salvarRascunho?.() ?? Promise.resolve(),
+    /** Grava todos os formulários da etapa. Um "false" impede o avanço. */
+    salvar: async () => {
+      const todos = [...registrados.current.values()];
+      let ok = true;
+      // Em série, não em paralelo: dois updates simultâneos na mesma linha de
+      // pgr_documentos fazem o último sobrescrever o primeiro.
+      for (const a of todos) {
+        if (a.salvar && !(await a.salvar())) ok = false;
+      }
+      return ok;
+    },
+    salvarRascunho: async () => {
+      for (const a of [...registrados.current.values()]) {
+        if (a.salvarRascunho) await a.salvarRascunho();
+      }
+    },
   };
 }
 
 /**
- * Chamado pela etapa. Passe `null` quando não houver formulário aberto — sem
+ * Chamado pelo formulário. Passe `null` quando não houver nada a salvar — sem
  * isso o rodapé continuaria oferecendo "Salvar" numa tela de listagem.
  */
 export function useRegistrarEtapa(acoes: AcoesEtapa | null) {
   const { registrar } = useContext(Ctx);
-  // Sem lista de dependências de propósito: roda depois de todo render da etapa,
-  // então a closure guardada nunca fica velha. Não vira laço porque `registrar`
-  // só mexe no estado quando algo visível muda. Chamar direto no corpo do
-  // componente atualizaria o assistente durante o render da etapa, que o React
-  // recusa.
-  useEffect(() => { registrar(acoes); });
-  useEffect(() => () => registrar(null), [registrar]);
+  // Identidade estável por instância: dois formulários do mesmo componente na
+  // mesma etapa precisam de chaves distintas para não se sobrescreverem.
+  const chave = useId();
+  // Sem lista de dependências de propósito: roda depois de todo render do
+  // formulário, então a closure guardada nunca fica velha. Não vira laço porque
+  // `registrar` só mexe no estado quando algo visível muda. Chamar direto no
+  // corpo do componente atualizaria o assistente durante o render do filho, que
+  // o React recusa.
+  useEffect(() => { registrar(chave, acoes); });
+  useEffect(() => () => registrar(chave, null), [registrar, chave]);
 }

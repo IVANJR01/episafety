@@ -143,6 +143,19 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       (a, b) => (a.empresa_pai_id ? 1 : 0) - (b.empresa_pai_id ? 1 : 0),
     );
 
+    // Caracterização da estrutura (Núcleo Mestre) para as seções de ambientes,
+    // processos, setores/GES e funções. Tolerante a falha: uma tabela ausente
+    // apenas omite a seção correspondente, em vez de impedir a geração do PDF.
+    const daEmpresa = async (tabela: string, ordem = "nome") => {
+      const { data, error } = await (supabase.from as any)(tabela)
+        .select("*").eq("empresa_id", pgr.empresa_id).order(ordem);
+      return error ? [] : (data || []);
+    };
+    const [ambientes, processos, setores, gesDetalhes, funcoes, atividades] = await Promise.all([
+      daEmpresa("sst_ambientes"), daEmpresa("sst_processos"), daEmpresa("sst_setores"),
+      daEmpresa("sst_ges", "codigo"), daEmpresa("sst_funcoes"), daEmpresa("sst_atividades"),
+    ]);
+
     // Campos 5W2H que o PDF consome mas que NÃO são colunas de pgr_acoes.
     // "who" e "how much" moram em responsavel_nome/custo_estimado; a classe de risco
     // vem do item de inventário vinculado. Sem este mapeamento o PDF imprimia
@@ -178,6 +191,10 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       unidades,
       responsaveis: respRes.data || [],
       cenarios: cenariosRes.data || [],
+      ambientes, processos, setores, gesDetalhes, funcoes, atividades,
+      // Código do documento: identificador estável e legível para arquivo físico.
+      codigoDocumento: `PGR-${(pgr.data_vigencia_inicio || pgr.data_emissao || "")
+        .slice(0, 4) || new Date().getFullYear()}-${String(pgr.id).slice(0, 8).toUpperCase()}`,
     };
   }
 

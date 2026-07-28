@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PGR_TIPO_LABEL, PgrDocumento, PgrTipo } from "@/lib/pgrTypes";
+import { useRegistrarEtapa } from "./PgrEtapaContext";
 
 interface Props {
   pgr: PgrDocumento;
@@ -91,6 +92,14 @@ export default function PgrDadosStep({ pgr, canEdit, escopo = false }: Props) {
       toast.error(e.message || "Falha ao salvar");
     } finally { setBusy(false); }
   };
+
+  // O rodapé do assistente comanda a gravação. Os dois blocos da etapa 1 se
+  // registram com chaves distintas, então "Salvar e continuar" grava ambos.
+  useRegistrarEtapa(canEdit ? {
+    salvar: async () => { await salvar(); return true; },
+    salvarRascunho: salvar,
+    ocupado: busy,
+  } : null);
 
   /** Copia a identificação da unidade escolhida, evitando redigitar. */
   const puxarDaUnidade = () => {

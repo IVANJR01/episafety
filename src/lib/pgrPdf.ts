@@ -145,6 +145,17 @@ export interface PgrPdfContext {
   unidades?: PgrUnidadeItem[];
   responsaveis?: PgrResponsavelItem[];
   cenarios?: PgrCenarioItem[];
+  /** Caracterização da estrutura, vinda do Núcleo Mestre. */
+  ambientes?: any[];
+  processos?: any[];
+  setores?: any[];
+  gesDetalhes?: any[];
+  funcoes?: any[];
+  atividades?: any[];
+  /** Logomarca em data URL — jsPDF não busca imagem por http. */
+  logoDataUrl?: string | null;
+  /** Código interno do documento, impresso na capa e no rodapé. */
+  codigoDocumento?: string | null;
 }
 
 /** Rótulos dos papéis de responsável, para o PDF (jsPDF não importa a UI). */
@@ -165,13 +176,54 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
 const fmtDate = (s?: string | null) => s ? new Date(s.length <= 10 ? s + "T00:00:00" : s).toLocaleDateString("pt-BR") : "—";
 const fmtDT = (s?: string | null) => s ? new Date(s).toLocaleString("pt-BR") : "—";
 
-interface B { doc: jsPDF; y: number; }
+interface ItemSumario { titulo: string; pagina: number; }
+interface B { doc: jsPDF; y: number; toc: ItemSumario[]; }
 const ensure = (b: B, h: number) => { if (b.y + h > 278) { b.doc.addPage(); b.y = 15; } };
+
+/**
+ * Abre uma seção e registra a página no sumário.
+ *
+ * O número é anotado DEPOIS do `ensure`: se o título não coubesse na página
+ * atual, ele salta para a próxima e o sumário apontaria a página errada.
+ */
 function title(b: B, t: string) {
   ensure(b, 10);
+  b.toc.push({ titulo: t, pagina: b.doc.getCurrentPageInfo().pageNumber });
   b.doc.setFillColor(15, 23, 42); b.doc.rect(10, b.y, 190, 6, "F");
   b.doc.setTextColor(255); b.doc.setFontSize(10); b.doc.setFont("helvetica", "bold");
   b.doc.text(t, 12, b.y + 4.2); b.doc.setTextColor(0); b.y += 8;
+}
+
+/** Subtítulo dentro de uma seção — não entra no sumário. */
+function sub(b: B, t: string) {
+  ensure(b, 8);
+  b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(9); b.doc.setTextColor(15, 23, 42);
+  b.doc.text(t, 12, b.y + 4); b.doc.setTextColor(0); b.y += 7;
+}
+
+/**
+ * Cabeçalho de tabela que se repete a cada quebra de página.
+ *
+ * Devolve a função que desenha uma linha garantindo a repetição: sem isso, uma
+ * tabela de 80 riscos vira 3 páginas de números sem nome de coluna.
+ */
+function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]) {
+  const desenhaCabecalho = () => {
+    b.doc.setFillColor(240, 240, 240); b.doc.rect(10, b.y, 190, 6, "F");
+    b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(7.5); b.doc.setTextColor(30);
+    colunas.forEach((c) => b.doc.text(c.rotulo, c.x, b.y + 4));
+    b.doc.setTextColor(0); b.y += 7;
+  };
+  desenhaCabecalho();
+  return (celulas: string[]) => {
+    const textos = colunas.map((c, i) => b.doc.splitTextToSize(celulas[i] ?? "—", c.w));
+    const h = Math.max(...textos.map((t) => t.length)) * 3.4 + 3;
+    if (b.y + h > 278) { b.doc.addPage(); b.y = 15; desenhaCabecalho(); }
+    b.doc.setDrawColor(225); b.doc.line(10, b.y, 200, b.y);
+    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(7.5);
+    textos.forEach((t, i) => b.doc.text(t, colunas[i].x, b.y + 3.5));
+    b.y += h;
+  };
 }
 function kv(b: B, label: string, value: string, full = false) {
   ensure(b, 7);
@@ -233,13 +285,30 @@ function drawMatriz(b: B) {
   b.y = y0 + 5 * cs + 14;
 }
 
+/**
+ * Monta o documento sem gravar nada. Útil para pré-visualizar e para testar a
+ * paginação sem depender de Storage nem de banco.
+ */
+export async function renderPgrPdf(
+  ctx: PgrPdfContext,
+  opts: { qrUrl: string; pdfVersao: number; comMarca: boolean },
+): Promise<jsPDF> {
+  return render(ctx, opts);
+}
+
 async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: number; comMarca: boolean }): Promise<jsPDF> {
   const { doc: pgr } = ctx;
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const b: B = { doc: pdf, y: 12 };
+  const b: B = { doc: pdf, y: 12, toc: [] };
 
   // CAPA
   pdf.setFillColor(15, 23, 42); pdf.rect(0, 0, 210, 65, "F");
+  // Logomarca da empresa, quando houver. Falha de imagem não pode derrubar a
+  // geração do documento inteiro — o PGR sai sem logo, e sai.
+  if (ctx.logoDataUrl) {
+    try { pdf.addImage(ctx.logoDataUrl, "PNG", 12, 8, 26, 26); }
+    catch { /* logo inválida: segue sem ela */ }
+  }
   pdf.setTextColor(255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(22);
   pdf.text("PGR", 105, 28, { align: "center" });
   pdf.setFontSize(12); pdf.setFont("helvetica", "normal");
@@ -253,6 +322,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   pdf.setFont("helvetica", "normal"); pdf.setFontSize(10);
   if (ctx.empresaCnpj) { pdf.text(`CNPJ: ${ctx.empresaCnpj}`, 12, b.y); b.y += 5; }
   if (ctx.unidadeNome) { pdf.text(`Unidade: ${ctx.unidadeNome}`, 12, b.y); b.y += 5; }
+  if (ctx.codigoDocumento) { pdf.text(`Código do documento: ${ctx.codigoDocumento}`, 12, b.y); b.y += 5; }
   b.y += 4;
   pdf.text(`Emitido em: ${fmtDate(pgr.data_emissao) || fmtDate(new Date().toISOString())}`, 12, b.y); b.y += 5;
   pdf.text(`Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`, 12, b.y); b.y += 5;
@@ -392,10 +462,161 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     para(b, conteudo, 9, [40, 40, 40]);
   });
 
-  title(b, "Escopo");
+  title(b, "Abrangência");
   kv(b, "Escopo do PGR", pgr.escopo || "—", true);
-  title(b, "Critérios e Metodologia de Avaliação");
+  if ((T["area_abrangencia"] || "").trim()) para(b, T["area_abrangencia"], 9, [40, 40, 40]);
+
+  // Referências normativas. Lista fixa das normas que regem o documento — não é
+  // dado da empresa, é o arcabouço legal, igual em qualquer PGR.
+  title(b, "Referências");
+  [
+    "NR-01 — Disposições Gerais e Gerenciamento de Riscos Ocupacionais",
+    "NR-04 — Serviços Especializados em Segurança e em Medicina do Trabalho",
+    "NR-05 — Comissão Interna de Prevenção de Acidentes e de Assédio",
+    "NR-06 — Equipamento de Proteção Individual",
+    "NR-07 — Programa de Controle Médico de Saúde Ocupacional",
+    "NR-09 — Avaliação e Controle das Exposições Ocupacionais a Agentes Físicos, Químicos e Biológicos",
+    "NR-15 — Atividades e Operações Insalubres",
+    "NR-16 — Atividades e Operações Perigosas",
+    "NR-17 — Ergonomia",
+    "Lei nº 8.213/1991 e Decreto nº 3.048/1999 — legislação previdenciária",
+  ].forEach((r) => { ensure(b, 5); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+    pdf.text(`• ${r}`, 12, b.y + 3); b.y += 4.4; });
+  b.y += 2;
+
+  title(b, "Definições");
+  ([
+    ["Perigo", "Fonte com potencial de causar lesão ou agravo à saúde."],
+    ["Risco ocupacional", "Combinação da probabilidade de ocorrer um evento perigoso com a severidade da lesão ou agravo que ele pode causar."],
+    ["Fonte geradora", "Elemento, equipamento ou condição de onde o perigo se origina."],
+    ["Circunstância", "Situação em que o perigo se manifesta, ainda que a fonte esteja controlada."],
+    ["GES / GHE", "Grupo de trabalhadores que experimentam exposição semelhante, de modo que o resultado da avaliação de um representa a exposição de todos. Não é sinônimo de setor."],
+    ["Risco residual", "Risco que permanece após a implantação das medidas de prevenção."],
+    ["Medida de prevenção", "Ação adotada para eliminar o perigo ou reduzir o risco, seguindo a hierarquia da NR-01."],
+    ["Inventário de riscos", "Relação consolidada dos riscos identificados, avaliados e classificados."],
+  ] as [string, string][]).forEach(([termo, def]) => {
+    ensure(b, 9);
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.text(`${termo}:`, 12, b.y + 3);
+    pdf.setFont("helvetica", "normal"); pdf.setTextColor(60);
+    const ll = pdf.splitTextToSize(def, 186 - 2);
+    pdf.text(ll, 14, b.y + 7); pdf.setTextColor(0);
+    b.y += 7 + ll.length * 3.3 + 1;
+  });
+
+  // ── Caracterização da estrutura ────────────────────────────────────────────
+  if (ctx.ambientes && ctx.ambientes.length > 0) {
+    title(b, "Caracterização dos Ambientes de Trabalho");
+    ctx.ambientes.forEach((a: any) => {
+      sub(b, a.codigo ? `${a.codigo} — ${a.nome}` : a.nome);
+      const campos: [string, any][] = [
+        ["Tipo", a.tipo_ambiente], ["Localização", a.localizacao],
+        ["Área aproximada", a.area_m2 ? `${a.area_m2} m²` : null],
+        ["Pé-direito", a.pe_direito], ["Piso", a.piso], ["Paredes", a.paredes],
+        ["Cobertura", a.cobertura], ["Ventilação", a.ventilacao],
+        ["Iluminação", a.iluminacao], ["Climatização", a.climatizacao],
+        ["Máquinas e instalações", a.maquinas_instalacoes],
+        ["Trabalhadores", a.qtd_trabalhadores],
+      ];
+      const linha = campos.filter(([, v]) => v != null && String(v).trim())
+        .map(([r, v]) => `${r}: ${v}`).join("  ·  ");
+      if (linha) para(b, linha, 8);
+      if (a.descricao) para(b, a.descricao, 8);
+      b.y += 1;
+    });
+  }
+
+  if (ctx.processos && ctx.processos.length > 0) {
+    title(b, "Processos de Trabalho");
+    const setorNome = (id: string) =>
+      (ctx.setores || []).find((s: any) => s.id === id)?.nome || "—";
+    const linha = tabela(b, [
+      { rotulo: "Processo", x: 12, w: 42 },
+      { rotulo: "Setor", x: 57, w: 30 },
+      { rotulo: "Etapas / descrição", x: 90, w: 58 },
+      { rotulo: "Máquinas e produtos", x: 151, w: 46 },
+    ]);
+    ctx.processos.forEach((p: any) => linha([
+      p.codigo ? `${p.codigo} — ${p.nome}` : p.nome,
+      setorNome(p.setor_id),
+      p.descricao_etapas || "—",
+      [p.maquinas_equipamentos, p.produtos_quimicos].filter(Boolean).join(" · ") || "—",
+    ]));
+    b.y += 3;
+  }
+
+  if ((ctx.setores && ctx.setores.length > 0) || (ctx.gesDetalhes && ctx.gesDetalhes.length > 0)) {
+    title(b, "Setores e Grupos de Exposição Semelhante");
+    if (ctx.setores && ctx.setores.length > 0) {
+      sub(b, "Setores");
+      const linha = tabela(b, [
+        { rotulo: "Setor", x: 12, w: 45 },
+        { rotulo: "Responsável", x: 60, w: 40 },
+        { rotulo: "Trabalhadores", x: 103, w: 22 },
+        { rotulo: "Jornada / turnos", x: 128, w: 68 },
+      ]);
+      ctx.setores.forEach((s: any) => linha([
+        s.codigo ? `${s.codigo} — ${s.nome}` : s.nome,
+        s.responsavel_setor || "—",
+        s.qtd_trabalhadores != null ? String(s.qtd_trabalhadores) : "—",
+        [s.jornada_turnos, s.turnos].filter(Boolean).join(" · ") || "—",
+      ]));
+      b.y += 3;
+    }
+    if (ctx.gesDetalhes && ctx.gesDetalhes.length > 0) {
+      sub(b, "Grupos de Exposição Semelhante (GES/GHE)");
+      ctx.gesDetalhes.forEach((g: any) => {
+        ensure(b, 12);
+        pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
+        pdf.text(`${g.codigo ? g.codigo + " — " : ""}${g.nome}`, 12, b.y + 3);
+        b.y += 5;
+        const meta = [
+          g.qtd_trabalhadores != null ? `${g.qtd_trabalhadores} trabalhador(es)` : null,
+          g.jornada, g.frequencia_exposicao,
+        ].filter(Boolean).join("  ·  ");
+        if (meta) para(b, meta, 8);
+        // O critério é o que distingue GES de setor. Quando falta, o documento
+        // precisa dizer que falta — não pode simplesmente omitir a linha.
+        para(b,
+          `Critério de agrupamento: ${g.justificativa_similaridade || g.criterio_agrupamento
+            || "não declarado — pendente de justificativa técnica"}`, 8);
+        b.y += 1;
+      });
+    }
+  }
+
+  if (ctx.funcoes && ctx.funcoes.length > 0) {
+    title(b, "Funções e Atividades");
+    const setorNome = (id: string) =>
+      (ctx.setores || []).find((s: any) => s.id === id)?.nome || "—";
+    ctx.funcoes.forEach((f: any) => {
+      ensure(b, 12);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
+      pdf.text(`${f.nome}${f.cbo ? `  (CBO ${f.cbo})` : ""}`, 12, b.y + 3);
+      b.y += 5;
+      const meta = [
+        `Setor: ${setorNome(f.setor_id)}`,
+        f.qtd_trabalhadores != null ? `${f.qtd_trabalhadores} trabalhador(es)` : null,
+        f.jornada, f.turnos,
+        [f.exige_nr10 && "NR-10", f.exige_nr33 && "NR-33", f.exige_nr35 && "NR-35"]
+          .filter(Boolean).join(", ") || null,
+      ].filter(Boolean).join("  ·  ");
+      para(b, meta, 8);
+      if (f.descricao_atividades) para(b, f.descricao_atividades, 8);
+      const ats = (ctx.atividades || []).filter((a: any) => a.funcao_id === f.id);
+      ats.forEach((a: any) => {
+        const det = [
+          a.caracteristica, a.frequencia, a.duracao, a.postura_esforco,
+          a.trabalhadores_envolvidos != null ? `${a.trabalhadores_envolvidos} envolvido(s)` : null,
+        ].filter(Boolean).join(" · ");
+        para(b, `– ${a.nome}${det ? `  (${det})` : ""}`, 8);
+      });
+      b.y += 1;
+    });
+  }
+
+  title(b, "Metodologia de Avaliação");
   kv(b, "Método", pgr.metodologia_avaliacao || "Matriz 5×5 (Severidade × Probabilidade)", true);
+  title(b, "Critérios da Matriz");
   drawMatriz(b);
 
   // 3. Resumo quantitativo
@@ -438,10 +659,19 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
       pdf.text(`• ${i.perigo_descricao} [${i.grupo}]`, 12, b.y + 4);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
       const cls = classeLabel(i.classificacao);
-      pdf.text(`Sev ${i.severidade} × Prob ${i.probabilidade} = ${i.severidade * i.probabilidade}  ·  ${cls}  ·  ${i.trabalhadores_expostos ?? 0} expostos`, 12, b.y + 8);
+      // Item sem avaliação imprimia "Sev null × Prob null = 0", que num documento
+      // legal sugere risco nulo. Sem nota, o texto diz que a avaliação falta.
+      const temAval = i.severidade != null && i.probabilidade != null;
+      const aval = temAval
+        ? `Sev ${i.severidade} × Prob ${i.probabilidade} = ${i.severidade * i.probabilidade}  ·  ${cls}`
+        : "Sem avaliação de severidade e probabilidade";
+      pdf.text(`${aval}  ·  ${i.trabalhadores_expostos ?? 0} expostos`, 12, b.y + 8);
       if (i.fonte_geradora) { pdf.text(`Fonte: ${i.fonte_geradora}`, 12, b.y + 11.5); b.y += 14; } else { b.y += 11; }
-      if (i.controles_existentes) {
-        const ll = pdf.splitTextToSize(`Controles: ${i.controles_existentes}`, 186);
+      const controles = Array.isArray(i.controles_existentes)
+        ? i.controles_existentes.join("; ")
+        : i.controles_existentes;
+      if (controles) {
+        const ll = pdf.splitTextToSize(`Controles: ${controles}`, 186);
         pdf.text(ll, 12, b.y); b.y += ll.length * 3.3 + 1;
       }
     });
@@ -452,31 +682,17 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   if (ctx.quadroEpis && ctx.quadroEpis.length > 0) {
     pdf.addPage(); b.y = 15;
     title(b, "Quadro Sinóptico de Utilização de EPIs");
-    // Cabeçalho da tabela
-    ensure(b, 8);
-    pdf.setFillColor(240, 240, 240); pdf.rect(10, b.y, 190, 6, "F");
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(30);
-    pdf.text("GES", 12, b.y + 4);
-    pdf.text("Função", 55, b.y + 4);
-    pdf.text("Medida de controle existente", 100, b.y + 4);
-    pdf.text("EPIs indicados", 155, b.y + 4);
-    b.y += 7;
-    pdf.setTextColor(0);
-    ctx.quadroEpis.forEach((l) => {
-      const gesTxt = pdf.splitTextToSize(`${l.ghe_codigo}\n${l.ghe_nome}`, 41);
-      const funcTxt = pdf.splitTextToSize(l.funcao, 43);
-      const medTxt = pdf.splitTextToSize(l.medida_controle, 53);
-      const epiTxt = pdf.splitTextToSize(l.epis, 43);
-      const h = Math.max(gesTxt.length, funcTxt.length, medTxt.length, epiTxt.length) * 3.4 + 3;
-      ensure(b, h + 1);
-      pdf.setDrawColor(220); pdf.line(10, b.y, 200, b.y);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
-      pdf.text(gesTxt, 12, b.y + 3);
-      pdf.text(funcTxt, 55, b.y + 3);
-      pdf.text(medTxt, 100, b.y + 3);
-      pdf.text(epiTxt, 155, b.y + 3);
-      b.y += h;
-    });
+    // Cabeçalho repetido a cada quebra: o quadro costuma passar de uma página,
+    // e sem repetir ninguém sabe qual coluna é "medida" e qual é "EPI".
+    const linha = tabela(b, [
+      { rotulo: "GES", x: 12, w: 41 },
+      { rotulo: "Função", x: 55, w: 43 },
+      { rotulo: "Medida de controle existente", x: 100, w: 53 },
+      { rotulo: "EPIs indicados", x: 155, w: 43 },
+    ]);
+    ctx.quadroEpis.forEach((l) => linha([
+      `${l.ghe_codigo}\n${l.ghe_nome}`, l.funcao, l.medida_controle, l.epis,
+    ]));
   }
 
   // 5. Plano de ação 5W2H
@@ -546,44 +762,6 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     b.y += 3;
   });
 
-  // 6. Ações atrasadas
-  title(b, "Apêndice A — Ações atrasadas");
-  if (atrasadas.length === 0) para(b, "Nenhuma ação atrasada.");
-  else atrasadas.forEach((a) => {
-    ensure(b, 6);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    pdf.text(`• ${a.descricao} — prazo ${fmtDate(a.prazo)} — ${a.status}`, 12, b.y + 3);
-    b.y += 5;
-  });
-
-  // 7. Revisões
-  title(b, "Apêndice B — Histórico de revisões");
-  if (ctx.revisoes.length === 0) para(b, "Sem revisões.");
-  ctx.revisoes.forEach((r) => {
-    ensure(b, 6);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    const linha = `${fmtDT(r.created_at)} · ${r.acao}` +
-      (r.versao_anterior != null && r.versao_nova != null ? ` · v${r.versao_anterior}→v${r.versao_nova}` : "") +
-      (r.user_email ? ` · ${r.user_email}` : "") + (r.motivo ? ` — ${r.motivo}` : "");
-    const ll = pdf.splitTextToSize(linha, 186);
-    pdf.text(ll, 12, b.y + 3); b.y += 3 + ll.length * 3.2;
-  });
-
-  // 8. Assinaturas visuais
-  title(b, "Assinaturas");
-  para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
-  if (ctx.assinaturas.length === 0) para(b, "Nenhuma assinatura visual registrada até a geração deste PDF.");
-  ctx.assinaturas.forEach((a) => {
-    ensure(b, 18);
-    pdf.setDrawColor(180); pdf.line(12, b.y + 12, 100, b.y + 12);
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-    pdf.text(a.responsavel_nome, 12, b.y + 16);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
-    pdf.text(`${a.responsavel_registro || "—"}  ·  ${fmtDT(a.assinado_em)}  ·  MFA ${a.mfa_verificado ? "OK" : "—"}  ·  PDF v${a.pdf_versao}`, 12, b.y + 19);
-    pdf.text(`Hash assinado: ${a.pdf_hash}`, 12, b.y + 22);
-    b.y += 26;
-  });
-
   // Seções finais (textos padrão editáveis)
   // Preparação e resposta a emergências (Etapa 7), antes das seções de fecho.
   if (ctx.cenarios && ctx.cenarios.length > 0) {
@@ -614,8 +792,27 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     });
   }
 
+  // Monitoramento e revisão: quando o programa precisa ser reavaliado. Sai dos
+  // campos reais do documento — periodicidade legal e gatilhos registrados.
+  title(b, "Monitoramento e Revisão");
+  kv(b, "Próxima revisão prevista", fmtDate(pgr.proxima_revisao));
+  kv(b, "Periodicidade máxima", pgr.sgsst_certificado
+    ? "3 anos — organização certificada em sistema de gestão de SST"
+    : "2 anos — NR-01 item 1.5.4.4.5");
+  if (pgr.sgsst_certificado) {
+    kv(b, "Certificação", [pgr.sgsst_norma, pgr.sgsst_certificadora,
+      pgr.sgsst_validade ? `válida até ${fmtDate(pgr.sgsst_validade)}` : null]
+      .filter(Boolean).join("  ·  ") || "—", true);
+  }
+  para(b,
+    "O programa é revisado antes do prazo sempre que ocorrer: alteração de processo, ambiente, "
+    + "máquina, produto, função ou atividade; acidente ou doença relacionada ao trabalho; "
+    + "constatação de ineficácia das medidas adotadas; alteração de requisito legal; resultado "
+    + "de avaliação ambiental que modifique a classificação de risco; mudança significativa na "
+    + "organização do trabalho; identificação de novos fatores psicossociais; ou por determinação "
+    + "da fiscalização ou do responsável técnico.", 8);
+
   const secoesFim: Array<[string, string]> = [
-    ["area_abrangencia", "Área de abrangência do PGR na empresa"],
     // Divulgar é o que se faz DEPOIS de o programa existir: esta seção estava
     // no início do documento, antes mesmo da apresentação.
     ["registro_divulgacao", "Registro e Divulgação dos Dados"],
@@ -630,6 +827,85 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     para(b, conteudo, 9, [40, 40, 40]);
   });
 
+  // Assinaturas fecham o documento, depois do encerramento — assinar é o
+  // último ato, não algo que acontece no meio do texto.
+  // 8. Assinaturas visuais
+  title(b, "Assinaturas");
+  para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
+  if (ctx.assinaturas.length === 0) para(b, "Nenhuma assinatura visual registrada até a geração deste PDF.");
+  ctx.assinaturas.forEach((a) => {
+    ensure(b, 18);
+    pdf.setDrawColor(180); pdf.line(12, b.y + 12, 100, b.y + 12);
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+    pdf.text(a.responsavel_nome, 12, b.y + 16);
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7);
+    pdf.text(`${a.responsavel_registro || "—"}  ·  ${fmtDT(a.assinado_em)}  ·  MFA ${a.mfa_verificado ? "OK" : "—"}  ·  PDF v${a.pdf_versao}`, 12, b.y + 19);
+    pdf.text(`Hash assinado: ${a.pdf_hash}`, 12, b.y + 22);
+    b.y += 26;
+  });
+
+
+  // ANEXOS. Conteúdo de auditoria interna, separado do corpo do documento.
+  pdf.addPage(); b.y = 15;
+  // 6. Ações atrasadas
+  title(b, "Apêndice A — Ações atrasadas");
+  if (atrasadas.length === 0) para(b, "Nenhuma ação atrasada.");
+  else atrasadas.forEach((a) => {
+    ensure(b, 6);
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+    pdf.text(`• ${a.descricao} — prazo ${fmtDate(a.prazo)} — ${a.status}`, 12, b.y + 3);
+    b.y += 5;
+  });
+
+  // 7. Revisões
+  title(b, "Apêndice B — Histórico de revisões");
+  if (ctx.revisoes.length === 0) para(b, "Sem revisões.");
+  ctx.revisoes.forEach((r) => {
+    ensure(b, 6);
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+    const linha = `${fmtDT(r.created_at)} · ${r.acao}` +
+      (r.versao_anterior != null && r.versao_nova != null ? ` · v${r.versao_anterior}→v${r.versao_nova}` : "") +
+      (r.user_email ? ` · ${r.user_email}` : "") + (r.motivo ? ` — ${r.motivo}` : "");
+    const ll = pdf.splitTextToSize(linha, 186);
+    pdf.text(ll, 12, b.y + 3); b.y += 3 + ll.length * 3.2;
+  });
+
+
+
+  // ── SUMÁRIO ───────────────────────────────────────────────────────────────
+  // Só dá para montar depois de tudo renderizado: antes disso não se sabe em que
+  // página cada seção caiu. A página é inserida na posição 2 (logo após a capa),
+  // o que empurra todo o resto — por isso cada número anotado ganha +1.
+  if (b.toc.length > 0) {
+    pdf.insertPage(2);
+    pdf.setPage(2);
+    const s: B = { doc: pdf, y: 15, toc: [] };
+    pdf.setFillColor(15, 23, 42); pdf.rect(10, s.y, 190, 6, "F");
+    pdf.setTextColor(255); pdf.setFontSize(10); pdf.setFont("helvetica", "bold");
+    pdf.text("Sumário", 12, s.y + 4.2); pdf.setTextColor(0); s.y += 11;
+
+    b.toc.forEach((item) => {
+      if (s.y > 272) { return; }
+      const pagina = String(item.pagina + 1);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(30);
+      const titulo = pdf.splitTextToSize(item.titulo, 160)[0];
+      pdf.text(titulo, 12, s.y);
+      const larguraTitulo = pdf.getTextWidth(titulo);
+      const larguraPagina = pdf.getTextWidth(pagina);
+      // Linha pontilhada ligando título e página, para o olho não se perder.
+      pdf.setTextColor(170);
+      const inicio = 12 + larguraTitulo + 2;
+      const fim = 198 - larguraPagina - 2;
+      if (fim > inicio) {
+        const pontos = ".".repeat(Math.max(0, Math.floor((fim - inicio) / pdf.getTextWidth("."))));
+        pdf.text(pontos, inicio, s.y);
+      }
+      pdf.setTextColor(30);
+      pdf.text(pagina, 198, s.y, { align: "right" });
+      s.y += 5.4;
+    });
+    pdf.setTextColor(0);
+  }
 
   // Rodapé com QR + hash + marca d'água
   const qrDataUrl = await QRCode.toDataURL(opts.qrUrl, { margin: 0, width: 220 });

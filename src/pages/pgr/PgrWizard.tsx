@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  ArrowLeft, ArrowRight, Building2, Check, Eye, FileText, Loader2, MapPin, Menu,
-  Network, Save, Smartphone,
+  ArrowLeft, ArrowRight, Building2, Check, Eye, FileSpreadsheet, FileText, GitCompare,
+  Loader2, MapPin, Menu, Network, Save, Smartphone, TriangleAlert,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   PgrDocumento, PgrStatus, PGR_STATUS_LABEL, isEditavel,
 } from "@/lib/pgrTypes";
@@ -30,7 +31,9 @@ import PgrChecklistTab from "@/components/pgr/PgrChecklistTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
 import MatrizRisco from "@/components/pgr/MatrizRisco";
 import { PgrEtapaProvider, useAcoesEtapa } from "@/components/pgr/PgrEtapaContext";
+import PgrPendenciasPainel, { usePgrPendencias } from "@/components/pgr/PgrPendenciasPainel";
 import { CLASSE_DECISAO, CLASSE_LABEL, CLASSE_TEXT, CLASSES_ORDENADAS } from "@/lib/pgrMatriz";
+import { exportarPgrExcel } from "@/lib/pgrExcel";
 
 type EtapaId =
   | "dados" | "ambientes" | "setores" | "funcoes" | "perigos"
@@ -157,6 +160,38 @@ function Assistente() {
     if (!progresso) return 0;
     return Math.round((ETAPAS.filter((e) => progresso[e.id]).length / ETAPAS.length) * 100);
   }, [progresso]);
+
+  const { resumo: resumoPend, ...pend } = usePgrPendencias(id, pgr?.resp_tec_nome);
+
+  /**
+   * A exportação usa os MESMOS dados já carregados para as pendências, em vez de
+   * consultar o banco de novo. Os nomes das chaves estrangeiras vêm do Núcleo
+   * Mestre; sem eles a planilha sairia com uuid nas colunas de contexto.
+   */
+  const exportarExcel = async () => {
+    if (!pgr || !pend.data) return;
+    try {
+      const daEmpresa = async (t: string) => {
+        const { data } = await (supabase.from as any)(t)
+          .select("id,nome").eq("empresa_id", pgr.empresa_id);
+        return Object.fromEntries(((data || []) as any[]).map((r) => [r.id, r.nome]));
+      };
+      const [ges, ambientes, setores, funcoes, atividades] = await Promise.all([
+        daEmpresa("sst_ges"), daEmpresa("sst_ambientes"), daEmpresa("sst_setores"),
+        daEmpresa("sst_funcoes"), daEmpresa("sst_atividades"),
+      ]);
+      exportarPgrExcel({
+        pgr,
+        empresaNome: empresa?.nome_fantasia || empresa?.nome,
+        unidadeNome: unidade?.nome_fantasia || unidade?.nome,
+        ...pend.data,
+        nomes: { ges, ambientes, setores, funcoes, atividades },
+      });
+      toast.success("Planilha gerada");
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao gerar a planilha");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -298,6 +333,10 @@ function Assistente() {
       case "emissao":
         return (
           <div className="space-y-10">
+            <Secao titulo="O que falta para emitir">
+              <PgrPendenciasPainel pgrId={pgr.id} respTecNome={pgr.resp_tec_nome}
+                onIrParaEtapa={(e) => irPara(e as EtapaId)} />
+            </Secao>
             <Secao titulo="Responsáveis e assinaturas">
               <PgrResponsaveisStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
             </Secao>
@@ -307,7 +346,7 @@ function Assistente() {
             <Secao titulo="Emergências">
               <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
             </Secao>
-            <Secao titulo="O que falta para emitir">
+            <Secao titulo="Conferência normativa">
               <PgrChecklistTab pgr={pgr} />
             </Secao>
             <Secao titulo="Gatilhos e aprovações">
@@ -368,6 +407,16 @@ function Assistente() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Bloqueios ficam visíveis o tempo todo: descobrir que faltava
+                responsável só na hora de emitir é tarde demais. */}
+            {resumoPend.bloqueios > 0 && (
+              <Button variant="outline" size="sm" className="h-10 border-red-300 text-red-700"
+                onClick={() => irPara("emissao")}>
+                <TriangleAlert className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{resumoPend.bloqueios} pendência(s)</span>
+                <span className="sm:hidden">{resumoPend.bloqueios}</span>
+              </Button>
+            )}
             {acoes.temRascunho && (
               <Button variant="outline" size="sm" className="h-10 hidden sm:inline-flex"
                 disabled={acoes.ocupado} onClick={() => acoes.salvarRascunho()}>
@@ -403,6 +452,14 @@ function Assistente() {
               <Button variant="outline" size="sm" className="w-full justify-start"
                 onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
                 <Smartphone className="h-4 w-4 mr-2" /> Levantamento em campo
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start"
+                onClick={() => navigate(`/pgr/${pgr.id}/comparar`)}>
+                <GitCompare className="h-4 w-4 mr-2" /> Comparar versões
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start"
+                onClick={exportarExcel} disabled={!pend.data}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" /> Exportar para Excel
               </Button>
             </div>
           </div>

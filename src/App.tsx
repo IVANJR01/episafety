@@ -61,6 +61,7 @@ import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
 import PgrWizard from "@/pages/pgr/PgrWizard";
 import PgrEstruturaTecnica from "@/pages/pgr/PgrEstruturaTecnica";
+import PgrComparar from "@/pages/pgr/PgrComparar";
 import LevantamentoCampo from "@/pages/campo/LevantamentoCampo";
 import PgrValidar from "@/pages/pgr/PgrValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
@@ -307,6 +308,7 @@ function ProtectedRoute() {
             estrutura técnica em árvore e coleta de campo pelo celular. */}
         <Route path="/pgr/:id" element={<PgrWizard />} />
         <Route path="/pgr/:id/estrutura" element={<PgrEstruturaTecnica />} />
+        <Route path="/pgr/:id/comparar" element={<PgrComparar />} />
         <Route path="/campo" element={<LevantamentoCampo />} />
         <Route path="/pgr/:id/classico" element={<PgrDetalhe />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
