@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { CentralDocumentacaoTab } from "@/components/documentacao/CentralDocumentacaoTab";
 import { ListaDocumentos } from "@/components/documentacao/ListaDocumentos";
@@ -16,7 +17,14 @@ import {
 
 
 export default function DocumentacaoSst() {
-  const [activeTab, setActiveTab] = useState("central");
+  // A aba vem da URL quando informada (?aba=ges). Assim outras telas conseguem
+  // apontar direto para o GES — antes existia uma página separada em
+  // /cadastro/ghe só para isso, que renderizava este mesmo componente.
+  const [searchParams] = useSearchParams();
+  const abaUrl = searchParams.get("aba");
+  const [activeTab, setActiveTab] = useState(
+    ["central", "estrutura", "ges"].includes(abaUrl || "") ? abaUrl! : "central",
+  );
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">

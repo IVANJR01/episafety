@@ -35,7 +35,6 @@ import Treinamentos from "@/pages/Treinamentos";
 
 import CadastroDashboard from "@/pages/CadastroDashboard";
 import PcmsoGhe from "@/pages/aso/PcmsoGhe";
-import CadastroGhe from "@/pages/cadastro/CadastroGhe";
 import EstruturaGhePage from "@/pages/cadastro/EstruturaGhePage";
 import CentralPPP from "@/pages/CentralPPP";
 import Backups from "@/pages/Backups";
@@ -277,7 +276,10 @@ function ProtectedRoute() {
         <Route path="/cadastro/empresas" element={<Empresas />} />
         <Route path="/cadastro/filiais" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
-        <Route path="/cadastro/ghe" element={<CadastroGhe />} />
+        {/* A tela de GES era duplicada: /cadastro/ghe montava o mesmo
+            componente da aba GES em Documentação. Vira redirecionamento para
+            não quebrar links já existentes (ex.: os do PCMSO). */}
+        <Route path="/cadastro/ghe" element={<Navigate to="/documentacao-sst?aba=ges" replace />} />
         <Route path="/cadastro/ghe/:id/estrutura" element={<EstruturaGhePage />} />
         <Route path="/cadastro/usuarios" element={<UsuariosLiberados />} />
         <Route path="/dds" element={<DDS />} />

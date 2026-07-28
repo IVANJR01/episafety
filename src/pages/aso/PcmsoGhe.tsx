@@ -94,7 +94,7 @@ export default function PcmsoGhe() {
                 <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}</SelectContent>
               </Select>
               <Button variant="outline" asChild>
-                <Link to="/cadastro/ghe"><ExternalLink className="h-4 w-4 mr-1" />Ir para Cadastro de GES/GHE</Link>
+                <Link to="/documentacao-sst?aba=ges"><ExternalLink className="h-4 w-4 mr-1" />Ir para o cadastro de GES</Link>
               </Button>
             </div>
           </div>
@@ -155,7 +155,7 @@ function GheDetailDialog({ ghe, onClose }: { ghe: any; onClose: () => void }) {
           <div className="flex items-center justify-between gap-2">
             {ghe.setor && <p className="text-sm text-muted-foreground">Setor: {ghe.setor}</p>}
             <Button size="sm" variant="outline" asChild>
-              <Link to="/cadastro/ghe"><ExternalLink className="h-3 w-3 mr-1" />Editar GES no Cadastro</Link>
+              <Link to="/documentacao-sst?aba=ges"><ExternalLink className="h-3 w-3 mr-1" />Editar GES</Link>
             </Button>
           </div>
         </DialogHeader>

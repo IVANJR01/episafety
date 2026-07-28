@@ -9,7 +9,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import type { SstGes } from "@/types/sst";
-import { Layers, Plus, Edit2, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
 
 /**
  * Cadastro dos Grupos de Exposição Similar (GES/GHE).
@@ -30,6 +31,7 @@ import { Layers, Plus, Edit2, Trash2 } from "lucide-react";
  */
 export function GesExposicoesTab() {
   const { gesList, saveGes, deleteGes } = useNucleoMestreSst();
+  const navigate = useNavigate();
 
   const [openGesModal, setOpenGesModal] = useState(false);
   const [gesFormData, setGesFormData] = useState<Partial<SstGes>>({});
@@ -79,6 +81,17 @@ export function GesExposicoesTab() {
                     <CardTitle className="text-base font-bold mt-1 break-words">{ges.nome}</CardTitle>
                   </div>
                   <div className="flex shrink-0">
+                    {/* Funções, riscos e EPIs deste GES. Essa tela era acessível
+                        só digitando a URL: nenhum link do sistema levava até
+                        ela, apesar de ser o ÚNICO lugar onde ghe_funcoes e
+                        ghe_riscos podem ser editados — e o PDF do PGR, o quadro
+                        de EPIs e o ASO leem justamente essas tabelas. */}
+                    <Button
+                      onClick={() => navigate(`/cadastro/ghe/${ges.id}/estrutura`)}
+                      variant="ghost" size="sm" title="Funções, riscos e EPIs deste grupo"
+                    >
+                      <ListTree className="w-4 h-4 text-slate-600" />
+                    </Button>
                     <Button onClick={() => { setGesFormData(ges); setOpenGesModal(true); }} variant="ghost" size="sm" title="Editar grupo">
                       <Edit2 className="w-4 h-4 text-slate-600" />
                     </Button>
