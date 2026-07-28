@@ -198,14 +198,16 @@ export default function LevantamentoPreliminarTab({ pgrId, empresaId, canEdit }:
                 </Badge>
               )}
             </div>
-            <div className="flex gap-2">
-              <div className="relative">
+            {/* No celular a busca ocupa a linha inteira: com largura fixa, ela
+                mais o botão passavam de 390px e o botão ficava cortado. */}
+            <div className="flex gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-none">
                 <Search className="h-4 w-4 absolute left-2 top-2.5 text-muted-foreground" />
                 <Input value={busca} onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Buscar perigo…" className="pl-8 h-9 w-52" />
+                  placeholder="Buscar perigo…" className="pl-8 h-9 w-full sm:w-52" />
               </div>
               {canEdit && (
-                <Button size="sm" onClick={abrirNovo}>
+                <Button size="sm" onClick={abrirNovo} className="shrink-0">
                   <Plus className="h-4 w-4 mr-1" /> Registrar perigo
                 </Button>
               )}

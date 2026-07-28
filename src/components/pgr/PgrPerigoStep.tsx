@@ -15,10 +15,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit2, Loader2, Plus, Save, Trash2, X } from "lucide-react";
+import { Edit2, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { GRUPO_LABEL } from "@/lib/pgrMatriz";
 import { ContextoSst, PgrContextoResumo, PgrContextoSelector } from "./PgrContextoSelector";
+import { useRegistrarEtapa } from "./PgrEtapaContext";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 
 interface Props {
@@ -71,13 +72,20 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
     },
   });
 
+  // A lista espelha exatamente os campos marcados com asterisco na tela — um
+  // obrigatório que não aparece aqui viraria asterisco mentiroso.
   const faltando = useMemo(() => {
     const falta: string[] = [];
+    if (!ctx.ambiente_id) falta.push("ambiente");
+    if (!ctx.setor_id) falta.push("setor");
+    if (!ctx.ges_id) falta.push("GES");
+    if (!ctx.funcao_id) falta.push("função");
+    if (!ctx.atividade_id) falta.push("atividade");
     if (!f.perigo_descricao.trim()) falta.push("perigo");
     if (!f.fonte_circunstancia.trim()) falta.push("fonte ou circunstância");
     if (!f.possiveis_lesoes.trim()) falta.push("possíveis lesões");
     if (!String(f.trabalhadores_expostos).trim()) falta.push("trabalhadores expostos");
-    if (!ctx.funcao_id) falta.push("função");
+    if (!f.medidas_existentes.trim()) falta.push("medidas de prevenção existentes");
     return falta;
   }, [f, ctx]);
 
@@ -140,6 +148,48 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const rascunho = useMutation({
+    mutationFn: async () => {
+      if (!f.perigo_descricao.trim()) throw new Error("Informe ao menos o perigo para guardar o rascunho.");
+      const { error } = await (supabase.from as any)("pgr_levantamento_preliminar").insert({
+        pgr_id: pgrId, empresa_id: empresaId,
+        ambiente_id: ctx.ambiente_id || null, processo_id: ctx.processo_id || null,
+        setor_id: ctx.setor_id || null, ges_id: ctx.ges_id || null,
+        funcao_id: ctx.funcao_id || null, atividade_id: ctx.atividade_id || null,
+        perigo_descricao: f.perigo_descricao.trim(),
+        grupo: f.grupo,
+        fonte_circunstancia: f.fonte_circunstancia.trim() || null,
+        origem: f.origem,
+        data_levantamento: f.data_levantamento,
+        responsavel_nome: f.responsavel_nome.trim() || null,
+        // Rascunho não é encaminhamento: fica pendente de avaliação até alguém
+        // completar os campos obrigatórios.
+        tratamento: "avaliacao_aprofundada",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Rascunho salvo");
+      qc.invalidateQueries({ queryKey: ["pgr-perigos-step", pgrId] });
+      fechar();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Enquanto o formulário está aberto, o rodapé do assistente comanda o
+  // salvamento. Na listagem não há o que salvar, então nada é registrado.
+  useRegistrarEtapa(
+    formAberto && canEdit
+      ? {
+          salvar: async () => {
+            try { await salvar.mutateAsync(); return true; } catch { return false; }
+          },
+          salvarRascunho: async () => { await rascunho.mutateAsync().catch(() => {}); },
+          ocupado: salvar.isPending || rascunho.isPending,
+        }
+      : null,
+  );
 
   const fechar = () => { setFormAberto(false); setEditId(null); setF(vazio); setCtx({}); };
 
@@ -272,21 +322,22 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-lg font-semibold min-w-0">
             {editId ? "Editar perigo e risco" : "Cadastrar perigo e risco"}
           </h3>
-          <Button variant="ghost" size="sm" onClick={fechar}>
+          <Button variant="ghost" size="sm" onClick={fechar} className="shrink-0 -mt-1">
             <X className="h-4 w-4 mr-1" /> Fechar
           </Button>
         </div>
 
         <PgrContextoSelector
           valor={ctx} onChange={setCtx} disabled={!canEdit}
-          obrigatorios={["funcao_id"]}
+          obrigatorios={["ambiente_id", "setor_id", "ges_id", "funcao_id", "atividade_id"]}
+          ocultar={["processo_id"]}
         />
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Categoria do perigo</Label>
@@ -343,7 +394,9 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Medidas de prevenção existentes</Label>
+            <Label className="text-sm font-medium">
+              Medidas de prevenção existentes <span className="text-red-500">*</span>
+            </Label>
             <Textarea rows={2} value={f.medidas_existentes} disabled={!canEdit}
               onChange={(e) => setF({ ...f, medidas_existentes: e.target.value })}
               placeholder="Descreva as medidas de prevenção já existentes" />
@@ -369,26 +422,14 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
           </div>
         </div>
 
+        {/* O que falta aparece aqui; gravar e avançar ficam no rodapé do
+            assistente, para não haver dois pares de botões na mesma tela. */}
         {faltando.length > 0 && (
           <Card className="border-amber-300 bg-amber-50">
             <CardContent className="p-3 text-sm text-amber-900">
               Ainda falta preencher: <b>{faltando.join(", ")}</b>.
             </CardContent>
           </Card>
-        )}
-
-        {canEdit && (
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <Button variant="outline" size="lg" onClick={fechar} className="sm:mr-auto">
-              Cancelar
-            </Button>
-            <Button size="lg" onClick={() => salvar.mutate()} disabled={salvar.isPending}>
-              {salvar.isPending
-                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                : <Save className="h-4 w-4 mr-2" />}
-              Salvar perigo
-            </Button>
-          </div>
         )}
       </div>
 

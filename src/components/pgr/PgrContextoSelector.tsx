@@ -180,13 +180,13 @@ export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
   ];
 
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <h3 className="font-semibold mb-3">Contexto selecionado</h3>
-      <div className="space-y-3">
+    <div className="rounded-xl border bg-card p-5">
+      <h3 className="font-semibold mb-4">Contexto selecionado</h3>
+      <ul className="divide-y">
         {linhas.map(({ icone: Icone, rotulo, valor: v }) => (
-          <div key={rotulo} className="flex items-start gap-3">
-            <span className="mt-0.5 h-8 w-8 shrink-0 rounded-full bg-muted grid place-items-center">
-              <Icone className="h-4 w-4 text-muted-foreground" />
+          <li key={rotulo} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <span className="h-10 w-10 shrink-0 rounded-full border grid place-items-center">
+              <Icone className={`h-[18px] w-[18px] ${v ? "text-primary" : "text-muted-foreground"}`} />
             </span>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">{rotulo}</p>
@@ -194,9 +194,9 @@ export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
                 {v || "A definir"}
               </p>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

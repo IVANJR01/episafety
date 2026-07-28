@@ -197,7 +197,7 @@ export default function LevantamentoCampo() {
   );
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-8">
+    <div className="pgr-module min-h-screen bg-muted/30 pb-8">
       <header className="sticky top-0 z-20 bg-background border-b px-4 pt-3 pb-3">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => navigate(pgrId ? `/pgr/${pgrId}` : "/pgr")}>

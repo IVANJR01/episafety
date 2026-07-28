@@ -56,6 +56,27 @@
   }
 }
 
+/*
+ * Paleta do módulo de documentação técnica (PGR).
+ *
+ * O app usa laranja como primária. As telas de elaboração do PGR são de leitura
+ * longa e densas em tabela — o laranja saturado em botão, badge e barra de
+ * progresso ao mesmo tempo cansa e faz a tela parecer painel de indicadores.
+ * Aqui a primária vira o azul-petróleo do padrão de documento técnico.
+ *
+ * Só as variáveis são trocadas: os componentes continuam sendo os mesmos do
+ * design system, então nada além do que estiver dentro de .pgr-module muda.
+ */
+@layer base {
+  .pgr-module {
+    --primary: 200 68% 20%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 200 68% 20%;
+    --accent: 200 60% 94%;
+    --accent-foreground: 200 68% 20%;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

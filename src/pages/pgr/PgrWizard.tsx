@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  ArrowLeft, ArrowRight, Check, FileText, ListChecks, Loader2, Menu, Network, Smartphone,
+  ArrowLeft, ArrowRight, Building2, Check, Eye, FileText, Loader2, MapPin, Menu,
+  Network, Save, Smartphone,
 } from "lucide-react";
 import {
-  PgrDocumento, PgrStatus, PGR_STATUS_LABEL, PGR_STATUS_COLOR, isEditavel,
+  PgrDocumento, PgrStatus, PGR_STATUS_LABEL, isEditavel,
 } from "@/lib/pgrTypes";
 
 import PgrDadosStep from "@/components/pgr/PgrDadosStep";
@@ -28,11 +29,12 @@ import GovernancaTab from "@/components/pgr/GovernancaTab";
 import PgrChecklistTab from "@/components/pgr/PgrChecklistTab";
 import PgrPdfTab from "@/components/pgr/PgrPdfTab";
 import MatrizRisco from "@/components/pgr/MatrizRisco";
+import { PgrEtapaProvider, useAcoesEtapa } from "@/components/pgr/PgrEtapaContext";
 import { CLASSE_DECISAO, CLASSE_LABEL, CLASSE_TEXT, CLASSES_ORDENADAS } from "@/lib/pgrMatriz";
 
 type EtapaId =
-  | "dados" | "empresa" | "ambientes" | "setores" | "funcoes" | "perigos"
-  | "avaliacao" | "inventario" | "acoes" | "complementares" | "responsaveis" | "emissao";
+  | "dados" | "ambientes" | "setores" | "funcoes" | "perigos"
+  | "avaliacao" | "inventario" | "acoes" | "emissao";
 
 interface Etapa {
   id: EtapaId;
@@ -42,28 +44,39 @@ interface Etapa {
   ajuda: string;
 }
 
+/**
+ * Nove etapas. As anteriores "Empresa e unidade" e "Dados do PGR" tratavam do
+ * mesmo cadastro em duas telas, e "Documentos complementares" e "Responsáveis"
+ * eram dois cliques a mais logo antes de emitir — viraram seções dentro das
+ * etapas correspondentes. Menos passos, mesmo conteúdo.
+ */
 const ETAPAS: Etapa[] = [
-  { id: "dados", n: 1, titulo: "Dados do PGR", ajuda: "Datas, escopo e prazo de revisão do programa." },
-  { id: "empresa", n: 2, titulo: "Empresa e unidade", ajuda: "Qual unidade este PGR cobre e seus dados de identificação." },
-  { id: "ambientes", n: 3, titulo: "Ambientes e processos", ajuda: "Onde se trabalha e o que é feito em cada lugar." },
-  { id: "setores", n: 4, titulo: "Setores e GES", ajuda: "Divisão da empresa e agrupamento de quem tem a mesma exposição." },
-  { id: "funcoes", n: 5, titulo: "Funções e atividades", ajuda: "Cargos existentes e o que cada um faz." },
-  { id: "perigos", n: 6, titulo: "Perigos e riscos", ajuda: "Levantamento: o que pode causar dano e de onde veio essa informação." },
-  { id: "avaliacao", n: 7, titulo: "Avaliação dos riscos", ajuda: "Os critérios usados para classificar cada risco." },
-  { id: "inventario", n: 8, titulo: "Inventário de riscos", ajuda: "A lista completa de riscos avaliados." },
-  { id: "acoes", n: 9, titulo: "Plano de ação", ajuda: "O que será feito para reduzir cada risco, por quem e até quando." },
-  { id: "complementares", n: 10, titulo: "Documentos complementares", ajuda: "EPIs e preparação para emergências." },
-  { id: "responsaveis", n: 11, titulo: "Responsáveis e assinaturas", ajuda: "Quem elaborou, revisou e aprova o programa." },
-  { id: "emissao", n: 12, titulo: "Revisão e emissão", ajuda: "Pendências, geração do PDF e publicação." },
+  { id: "dados", n: 1, titulo: "Dados do PGR", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
+  { id: "ambientes", n: 2, titulo: "Ambientes e processos", ajuda: "Onde se trabalha e o que é feito em cada lugar." },
+  { id: "setores", n: 3, titulo: "Setores e GES", ajuda: "Divisão da empresa e agrupamento de quem tem a mesma exposição." },
+  { id: "funcoes", n: 4, titulo: "Funções e atividades", ajuda: "Cargos existentes e o que cada um faz." },
+  { id: "perigos", n: 5, titulo: "Perigos e riscos", ajuda: "O que pode causar dano, onde ocorre e de onde veio a informação." },
+  { id: "avaliacao", n: 6, titulo: "Avaliação", ajuda: "Os critérios usados para classificar cada risco." },
+  { id: "inventario", n: 7, titulo: "Inventário", ajuda: "A lista completa de riscos avaliados." },
+  { id: "acoes", n: 8, titulo: "Plano de ação", ajuda: "O que será feito para reduzir cada risco, por quem e até quando." },
+  { id: "emissao", n: 9, titulo: "Revisão e emissão", ajuda: "Complementares, responsáveis, pendências e geração do documento." },
 ];
 
 export default function PgrWizard() {
+  return (
+    <PgrEtapaProvider>
+      <Assistente />
+    </PgrEtapaProvider>
+  );
+}
+
+function Assistente() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const perms = usePermissions("pgr");
   const [params, setParams] = useSearchParams();
   const [menuAberto, setMenuAberto] = useState(false);
+  const acoes = useAcoesEtapa();
 
   const etapaAtual = (params.get("etapa") as EtapaId) || "dados";
   const idx = Math.max(0, ETAPAS.findIndex((e) => e.id === etapaAtual));
@@ -88,6 +101,16 @@ export default function PgrWizard() {
     enabled: !!id,
   });
 
+  const { data: empresa } = useQuery({
+    queryKey: ["pgr-wiz-empresa", pgr?.empresa_id],
+    enabled: !!pgr,
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("empresa_config")
+        .select("nome,nome_fantasia").eq("id", pgr!.empresa_id).maybeSingle();
+      return data;
+    },
+  });
+
   const { data: unidade } = useQuery({
     queryKey: ["pgr-wiz-unidade", pgr?.unidade_id, pgr?.empresa_id],
     enabled: !!pgr,
@@ -99,13 +122,13 @@ export default function PgrWizard() {
     },
   });
 
-  // Progresso: cada etapa vale 1/12. É indicativo de preenchimento, não de
-  // conformidade — quem diz se pode emitir é o checklist da etapa 12.
+  // Progresso: cada etapa vale 1/9. É indicativo de preenchimento, não de
+  // conformidade — quem diz se pode emitir é o checklist da etapa 9.
   const { data: progresso } = useQuery({
     queryKey: ["pgr-wiz-progresso", id],
     enabled: !!pgr,
     queryFn: async () => {
-      const [inv, acoes, lev, resp, amb, set, fun] = await Promise.all([
+      const [inv, acs, lev, resp, amb, set, fun] = await Promise.all([
         (supabase.from as any)("pgr_inventario_itens").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("pgr_acoes").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("pgr_levantamento_preliminar").select("id").eq("pgr_id", id).limit(1),
@@ -116,26 +139,23 @@ export default function PgrWizard() {
       ]);
       const tem = (r: any) => (r?.data?.length ?? 0) > 0;
       return {
-        dados: !!(pgr!.data_emissao || pgr!.escopo),
-        empresa: !!(pgr!.cnpj_snapshot || pgr!.cnae_principal),
+        dados: !!(pgr!.data_emissao || pgr!.escopo) && !!(pgr!.cnpj_snapshot || pgr!.cnae_principal),
         ambientes: tem(amb),
         setores: tem(set),
         funcoes: tem(fun),
         perigos: tem(lev),
         avaliacao: !!(pgr as any)!.matriz_versao_id,
         inventario: tem(inv),
-        acoes: tem(acoes),
-        complementares: true,
-        responsaveis: tem(resp) || !!(pgr!.resp_tec_nome || "").trim(),
-        emissao: pgr!.status === "vigente",
+        acoes: tem(acs),
+        emissao: pgr!.status === "vigente"
+          && (tem(resp) || !!(pgr!.resp_tec_nome || "").trim()),
       } as Record<EtapaId, boolean>;
     },
   });
 
   const pct = useMemo(() => {
     if (!progresso) return 0;
-    const feitas = ETAPAS.filter((e) => progresso[e.id]).length;
-    return Math.round((feitas / ETAPAS.length) * 100);
+    return Math.round((ETAPAS.filter((e) => progresso[e.id]).length / ETAPAS.length) * 100);
   }, [progresso]);
 
   if (isLoading) {
@@ -156,65 +176,76 @@ export default function PgrWizard() {
 
   const status = pgr.status as PgrStatus;
   const editavel = isEditavel(status) && perms.canEdit;
+  const ano = pgr.data_vigencia_inicio?.slice(0, 4) || pgr.data_emissao?.slice(0, 4) || "";
 
+  /** Trilha numerada com o fio ligando as etapas, como no desenho. */
   const ListaEtapas = () => (
-    <nav className="space-y-1">
-      {ETAPAS.map((e) => {
-        const ativa = e.id === etapaAtual;
-        const feita = progresso?.[e.id];
-        return (
-          <button
-            key={e.id}
-            onClick={() => irPara(e.id)}
-            className={`w-full text-left rounded-lg px-3 py-2.5 flex items-start gap-2.5 transition ${
-              ativa ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-            }`}
-          >
-            <span
-              className={`shrink-0 w-6 h-6 rounded-full grid place-items-center text-xs font-semibold ${
-                ativa
-                  ? "bg-primary-foreground/20"
-                  : feita
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-muted-foreground/15 text-muted-foreground"
-              }`}
-            >
-              {feita && !ativa ? <Check className="h-3.5 w-3.5" /> : e.n}
-            </span>
-            <span className="text-sm leading-tight">{e.titulo}</span>
-          </button>
-        );
-      })}
+    <nav className="relative">
+      <span className="absolute left-[19px] top-4 bottom-4 w-px bg-border" aria-hidden />
+      <ul className="relative space-y-1">
+        {ETAPAS.map((e) => {
+          const ativa = e.id === etapaAtual;
+          const feita = progresso?.[e.id];
+          return (
+            <li key={e.id}>
+              <button
+                onClick={() => irPara(e.id)}
+                aria-current={ativa ? "step" : undefined}
+                className={`w-full text-left rounded-full pl-1.5 pr-4 py-1.5 flex items-center gap-3 transition ${
+                  ativa ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                }`}
+              >
+                <span
+                  className={`shrink-0 w-8 h-8 rounded-full grid place-items-center text-sm font-semibold ring-4 ring-background ${
+                    ativa
+                      ? "bg-primary-foreground text-primary"
+                      : feita
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {feita && !ativa ? <Check className="h-4 w-4" /> : e.n}
+                </span>
+                <span className="text-sm leading-tight">{e.titulo}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 
   const conteudo = () => {
     switch (etapa.id) {
       case "dados":
-        return <PgrDadosStep pgr={pgr} canEdit={editavel} />;
-      case "empresa":
-        return <PgrDadosStep pgr={pgr} canEdit={editavel} escopo />;
+        return (
+          <div className="space-y-10">
+            <PgrDadosStep pgr={pgr} canEdit={editavel} escopo />
+            <div className="border-t pt-8">
+              <PgrDadosStep pgr={pgr} canEdit={editavel} />
+            </div>
+          </div>
+        );
       case "ambientes":
         return (
-          <div className="space-y-8">
+          <div className="space-y-10">
             <EstruturaOcupacionalTab only="ambientes" />
             <EstruturaOcupacionalTab only="processos" />
           </div>
         );
       case "setores":
         return (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <EstruturaOcupacionalTab only="setores" />
             <p className="text-sm text-muted-foreground">
-              Os GES (grupos de exposição semelhante) são cadastrados na aba GES do módulo de
-              documentação — um GES reúne trabalhadores com a mesma exposição, não apenas do
-              mesmo setor.
+              Os GES são cadastrados na aba GES do módulo de documentação. Um GES reúne
+              trabalhadores com a mesma exposição — não é outro nome para setor.
             </p>
           </div>
         );
       case "funcoes":
         return (
-          <div className="space-y-8">
+          <div className="space-y-10">
             <EstruturaOcupacionalTab only="funcoes" />
             <EstruturaOcupacionalTab only="atividades" />
           </div>
@@ -264,152 +295,210 @@ export default function PgrWizard() {
           <PlanoAcaoTab pgrId={pgr.id} empresaId={pgr.empresa_id} pgrVersao={pgr.versao}
             status={status} canEdit={perms.canEdit} pgr={pgr} />
         );
-      case "complementares":
-        return (
-          <div className="space-y-8">
-            <section className="space-y-3">
-              <h3 className="font-semibold">Quadro de EPIs</h3>
-              <QuadroEpisTab pgrId={pgr.id} empresaId={pgr.empresa_id} />
-            </section>
-            <section className="space-y-3">
-              <h3 className="font-semibold">Emergências</h3>
-              <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
-            </section>
-          </div>
-        );
-      case "responsaveis":
-        return <PgrResponsaveisStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />;
       case "emissao":
         return (
-          <div className="space-y-8">
-            <section className="space-y-3">
-              <h3 className="font-semibold flex items-center gap-2">
-                <ListChecks className="h-4 w-4" /> O que falta para emitir
-              </h3>
+          <div className="space-y-10">
+            <Secao titulo="Responsáveis e assinaturas">
+              <PgrResponsaveisStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+            </Secao>
+            <Secao titulo="Quadro de EPIs">
+              <QuadroEpisTab pgrId={pgr.id} empresaId={pgr.empresa_id} />
+            </Secao>
+            <Secao titulo="Emergências">
+              <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+            </Secao>
+            <Secao titulo="O que falta para emitir">
               <PgrChecklistTab pgr={pgr} />
-            </section>
-            <section className="space-y-3">
-              <h3 className="font-semibold">Gatilhos e aprovações</h3>
+            </Secao>
+            <Secao titulo="Gatilhos e aprovações">
               <GovernancaTab pgr={pgr} canEdit={editavel} />
-            </section>
-            <section className="space-y-3">
-              <h3 className="font-semibold">Documento</h3>
+            </Secao>
+            <Secao titulo="Documento">
               <PgrPdfTab pgr={pgr} canEdit={perms.canEdit} canExport={perms.canEdit} canAssinar={perms.canEdit} />
-            </section>
+            </Secao>
           </div>
         );
     }
   };
 
+  const avancar = async () => {
+    if (acoes.temSalvar && !(await acoes.salvar())) return;
+    if (idx < ETAPAS.length - 1) irPara(ETAPAS[idx + 1].id);
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Cabeçalho fixo: identifica o documento e concentra as duas ações globais. */}
+    <div className="pgr-module min-h-screen bg-muted/40">
+      {/* Cabeçalho: identifica o documento e reúne progresso e ações globais. */}
       <header className="sticky top-0 z-20 bg-background border-b">
-        <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/pgr")} className="shrink-0">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Documentos
-          </Button>
-
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="font-semibold truncate">PGR — {unidade?.nome_fantasia || unidade?.nome || "Empresa"}</h1>
-              <Badge variant="outline" className={PGR_STATUS_COLOR[status]}>{PGR_STATUS_LABEL[status]}</Badge>
-              <Badge variant="outline">v{pgr.versao}</Badge>
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="h-1.5 rounded-full bg-muted flex-1 max-w-[220px] overflow-hidden">
-                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
-              </div>
-              <span className="text-xs text-muted-foreground shrink-0">{pct}% preenchido</span>
-            </div>
-          </div>
-
-          {/* Os outros dois modos de uso do mesmo PGR. No celular ficam abaixo,
-              junto do seletor de etapas, para não espremer o cabeçalho. */}
-          <div className="hidden md:flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
-              <Network className="h-4 w-4 mr-1" /> Estrutura técnica
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
-              <Smartphone className="h-4 w-4 mr-1" /> Campo
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => irPara("emissao")}>
-              <FileText className="h-4 w-4 mr-1" /> Visualizar documento
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile: as etapas viram um painel deslizante. */}
-        <div className="lg:hidden px-4 pb-3 space-y-2">
+        <div className="px-3 sm:px-5 h-16 flex items-center gap-3">
           <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
             <SheetTrigger asChild>
-              <Button variant="outline" className="w-full justify-start h-11">
-                <Menu className="h-4 w-4 mr-2" />
-                <span className="truncate">Etapas do PGR — {etapa.n}. {etapa.titulo}</span>
+              <Button variant="ghost" size="icon" className="lg:hidden shrink-0" aria-label="Etapas do PGR">
+                <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[85vw] max-w-sm overflow-y-auto">
-              <h2 className="font-semibold mb-3 mt-2">Etapas do PGR</h2>
+            <SheetContent side="left" className="pgr-module w-[85vw] max-w-sm overflow-y-auto">
+              <h2 className="font-semibold mb-4 mt-2">Etapas do PGR</h2>
               <ListaEtapas />
             </SheetContent>
           </Sheet>
-          <div className="grid grid-cols-3 gap-2 md:hidden">
-            <Button variant="outline" size="sm" className="h-10"
-              onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
-              <Network className="h-4 w-4 mr-1" /> Estrutura
-            </Button>
-            <Button variant="outline" size="sm" className="h-10"
-              onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
-              <Smartphone className="h-4 w-4 mr-1" /> Campo
-            </Button>
-            <Button variant="outline" size="sm" className="h-10" onClick={() => irPara("emissao")}>
-              <FileText className="h-4 w-4 mr-1" /> Documento
+
+          <Button variant="ghost" size="sm" onClick={() => navigate("/pgr")}
+            className="hidden lg:inline-flex shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+
+          {/* Identificação em "chips". Some por ordem de importância conforme
+              a tela estreita, em vez de espremer ou cortar texto. */}
+          <div className="flex items-center gap-4 min-w-0 flex-1 overflow-hidden">
+            <Chip icone={Building2} rotulo="Empresa" valor={empresa?.nome_fantasia || empresa?.nome}
+              className="hidden xl:flex" />
+            <Chip icone={MapPin} rotulo="Unidade" valor={unidade?.nome_fantasia || unidade?.nome}
+              className="hidden md:flex" />
+            <Chip icone={FileText} rotulo="PGR" valor={ano} />
+            <StatusPill status={status} />
+          </div>
+
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
+            <span className="text-sm text-muted-foreground">Progresso</span>
+            <div className="h-2 w-28 rounded-full bg-muted overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-sm font-medium tabular-nums w-10">{pct}%</span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {acoes.temRascunho && (
+              <Button variant="outline" size="sm" className="h-10 hidden sm:inline-flex"
+                disabled={acoes.ocupado} onClick={() => acoes.salvarRascunho()}>
+                <Save className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Salvar</span>
+              </Button>
+            )}
+            <Button size="sm" className="h-10" onClick={() => irPara("emissao")}>
+              <Eye className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Visualizar</span>
             </Button>
           </div>
         </div>
+
+        {/* Barra de progresso em tela estreita, onde o par rótulo+número não cabe. */}
+        <div className="lg:hidden px-3 pb-2 flex items-center gap-2">
+          <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+            <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="text-xs text-muted-foreground tabular-nums">{pct}%</span>
+        </div>
       </header>
 
-      <div className="flex">
-        <aside className="hidden lg:block w-72 shrink-0 border-r min-h-[calc(100vh-73px)] p-3">
-          <ListaEtapas />
+      <div className="flex gap-6 px-3 sm:px-5 py-5 max-w-[1600px] mx-auto">
+        <aside className="hidden lg:block w-64 shrink-0">
+          <div className="sticky top-24">
+            <ListaEtapas />
+            <div className="mt-6 pt-5 border-t space-y-2">
+              <Button variant="outline" size="sm" className="w-full justify-start"
+                onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
+                <Network className="h-4 w-4 mr-2" /> Estrutura técnica
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start"
+                onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
+                <Smartphone className="h-4 w-4 mr-2" /> Levantamento em campo
+              </Button>
+            </div>
+          </div>
         </aside>
 
-        <main className="flex-1 min-w-0 p-4 sm:p-6">
-          <div className="mb-5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Etapa {etapa.n} de {ETAPAS.length}
-            </p>
-            <h2 className="text-xl sm:text-2xl font-bold mt-0.5">{etapa.titulo}</h2>
-            <p className="text-sm text-muted-foreground mt-1">{etapa.ajuda}</p>
-          </div>
+        <main className="flex-1 min-w-0">
+          <div className="bg-card border rounded-xl">
+            <div className="p-5 sm:p-7">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{etapa.titulo}</h1>
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
+                  Etapa {etapa.n} de {ETAPAS.length}
+                </span>
+                <span className="text-sm text-muted-foreground">{etapa.ajuda}</span>
+              </div>
 
-          {!editavel && status !== "vigente" && (
-            <Card className="border-amber-300 bg-amber-50 mb-4">
-              <CardContent className="p-3 text-sm text-amber-900">
-                Este PGR está <b>{PGR_STATUS_LABEL[status]}</b> e não permite edição direta.
-                Abra uma revisão para alterar o conteúdo.
-              </CardContent>
-            </Card>
-          )}
+              {!editavel && status !== "vigente" && (
+                <Card className="border-amber-300 bg-amber-50 mt-5">
+                  <CardContent className="p-3 text-sm text-amber-900">
+                    Este PGR está <b>{PGR_STATUS_LABEL[status]}</b> e não permite edição direta.
+                    Abra uma revisão para alterar o conteúdo.
+                  </CardContent>
+                </Card>
+              )}
 
-          {conteudo()}
+              <div className="mt-7">{conteudo()}</div>
+            </div>
 
-          <div className="flex items-center justify-between gap-3 mt-10 pt-5 border-t">
-            <Button
-              variant="outline" size="lg" disabled={idx === 0}
-              onClick={() => irPara(ETAPAS[idx - 1].id)}
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" /> Anterior
-            </Button>
-            <Button
-              size="lg" disabled={idx === ETAPAS.length - 1}
-              onClick={() => irPara(ETAPAS[idx + 1].id)}
-            >
-              Próxima <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
+            {/* Rodapé de navegação dentro do próprio cartão. */}
+            <div className="border-t p-4 sm:px-7 flex flex-col-reverse sm:flex-row sm:items-center gap-3">
+              <Button variant="outline" size="lg" disabled={idx === 0}
+                onClick={() => irPara(ETAPAS[idx - 1].id)} className="sm:mr-auto">
+                <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+              </Button>
+              {acoes.temRascunho && (
+                <Button variant="outline" size="lg" disabled={acoes.ocupado}
+                  onClick={() => acoes.salvarRascunho()}>
+                  <FileText className="h-4 w-4 mr-2" /> Salvar rascunho
+                </Button>
+              )}
+              <Button size="lg" onClick={avancar}
+                disabled={acoes.ocupado || (idx === ETAPAS.length - 1 && !acoes.temSalvar)}>
+                {acoes.ocupado && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {acoes.temSalvar
+                  ? "Salvar e continuar"
+                  : idx === ETAPAS.length - 1 ? "Concluir" : "Continuar"}
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
           </div>
         </main>
       </div>
     </div>
+  );
+}
+
+function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="font-semibold text-lg">{titulo}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Chip({
+  icone: Icone, rotulo, valor, className = "",
+}: { icone: any; rotulo: string; valor?: string | null; className?: string }) {
+  if (!valor) return null;
+  return (
+    <span className={`items-center gap-2 min-w-0 ${className || "flex"}`}>
+      <Icone className="h-4 w-4 text-muted-foreground shrink-0" />
+      <span className="text-sm truncate">
+        <span className="text-muted-foreground">{rotulo}: </span>
+        <span className="font-medium">{valor}</span>
+      </span>
+    </span>
+  );
+}
+
+/** Ponto colorido + rótulo, como no desenho — o texto carrega o significado. */
+function StatusPill({ status }: { status: PgrStatus }) {
+  const cor: Partial<Record<PgrStatus, string>> = {
+    rascunho: "bg-amber-500",
+    em_revisao_tecnica: "bg-sky-500",
+    aguardando_aprovacao: "bg-indigo-500",
+    aguardando_assinatura: "bg-violet-500",
+    vigente: "bg-emerald-500",
+    em_revisao: "bg-amber-500",
+    substituido: "bg-slate-400",
+    arquivado: "bg-slate-400",
+  };
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 shrink-0">
+      <span className={`h-2 w-2 rounded-full ${cor[status] || "bg-slate-400"}`} />
+      <span className="text-sm font-medium whitespace-nowrap">{PGR_STATUS_LABEL[status]}</span>
+    </span>
   );
 }
