@@ -65,11 +65,6 @@ export default function Faturas() {
     if (isSuperAdmin || isPrincipal) loadData();
   }, [isSuperAdmin, isPrincipal]);
 
-  // Only super_admin and principal can see this module
-  if (!isSuperAdmin && !isPrincipal) {
-    return <Navigate to="/" replace />;
-  }
-
   async function loadData() {
     setLoading(true);
     const [fRes, eRes] = await Promise.all([
@@ -181,6 +176,17 @@ export default function Faturas() {
     const pendentes = faturas.filter(f => f.situacao === "aberto" && f.data_vencimento >= hoje);
     return { vencidas: vencidas.length, pendentes: pendentes.length };
   }, [faturas]);
+
+  // Só super_admin e principal veem este módulo.
+  //
+  // A guarda fica DEPOIS de todos os hooks. Antes dela ficava logo no começo do
+  // componente, e isSuperAdmin nasce false até o perfil carregar: o primeiro
+  // render saía pelo return sem executar os três useMemo, o seguinte executava,
+  // e o React derrubava a tela com "Rendered more hooks than during the previous
+  // render". Hook não pode ficar atrás de return condicional.
+  if (!isSuperAdmin && !isPrincipal) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="space-y-6">

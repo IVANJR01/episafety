@@ -9,14 +9,13 @@ import { hasPermission } from "@/lib/permissions";
 export default function AsoDiagnostico() {
   const { user, empresaId, isSuperAdmin, isPrincipal, modulosPermitidos } = useAuth();
 
-  // Mostrar apenas para admins / principal
-  if (!isSuperAdmin && !isPrincipal) return null;
-
   const urlEmpresaId = new URLSearchParams(window.location.search).get("empresa_id") || empresaId;
 
   const { data } = useQuery({
     queryKey: ["aso-diag", urlEmpresaId],
-    enabled: !!urlEmpresaId,
+    // A consulta também espera o papel: sem isso o diagnóstico seria buscado
+    // para quem nunca vai vê-lo.
+    enabled: !!urlEmpresaId && (isSuperAdmin || isPrincipal),
     queryFn: async () => {
       const [f, e, g, a] = await Promise.all([
         supabase.from("funcionarios").select("id", { count: "exact", head: true }).eq("empresa_id", urlEmpresaId!),
@@ -31,6 +30,14 @@ export default function AsoDiagnostico() {
   const podeASO = isSuperAdmin || isPrincipal || hasPermission(modulosPermitidos, "aso", "view");
   const empresaMatch = !urlEmpresaId || !empresaId || urlEmpresaId === empresaId;
   const perfil = isSuperAdmin ? "Super Admin" : isPrincipal ? "Principal" : "Usuário";
+
+  // Mostrar apenas para admins / principal.
+  //
+  // A guarda fica DEPOIS do useQuery. Antes dela ficava no topo do componente, e
+  // isSuperAdmin nasce false até o perfil carregar: o primeiro render saía sem
+  // executar o hook, o seguinte executava, e o React derrubava a tela com
+  // "Rendered more hooks than during the previous render".
+  if (!isSuperAdmin && !isPrincipal) return null;
 
   return (
     <Card className="border-dashed bg-muted/30">
