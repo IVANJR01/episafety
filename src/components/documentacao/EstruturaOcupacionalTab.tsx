@@ -14,6 +14,16 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { Building2, Home, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2 } from "lucide-react";
 
+/** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
+const ROTULO_MODAL: Record<string, string> = {
+  estabelecimento: "estabelecimento",
+  ambiente: "ambiente",
+  setor: "setor",
+  processo: "processo",
+  funcao: "função",
+  atividade: "atividade",
+};
+
 type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes" | "atividades";
 
 interface EstruturaProps {
@@ -423,7 +433,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                             {func.exige_nr10 && <Badge className="bg-amber-600 text-white text-[10px]">NR-10</Badge>}
                             {func.exige_nr33 && <Badge className="bg-red-600 text-white text-[10px]">NR-33</Badge>}
                             {func.exige_nr35 && <Badge className="bg-blue-600 text-white text-[10px]">NR-35</Badge>}
-                            {!func.exige_nr10 && !func.exige_nr33 && !func.exige_nr35 && <span className="text-xs text-slate-400">Padrão</span>}
+                            {!func.exige_nr10 && !func.exige_nr33 && !func.exige_nr35 && <span className="text-slate-400">—</span>}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -537,7 +547,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {formData.id ? "Editar" : "Cadastrar"} {modalType}
+              {formData.id ? "Editar" : "Cadastrar"} {ROTULO_MODAL[modalType]}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 text-sm">
@@ -754,49 +764,144 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     </SelectContent>
                   </Select>
                 </div>
+                {/* Estes campos alimentam a coluna "Características" da tabela e
+                    a seção "Caracterização dos Ambientes" do PDF. Sem eles a
+                    coluna existia e nunca podia ser preenchida. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Pé-direito</Label>
+                    <Input value={formData.pe_direito || ""} placeholder="Ex.: 3 m"
+                      onChange={(e) => setFormData({ ...formData, pe_direito: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Piso</Label>
+                    <Input value={formData.piso || ""} placeholder="Cerâmico, concreto…"
+                      onChange={(e) => setFormData({ ...formData, piso: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Ventilação</Label>
+                    <Input value={formData.ventilacao || ""} placeholder="Natural, forçada…"
+                      onChange={(e) => setFormData({ ...formData, ventilacao: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Iluminação</Label>
+                    <Input value={formData.iluminacao || ""} placeholder="Natural, artificial…"
+                      onChange={(e) => setFormData({ ...formData, iluminacao: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Paredes / cobertura</Label>
+                    <Input value={formData.paredes || ""} placeholder="Alvenaria, laje…"
+                      onChange={(e) => setFormData({ ...formData, paredes: e.target.value })} />
+                  </div>
+                </div>
                 <div>
-                  <Label>Descrição Completa do Local</Label>
+                  <Label>Máquinas e instalações</Label>
+                  <Input value={formData.maquinas_instalacoes || ""}
+                    onChange={(e) => setFormData({ ...formData, maquinas_instalacoes: e.target.value })}
+                    placeholder="Equipamentos presentes no ambiente" />
+                </div>
+                <div>
+                  <Label>Observações</Label>
                   <Textarea
                     value={formData.descricao || ""}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    placeholder="Detalhe estrutura, piso, ventilação e instalações..."
+                    placeholder="Qualquer detalhe que os campos acima não cubram"
                   />
                 </div>
               </>
             )}
 
             {modalType === "setor" && (
-              <div>
-                <Label>Ambiente Físico Vinculado</Label>
-                <Select
-                  value={formData.ambiente_id || ""}
-                  onValueChange={(val) => setFormData({ ...formData, ambiente_id: val })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Selecione o ambiente..." /></SelectTrigger>
-                  <SelectContent>
-                    {ambientes.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div>
+                  <Label>Ambiente Físico Vinculado</Label>
+                  <Select
+                    value={formData.ambiente_id || ""}
+                    onValueChange={(val) => setFormData({ ...formData, ambiente_id: val })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione o ambiente..." /></SelectTrigger>
+                    <SelectContent>
+                      {ambientes.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* "Responsável" era coluna na tabela sem campo aqui. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Responsável pelo setor</Label>
+                    <Input value={formData.responsavel_setor || ""}
+                      onChange={(e) => setFormData({ ...formData, responsavel_setor: e.target.value })}
+                      placeholder="Nome de quem responde pelo setor" />
+                  </div>
+                  <div>
+                    <Label>Jornada / turnos</Label>
+                    <Input value={formData.jornada_turnos || ""} placeholder="Ex.: 08h-17h"
+                      onChange={(e) => setFormData({ ...formData, jornada_turnos: e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Descrição</Label>
+                  <Textarea value={formData.descricao || ""}
+                    onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                    placeholder="O que este setor faz" />
+                </div>
+              </>
             )}
 
             {modalType === "processo" && (
-              <div>
-                <Label>Setor Responsável *</Label>
-                <Select
-                  value={formData.setor_id || ""}
-                  onValueChange={(val) => setFormData({ ...formData, setor_id: val })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Selecione o setor..." /></SelectTrigger>
-                  <SelectContent>
-                    {setores.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Setor Responsável *</Label>
+                    <Select
+                      value={formData.setor_id || ""}
+                      onValueChange={(val) => setFormData({ ...formData, setor_id: val })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione o setor..." /></SelectTrigger>
+                      <SelectContent>
+                        {setores.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* "Característica" e "Máquinas" eram colunas sem campo aqui. */}
+                  <div>
+                    <Label>Característica</Label>
+                    <Select
+                      value={formData.caracteristica_atividade || "rotineira"}
+                      onValueChange={(val) => setFormData({ ...formData, caracteristica_atividade: val })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="rotineira">Rotineira</SelectItem>
+                        <SelectItem value="nao_rotineira">Não rotineira</SelectItem>
+                        <SelectItem value="emergencia">Emergência</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Máquinas e equipamentos</Label>
+                  <Input value={formData.maquinas_equipamentos || ""}
+                    onChange={(e) => setFormData({ ...formData, maquinas_equipamentos: e.target.value })}
+                    placeholder="Ex.: betoneira, serra mármore, computador" />
+                </div>
+                <div>
+                  <Label>Produtos químicos utilizados</Label>
+                  <Input value={formData.produtos_quimicos || ""}
+                    onChange={(e) => setFormData({ ...formData, produtos_quimicos: e.target.value })}
+                    placeholder="Deixe em branco se não houver" />
+                </div>
+                <div>
+                  <Label>Etapas do processo</Label>
+                  <Textarea value={formData.descricao_etapas || ""}
+                    onChange={(e) => setFormData({ ...formData, descricao_etapas: e.target.value })}
+                    placeholder="Como o trabalho é executado, do início ao fim" />
+                </div>
+              </>
             )}
 
             {modalType === "funcao" && (
@@ -823,6 +928,32 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     </SelectContent>
                   </Select>
                 </div>
+                {/* A tabela tinha a coluna "Requisitos NRs" e mostrava "Padrão"
+                    quando vazia, sem lugar nenhum para marcar. "Padrão" também
+                    não dizia nada: o que existe é a função EXIGIR ou não cada
+                    treinamento. */}
+                <fieldset className="border rounded-md p-3 space-y-2">
+                  <legend className="px-1 text-xs font-semibold text-slate-600">
+                    Treinamentos obrigatórios
+                  </legend>
+                  <p className="text-xs text-slate-500">
+                    Marque apenas o que esta função exige. Sem marcação, nenhum treinamento
+                    especial é exigido.
+                  </p>
+                  {([
+                    ["exige_nr10", "NR-10 — Eletricidade"],
+                    ["exige_nr33", "NR-33 — Espaço confinado"],
+                    ["exige_nr35", "NR-35 — Trabalho em altura"],
+                  ] as [string, string][]).map(([campo, rotulo]) => (
+                    <label key={campo} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input type="checkbox" className="h-4 w-4 rounded border-slate-300"
+                        checked={!!formData[campo]}
+                        onChange={(e) => setFormData({ ...formData, [campo]: e.target.checked })} />
+                      {rotulo}
+                    </label>
+                  ))}
+                </fieldset>
+
                 <div>
                   <Label>Descrição das Atividades Desempenhadas</Label>
                   <Textarea
@@ -946,7 +1077,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenModal(false)}>Cancelar</Button>
-              <Button type="submit">Salvar no Núcleo Mestre</Button>
+              <Button type="submit">Salvar</Button>
             </DialogFooter>
           </form>
         </DialogContent>
