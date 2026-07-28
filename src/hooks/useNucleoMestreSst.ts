@@ -4,6 +4,7 @@ import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData } from "@/lib/offlineStorage";
+import { mensagemErro } from "@/lib/erroSupabase";
 import {
   SstEstabelecimento,
   SstAmbiente,
@@ -74,6 +75,11 @@ async function resilientSaveItem<T extends { id?: string }>(
   // tabela legada via FK (funcionarios.ghe_id -> ghe_ges.id), então o
   // registro precisa existir com o MESMO id nas duas tabelas.
   alwaysMirrorToLegacy = false,
+  // Quando true, o cache local NÃO conta como sucesso: se nem a tabela primária
+  // nem a legada aceitaram o registro, a função lança. Usado onde o fallback de
+  // localStorage seria enganoso — a tela diria "Salvo com sucesso" e o dado
+  // sumiria no próximo navegador. Ver saveAtividadeMutation.
+  exigirPersistencia = false,
 ): Promise<T> {
   const itemId = item.id || crypto.randomUUID();
   const payload: any = {
@@ -84,19 +90,38 @@ async function resilientSaveItem<T extends { id?: string }>(
 
   let result: T | null = null;
   let primarySucceeded = false;
+  let ultimoErro: any = null;
 
-  // 1. Try primary table insert / update
+  // 1. Tabela primária (Núcleo Mestre): UPSERT, nunca update-ou-insert.
+  //
+  // Antes, um item COM id virava UPDATE ... WHERE id = <id>. As listas da tela
+  // são a união da tabela do Núcleo Mestre com as tabelas legadas (aso_funcoes,
+  // aso_setores, ghe_ges, empresa_config), então um registro legado aparece na
+  // lista COM id — mas esse id não existe em sst_funcoes/sst_setores. O UPDATE
+  // acertava 0 linhas, o .single() devolvia erro, e a gravação caía na tabela
+  // legada; lá o payload novo (processo_id, atividades_criticas, setor_id
+  // apontando para sst_setores) não encaixa no schema antigo, então também
+  // falhava — e a edição terminava só no localStorage, sem nunca chegar ao
+  // banco. Sintoma: escolher o Setor Principal de uma função e, depois de
+  // "salvar com sucesso", a coluna Setor continuar mostrando "-".
+  //
+  // Com upsert, editar um registro legado o materializa no Núcleo Mestre com o
+  // MESMO id. unionById prioriza a tabela primária, então a edição aparece.
   try {
-    const res = item.id
-      ? await supabase.from(tableName as any).update(payload).eq("id", item.id).select().single()
-      : await supabase.from(tableName as any).insert(payload).select().single();
+    const res = await supabase
+      .from(tableName as any)
+      .upsert(payload, { onConflict: "id" })
+      .select()
+      .single();
     if (!res.error && res.data) {
       result = res.data as T;
       primarySucceeded = true;
     } else {
+      ultimoErro = res.error;
       console.warn(`Primary save to ${tableName} notice:`, res.error?.message);
     }
   } catch (e: any) {
+    ultimoErro = e;
     console.warn(`Primary save to ${tableName} failed:`, e?.message);
   }
 
@@ -123,6 +148,12 @@ async function resilientSaveItem<T extends { id?: string }>(
   }
 
   if (primarySucceeded && result) return result;
+
+  // Nada foi aceito pelo banco. Onde o cache local não serve como resposta,
+  // propaga o erro real em vez de deixar a tela dizer "Salvo com sucesso".
+  if (exigirPersistencia) {
+    throw ultimoErro || new Error("Não foi possível gravar no banco.");
+  }
 
   // 3. Fallback: Save to Local Storage Cache
   try {
@@ -446,14 +477,22 @@ export function useNucleoMestreSst() {
     mutationFn: async (atividade: Partial<SstAtividade>) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
       if (!(atividade.nome || "").trim()) throw new Error("Informe o nome da atividade.");
-      return resilientSaveItem("sst_atividades", null, atividade, activeEmpresaId);
+      // exigirPersistencia: a tabela sst_atividades só existe depois da migration
+      // pendente. Sem isto, a gravação caía no cache do navegador e a tela dizia
+      // "Atividade salva no Núcleo Mestre!" — o cadastro sumia em outro
+      // dispositivo e o PGR nunca via a atividade.
+      return resilientSaveItem("sst_atividades", null, atividade, activeEmpresaId, undefined, false, true);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_atividades"] });
       toast({ title: "Sucesso", description: "Atividade salva no Núcleo Mestre!" });
     },
     onError: (err: any) => {
-      toast({ title: "Erro ao salvar atividade", description: err.message, variant: "destructive" });
+      toast({
+        title: "Erro ao salvar atividade",
+        description: mensagemErro(err, "Atividade"),
+        variant: "destructive",
+      });
     },
   });
 

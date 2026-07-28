@@ -12,7 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
-import { Building2, Home, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { ehSchemaDesatualizado } from "@/lib/erroSupabase";
+import { Building2, Home, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -22,6 +25,17 @@ const ROTULO_MODAL: Record<string, string> = {
   processo: "processo",
   funcao: "função",
   atividade: "atividade",
+};
+
+/** Placeholder do campo Nome. Era `Nome do ${modalType}`, que gerava
+ *  "Nome do atividade" e "Nome do funcao". */
+const PLACEHOLDER_NOME: Record<string, string> = {
+  estabelecimento: "Nome do estabelecimento",
+  ambiente: "Nome do ambiente",
+  setor: "Nome do setor",
+  processo: "Nome do processo",
+  funcao: "Nome da função",
+  atividade: "O que é feito. Ex.: Operar serra circular",
 };
 
 type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes" | "atividades";
@@ -59,6 +73,24 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
   } = useNucleoMestreSst();
 
   const [activeSubTab, setActiveSubTab] = useState<string>(only || "estabelecimentos");
+
+  /**
+   * A tabela sst_atividades vem de uma migration que ainda pode não ter sido
+   * aplicada. Conferir antes evita o pior caso: preencher o formulário inteiro,
+   * ver "Sucesso" e descobrir depois que nada foi para o banco.
+   */
+  const { data: atividadesNoBanco = true } = useQuery({
+    queryKey: ["sst-atividades-existe"],
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+    queryFn: async () => {
+      // sst_atividades não está nos tipos gerados justamente por não existir no banco.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from as any)("sst_atividades")
+        .select("id", { count: "exact", head: true });
+      return !(error && ehSchemaDesatualizado(error));
+    },
+  });
 
   // DIALOG STATES
   const [openModal, setOpenModal] = useState(false);
@@ -458,11 +490,30 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         {/* 6. ATIVIDADES */}
         <TabsContent value="atividades" className="mt-4 space-y-4">
           <div className="flex flex-wrap justify-between items-center gap-2">
-            <h3 className="font-semibold text-slate-800">Atividades</h3>
-            <Button onClick={() => handleOpenModal("atividade")} size="sm">
+            <div>
+              <h3 className="font-semibold text-slate-800">Atividades</h3>
+              <p className="text-xs text-slate-500 max-w-xl">
+                É a atividade que carrega o perigo no PGR — “operar serra circular” expõe a
+                ruído e corte; “conferir nota fiscal”, não. Duas funções com o mesmo nome
+                podem ter exposições diferentes, e é aqui que essa diferença aparece.
+              </p>
+            </div>
+            <Button onClick={() => handleOpenModal("atividade")} size="sm" disabled={!atividadesNoBanco}>
               <Plus className="w-4 h-4 mr-1" /> Nova Atividade
             </Button>
           </div>
+
+          {!atividadesNoBanco && (
+            <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                O banco ainda não tem a tabela de atividades — a migration pendente precisa ser
+                aplicada no Supabase. O cadastro está desativado até lá, para não dar a impressão
+                de que salvou. Nada do que já existe foi perdido.
+              </span>
+            </div>
+          )}
+
           <Card>
             <Table>
               <TableHeader>
@@ -557,7 +608,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 value={formData.nome || ""}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                 required
-                placeholder={`Nome do ${modalType}`}
+                placeholder={PLACEHOLDER_NOME[modalType]}
               />
             </div>
 
@@ -998,6 +1049,17 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   </div>
                 </div>
 
+                {/* Só o nome e a função são exigidos: é o mínimo para pendurar
+                    um perigo na atividade certa no inventário do PGR. O resto
+                    alimenta laudo (LTCAT/insalubridade) e a probabilidade da
+                    matriz — útil, mas não no caminho de quem só quer cadastrar.
+                    Por isso fica fechado até alguém pedir. */}
+                <details className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2">
+                  <summary className="cursor-pointer text-xs font-medium text-slate-700 select-none">
+                    Detalhes para o laudo (opcional)
+                  </summary>
+
+                  <div className="mt-3 space-y-3">
                 <div>
                   <Label>Descrição detalhada</Label>
                   <Textarea
@@ -1072,6 +1134,8 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     />
                   </div>
                 </div>
+                  </div>
+                </details>
               </>
             )}
 
