@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { GRUPO_LABEL } from "@/lib/pgrMatriz";
 import { ContextoSst, PgrContextoResumo, PgrContextoSelector } from "./PgrContextoSelector";
 import { useRegistrarEtapa } from "./PgrEtapaContext";
+import { mensagemErro } from "@/lib/erroSupabase";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 
 interface Props {
@@ -132,7 +133,7 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
       qc.invalidateQueries({ queryKey: ["pgr-wiz-progresso", pgrId] });
       fechar();
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(mensagemErro(e, "Não foi possível salvar o perigo")),
   });
 
   const excluir = useMutation({
@@ -146,7 +147,7 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
       qc.invalidateQueries({ queryKey: ["pgr-perigos-step", pgrId] });
       setExcluirId(null);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(mensagemErro(e, "Não foi possível excluir o registro")),
   });
 
   const rascunho = useMutation({
@@ -174,7 +175,7 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
       qc.invalidateQueries({ queryKey: ["pgr-perigos-step", pgrId] });
       fechar();
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(mensagemErro(e, "Não foi possível salvar o rascunho")),
   });
 
   // Enquanto o formulário está aberto, o rodapé do assistente comanda o

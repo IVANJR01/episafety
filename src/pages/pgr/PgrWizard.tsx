@@ -34,6 +34,7 @@ import { PgrEtapaProvider, useAcoesEtapa } from "@/components/pgr/PgrEtapaContex
 import PgrPendenciasPainel, { usePgrPendencias } from "@/components/pgr/PgrPendenciasPainel";
 import { CLASSE_DECISAO, CLASSE_LABEL, CLASSE_TEXT, CLASSES_ORDENADAS } from "@/lib/pgrMatriz";
 import { exportarPgrExcel } from "@/lib/pgrExcel";
+import { verificarEstruturasSst } from "@/lib/erroSupabase";
 
 type EtapaId =
   | "dados" | "ambientes" | "setores" | "funcoes" | "perigos"
@@ -162,6 +163,14 @@ function Assistente() {
   }, [progresso]);
 
   const { resumo: resumoPend, ...pend } = usePgrPendencias(id, pgr?.resp_tec_nome);
+
+  // Migrations pendentes: avisa uma vez, no topo, em vez de deixar o usuário
+  // preencher a etapa inteira e descobrir na hora de salvar.
+  const { data: estruturas } = useQuery({
+    queryKey: ["sst-estruturas-ok"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => verificarEstruturasSst(supabase),
+  });
 
   /**
    * A exportação usa os MESMOS dados já carregados para as pendências, em vez de
@@ -475,6 +484,17 @@ function Assistente() {
                 </span>
                 <span className="text-sm text-muted-foreground">{etapa.ajuda}</span>
               </div>
+
+              {estruturas && !estruturas.ok && (
+                <Card className="border-amber-300 bg-amber-50 mt-5">
+                  <CardContent className="p-3 text-sm text-amber-900">
+                    <b>Banco desatualizado.</b> As etapas de Atividades, Perigos e o Levantamento
+                    em campo dependem de estruturas que ainda não existem neste banco
+                    ({estruturas.faltando.join(", ")}). Aplique as migrations pendentes no Supabase.
+                    O restante do PGR funciona normalmente e nenhum dado foi perdido.
+                  </CardContent>
+                </Card>
+              )}
 
               {!editavel && status !== "vigente" && (
                 <Card className="border-amber-300 bg-amber-50 mt-5">

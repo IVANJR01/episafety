@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { GRUPO_LABEL } from "@/lib/pgrMatriz";
 import { STATUS_COLETA_COR, STATUS_COLETA_LABEL, StatusColetaCampo } from "@/types/sst";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
+import { mensagemErro } from "@/lib/erroSupabase";
 
 interface Props {
   pgrId: string;
@@ -97,7 +98,7 @@ export default function ColetasCampoRevisao({ pgrId, empresaId, canEdit }: Props
       qc.invalidateQueries({ queryKey: ["pgr-perigos-step", pgrId] });
       qc.invalidateQueries({ queryKey: ["pgr-wiz-progresso", pgrId] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(mensagemErro(e, "Não foi possível concluir a revisão")),
   });
 
   const descartar = useMutation({
@@ -117,7 +118,7 @@ export default function ColetasCampoRevisao({ pgrId, empresaId, canEdit }: Props
       setDescartando(null);
       setMotivo("");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(mensagemErro(e, "Não foi possível concluir a revisão")),
   });
 
   const nomeDe = (lista: any[], id?: string | null) =>

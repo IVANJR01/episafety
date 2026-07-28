@@ -21,6 +21,7 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { ContextoSst, PgrContextoSelector } from "@/components/pgr/PgrContextoSelector";
 import { STATUS_COLETA_COR, STATUS_COLETA_LABEL, StatusColetaCampo } from "@/types/sst";
 import { GRUPO_LABEL } from "@/lib/pgrMatriz";
+import { mensagemErro } from "@/lib/erroSupabase";
 import {
   SST_BUCKET, SUPABASE_STORAGE_REF_PREFIX, sanitizeStorageFileName,
 } from "@/lib/secureStorage";
@@ -149,7 +150,7 @@ export default function LevantamentoCampo() {
       setF(vazio);
       setAnexos([]);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => toast.error(mensagemErro(e, "Não foi possível salvar a coleta")),
   });
 
   /**
