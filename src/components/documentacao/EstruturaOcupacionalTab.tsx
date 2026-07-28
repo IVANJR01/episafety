@@ -72,7 +72,23 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     deleteAtividade,
   } = useNucleoMestreSst();
 
-  const [activeSubTab, setActiveSubTab] = useState<string>(only || "estabelecimentos");
+  const [activeSubTab, setActiveSubTab] = useState<string>("estabelecimentos");
+
+  /**
+   * Com `only`, a seção vem SEMPRE da prop — nunca do estado.
+   *
+   * Antes, `only` era só o valor inicial de um useState. O assistente do PGR
+   * monta este componente na mesma posição da árvore em etapas diferentes e sem
+   * `key`, então o React reaproveita a MESMA instância: a prop mudava de
+   * "funcoes" para "ambientes", mas o estado continuava "funcoes" — o
+   * useState só lê o valor inicial na montagem. Resultado: quem abrisse a
+   * etapa 4 e voltasse para a 2 via "Funções" no lugar de "Ambientes", e a
+   * etapa 3 ("Setores e GES") mostrava "Funções" também.
+   *
+   * O estado continua existindo para a tela cheia de Documentação, onde as
+   * abas navegam de verdade.
+   */
+  const secaoAtiva = only ?? activeSubTab;
 
   /**
    * A tabela sst_atividades vem de uma migration que ainda pode não ter sido
@@ -176,7 +192,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         </div>
       )}
 
-      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
+      <Tabs value={secaoAtiva} onValueChange={setActiveSubTab} className="w-full">
         {!only && (
           <TabsList className="grid grid-cols-3 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
             <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">

@@ -273,14 +273,17 @@ function Assistente() {
       case "ambientes":
         return (
           <div className="space-y-8 divide-y [&>*+*]:pt-8">
-            <EstruturaOcupacionalTab only="ambientes" />
-            <EstruturaOcupacionalTab only="processos" />
+            {/* `key` = seção: sem ela o React reaproveita a instância da etapa
+                anterior (mesma posição na árvore) e o estado interno vaza de
+                uma etapa para a outra. */}
+            <EstruturaOcupacionalTab key="ambientes" only="ambientes" />
+            <EstruturaOcupacionalTab key="processos" only="processos" />
           </div>
         );
       case "setores":
         return (
           <div className="space-y-6">
-            <EstruturaOcupacionalTab only="setores" />
+            <EstruturaOcupacionalTab key="setores" only="setores" />
             <p className="text-sm text-muted-foreground">
               Os GES são cadastrados na aba GES do módulo de documentação. Um GES reúne
               trabalhadores com a mesma exposição — não é outro nome para setor.
@@ -290,8 +293,8 @@ function Assistente() {
       case "funcoes":
         return (
           <div className="space-y-8 divide-y [&>*+*]:pt-8">
-            <EstruturaOcupacionalTab only="funcoes" />
-            <EstruturaOcupacionalTab only="atividades" />
+            <EstruturaOcupacionalTab key="funcoes" only="funcoes" />
+            <EstruturaOcupacionalTab key="atividades" only="atividades" />
           </div>
         );
       case "perigos":
