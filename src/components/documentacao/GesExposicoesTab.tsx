@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import type { SstGes } from "@/types/sst";
-import { Layers, Plus, Edit2 } from "lucide-react";
+import { Layers, Plus, Edit2, Trash2 } from "lucide-react";
 
 /**
  * Cadastro dos Grupos de Exposição Similar (GES/GHE).
@@ -28,10 +29,11 @@ import { Layers, Plus, Edit2 } from "lucide-react";
  * Nenhuma tabela foi removida do banco; apenas a duplicidade saiu da tela.
  */
 export function GesExposicoesTab() {
-  const { gesList, saveGes } = useNucleoMestreSst();
+  const { gesList, saveGes, deleteGes } = useNucleoMestreSst();
 
   const [openGesModal, setOpenGesModal] = useState(false);
   const [gesFormData, setGesFormData] = useState<Partial<SstGes>>({});
+  const [confirmarExclusao, setConfirmarExclusao] = useState<{ id: string; nome: string } | null>(null);
 
   const handleSaveGes = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,9 +78,17 @@ export function GesExposicoesTab() {
                     <Badge variant="outline" className="text-indigo-600 border-indigo-200">{ges.codigo}</Badge>
                     <CardTitle className="text-base font-bold mt-1 break-words">{ges.nome}</CardTitle>
                   </div>
-                  <Button onClick={() => { setGesFormData(ges); setOpenGesModal(true); }} variant="ghost" size="sm" className="shrink-0">
-                    <Edit2 className="w-4 h-4 text-slate-600" />
-                  </Button>
+                  <div className="flex shrink-0">
+                    <Button onClick={() => { setGesFormData(ges); setOpenGesModal(true); }} variant="ghost" size="sm" title="Editar grupo">
+                      <Edit2 className="w-4 h-4 text-slate-600" />
+                    </Button>
+                    <Button
+                      onClick={() => setConfirmarExclusao({ id: ges.id, nome: ges.nome })}
+                      variant="ghost" size="sm" title="Excluir grupo"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 text-xs">
@@ -145,6 +155,37 @@ export function GesExposicoesTab() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!confirmarExclusao}
+        onOpenChange={(aberto) => { if (!aberto) setConfirmarExclusao(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir “{confirmarExclusao?.nome}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O grupo sai do cadastro. Se houver trabalhadores vinculados a ele, a exclusão
+              é recusada e o sistema avisa — nesse caso, mova essas pessoas para outro grupo
+              antes de tentar de novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={async () => {
+                const alvo = confirmarExclusao;
+                setConfirmarExclusao(null);
+                if (alvo) {
+                  try { await deleteGes(alvo.id); } catch (err) { console.error(err); }
+                }
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -584,8 +584,31 @@ export function useNucleoMestreSst() {
 
   const deleteGesMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from("sst_ges").delete().eq("id", id);
-      await supabase.from("ghe_ges").delete().eq("id", id);
+      // O .delete() do supabase-js NÃO lança: devolve { error }. Ignorar isso
+      // fazia a tela dizer "GES/GHE removido." com a linha ainda no banco.
+      //
+      // A ordem importa. funcionarios.ghe_id referencia ghe_ges.id, então a
+      // chave estrangeira barra a exclusão de um GES com gente vinculada — mas
+      // só em ghe_ges. Apagando sst_ges primeiro, o caso "tem trabalhador"
+      // apagava metade: o registro sumia de sst_ges (levando junto o critério
+      // de agrupamento) e continuava em ghe_ges, de onde a lista o traz de
+      // volta pelo espelho legado. Para o usuário, nada acontecia — e o
+      // critério tinha sido destruído em silêncio.
+      //
+      // Começando pela tabela restrita, o caso bloqueado para antes de tocar
+      // em qualquer coisa.
+      const legado = await supabase.from("ghe_ges").delete().eq("id", id);
+      if (legado.error) {
+        if (String(legado.error.code) === "23503") {
+          throw new Error(
+            "Este GES não pode ser excluído porque há trabalhadores vinculados a ele. "
+            + "Mova essas pessoas para outro grupo antes de excluir.",
+          );
+        }
+        throw legado.error;
+      }
+      const principal = await supabase.from("sst_ges").delete().eq("id", id);
+      if (principal.error) throw principal.error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_ges"] });

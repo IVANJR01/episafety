@@ -126,6 +126,12 @@ function Assistente() {
     },
   });
 
+  // Quando o PGR não tem unidade própria, a consulta acima cai no próprio
+  // empresa_id — ou seja, é a MESMA linha. O cabeçalho mostrava o nome duas
+  // vezes e o espaço gasto na repetição era o que faltava para o nome caber.
+  const nomeEmpresa = empresa?.nome_fantasia || empresa?.nome || null;
+  const nomeUnidade = unidade?.nome_fantasia || unidade?.nome || null;
+
   // Progresso: cada etapa vale 1/9. É indicativo de preenchimento, não de
   // conformidade — quem diz se pode emitir é o checklist da etapa 9.
   const { data: progresso } = useQuery({
@@ -402,20 +408,26 @@ function Assistente() {
           {/* Identificação em "chips". Some por ordem de importância conforme
               a tela estreita, em vez de espremer ou cortar texto. */}
           <div className="flex items-center gap-4 min-w-0 flex-1 overflow-hidden">
-            <Chip icone={Building2} rotulo="Empresa" valor={empresa?.nome_fantasia || empresa?.nome}
-              className="hidden xl:flex" />
-            <Chip icone={MapPin} rotulo="Unidade" valor={unidade?.nome_fantasia || unidade?.nome}
-              className="hidden md:flex" />
-            <Chip icone={FileText} rotulo="PGR" valor={ano} />
+            {/* A empresa é o único item que cede espaço, e é o último a sumir:
+                antes era o contrário — `hidden xl:flex` na empresa e
+                `hidden md:flex` na unidade escondiam justamente o nome mais
+                importante primeiro. */}
+            <Chip icone={Building2} rotulo="Empresa" valor={nomeEmpresa}
+              className="hidden sm:flex" flexivel />
+            {/* Quando a unidade é a própria matriz, o nome se repete e ocupa o
+                espaço que faria os dois caberem. Só aparece se for diferente. */}
+            {nomeUnidade && nomeUnidade !== nomeEmpresa && (
+              <Chip icone={MapPin} rotulo="Unidade" valor={nomeUnidade} className="hidden xl:flex" />
+            )}
+            <Chip icone={FileText} rotulo="PGR" valor={ano} className="hidden md:flex" />
             <StatusPill status={status} />
           </div>
 
           <div className="hidden lg:flex items-center gap-2 shrink-0">
-            <span className="text-sm text-muted-foreground">Progresso</span>
-            <div className="h-2 w-28 rounded-full bg-muted overflow-hidden">
+            <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
               <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-sm font-medium tabular-nums w-10">{pct}%</span>
+            <span className="text-sm font-medium tabular-nums">{pct}%</span>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -548,14 +560,27 @@ function Secao({ titulo, children }: { titulo: string; children: React.ReactNode
   );
 }
 
+/**
+ * Um item de identificação do cabeçalho.
+ *
+ * `flexivel` decide quem cede espaço. Antes todos os chips eram iguais: cada um
+ * com `min-w-0` e `truncate` dentro do mesmo flex, então encolhiam juntos e
+ * todos saíam cortados — o nome da empresa virava "LEONARDO ..." e o rótulo
+ * "PGR" virava "PG...", apesar de o valor ter 4 caracteres. Agora só o chip
+ * flexível corta; os curtos ficam inteiros.
+ */
 function Chip({
-  icone: Icone, rotulo, valor, className = "",
-}: { icone: any; rotulo: string; valor?: string | null; className?: string }) {
+  icone: Icone, rotulo, valor, className = "", flexivel = false,
+}: { icone: any; rotulo: string; valor?: string | null; className?: string; flexivel?: boolean }) {
   if (!valor) return null;
   return (
-    <span className={`items-center gap-2 min-w-0 ${className || "flex"}`}>
+    <span
+      className={`items-center gap-2 ${flexivel ? "min-w-0 flex-1" : "shrink-0"} ${className || "flex"}`}
+      // O nome completo continua acessível quando não couber na largura.
+      title={`${rotulo}: ${valor}`}
+    >
       <Icone className="h-4 w-4 text-muted-foreground shrink-0" />
-      <span className="text-sm truncate">
+      <span className={`text-sm ${flexivel ? "truncate" : "whitespace-nowrap"}`}>
         <span className="text-muted-foreground">{rotulo}: </span>
         <span className="font-medium">{valor}</span>
       </span>
