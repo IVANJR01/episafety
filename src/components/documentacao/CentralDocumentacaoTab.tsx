@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  AlertTriangle, ArrowRight, FileSpreadsheet, FileText, Loader2, Plus,
+  AlertTriangle, ArrowRight, FileSpreadsheet, FileText, Loader2,
   ShieldCheck, Stethoscope, Users,
 } from "lucide-react";
 
@@ -97,16 +97,15 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Documentos da empresa</h2>
-          <p className="text-sm text-muted-foreground">
-            Escolha o documento que quer elaborar ou consultar.
-          </p>
-        </div>
-        <Button onClick={() => navigate("/pgr/novo")} size="lg" className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" /> Novo PGR
-        </Button>
+      {/* Esta seção fica ABAIXO da lista de documentos existentes. Ela tinha o
+          mesmo título ("Documentos da empresa") e mais um botão de criar, então
+          a tela mostrava dois cabeçalhos iguais e dois botões concorrentes.
+          Aqui se escolhe o TIPO a elaborar; a lista acima é o que já existe. */}
+      <div>
+        <h2 className="text-lg font-semibold">Tipos de documento</h2>
+        <p className="text-sm text-muted-foreground">
+          Escolha por onde começar. O número ao lado é quanto já existe de cada tipo.
+        </p>
       </div>
 
       {isLoading ? (

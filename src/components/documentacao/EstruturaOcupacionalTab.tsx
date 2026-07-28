@@ -113,46 +113,56 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-indigo-600" />
-            Estrutura Ocupacional & Organizacional Mestre
-          </h2>
-          <p className="text-sm text-slate-500">
-            Cadastre os dados organizacionais uma única vez. Eles alimentam o PGR, PCMSO, LTCAT, Laudos e PPP sem duplicação.
-          </p>
+    <div className={only ? "" : "space-y-6"}>
+      {/* Cabeçalho e barra de abas só existem na tela cheia de Documentação.
+          No assistente, cada etapa monta duas seções (ex.: Ambientes +
+          Processos) e o cabeçalho aparecia duplicado, junto de duas barras de
+          6 abas que nem navegam — a etapa já tem título próprio.
+          É renderização condicional, não `hidden`: a classe perdia para o
+          `grid` na cascata do Tailwind e a barra aparecia mesmo assim. */}
+      {!only && (
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Building2 className="w-6 h-6 text-indigo-600" />
+              Estrutura Ocupacional
+            </h2>
+            <p className="text-sm text-slate-500">
+              Cadastre uma única vez. Estes dados alimentam PGR, PCMSO, LTCAT, Laudos e PPP.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
-        <TabsList className={`grid grid-cols-3 lg:grid-cols-6 w-full bg-slate-100 p-1 rounded-lg h-auto${only ? " hidden" : ""}`}>
-          <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">
-            <Building2 className="w-4 h-4" /> 1. Estabelecimentos
-          </TabsTrigger>
-          <TabsTrigger value="ambientes" className="text-xs font-medium flex items-center gap-1">
-            <Home className="w-4 h-4" /> 2. Ambientes
-          </TabsTrigger>
-          <TabsTrigger value="setores" className="text-xs font-medium flex items-center gap-1">
-            <LayoutGrid className="w-4 h-4" /> 3. Setores
-          </TabsTrigger>
-          <TabsTrigger value="processos" className="text-xs font-medium flex items-center gap-1">
-            <Workflow className="w-4 h-4" /> 4. Processos
-          </TabsTrigger>
-          <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center gap-1">
-            <Briefcase className="w-4 h-4" /> 5. Funções / Cargos
-          </TabsTrigger>
-          <TabsTrigger value="atividades" className="text-xs font-medium flex items-center gap-1">
-            <ClipboardList className="w-4 h-4" /> 6. Atividades
-          </TabsTrigger>
-        </TabsList>
+        {!only && (
+          <TabsList className="grid grid-cols-3 lg:grid-cols-6 w-full bg-slate-100 p-1 rounded-lg h-auto">
+            <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">
+              <Building2 className="w-4 h-4" /> Estabelecimentos
+            </TabsTrigger>
+            <TabsTrigger value="ambientes" className="text-xs font-medium flex items-center gap-1">
+              <Home className="w-4 h-4" /> Ambientes
+            </TabsTrigger>
+            <TabsTrigger value="setores" className="text-xs font-medium flex items-center gap-1">
+              <LayoutGrid className="w-4 h-4" /> Setores
+            </TabsTrigger>
+            <TabsTrigger value="processos" className="text-xs font-medium flex items-center gap-1">
+              <Workflow className="w-4 h-4" /> Processos
+            </TabsTrigger>
+            <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center gap-1">
+              <Briefcase className="w-4 h-4" /> Funções
+            </TabsTrigger>
+            <TabsTrigger value="atividades" className="text-xs font-medium flex items-center gap-1">
+              <ClipboardList className="w-4 h-4" /> Atividades
+            </TabsTrigger>
+          </TabsList>
+        )}
 
         {/* 1. ESTABELECIMENTOS */}
         <TabsContent value="estabelecimentos" className="mt-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800">Unidades e Estabelecimentos (CNO / CNPJ)</h3>
-            <Button onClick={() => handleOpenModal("estabelecimento")} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <h3 className="font-semibold text-slate-800">Estabelecimentos</h3>
+            <Button onClick={() => handleOpenModal("estabelecimento")} size="sm">
               <Plus className="w-4 h-4 mr-1" /> Novo Estabelecimento
             </Button>
           </div>
@@ -216,9 +226,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
         {/* 2. AMBIENTES */}
         <TabsContent value="ambientes" className="mt-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800">Ambientes de Trabalho (Piso, Cobertura, Iluminação, Confinado)</h3>
-            <Button onClick={() => handleOpenModal("ambiente")} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <h3 className="font-semibold text-slate-800">Ambientes de trabalho</h3>
+            <Button onClick={() => handleOpenModal("ambiente")} size="sm">
               <Plus className="w-4 h-4 mr-1" /> Novo Ambiente
             </Button>
           </div>
@@ -228,15 +238,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 <TableRow>
                   <TableHead>Ambiente</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Pé-Direito / Piso</TableHead>
-                  <TableHead>Ventilação / Iluminação</TableHead>
+                  <TableHead>Características</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {ambientes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-slate-400">
+                    <TableCell colSpan={4} className="text-center py-6 text-slate-400">
                       Nenhum ambiente cadastrado.
                     </TableCell>
                   </TableRow>
@@ -245,8 +254,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     <TableRow key={amb.id}>
                       <TableCell className="font-medium text-slate-900">{amb.nome}</TableCell>
                       <TableCell><Badge className="bg-slate-800 text-white">{amb.tipo_ambiente}</Badge></TableCell>
-                      <TableCell>{amb.pe_direito ? `Alt: ${amb.pe_direito}` : "-"} {amb.piso ? `(${amb.piso})` : ""}</TableCell>
-                      <TableCell>{amb.ventilacao || "-"} / {amb.iluminacao || "-"}</TableCell>
+                      <TableCell className="text-sm text-slate-600">
+                        {[amb.pe_direito && `Pé-direito ${amb.pe_direito}`, amb.piso,
+                          amb.ventilacao && `Ventilação ${amb.ventilacao}`,
+                          amb.iluminacao && `Iluminação ${amb.iluminacao}`]
+                          .filter(Boolean).join(" · ") || "—"}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button onClick={() => handleOpenModal("ambiente", amb)} variant="ghost" size="sm">
@@ -267,9 +280,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
         {/* 3. SETORES */}
         <TabsContent value="setores" className="mt-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800">Setores Organizacionais</h3>
-            <Button onClick={() => handleOpenModal("setor")} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <h3 className="font-semibold text-slate-800">Setores</h3>
+            <Button onClick={() => handleOpenModal("setor")} size="sm">
               <Plus className="w-4 h-4 mr-1" /> Novo Setor
             </Button>
           </div>
@@ -319,9 +332,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
         {/* 4. PROCESSOS */}
         <TabsContent value="processos" className="mt-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800">Processos e Atividades Operacionais</h3>
-            <Button onClick={() => handleOpenModal("processo")} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <h3 className="font-semibold text-slate-800">Processos de trabalho</h3>
+            <Button onClick={() => handleOpenModal("processo")} size="sm">
               <Plus className="w-4 h-4 mr-1" /> Novo Processo
             </Button>
           </div>
@@ -332,7 +345,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   <TableHead>Nome do Processo</TableHead>
                   <TableHead>Setor</TableHead>
                   <TableHead>Característica</TableHead>
-                  <TableHead>Máquinas / Equipamentos</TableHead>
+                  <TableHead>Máquinas</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -373,9 +386,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
         {/* 5. FUNÇÕES */}
         <TabsContent value="funcoes" className="mt-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800">Funções e Cargos Mestre (CBO / NRs)</h3>
-            <Button onClick={() => handleOpenModal("funcao")} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <h3 className="font-semibold text-slate-800">Funções</h3>
+            <Button onClick={() => handleOpenModal("funcao")} size="sm">
               <Plus className="w-4 h-4 mr-1" /> Nova Função
             </Button>
           </div>
@@ -434,16 +447,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
         {/* 6. ATIVIDADES */}
         <TabsContent value="atividades" className="mt-4 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800">Atividades Executadas</h3>
-            <Button onClick={() => handleOpenModal("atividade")} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <h3 className="font-semibold text-slate-800">Atividades</h3>
+            <Button onClick={() => handleOpenModal("atividade")} size="sm">
               <Plus className="w-4 h-4 mr-1" /> Nova Atividade
             </Button>
           </div>
-          <p className="text-sm text-slate-500">
-            A atividade é o nível em que o perigo realmente se manifesta. Uma função pode ter
-            várias atividades, e é a atividade que define frequência, duração e esforço da exposição.
-          </p>
           <Card>
             <Table>
               <TableHeader>
@@ -937,7 +946,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenModal(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">Salvar no Núcleo Mestre</Button>
+              <Button type="submit">Salvar no Núcleo Mestre</Button>
             </DialogFooter>
           </form>
         </DialogContent>

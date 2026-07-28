@@ -272,7 +272,7 @@ function Assistente() {
         );
       case "ambientes":
         return (
-          <div className="space-y-10">
+          <div className="space-y-8 divide-y [&>*+*]:pt-8">
             <EstruturaOcupacionalTab only="ambientes" />
             <EstruturaOcupacionalTab only="processos" />
           </div>
@@ -289,7 +289,7 @@ function Assistente() {
         );
       case "funcoes":
         return (
-          <div className="space-y-10">
+          <div className="space-y-8 divide-y [&>*+*]:pt-8">
             <EstruturaOcupacionalTab only="funcoes" />
             <EstruturaOcupacionalTab only="atividades" />
           </div>
