@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ArrowLeft, ArrowRight, Check, FileText, ListChecks, Loader2, Menu } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, Check, FileText, ListChecks, Loader2, Menu, Network, Smartphone,
+} from "lucide-react";
 import {
   PgrDocumento, PgrStatus, PGR_STATUS_LABEL, PGR_STATUS_COLOR, isEditavel,
 } from "@/lib/pgrTypes";
@@ -16,6 +18,8 @@ import PgrDadosStep from "@/components/pgr/PgrDadosStep";
 import PgrResponsaveisStep from "@/components/pgr/PgrResponsaveisStep";
 import { EstruturaOcupacionalTab } from "@/components/documentacao/EstruturaOcupacionalTab";
 import LevantamentoPreliminarTab from "@/components/pgr/LevantamentoPreliminarTab";
+import PgrPerigoStep from "@/components/pgr/PgrPerigoStep";
+import ColetasCampoRevisao from "@/components/pgr/ColetasCampoRevisao";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
 import QuadroEpisTab from "@/components/pgr/QuadroEpisTab";
@@ -209,9 +213,27 @@ export default function PgrWizard() {
           </div>
         );
       case "funcoes":
-        return <EstruturaOcupacionalTab only="funcoes" />;
+        return (
+          <div className="space-y-8">
+            <EstruturaOcupacionalTab only="funcoes" />
+            <EstruturaOcupacionalTab only="atividades" />
+          </div>
+        );
       case "perigos":
-        return <LevantamentoPreliminarTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />;
+        return (
+          <div className="space-y-10">
+            <ColetasCampoRevisao pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+            <PgrPerigoStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+            <details className="border rounded-lg">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+                Rastreabilidade do levantamento (origem, evidências e perigos descartados)
+              </summary>
+              <div className="p-4 border-t">
+                <LevantamentoPreliminarTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+              </div>
+            </details>
+          </div>
+        );
       case "avaliacao":
         return (
           <div className="space-y-6 max-w-3xl">
@@ -302,18 +324,28 @@ export default function PgrWizard() {
             </div>
           </div>
 
-          <Button variant="outline" size="sm" onClick={() => irPara("emissao")} className="shrink-0">
-            <FileText className="h-4 w-4 mr-1" /> Visualizar documento
-          </Button>
+          {/* Os outros dois modos de uso do mesmo PGR. No celular ficam abaixo,
+              junto do seletor de etapas, para não espremer o cabeçalho. */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
+              <Network className="h-4 w-4 mr-1" /> Estrutura técnica
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
+              <Smartphone className="h-4 w-4 mr-1" /> Campo
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => irPara("emissao")}>
+              <FileText className="h-4 w-4 mr-1" /> Visualizar documento
+            </Button>
+          </div>
         </div>
 
         {/* Mobile: as etapas viram um painel deslizante. */}
-        <div className="lg:hidden px-4 pb-3">
+        <div className="lg:hidden px-4 pb-3 space-y-2">
           <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
             <SheetTrigger asChild>
               <Button variant="outline" className="w-full justify-start h-11">
                 <Menu className="h-4 w-4 mr-2" />
-                Etapas do PGR — {etapa.n}. {etapa.titulo}
+                <span className="truncate">Etapas do PGR — {etapa.n}. {etapa.titulo}</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[85vw] max-w-sm overflow-y-auto">
@@ -321,6 +353,19 @@ export default function PgrWizard() {
               <ListaEtapas />
             </SheetContent>
           </Sheet>
+          <div className="grid grid-cols-3 gap-2 md:hidden">
+            <Button variant="outline" size="sm" className="h-10"
+              onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
+              <Network className="h-4 w-4 mr-1" /> Estrutura
+            </Button>
+            <Button variant="outline" size="sm" className="h-10"
+              onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
+              <Smartphone className="h-4 w-4 mr-1" /> Campo
+            </Button>
+            <Button variant="outline" size="sm" className="h-10" onClick={() => irPara("emissao")}>
+              <FileText className="h-4 w-4 mr-1" /> Documento
+            </Button>
+          </div>
         </div>
       </header>
 

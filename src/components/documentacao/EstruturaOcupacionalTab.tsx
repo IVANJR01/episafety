@@ -12,9 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
-import { Building2, Home, LayoutGrid, Workflow, Briefcase, Plus, Edit2, Loader2, Trash2 } from "lucide-react";
+import { Building2, Home, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2 } from "lucide-react";
 
-type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes";
+type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes" | "atividades";
 
 interface EstruturaProps {
   /**
@@ -32,24 +32,27 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     setores,
     processos,
     funcoes,
+    atividades,
     isLoading,
     saveEstabelecimento,
     saveAmbiente,
     saveSetor,
     saveProcesso,
     saveFuncao,
+    saveAtividade,
     deleteEstabelecimento,
     deleteAmbiente,
     deleteSetor,
     deleteProcesso,
     deleteFuncao,
+    deleteAtividade,
   } = useNucleoMestreSst();
 
   const [activeSubTab, setActiveSubTab] = useState<string>(only || "estabelecimentos");
 
   // DIALOG STATES
   const [openModal, setOpenModal] = useState(false);
-  const [modalType, setModalType] = useState<"estabelecimento" | "ambiente" | "setor" | "processo" | "funcao">("estabelecimento");
+  const [modalType, setModalType] = useState<"estabelecimento" | "ambiente" | "setor" | "processo" | "funcao" | "atividade">("estabelecimento");
   const [formData, setFormData] = useState<any>({});
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; type: string; id: string; nome: string }>({
     open: false,
@@ -79,6 +82,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       if (modalType === "setor") await saveSetor(formData);
       if (modalType === "processo") await saveProcesso(formData);
       if (modalType === "funcao") await saveFuncao(formData);
+      if (modalType === "atividade") await saveAtividade(formData);
       setOpenModal(false);
     } catch (err) {
       console.error(err);
@@ -92,6 +96,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       if (deleteConfirm.type === "setor") await deleteSetor(deleteConfirm.id);
       if (deleteConfirm.type === "processo") await deleteProcesso(deleteConfirm.id);
       if (deleteConfirm.type === "funcao") await deleteFuncao(deleteConfirm.id);
+      if (deleteConfirm.type === "atividade") await deleteAtividade(deleteConfirm.id);
       setDeleteConfirm({ open: false, type: "", id: "", nome: "" });
     } catch (err) {
       console.error(err);
@@ -122,7 +127,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       </div>
 
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
-        <TabsList className={`grid grid-cols-5 w-full bg-slate-100 p-1 rounded-lg${only ? " hidden" : ""}`}>
+        <TabsList className={`grid grid-cols-3 lg:grid-cols-6 w-full bg-slate-100 p-1 rounded-lg h-auto${only ? " hidden" : ""}`}>
           <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">
             <Building2 className="w-4 h-4" /> 1. Estabelecimentos
           </TabsTrigger>
@@ -137,6 +142,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           </TabsTrigger>
           <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center gap-1">
             <Briefcase className="w-4 h-4" /> 5. Funções / Cargos
+          </TabsTrigger>
+          <TabsTrigger value="atividades" className="text-xs font-medium flex items-center gap-1">
+            <ClipboardList className="w-4 h-4" /> 6. Atividades
           </TabsTrigger>
         </TabsList>
 
@@ -423,6 +431,77 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             </Table>
           </Card>
         </TabsContent>
+
+        {/* 6. ATIVIDADES */}
+        <TabsContent value="atividades" className="mt-4 space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-slate-800">Atividades Executadas</h3>
+            <Button onClick={() => handleOpenModal("atividade")} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+              <Plus className="w-4 h-4 mr-1" /> Nova Atividade
+            </Button>
+          </div>
+          <p className="text-sm text-slate-500">
+            A atividade é o nível em que o perigo realmente se manifesta. Uma função pode ter
+            várias atividades, e é a atividade que define frequência, duração e esforço da exposição.
+          </p>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Atividade</TableHead>
+                  <TableHead>Função</TableHead>
+                  <TableHead>Característica</TableHead>
+                  <TableHead>Frequência / Duração</TableHead>
+                  <TableHead className="text-right">Envolvidos</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {atividades.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-6 text-slate-400">
+                      Nenhuma atividade cadastrada.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  atividades.map((ativ: any) => {
+                    const fn = funcoes.find((f: any) => f.id === ativ.funcao_id);
+                    return (
+                      <TableRow key={ativ.id}>
+                        <TableCell className="font-medium text-slate-900">
+                          {ativ.nome}
+                          {ativ.descricao && (
+                            <span className="block text-xs font-normal text-slate-500 max-w-[260px] truncate">
+                              {ativ.descricao}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{fn?.nome || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{ativ.caracteristica || "rotineira"}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {[ativ.frequencia, ativ.duracao].filter(Boolean).join(" / ") || "-"}
+                        </TableCell>
+                        <TableCell className="text-right">{ativ.trabalhadores_envolvidos ?? "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button onClick={() => handleOpenModal("atividade", ativ)} variant="ghost" size="sm">
+                              <Edit2 className="w-4 h-4 text-slate-600" />
+                            </Button>
+                            <Button onClick={() => setDeleteConfirm({ open: true, type: "atividade", id: ativ.id, nome: ativ.nome })} variant="ghost" size="sm">
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* CONFIRMATION DIALOG DE EXCLUSÃO */}
@@ -445,10 +524,11 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
       {/* DIALOG DE CADASTRO E EDIÇÃO */}
       <Dialog open={openModal} onOpenChange={setOpenModal}>
-        <DialogContent className="max-w-md">
+        {/* Tela cheia no celular; largura confortável no desktop para os grids de 2-3 colunas. */}
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {formData.id ? "Editar" : "Cadastrar"} {modalType.toUpperCase()}
+              {formData.id ? "Editar" : "Cadastrar"} {modalType}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 text-sm">
@@ -741,6 +821,116 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     onChange={(e) => setFormData({ ...formData, descricao_atividades: e.target.value })}
                     placeholder="Descreva detalhadamente a rotina de trabalho..."
                   />
+                </div>
+              </>
+            )}
+
+            {modalType === "atividade" && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Função que executa</Label>
+                    <Select
+                      value={formData.funcao_id || ""}
+                      onValueChange={(val) => setFormData({ ...formData, funcao_id: val })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione a função..." /></SelectTrigger>
+                      <SelectContent>
+                        {funcoes.map((f: any) => (
+                          <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Característica</Label>
+                    <Select
+                      value={formData.caracteristica || "rotineira"}
+                      onValueChange={(val) => setFormData({ ...formData, caracteristica: val })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="rotineira">Rotineira</SelectItem>
+                        <SelectItem value="nao_rotineira">Não rotineira</SelectItem>
+                        <SelectItem value="emergencia">Emergência</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Descrição detalhada</Label>
+                  <Textarea
+                    value={formData.descricao || ""}
+                    onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                    placeholder="Como a atividade é executada, passo a passo..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <Label>Frequência</Label>
+                    <Input
+                      value={formData.frequencia || ""}
+                      onChange={(e) => setFormData({ ...formData, frequencia: e.target.value })}
+                      placeholder="Diária, semanal..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Duração</Label>
+                    <Input
+                      value={formData.duracao || ""}
+                      onChange={(e) => setFormData({ ...formData, duracao: e.target.value })}
+                      placeholder="Ex.: 4h por turno"
+                    />
+                  </div>
+                  <div>
+                    <Label>Trabalhadores envolvidos</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={formData.trabalhadores_envolvidos ?? ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        trabalhadores_envolvidos: e.target.value === "" ? null : Number(e.target.value),
+                      })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Local de execução</Label>
+                    <Input
+                      value={formData.local_execucao || ""}
+                      onChange={(e) => setFormData({ ...formData, local_execucao: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Postura / esforço exigido</Label>
+                    <Input
+                      value={formData.postura_esforco || ""}
+                      onChange={(e) => setFormData({ ...formData, postura_esforco: e.target.value })}
+                      placeholder="Em pé, agachado, carga de 20 kg..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Máquinas e equipamentos</Label>
+                    <Input
+                      value={formData.maquinas || ""}
+                      onChange={(e) => setFormData({ ...formData, maquinas: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Produtos utilizados</Label>
+                    <Input
+                      value={formData.produtos_utilizados || ""}
+                      onChange={(e) => setFormData({ ...formData, produtos_utilizados: e.target.value })}
+                    />
+                  </div>
                 </div>
               </>
             )}

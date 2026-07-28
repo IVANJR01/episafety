@@ -14,6 +14,7 @@ import {
   SstGesVinculo,
   SstExposicao,
   SstPerigoCatalogo,
+  SstAtividade,
   formatarEndereco,
 } from "@/types/sst";
 
@@ -188,6 +189,9 @@ export function useNucleoMestreSst() {
 
   const { data: exposicoes = [], isLoading: loadingExposicoes } =
     useSupabaseQuery<SstExposicao>("sst_exposicoes");
+
+  const { data: atividades = [], isLoading: loadingAtividades } =
+    useSupabaseQuery<SstAtividade>("sst_atividades", "nome", true);
 
   // LEGACY FALLBACK QUERIES (Sincronização Automática de Unidades, CNO/CNPJ e GHEs Existentes)
   const { data: legacyEmpresasConfig = [] } = useQuery({
@@ -434,7 +438,39 @@ export function useNucleoMestreSst() {
     },
   });
 
+  // SAVE ATIVIDADE MUTATION
+  // Sem tabela legada: a atividade não existia antes como entidade, então não há
+  // nada para espelhar — o texto solto em sst_funcoes.descricao_atividades
+  // continua onde está, servindo de resumo da função.
+  const saveAtividadeMutation = useMutation({
+    mutationFn: async (atividade: Partial<SstAtividade>) => {
+      if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
+      if (!(atividade.nome || "").trim()) throw new Error("Informe o nome da atividade.");
+      return resilientSaveItem("sst_atividades", null, atividade, activeEmpresaId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_atividades"] });
+      toast({ title: "Sucesso", description: "Atividade salva no Núcleo Mestre!" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao salvar atividade", description: err.message, variant: "destructive" });
+    },
+  });
+
   // DELETE MUTATIONS
+  const deleteAtividadeMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sst_atividades").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "sst_atividades"] });
+      toast({ title: "Sucesso", description: "Atividade removida." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    },
+  });
+
   const deleteEstabelecimentoMutation = useMutation({
     mutationFn: async (id: string) => {
       const ehProprio = estabelecimentos.find((e) => e.id === id)?.tipo === "proprio";
@@ -542,20 +578,25 @@ export function useNucleoMestreSst() {
     setores: effectiveSetores,
     processos,
     funcoes: effectiveFuncoes,
+    atividades,
     gesList: effectiveGesList,
     gesVinculos,
     perigosCatalogo,
     exposicoes: effectiveExposicoes,
+    activeEmpresaId,
     isLoading:
       loadingEstabelecimentos ||
       loadingAmbientes ||
       loadingSetores ||
       loadingProcessos ||
       loadingFuncoes ||
+      loadingAtividades ||
       loadingGes ||
       loadingGesVinculos ||
       loadingPerigos ||
       loadingExposicoes,
+    saveAtividade: saveAtividadeMutation.mutateAsync,
+    deleteAtividade: deleteAtividadeMutation.mutateAsync,
     saveEstabelecimento: saveEstabelecimentoMutation.mutateAsync,
     saveAmbiente: saveAmbienteMutation.mutateAsync,
     saveSetor: saveSetorMutation.mutateAsync,

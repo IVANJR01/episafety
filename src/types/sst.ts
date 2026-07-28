@@ -201,3 +201,97 @@ export interface SstExposicao {
   created_at?: string;
   updated_at?: string;
 }
+
+// ── ATIVIDADES ────────────────────────────────────────────────────────────────
+
+export interface SstAtividade {
+  id: string;
+  empresa_id: string;
+  funcao_id?: string | null;
+  processo_id?: string | null;
+  setor_id?: string | null;
+  ambiente_id?: string | null;
+  ges_id?: string | null;
+  nome: string;
+  codigo?: string | null;
+  descricao?: string | null;
+  caracteristica?: CaracteristicaAtividade;
+  frequencia?: string | null;
+  duracao?: string | null;
+  habitualidade?: string | null;
+  local_execucao?: string | null;
+  maquinas?: string | null;
+  ferramentas?: string | null;
+  equipamentos?: string | null;
+  produtos_utilizados?: string | null;
+  postura_esforco?: string | null;
+  trabalhadores_envolvidos?: number | null;
+  observacoes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ── COLETA DE CAMPO ───────────────────────────────────────────────────────────
+
+export type StatusColetaCampo = "rascunho" | "aguardando_revisao" | "validado" | "descartado";
+
+export const STATUS_COLETA_LABEL: Record<StatusColetaCampo, string> = {
+  rascunho: "Rascunho",
+  aguardando_revisao: "Aguardando revisão",
+  validado: "Validado",
+  descartado: "Descartado",
+};
+
+export const STATUS_COLETA_COR: Record<StatusColetaCampo, string> = {
+  rascunho: "bg-slate-100 text-slate-700 border-slate-300",
+  aguardando_revisao: "bg-amber-100 text-amber-800 border-amber-300",
+  validado: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  descartado: "bg-red-100 text-red-800 border-red-300",
+};
+
+export interface SstColetaCampo {
+  id: string;
+  empresa_id: string;
+  pgr_id?: string | null;
+  estabelecimento_id?: string | null;
+  ambiente_id?: string | null;
+  processo_id?: string | null;
+  setor_id?: string | null;
+  ges_id?: string | null;
+  funcao_id?: string | null;
+  atividade_id?: string | null;
+  contexto_livre?: string | null;
+  categoria?: CategoriaPerigo | "outro" | null;
+  perigo_observado: string;
+  fonte_circunstancia?: string | null;
+  situacao_encontrada?: string | null;
+  possiveis_lesoes?: string | null;
+  exposicao?: string | null;
+  qtd_expostos?: number | null;
+  grupo_expostos?: string | null;
+  medidas_existentes?: string | null;
+  observacoes?: string | null;
+  coletado_em: string;
+  coletado_por?: string | null;
+  coletado_por_nome?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  status: StatusColetaCampo;
+  revisado_por?: string | null;
+  revisado_em?: string | null;
+  revisao_observacao?: string | null;
+  inventario_item_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SstColetaEvidencia {
+  id: string;
+  empresa_id: string;
+  coleta_id: string;
+  tipo: "foto" | "documento" | "audio" | "outro";
+  url: string;
+  nome_arquivo?: string | null;
+  descricao?: string | null;
+  created_at?: string;
+}

@@ -60,6 +60,8 @@ import PgrModule from "@/pages/pgr/PgrModule";
 import PgrNovo from "@/pages/pgr/PgrNovo";
 import PgrDetalhe from "@/pages/pgr/PgrDetalhe";
 import PgrWizard from "@/pages/pgr/PgrWizard";
+import PgrEstruturaTecnica from "@/pages/pgr/PgrEstruturaTecnica";
+import LevantamentoCampo from "@/pages/campo/LevantamentoCampo";
 import PgrValidar from "@/pages/pgr/PgrValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
 import MatrizRiscoAdmin from "@/pages/cadastro/MatrizRiscoAdmin";
@@ -301,7 +303,11 @@ function ProtectedRoute() {
         <Route path="/pgr/dashboard" element={<PgrDashboard />} />
         <Route path="/pgr/matriz" element={<MatrizRiscoAdmin />} />
         <Route path="/pgr/novo" element={<PgrNovo />} />
+        {/* Três modos de uso do mesmo PGR: assistente guiado (padrão),
+            estrutura técnica em árvore e coleta de campo pelo celular. */}
         <Route path="/pgr/:id" element={<PgrWizard />} />
+        <Route path="/pgr/:id/estrutura" element={<PgrEstruturaTecnica />} />
+        <Route path="/campo" element={<LevantamentoCampo />} />
         <Route path="/pgr/:id/classico" element={<PgrDetalhe />} />
         <Route path="/pgr/:id/editar" element={<PgrNovo />} />
         <Route path="/pgr/validar/:id" element={<PgrValidar />} />

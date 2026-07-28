@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { CentralDocumentacaoTab } from "@/components/documentacao/CentralDocumentacaoTab";
+import { ListaDocumentos } from "@/components/documentacao/ListaDocumentos";
 import { EstruturaOcupacionalTab } from "@/components/documentacao/EstruturaOcupacionalTab";
 import { GesExposicoesTab } from "@/components/documentacao/GesExposicoesTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,9 +48,14 @@ export default function DocumentacaoSst() {
             </TabsList>
           </div>
 
-          {/* SUBMÓDULO 1: CENTRAL */}
-          <TabsContent value="central" className="mt-4">
-            <CentralDocumentacaoTab onNavigateSubmodulo={setActiveTab} />
+          {/* SUBMÓDULO 1: DOCUMENTOS — a lista dos documentos existentes vem
+              primeiro; os tipos disponíveis ficam abaixo, como ponto de partida
+              para quem ainda não criou nenhum. */}
+          <TabsContent value="central" className="mt-4 space-y-8">
+            <ListaDocumentos />
+            <div className="border-t pt-6">
+              <CentralDocumentacaoTab onNavigateSubmodulo={setActiveTab} />
+            </div>
           </TabsContent>
 
           {/* SUBMÓDULO 2: ESTRUTURA OCUPACIONAL */}
