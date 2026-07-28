@@ -1,3 +1,3 @@
 // App version — bump this on each release
-export const APP_VERSION = "1.3.10";
-export const APP_VERSION_DATE = "2026-07-26";
+export const APP_VERSION = "1.4.2";
+export const APP_VERSION_DATE = "2026-07-27";

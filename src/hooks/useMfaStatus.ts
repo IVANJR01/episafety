@@ -40,9 +40,18 @@ export function useMfaStatus(): MfaStatus {
 
     (async () => {
       try {
-        // Kill-switch de emergência: se `VITE_MFA_ENFORCEMENT_ENABLED=false`
-        // no ambiente, desliga o enforcement para evitar lockout de admins.
-        const enforcementFlag = (import.meta.env.VITE_MFA_ENFORCEMENT_ENABLED ?? "true")
+        // Kill-switch do enforcement de MFA.
+        //
+        // DESLIGADO POR PADRÃO (2026-07-27), a pedido, enquanto o sistema está em
+        // implantação. Não é apenas o banner: com enforcement ligado, o MfaGate
+        // redireciona TODAS as rotas para /setup-mfa assim que o prazo de carência
+        // vence, e o MfaActionButton bloqueia publicar/assinar PGR, LTCAT, PPP e
+        // eSocial. Remover só o banner deixaria o bloqueio chegar sem aviso.
+        //
+        // Para religar: defina VITE_MFA_ENFORCEMENT_ENABLED=true no ambiente, ou
+        // troque o padrão abaixo de "false" para "true". Nada mais precisa mudar —
+        // toda a infraestrutura de MFA continua no lugar.
+        const enforcementFlag = (import.meta.env.VITE_MFA_ENFORCEMENT_ENABLED ?? "false")
           .toString()
           .toLowerCase();
         const enforcementEnabled = enforcementFlag !== "false" && enforcementFlag !== "0";
