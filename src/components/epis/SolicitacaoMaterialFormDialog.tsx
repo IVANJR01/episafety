@@ -341,20 +341,34 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           await removeItemImage(i.imagem_path);
           newPath = null; newNome = null; newTipo = null; newTam = null;
         }
-        // Upload de novo arquivo (substituindo eventual antigo)
+        // Upload de novo arquivo (substituindo eventual antigo).
+        //
+        // A falha do upload NAO pode derrubar a solicitacao. Era o que
+        // acontecia: o erro subia, o catch de fora abortava tudo e a pessoa
+        // perdia titulo, itens, quantidades — por causa de uma foto, que e
+        // opcional. Foi assim que o "Bucket not found" apagou o trabalho todo.
+        let falhaFoto: string | null = null;
         if (i.imagem_file) {
-          const { blob, type, ext } = await compressImage(i.imagem_file);
-          const path = buildItemImagePath(empresaId, solicId!, i._key, ext);
-          await uploadItemImage(path, blob, type);
-          if (i.imagem_path && i.imagem_path !== path) {
-            removeItemImage(i.imagem_path).catch(() => {});
+          try {
+            const { blob, type, ext } = await compressImage(i.imagem_file);
+            const path = buildItemImagePath(empresaId, solicId!, i._key, ext);
+            await uploadItemImage(path, blob, type);
+            if (i.imagem_path && i.imagem_path !== path) {
+              removeItemImage(i.imagem_path).catch(() => {});
+            }
+            newPath = path;
+            newNome = i.imagem_nome || i.imagem_file.name;
+            newTipo = type;
+            newTam = blob.size;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            falhaFoto = /bucket not found/i.test(msg)
+              ? "o espaço de armazenamento de imagens ainda não foi criado no Supabase"
+              : msg;
+            console.error("[solicitacao] falha ao enviar a foto do item:", e);
           }
-          newPath = path;
-          newNome = i.imagem_nome || i.imagem_file.name;
-          newTipo = type;
-          newTam = blob.size;
         }
-        return { i, newPath, newNome, newTipo, newTam };
+        return { i, newPath, newNome, newTipo, newTam, falhaFoto };
       }));
 
       const toInsert = finalItems.map(({ i, newPath, newNome, newTipo, newTam }, idx) => ({
@@ -378,7 +392,17 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       const { error: itErr } = await supabase.from("solicitacoes_materiais_itens").insert(toInsert);
       if (itErr) throw itErr;
 
-      toast.success(nextStatus === "enviada" ? "Solicitação enviada" : "Solicitação salva");
+      // A solicitação foi gravada; se alguma foto não subiu, avisa sem fingir
+      // que deu tudo certo — o item fica sem imagem e pode ser reenviado depois.
+      const fotosComFalha = finalItems.filter((x) => x.falhaFoto);
+      if (fotosComFalha.length) {
+        toast.warning(
+          `Solicitação salva, mas ${fotosComFalha.length === 1 ? "a foto de 1 item não foi enviada" : `as fotos de ${fotosComFalha.length} itens não foram enviadas`}`,
+          { description: `Motivo: ${fotosComFalha[0].falhaFoto}. O resto foi gravado normalmente.`, duration: 10000 },
+        );
+      } else {
+        toast.success(nextStatus === "enviada" ? "Solicitação enviada" : "Solicitação salva");
+      }
       // Gravado no banco: o rascunho local cumpriu o papel e sai de cena.
       try { localStorage.removeItem(chaveRascunho); } catch { /* nada a fazer */ }
       setRascunhoRecuperado(false);

@@ -5,7 +5,11 @@ quando uma migration precisa ser aplicada à mão — o ambiente de
 desenvolvimento não alcança o banco de produção (o proxy bloqueia o host e só
 há a chave pública, que lê e grava linhas mas não altera estrutura).
 
-**Neste momento não há nada pendente.**
+## Pendente agora
+
+| Arquivo | O que faz |
+|---|---|
+| `APLICAR_BUCKET_IMAGENS.sql` | Cria o bucket `solicitacoes-materiais-imagens`. Sem ele, anexar foto ao item da solicitação devolve **"Bucket not found"**. |
 
 As migrations aplicadas ficam apenas em `supabase/migrations/`, que é o
 histórico oficial. Manter cópia aqui depois de aplicada só confunde: dá a
