@@ -89,6 +89,29 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string>("rascunho");
+  const [rascunhoRecuperado, setRascunhoRecuperado] = useState(false);
+
+  /**
+   * Rascunho automático de solicitação NOVA.
+   *
+   * O formulário é longo e o único jeito de não perder o que foi digitado era
+   * lembrar de clicar em "Salvar rascunho" — que grava no banco e exige título.
+   * Sair para outra tela ou recarregar a página descartava tudo em silêncio.
+   *
+   * Guarda no proprio navegador, por empresa. Nao entra aqui a foto escolhida
+   * (File e blob: URL nao sobrevivem a recarga) nem edicao de solicitacao ja
+   * existente, que tem a versao do banco como fonte.
+   */
+  const chaveRascunho = `solicitacao_material_nova_${empresaId || "sem-empresa"}`;
+
+  // Grava o rascunho a cada mudanca, so em solicitacao nova.
+  useEffect(() => {
+    if (!open || solicitacaoId || !empresaId) return;
+    try {
+      const semArquivos = itens.map(({ imagem_file: _f, imagem_preview_url: _p, ...resto }) => resto);
+      localStorage.setItem(chaveRascunho, JSON.stringify({ head, itens: semArquivos }));
+    } catch { /* cota cheia ou modo restrito: rascunho e conveniencia, nao pode quebrar o formulario */ }
+  }, [head, itens, open, solicitacaoId, empresaId, chaveRascunho]);
 
   useEffect(() => {
     if (!open) return;
@@ -113,11 +136,31 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   useEffect(() => {
     if (!open) return;
     if (!solicitacaoId) {
-      setHead({ ...emptyHead(), solicitante_nome: user?.email?.split("@")[0] || "" });
-      setItens([emptyItem()]);
+      const base = { ...emptyHead(), solicitante_nome: user?.email?.split("@")[0] || "" };
+      let recuperado = false;
+      try {
+        const bruto = localStorage.getItem(chaveRascunho);
+        if (bruto) {
+          const d = JSON.parse(bruto) as { head?: typeof base; itens?: ItemForm[] };
+          // Só restaura se houver algo digitado — rascunho vazio é ruído.
+          const temConteudo = !!d.head?.titulo?.trim()
+            || (d.itens || []).some((i) => (i.nome_item || "").trim());
+          if (temConteudo) {
+            setHead({ ...base, ...d.head });
+            setItens((d.itens || []).length ? d.itens!.map((i) => ({ ...i, _key: newKey() })) : [emptyItem()]);
+            recuperado = true;
+          }
+        }
+      } catch { /* rascunho corrompido nao pode impedir de abrir o formulario */ }
+      setRascunhoRecuperado(recuperado);
+      if (!recuperado) {
+        setHead(base);
+        setItens([emptyItem()]);
+      }
       setStatus("rascunho");
       return;
     }
+    setRascunhoRecuperado(false);
     setLoading(true);
     (async () => {
       const { data: s } = await supabase.from("solicitacoes_materiais").select("*").eq("id", solicitacaoId).maybeSingle();
@@ -159,7 +202,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       if (!(is as any[])?.length) setItens([emptyItem()]);
       setLoading(false);
     })();
-  }, [open, solicitacaoId, user]);
+  }, [open, solicitacaoId, user, chaveRascunho]);
 
   // Resolve signed URLs for existing item images when loaded
   useEffect(() => {
@@ -329,6 +372,9 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       if (itErr) throw itErr;
 
       toast.success(nextStatus === "enviada" ? "Solicitação enviada" : "Solicitação salva");
+      // Gravado no banco: o rascunho local cumpriu o papel e sai de cena.
+      try { localStorage.removeItem(chaveRascunho); } catch { /* nada a fazer */ }
+      setRascunhoRecuperado(false);
       onSaved();
     } catch (e: any) {
       toast.error("Erro ao salvar", { description: e.message });
@@ -356,6 +402,26 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
             {/* Dados gerais */}
             <Card>
               <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 [&>*]:min-w-0">
+                {rascunhoRecuperado && (
+                  <div className="sm:col-span-3 flex flex-wrap items-center gap-2 rounded border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                    <span>
+                      Recuperamos o que você tinha preenchido antes de sair. A foto do item
+                      precisa ser escolhida de novo.
+                    </span>
+                    <Button
+                      type="button" size="sm" variant="ghost" className="h-7 text-xs ml-auto"
+                      onClick={() => {
+                        try { localStorage.removeItem(chaveRascunho); } catch { /* nada a fazer */ }
+                        setHead({ ...emptyHead(), solicitante_nome: user?.email?.split("@")[0] || "" });
+                        setItens([emptyItem()]);
+                        setRascunhoRecuperado(false);
+                      }}
+                    >
+                      Começar do zero
+                    </Button>
+                  </div>
+                )}
+
                 <div className="sm:col-span-2">
                   <Label>Título *</Label>
                   <Input value={head.titulo} onChange={(e) => setHead({ ...head, titulo: e.target.value })} disabled={readOnly} placeholder="Ex: Reposição EPIs frente de serviço" />
