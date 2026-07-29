@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Download, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine } from "lucide-react";
+import { Plus, Download, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import InventarioItemDialog from "./InventarioItemDialog";
 import ImportarGheDialog from "./ImportarGheDialog";
@@ -49,6 +49,17 @@ export default function InventarioTab({
   const [importOpen, setImportOpen] = useState(false);
   const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
   const [preencher, setPreencher] = useState<Record<string, string> | null>(null);
+
+  /**
+   * Colunas de detalhe (limite de exposição, intensidade, técnica utilizada,
+   * atenuação) escondidas por padrão.
+   *
+   * Elas só se aplicam a risco medido instrumentalmente — num levantamento
+   * qualitativo saem todas "N.A" — e custavam 420px de rolagem horizontal numa
+   * planilha que já tem 2100px. Nada foi removido: o Excel e o PDF continuam
+   * saindo com o formato completo, que é o que o documento exige.
+   */
+  const [detalhes, setDetalhes] = useState(false);
 
   const { data: itens = [], isLoading } = useQuery({
     queryKey: ["pgr-inventario", pgrId, "v2-ambiente"],
@@ -179,6 +190,10 @@ export default function InventarioTab({
                 <Button size="sm" onClick={() => { setEditId(null); setPreencher(null); setDialogOpen(true); }}>
                   <Plus className="h-4 w-4 mr-1" /> Novo item
                 </Button>
+                <Button variant="ghost" size="sm" onClick={() => setDetalhes((v) => !v)}
+                  title="Limite de exposição, intensidade, técnica utilizada e atenuação">
+                  {detalhes ? <><EyeOff className="h-4 w-4 mr-1" /> Menos colunas</> : <><Eye className="h-4 w-4 mr-1" /> Colunas de medição</>}
+                </Button>
               </>
             )}
           </div>
@@ -250,7 +265,7 @@ export default function InventarioTab({
             </div>
           ) : (
             <div className="overflow-x-auto -mx-3 px-3">
-              <table className="w-full text-[11px] border-collapse min-w-[2100px]">
+              <table className={`w-full text-[11px] border-collapse ${detalhes ? "min-w-[2100px]" : "min-w-[1680px]"}`}>
                 <thead className="bg-amber-200 sticky top-0 z-10">
                   <tr className="text-amber-950">
                     <th className="p-2 text-left border border-amber-400 min-w-[200px]">Descrição do ambiente</th>
@@ -262,13 +277,13 @@ export default function InventarioTab({
                     <th className="p-2 text-left border border-amber-400 min-w-[130px]">Tipo de Agente</th>
                     <th className="p-2 text-left border border-amber-400 min-w-[170px]">Perigo / Fonte Exposição</th>
                     <th className="p-2 text-left border border-amber-400 min-w-[170px]">Possíveis Lesões ou<br/>Agravos à Saúde</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[100px]">Limite de<br/>Exposição</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">Intensidade /<br/>Concentração</th>
+                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[100px]">Limite de<br/>Exposição</th>}
+                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[110px]">Intensidade /<br/>Concentração</th>}
                     <th className="p-2 text-left border border-amber-400 min-w-[120px]">Tipo / Tempo<br/>de Exposição</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">Técnica<br/>Utilizada</th>
+                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[110px]">Técnica<br/>Utilizada</th>}
                     <th className="p-2 text-left border border-amber-400 min-w-[200px]">Proc. Administrativo / EPC /<br/>Organização do Trabalho</th>
                     <th className="p-2 text-left border border-amber-400 min-w-[110px]">EPI</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[100px]">Atenuação /<br/>Fator de Proteção</th>
+                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[100px]">Atenuação /<br/>Fator de Proteção</th>}
                     <th className="p-2 text-center border border-amber-400 w-[55px]">Prob.</th>
                     <th className="p-2 text-center border border-amber-400 w-[55px]">Sev.</th>
                     <th className="p-2 text-center border border-amber-400 w-[55px]">Total</th>
@@ -389,13 +404,13 @@ export default function InventarioTab({
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.perigo_descricao)}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.fonte_geradora)}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.lesoes)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{intensidade}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{intensidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{tecnica}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{tecnica}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{controles}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.epi)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{atenuacao}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{atenuacao}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle bg-amber-50/30">{i.probabilidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle bg-amber-50/30">{i.severidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle font-semibold bg-amber-50/30">{total}</td>}
