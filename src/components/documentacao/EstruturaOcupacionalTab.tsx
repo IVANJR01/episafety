@@ -38,6 +38,24 @@ const PLACEHOLDER_NOME: Record<string, string> = {
   atividade: "O que é feito. Ex.: Operar serra circular",
 };
 
+/**
+ * Sugere um nome curto de atividade a partir da descrição.
+ *
+ * O nome é o rótulo que aparece ao lado do perigo no inventário do PGR, então
+ * a atividade precisa de um. Mas exigir que a pessoa invente um título depois
+ * de já ter escrito a descrição é atrito à toa — e travava o formulário com
+ * "Preencha este campo". Aqui a primeira oração vira a sugestão, que continua
+ * editável.
+ */
+function sugerirNomeAtividade(descricao: string): string {
+  const limpo = (descricao || "").trim();
+  if (!limpo) return "";
+  // Corta na primeira fronteira de oração; se não houver, usa o começo.
+  const corte = limpo.split(/[.;\n]/)[0].trim() || limpo;
+  const curto = corte.length > 70 ? `${corte.slice(0, 70).trimEnd()}…` : corte;
+  return curto.charAt(0).toUpperCase() + curto.slice(1);
+}
+
 type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes" | "atividades";
 
 interface EstruturaProps {
@@ -626,6 +644,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 required
                 placeholder={PLACEHOLDER_NOME[modalType]}
               />
+              {modalType === "atividade" && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Um rótulo curto — é ele que aparece ao lado do perigo no inventário do PGR.
+                  Se você escrever a descrição abaixo e deixar este campo vazio, ele é preenchido
+                  sozinho com a primeira frase.
+                </p>
+              )}
             </div>
 
             {modalType === "estabelecimento" && (
@@ -1081,6 +1106,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   <Textarea
                     value={formData.descricao || ""}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                    // No blur, e não a cada tecla: preencher enquanto a pessoa
+                    // digita ficaria trocando o nome a cada letra.
+                    onBlur={(e) => {
+                      if (!(formData.nome || "").trim()) {
+                        const sugestao = sugerirNomeAtividade(e.target.value);
+                        if (sugestao) setFormData((prev) => ({ ...prev, nome: sugestao }));
+                      }
+                    }}
                     placeholder="Como a atividade é executada, passo a passo..."
                   />
                 </div>
