@@ -104,6 +104,13 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
    */
   const chaveRascunho = `solicitacao_material_nova_${empresaId || "sem-empresa"}`;
 
+  /** Ja abre aberto quando algum dos campos opcionais tem conteudo — esconder
+   *  o que foi preenchido faria a pessoa achar que se perdeu. */
+  const temDetalhes = !!(
+    head.local_obra?.trim() || head.setor?.trim()
+    || head.justificativa?.trim() || head.observacoes?.trim()
+  );
+
   // Grava o rascunho a cada mudanca, so em solicitacao nova.
   useEffect(() => {
     if (!open || solicitacaoId || !empresaId) return;
@@ -476,14 +483,6 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                   </div>
                 )}
                 <div>
-                  <Label>Local (texto livre)</Label>
-                  <Input value={head.local_obra} onChange={(e) => setHead({ ...head, local_obra: e.target.value })} disabled={readOnly} placeholder="Ex: Obra Rua X - Bloco B" />
-                </div>
-                <div>
-                  <Label>Setor</Label>
-                  <Input value={head.setor} onChange={(e) => setHead({ ...head, setor: e.target.value })} disabled={readOnly} />
-                </div>
-                <div>
                   <Label>Solicitante</Label>
                   <Input value={head.solicitante_nome} onChange={(e) => setHead({ ...head, solicitante_nome: e.target.value })} disabled={readOnly} />
                 </div>
@@ -507,14 +506,35 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="sm:col-span-2">
-                  <Label>Justificativa</Label>
-                  <Textarea rows={2} value={head.justificativa} onChange={(e) => setHead({ ...head, justificativa: e.target.value })} disabled={readOnly} />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label>Observações</Label>
-                  <Textarea rows={2} value={head.observacoes} onChange={(e) => setHead({ ...head, observacoes: e.target.value })} disabled={readOnly} />
-                </div>
+                {/* Local, setor, justificativa e observacoes sao opcionais e
+                    raramente preenchidos, mas ocupavam metade da altura do
+                    cabecalho — as duas caixas de texto ainda por cima paravam em
+                    2/3 da largura, deixando uma coluna vazia ao lado. Ficam
+                    recolhidos ate serem pedidos. O resumo diz o que ja tem
+                    conteudo, para nada ficar escondido sem aviso. */}
+                <details className="sm:col-span-3 rounded-lg border bg-muted/30 px-3 py-2" open={temDetalhes}>
+                  <summary className="cursor-pointer select-none text-xs font-medium text-slate-700">
+                    Detalhes {temDetalhes ? "— preenchidos" : "(opcional)"}
+                  </summary>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label>Local (texto livre)</Label>
+                      <Input value={head.local_obra} onChange={(e) => setHead({ ...head, local_obra: e.target.value })} disabled={readOnly} placeholder="Ex: Obra Rua X - Bloco B" />
+                    </div>
+                    <div>
+                      <Label>Setor</Label>
+                      <Input value={head.setor} onChange={(e) => setHead({ ...head, setor: e.target.value })} disabled={readOnly} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label>Justificativa</Label>
+                      <Textarea rows={2} value={head.justificativa} onChange={(e) => setHead({ ...head, justificativa: e.target.value })} disabled={readOnly} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label>Observações</Label>
+                      <Textarea rows={2} value={head.observacoes} onChange={(e) => setHead({ ...head, observacoes: e.target.value })} disabled={readOnly} />
+                    </div>
+                  </div>
+                </details>
               </CardContent>
             </Card>
 
