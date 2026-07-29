@@ -222,7 +222,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   y += 4;
   autoTable(doc, {
     startY: y,
-    head: [["#", "Foto", "Tipo", "Item / Descrição", "CA", "Un.", "Qtd Solic.", "Qtd Aprov.", "Justificativa"]],
+    head: [["#", "Foto", "Tipo", "Item / Descrição", "CA", "Un.", "Qtd", "Aprovada", "Justificativa"]],
     body: s.itens.map((it, i) => {
       const nome = it.nome_item + (it.descricao ? `\n${it.descricao}` : "") + (it.observacoes ? `\nObs: ${it.observacoes}` : "");
       return [
@@ -240,16 +240,20 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
     styles: { fontSize: 8, cellPadding: 2, valign: "top", overflow: "linebreak" },
     headStyles: { fillColor: [234, 88, 12], textColor: 255, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [250, 245, 240] },
+    // Larguras somam os 180mm uteis do A4 retrato (210 - 2x15 de margem).
+    // Antes "Qtd Solic." e "Qtd Aprov." tinham 14mm e quebravam: o cabecalho ia
+    // para duas linhas e "Pendente" virava "Penden/te". Os titulos encurtaram e
+    // a largura foi para onde o texto precisa.
     columnStyles: {
-      0: { cellWidth: 8, halign: "center" },
-      1: { cellWidth: FOTO_BOX + 4, halign: "center" },
-      2: { cellWidth: 18 },
-      3: { cellWidth: 53 },
-      4: { cellWidth: 13, halign: "center" },
-      5: { cellWidth: 9, halign: "center" },
-      6: { cellWidth: 14, halign: "right" },
-      7: { cellWidth: 14, halign: "right" },
-      8: { cellWidth: "auto" },
+      0: { cellWidth: 8, halign: "center" },                    // #
+      1: { cellWidth: FOTO_BOX + 4, halign: "center" },         // Foto
+      2: { cellWidth: 16 },                                     // Tipo
+      3: { cellWidth: 50 },                                     // Item / Descrição
+      4: { cellWidth: 14, halign: "center" },                   // CA
+      5: { cellWidth: 9, halign: "center" },                    // Un.
+      6: { cellWidth: 12, halign: "center" },                   // Qtd
+      7: { cellWidth: 18, halign: "center" },                   // Aprovada
+      8: { cellWidth: "auto" },                                 // Justificativa
     },
     // Reserva altura so nas linhas que tem foto — item sem imagem continua
     // ocupando uma linha baixa.
