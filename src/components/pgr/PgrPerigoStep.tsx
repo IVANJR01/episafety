@@ -80,8 +80,12 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
     if (!ctx.ambiente_id) falta.push("ambiente");
     if (!ctx.setor_id) falta.push("setor");
     if (!ctx.ges_id) falta.push("GES");
-    if (!ctx.funcao_id) falta.push("função");
-    if (!ctx.atividade_id) falta.push("atividade");
+    // Função e atividade NÃO são obrigatórias. O GES já é, por definição, o
+    // grupo de trabalhadores expostos aos mesmos agentes na mesma intensidade
+    // — é nesse nível que a NR-01 identifica o perigo. Exigir função E
+    // atividade em cada perigo obrigava a repetir o levantamento pessoa a
+    // pessoa e anulava a razão de existir do GES. Ficam como refinamento, para
+    // o perigo que atinge só uma função ou só uma tarefa dentro do grupo.
     if (!f.perigo_descricao.trim()) falta.push("perigo");
     if (!f.fonte_circunstancia.trim()) falta.push("fonte ou circunstância");
     if (!f.possiveis_lesoes.trim()) falta.push("possíveis lesões");
@@ -321,7 +325,9 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
   }
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
+    // Coluna única: a lateral de 300px cabia pelas media queries (que medem a
+    // janela) mas não pelo espaço real, e saía cortada fora da tela.
+    <div className="w-full max-w-full">
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold min-w-0">
@@ -332,11 +338,17 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
           </Button>
         </div>
 
+        <PgrContextoResumo valor={ctx} />
+
         <PgrContextoSelector
           valor={ctx} onChange={setCtx} disabled={!canEdit}
-          obrigatorios={["ambiente_id", "setor_id", "ges_id", "funcao_id", "atividade_id"]}
+          obrigatorios={["ambiente_id", "setor_id", "ges_id"]}
           ocultar={["processo_id"]}
         />
+        <p className="-mt-3 text-xs text-muted-foreground">
+          Função e atividade são opcionais: preencha só quando o perigo atingir uma função
+          ou tarefa específica dentro do grupo. Em branco, o perigo vale para todo o GES.
+        </p>
 
         <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -433,10 +445,6 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
           </Card>
         )}
       </div>
-
-      <aside className="xl:sticky xl:top-24">
-        <PgrContextoResumo valor={ctx} />
-      </aside>
     </div>
   );
 }

@@ -39,7 +39,7 @@ const PLACEHOLDER_NOME: Record<string, string> = {
 };
 
 /**
- * Sugere um nome curto de atividade a partir da descrição.
+ * Sugere um nome curto a partir de um texto longo (descrição, etapas).
  *
  * O nome é o rótulo que aparece ao lado do perigo no inventário do PGR, então
  * a atividade precisa de um. Mas exigir que a pessoa invente um título depois
@@ -47,7 +47,7 @@ const PLACEHOLDER_NOME: Record<string, string> = {
  * "Preencha este campo". Aqui a primeira oração vira a sugestão, que continua
  * editável.
  */
-function sugerirNomeAtividade(descricao: string): string {
+function sugerirNomeCurto(descricao: string): string {
   const limpo = (descricao || "").trim();
   if (!limpo) return "";
   // Corta na primeira fronteira de oração; se não houver, usa o começo.
@@ -449,7 +449,11 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     const set = setores.find((s) => s.id === proc.setor_id);
                     return (
                       <TableRow key={proc.id}>
-                        <TableCell className="font-medium text-slate-900">{proc.nome}</TableCell>
+                        {/* Nome numa linha só: quando alguém cola o texto
+                            inteiro aqui, a linha crescia e empurrava a tabela. */}
+                        <TableCell className="font-medium text-slate-900 max-w-[280px]">
+                          <span className="block truncate" title={proc.nome}>{proc.nome}</span>
+                        </TableCell>
                         <TableCell>{set?.nome || "-"}</TableCell>
                         <TableCell><Badge variant="outline">{proc.caracteristica_atividade}</Badge></TableCell>
                         <TableCell>{proc.maquinas_equipamentos || "-"}</TableCell>
@@ -656,11 +660,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 required
                 placeholder={PLACEHOLDER_NOME[modalType]}
               />
-              {modalType === "atividade" && (
+              {(modalType === "atividade" || modalType === "processo") && (
                 <p className="text-xs text-slate-500 mt-1">
-                  Um rótulo curto — é ele que aparece ao lado do perigo no inventário do PGR.
-                  Se você escrever a descrição abaixo e deixar este campo vazio, ele é preenchido
-                  sozinho com a primeira frase.
+                  Só um rótulo curto, para identificar na lista. O detalhamento vai
+                  {modalType === "processo" ? " em “Etapas do processo”" : " na descrição"}, abaixo —
+                  e se você deixar este campo vazio, ele é preenchido sozinho com a primeira frase
+                  de lá.
                 </p>
               )}
             </div>
@@ -1014,6 +1019,15 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   <Label>Etapas do processo</Label>
                   <Textarea value={formData.descricao_etapas || ""}
                     onChange={(e) => setFormData({ ...formData, descricao_etapas: e.target.value })}
+                    // Mesmo alívio dado à atividade: quem descreve as etapas não
+                    // precisa voltar lá em cima e inventar um título. A primeira
+                    // oração vira o nome, e continua editável.
+                    onBlur={(e) => {
+                      if (!(formData.nome || "").trim()) {
+                        const sugestao = sugerirNomeCurto(e.target.value);
+                        if (sugestao) setFormData((prev) => ({ ...prev, nome: sugestao }));
+                      }
+                    }}
                     placeholder="Como o trabalho é executado, do início ao fim" />
                 </div>
               </>
@@ -1151,7 +1165,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     // digita ficaria trocando o nome a cada letra.
                     onBlur={(e) => {
                       if (!(formData.nome || "").trim()) {
-                        const sugestao = sugerirNomeAtividade(e.target.value);
+                        const sugestao = sugerirNomeCurto(e.target.value);
                         if (sugestao) setFormData((prev) => ({ ...prev, nome: sugestao }));
                       }
                     }}

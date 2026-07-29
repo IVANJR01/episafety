@@ -164,7 +164,18 @@ export function PgrContextoSelector({
   );
 }
 
-/** Painel lateral "Contexto selecionado" — resume o que já foi escolhido. */
+/**
+ * Resumo do que já foi escolhido.
+ *
+ * Era uma coluna lateral de 300px. As media queries do Tailwind medem a JANELA,
+ * não o espaço que sobra: no assistente, a barra lateral do app e a trilha de
+ * etapas já consomem ~470px antes de o formulário começar, então a coluna
+ * entrava mesmo sem caber e o painel ficava cortado fora da tela — o usuário
+ * não conseguia ler o contexto.
+ *
+ * Vira uma faixa horizontal acima do formulário: aparece por inteiro em
+ * qualquer largura e devolve a largura toda para os campos.
+ */
 export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
   const { ambientes, setores, funcoes, atividades, gesList } = useNucleoMestreSst();
 
@@ -180,17 +191,18 @@ export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
   ];
 
   return (
-    <div className="rounded-xl border bg-card p-5">
-      <h3 className="font-semibold mb-4">Contexto selecionado</h3>
-      <ul className="divide-y">
+    <div className="rounded-xl border bg-muted/40 px-4 py-3">
+      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+        Contexto selecionado
+      </h3>
+      <ul className="flex flex-wrap gap-x-6 gap-y-3">
         {linhas.map(({ icone: Icone, rotulo, valor: v }) => (
-          <li key={rotulo} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-            <span className="h-10 w-10 shrink-0 rounded-full border grid place-items-center">
-              <Icone className={`h-[18px] w-[18px] ${v ? "text-primary" : "text-muted-foreground"}`} />
-            </span>
+          <li key={rotulo} className="flex items-center gap-2 min-w-0">
+            <Icone className={`h-4 w-4 shrink-0 ${v ? "text-primary" : "text-muted-foreground"}`} />
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">{rotulo}</p>
-              <p className={`text-sm ${v ? "font-medium" : "text-muted-foreground"}`}>
+              <p className="text-[11px] leading-tight text-muted-foreground">{rotulo}</p>
+              <p className={`text-sm leading-tight truncate ${v ? "font-medium" : "text-muted-foreground"}`}
+                title={v || undefined}>
                 {v || "A definir"}
               </p>
             </div>
