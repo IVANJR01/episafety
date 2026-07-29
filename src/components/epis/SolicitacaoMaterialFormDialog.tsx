@@ -528,17 +528,26 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
             {itens.map((it, idx) => (
               <Card key={idx}>
-                <CardContent className="p-3 space-y-2">
-                  <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-muted-foreground">Item #{idx + 1}</span>
+                <CardContent className="p-3 space-y-3">
+                  {/* Cabecalho do item primeiro: antes a caixa da foto vinha
+                      acima de tudo, ocupando a largura inteira, e o "Item #1"
+                      aparecia depois dela — a foto e o acessorio, o item e o
+                      assunto. */}
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-sm font-semibold">Item {idx + 1}</span>
                     {!readOnly && itens.length > 1 && (
-                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeItem(idx)}>
-                        <Trash2 className="w-4 h-4" />
+                      <Button size="sm" variant="ghost" className="text-destructive h-8" onClick={() => removeItem(idx)}>
+                        <Trash2 className="w-4 h-4 mr-1" /> Remover
                       </Button>
                     )}
                   </div>
+
+                  {/* No desktop a foto vai para uma coluna estreita a direita e
+                      os campos ficam com a largura toda. No celular ela volta
+                      para cima, que e o fluxo de quem esta em campo com a
+                      camera na mao. */}
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
+                    <div className="order-last lg:order-first min-w-0 space-y-2">
                   <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
                     <div className="sm:col-span-2">
                       <Label className="text-xs">Tipo</Label>
@@ -595,6 +604,12 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Input value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
                     </div>
                   </div>
+                    </div>
+
+                    <div className="order-first lg:order-last min-w-0">
+                      <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -636,14 +651,14 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
 
 
   return (
-    <div className="rounded-md border-2 border-primary/40 bg-primary/5 p-3 space-y-3" data-solmat-image-block="true">
+    <div className="rounded-md border bg-muted/30 p-3 space-y-2" data-solmat-image-block="true">
       <input id={inputId} type="file" accept="image/*" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
       <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
 
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm font-semibold text-primary">Imagem do material</Label>
+        <Label className="text-xs font-semibold">Foto do material <span className="font-normal text-muted-foreground">(opcional)</span></Label>
         {hasImage && !readOnly && (
           <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => onClear(idx)}>
             <X className="w-4 h-4 mr-1" /> Remover foto
@@ -654,9 +669,9 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
       {hasImage ? (
         <div className="relative overflow-hidden rounded-md border bg-background">
           {item.imagem_preview_url ? (
-            <img src={item.imagem_preview_url} alt={item.imagem_nome || "Imagem do material"} className="h-48 w-full object-contain" />
+            <img src={item.imagem_preview_url} alt={item.imagem_nome || "Imagem do material"} className="h-32 w-full object-contain" />
           ) : (
-            <div className="flex h-48 w-full items-center justify-center text-sm text-muted-foreground">Imagem anexada</div>
+            <div className="flex h-32 w-full items-center justify-center text-sm text-muted-foreground">Imagem anexada</div>
           )}
           {hasImage && !readOnly && (
             <button
@@ -670,23 +685,23 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
           )}
         </div>
       ) : (
-        <div className="rounded-md border border-dashed bg-background p-3 text-center text-muted-foreground">
-          <ImageIcon className="mx-auto h-8 w-8" />
-          <div className="mt-1 text-sm font-medium">Sem foto</div>
+        <div className="rounded-md border border-dashed bg-background py-4 text-center text-muted-foreground">
+          <ImageIcon className="mx-auto h-6 w-6" />
+          <div className="mt-1 text-xs">Sem foto</div>
         </div>
       )}
 
       {!readOnly && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
           <Label
             htmlFor={cameraId}
-            className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
           >
             <Camera className="w-4 h-4" /> Câmera
           </Label>
           <Label
             htmlFor={inputId}
-            className="inline-flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-primary/40 bg-background px-3 py-2 text-sm font-medium text-primary hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
           >
             <ImageIcon className="w-4 h-4" /> Galeria
           </Label>
@@ -694,7 +709,7 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
       )}
 
       <div className="text-[11px] text-muted-foreground">
-        {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "Use a câmera ou escolha uma imagem da galeria até 20 MB."}
+        {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "Até 20 MB."}
       </div>
     </div>
   );
