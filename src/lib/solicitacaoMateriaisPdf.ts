@@ -222,7 +222,7 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   y += 4;
   autoTable(doc, {
     startY: y,
-    head: [["#", "Foto", "Tipo", "Item / Descrição", "CA", "Un.", "Qtd", "Aprovada", "Justificativa"]],
+    head: [["#", "Foto", "Tipo", "Item / Descrição", "Referência", "Un.", "Qtd", "Aprovada", "Justificativa"]],
     body: s.itens.map((it, i) => {
       const nome = it.nome_item + (it.descricao ? `\n${it.descricao}` : "") + (it.observacoes ? `\nObs: ${it.observacoes}` : "");
       return [
@@ -248,8 +248,16 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
       0: { cellWidth: 8, halign: "center" },                    // #
       1: { cellWidth: FOTO_BOX + 4, halign: "center" },         // Foto
       2: { cellWidth: 16 },                                     // Tipo
-      3: { cellWidth: 50 },                                     // Item / Descrição
-      4: { cellWidth: 14, halign: "center" },                   // CA
+      3: { cellWidth: 42 },                                     // Item / Descrição
+      // "Referência" no lugar de "CA": nem todo item solicitado tem
+      // Certificado de Aprovação — EPC, material e ferramenta usam código de
+      // referência.
+      //
+      // 24mm vem de medicao, nao de chute: com getTextWidth a fonte 8, o titulo
+      // "Referência" em negrito ocupa 14,3mm e uma referencia de 12 caracteres
+      // ("REF-99887766") ocupa 19,0mm — mais 4mm de padding da a 23mm. Com 22mm
+      // a referencia longa quebrava em duas linhas.
+      4: { cellWidth: 24, halign: "center" },                   // Referência
       5: { cellWidth: 9, halign: "center" },                    // Un.
       6: { cellWidth: 12, halign: "center" },                   // Qtd
       7: { cellWidth: 18, halign: "center" },                   // Aprovada
