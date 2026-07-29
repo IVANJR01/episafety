@@ -43,13 +43,18 @@ export function caracteristicasAmbiente(a?: AmbienteCaracterizavel | null): stri
 }
 
 /**
- * Nome + caracterização, como vai para o inventário e para o documento.
- * Sem caracterização, devolve só o nome — nunca inventa texto.
+ * A descrição que vai para o inventário: a caracterização, sem o nome na
+ * frente.
+ *
+ * Chegou a sair como "ESCRITORIO — Pé-direito 3 m · …", mas o campo se chama
+ * "Descrição do ambiente" e a coluna vizinha já identifica onde é. Repetir o
+ * nome dentro da descrição só ocupava espaço numa planilha que já é larga.
+ *
+ * O nome fica como último recurso: ambiente sem nenhuma caracterização
+ * preenchida devolve o nome em vez de string vazia — melhor identificar do que
+ * não dizer nada. Nunca inventa texto.
  */
 export function descreverAmbiente(a?: AmbienteCaracterizavel | null): string {
   if (!a) return "";
-  const nome = limpo(a.nome);
-  const cars = caracteristicasAmbiente(a);
-  if (!nome) return cars;
-  return cars ? `${nome} — ${cars}` : nome;
+  return caracteristicasAmbiente(a) || limpo(a.nome);
 }
