@@ -145,6 +145,15 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
   const ambientes = estrutura?.ambientes || [];
   const processos = estrutura?.processos || [];
 
+  /**
+   * Qual processo esta selecionado no seletor.
+   *
+   * Antes o valor era descoberto comparando o TEXTO gravado com o de cada
+   * processo. Bastava ajustar uma vírgula na descrição para o seletor perder a
+   * referência e voltar a "Selecione".
+   */
+  const [processoEscolhido, setProcessoEscolhido] = useState("");
+
   /** Escolher o setor traz junto o ambiente vinculado a ele. */
   const escolherSetor = (id: string) => {
     const s = setores.find((x) => x.id === id);
@@ -153,6 +162,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
     // sst_processos.setor_id aponta para o setor: escolhido o setor, o processo
     // dele vem junto. Antes so o ambiente vinha e o processo ficava em branco.
     const proc = processos.find((p) => p.setor_id === s.id);
+    if (proc) setProcessoEscolhido(proc.id);
     setForm((f: Record<string, unknown>) => ({
       ...f,
       setor: s.nome,
@@ -164,6 +174,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
   useEffect(() => {
     if (!open) return;
     setTab("estrutura");
+    setProcessoEscolhido("");
     if (itemId) {
       (async () => {
         const { data } = await (supabase.from as any)("pgr_inventario_itens")
@@ -198,6 +209,9 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
             severidade_residual: data.severidade_residual ?? null,
             probabilidade_residual: data.probabilidade_residual ?? null,
           });
+          const proc = (estrutura?.processos || [])
+            .find((p) => descreverProcesso(p) === clean(data.processo));
+          if (proc) setProcessoEscolhido(proc.id);
         }
       })();
     } else {
@@ -397,8 +411,9 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
               <div>
                 <Label className="text-xs">Processo</Label>
                 <Select
-                  value={processos.find((p) => descreverProcesso(p) === form.processo)?.id || ""}
+                  value={processoEscolhido}
                   onValueChange={(id) => {
+                    setProcessoEscolhido(id);
                     const p = processos.find((x) => x.id === id);
                     if (p) setForm((f: Record<string, unknown>) => ({ ...f, processo: descreverProcesso(p) }));
                   }}
@@ -408,6 +423,20 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                     {processos.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* O que fica GRAVADO no inventario. O seletor acima mostra o nome
+                  curto — util para escolher, mas escondia o texto real: quem
+                  escolhia o processo via "Planejamento e Controle da Producao —
+                  PCP" na tela e nao tinha como saber que o inventario receberia
+                  as etapas. Agora aparece, e da para ajustar so neste item. */}
+              <div className="md:col-span-2">
+                <Label className="text-xs">
+                  Descrição do processo{" "}
+                  <span className="text-muted-foreground font-normal">(vem do processo escolhido)</span>
+                </Label>
+                <Textarea rows={2} value={form.processo} onChange={upd("processo")}
+                  placeholder="Etapas do processo de trabalho" />
               </div>
 
               <div className="md:col-span-2">
