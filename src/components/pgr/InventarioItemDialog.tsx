@@ -16,7 +16,7 @@ import ItemControlesPanel from "./ItemControlesPanel";
 import {
   GRUPO_LABEL, CLASSE_TEXT, CLASSE_DECISAO, classeLabel, classificarRisco,
 } from "@/lib/pgrMatriz";
-import { descreverAmbiente } from "@/lib/sstAmbiente";
+import { descreverAmbiente, descreverProcesso } from "@/lib/sstEstrutura";
 
 interface Props {
   open: boolean;
@@ -136,7 +136,8 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
         setores: (set.data || []) as { id: string; nome: string; ambiente_id?: string | null }[],
         // O ambiente inteiro: a descricao e a caracterizacao, nao so o nome.
         ambientes: (amb.data || []) as { id: string; nome: string }[],
-        processos: (proc.data || []) as { id: string; nome: string }[],
+        processos: (proc.data || []) as
+          { id: string; nome: string; setor_id?: string; descricao_etapas?: string }[],
       };
     },
   });
@@ -149,10 +150,14 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
     const s = setores.find((x) => x.id === id);
     if (!s) return;
     const amb = ambientes.find((a) => a.id === s.ambiente_id);
+    // sst_processos.setor_id aponta para o setor: escolhido o setor, o processo
+    // dele vem junto. Antes so o ambiente vinha e o processo ficava em branco.
+    const proc = processos.find((p) => p.setor_id === s.id);
     setForm((f: Record<string, unknown>) => ({
       ...f,
       setor: s.nome,
       descricao_ambiente: descreverAmbiente(amb) || f.descricao_ambiente,
+      processo: descreverProcesso(proc) || f.processo,
     }));
   };
 
@@ -392,10 +397,10 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
               <div>
                 <Label className="text-xs">Processo</Label>
                 <Select
-                  value={processos.find((p) => p.nome === form.processo)?.id || ""}
+                  value={processos.find((p) => descreverProcesso(p) === form.processo)?.id || ""}
                   onValueChange={(id) => {
                     const p = processos.find((x) => x.id === id);
-                    if (p) setForm((f: Record<string, unknown>) => ({ ...f, processo: p.nome }));
+                    if (p) setForm((f: Record<string, unknown>) => ({ ...f, processo: descreverProcesso(p) }));
                   }}
                 >
                   <SelectTrigger><SelectValue placeholder={processos.length ? "Selecione" : "Nenhum processo cadastrado"} /></SelectTrigger>

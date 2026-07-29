@@ -1,5 +1,5 @@
 /**
- * Descrição de um ambiente a partir do que foi cadastrado na Estrutura.
+ * Como cada peça da Estrutura Ocupacional é descrita nos documentos.
  *
  * A coluna "Descrição do ambiente" do inventário recebia só o NOME ("ESCRITORIO"),
  * enquanto o cadastro tinha a caracterização inteira — pé-direito, piso,
@@ -57,4 +57,25 @@ export function caracteristicasAmbiente(a?: AmbienteCaracterizavel | null): stri
 export function descreverAmbiente(a?: AmbienteCaracterizavel | null): string {
   if (!a) return "";
   return caracteristicasAmbiente(a) || limpo(a.nome);
+}
+
+export interface ProcessoDescritivel {
+  nome?: string | null;
+  descricao_etapas?: string | null;
+}
+
+/**
+ * A descrição de um processo para o inventário: as etapas, não o rótulo.
+ *
+ * O campo Nome do processo é só um identificador curto para a lista — a própria
+ * tela avisa isso e sugere o nome a partir da primeira frase das etapas. Levar
+ * esse rótulo para a coluna "Processo" do inventário não descreve o processo de
+ * trabalho, que é o que a NR-01 pede.
+ *
+ * Sem etapas preenchidas, cai para o nome — identificar é melhor que ficar em
+ * branco.
+ */
+export function descreverProcesso(p?: ProcessoDescritivel | null): string {
+  if (!p) return "";
+  return limpo(p.descricao_etapas) || limpo(p.nome);
 }

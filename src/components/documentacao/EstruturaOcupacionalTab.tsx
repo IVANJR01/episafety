@@ -15,7 +15,7 @@ import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ehSchemaDesatualizado, mensagemErro } from "@/lib/erroSupabase";
-import { caracteristicasAmbiente } from "@/lib/sstAmbiente";
+import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
 import { Building2, Home, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */

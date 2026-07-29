@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Download, ArrowLeft } from "lucide-react";
-import { descreverAmbiente } from "@/lib/sstAmbiente";
+import { descreverAmbiente, descreverProcesso } from "@/lib/sstEstrutura";
 
 interface PreviewItem {
   ghe_id: string;
@@ -115,10 +115,15 @@ export default function ImportarGheDialog({
     const [set, amb, proc, fun] = await Promise.all([
       de("sst_setores"), de("sst_ambientes"), de("sst_processos"), de("sst_funcoes"),
     ]);
-    type Nomeado = { id: string; nome: string };
-    const nomePorId = (linhas: Nomeado[] | null) =>
-      new Map<string, string>((linhas || []).map((x) => [x.id, x.nome]));
-    const processos = nomePorId(proc.data);
+    // O vinculo e processo -> setor (sst_processos.setor_id e NOT NULL), nao o
+    // contrario. Eu lia sst_setores.processo_id, coluna que o formulario de
+    // setor nunca preenche — por isso a coluna Processo do inventario saia
+    // sempre "N.A", mesmo com o processo cadastrado e apontando para o setor.
+    const processoPorSetor = new Map<string, string>();
+    for (const pr of (proc.data || []) as { setor_id?: string; nome: string; descricao_etapas?: string }[]) {
+      if (!pr.setor_id || processoPorSetor.has(pr.setor_id)) continue;
+      processoPorSetor.set(pr.setor_id, descreverProcesso(pr));
+    }
     // O ambiente inteiro, nao so o nome: a descricao que vai para o inventario
     // e a caracterizacao (pe-direito, piso, ventilacao, iluminacao).
     const ambientes = new Map<string, ReturnType<typeof Object>>(
@@ -134,7 +139,7 @@ export default function ImportarGheDialog({
       id: s.id,
       nome: s.nome,
       ambiente: s.ambiente_id ? descreverAmbiente(ambientes.get(s.ambiente_id)) : "",
-      processo: s.processo_id ? processos.get(s.processo_id) || "" : "",
+      processo: processoPorSetor.get(s.id) || "",
       funcoes: funcoesPorSetor.get(s.id) || [],
     })));
   };
