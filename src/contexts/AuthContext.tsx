@@ -379,6 +379,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const usuarioAtualIdRef = useRef<string | null>(null);
 
+
+  /**
+   * Troca o estado `user` só quando o id muda de verdade.
+   *
+   * O Supabase entrega um objeto `user` recém-desserializado a cada evento de
+   * auth — inclusive quando a aba só volta ao foco e revalida a MESMA sessão.
+   * `AuthContext.Provider` passa esse objeto direto no `value`, sem useMemo,
+   * então toda troca de referência derruba a identidade de `user` para TODOS
+   * os consumidores do contexto no app inteiro. Quem tiver `user` (o objeto,
+   * não `user.id`) numa dependência de efeito — como aconteceu na Solicitação
+   * de Materiais — reexecuta esse efeito a cada evento, e se o efeito troca
+   * estado, o ciclo se realimenta: um formulário aberto pode entrar em
+   * milhares de renders por segundo e travar a aba, sem lançar erro nenhum
+   * (não há o que um Error Boundary capture aqui).
+   *
+   * Corrige a causa no ponto de entrada, em vez de caçar cada tela que lê
+   * `user` do jeito errado: com o updater funcional, o React sempre compara
+   * contra o estado mais recente (não há closure velha), e a referência de
+   * `user` só muda quando é de fato outra pessoa (ou logout/login).
+   */
+  const trocarUsuarioSeMudou = (novo: User | null) => {
+    setUser((atual) => (atual?.id && novo?.id && atual.id === novo.id ? atual : novo));
+  };
+
   useEffect(() => {
     const cached = loadCachedSession();
 
@@ -414,7 +438,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setSession(next.session);
-      setUser(next.user);
+      trocarUsuarioSeMudou(next.user);
 
       if (event === "TOKEN_REFRESHED") {
         return;
@@ -448,7 +472,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setCacheUserScope(next.user?.id ?? null);
         setSession(next.session);
-        setUser(next.user);
+        trocarUsuarioSeMudou(next.user);
         usuarioAtualIdRef.current = next.user?.id ?? null;
         handleAuthCheck(next.user ?? null);
       })
@@ -456,7 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const fallback = loadCachedSession();
         setCacheUserScope(fallback.user?.id ?? null);
         setSession(fallback.session);
-        setUser(fallback.user);
+        trocarUsuarioSeMudou(fallback.user);
         usuarioAtualIdRef.current = fallback.user?.id ?? null;
         handleAuthCheck(fallback.user ?? null);
       });
@@ -467,7 +491,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           saveCachedSession(session);
           setCacheUserScope(session.user?.id ?? null);
           setSession(session);
-          setUser(session.user);
+          trocarUsuarioSeMudou(session.user);
           handleAuthCheck(session.user);
         }
       }).catch(() => {});
