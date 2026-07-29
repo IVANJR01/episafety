@@ -882,6 +882,17 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     <Input value={formData.piso || ""} placeholder="Cerâmico, concreto…"
                       onChange={(e) => setFormData({ ...formData, piso: e.target.value })} />
                   </div>
+                  {/* Coluna sst_ambientes.qtd_trabalhadores, criada pela migration
+                      de 28/07. O campo ficou fora enquanto ela estava pendente:
+                      enviar coluna inexistente derrubava o insert inteiro. */}
+                  <div>
+                    <Label>Trabalhadores no ambiente</Label>
+                    <Input type="number" min={0} value={formData.qtd_trabalhadores ?? ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        qtd_trabalhadores: e.target.value === "" ? null : Number(e.target.value),
+                      })} />
+                  </div>
                   <div>
                     <Label>Ventilação</Label>
                     <Input value={formData.ventilacao || ""} placeholder="Natural, forçada…"
@@ -1010,13 +1021,31 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
             {modalType === "funcao" && (
               <>
-                <div>
-                  <Label>Código CBO (Classificação Brasileira de Ocupações)</Label>
-                  <Input
-                    value={formData.cbo || ""}
-                    onChange={(e) => setFormData({ ...formData, cbo: e.target.value })}
-                    placeholder="Ex: 7152-10"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <Label>Código CBO</Label>
+                    <Input
+                      value={formData.cbo || ""}
+                      onChange={(e) => setFormData({ ...formData, cbo: e.target.value })}
+                      placeholder="Ex: 7152-10"
+                    />
+                  </div>
+                  {/* Colunas sst_funcoes.qtd_trabalhadores e .jornada, criadas
+                      pela migration de 28/07. Ficaram fora enquanto ela estava
+                      pendente — enviar coluna inexistente derrubava o insert. */}
+                  <div>
+                    <Label>Nº de trabalhadores</Label>
+                    <Input type="number" min={0} value={formData.qtd_trabalhadores ?? ""}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        qtd_trabalhadores: e.target.value === "" ? null : Number(e.target.value),
+                      })} />
+                  </div>
+                  <div>
+                    <Label>Jornada</Label>
+                    <Input value={formData.jornada || ""} placeholder="Ex.: 44h semanais"
+                      onChange={(e) => setFormData({ ...formData, jornada: e.target.value })} />
+                  </div>
                 </div>
                 <div>
                   <Label>Setor Principal</Label>
