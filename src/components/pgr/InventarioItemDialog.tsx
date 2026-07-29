@@ -269,18 +269,23 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
       >
         <DialogHeader className="px-4 sm:px-6 pt-4 pb-3 border-b shrink-0">
           <DialogTitle className="text-base sm:text-lg">{itemId ? "Editar item do inventário" : "Novo item do inventário"}</DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">Campos alinhados à planilha do Inventário de Riscos. Vazios são salvos como N.A.</DialogDescription>
+          {/* A legenda dizia "Vazios são salvos como N.A." — deixou de ser
+              verdade quando campo em branco passou a gravar NULL. O sentinela
+              fazia campo vazio parecer preenchido em auditoria. */}
+          <DialogDescription className="text-xs sm:text-sm">
+            Preencha o essencial e classifique na matriz. O detalhamento é opcional.
+          </DialogDescription>
         </DialogHeader>
 
+        {/* Eram 6 abas — e a primeira tinha dois campos. Viraram 3, na ordem em
+            que a decisão acontece: o que é e onde ocorre, quanto vale na matriz,
+            e o detalhamento que só alguns riscos exigem. */}
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="px-4 sm:px-6 pt-3 border-b shrink-0 overflow-x-auto">
-            <TabsList className="inline-flex sm:grid sm:grid-cols-6 sm:w-full min-w-max sm:min-w-0">
-              <TabsTrigger value="estrutura" className="whitespace-nowrap">1. Estrutura</TabsTrigger>
-              <TabsTrigger value="risco" className="whitespace-nowrap">2. Risco</TabsTrigger>
-              <TabsTrigger value="exposicao" className="whitespace-nowrap">3. Exposição e Medidas</TabsTrigger>
-              <TabsTrigger value="classif" className="whitespace-nowrap">4. Classificação</TabsTrigger>
-              <TabsTrigger value="medicoes" className="whitespace-nowrap">5. Medições</TabsTrigger>
-              <TabsTrigger value="controles" className="whitespace-nowrap">6. Controles</TabsTrigger>
+            <TabsList className="inline-flex sm:grid sm:grid-cols-3 sm:w-full min-w-max sm:min-w-0">
+              <TabsTrigger value="estrutura" className="whitespace-nowrap">1. Perigo e local</TabsTrigger>
+              <TabsTrigger value="classif" className="whitespace-nowrap">2. Classificação</TabsTrigger>
+              <TabsTrigger value="exposicao" className="whitespace-nowrap">3. Detalhes (opcional)</TabsTrigger>
             </TabsList>
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-4 min-h-0">
@@ -305,12 +310,9 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                 Setor, funções expostas e processo são definidos na Estrutura do GES.
               </div>
             </div>
-          </TabsContent>
 
-
-
-          {/* Aba 2 — Risco */}
-          <TabsContent value="risco" className="space-y-3">
+            {/* O que era a aba "2. Risco": ficava sozinha com quatro campos
+                enquanto esta tinha dois. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Agente</Label>
@@ -366,6 +368,20 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                 <Label className="text-xs">Atenuação / Fator de Proteção</Label>
                 <Input value={form.atenuacao} onChange={upd("atenuacao")} placeholder="Ex.: NRRsf 17 dB" />
               </div>
+            </div>
+
+            {/* Medições e controles eram abas próprias (5 e 6). Só valem para
+                parte dos riscos — quem teve medição instrumental, quem tem
+                controle a detalhar —, então moram aqui, com o resto do
+                opcional, em vez de ocupar lugar fixo na barra. */}
+            <div className="pt-2 border-t">
+              <h4 className="text-sm font-medium mb-2">Medições</h4>
+              <ItemMedicoesPanel pgrId={pgrId} empresaId={empresaId} itemId={itemId || null} canEdit />
+            </div>
+
+            <div className="pt-2 border-t">
+              <h4 className="text-sm font-medium mb-2">Controles (hierarquia da NR-01)</h4>
+              <ItemControlesPanel pgrId={pgrId} empresaId={empresaId} itemId={itemId || null} canEdit />
             </div>
           </TabsContent>
 
@@ -513,20 +529,6 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
             </fieldset>
           </TabsContent>
 
-          {/* Aba 5 — Medições. Substitui o par escalar medicao_valor/unidade:
-              um mesmo agente costuma ter várias medições. */}
-          <TabsContent value="medicoes">
-            <ItemMedicoesPanel
-              pgrId={pgrId} empresaId={empresaId} itemId={itemId || null} canEdit
-            />
-          </TabsContent>
-
-          {/* Aba 6 — Controles classificados na hierarquia da NR-01. */}
-          <TabsContent value="controles">
-            <ItemControlesPanel
-              pgrId={pgrId} empresaId={empresaId} itemId={itemId || null} canEdit
-            />
-          </TabsContent>
           </div>
         </Tabs>
 

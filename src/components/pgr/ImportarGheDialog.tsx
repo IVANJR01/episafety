@@ -86,9 +86,11 @@ export default function ImportarGheDialog({
     s.has(id) ? s.delete(id) : s.add(id);
     setSelected(s);
   };
+  /** "Selecionar todos" ignora os GES sem estrutura — não há o que importar deles. */
+  const importaveis = ghes.filter((g) => g.setores_count > 0 || g.funcoes_count > 0);
   const toggleAll = () => {
-    if (selected.size === ghes.length) setSelected(new Set());
-    else setSelected(new Set(ghes.map((g) => g.id)));
+    if (selected.size === importaveis.length) setSelected(new Set());
+    else setSelected(new Set(importaveis.map((g) => g.id)));
   };
 
   const loadPreview = async () => {
@@ -142,32 +144,59 @@ export default function ImportarGheDialog({
               </p>
             ) : ghes.length === 0 ? (
               <p className="text-center py-8 text-sm text-muted-foreground">
-                Nenhum GES ativo cadastrado nesta empresa. Cadastre em <b>Cadastro → GES</b>.
+                Nenhum GES ativo cadastrado nesta empresa. Cadastre em <b>Documentação › GES</b>.
               </p>
             ) : (
               <>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{ghes.length} GES encontrado(s)</span>
+                  <span className="text-muted-foreground">
+                    {ghes.length} GES encontrado(s)
+                    {importaveis.length < ghes.length && ` · ${ghes.length - importaveis.length} sem estrutura`}
+                  </span>
                   <Button size="sm" variant="ghost" onClick={toggleAll}>
-                    {selected.size === ghes.length ? "Desmarcar todos" : "Selecionar todos"}
+                    {selected.size === importaveis.length && importaveis.length > 0 ? "Desmarcar todos" : "Selecionar todos"}
                   </Button>
                 </div>
                 <div className="max-h-[50vh] overflow-y-auto border rounded divide-y">
-                  {ghes.map((g) => (
-                    <label key={g.id} className="flex items-start gap-3 p-3 hover:bg-muted/40 cursor-pointer">
-                      <Checkbox checked={selected.has(g.id)} onCheckedChange={() => toggle(g.id)} className="mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-sm">{g.codigo}</span>
-                          <span className="text-sm">— {g.nome}</span>
-                          <Badge variant="outline" className="text-[10px]">{g.setores_count} setor(es)</Badge>
-                          <Badge variant="outline" className="text-[10px]">{g.funcoes_count} função(ões)</Badge>
-                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">Estrutura pronta</Badge>
+                  {ghes.map((g) => {
+                    // "Estrutura pronta" era um selo FIXO no código: aparecia em
+                    // todo GES, inclusive nos que tinham 0 setor e 0 função — ou
+                    // seja, nos que não têm nada para importar. Agora o selo
+                    // reflete o banco, e o que está vazio não é selecionável:
+                    // importar traria um item em branco.
+                    const vazio = g.setores_count === 0 && g.funcoes_count === 0;
+                    return (
+                      <label
+                        key={g.id}
+                        className={`flex items-start gap-3 p-3 ${vazio ? "opacity-70" : "hover:bg-muted/40 cursor-pointer"}`}
+                      >
+                        <Checkbox
+                          checked={selected.has(g.id)} onCheckedChange={() => toggle(g.id)}
+                          disabled={vazio} className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-sm">{g.codigo}</span>
+                            <span className="text-sm">— {g.nome}</span>
+                            <Badge variant="outline" className="text-[10px]">{g.setores_count} setor(es)</Badge>
+                            <Badge variant="outline" className="text-[10px]">{g.funcoes_count} função(ões)</Badge>
+                            {vazio ? (
+                              <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">Sem estrutura</Badge>
+                            ) : (
+                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">Estrutura pronta</Badge>
+                            )}
+                          </div>
+                          {vazio && (
+                            <div className="text-xs text-amber-800 mt-1">
+                              Este grupo ainda não tem setores nem funções, então não há o que importar.
+                              Cadastre em <b>Documentação › GES</b>, no botão de funções e riscos do grupo.
+                            </div>
+                          )}
+                          {g.setor && <div className="text-xs text-muted-foreground mt-0.5">Setor padrão: {g.setor}</div>}
                         </div>
-                        {g.setor && <div className="text-xs text-muted-foreground mt-0.5">Setor padrão: {g.setor}</div>}
-                      </div>
-                    </label>
-                  ))}
+                      </label>
+                    );
+                  })}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {selected.size} selecionado(s). A importação traz apenas a <b>estrutura</b> (ambiente, GES, setor, funções e processo). Os campos de risco (agente, perigo, severidade, probabilidade, classificação) devem ser preenchidos no Inventário do PGR após a importação.
