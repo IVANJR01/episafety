@@ -103,6 +103,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
    * existente, que tem a versao do banco como fonte.
    */
   const chaveRascunho = `solicitacao_material_nova_${empresaId || "sem-empresa"}`;
+  const userEmail = user?.email || "";
 
   /** Ja abre aberto quando algum dos campos opcionais tem conteudo — esconder
    *  o que foi preenchido faria a pessoa achar que se perdeu. */
@@ -143,7 +144,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   useEffect(() => {
     if (!open) return;
     if (!solicitacaoId) {
-      const base = { ...emptyHead(), solicitante_nome: user?.email?.split("@")[0] || "" };
+      const base = { ...emptyHead(), solicitante_nome: userEmail.split("@")[0] || "" };
       let recuperado = false;
       try {
         const bruto = localStorage.getItem(chaveRascunho);
@@ -209,7 +210,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       if (!(is as any[])?.length) setItens([emptyItem()]);
       setLoading(false);
     })();
-  }, [open, solicitacaoId, user, chaveRascunho]);
+  }, [open, solicitacaoId, userEmail, chaveRascunho]);
 
   // Resolve signed URLs for existing item images when loaded
   useEffect(() => {
@@ -464,7 +465,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       type="button" size="sm" variant="ghost" className="h-7 text-xs ml-auto"
                       onClick={() => {
                         try { localStorage.removeItem(chaveRascunho); } catch { /* nada a fazer */ }
-                        setHead({ ...emptyHead(), solicitante_nome: user?.email?.split("@")[0] || "" });
+                        setHead({ ...emptyHead(), solicitante_nome: userEmail.split("@")[0] || "" });
                         setItens([emptyItem()]);
                         setRascunhoRecuperado(false);
                       }}
@@ -690,10 +691,6 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   onPick: (idx: number, file: File | null) => void;
   onClear: (idx: number) => void;
 }) {
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line no-console
-    console.log("[Solicitação Materiais] ItemImageField renderizado", { idx });
-  }
   const hasImage = !!((item.imagem_preview_url || item.imagem_path) && !item.imagem_remove);
   const inputId = `img-file-${item._key}`;
   const cameraId = `img-cam-${item._key}`;
