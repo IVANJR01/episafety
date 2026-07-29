@@ -334,14 +334,16 @@ export default function ImportarGheDialog({
               <p className="text-center py-8 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />Carregando GES…
               </p>
-            ) : ghes.length === 0 ? (
+            ) : (ghes.length === 0 && setoresEstrutura.length === 0) ? (
               <p className="text-center py-8 text-sm text-muted-foreground">
-                Nenhum GES ativo cadastrado nesta empresa. Cadastre em <b>Documentação › GES</b>.
+                Nada para importar ainda. Cadastre setores e funções na aba <b>Estrutura</b> da
+                Documentação — é de lá que a importação monta as linhas do inventário.
               </p>
-            ) : importaveis.length === 0 ? null : (
+            ) : (setoresEstrutura.length > 0 || importaveis.length === 0) ? null : (
               <>
                 <div className="text-xs text-muted-foreground border-t pt-3">
-                  Alternativa: importar pelo GES, para grupos que já têm funções vinculadas.
+                  Esta empresa ainda não tem setores na Estrutura Ocupacional. Enquanto isso,
+                  dá para importar pelos GES que já têm funções vinculadas.
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
