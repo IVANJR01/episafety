@@ -268,11 +268,38 @@ export default function InspecoesSE() {
     setAiLoading(false);
   }
 
+  /**
+   * Contexto do último registro lançado: data, obra e local.
+   *
+   * Uma inspeção rende dezenas de não conformidades, todas do MESMO dia e do
+   * mesmo local — as 22 desta empresa são todas de 03/07/2026. O formulário
+   * voltava para a data de hoje a cada novo registro, obrigando a redigitar a
+   * data da inspeção 22 vezes. Agora o próximo registro começa de onde o
+   * anterior parou; quem estiver lançando outro dia é só trocar.
+   *
+   * Vem da lista carregada, não de um estado em memória: continua valendo
+   * depois de recarregar a página.
+   */
+  function contextoAnterior() {
+    // A lista vem ordenada por `numero` crescente: o último com data é o
+    // lançamento mais recente, e é dele que o próximo registro continua.
+    const ultimo = [...items].reverse().find((i) => i.data_inspecao);
+    if (!ultimo) return null;
+    return {
+      data_inspecao: ultimo.data_inspecao,
+      obra_id: ultimo.obra_id || "",
+      local: ultimo.local || "",
+    };
+  }
+
   function openNew() {
     setEditingId(null);
     setErrors({});
-    if (!hasDraft()) resetDraft();
-    else setForm(form); // keep draft
+    if (!hasDraft()) {
+      resetDraft();
+      const anterior = contextoAnterior();
+      if (anterior) setForm({ ...emptyForm, ...anterior });
+    } else setForm(form); // keep draft
     clearPhotoPreviews();
     originalFotoAntesPathRef.current = null;
     originalFotoDepoisPathRef.current = null;

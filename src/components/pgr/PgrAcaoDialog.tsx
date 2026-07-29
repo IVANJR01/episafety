@@ -266,7 +266,11 @@ export default function PgrAcaoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+      {/* w-[calc(100vw-2rem)] + overflow-x-hidden: as media queries do Tailwind
+          medem a JANELA, nao o dialogo. Numa janela de ~740px o `sm:` liga e os
+          grids de 2 e 3 colunas entravam num dialogo bem mais estreito, jogando
+          metade dos campos para fora — com barra de rolagem horizontal. */}
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {acaoId ? "Ação do Plano de Ação" : "Nova ação"}
@@ -291,7 +295,7 @@ export default function PgrAcaoDialog({
               <Label className="text-xs">Descrição da ação *</Label>
               <Textarea rows={2} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} disabled={!editavel} />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 [&>*]:min-w-0">
               <div>
                 <Label className="text-xs">Tipo de medida (hierarquia)</Label>
                 <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v })} disabled={!editavel}>
@@ -340,7 +344,7 @@ export default function PgrAcaoDialog({
               <Textarea rows={3} value={form.how || ""} onChange={(e) => setForm({ ...form, how: e.target.value })} disabled={!editavel} />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0">
               <div>
                 <Label className="text-xs">Who — Corresponsável</Label>
                 <Input value={form.corresponsavel_nome || ""}
@@ -404,7 +408,7 @@ export default function PgrAcaoDialog({
               automaticamente e o risco residual só é confirmado depois dela.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0">
               <div>
                 <Label className="text-xs">Objetivo</Label>
                 <Input value={form.objetivo || ""}
@@ -430,7 +434,7 @@ export default function PgrAcaoDialog({
                 onChange={(e) => setForm({ ...form, justificativa: e.target.value })} disabled={!editavel} />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0">
               <div>
                 <Label className="text-xs">Data de abertura</Label>
                 <Input type="date" value={form.data_abertura || ""}
@@ -449,7 +453,7 @@ export default function PgrAcaoDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0">
               <div>
                 <Label className="text-xs">Indicador</Label>
                 <Input value={form.indicador || ""}
@@ -462,7 +466,7 @@ export default function PgrAcaoDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 [&>*]:min-w-0">
               <div>
                 <Label className="text-xs">Forma de acompanhamento</Label>
                 <Input value={form.forma_acompanhamento || ""}
@@ -475,7 +479,7 @@ export default function PgrAcaoDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 [&>*]:min-w-0">
               <div>
                 <Label className="text-xs">Recursos necessários</Label>
                 <Input value={form.recursos_necessarios || ""}

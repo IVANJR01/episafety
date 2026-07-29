@@ -176,6 +176,19 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
     }));
   }, [form.ghe_id, ghes, itemId]);
 
+  /** O que o GES escolhido tem para oferecer — lido do cadastro, não prometido. */
+  const herdadoDoGes = (() => {
+    const g = ghes.find((x: { id: string }) => x.id === form.ghe_id) as
+      | { descricao_ambiente?: string; ambiente?: string; setor?: string; processo?: string }
+      | undefined;
+    const partes = [
+      clean(g?.descricao_ambiente) || clean(g?.ambiente) ? `ambiente “${clean(g?.descricao_ambiente) || clean(g?.ambiente)}”` : "",
+      clean(g?.setor) ? `setor “${clean(g?.setor)}”` : "",
+      clean(g?.processo) ? `processo “${clean(g?.processo)}”` : "",
+    ].filter(Boolean);
+    return { temAlgo: partes.length > 0, resumo: partes.join(", ") };
+  })();
+
   const total = Number(form.severidade) * Number(form.probabilidade);
   const classe = classificarRisco(Number(form.severidade), Number(form.probabilidade));
 
@@ -292,11 +305,10 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
 
           {/* Aba 1 — Estrutura */}
           <TabsContent value="estrutura" className="space-y-3">
+            {/* GES primeiro: é ele que traz ambiente, setor e processo. Antes a
+                "Descrição do ambiente" vinha em cima, dando a entender que era
+                para digitar — quando na maioria das vezes ela é herdada. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="md:col-span-2">
-                <Label className="text-xs">Descrição do ambiente</Label>
-                <Input value={form.descricao_ambiente} onChange={upd("descricao_ambiente")} placeholder="Ex.: Escritório administrativo" />
-              </div>
               <div className="md:col-span-2">
                 <Label className="text-xs">GES</Label>
                 <Select value={form.ghe_id || ""} onValueChange={(v) => setForm({ ...form, ghe_id: v })}>
@@ -306,8 +318,29 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                   </SelectContent>
                 </Select>
               </div>
-              <div className="md:col-span-2 text-xs text-muted-foreground border rounded p-2 bg-muted/40">
-                Setor, funções expostas e processo são definidos na Estrutura do GES.
+
+              {/* Dizer o que o GES escolhido REALMENTE trouxe. Antes a linha
+                  prometia que setor, funções e processo vinham do GES; quando o
+                  grupo estava vazio nada vinha, o item saía todo "N.A" e não
+                  havia como saber por quê. */}
+              {form.ghe_id && (herdadoDoGes.temAlgo ? (
+                <div className="md:col-span-2 text-xs text-muted-foreground border rounded p-2 bg-muted/40">
+                  Herdado deste GES: {herdadoDoGes.resumo}.
+                </div>
+              ) : (
+                <div className="md:col-span-2 text-xs text-amber-900 border border-amber-300 rounded p-2 bg-amber-50">
+                  Este GES ainda não tem ambiente, setor nem processo cadastrados, então
+                  não há o que herdar — por isso as colunas saem como <b>N.A</b>. Preencha
+                  abaixo só para este item, ou cadastre no grupo (em <b>Documentação › GES</b>)
+                  para valer em todos.
+                </div>
+              ))}
+
+              <div className="md:col-span-2">
+                <Label className="text-xs">
+                  Descrição do ambiente <span className="text-muted-foreground font-normal">(herdada do GES quando houver)</span>
+                </Label>
+                <Input value={form.descricao_ambiente} onChange={upd("descricao_ambiente")} placeholder="Ex.: Escritório administrativo" />
               </div>
             </div>
 

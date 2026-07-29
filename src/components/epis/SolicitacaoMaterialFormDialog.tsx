@@ -328,7 +328,10 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-3xl h-[100dvh] p-0 flex flex-col">
+      {/* A gaveta tinha largura de celular (768px) tambem no desktop: os campos
+          ficavam empilhados numa coluna estreita e a solicitacao inteira virava
+          rolagem. Em tela grande ela usa a largura que existe. */}
+      <SheetContent side="right" className="w-full sm:max-w-3xl lg:max-w-5xl xl:max-w-6xl h-[100dvh] p-0 flex flex-col">
         <SheetHeader className="p-4 border-b">
           <SheetTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</SheetTitle>
         </SheetHeader>
@@ -339,7 +342,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* Dados gerais */}
             <Card>
-              <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 [&>*]:min-w-0">
                 <div className="sm:col-span-2">
                   <Label>Título *</Label>
                   <Input value={head.titulo} onChange={(e) => setHead({ ...head, titulo: e.target.value })} disabled={readOnly} placeholder="Ex: Reposição EPIs frente de serviço" />
