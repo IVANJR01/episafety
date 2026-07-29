@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { setCacheUserScope, clearAllCachedData } from "@/lib/offlineStorage";
@@ -363,6 +363,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, [applySignedOutState]);
 
+  /**
+   * Quem já está autenticado agora.
+   *
+   * O supabase-js reemite `SIGNED_IN` quando a aba volta ao foco e a sessão é
+   * revalidada — mesmo usuário, nenhuma mudança real. O código tratava isso
+   * como login novo: `setLoading(true)` e refazia a checagem. Enquanto
+   * `loading` é true, o App troca a árvore inteira por um spinner — TODOS os
+   * componentes desmontam. Quem estava com o formulário de solicitação aberto
+   * voltava para a listagem e perdia o que tinha digitado, só por ter ido a
+   * outra janela e voltado.
+   *
+   * Ref, e não state, de propósito: isto é usado dentro do callback do
+   * listener e não pode causar re-render nem entrar em dependência de efeito.
+   */
+  const usuarioAtualIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     const cached = loadCachedSession();
 
@@ -370,12 +386,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCacheUserScope(cached.user.id);
       setSession(cached.session);
       setUser(cached.user);
+      usuarioAtualIdRef.current = cached.user.id;
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const next = resolveOfflineSession(session, session?.user ?? null);
 
       if (event === "SIGNED_OUT") {
+        usuarioAtualIdRef.current = null;
         clearCachedSession();
         saveActiveEmpresaId(null);
         setCacheUserScope(null);
@@ -402,6 +420,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Mesmo usuário que já estava logado: nada mudou de fato. Atualiza a
+      // sessão e segue — derrubar a árvore aqui é o que fazia o formulário
+      // aberto sumir ao voltar de outra janela.
+      const mesmoUsuario = !!next.user?.id && next.user.id === usuarioAtualIdRef.current;
+      if (mesmoUsuario) {
+        return;
+      }
+      usuarioAtualIdRef.current = next.user?.id ?? null;
+
       setLoading(true);
       setTimeout(() => {
         handleAuthCheck(next.user ?? null);
@@ -422,6 +449,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCacheUserScope(next.user?.id ?? null);
         setSession(next.session);
         setUser(next.user);
+        usuarioAtualIdRef.current = next.user?.id ?? null;
         handleAuthCheck(next.user ?? null);
       })
       .catch(() => {
@@ -429,6 +457,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCacheUserScope(fallback.user?.id ?? null);
         setSession(fallback.session);
         setUser(fallback.user);
+        usuarioAtualIdRef.current = fallback.user?.id ?? null;
         handleAuthCheck(fallback.user ?? null);
       });
 
