@@ -24,6 +24,16 @@ interface Props {
   empresaId: string;
   itemId?: string | null;
   groupItemIds?: string[];
+  /**
+   * Valores para pré-preencher um item NOVO, vindos do levantamento da etapa 5.
+   *
+   * As duas telas pediam as mesmas seis informações — perigo, categoria, fonte,
+   * lesões, trabalhadores expostos e medidas existentes —, então quem
+   * levantasse o perigo na etapa 5 tinha de digitar tudo de novo na etapa 7.
+   * O levantamento é o que foi identificado; o inventário é o que foi avaliado.
+   * Um deve virar o outro, não ser redigitado.
+   */
+  valoresIniciais?: Record<string, string> | null;
   onSaved: () => void;
 }
 
@@ -45,7 +55,7 @@ const clean = (v: any) => {
  */
 const toSave = (v: any) => clean(v) || null;
 
-export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, groupItemIds = [], onSaved }: Props) {
+export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, groupItemIds = [], valoresIniciais = null, onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState("estrutura");
   const [form, setForm] = useState<any>({
@@ -142,8 +152,15 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
         }
       })();
     } else {
-      setForm((f: any) => ({ ...f, ghe_id: "", perigo_descricao: "", fonte_geradora: "" }));
+      // Item novo: limpa e, se veio do levantamento, já entra preenchido.
+      setForm((f: any) => ({
+        ...f, ghe_id: "", perigo_descricao: "", fonte_geradora: "",
+        ...(valoresIniciais || {}),
+      }));
     }
+    // valoresIniciais fora das dependências de propósito: só vale no momento em
+    // que o diálogo abre. Reagir a ele reescreveria o que a pessoa já digitou.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, itemId]);
 
   // Preencher automaticamente ambiente/setor/processo ao escolher GES (apenas para novo item)

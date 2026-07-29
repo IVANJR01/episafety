@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Download, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
+import { Plus, Download, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine } from "lucide-react";
 import { toast } from "sonner";
 import InventarioItemDialog from "./InventarioItemDialog";
 import ImportarGheDialog from "./ImportarGheDialog";
@@ -19,6 +19,19 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+/** Linha de pgr_levantamento_preliminar, na forma que esta tela consome. */
+interface Levantado {
+  id: string;
+  grupo: string;
+  perigo_descricao: string;
+  fonte_circunstancia?: string | null;
+  possiveis_lesoes?: string | null;
+  trabalhadores_expostos?: string | null;
+  medidas_existentes?: string | null;
+  ges_id?: string | null;
+  ges?: { id: string; codigo: string; nome: string } | null;
+}
 
 const NA = "N.A";
 const val = (v: any) => (v === null || v === undefined || v === "" ? NA : v);
@@ -36,6 +49,7 @@ export default function InventarioTab({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
+  const [preencher, setPreencher] = useState<Record<string, string> | null>(null);
 
   const { data: itens = [], isLoading } = useQuery({
     queryKey: ["pgr-inventario", pgrId, "v2-ambiente"],
@@ -48,10 +62,38 @@ export default function InventarioTab({
     staleTime: 0,
   });
 
+  /**
+   * Perigos levantados na etapa 5 que ainda não viraram item do inventário.
+   *
+   * As duas telas pediam as mesmas seis informações. Sem esta ponte, quem
+   * levantasse o perigo na etapa 5 digitava tudo de novo aqui.
+   */
+  const { data: levantados = [] } = useQuery<Levantado[]>({
+    queryKey: ["pgr-levantamento-pendente", pgrId],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from as any)("pgr_levantamento_preliminar")
+        .select("*, ges:ges_id(id, codigo, nome)")
+        .eq("pgr_id", pgrId).order("created_at", { ascending: false });
+      return (data || []) as Levantado[];
+    },
+    staleTime: 0,
+  });
+
   const clean = (v: any) => {
     const s = (v ?? "").toString().trim();
     return s && s.toUpperCase() !== "N.A" && s.toUpperCase() !== "N/A" ? s : "";
   };
+
+  /** Já está no inventário? Compara pelo texto do perigo, normalizado. */
+  const naoAproveitados = useMemo(() => {
+    const norm = (s: string) => (s || "").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const jaNoInventario = new Set(
+      (itens as { perigo_descricao?: string }[]).map((i) => norm(i.perigo_descricao || "")),
+    );
+    return levantados.filter((l) => !jaNoInventario.has(norm(l.perigo_descricao)));
+  }, [levantados, itens]);
   const ambienteDe = (i: any): string =>
     clean(i.descricao_ambiente) || clean(i.ghe?.descricao_ambiente) || clean(i.ghe?.ambiente) || "";
 
@@ -135,7 +177,7 @@ export default function InventarioTab({
                 <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                   <Download className="h-4 w-4 mr-1" /> Importar GES
                 </Button>
-                <Button size="sm" onClick={() => { setEditId(null); setDialogOpen(true); }}>
+                <Button size="sm" onClick={() => { setEditId(null); setPreencher(null); setDialogOpen(true); }}>
                   <Plus className="h-4 w-4 mr-1" /> Novo item
                 </Button>
               </>
@@ -143,6 +185,56 @@ export default function InventarioTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Ponte entre a etapa 5 e o inventário. Sem ela, as mesmas seis
+          informações eram digitadas duas vezes. */}
+      {editavel && naoAproveitados.length > 0 && (
+        <Card className="border-sky-300 bg-sky-50/60">
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <ArrowDownToLine className="h-4 w-4 mt-0.5 shrink-0 text-sky-700" />
+              <p className="text-sm text-sky-900">
+                <b>{naoAproveitados.length}</b> {naoAproveitados.length === 1 ? "perigo levantado" : "perigos levantados"} na
+                etapa <i>Perigos e riscos</i> ainda não {naoAproveitados.length === 1 ? "está" : "estão"} no inventário.
+                Traga para cá já preenchido — só falta classificar na matriz.
+              </p>
+            </div>
+            <ul className="space-y-1">
+              {naoAproveitados.map((l) => (
+                <li key={l.id} className="flex items-center gap-2 rounded border bg-background px-2 py-1.5">
+                  <Badge variant="outline" className="shrink-0 text-[11px]">
+                    {GRUPO_LABEL[l.grupo] || l.grupo}
+                  </Badge>
+                  <span className="text-sm min-w-0 flex-1 truncate" title={l.perigo_descricao}>
+                    {l.perigo_descricao}
+                  </span>
+                  {l.ges?.codigo && (
+                    <span className="text-xs text-muted-foreground shrink-0">{l.ges.codigo}</span>
+                  )}
+                  <Button
+                    size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                    onClick={() => {
+                      setEditId(null);
+                      setPreencher({
+                        grupo: l.grupo || "fisico",
+                        perigo_descricao: l.perigo_descricao || "",
+                        fonte_geradora: l.fonte_circunstancia || "",
+                        lesoes: l.possiveis_lesoes || "",
+                        funcoes_text: l.trabalhadores_expostos || "",
+                        controles_text: l.medidas_existentes || "",
+                        ghe_id: l.ges_id || "",
+                      });
+                      setDialogOpen(true);
+                    }}
+                  >
+                    Trazer
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-3">
@@ -357,7 +449,7 @@ export default function InventarioTab({
       <InventarioItemDialog
         open={dialogOpen}
         onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditGroupIds([]); }}
-        pgrId={pgrId} empresaId={empresaId} itemId={editId}
+        pgrId={pgrId} empresaId={empresaId} itemId={editId} valoresIniciais={preencher}
         groupItemIds={editGroupIds}
         onSaved={onSaved}
       />
