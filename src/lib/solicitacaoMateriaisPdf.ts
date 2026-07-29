@@ -201,14 +201,33 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   }
 
   // Tabela de itens
+  //
+  // A foto vai numa COLUNA, ao lado do item. Antes havia uma secao "Imagens dos
+  // Materiais" no fim do documento, com as fotos numa grade de 3 e rotulos
+  // "#1 — nome": quem conferia a solicitacao tinha de ir e voltar entre a
+  // tabela e a galeria para saber de que item era cada foto.
+  const COL_FOTO = 1;
+  const FOTO_BOX = 18; // mm — lado do quadro reservado a imagem
+
+  /** Desenha a imagem dentro do quadro sem distorcer, centralizada. */
+  const desenharFoto = (dataUrl: string, x: number, y2: number, box: number) => {
+    const props = doc.getImageProperties(dataUrl);
+    const escala = Math.min(box / props.width, box / props.height);
+    const w = props.width * escala;
+    const h = props.height * escala;
+    const fmt = /png/i.test(String(props.fileType)) ? "PNG" : "JPEG";
+    doc.addImage(dataUrl, fmt, x + (box - w) / 2, y2 + (box - h) / 2, w, h, undefined, "FAST");
+  };
+
   y += 4;
   autoTable(doc, {
     startY: y,
-    head: [["#", "Tipo", "Item / Descrição", "CA", "Un.", "Qtd Solic.", "Qtd Aprov.", "Justificativa"]],
+    head: [["#", "Foto", "Tipo", "Item / Descrição", "CA", "Un.", "Qtd Solic.", "Qtd Aprov.", "Justificativa"]],
     body: s.itens.map((it, i) => {
       const nome = it.nome_item + (it.descricao ? `\n${it.descricao}` : "") + (it.observacoes ? `\nObs: ${it.observacoes}` : "");
       return [
         String(i + 1),
+        "", // preenchida em didDrawCell — a celula guarda a imagem, nao texto
         it.tipo_item,
         nome,
         it.ca || "-",
@@ -223,13 +242,36 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
     alternateRowStyles: { fillColor: [250, 245, 240] },
     columnStyles: {
       0: { cellWidth: 8, halign: "center" },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 65 },
-      3: { cellWidth: 14, halign: "center" },
-      4: { cellWidth: 10, halign: "center" },
-      5: { cellWidth: 15, halign: "right" },
-      6: { cellWidth: 15, halign: "right" },
-      7: { cellWidth: "auto" },
+      1: { cellWidth: FOTO_BOX + 4, halign: "center" },
+      2: { cellWidth: 18 },
+      3: { cellWidth: 53 },
+      4: { cellWidth: 13, halign: "center" },
+      5: { cellWidth: 9, halign: "center" },
+      6: { cellWidth: 14, halign: "right" },
+      7: { cellWidth: 14, halign: "right" },
+      8: { cellWidth: "auto" },
+    },
+    // Reserva altura so nas linhas que tem foto — item sem imagem continua
+    // ocupando uma linha baixa.
+    didParseCell: (data) => {
+      if (data.section !== "body" || data.column.index !== COL_FOTO) return;
+      if (s.itens[data.row.index]?.imagem_dataurl) {
+        data.cell.styles.minCellHeight = FOTO_BOX + 4;
+      }
+    },
+    didDrawCell: (data) => {
+      if (data.section !== "body" || data.column.index !== COL_FOTO) return;
+      const dataUrl = s.itens[data.row.index]?.imagem_dataurl;
+      if (!dataUrl) return;
+      const x = data.cell.x + (data.cell.width - FOTO_BOX) / 2;
+      const y2 = data.cell.y + (data.cell.height - FOTO_BOX) / 2;
+      try {
+        desenharFoto(String(dataUrl), x, y2, FOTO_BOX);
+      } catch {
+        // Imagem ilegivel nao pode derrubar o PDF inteiro: marca o lugar.
+        doc.setDrawColor(200);
+        doc.rect(x, y2, FOTO_BOX, FOTO_BOX);
+      }
     },
     margin: { left: M, right: M, top: 28, bottom: 15 },
     rowPageBreak: "avoid",
@@ -283,43 +325,10 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   });
   yEnd += Math.ceil(resumo.length / 2) * 4.5 + 4;
 
-  // Imagens dos Materiais
-  const comImagens = s.itens
-    .map((it, i) => ({ it, i }))
-    .filter((x) => !!x.it.imagem_dataurl);
-  if (comImagens.length) {
-    if (yEnd > H - 60) { doc.addPage(); yEnd = 30; drawHeader(); drawWatermark(); }
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("Imagens dos Materiais", M, yEnd);
-    yEnd += 3;
-    doc.setDrawColor(200);
-    doc.line(M, yEnd, W - M, yEnd);
-    yEnd += 4;
-
-    const cellW = (W - M * 2 - 8) / 3; // 3 por linha
-    const imgH = 30;
-    const rowH = imgH + 10;
-    let col = 0;
-    for (const { it, i } of comImagens) {
-      if (yEnd + rowH > H - 20) { doc.addPage(); yEnd = 30; drawHeader(); drawWatermark(); col = 0; }
-      const x = M + col * (cellW + 4);
-      try {
-        const fmt = /png/i.test(String(it.imagem_dataurl)) ? "PNG" : "JPEG";
-        doc.addImage(it.imagem_dataurl as string, fmt, x, yEnd, cellW, imgH, undefined, "FAST");
-      } catch (e) {
-        doc.setDrawColor(200); doc.rect(x, yEnd, cellW, imgH);
-      }
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      const labelLines = doc.splitTextToSize(`#${i + 1} — ${it.nome_item}`, cellW);
-      doc.text(labelLines.slice(0, 2), x, yEnd + imgH + 4);
-      col++;
-      if (col >= 3) { col = 0; yEnd += rowH; }
-    }
-    if (col > 0) yEnd += rowH;
-    yEnd += 2;
-  }
+  // A secao "Imagens dos Materiais" saiu daqui: as fotos agora ficam na coluna
+  // Foto, ao lado do item a que pertencem. Manter as duas seria a mesma imagem
+  // impressa duas vezes, e a galeria do fim nao dizia de que item era cada uma
+  // sem consultar o numero na tabela.
 
   // Assinaturas
   if (yEnd > H - 35) { doc.addPage(); yEnd = 40; drawHeader(); drawWatermark(); }
