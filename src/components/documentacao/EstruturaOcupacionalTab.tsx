@@ -14,7 +14,7 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ehSchemaDesatualizado } from "@/lib/erroSupabase";
+import { ehSchemaDesatualizado, mensagemErro } from "@/lib/erroSupabase";
 import { Building2, Home, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
@@ -137,9 +137,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     nome: "",
   });
 
+  const [erroSalvar, setErroSalvar] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
   const handleOpenModal = (type: any, item?: any) => {
     setModalType(type);
     setFormData(item || {});
+    setErroSalvar("");
     setOpenModal(true);
   };
 
@@ -152,6 +156,8 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErroSalvar("");
+    setSalvando(true);
     try {
       if (modalType === "estabelecimento") await saveEstabelecimento(formData);
       if (modalType === "ambiente") await saveAmbiente(formData);
@@ -161,7 +167,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       if (modalType === "atividade") await saveAtividade(formData);
       setOpenModal(false);
     } catch (err) {
+      // O erro ia só para o console: o modal ficava aberto, sem nada escrito, e
+      // clicar em "Salvar" parecia não fazer efeito nenhum. A mensagem agora
+      // aparece dentro do próprio formulário, onde a pessoa está olhando.
       console.error(err);
+      setErroSalvar(mensagemErro(err, ROTULO_MODAL[modalType]));
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -1188,9 +1200,16 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               </>
             )}
 
+            {erroSalvar && (
+              <div className="flex gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{erroSalvar}</span>
+              </div>
+            )}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenModal(false)}>Cancelar</Button>
-              <Button type="submit">Salvar</Button>
+              <Button type="submit" disabled={salvando}>{salvando ? "Salvando…" : "Salvar"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

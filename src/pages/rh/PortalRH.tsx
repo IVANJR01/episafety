@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { differenceInDays, parseISO, format, addYears, addDays } from "date-fns";
 import { gerarPdfAso, gerarPdfAsoBlob } from "@/lib/asoPdf";
 import { loadGheRiscosExames, GRUPOS_RISCO } from "@/lib/asoFromGhe";
+import { resolverGesPorFuncao, type FuncaoDeGes } from "@/lib/resolverGes";
 
 const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno ao Trabalho",
@@ -202,18 +203,56 @@ export default function PortalRH() {
     ).slice(0, 50);
   }, [funcionarios, funcSearch]);
 
+  /**
+   * Funções declaradas em cada GES da empresa. É o catálogo que permite
+   * descobrir o GES de um colaborador pelo cargo, sem depender de alguém ter
+   * preenchido funcionarios.ghe_id na mão.
+   */
+  const { data: funcoesDeGes = [] } = useQuery({
+    queryKey: ["rh-funcoes-de-ges", empresaScopeIds.join(",")],
+    enabled: (empresaScopeIds?.length ?? 0) > 0,
+    queryFn: async () => {
+      let q = supabase.from("ghe_funcoes").select("ghe_id, nome_funcao, setor, empresa_id").eq("status", "ativo");
+      const ids = empresaScopeIds || [];
+      if (ids.length > 0) q = q.in("empresa_id", ids);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as FuncaoDeGes[];
+    },
+  });
+
+  /** GES herdado da função quando o colaborador não tem vínculo direto. */
+  const gesDerivado = useMemo(() => {
+    if (!funcSel || funcSel.ghe_id) return null;
+    return resolverGesPorFuncao(funcSel.cargo, funcSel.setor, funcoesDeGes);
+  }, [funcSel, funcoesDeGes]);
+
+  /** Escolha manual do RH quando a mesma função existe em mais de um GES. */
+  const [gesEscolhido, setGesEscolhido] = useState("");
+  useEffect(() => { setGesEscolhido(""); }, [funcionarioId]);
+
+  /**
+   * O GES que vale para este ASO: o vínculo direto, ou o herdado da função, ou
+   * o escolhido na desambiguação. A origem sempre aparece na tela — o ASO é
+   * documento legal e não pode carregar riscos de procedência silenciosa.
+   */
+  const gheEfetivo: string | null =
+    funcSel?.ghe_id
+    || gesEscolhido
+    || (gesDerivado?.tipo === "resolvido" ? gesDerivado.ges.ghe_id : null);
+
   // Carrega riscos/exames do GHE
   useEffect(() => {
-    if (!funcSel?.ghe_id) { setRiscos([]); setExames([]); return; }
+    if (!gheEfetivo) { setRiscos([]); setExames([]); return; }
     setLoadingGhe(true);
-    loadGheRiscosExames(funcSel.ghe_id, tipoExame)
+    loadGheRiscosExames(gheEfetivo, tipoExame)
       .then(({ riscos: r, exames: ex }) => {
         setRiscos(r);
         setExames(ex.map((e) => ({ nome_exame: e.nome_exame })));
       })
       .catch(() => { setRiscos([]); setExames([]); })
       .finally(() => setLoadingGhe(false));
-  }, [funcSel?.ghe_id, tipoExame]);
+  }, [gheEfetivo, tipoExame]);
 
   const gruposPreenchidos = useMemo(() => {
     const map: Record<string, number> = {};
@@ -221,7 +260,7 @@ export default function PortalRH() {
     return map;
   }, [riscos]);
 
-  const podeEmitir = !!funcSel && !!funcSel.ghe_id && !!dataEmissao && !!dataVencimento && !!localEmissaoId;
+  const podeEmitir = !!funcSel && !!gheEfetivo && !!dataEmissao && !!dataVencimento && !!localEmissaoId;
 
   const resetForm = () => {
     setFuncionarioId(""); setFuncSearch(""); setTipoExame("admissional");
@@ -234,7 +273,7 @@ export default function PortalRH() {
 
   const emitirAso = async (alsoPrint = false): Promise<string | null> => {
     if (!funcSel) { toast.error("Selecione um colaborador"); return null; }
-    if (!funcSel.ghe_id) { toast.error("Colaborador sem GHE/GES vinculado"); return null; }
+    if (!gheEfetivo) { toast.error("Colaborador sem GES — a função dele não consta em nenhum grupo."); return null; }
     if (!localEmissaoId || !localSnapshot) { toast.error("Selecione o local de emissão do ASO."); return null; }
     setSaving(true);
     try {
@@ -249,7 +288,10 @@ export default function PortalRH() {
         observacoes, local_emissao: localSnapshot,
         local_emissao_id: localEmissaoId, local_emissao_snapshot: localSnapshot,
         status: "emitido",
-        ghe_id: funcSel.ghe_id,
+        // O GES efetivo — direto ou herdado da função. Fica gravado no ASO
+        // junto do riscos_snapshot, então a procedência dos riscos é auditável
+        // mesmo que o cadastro mude depois.
+        ghe_id: gheEfetivo,
         riscos_snapshot: riscos.filter((r) => r.descricao.trim()),
         exames_snapshot: exames.filter((e) => e.nome_exame.trim()),
         numero_aso: num || `ASO-${Date.now()}`,
@@ -544,11 +586,64 @@ export default function PortalRH() {
                       <p className="text-sm text-muted-foreground italic">Selecione um colaborador para visualizar os riscos e exames do GHE.</p>
                     )}
 
-                    {funcSel && !funcSel.ghe_id && (
-                      <p className="text-sm text-destructive">Sem GHE vinculado — não é possível gerar o ASO.</p>
+                    {/* GES herdado da função: o RH não precisa mais esperar o
+                        setor de Segurança vincular colaborador por colaborador.
+                        A origem fica escrita — nada de risco vindo de lugar
+                        que a pessoa não consegue conferir. */}
+                    {funcSel && !funcSel.ghe_id && gesDerivado?.tipo === "resolvido" && (
+                      <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-800 space-y-2">
+                        <p>
+                          GES identificado pela <b>função “{gesDerivado.ges.nome_funcao}”</b>
+                          {gesDerivado.ges.motivo === "funcao+setor" && <> no setor <b>{funcSel.setor}</b></>}.
+                          Os riscos abaixo vêm desse grupo.
+                        </p>
+                        <Button
+                          size="sm" variant="outline" className="h-7 text-xs"
+                          onClick={async () => {
+                            const { error } = await supabase.from("funcionarios")
+                              .update({ ghe_id: gesDerivado.ges.ghe_id }).eq("id", funcSel.id);
+                            if (error) return toast.error(error.message);
+                            toast.success("Colaborador vinculado ao GES.");
+                            qc.invalidateQueries({ queryKey: ["portal-rh-aso-colaboradores"] });
+                          }}
+                        >
+                          Fixar este vínculo no cadastro
+                        </Button>
+                      </div>
                     )}
 
-                    {funcSel?.ghe_id && (
+                    {/* A mesma função em GES diferentes é legítima (escritório e
+                        produção não têm a mesma exposição). Escolher sozinho
+                        colocaria no ASO riscos que a pessoa talvez não corra. */}
+                    {funcSel && !funcSel.ghe_id && gesDerivado?.tipo === "ambiguo" && (
+                      <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-900 space-y-2">
+                        <p>
+                          A função <b>“{funcSel.cargo}”</b> aparece em mais de um GES e o setor do
+                          cadastro não desempata. Escolha de qual grupo vêm os riscos:
+                        </p>
+                        <Select value={gesEscolhido} onValueChange={setGesEscolhido}>
+                          <SelectTrigger className="h-8 bg-background"><SelectValue placeholder="Selecione o GES…" /></SelectTrigger>
+                          <SelectContent>
+                            {[...new Map(gesDerivado.candidatos.map((c) => [c.ghe_id, c])).values()].map((c) => (
+                              <SelectItem key={c.ghe_id} value={c.ghe_id}>
+                                {c.nome_funcao}{c.setor ? ` — ${c.setor}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {funcSel && !gheEfetivo && gesDerivado?.tipo === "sem_correspondencia" && (
+                      <p className="text-sm text-destructive">
+                        Sem GES para este colaborador. A função <b>“{funcSel.cargo || "—"}”</b> não
+                        consta em nenhum grupo de exposição. Cadastre-a nas funções do GES
+                        correspondente (Documentação › GES › botão de funções e riscos do grupo)
+                        e o ASO passa a sair sozinho.
+                      </p>
+                    )}
+
+                    {gheEfetivo && (
                       <>
                         <div>
                           <h4 className="text-sm font-medium mb-1">Fatores de risco</h4>
