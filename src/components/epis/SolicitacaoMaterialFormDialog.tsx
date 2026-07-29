@@ -223,6 +223,11 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       setItens((prev) => prev.map((it, i) => {
         const found = targets.findIndex((t) => t.idx === i);
         if (found === -1) return it;
+        // Essa URL assinada foi buscada para a foto que estava salva quando o
+        // efeito disparou. Se nesse meio-tempo (é rede de verdade, demora) a
+        // pessoa trocou a foto do item — já tem imagem_file ou preview novos —
+        // aplicar aqui sobrescreveria a escolha nova pela antiga.
+        if (it.imagem_file || it.imagem_preview_url) return it;
         return { ...it, imagem_preview_url: resolved[found] };
       }));
     })();
