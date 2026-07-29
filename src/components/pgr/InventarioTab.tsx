@@ -9,7 +9,6 @@ import { Plus, Download, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine 
 import { toast } from "sonner";
 import InventarioItemDialog from "./InventarioItemDialog";
 import ImportarGheDialog from "./ImportarGheDialog";
-import MatrizRisco from "./MatrizRisco";
 import {
   classificarRisco, classeLabel, CLASSE_LABEL, CLASSE_TEXT,
   CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse,
@@ -274,7 +273,7 @@ export default function InventarioTab({
                     <th className="p-2 text-center border border-amber-400 w-[55px]">Sev.</th>
                     <th className="p-2 text-center border border-amber-400 w-[55px]">Total</th>
                     <th className="p-2 text-left border border-amber-400 min-w-[120px]">Classificação<br/>do Risco</th>
-                    <th className="p-2 border border-amber-400 w-[70px]"></th>
+                    <th className="p-2 border border-amber-400 w-[76px] sticky right-0 z-20 bg-amber-200 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -412,7 +411,7 @@ export default function InventarioTab({
                         )}
 
                         {isFirstOfRisk && (
-                          <td rowSpan={riskRowSpan} className="p-2 border text-right whitespace-nowrap align-middle bg-amber-50/30">
+                          <td rowSpan={riskRowSpan} className="p-2 border text-right whitespace-nowrap align-middle sticky right-0 z-10 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">
                             {editavel && (
                               <>
                                 <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Editar grupo (${groupIds.length} setores)` : "Editar item"} onClick={() => { setEditId(i.id); setEditGroupIds(groupIds); setDialogOpen(true); }}>
@@ -436,13 +435,6 @@ export default function InventarioTab({
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-3">
-          <div className="text-xs font-semibold mb-2">Matriz de risco 5×5 (referência)</div>
-          <MatrizRisco compact />
         </CardContent>
       </Card>
 
