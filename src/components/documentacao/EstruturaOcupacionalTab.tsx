@@ -15,6 +15,7 @@ import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ehSchemaDesatualizado, mensagemErro } from "@/lib/erroSupabase";
+import { caracteristicasAmbiente } from "@/lib/sstAmbiente";
 import { Building2, Home, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
@@ -343,10 +344,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                       <TableCell className="font-medium text-slate-900">{amb.nome}</TableCell>
                       <TableCell><Badge className="bg-slate-800 text-white">{amb.tipo_ambiente}</Badge></TableCell>
                       <TableCell className="text-sm text-slate-600">
-                        {[amb.pe_direito && `Pé-direito ${amb.pe_direito}`, amb.piso,
-                          amb.ventilacao && `Ventilação ${amb.ventilacao}`,
-                          amb.iluminacao && `Iluminação ${amb.iluminacao}`]
-                          .filter(Boolean).join(" · ") || "—"}
+                        {/* Mesma regra usada na importação e no item do
+                            inventário — uma fonte só evita divergirem. */}
+                        {caracteristicasAmbiente(amb) || "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Download, ArrowLeft } from "lucide-react";
+import { descreverAmbiente } from "@/lib/sstAmbiente";
 
 interface PreviewItem {
   ghe_id: string;
@@ -114,8 +115,12 @@ export default function ImportarGheDialog({
     type Nomeado = { id: string; nome: string };
     const nomePorId = (linhas: Nomeado[] | null) =>
       new Map<string, string>((linhas || []).map((x) => [x.id, x.nome]));
-    const ambientes = nomePorId(amb.data);
     const processos = nomePorId(proc.data);
+    // O ambiente inteiro, nao so o nome: a descricao que vai para o inventario
+    // e a caracterizacao (pe-direito, piso, ventilacao, iluminacao).
+    const ambientes = new Map<string, ReturnType<typeof Object>>(
+      ((amb.data || []) as { id: string }[]).map((x) => [x.id, x]),
+    );
     const funcoesPorSetor = new Map<string, string[]>();
     for (const f of (fun.data || []) as { nome: string; setor_id?: string }[]) {
       if (!f.setor_id) continue;
@@ -125,7 +130,7 @@ export default function ImportarGheDialog({
     setSetoresEstrutura(((set.data || []) as SetorLinha[]).map((s) => ({
       id: s.id,
       nome: s.nome,
-      ambiente: s.ambiente_id ? ambientes.get(s.ambiente_id) || "" : "",
+      ambiente: s.ambiente_id ? descreverAmbiente(ambientes.get(s.ambiente_id)) : "",
       processo: s.processo_id ? processos.get(s.processo_id) || "" : "",
       funcoes: funcoesPorSetor.get(s.id) || [],
     })));

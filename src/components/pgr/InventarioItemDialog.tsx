@@ -16,6 +16,7 @@ import ItemControlesPanel from "./ItemControlesPanel";
 import {
   GRUPO_LABEL, CLASSE_TEXT, CLASSE_DECISAO, classeLabel, classificarRisco,
 } from "@/lib/pgrMatriz";
+import { descreverAmbiente } from "@/lib/sstAmbiente";
 
 interface Props {
   open: boolean;
@@ -133,6 +134,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
       ]);
       return {
         setores: (set.data || []) as { id: string; nome: string; ambiente_id?: string | null }[],
+        // O ambiente inteiro: a descricao e a caracterizacao, nao so o nome.
         ambientes: (amb.data || []) as { id: string; nome: string }[],
         processos: (proc.data || []) as { id: string; nome: string }[],
       };
@@ -150,7 +152,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
     setForm((f: Record<string, unknown>) => ({
       ...f,
       setor: s.nome,
-      descricao_ambiente: amb?.nome || f.descricao_ambiente,
+      descricao_ambiente: descreverAmbiente(amb) || f.descricao_ambiente,
     }));
   };
 
