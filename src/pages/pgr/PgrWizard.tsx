@@ -464,7 +464,10 @@ function Assistente() {
         </div>
       </header>
 
-      <div className="flex gap-6 px-3 sm:px-5 py-5 max-w-[1600px] mx-auto">
+      {/* O teto de 1600px sobrava tela em monitor grande justo onde a planilha
+          do inventario tem 2100px de largura e cada pixel economiza rolagem.
+          Padding e respiro tambem cederam um pouco. */}
+      <div className="flex gap-5 px-3 sm:px-4 py-4 max-w-[1800px] mx-auto">
         <aside className="hidden lg:block w-64 shrink-0">
           <div className="sticky top-24">
             <ListaEtapas />
@@ -491,7 +494,7 @@ function Assistente() {
 
         <main className="flex-1 min-w-0">
           <div className="bg-card border rounded-xl">
-            <div className="p-5 sm:p-7">
+            <div className="p-4 sm:p-6">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{etapa.titulo}</h1>
               <div className="mt-2 flex items-center gap-3 flex-wrap">
                 <span className="inline-flex items-center rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">
