@@ -112,6 +112,48 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
   });
   const gesNucleoIds = new Set<string>((gesNucleo as any[]).map((g) => g.id));
 
+  /**
+   * Setores e ambientes do Núcleo Mestre — a estrutura que a etapa 3 cadastra.
+   *
+   * O diálogo só sabia ler ambiente/setor/processo das colunas da tabela legada
+   * `ghe_ges`. Quem cadastrou "setor PCP → ambiente ESCRITORIO" na estrutura via
+   * o item sair todo "N.A" e a tela dizer que não havia nada cadastrado — a
+   * informação existia, só não era consultada. Pior: `setor` e `processo` eram
+   * GRAVADOS sem ter campo nenhum na tela para preenchê-los.
+   */
+  const { data: estrutura } = useQuery({
+    queryKey: ["pgr-estrutura-nucleo", empresaId],
+    enabled: open && !!empresaId,
+    queryFn: async () => {
+      const tabela = (t: string) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from as any)(t).select("*").eq("empresa_id", empresaId);
+      const [set, amb, proc] = await Promise.all([
+        tabela("sst_setores"), tabela("sst_ambientes"), tabela("sst_processos"),
+      ]);
+      return {
+        setores: (set.data || []) as { id: string; nome: string; ambiente_id?: string | null }[],
+        ambientes: (amb.data || []) as { id: string; nome: string }[],
+        processos: (proc.data || []) as { id: string; nome: string }[],
+      };
+    },
+  });
+  const setores = estrutura?.setores || [];
+  const ambientes = estrutura?.ambientes || [];
+  const processos = estrutura?.processos || [];
+
+  /** Escolher o setor traz junto o ambiente vinculado a ele. */
+  const escolherSetor = (id: string) => {
+    const s = setores.find((x) => x.id === id);
+    if (!s) return;
+    const amb = ambientes.find((a) => a.id === s.ambiente_id);
+    setForm((f: Record<string, unknown>) => ({
+      ...f,
+      setor: s.nome,
+      descricao_ambiente: amb?.nome || f.descricao_ambiente,
+    }));
+  };
+
   useEffect(() => {
     if (!open) return;
     setTab("estrutura");
@@ -323,22 +365,48 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                   prometia que setor, funções e processo vinham do GES; quando o
                   grupo estava vazio nada vinha, o item saía todo "N.A" e não
                   havia como saber por quê. */}
-              {form.ghe_id && (herdadoDoGes.temAlgo ? (
+              {form.ghe_id && herdadoDoGes.temAlgo && (
                 <div className="md:col-span-2 text-xs text-muted-foreground border rounded p-2 bg-muted/40">
                   Herdado deste GES: {herdadoDoGes.resumo}.
                 </div>
-              ) : (
-                <div className="md:col-span-2 text-xs text-amber-900 border border-amber-300 rounded p-2 bg-amber-50">
-                  Este GES ainda não tem ambiente, setor nem processo cadastrados, então
-                  não há o que herdar — por isso as colunas saem como <b>N.A</b>. Preencha
-                  abaixo só para este item, ou cadastre no grupo (em <b>Documentação › GES</b>)
-                  para valer em todos.
-                </div>
-              ))}
+              )}
+
+              {/* Setor e processo eram gravados sem ter campo na tela. Vêm da
+                  estrutura já cadastrada na etapa 3 — escolher o setor traz o
+                  ambiente vinculado a ele. */}
+              <div>
+                <Label className="text-xs">Setor</Label>
+                <Select
+                  value={setores.find((s) => s.nome === form.setor)?.id || ""}
+                  onValueChange={escolherSetor}
+                >
+                  <SelectTrigger><SelectValue placeholder={setores.length ? "Selecione" : "Nenhum setor cadastrado"} /></SelectTrigger>
+                  <SelectContent>
+                    {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs">Processo</Label>
+                <Select
+                  value={processos.find((p) => p.nome === form.processo)?.id || ""}
+                  onValueChange={(id) => {
+                    const p = processos.find((x) => x.id === id);
+                    if (p) setForm((f: Record<string, unknown>) => ({ ...f, processo: p.nome }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder={processos.length ? "Selecione" : "Nenhum processo cadastrado"} /></SelectTrigger>
+                  <SelectContent>
+                    {processos.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="md:col-span-2">
                 <Label className="text-xs">
-                  Descrição do ambiente <span className="text-muted-foreground font-normal">(herdada do GES quando houver)</span>
+                  Descrição do ambiente{" "}
+                  <span className="text-muted-foreground font-normal">(vem do setor escolhido)</span>
                 </Label>
                 <Input value={form.descricao_ambiente} onChange={upd("descricao_ambiente")} placeholder="Ex.: Escritório administrativo" />
               </div>
