@@ -173,9 +173,48 @@ export default function ImportarGheDialog({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase.from as any)("pgr_inventario_itens").insert(linhas);
       if (error) throw error;
+
+      // Sincroniza o GES com a estrutura: as funções dos setores importados
+      // passam a compor o grupo em `ghe_funcoes`. É de lá que o PCMSO, o quadro
+      // de EPIs e a emissão automática de ASO leem — sem isso o GES continuaria
+      // marcado como "sem funções vinculadas" logo depois de uma importação que
+      // sabia exatamente quais funções eram.
+      let vinculadas = 0;
+      if (gesAlvo) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: jaTem } = await (supabase.from as any)("ghe_funcoes")
+          .select("nome_funcao").eq("ghe_id", gesAlvo);
+        const norm = (t: string) => (t || "").normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+        const existentes = new Set(
+          ((jaTem || []) as { nome_funcao: string }[]).map((f) => norm(f.nome_funcao)),
+        );
+        const novasFuncoes = setoresEstrutura
+          .filter((st) => setoresSel.has(st.id))
+          .flatMap((st) => st.funcoes.map((nome) => ({ nome, setor: st.nome })))
+          .filter((f) => {
+            if (existentes.has(norm(f.nome))) return false;
+            existentes.add(norm(f.nome)); // evita duplicar dentro do proprio lote
+            return true;
+          })
+          .map((f) => ({
+            ghe_id: gesAlvo, empresa_id: empresaId,
+            nome_funcao: f.nome, setor: f.setor,
+            descricao_atividade: "A detalhar", processo: null,
+          }));
+        if (novasFuncoes.length) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: errF } = await (supabase.from as any)("ghe_funcoes").insert(novasFuncoes);
+          // Falhar aqui nao invalida o inventario ja criado: avisa e segue.
+          if (errF) toast.warning(`Linhas criadas, mas as funções não foram vinculadas ao GES: ${errF.message}`);
+          else vinculadas = novasFuncoes.length;
+        }
+      }
+
       toast.success(
-        `${linhas.length} linha(s) criada(s) a partir da Estrutura Ocupacional. `
-        + "Preencha o perigo e classifique cada uma.",
+        `${linhas.length} linha(s) criada(s) a partir da Estrutura Ocupacional`
+        + (vinculadas ? ` · ${vinculadas} função(ões) vinculada(s) ao GES` : "")
+        + ". Preencha o perigo e classifique cada uma.",
       );
       onImported();
       onOpenChange(false);
@@ -299,11 +338,10 @@ export default function ImportarGheDialog({
               <p className="text-center py-8 text-sm text-muted-foreground">
                 Nenhum GES ativo cadastrado nesta empresa. Cadastre em <b>Documentação › GES</b>.
               </p>
-            ) : (
+            ) : importaveis.length === 0 ? null : (
               <>
                 <div className="text-xs text-muted-foreground border-t pt-3">
-                  Alternativa: importar pelo GES. Só funciona para grupos que já têm
-                  funções vinculadas a eles.
+                  Alternativa: importar pelo GES, para grupos que já têm funções vinculadas.
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
@@ -315,7 +353,7 @@ export default function ImportarGheDialog({
                   </Button>
                 </div>
                 <div className="max-h-[50vh] overflow-y-auto border rounded divide-y">
-                  {ghes.map((g) => {
+                  {importaveis.map((g) => {
                     // "Estrutura pronta" era um selo FIXO no código: aparecia em
                     // todo GES, inclusive nos que tinham 0 setor e 0 função — ou
                     // seja, nos que não têm nada para importar. Agora o selo
