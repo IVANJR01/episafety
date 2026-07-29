@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -386,14 +386,19 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   const readOnly = !["rascunho", "enviada"].includes(status);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A gaveta tinha largura de celular (768px) tambem no desktop: os campos
           ficavam empilhados numa coluna estreita e a solicitacao inteira virava
           rolagem. Em tela grande ela usa a largura que existe. */}
-      <SheetContent side="right" className="w-full sm:max-w-3xl lg:max-w-5xl xl:max-w-6xl h-[100dvh] p-0 flex flex-col">
-        <SheetHeader className="p-4 border-b">
-          <SheetTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</SheetTitle>
-        </SheetHeader>
+      {/* Era uma gaveta colada na borda direita: num monitor grande sobrava uma
+          faixa morta de ~470px so do lado esquerdo, e o conteudo encostava na
+          barra de rolagem da direita. Formulario longo de desktop pede janela
+          centralizada — margem igual dos dois lados e largura aproveitada.
+          Em telas pequenas continua ocupando tudo. */}
+      <DialogContent className="p-0 flex flex-col gap-0 w-[calc(100vw-1rem)] sm:w-[calc(100vw-4rem)] max-w-[1400px] h-[calc(100dvh-1rem)] sm:h-[92vh]">
+        <DialogHeader className="p-4 border-b shrink-0">
+          <DialogTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</DialogTitle>
+        </DialogHeader>
 
         {loading ? (
           <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin" /></div>
@@ -598,8 +603,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
             </>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
