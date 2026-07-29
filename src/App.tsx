@@ -269,7 +269,7 @@ function ProtectedRoute() {
         <Route path="/documentacao-sst" element={<DocumentacaoSst />} />
         <Route path="/epis" element={<EPIs />} />
         <Route path="/epis/controle-contrato" element={<NetworkErrorBoundary><ControleEstoqueContrato /></NetworkErrorBoundary>} />
-        <Route path="/epis/solicitacoes-materiais" element={<SolicitacoesMateriais />} />
+        <Route path="/epis/solicitacoes-materiais" element={<NetworkErrorBoundary><SolicitacoesMateriais /></NetworkErrorBoundary>} />
         <Route path="/entregas" element={<Entregas />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/cadastro" element={<CadastroDashboard />} />
