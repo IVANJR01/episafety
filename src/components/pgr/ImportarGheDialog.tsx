@@ -87,11 +87,14 @@ export default function ImportarGheDialog({
         .eq("status", "ativo")
         .order("codigo");
       if (error) throw error;
-      setGhes((data || []).map((g: any) => ({
+      const lista = (data || []).map((g: any) => ({
         id: g.id, codigo: g.codigo, nome: g.nome, setor: g.setor,
         setores_count: (g.ghe_setores || []).length,
         funcoes_count: (g.ghe_funcoes || []).length,
-      })));
+      }));
+      setGhes(lista);
+      // Com um GES so, nao ha escolha a fazer — evita um clique e o esquecimento.
+      if (lista.length === 1) setGesAlvo(lista[0].id);
     } catch (e: any) {
       toast.error(e.message || "Falha ao carregar GES");
     } finally { setBusy(false); }
@@ -317,21 +320,42 @@ export default function ImportarGheDialog({
                   ))}
                 </div>
 
+                {/* O GES era "opcional" e vinha como "— nenhum —": quem nao
+                    mexia no seletor via a coluna GES do inventario sair "N.A".
+                    O PGR agrupa o risco por GES — deixar em branco por descuido
+                    e diferente de decidir que nao ha grupo. Agora e exigido
+                    quando a empresa tem GES cadastrado. */}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <span className="text-xs text-muted-foreground">Vincular ao GES (opcional):</span>
-                  <select
-                    className="h-8 rounded border bg-background px-2 text-xs"
-                    value={gesAlvo} onChange={(e) => setGesAlvo(e.target.value)}
-                  >
-                    <option value="">— nenhum —</option>
-                    {ghes.map((g) => <option key={g.id} value={g.id}>{g.codigo} — {g.nome}</option>)}
-                  </select>
-                  <Button size="sm" className="ml-auto" disabled={busy || setoresSel.size === 0}
+                  {ghes.length > 0 ? (
+                    <>
+                      <span className="text-xs text-muted-foreground">Vincular ao GES:</span>
+                      <select
+                        className="h-8 rounded border bg-background px-2 text-xs"
+                        value={gesAlvo} onChange={(e) => setGesAlvo(e.target.value)}
+                      >
+                        <option value="">Selecione o GES…</option>
+                        {ghes.map((g) => <option key={g.id} value={g.id}>{g.codigo} — {g.nome}</option>)}
+                      </select>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Nenhum GES cadastrado — as linhas entram sem grupo.
+                    </span>
+                  )}
+                  <Button size="sm" className="ml-auto"
+                    disabled={busy || setoresSel.size === 0 || (ghes.length > 0 && !gesAlvo)}
                     onClick={importarEstrutura}>
                     <Download className="h-4 w-4 mr-1" />
                     Importar {setoresSel.size || ""} setor(es)
                   </Button>
                 </div>
+
+                {ghes.length > 0 && setoresSel.size > 0 && !gesAlvo && (
+                  <p className="text-xs text-amber-800">
+                    Escolha o GES antes de importar — é ele que agrupa o risco no PGR.
+                    Sem grupo, a coluna GES sai vazia no inventário.
+                  </p>
+                )}
               </div>
             )}
 
