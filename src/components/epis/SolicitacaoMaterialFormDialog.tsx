@@ -395,7 +395,18 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           barra de rolagem da direita. Formulario longo de desktop pede janela
           centralizada — margem igual dos dois lados e largura aproveitada.
           Em telas pequenas continua ocupando tudo. */}
-      <DialogContent className="p-0 flex flex-col gap-0 w-[calc(100vw-1rem)] sm:w-[calc(100vw-4rem)] max-w-[1400px] h-[calc(100dvh-1rem)] sm:h-[92vh]">
+      <DialogContent className={[
+        // Celular: ocupa a tela toda.
+        "p-0 gap-0 flex flex-col w-[calc(100vw-1rem)] h-[calc(100dvh-1rem)]",
+        // Desktop: TODAS as sobreposicoes precisam do prefixo `sm:`. O
+        // DialogContent base traz sm:max-w-lg, sm:grid, sm:p-6, sm:max-h-[90vh]
+        // — e o tailwind-merge nao considera `max-w-[1400px]` sem prefixo como
+        // substituto de `sm:max-w-lg`. Foi o que aconteceu: a janela ficou nos
+        // 512px do padrao, mais estreita do que a gaveta que ela substituiu.
+        "sm:flex sm:flex-col sm:p-0 sm:gap-0",
+        "sm:w-[calc(100vw-4rem)] sm:max-w-[1400px]",
+        "sm:h-[92vh] sm:max-h-[92vh]",
+      ].join(" ")}>
         <DialogHeader className="p-4 border-b shrink-0">
           <DialogTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</DialogTitle>
         </DialogHeader>
