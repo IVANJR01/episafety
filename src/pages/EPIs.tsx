@@ -31,10 +31,35 @@ const emptyForm = {
   nome: "", ca: "", validade: "", estoque: 0, estoque_minimo: 5,
   categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: 0,
   tamanho: "",
+  /** Cadastro em lote: um EPI por tamanho marcado (so em cadastro novo). */
+  tamanhos: [] as string[],
   ajuste_tipo: "" as "" | "entrada" | "saida",
   ajuste_quantidade: 0,
   ajuste_motivo: ""
 };
+
+/** Atalhos de tamanho. Qualquer outro pode ser digitado no campo livre. */
+const TAMANHOS_LETRA = ["PP", "P", "M", "G", "GG", "XG", "XGG"];
+const TAMANHOS_NUMERO = ["34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"];
+
+/**
+ * O cadastro existente usa o tamanho no proprio nome ("FARDAMENTO - GG"), e o
+ * resto do sistema (entregas, solicitacoes, fichas) so mostra o nome. Mantem-se
+ * essa convencao, sem repetir quando o nome digitado ja termina com o tamanho.
+ */
+/** Evita "FARDAMENTO - GG (GG)" nas listagens. */
+function tamanhoVisivel(e: { nome: string; tamanho: string | null }) {
+  if (!e.tamanho) return null;
+  return e.nome.trim().toUpperCase().endsWith(e.tamanho.trim().toUpperCase()) ? null : e.tamanho;
+}
+
+function nomeComTamanho(nome: string, tamanho: string) {
+  const base = nome.trim().replace(/[\s-]+$/, "");
+  if (!tamanho) return base;
+  if (base.toUpperCase().endsWith(`- ${tamanho.toUpperCase()}`)) return base;
+  if (base.toUpperCase().endsWith(tamanho.toUpperCase())) return base;
+  return `${base} - ${tamanho}`;
+}
 
 export default function EPIs() {
   const { data: epis, loading, add, update, remove, refetch } = useSupabaseCrud<EPI>("epis", "created_at");
@@ -43,6 +68,7 @@ export default function EPIs() {
   const [editing, setEditing] = useState<EPI | null>(null);
   const { form, setForm, resetForm, hasDraft } = useFormDraft("epis", emptyForm);
   const [consultando, setConsultando] = useState(false);
+  const [tamanhoLivre, setTamanhoLivre] = useState("");
   const [busca, setBusca] = useState("");
   const { toast } = useToast();
 
@@ -60,7 +86,7 @@ export default function EPIs() {
       estoque: e.estoque, estoque_minimo: e.estoque_minimo,
       categoria: e.categoria || "", descricao: e.descricao || "",
       fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || "",
-      valor: e.valor || 0, tamanho: e.tamanho || "",
+      valor: e.valor || 0, tamanho: e.tamanho || "", tamanhos: [],
       ajuste_tipo: "", ajuste_quantidade: 0, ajuste_motivo: ""
     });
     setOpen(true);
@@ -124,11 +150,52 @@ export default function EPIs() {
       if (form.ajuste_tipo && form.ajuste_quantidade > 0) {
         toast({ title: `${form.ajuste_tipo === "entrada" ? "Entrada" : "Saída"} registrada`, description: `${form.ajuste_quantidade} unidade(s) ${form.ajuste_tipo === "entrada" ? "adicionada(s) ao" : "removida(s) do"} estoque` });
       }
+    } else if (form.tamanhos.length > 0) {
+      // Cadastro em lote: o CA e os dados sao consultados uma vez e valem para
+      // todos os tamanhos — antes era preciso repetir o cadastro inteiro a cada
+      // tamanho do mesmo CA.
+      const caAtual = form.ca.trim();
+      const jaCadastrados = caAtual
+        ? epis.filter(e => (e.ca || "").trim() === caAtual && e.tamanho)
+            .map(e => (e.tamanho as string).trim().toUpperCase())
+        : [];
+      const novos = form.tamanhos.filter(t => !jaCadastrados.includes(t.toUpperCase()));
+      const repetidos = form.tamanhos.filter(t => jaCadastrados.includes(t.toUpperCase()));
+
+      let criados = 0;
+      for (const t of novos) {
+        const ok = await add({ ...data, nome: nomeComTamanho(form.nome, t), tamanho: t });
+        if (ok) criados++;
+      }
+      if (criados === 0 && repetidos.length > 0) {
+        toast({ title: "Nada a cadastrar", description: `Esse CA já tem ${repetidos.join(", ")} cadastrado(s).`, variant: "destructive" });
+        return;
+      }
+      toast({
+        title: `${criados} EPI(s) cadastrado(s)`,
+        description: repetidos.length
+          ? `Tamanhos já existentes neste CA foram ignorados: ${repetidos.join(", ")}.`
+          : `Tamanhos: ${novos.join(", ")}`
+      });
     } else {
       await add(data);
     }
     resetForm();
     setOpen(false);
+  };
+
+  const toggleTamanho = (t: string) => {
+    setForm(prev => ({
+      ...prev,
+      tamanhos: prev.tamanhos.includes(t) ? prev.tamanhos.filter(x => x !== t) : [...prev.tamanhos, t]
+    }));
+  };
+
+  const addTamanhoLivre = () => {
+    const t = tamanhoLivre.trim().toUpperCase();
+    if (!t) return;
+    setForm(prev => ({ ...prev, tamanhos: prev.tamanhos.includes(t) ? prev.tamanhos : [...prev.tamanhos, t] }));
+    setTamanhoLivre("");
   };
 
   const exportarExcel = () => {
@@ -207,7 +274,7 @@ export default function EPIs() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-sm leading-tight">{e.nome}{e.tamanho && <span className="ml-1 text-[10px] text-muted-foreground font-normal">({e.tamanho})</span>}</p>
+                          <p className="font-semibold text-sm leading-tight">{e.nome}{tamanhoVisivel(e) && <span className="ml-1 text-[10px] text-muted-foreground font-normal">({tamanhoVisivel(e)})</span>}</p>
                           {statusBadge}
                         </div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -272,7 +339,7 @@ export default function EPIs() {
                     <TableRow key={e.id}>
                       <TableCell className="font-medium">
                         {e.nome}
-                        {e.tamanho && <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">({e.tamanho})</span>}
+                        {tamanhoVisivel(e) && <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">({tamanhoVisivel(e)})</span>}
                       </TableCell>
                       <TableCell className="font-mono text-xs">{e.ca || "—"}</TableCell>
                       <TableCell><Badge variant="secondary">{e.categoria || "—"}</Badge></TableCell>
@@ -317,7 +384,53 @@ export default function EPIs() {
               <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm({...form, categoria: e.target.value})} placeholder="Ex: Cabeça" /></div>
               <div><Label>Validade do CA</Label><Input type="date" value={form.validade} onChange={e => setForm({...form, validade: e.target.value})} /></div>
             </div>
-            <div><Label>Tamanho</Label><Input value={form.tamanho} onChange={e => setForm({...form, tamanho: e.target.value})} placeholder="Ex: P, M, G, GG, 38, 42..." /></div>
+            {editing ? (
+              <div><Label>Tamanho</Label><Input value={form.tamanho} onChange={e => setForm({...form, tamanho: e.target.value})} placeholder="Ex: P, M, G, GG, 38, 42..." /></div>
+            ) : (
+              <div className="border rounded-lg p-3 space-y-3">
+                <div>
+                  <Label>Tamanhos</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Marque todos os tamanhos deste CA. É cadastrado um EPI por tamanho, com os mesmos dados — não precisa repetir o CA.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {TAMANHOS_LETRA.map(t => (
+                      <Button key={t} type="button" size="sm" className="h-8 px-3"
+                        variant={form.tamanhos.includes(t) ? "default" : "outline"}
+                        onClick={() => toggleTamanho(t)}>{t}</Button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TAMANHOS_NUMERO.map(t => (
+                      <Button key={t} type="button" size="sm" className="h-8 px-2.5"
+                        variant={form.tamanhos.includes(t) ? "default" : "outline"}
+                        onClick={() => toggleTamanho(t)}>{t}</Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Input value={tamanhoLivre} onChange={e => setTamanhoLivre(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTamanhoLivre(); } }}
+                    placeholder="Outro tamanho (ex: 48, XXG)" className="flex-1 h-9" />
+                  <Button type="button" variant="secondary" size="sm" className="h-9" onClick={addTamanhoLivre} disabled={!tamanhoLivre.trim()}>Adicionar</Button>
+                </div>
+                {form.tamanhos.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t">
+                    <span className="text-xs text-muted-foreground">Vai cadastrar {form.tamanhos.length}:</span>
+                    {form.tamanhos.map(t => (
+                      <Badge key={t} variant="secondary" className="gap-1 pr-1">
+                        {t}
+                        <button type="button" aria-label={`Remover ${t}`} className="hover:text-destructive" onClick={() => toggleTamanho(t)}>×</button>
+                      </Badge>
+                    ))}
+                    <Button type="button" variant="ghost" size="sm" className="h-6 text-xs ml-auto" onClick={() => setForm(prev => ({ ...prev, tamanhos: [] }))}>Limpar</Button>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">Sem nenhum marcado, cadastra um único EPI sem tamanho.</p>
+              </div>
+            )}
             <div><Label>Fabricante</Label><Input value={form.fabricante} onChange={e => setForm({...form, fabricante: e.target.value})} placeholder="Preenchido automaticamente pela consulta" /></div>
             <div><Label>Aprovado Para</Label><Textarea value={form.aprovado_para} onChange={e => setForm({...form, aprovado_para: e.target.value})} placeholder="Proteção contra..." rows={2} /></div>
             <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Descrição técnica do EPI" rows={3} /></div>
@@ -356,11 +469,19 @@ export default function EPIs() {
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Estoque {editing ? "(manual)" : ""}</Label><Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} disabled={!!editing && !!form.ajuste_tipo} /></div>
+              <div>
+                <Label>Estoque {editing ? "(manual)" : ""}</Label>
+                <Input type="number" value={form.estoque} onChange={e => setForm({...form, estoque: Number(e.target.value)})} disabled={!!editing && !!form.ajuste_tipo} />
+                {!editing && form.tamanhos.length > 1 && <p className="text-[11px] text-muted-foreground mt-1">Aplicado a cada tamanho.</p>}
+              </div>
               <div><Label>Estoque Mín.</Label><Input type="number" value={form.estoque_minimo} onChange={e => setForm({...form, estoque_minimo: Number(e.target.value)})} /></div>
             </div>
           </div>
-          <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
+          <DialogFooter>
+            <Button onClick={handleSave}>
+              {editing ? "Salvar" : form.tamanhos.length > 1 ? `Cadastrar ${form.tamanhos.length} tamanhos` : "Cadastrar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
