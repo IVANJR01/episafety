@@ -151,7 +151,7 @@ export default function ImportarGheDialog({
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
                     {ghes.length} GES encontrado(s)
-                    {importaveis.length < ghes.length && ` · ${ghes.length - importaveis.length} sem estrutura`}
+                    {importaveis.length < ghes.length && ` · ${ghes.length - importaveis.length} sem funções vinculadas`}
                   </span>
                   <Button size="sm" variant="ghost" onClick={toggleAll}>
                     {selected.size === importaveis.length && importaveis.length > 0 ? "Desmarcar todos" : "Selecionar todos"}
@@ -181,15 +181,18 @@ export default function ImportarGheDialog({
                             <Badge variant="outline" className="text-[10px]">{g.setores_count} setor(es)</Badge>
                             <Badge variant="outline" className="text-[10px]">{g.funcoes_count} função(ões)</Badge>
                             {vazio ? (
-                              <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">Sem estrutura</Badge>
+                              <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[10px]">Sem funções vinculadas</Badge>
                             ) : (
                               <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">Estrutura pronta</Badge>
                             )}
                           </div>
                           {vazio && (
                             <div className="text-xs text-amber-800 mt-1">
-                              Este grupo ainda não tem setores nem funções, então não há o que importar.
-                              Cadastre em <b>Documentação › GES</b>, no botão de funções e riscos do grupo.
+                              Nenhuma função foi vinculada a este grupo ainda — por isso não há o
+                              que importar. As funções da empresa existem, mas cada GES guarda quais
+                              delas o compõem: abra <b>Documentação › GES</b>, no botão de funções e
+                              riscos do grupo, e marque as que têm a mesma exposição. Não precisa
+                              redigitar.
                             </div>
                           )}
                           {g.setor && <div className="text-xs text-muted-foreground mt-0.5">Setor padrão: {g.setor}</div>}

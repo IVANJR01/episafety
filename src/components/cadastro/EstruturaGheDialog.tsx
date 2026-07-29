@@ -182,6 +182,60 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulk, setBulk] = useState("");
 
+  /**
+   * Funções da empresa (Estrutura Ocupacional) e seus setores.
+   *
+   * A tela de importar dizia "0 função(ões) — Sem estrutura" mesmo com nove
+   * funções cadastradas. A contagem é sobre `ghe_funcoes`, que guarda quais
+   * funções compõem ESTE grupo; as funções da empresa vivem em `sst_funcoes`.
+   * Sem uma ponte entre as duas, a única saída era redigitar aqui dentro.
+   */
+  const [funcoesEmpresa, setFuncoesEmpresa] = useState<
+    { id: string; nome: string; cbo?: string | null; setor_nome?: string }[]
+  >([]);
+  const [vinculando, setVinculando] = useState(false);
+
+  useEffect(() => {
+    if (!ghe.empresa_id) return;
+    (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const de = (t: string) => (supabase.from as any)(t).select("*").eq("empresa_id", ghe.empresa_id);
+      const [fun, set] = await Promise.all([de("sst_funcoes"), de("sst_setores")]);
+      const setorPorId = new Map<string, string>(
+        (set.data || []).map((s: { id: string; nome: string }) => [s.id, s.nome]),
+      );
+      setFuncoesEmpresa((fun.data || []).map((f: { id: string; nome: string; cbo?: string; setor_id?: string }) => ({
+        id: f.id, nome: f.nome, cbo: f.cbo,
+        setor_nome: f.setor_id ? setorPorId.get(f.setor_id) : undefined,
+      })));
+    })();
+  }, [ghe.empresa_id]);
+
+  /** As que ainda não fazem parte deste grupo — comparação por nome normalizado. */
+  const funcoesDisponiveis = useMemo(() => {
+    const norm = (s: string) => (s || "").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const jaNoGrupo = new Set(funcoes.map((f) => norm(f.nome_funcao)));
+    return funcoesEmpresa.filter((f) => !jaNoGrupo.has(norm(f.nome)));
+  }, [funcoesEmpresa, funcoes]);
+
+  const vincularFuncaoExistente = async (f: { nome: string; cbo?: string | null; setor_nome?: string }) => {
+    // `setor` e `descricao_atividade` são exigidos pelo salvamento manual desta
+    // tela; quando a função não traz setor, cai no primeiro setor do grupo.
+    const setor = f.setor_nome || setoresAtivos[0] || "";
+    if (!setor) return toast.error("Cadastre ao menos um setor na aba Ambiente antes de vincular funções.");
+    setVinculando(true);
+    const { error } = await supabase.from("ghe_funcoes").insert({
+      ghe_id: ghe.id, empresa_id: ghe.empresa_id,
+      nome_funcao: f.nome, cbo: f.cbo || null,
+      descricao_atividade: "A detalhar", setor, processo: null,
+    });
+    setVinculando(false);
+    if (error) return toast.error(error.message);
+    toast.success(`"${f.nome}" vinculada a este grupo.`);
+    loadFuncoes();
+  };
+
   const loadFuncoes = async () => {
     setLoadingF(true);
     const { data, error } = await supabase
@@ -537,6 +591,32 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                 </Button>
               </div>
             </div>
+
+            {/* As funções da empresa já estão cadastradas na Estrutura
+                Ocupacional (sst_funcoes). Este grupo guarda quais delas o
+                compõem, em outra tabela (ghe_funcoes) — sem esta ponte, era
+                redigitar uma a uma aqui dentro. */}
+            {funcoesDisponiveis.length > 0 && (
+              <div className="border border-sky-300 bg-sky-50/60 rounded p-3 space-y-2">
+                <p className="text-xs text-sky-900">
+                  <b>{funcoesDisponiveis.length}</b> {funcoesDisponiveis.length === 1 ? "função já cadastrada" : "funções já cadastradas"} na
+                  Estrutura Ocupacional ainda não {funcoesDisponiveis.length === 1 ? "faz" : "fazem"} parte deste grupo.
+                  Marque quem tem a mesma exposição — não precisa redigitar.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {funcoesDisponiveis.map((f) => (
+                    <Button
+                      key={f.id} size="sm" variant="outline"
+                      className="h-7 text-xs bg-background"
+                      disabled={vinculando}
+                      onClick={() => vincularFuncaoExistente(f)}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />{f.nome}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {bulkOpen && (
               <div className="border rounded p-3 bg-muted/30 space-y-2">
