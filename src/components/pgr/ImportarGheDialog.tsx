@@ -25,6 +25,14 @@ interface PreviewResp {
   itens: PreviewItem[];
 }
 
+interface SetorEstrutura {
+  id: string;
+  nome: string;
+  ambiente: string;
+  processo: string;
+  funcoes: string[];
+}
+
 interface GheOption {
   id: string;
   codigo: string;
@@ -49,10 +57,15 @@ export default function ImportarGheDialog({
   const [ghes, setGhes] = useState<GheOption[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<PreviewResp | null>(null);
+  const [empresaId, setEmpresaId] = useState("");
+  const [setoresEstrutura, setSetoresEstrutura] = useState<SetorEstrutura[]>([]);
+  const [setoresSel, setSetoresSel] = useState<Set<string>>(new Set());
+  const [gesAlvo, setGesAlvo] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setStep("select"); setPreview(null); setSelected(new Set());
+    setSetoresSel(new Set()); setGesAlvo("");
     loadGhes();
   }, [open, pgrId]);
 
@@ -63,6 +76,8 @@ export default function ImportarGheDialog({
         .from("pgr_documentos").select("empresa_id").eq("id", pgrId).maybeSingle();
       if (pgrErr) throw pgrErr;
       if (!pgr?.empresa_id) throw new Error("PGR sem empresa");
+      setEmpresaId(pgr.empresa_id);
+      await carregarEstrutura(pgr.empresa_id);
 
       const { data, error } = await (supabase as any)
         .from("ghe_ges")
@@ -81,6 +96,41 @@ export default function ImportarGheDialog({
     } finally { setBusy(false); }
   };
 
+  /**
+   * Estrutura do Núcleo Mestre — setores com seu ambiente, processo e funções.
+   *
+   * A importação lia `ghe_setores`/`ghe_funcoes`, que sao tabelas de VINCULO por
+   * GES. Quem cadastrou setores, ambientes, processos e funcoes na Estrutura
+   * Ocupacional (sst_*) via "0 setor(es) 0 funcao(oes)" e era mandado vincular
+   * tudo de novo, um a um, dentro de cada grupo — retrabalho puro sobre dado que
+   * ja existia. Agora a importacao le a estrutura de verdade.
+   */
+  const carregarEstrutura = async (empresa: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const de = (t: string) => (supabase.from as any)(t).select("*").eq("empresa_id", empresa);
+    const [set, amb, proc, fun] = await Promise.all([
+      de("sst_setores"), de("sst_ambientes"), de("sst_processos"), de("sst_funcoes"),
+    ]);
+    type Nomeado = { id: string; nome: string };
+    const nomePorId = (linhas: Nomeado[] | null) =>
+      new Map<string, string>((linhas || []).map((x) => [x.id, x.nome]));
+    const ambientes = nomePorId(amb.data);
+    const processos = nomePorId(proc.data);
+    const funcoesPorSetor = new Map<string, string[]>();
+    for (const f of (fun.data || []) as { nome: string; setor_id?: string }[]) {
+      if (!f.setor_id) continue;
+      funcoesPorSetor.set(f.setor_id, [...(funcoesPorSetor.get(f.setor_id) || []), f.nome]);
+    }
+    type SetorLinha = { id: string; nome: string; ambiente_id?: string; processo_id?: string };
+    setSetoresEstrutura(((set.data || []) as SetorLinha[]).map((s) => ({
+      id: s.id,
+      nome: s.nome,
+      ambiente: s.ambiente_id ? ambientes.get(s.ambiente_id) || "" : "",
+      processo: s.processo_id ? processos.get(s.processo_id) || "" : "",
+      funcoes: funcoesPorSetor.get(s.id) || [],
+    })));
+  };
+
   const toggle = (id: string) => {
     const s = new Set(selected);
     s.has(id) ? s.delete(id) : s.add(id);
@@ -91,6 +141,47 @@ export default function ImportarGheDialog({
   const toggleAll = () => {
     if (selected.size === importaveis.length) setSelected(new Set());
     else setSelected(new Set(importaveis.map((g) => g.id)));
+  };
+
+  /**
+   * Cria uma linha do inventário por setor escolhido, já com ambiente, processo
+   * e funções vindos da Estrutura Ocupacional.
+   *
+   * `perigo_descricao` entra como "A identificar" e `avaliacao_estado` como
+   * `nao_avaliado`: a linha é o esqueleto que o usuário pediu para importar, e
+   * precisa ser inconfundível com risco já avaliado — no PDF e nas pendências
+   * ela aparece como não avaliada até alguém preencher.
+   */
+  const importarEstrutura = async () => {
+    if (setoresSel.size === 0) { toast.error("Selecione ao menos um setor"); return; }
+    setBusy(true);
+    try {
+      const linhas = setoresEstrutura
+        .filter((s) => setoresSel.has(s.id))
+        .map((s) => ({
+          pgr_id: pgrId,
+          empresa_id: empresaId,
+          ghe_id: gesAlvo || null,
+          setor: s.nome,
+          descricao_ambiente: s.ambiente || null,
+          processo: s.processo || null,
+          funcoes_snapshot: s.funcoes.length ? s.funcoes : null,
+          grupo: "outro",
+          perigo_descricao: "A identificar",
+          avaliacao_estado: "nao_avaliado",
+        }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase.from as any)("pgr_inventario_itens").insert(linhas);
+      if (error) throw error;
+      toast.success(
+        `${linhas.length} linha(s) criada(s) a partir da Estrutura Ocupacional. `
+        + "Preencha o perigo e classifique cada uma.",
+      );
+      onImported();
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao importar a estrutura");
+    } finally { setBusy(false); }
   };
 
   const loadPreview = async () => {
@@ -128,16 +219,78 @@ export default function ImportarGheDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Importar estrutura do GES → Inventário do PGR</DialogTitle>
+          <DialogTitle>Importar estrutura → Inventário do PGR</DialogTitle>
           <DialogDescription>
             {step === "select"
-              ? "Selecione os GES cuja estrutura (ambiente, setor, funções e processo) você deseja importar. Os riscos serão cadastrados depois, dentro do Inventário do PGR."
+              ? "Escolha os setores da Estrutura Ocupacional. Cada um vira uma linha do inventário já com ambiente, processo e funções preenchidos — falta só identificar o perigo e classificar."
               : "Confira a prévia da estrutura a ser importada. Nada será gravado até você confirmar. Linhas duplicadas (mesmo GES + setor + processo + funções) são ignoradas."}
           </DialogDescription>
         </DialogHeader>
 
         {step === "select" && (
           <div className="space-y-3">
+            {/* Fonte primária: a Estrutura Ocupacional. Antes só existia o
+                caminho pelo GES legado, que exigia revincular tudo à mão. */}
+            {!busy && setoresEstrutura.length > 0 && (
+              <div className="space-y-2 border rounded p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">Setores da Estrutura Ocupacional</span>
+                  <Button size="sm" variant="ghost" onClick={() =>
+                    setSetoresSel(setoresSel.size === setoresEstrutura.length
+                      ? new Set() : new Set(setoresEstrutura.map((x) => x.id)))}>
+                    {setoresSel.size === setoresEstrutura.length ? "Desmarcar todos" : "Selecionar todos"}
+                  </Button>
+                </div>
+
+                <div className="max-h-[38vh] overflow-y-auto divide-y border rounded">
+                  {setoresEstrutura.map((st) => (
+                    <label key={st.id} className="flex items-start gap-3 p-2.5 hover:bg-muted/40 cursor-pointer">
+                      <Checkbox
+                        checked={setoresSel.has(st.id)}
+                        onCheckedChange={() => {
+                          const n = new Set(setoresSel);
+                          if (n.has(st.id)) n.delete(st.id); else n.add(st.id);
+                          setSetoresSel(n);
+                        }}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-sm">{st.nome}</span>
+                          {st.ambiente && <Badge variant="outline" className="text-[10px]">{st.ambiente}</Badge>}
+                          {st.processo && <Badge variant="outline" className="text-[10px]">{st.processo}</Badge>}
+                          <Badge variant="outline" className="text-[10px]">
+                            {st.funcoes.length} função(ões)
+                          </Badge>
+                        </div>
+                        {st.funcoes.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {st.funcoes.join(", ")}
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-xs text-muted-foreground">Vincular ao GES (opcional):</span>
+                  <select
+                    className="h-8 rounded border bg-background px-2 text-xs"
+                    value={gesAlvo} onChange={(e) => setGesAlvo(e.target.value)}
+                  >
+                    <option value="">— nenhum —</option>
+                    {ghes.map((g) => <option key={g.id} value={g.id}>{g.codigo} — {g.nome}</option>)}
+                  </select>
+                  <Button size="sm" className="ml-auto" disabled={busy || setoresSel.size === 0}
+                    onClick={importarEstrutura}>
+                    <Download className="h-4 w-4 mr-1" />
+                    Importar {setoresSel.size || ""} setor(es)
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {busy ? (
               <p className="text-center py-8 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />Carregando GES…
@@ -148,6 +301,10 @@ export default function ImportarGheDialog({
               </p>
             ) : (
               <>
+                <div className="text-xs text-muted-foreground border-t pt-3">
+                  Alternativa: importar pelo GES. Só funciona para grupos que já têm
+                  funções vinculadas a eles.
+                </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
                     {ghes.length} GES encontrado(s)
