@@ -66,6 +66,7 @@ const emptyItem = (): ItemForm => ({
 
 const emptyHead = () => ({
   titulo: "",
+  unidade_id: "" as string,
   obra_id: "" as string,
   local_obra: "",
   setor: "",
@@ -82,6 +83,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   const [head, setHead] = useState(emptyHead());
   const [itens, setItens] = useState<ItemForm[]>([emptyItem()]);
   const [obras, setObras] = useState<{ id: string; nome: string }[]>([]);
+  /** Filiais da empresa — `empresa_config` com empresa_pai_id apontando para ela. */
+  const [unidades, setUnidades] = useState<{ id: string; nome: string }[]>([]);
   const [epis, setEpis] = useState<{ id: string; nome: string; ca: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -91,12 +94,19 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     if (!open) return;
     (async () => {
       if (!empresaId) return;
-      const [{ data: o }, { data: e }] = await Promise.all([
+      // As filiais ja estao cadastradas em Empresas / Unidades, e
+      // solicitacoes_materiais ja tem a coluna unidade_id — o formulario e que
+      // nunca as oferecia: so listava `obras`, que esta vazia nesta empresa.
+      const [{ data: o }, { data: e }, { data: u }] = await Promise.all([
         (supabase.from as any)("obras").select("id, nome").eq("empresa_id", empresaId).order("nome"),
         supabase.from("epis").select("id, nome, ca").eq("empresa_id", empresaId).order("nome"),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from as any)("empresa_config").select("id, nome")
+          .eq("empresa_pai_id", empresaId).order("nome"),
       ]);
       setObras((o as any[]) || []);
       setEpis((e as any[]) || []);
+      setUnidades((u as { id: string; nome: string }[]) || []);
     })();
   }, [open, empresaId]);
 
@@ -116,6 +126,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         setStatus((s as any).status);
         setHead({
           titulo: (s as any).titulo || "",
+          unidade_id: (s as { unidade_id?: string }).unidade_id || "",
           obra_id: (s as any).obra_id || "",
           local_obra: (s as any).local_obra || "",
           setor: (s as any).setor || "",
@@ -234,6 +245,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           empresa_id: empresaId,
           numero_solicitacao: numData as unknown as string,
           titulo: head.titulo.trim(),
+          unidade_id: head.unidade_id || null,
           obra_id: head.obra_id || null,
           local_obra: head.local_obra || null,
           setor: head.setor || null,
@@ -252,6 +264,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       } else {
         const { error: updErr } = await supabase.from("solicitacoes_materiais").update({
           titulo: head.titulo.trim(),
+          unidade_id: head.unidade_id || null,
           obra_id: head.obra_id || null,
           local_obra: head.local_obra || null,
           setor: head.setor || null,
@@ -347,16 +360,39 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                   <Label>Título *</Label>
                   <Input value={head.titulo} onChange={(e) => setHead({ ...head, titulo: e.target.value })} disabled={readOnly} placeholder="Ex: Reposição EPIs frente de serviço" />
                 </div>
+                {/* Unidade / filial: vem de Empresas / Unidades. Antes o unico
+                    seletor era o de `obras`, tabela vazia nesta empresa — a
+                    lista so oferecia "— Nenhuma —" com tres filiais
+                    cadastradas ao lado. */}
                 <div>
-                  <Label>Obra / Local (cadastrado)</Label>
-                  <Select value={head.obra_id || "__none"} onValueChange={(v) => setHead({ ...head, obra_id: v === "__none" ? "" : v })} disabled={readOnly}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <Label>Unidade / Filial</Label>
+                  <Select value={head.unidade_id || "__none"}
+                    onValueChange={(v) => setHead({ ...head, unidade_id: v === "__none" ? "" : v })}
+                    disabled={readOnly}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={unidades.length ? "Selecione…" : "Nenhuma unidade cadastrada"} />
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none">— Nenhuma —</SelectItem>
-                      {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
+                      <SelectItem value="__none">— Matriz —</SelectItem>
+                      {unidades.map((u) => <SelectItem key={u.id} value={u.id}>{u.nome}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Obras so aparece quando ha obra cadastrada: seletor com uma
+                    opcao unica "— Nenhuma —" e campo que nunca pode ser usado. */}
+                {obras.length > 0 && (
+                  <div>
+                    <Label>Obra / Local (cadastrado)</Label>
+                    <Select value={head.obra_id || "__none"} onValueChange={(v) => setHead({ ...head, obra_id: v === "__none" ? "" : v })} disabled={readOnly}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">— Nenhuma —</SelectItem>
+                        {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <Label>Local (texto livre)</Label>
                   <Input value={head.local_obra} onChange={(e) => setHead({ ...head, local_obra: e.target.value })} disabled={readOnly} placeholder="Ex: Obra Rua X - Bloco B" />
