@@ -437,6 +437,11 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         "sm:flex sm:flex-col sm:p-0 sm:gap-0",
         "sm:w-[calc(100vw-4rem)] sm:max-w-[1400px]",
         "sm:h-[92vh] sm:max-h-[92vh]",
+        // A base traz `overflow-y-auto` (e `sm:overflow-y-auto`). Com o corpo
+        // tambem rolando (flex-1 overflow-y-auto), ficavam DUAS areas de
+        // rolagem aninhadas: o rodape era empurrado para o meio e sobrava um
+        // vazio enorme embaixo dele. Quem rola e so o corpo.
+        "overflow-hidden sm:overflow-hidden",
       ].join(" ")}>
         <DialogHeader className="p-4 border-b shrink-0">
           <DialogTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</DialogTitle>
@@ -623,7 +628,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Input value={it.nome_item} onChange={(e) => updateItem(idx, { nome_item: e.target.value })} disabled={readOnly} />
                     </div>
                     <div>
-                      <Label className="text-xs">CA</Label>
+                      <Label className="text-xs">Referência</Label>
                       <Input value={it.ca} onChange={(e) => updateItem(idx, { ca: e.target.value })} disabled={readOnly} />
                     </div>
                     <div>
