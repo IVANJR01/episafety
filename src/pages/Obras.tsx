@@ -122,8 +122,23 @@ export default function Obras() {
       observacoes: form.observacoes.trim() || null,
       created_by: user?.id,
     };
+    /*
+     * Local que ainda nao existe no banco vira registro de verdade ao salvar.
+     *
+     * A listagem acrescenta locais escritos dentro do codigo, com identificador
+     * do tipo "obra-cg3-001". Ao editar um deles, o aplicativo mandava um
+     * UPDATE com esse identificador e o banco recusava:
+     *
+     *   invalid input syntax for type uuid: "obra-cg3-001"
+     *
+     * Nao havia como consertar pela tela — o registro simplesmente nao existia
+     * para ser atualizado. Agora, salvar um desses grava o local pela primeira
+     * vez, com identificador proprio, e a partir dai ele edita e exclui como
+     * qualquer outro.
+     */
+    const ehDoBanco = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(editingId || "");
     let error;
-    if (editingId) {
+    if (editingId && ehDoBanco) {
       ({ error } = await (supabase.from as any)("obras")
         .update(payload).eq("id", editingId).eq("empresa_id", empresaId));
     } else {
@@ -141,6 +156,15 @@ export default function Obras() {
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir este local? Inspeções vinculadas ficarão sem local.")) return;
+    // Local que ainda nao existe no banco nao tem o que excluir — e a exclusao
+    // com um identificador invalido devolvia erro de sintaxe de uuid.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      toast({
+        title: "Este local ainda não foi salvo",
+        description: "Ele vem da lista inicial do sistema e não está no banco. Abra em Editar e clique em Salvar para gravá-lo; depois a exclusão funciona.",
+      });
+      return;
+    }
     const { error } = await (supabase.from as any)("obras").delete().eq("id", id).eq("empresa_id", empresaId);
     if (error) {
       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
