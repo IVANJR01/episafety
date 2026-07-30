@@ -28,7 +28,6 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
-import { CG3_SEED_INSPECOES } from "@/lib/cg3InspecoesSeed";
 import jsPDF from "jspdf";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
@@ -172,19 +171,20 @@ export default function InspecoesSE() {
       return;
     }
 
-    const mergeCg3Seed = (list: Conformidade[]) => {
-      if (targetIds.includes("814c58d9-17c9-4e18-8d19-9d0e07210834") || targetIds.includes("75447c33-0960-46db-ba59-00327575fe44")) {
-        const existingNums = new Set(list.map(r => r.numero));
-        const toAdd = (CG3_SEED_INSPECOES as Conformidade[]).filter(s => !existingNums.has(s.numero));
-        return [...list, ...toAdd].sort((a, b) => (a.numero || 0) - (b.numero || 0));
-      }
-      return list;
-    };
+    /*
+     * A listagem mostra o que esta no banco, e so.
+     *
+     * Havia aqui uma lista de registros escrita dentro do proprio codigo, que
+     * era acrescentada aos resultados de duas empresas especificas. Como esses
+     * registros nao existem no banco, excluir nao tinha efeito: a exclusao
+     * apagava zero linhas, o aviso dizia "Registro excluido" e no recarregar a
+     * lista eles voltavam, para sempre. Editar tinha o mesmo destino.
+     */
 
     if (!isOnline()) {
       const cached = getCachedData<Conformidade>("conformidades") || [];
       const filtered = cached.filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
-      setItems(mergeCg3Seed(filtered));
+      setItems(filtered);
       setLoading(false);
       return;
     }
@@ -200,12 +200,11 @@ export default function InspecoesSE() {
       if (error) throw error;
 
       const records = (data || []) as Conformidade[];
-      const merged = mergeCg3Seed(records);
-      setItems(merged);
-      setCachedData("conformidades", merged);
+      setItems(records);
+      setCachedData("conformidades", records);
     } catch (error) {
       const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
-      setItems(mergeCg3Seed(cached));
+      setItems(cached);
     } finally {
       setLoading(false);
     }
@@ -645,8 +644,33 @@ export default function InspecoesSE() {
     deleteOfflinePhoto(`idbphoto://${id}__depois`).catch(() => {});
     try {
       if (isOnline()) {
-        const { error } = await (supabase.from as any)("conformidades").delete().eq("id", id).eq("empresa_id", empresaId);
+        /*
+         * `select()` no fim devolve as linhas que foram REALMENTE apagadas.
+         *
+         * Sem isso a exclusao mentia: quando nenhuma linha era atingida — por
+         * o registro nao existir no banco, ou pertencer a uma filial diferente
+         * da empresa ativa, ou a permissao barrar — o Supabase nao devolve
+         * erro nenhum, apenas apaga zero linhas. O aviso dizia "Registro
+         * excluido", a lista recarregava e o registro continuava la.
+         *
+         * O filtro de empresa passa a ser a arvore que a propria listagem usa,
+         * senao um registro de filial aparece na tela e nao pode ser apagado.
+         */
+        const escopo = empresaScopeIds && empresaScopeIds.length > 0
+          ? empresaScopeIds
+          : (empresaId ? [empresaId] : []);
+        const { data: apagados, error } = await (supabase.from as any)("conformidades")
+          .delete().eq("id", id).in("empresa_id", escopo).select("id");
         if (error) throw error;
+        if (!apagados || apagados.length === 0) {
+          toast({
+            title: "Nada foi excluído",
+            description: "Este registro não foi encontrado no banco para a empresa ativa. Recarregue a tela; se ele continuar aparecendo, avise o suporte.",
+            variant: "destructive",
+          });
+          void loadData();
+          return;
+        }
         // C1 — melhor esforço: apaga fotos órfãs do bucket após remoção no DB.
         if (antesPath) deleteInspecaoPhoto(antesPath).catch(() => {});
         if (depoisPath) deleteInspecaoPhoto(depoisPath).catch(() => {});
@@ -664,7 +688,11 @@ export default function InspecoesSE() {
         return;
       }
 
-      toast({ title: "Erro ao excluir", variant: "destructive" });
+      // Sem a mensagem do erro nao dava para saber o que houve — nem para
+      // quem usa, nem para quem vai corrigir.
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error("[inspecoes] falha ao excluir:", error);
+      toast({ title: "Erro ao excluir", description: msg, variant: "destructive" });
     }
   }
 

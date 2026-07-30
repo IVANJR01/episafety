@@ -1,3 +1,15 @@
+/*
+ * NAO ESTA EM USO — mantido apenas como copia do conteudo.
+ *
+ * Esta lista era acrescentada a listagem de Inspecoes de duas empresas, direto
+ * no codigo. Como os registros nao existiam no banco, nao davam para excluir
+ * nem editar: a exclusao apagava zero linhas e eles voltavam no recarregar.
+ *
+ * A injecao foi removida (InspecoesSE.tsx). O conteudo virou SQL de importacao
+ * em supabase/pendentes/OPCIONAL_INSPECOES_CG3.sql, para o caso de esses
+ * registros nunca terem chegado ao banco. Nao volte a ligar este arquivo na
+ * tela: dado de empresa mora no banco.
+ */
 import { Conformidade } from "@/pages/InspecoesSE";
 
 export const CG3_SEED_INSPECOES: Partial<Conformidade>[] = [

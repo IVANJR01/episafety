@@ -10,6 +10,7 @@ há a chave pública, que lê e grava linhas mas não altera estrutura).
 | Arquivo | O que faz |
 |---|---|
 | `APLICAR_BUCKET_LOGO.sql` | Cria o bucket `company-logos` e alinha as permissões dele ao modelo de empresa ativa. Sem ele, enviar a logo em Empresas / Unidades devolve **"Bucket not found"**. |
+| `OPCIONAL_INSPECOES_CG3.sql` | **Só se necessário.** Insere as 15 inspeções da CG3 que estavam escritas dentro do código. Rode apenas se elas tiverem sumido da tela depois da atualização — o que significa que nunca chegaram ao banco. Se continuarem aparecendo, não rode. |
 
 > O bucket `solicitacoes-materiais-imagens` já foi criado (confirmado no banco
 > em 29/07), então `APLICAR_BUCKET_IMAGENS.sql` saiu daqui.
