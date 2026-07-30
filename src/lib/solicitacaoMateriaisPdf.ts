@@ -104,11 +104,14 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
     if (!isDraft) return;
     doc.saveGraphicsState?.();
     // @ts-ignore
-    const gs = (doc as any).GState ? new (doc as any).GState({ opacity: 0.12 }) : null;
+    // Marca d'agua discreta. A anterior tinha 90pt e atravessava a tabela toda:
+    // atrapalhava a leitura dos itens sem precisar disso — quem le ja tem o selo
+    // RASCUNHO no cabecalho de todas as paginas.
+    const gs = (doc as any).GState ? new (doc as any).GState({ opacity: 0.06 }) : null;
     if (gs) (doc as any).setGState(gs);
     doc.setTextColor(200, 80, 40);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(90);
+    doc.setFontSize(52);
     doc.text("RASCUNHO", W / 2, H / 2, { align: "center", angle: 35 });
     doc.setTextColor(0);
     doc.restoreGraphicsState?.();
@@ -156,27 +159,58 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   doc.line(M, y, W - M, y);
   y += 5;
 
-  const rows: [string, string, string, string][] = [
-    ["Título", na(s.titulo), "Solicitante", na(s.solicitante)],
-    ["Setor", na(s.setor), "Obra / Local", na(s.local_obra || s.obra_nome)],
-    ["Data Solicitação", fmtDate(s.data_solicitacao), "Data Necessidade", fmtDate(s.data_necessidade)],
-    ["Prioridade", (s.prioridade || "N.A").toUpperCase(), "Status", (s.status || "N.A").toUpperCase()],
-    ["Aprovado por", na(s.aprovador), "Data Aprovação", fmtDateTime(s.aprovado_em)],
-    ["Data Compra", fmtDateTime(s.comprada_em), "Data Recebimento", fmtDateTime(s.recebida_em)],
+  /*
+   * So entra no papel o que existe.
+   *
+   * Antes saiam sempre as seis linhas, e num rascunho isso enchia o documento
+   * de "N.A": Setor, Obra/Local, Data Necessidade, Aprovado por, Data
+   * Aprovacao, Data Compra e Data Recebimento — sete campos vazios, sendo que
+   * quatro deles so passam a existir depois da aprovacao. Quem le tinha que
+   * garimpar o que era informacao no meio do que era ausencia dela.
+   *
+   * Titulo, Solicitante, Data da Solicitacao, Prioridade e Status sao a
+   * identidade do documento e ficam sempre, mesmo em branco.
+   */
+  const preenchido = (v?: string | null) => !!(v && String(v).trim() && String(v).trim() !== "N.A");
+  const pares: [string, string][] = [
+    ["Título", na(s.titulo)],
+    ["Solicitante", na(s.solicitante)],
+    ["Data Solicitação", fmtDate(s.data_solicitacao)],
+    ["Prioridade", (s.prioridade || "N.A").toUpperCase()],
+    ["Status", (s.status || "N.A").toUpperCase()],
   ];
+  const opcionais: [string, string][] = [
+    ["Setor", na(s.setor)],
+    ["Obra / Local", na(s.local_obra || s.obra_nome)],
+    ["Data Necessidade", fmtDate(s.data_necessidade)],
+    ["Aprovado por", na(s.aprovador)],
+    ["Data Aprovação", fmtDateTime(s.aprovado_em)],
+    ["Data Compra", fmtDateTime(s.comprada_em)],
+    ["Data Recebimento", fmtDateTime(s.recebida_em)],
+  ];
+  opcionais.forEach((par) => { if (preenchido(par[1])) pares.push(par); });
+
+  // Distribui em duas colunas, na ordem de leitura.
+  const rows: [string, string, string, string][] = [];
+  for (let i = 0; i < pares.length; i += 2) {
+    const a = pares[i];
+    const b = pares[i + 1];
+    rows.push([a[0], a[1], b?.[0] ?? "", b?.[1] ?? ""]);
+  }
   const colW = (W - M * 2) / 2;
   const labelW = 32;
   doc.setFontSize(9);
   rows.forEach(([k1, v1, k2, v2]) => {
     doc.setFont("helvetica", "bold");
     doc.text(`${k1}:`, M, y);
-    doc.text(`${k2}:`, M + colW, y);
+    // A segunda coluna pode ficar vazia quando o numero de campos e impar.
+    if (k2) doc.text(`${k2}:`, M + colW, y);
     doc.setFont("helvetica", "normal");
     const v1Lines = doc.splitTextToSize(String(v1), colW - labelW - 2);
-    const v2Lines = doc.splitTextToSize(String(v2), colW - labelW - 2);
+    const v2Lines = k2 ? doc.splitTextToSize(String(v2), colW - labelW - 2) : [];
     doc.text(v1Lines, M + labelW, y);
-    doc.text(v2Lines, M + colW + labelW, y);
-    y += Math.max(v1Lines.length, v2Lines.length) * 4 + 1;
+    if (k2) doc.text(v2Lines, M + colW + labelW, y);
+    y += Math.max(v1Lines.length, v2Lines.length || 1) * 4 + 1;
   });
 
   if (s.justificativa) {
@@ -224,7 +258,11 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
     startY: y,
     head: [["#", "Foto", "Tipo", "Item / Descrição", "Referência", "Un.", "Qtd", "Aprovada", "Justificativa"]],
     body: s.itens.map((it, i) => {
-      const nome = it.nome_item + (it.descricao ? `\n${it.descricao}` : "") + (it.observacoes ? `\nObs: ${it.observacoes}` : "");
+      // O tamanho vem no fim do nome ("BOTINA DE SEGURANÇA - 41") e a quebra da
+      // coluna separava um do outro, deixando o "41" sozinho na linha de baixo.
+      // Espaco sem quebra depois do hifen final mantem os dois juntos.
+      const nomeItem = it.nome_item.replace(/\s-\s+(\S{1,10})\s*$/, " - $1");
+      const nome = nomeItem + (it.descricao ? `\n${it.descricao}` : "") + (it.observacoes ? `\nObs: ${it.observacoes}` : "");
       return [
         String(i + 1),
         "", // preenchida em didDrawCell — a celula guarda a imagem, nao texto
@@ -319,15 +357,18 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
   yEnd += 4;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
+  // Categoria zerada nao e informacao: numa solicitacao so de EPI, listar
+  // "EPCs: 0, Materiais: 0, Ferramentas: 0, Outros: 0" so ocupa espaco. A
+  // quantidade aprovada aparece quando ja houve aprovacao.
   const resumo = [
     `Total de itens: ${totalItens}`,
-    `EPIs: ${totEpi}`,
-    `EPCs: ${totEpc}`,
-    `Materiais de segurança: ${totMat}`,
-    `Ferramentas: ${totFer}`,
-    `Outros: ${totOutros}`,
+    ...(totEpi ? [`EPIs: ${totEpi}`] : []),
+    ...(totEpc ? [`EPCs: ${totEpc}`] : []),
+    ...(totMat ? [`Materiais de segurança: ${totMat}`] : []),
+    ...(totFer ? [`Ferramentas: ${totFer}`] : []),
+    ...(totOutros ? [`Outros: ${totOutros}`] : []),
     `Qtd. total solicitada: ${totQtd}`,
-    `Qtd. total aprovada: ${totAprov}`,
+    ...(totAprov ? [`Qtd. total aprovada: ${totAprov}`] : []),
   ];
   const colWidth = (W - M * 2) / 2;
   resumo.forEach((txt, i) => {
