@@ -270,7 +270,18 @@ export default function PgrAcaoDialog({
           medem a JANELA, nao o dialogo. Numa janela de ~740px o `sm:` liga e os
           grids de 2 e 3 colunas entravam num dialogo bem mais estreito, jogando
           metade dos campos para fora — com barra de rolagem horizontal. */}
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
+      {/*
+        A largura precisa do prefixo da faixa (sm:) para valer no computador.
+        Sem ele, o `max-w-4xl` era descartado em favor do `sm:max-w-lg` que vem
+        do DialogContent base — a janela ficava em 512px e os campos da direita
+        (Hierarquia da medida, Execução, Reavaliar risco) saíam cortados. Mesma
+        armadilha que já apareceu na solicitação de materiais e nas inspeções.
+      */}
+      <DialogContent className={[
+        "w-[calc(100vw-1rem)] max-h-[92vh] overflow-y-auto overflow-x-hidden",
+        "sm:w-[calc(100vw-4rem)] sm:max-w-3xl sm:max-h-[92vh]",
+        "lg:max-w-5xl",
+      ].join(" ")}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {acaoId ? "Ação do Plano de Ação" : "Nova ação"}
@@ -281,7 +292,10 @@ export default function PgrAcaoDialog({
         </DialogHeader>
 
         <Tabs defaultValue="dados">
-          <TabsList>
+          {/* Sao seis abas: no celular a regua nao cabe e as ultimas —
+              Eficacia, Evidencias e Historico — ficavam fora da tela, sem
+              nenhum jeito de chegar nelas. Agora a regua rola de lado. */}
+          <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="dados">Dados</TabsTrigger>
             <TabsTrigger value="5w2h">5W2H</TabsTrigger>
             <TabsTrigger value="acomp">Acompanhamento</TabsTrigger>
