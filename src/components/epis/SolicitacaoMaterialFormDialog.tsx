@@ -473,6 +473,21 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         // rolagem aninhadas: o rodape era empurrado para o meio e sobrava um
         // vazio enorme embaixo dele. Quem rola e so o corpo.
         "overflow-hidden sm:overflow-hidden",
+        // Centralizacao SEM transform.
+        //
+        // O padrao centraliza com left/top 50% + translate(-50%,-50%). Isso
+        // promove o dialogo inteiro a uma camada composta, e o conteudo dela e
+        // rasterizado de uma vez. Este formulario e alto (9 itens passam de
+        // 4000px) e cada foto adicionada aumenta o custo dessa camada; quando a
+        // rasterizacao nao cabe, o navegador pinta a camada em branco. Era
+        // exatamente o sintoma: tudo DENTRO do elemento com transform sumia —
+        // cabecalho, itens, rodape e ate o botao de fechar — enquanto o fundo
+        // escurecido e o menu lateral, que estao fora dele, continuavam
+        // normais, e nenhum erro de JavaScript era disparado.
+        //
+        // `inset-0 m-auto` com largura e altura definidas centraliza igual, sem
+        // camada transformada.
+        "sm:inset-0 sm:m-auto sm:translate-x-0 sm:translate-y-0",
       ].join(" ")}>
         <DialogHeader className="p-4 border-b shrink-0">
           <DialogTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</DialogTitle>
