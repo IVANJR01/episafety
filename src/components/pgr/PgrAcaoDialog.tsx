@@ -288,21 +288,33 @@ export default function PgrAcaoDialog({
             {acao && <Badge className={ACAO_STATUS_COLOR[status]} variant="outline">{ACAO_STATUS_LABEL[status]}</Badge>}
             {acao && isAtrasada(acao) && <Badge className={ACAO_STATUS_COLOR.atrasada} variant="outline">ATRASADA</Badge>}
           </DialogTitle>
-          <DialogDescription>5W2H: What/Why/Where/When/Who/How/How much. Evidências vão para o Google Drive da empresa.</DialogDescription>
+          <DialogDescription>
+            {acaoId
+              ? "5W2H: What/Why/Where/When/Who/How/How much. Evidências vão para o Google Drive da empresa."
+              : "Preencha o essencial. Depois de criar, abrem-se 5W2H, acompanhamento, eficácia e evidências."}
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="dados">
-          {/* Sao seis abas: no celular a regua nao cabe e as ultimas —
-              Eficacia, Evidencias e Historico — ficavam fora da tela, sem
-              nenhum jeito de chegar nelas. Agora a regua rola de lado. */}
-          <TabsList className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="dados">Dados</TabsTrigger>
-            <TabsTrigger value="5w2h">5W2H</TabsTrigger>
-            <TabsTrigger value="acomp">Acompanhamento</TabsTrigger>
-            <TabsTrigger value="eficacia" disabled={!acaoId}>Eficácia</TabsTrigger>
-            <TabsTrigger value="evid" disabled={!acaoId}>Evidências ({evidencias.length})</TabsTrigger>
-            <TabsTrigger value="hist" disabled={!acaoId}>Histórico ({historico.length})</TabsTrigger>
-          </TabsList>
+          {/*
+            Acao NOVA nao mostra abas.
+            Eram seis, e ao criar tres delas nasciam desabilitadas — eficacia,
+            evidencias e historico so existem depois que a acao existe. Quem
+            abria para registrar uma acao levava seis abas na cara para
+            preencher meia duzia de campos. Ao editar, as abas voltam inteiras.
+            No celular a regua rola de lado, senao as ultimas ficam fora da
+            tela sem nenhum jeito de alcancar.
+          */}
+          {acaoId && (
+            <TabsList className="w-full justify-start overflow-x-auto">
+              <TabsTrigger value="dados">Dados</TabsTrigger>
+              <TabsTrigger value="5w2h">5W2H</TabsTrigger>
+              <TabsTrigger value="acomp">Acompanhamento</TabsTrigger>
+              <TabsTrigger value="eficacia">Eficácia</TabsTrigger>
+              <TabsTrigger value="evid">Evidências ({evidencias.length})</TabsTrigger>
+              <TabsTrigger value="hist">Histórico ({historico.length})</TabsTrigger>
+            </TabsList>
+          )}
 
           <TabsContent value="dados" className="space-y-3">
             <div>
