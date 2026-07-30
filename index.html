@@ -46,6 +46,79 @@
 
   <body>
     <div id="root"></div>
+
+    <!--
+      Rede de segurança contra a página em branco.
+
+      Os arquivos em /assets levam hash no nome e cache de um ano. Se o
+      navegador (ou o service worker) guardar um index.html antigo, ele vai
+      pedir um arquivo que a publicação seguinte já apagou: o pedido volta 404,
+      nada é montado e a tela fica branca do jeito que estava — sem mensagem
+      nenhuma, porque nem o React chegou a subir para poder avisar.
+
+      Este trecho é HTML puro, roda antes de tudo e não depende de nada:
+      percebe a falha, limpa cache e service workers e recarrega UMA vez. Se
+      mesmo assim não subir, escreve o que houve na tela em vez de deixar em
+      branco.
+    -->
+    <script>
+      (function () {
+        var CHAVE = "recuperacao-tela-branca";
+        var raiz = document.getElementById("root");
+
+        function recuperar(motivo) {
+          // Uma tentativa por sessão — recarregar em laço seria pior que a falha.
+          if (sessionStorage.getItem(CHAVE)) { avisar(motivo); return; }
+          sessionStorage.setItem(CHAVE, motivo);
+          var tarefas = [];
+          if (window.caches) {
+            tarefas.push(caches.keys().then(function (ns) {
+              return Promise.all(ns.map(function (n) { return caches.delete(n); }));
+            }));
+          }
+          if (navigator.serviceWorker) {
+            tarefas.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }));
+          }
+          Promise.all(tarefas)["catch"](function () {})["then"](function () {
+            var u = new URL(location.href);
+            u.searchParams.set("recuperar", String(Date.now()));
+            location.replace(u.toString());
+          });
+        }
+
+        function avisar(motivo) {
+          if (!raiz || raiz.childElementCount > 0) return;
+          raiz.innerHTML =
+            '<div style="font-family:system-ui,sans-serif;max-width:34rem;margin:15vh auto;padding:1.5rem;' +
+            'border:1px solid #e5e5e5;border-radius:12px;line-height:1.5">' +
+            '<h1 style="font-size:1.1rem;margin:0 0 .5rem">Não foi possível carregar o sistema</h1>' +
+            '<p style="margin:0 0 1rem;color:#666;font-size:.9rem">A limpeza automática do cache já foi tentada e o ' +
+            'aplicativo continuou sem abrir. Motivo detectado: <code>' + motivo + '</code>.</p>' +
+            '<button onclick="sessionStorage.clear();location.reload(true)" ' +
+            'style="padding:.5rem .9rem;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer">' +
+            'Tentar de novo</button></div>';
+        }
+
+        // Falha ao baixar o próprio código do aplicativo.
+        window.addEventListener("error", function (e) {
+          var alvo = e.target;
+          if (alvo && alvo.tagName === "SCRIPT" && String(alvo.src || "").indexOf("/assets/") > -1) {
+            recuperar("arquivo do aplicativo nao carregou");
+          }
+        }, true);
+
+        // Ou carregou e mesmo assim nada foi montado.
+        window.addEventListener("load", function () {
+          setTimeout(function () {
+            if (raiz && raiz.childElementCount === 0) recuperar("tela vazia");
+            else sessionStorage.removeItem(CHAVE);
+          }, 8000);
+        });
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
