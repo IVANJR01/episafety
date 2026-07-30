@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
@@ -452,6 +452,35 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
   const readOnly = !["rascunho", "enviada"].includes(status);
 
+  /**
+   * Cutuca o navegador a redesenhar quando a janela volta ao foco.
+   *
+   * Abrir Camera/Galeria sobe o seletor do sistema por cima e tira a janela de
+   * cena; o navegador descarta o desenho guardado e, ao voltar, precisa refazer
+   * tudo. Com varias fotos esse retorno falhava e o dialogo ficava branco —
+   * medido: o conteudo continua todo no lugar e nenhum erro e disparado, ou
+   * seja, o que faltou foi o redesenho, nao o conteudo.
+   *
+   * Mexer numa propriedade visual e desfazer no quadro seguinte invalida a
+   * pintura e obriga o desenho a ser refeito. E imperceptivel.
+   */
+  const conteudoRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const redesenhar = () => {
+      const el = conteudoRef.current;
+      if (!el) return;
+      el.style.opacity = "0.999";
+      requestAnimationFrame(() => { if (conteudoRef.current) conteudoRef.current.style.opacity = ""; });
+    };
+    window.addEventListener("focus", redesenhar);
+    document.addEventListener("visibilitychange", redesenhar);
+    return () => {
+      window.removeEventListener("focus", redesenhar);
+      document.removeEventListener("visibilitychange", redesenhar);
+    };
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A gaveta tinha largura de celular (768px) tambem no desktop: os campos
@@ -462,7 +491,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           barra de rolagem da direita. Formulario longo de desktop pede janela
           centralizada — margem igual dos dois lados e largura aproveitada.
           Em telas pequenas continua ocupando tudo. */}
-      <DialogContent className={[
+      <DialogContent ref={conteudoRef} className={[
         // Celular: ocupa a tela toda.
         "p-0 gap-0 flex flex-col w-[calc(100vw-1rem)] h-[calc(100dvh-1rem)]",
         // Desktop: TODAS as sobreposicoes precisam do prefixo `sm:`. O
@@ -647,7 +676,25 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
             </div>
 
             {itens.map((it, idx) => (
-              <Card key={idx}>
+              /*
+               * `content-visibility: auto` faz o navegador NAO desenhar o item
+               * enquanto ele esta fora da area visivel.
+               *
+               * A tela apagava ao clicar em Camera/Galeria com tres fotos ou
+               * mais. Medido: o DOM continua inteiro, nenhum filho some e
+               * nenhum erro e disparado — ou seja, nao e o React removendo
+               * nada, e o navegador que nao consegue redesenhar. Quando o
+               * seletor de arquivos do Windows sobe, a janela sai de cena e o
+               * desenho guardado e descartado; ao voltar, tudo precisa ser
+               * refeito de uma vez, e com varias fotos grandes esse redesenho
+               * nao cabe.
+               *
+               * Desenhando so o que esta na tela, o custo do retorno passa a
+               * ser o de um ou dois itens, nao o da solicitacao inteira.
+               * `contain-intrinsic-size` reserva a altura aproximada para a
+               * barra de rolagem nao pular.
+               */
+              <Card key={idx} className="[content-visibility:auto] [contain-intrinsic-size:auto_420px]">
                 <CardContent className="p-3 space-y-3">
                   {/* Cabecalho do item primeiro: antes a caixa da foto vinha
                       acima de tudo, ocupando a largura inteira, e o "Item #1"
@@ -766,9 +813,35 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   const inputId = `img-file-${item._key}`;
   const cameraId = `img-cam-${item._key}`;
 
+  /**
+   * So mantem a foto na tela enquanto ela esta por perto da area visivel.
+   *
+   * Cada foto exibida e uma imagem que o navegador precisa manter decodificada
+   * e redesenhar. Com tres fotos ou mais, ao abrir Camera/Galeria a janela sai
+   * de cena, o desenho guardado e descartado e o retorno exige refazer tudo de
+   * uma vez — foi ai que a tela apagou. Medido no proprio formulario: o DOM
+   * continua inteiro e nenhum erro e disparado, ou seja, o que falta e
+   * capacidade de redesenho, nao codigo.
+   *
+   * Fora da area visivel entra uma caixa do mesmo tamanho: a rolagem nao muda
+   * de comportamento e a foto volta assim que chega perto.
+   */
+  const caixaRef = useRef<HTMLDivElement | null>(null);
+  const [porPerto, setPorPerto] = useState(true);
+  useEffect(() => {
+    const alvo = caixaRef.current;
+    if (!alvo || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      (entradas) => setPorPerto(entradas.some((e) => e.isIntersecting)),
+      { rootMargin: "300px 0px" },
+    );
+    obs.observe(alvo);
+    return () => obs.disconnect();
+  }, []);
+
 
   return (
-    <div className="rounded-md border bg-muted/30 p-3 space-y-2" data-solmat-image-block="true">
+    <div ref={caixaRef} className="rounded-md border bg-muted/30 p-3 space-y-2" data-solmat-image-block="true">
       <input id={inputId} type="file" accept="image/*" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
       <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
@@ -785,10 +858,21 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
 
       {hasImage ? (
         <div className="relative overflow-hidden rounded-md border bg-background">
-          {item.imagem_preview_url ? (
-            <img src={item.imagem_preview_url} alt={item.imagem_nome || "Imagem do material"} className="h-32 w-full object-contain" />
+          {item.imagem_preview_url && porPerto ? (
+            <img
+              src={item.imagem_preview_url}
+              alt={item.imagem_nome || "Imagem do material"}
+              /* Foto de item fora da tela nao precisa estar decodificada na
+                 memoria, e decodificar fora do fluxo principal evita travar o
+                 formulario no momento em que a foto entra. */
+              loading="lazy"
+              decoding="async"
+              className="h-32 w-full object-contain"
+            />
           ) : (
-            <div className="flex h-32 w-full items-center justify-center text-sm text-muted-foreground">Imagem anexada</div>
+            <div className="flex h-32 w-full items-center justify-center text-sm text-muted-foreground">
+              {item.imagem_preview_url ? "" : "Imagem anexada"}
+            </div>
           )}
           {hasImage && !readOnly && (
             <button
