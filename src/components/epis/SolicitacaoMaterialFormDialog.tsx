@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +13,8 @@ import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X } from
 import { toast } from "sonner";
 import {
   ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
-  compressImage, buildItemImagePath, uploadItemImage,
-  getSignedImageUrl, removeItemImage, makeThumbnailDataUrl,
+  compressImage, prepararImagemItem, buildItemImagePath, uploadItemImage,
+  getSignedImageUrl, removeItemImage,
 } from "@/lib/solicitacaoMateriaisImagens";
 
 interface Props {
@@ -41,6 +42,9 @@ type ItemForm = {
   imagem_tamanho: number | null;
   imagem_preview_url?: string | null;
   imagem_file?: File | null;
+  /** Ja comprimida na escolha — evita decodificar a foto de novo ao salvar. */
+  imagem_blob?: Blob | null;
+  imagem_ext?: string;
   imagem_remove?: boolean;
 };
 
@@ -116,7 +120,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   useEffect(() => {
     if (!open || solicitacaoId || !empresaId) return;
     try {
-      const semArquivos = itens.map(({ imagem_file: _f, imagem_preview_url: _p, ...resto }) => resto);
+      const semArquivos = itens.map(({ imagem_file: _f, imagem_preview_url: _p, imagem_blob: _b, ...resto }) => resto);
       localStorage.setItem(chaveRascunho, JSON.stringify({ head, itens: semArquivos }));
     } catch { /* cota cheia ou modo restrito: rascunho e conveniencia, nao pode quebrar o formulario */ }
   }, [head, itens, open, solicitacaoId, empresaId, chaveRascunho]);
@@ -253,7 +257,6 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     if (!file) return;
     if (!file.type.startsWith("image/") && !ACCEPTED_IMG_TYPES.includes(file.type)) { toast.error("Formato inválido. Use uma imagem da câmera ou galeria."); return; }
     if (file.size > MAX_IMG_BYTES) { toast.error("Imagem acima de 20 MB."); return; }
-    // Preview leve (thumbnail) para não travar mobile; upload usa o arquivo original.
     updateItem(idx, {
       imagem_file: file,
       imagem_nome: file.name,
@@ -263,8 +266,13 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       imagem_preview_url: null,
     });
     try {
-      const thumb = await makeThumbnailDataUrl(file, 480, 0.7);
-      updateItem(idx, { imagem_preview_url: thumb });
+      // Uma decodificacao so: sai dali a miniatura da tela e o arquivo que vai
+      // subir. O original nao e decodificado outra vez na hora de salvar.
+      const { blob, type, ext, thumb } = await prepararImagemItem(file);
+      updateItem(idx, {
+        imagem_preview_url: thumb, imagem_blob: blob, imagem_ext: ext,
+        imagem_tipo: type, imagem_tamanho: blob.size,
+      });
     } catch {
       updateItem(idx, { imagem_preview_url: URL.createObjectURL(file) });
     }
@@ -356,7 +364,11 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         let falhaFoto: string | null = null;
         if (i.imagem_file) {
           try {
-            const { blob, type, ext } = await compressImage(i.imagem_file);
+            // Reaproveita o que ja foi comprimido na escolha da foto; so
+            // comprime aqui se por algum motivo nao houver (fallback).
+            const { blob, type, ext } = i.imagem_blob
+              ? { blob: i.imagem_blob, type: i.imagem_tipo || "image/jpeg", ext: i.imagem_ext || "jpg" }
+              : await compressImage(i.imagem_file);
             const path = buildItemImagePath(empresaId, solicId!, i._key, ext);
             await uploadItemImage(path, blob, type);
             if (i.imagem_path && i.imagem_path !== path) {
@@ -453,6 +465,26 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           <DialogTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</DialogTitle>
         </DialogHeader>
 
+        {/* Se algo aqui dentro quebrar, o dialogo mostrava so um retangulo branco:
+            o erro derrubava o conteudo e nao sobrava nem mensagem nem como sair.
+            A barreira mantem o cabecalho, explica e deixa fechar ou recarregar. */}
+        <NetworkErrorBoundary
+          fallback={
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="mx-auto max-w-lg space-y-3 text-center">
+                <h3 className="text-base font-semibold">Não foi possível exibir o formulário</h3>
+                <p className="text-sm text-muted-foreground">
+                  Ocorreu um erro nesta solicitação. O que você digitou fica guardado como rascunho
+                  nesta empresa — feche e abra de novo para continuar.
+                </p>
+                <div className="flex justify-center gap-2 pt-1">
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+                  <Button onClick={() => window.location.reload()}>Recarregar a página</Button>
+                </div>
+              </div>
+            </div>
+          }
+        >
         {loading ? (
           <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin" /></div>
         ) : (
@@ -670,6 +702,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
             ))}
           </div>
         )}
+        </NetworkErrorBoundary>
 
         <div className="border-t p-3 flex flex-col sm:flex-row gap-2 sm:justify-end bg-background">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
