@@ -11,6 +11,7 @@ há a chave pública, que lê e grava linhas mas não altera estrutura).
 |---|---|
 | `APLICAR_BUCKET_LOGO.sql` | Cria o bucket `company-logos` e alinha as permissões dele ao modelo de empresa ativa. Sem ele, enviar a logo em Empresas / Unidades devolve **"Bucket not found"**. |
 | `DIAGNOSTICO_INSPECOES_CG3.sql` | **Só consulta, não altera nada.** Mostra o que existe de verdade: inspeções por empresa e por local, quais têm foto, fotos no Storage e obras cadastradas. Rode primeiro. |
+| `FOTOS_INSPECOES_CG3.sql` | Grava as 22 fotos das inspeções da CG3, recuperadas de dentro do relatório em PDF. Cada imagem vai no próprio registro (campo `foto_antes`), que a tela e o PDF já sabem exibir. Só preenche quem está sem foto. |
 | `RESTAURAR_INSPECOES_BARROCAS.sql` | Grava as **22 inspeções** da CG3 (Barrocas 6, Alojamento Alto Rodrigues 9, Mossoró 5, Estreito 2) na CG3 ENGENHARIA. O texto veio do relatório original em PDF de 07/07/2026, não da cópia do código — que tinha só 15 e não trazia a nº 22, de Barrocas. As 22 fotos "ANTES" também foram recuperadas do PDF e entregues em arquivo à parte; precisam ser anexadas pela tela. |
 
 > O bucket `solicitacoes-materiais-imagens` já foi criado (confirmado no banco
