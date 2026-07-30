@@ -9,7 +9,14 @@ há a chave pública, que lê e grava linhas mas não altera estrutura).
 
 | Arquivo | O que faz |
 |---|---|
-| `APLICAR_BUCKET_IMAGENS.sql` | Cria o bucket `solicitacoes-materiais-imagens`. Sem ele, anexar foto ao item da solicitação devolve **"Bucket not found"**. |
+| `APLICAR_BUCKET_LOGO.sql` | Cria o bucket `company-logos` e alinha as permissões dele ao modelo de empresa ativa. Sem ele, enviar a logo em Empresas / Unidades devolve **"Bucket not found"**. |
+
+> O bucket `solicitacoes-materiais-imagens` já foi criado (confirmado no banco
+> em 29/07), então `APLICAR_BUCKET_IMAGENS.sql` saiu daqui.
+>
+> Os dois casos foram o mesmo defeito: uma migration antiga criou as *policies*
+> do bucket e esqueceu de criar o bucket. Ao mexer em storage, criar sempre os
+> dois na mesma migration.
 
 As migrations aplicadas ficam apenas em `supabase/migrations/`, que é o
 histórico oficial. Manter cópia aqui depois de aplicada só confunde: dá a
@@ -22,6 +29,7 @@ entender que ainda falta rodar alguma coisa.
 | 28/07/2026 | `20260728000000_sst_atividades_e_contexto.sql` | Criou `sst_atividades` e o contexto hierárquico do inventário |
 | 28/07/2026 | `20260728000100_sst_coletas_campo.sql` | Criou as tabelas do levantamento em campo |
 | 29/07/2026 | `20260729120000_solicitacoes_materiais_rls_empresa_ativa.sql` | RLS da solicitação de materiais alinhada ao modelo de empresa ativa |
+| 29/07/2026 | `20260729180000_bucket_solicitacoes_materiais_imagens.sql` | Criou o bucket das imagens da solicitação de materiais |
 
 ## Quando surgir uma nova
 

@@ -109,7 +109,13 @@ export default function Empresas() {
       toast({ title: "Logo enviada com sucesso!" });
     } catch (err: any) {
       console.error("[logo upload] falhou:", err);
-      toast({ title: "Erro ao enviar logo", description: err.message ?? String(err), variant: "destructive" });
+      const msg = err?.message ?? String(err);
+      // "Bucket not found" sozinho não diz nada a quem usa. O bucket é criado
+      // por migration; enquanto ela não roda, o envio falha sempre.
+      const amigavel = /bucket not found/i.test(msg)
+        ? "O espaço de armazenamento das logos ainda não foi criado no banco. Peça para aplicar a migration do bucket company-logos."
+        : msg;
+      toast({ title: "Erro ao enviar logo", description: amigavel, variant: "destructive" });
     }
     setUploading(false);
   };
