@@ -109,8 +109,29 @@
           }
         }, true);
 
-        // Ou carregou e mesmo assim nada foi montado.
         window.addEventListener("load", function () {
+          // Estilo que não carregou. A página ABRE sem ele — por isso a
+          // checagem de "tela vazia" não pega — mas sai toda desmontada, com o
+          // logo em tamanho natural ocupando tudo e o resto empurrado para
+          // baixo. Foi exatamente o que apareceu.
+          //
+          // A verificação é a folha ter REGRAS. Os dois sinais mais óbvios
+          // foram medidos e não servem: o evento de erro do elemento chega a
+          // disparar para um CSS que carregou inteiro (reagir a ele
+          // recarregaria a página de todo mundo sem motivo), e `link.sheet`
+          // continua preenchido mesmo quando o arquivo volta 404. Já a
+          // contagem de regras separa os casos sem ambiguidade — o estilo do
+          // sistema tem mais de mil, o que falhou tem zero.
+          var estilos = document.querySelectorAll('link[rel="stylesheet"]');
+          for (var i = 0; i < estilos.length; i++) {
+            var l = estilos[i];
+            if (String(l.href || "").indexOf("/assets/") === -1) continue;
+            var regras = -1;
+            try { regras = l.sheet ? l.sheet.cssRules.length : 0; } catch (err) { regras = -1; }
+            if (regras === 0) { recuperar("estilo nao carregou"); return; }
+          }
+
+          // Ou tudo baixou e mesmo assim nada foi montado.
           setTimeout(function () {
             if (raiz && raiz.childElementCount === 0) recuperar("tela vazia");
             else sessionStorage.removeItem(CHAVE);
