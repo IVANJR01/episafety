@@ -216,6 +216,19 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     })();
   }, [open, solicitacaoId, userEmail, chaveRascunho]);
 
+  /**
+   * Busca a URL assinada das fotos ja salvas.
+   *
+   * A dependencia precisa dizer "quais fotos ainda faltam resolver", nao apenas
+   * quais existem. Com so os caminhos, reabrir a MESMA solicitacao dava a mesma
+   * string de dependencia: o efeito nao rodava de novo, e como o recarregamento
+   * dos itens zera o preview, as fotos ficavam para sempre no aviso "Imagem
+   * anexada". Na primeira abertura apareciam; da segunda em diante, nunca mais.
+   */
+  const fotosPendentes = itens
+    .map((i) => `${i.imagem_path || ""}${i.imagem_preview_url ? "#ok" : ""}`)
+    .join("|");
+
   // Resolve signed URLs for existing item images when loaded
   useEffect(() => {
     (async () => {
@@ -236,7 +249,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       }));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itens.map((i) => i.imagem_path).join("|")]);
+  }, [fotosPendentes]);
 
   function updateItem(idx: number, patch: Partial<ItemForm>) {
     setItens((prev) => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
