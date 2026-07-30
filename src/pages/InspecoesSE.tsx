@@ -201,7 +201,17 @@ export default function InspecoesSE() {
 
       const records = (data || []) as Conformidade[];
       setItems(records);
-      setCachedData("conformidades", records);
+      /*
+       * Resposta vazia nao apaga a copia local.
+       *
+       * Uma consulta pode voltar sem nada por motivo passageiro — a empresa
+       * ativa ainda carregando, a permissao momentaneamente negada, um filtro
+       * de escopo vazio. Gravar esse vazio por cima do cache destruiria a
+       * unica copia offline dos registros, e ela nao volta sozinha. So se
+       * grava quando ha o que gravar; para esvaziar de verdade existe a
+       * exclusao, que age no banco.
+       */
+      if (records.length > 0) setCachedData("conformidades", records);
     } catch (error) {
       const cached = (getCachedData<Conformidade>("conformidades") || []).filter(item => item.empresa_id && targetIds.includes(item.empresa_id));
       setItems(cached);
