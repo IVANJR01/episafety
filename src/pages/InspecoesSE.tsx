@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon } from "lucide-react";
+import { Plus, Filter, FileDown, Camera, X, Pencil, Trash2, Sparkles, Loader2, ImageIcon, CalendarIcon, Upload } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
+import ImportarFotosDialog from "@/components/inspecoes/ImportarFotosDialog";
 import jsPDF from "jspdf";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
@@ -156,6 +157,8 @@ export default function InspecoesSE() {
   const [aiLoading, setAiLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const pdfImageCacheRef = useRef<Map<string, string | null>>(new Map());
+
+  const [importarFotosAberto, setImportarFotosAberto] = useState(false);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("all");
@@ -1521,6 +1524,11 @@ export default function InspecoesSE() {
             >
               <FileDown className="w-4 h-4 mr-1 sm:mr-2" /> Gerar Relatório
             </Button>
+            {canCreate && items.some((i) => !i.foto_antes_path && !i.foto_antes) && (
+              <Button variant="outline" onClick={() => setImportarFotosAberto(true)} className="text-xs sm:text-sm">
+                <Upload className="w-4 h-4 mr-1 sm:mr-2" /> Importar fotos
+              </Button>
+            )}
           </>
         }
       />
@@ -2183,6 +2191,18 @@ export default function InspecoesSE() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportarFotosDialog
+        open={importarFotosAberto}
+        onOpenChange={setImportarFotosAberto}
+        empresaId={empresaId}
+        alvos={items.map((i) => ({
+          id: i.id,
+          numero: i.numero,
+          temFoto: !!(i.foto_antes_path || i.foto_antes),
+        }))}
+        onConcluido={() => void loadData()}
+      />
     </div>
   );
 }
