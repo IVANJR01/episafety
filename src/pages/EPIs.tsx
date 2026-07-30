@@ -47,6 +47,28 @@ const TAMANHOS_NUMERO = ["34", "35", "36", "37", "38", "39", "40", "41", "42", "
  * resto do sistema (entregas, solicitacoes, fichas) so mostra o nome. Mantem-se
  * essa convencao, sem repetir quando o nome digitado ja termina com o tamanho.
  */
+/**
+ * Tamanho do registro. Cadastros antigos deixaram o tamanho so no nome
+ * ("CALCADO TIPO BOTINA - 44", coluna tamanho vazia) — sem ler o sufixo, esses
+ * apareceriam como "ainda nao cadastrados" ao acrescentar tamanhos.
+ */
+function tamanhoDoRegistro(e: { nome: string; tamanho: string | null }) {
+  if (e.tamanho?.trim()) return e.tamanho.trim().toUpperCase();
+  const sufixo = e.nome.split(" - ").pop()?.trim().toUpperCase() || "";
+  return TAMANHOS_LETRA.includes(sufixo) || TAMANHOS_NUMERO.includes(sufixo) ? sufixo : "";
+}
+
+/** Nome sem o sufixo de tamanho, para gerar os nomes dos outros tamanhos. */
+function nomeBase(nome: string, tamanho: string) {
+  const base = nome.trim();
+  const sufixo = base.split(" - ").pop()?.trim() || "";
+  const eTamanho = sufixo.toUpperCase() === tamanho.trim().toUpperCase()
+    || TAMANHOS_LETRA.includes(sufixo.toUpperCase())
+    || TAMANHOS_NUMERO.includes(sufixo.toUpperCase());
+  if (!sufixo || !eTamanho) return base;
+  return base.slice(0, base.length - sufixo.length).replace(/[\s-]+$/, "");
+}
+
 /** Evita "FARDAMENTO - GG (GG)" nas listagens. */
 function tamanhoVisivel(e: { nome: string; tamanho: string | null }) {
   if (!e.tamanho) return null;
@@ -71,6 +93,17 @@ export default function EPIs() {
   const [tamanhoLivre, setTamanhoLivre] = useState("");
   const [busca, setBusca] = useState("");
   const { toast } = useToast();
+
+  /** Tamanhos que este CA ja tem — marcados como cadastrados e nunca duplicados. */
+  const tamanhosJaCadastrados = (() => {
+    const caAtual = form.ca.trim();
+    if (!caAtual) return [] as string[];
+    // Inclui o proprio registro em edicao: o tamanho dele ja existe e nao pode
+    // ser criado de novo pela lista de "adicionar outros tamanhos".
+    const doCa = epis.filter(e => (e.ca || "").trim() === caAtual).map(tamanhoDoRegistro);
+    const doForm = editing && form.tamanho.trim() ? [form.tamanho.trim().toUpperCase()] : [];
+    return [...doCa, ...doForm].filter(Boolean);
+  })();
 
   const episFiltrados = epis.filter(e => {
     if (!busca.trim()) return true;
@@ -150,21 +183,22 @@ export default function EPIs() {
       if (form.ajuste_tipo && form.ajuste_quantidade > 0) {
         toast({ title: `${form.ajuste_tipo === "entrada" ? "Entrada" : "Saída"} registrada`, description: `${form.ajuste_quantidade} unidade(s) ${form.ajuste_tipo === "entrada" ? "adicionada(s) ao" : "removida(s) do"} estoque` });
       }
-    } else if (form.tamanhos.length > 0) {
-      // Cadastro em lote: o CA e os dados sao consultados uma vez e valem para
-      // todos os tamanhos — antes era preciso repetir o cadastro inteiro a cada
-      // tamanho do mesmo CA.
-      const caAtual = form.ca.trim();
-      const jaCadastrados = caAtual
-        ? epis.filter(e => (e.ca || "").trim() === caAtual && e.tamanho)
-            .map(e => (e.tamanho as string).trim().toUpperCase())
-        : [];
-      const novos = form.tamanhos.filter(t => !jaCadastrados.includes(t.toUpperCase()));
-      const repetidos = form.tamanhos.filter(t => jaCadastrados.includes(t.toUpperCase()));
+    }
+
+    // Tamanhos marcados viram um EPI cada, com os mesmos dados — no cadastro
+    // novo e tambem ao editar um EPI que ja existe (ali servem para acrescentar
+    // os tamanhos que faltam sem redigitar o CA).
+    if (form.tamanhos.length > 0) {
+      const novos = form.tamanhos.filter(t => !tamanhosJaCadastrados.includes(t.toUpperCase()));
+      const repetidos = form.tamanhos.filter(t => tamanhosJaCadastrados.includes(t.toUpperCase()));
+      // Ao editar, o nome ja carrega o tamanho do proprio registro ("BOTINA - P");
+      // os novos partem do nome sem esse sufixo.
+      const base = editing ? nomeBase(form.nome, form.tamanho) : form.nome;
 
       let criados = 0;
       for (const t of novos) {
-        const ok = await add({ ...data, nome: nomeComTamanho(form.nome, t), tamanho: t });
+        // Estoque e movimentacao pertencem ao registro editado, nao aos novos.
+        const ok = await add({ ...data, estoque: editing ? 0 : data.estoque, nome: nomeComTamanho(base, t), tamanho: t });
         if (ok) criados++;
       }
       if (criados === 0 && repetidos.length > 0) {
@@ -172,12 +206,12 @@ export default function EPIs() {
         return;
       }
       toast({
-        title: `${criados} EPI(s) cadastrado(s)`,
+        title: `${criados} tamanho(s) cadastrado(s)`,
         description: repetidos.length
-          ? `Tamanhos já existentes neste CA foram ignorados: ${repetidos.join(", ")}.`
+          ? `Já existentes neste CA foram ignorados: ${repetidos.join(", ")}.`
           : `Tamanhos: ${novos.join(", ")}`
       });
-    } else {
+    } else if (!editing) {
       await add(data);
     }
     resetForm();
@@ -384,32 +418,39 @@ export default function EPIs() {
               <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm({...form, categoria: e.target.value})} placeholder="Ex: Cabeça" /></div>
               <div><Label>Validade do CA</Label><Input type="date" value={form.validade} onChange={e => setForm({...form, validade: e.target.value})} /></div>
             </div>
-            {editing ? (
-              <div><Label>Tamanho</Label><Input value={form.tamanho} onChange={e => setForm({...form, tamanho: e.target.value})} placeholder="Ex: P, M, G, GG, 38, 42..." /></div>
-            ) : (
+            {editing && (
+              <div><Label>Tamanho deste EPI</Label><Input value={form.tamanho} onChange={e => setForm({...form, tamanho: e.target.value})} placeholder="Ex: P, M, G, GG, 38, 42..." /></div>
+            )}
+            {(
               <div className="border rounded-lg p-3 space-y-3">
                 <div>
-                  <Label>Tamanhos</Label>
+                  <Label>{editing ? "Adicionar outros tamanhos deste CA" : "Tamanhos"}</Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Marque todos os tamanhos deste CA. É cadastrado um EPI por tamanho, com os mesmos dados — não precisa repetir o CA.
+                    {editing
+                      ? "Marque os tamanhos que faltam. Cada um vira um EPI novo com estes mesmos dados — sem redigitar o CA."
+                      : "Marque todos os tamanhos deste CA. É cadastrado um EPI por tamanho, com os mesmos dados — não precisa repetir o CA."}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {TAMANHOS_LETRA.map(t => (
-                      <Button key={t} type="button" size="sm" className="h-8 px-3"
-                        variant={form.tamanhos.includes(t) ? "default" : "outline"}
-                        onClick={() => toggleTamanho(t)}>{t}</Button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {TAMANHOS_NUMERO.map(t => (
-                      <Button key={t} type="button" size="sm" className="h-8 px-2.5"
-                        variant={form.tamanhos.includes(t) ? "default" : "outline"}
-                        onClick={() => toggleTamanho(t)}>{t}</Button>
-                    ))}
-                  </div>
+                  {[TAMANHOS_LETRA, TAMANHOS_NUMERO].map((grupo, gi) => (
+                    <div key={gi} className="flex flex-wrap gap-1.5">
+                      {grupo.map(t => {
+                        const jaTem = tamanhosJaCadastrados.includes(t);
+                        return (
+                          <Button key={t} type="button" size="sm" className="h-8 px-3" disabled={jaTem}
+                            title={jaTem ? "Já cadastrado neste CA" : undefined}
+                            variant={form.tamanhos.includes(t) ? "default" : "outline"}
+                            onClick={() => toggleTamanho(t)}>
+                            {t}{jaTem && <span className="ml-1 text-[10px]">✓</span>}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
+                {tamanhosJaCadastrados.length > 0 && (
+                  <p className="text-xs text-muted-foreground">✓ = já cadastrado neste CA.</p>
+                )}
                 <div className="flex gap-2">
                   <Input value={tamanhoLivre} onChange={e => setTamanhoLivre(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTamanhoLivre(); } }}
@@ -418,7 +459,7 @@ export default function EPIs() {
                 </div>
                 {form.tamanhos.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t">
-                    <span className="text-xs text-muted-foreground">Vai cadastrar {form.tamanhos.length}:</span>
+                    <span className="text-xs text-muted-foreground">{editing ? "Vai criar" : "Vai cadastrar"} {form.tamanhos.length}:</span>
                     {form.tamanhos.map(t => (
                       <Badge key={t} variant="secondary" className="gap-1 pr-1">
                         {t}
@@ -428,7 +469,7 @@ export default function EPIs() {
                     <Button type="button" variant="ghost" size="sm" className="h-6 text-xs ml-auto" onClick={() => setForm(prev => ({ ...prev, tamanhos: [] }))}>Limpar</Button>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">Sem nenhum marcado, cadastra um único EPI sem tamanho.</p>
+                {!editing && <p className="text-xs text-muted-foreground">Sem nenhum marcado, cadastra um único EPI sem tamanho.</p>}
               </div>
             )}
             <div><Label>Fabricante</Label><Input value={form.fabricante} onChange={e => setForm({...form, fabricante: e.target.value})} placeholder="Preenchido automaticamente pela consulta" /></div>
@@ -479,7 +520,9 @@ export default function EPIs() {
           </div>
           <DialogFooter>
             <Button onClick={handleSave}>
-              {editing ? "Salvar" : form.tamanhos.length > 1 ? `Cadastrar ${form.tamanhos.length} tamanhos` : "Cadastrar"}
+              {editing
+                ? form.tamanhos.length > 0 ? `Salvar e criar ${form.tamanhos.length} tamanho(s)` : "Salvar"
+                : form.tamanhos.length > 1 ? `Cadastrar ${form.tamanhos.length} tamanhos` : "Cadastrar"}
             </Button>
           </DialogFooter>
         </DialogContent>
