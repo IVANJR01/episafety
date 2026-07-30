@@ -1808,7 +1808,23 @@ export default function InspecoesSE() {
 
       {/* Edit/Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="p-0 gap-0 max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] rounded-none sm:rounded-lg flex flex-col overflow-hidden">
+        {/*
+          A janela acompanha o tamanho da tela.
+          Celular: ocupa tudo. Tablet: quase tudo, com margem. Computador: até
+          1100px — antes ficava presa em 672px mesmo num monitor largo, e o
+          formulário virava uma coluna estreita com rolagem enorme, sobrando
+          espaço vazio dos dois lados.
+          As sobreposições de desktop precisam do prefixo da faixa (sm:/lg:):
+          o DialogContent base traz sm:max-w-lg, e classe sem prefixo não
+          substitui classe com prefixo.
+        */}
+        <DialogContent className={[
+          "p-0 gap-0 flex flex-col overflow-hidden",
+          "w-full h-[100dvh] rounded-none",
+          "sm:h-auto sm:max-h-[92vh] sm:rounded-lg",
+          "sm:w-[calc(100vw-3rem)] sm:max-w-2xl",
+          "lg:max-w-4xl xl:max-w-[1100px]",
+        ].join(" ")}>
           <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 border-b flex-shrink-0">
             <DialogTitle className="text-base sm:text-lg">{editingId ? "Editar Registro" : "Novo Registro de Conformidade"}</DialogTitle>
           </DialogHeader>
@@ -2037,7 +2053,7 @@ export default function InspecoesSE() {
                   <Textarea placeholder="Descreva a ação corretiva necessária..." value={form.acao_corretiva} onChange={e => { setForm(p => ({ ...p, acao_corretiva: e.target.value })); setErrors(prev => ({ ...prev, acao_corretiva: "" })); }} rows={2} className={cn("resize-y min-h-[72px]", errors.acao_corretiva && "border-destructive")} />
                   {errors.acao_corretiva && <p className="text-xs text-destructive mt-1">{errors.acao_corretiva}</p>}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div>
                     <Label className="font-semibold">Responsável</Label>
                     <Input placeholder="Nome ou setor (opcional)" value={form.responsavel} onChange={e => setForm(p => ({ ...p, responsavel: e.target.value }))} className="min-h-[44px]" />
