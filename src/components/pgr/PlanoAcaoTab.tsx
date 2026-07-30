@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Wand2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Plus, Wand2, RefreshCw, AlertTriangle, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import PgrAcaoDialog from "./PgrAcaoDialog";
 import {
@@ -139,9 +139,13 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
 
       <Card>
         <CardContent className="p-3 flex flex-wrap gap-2 items-center justify-between">
+          {/* Contador zerado nao e informacao. Antes saiam os sete status
+              sempre, e num plano vazio a tela abria com uma fileira de zeros
+              seguida de sete colunas escrito "vazio" — muito ruido para dizer
+              que nao ha nada. */}
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">Total: {stats.total}</Badge>
-            {STATUS_COLS.map(s => (
+            {STATUS_COLS.filter(s => stats[s] > 0).map(s => (
               <Badge key={s} className={ACAO_STATUS_COLOR[s]} variant="outline">{ACAO_STATUS_LABEL[s]}: {stats[s]}</Badge>
             ))}
             {stats.atrasadas > 0 && <Badge className="bg-red-600 text-white">Atrasadas: {stats.atrasadas}</Badge>}
@@ -180,6 +184,32 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
         </Card>
       )}
 
+      {/*
+        Plano ainda sem nenhuma ação: em vez de filtros e sete colunas vazias,
+        diz o que fazer. Os dois caminhos aparecem conforme o inventário: se há
+        risco pedindo ação, o caminho natural é partir dele; se não há, resta a
+        ação avulsa.
+      */}
+      {acoes.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center space-y-3">
+            <ClipboardList className="h-8 w-8 mx-auto text-muted-foreground" />
+            <div>
+              <p className="font-semibold">Nenhuma ação no plano ainda</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                {sugestoes.length > 0
+                  ? `O inventário tem ${sugestoes.length} risco(s) que exigem ação. Comece por eles — o quadro acima cria cada ação já ligada ao risco, com prazo e prioridade sugeridos.`
+                  : inventario.length === 0
+                    ? "O inventário de riscos ainda está vazio. Preencha a etapa de Inventário e as ações necessárias passam a ser sugeridas aqui automaticamente."
+                    : "Nenhum risco do inventário está classificado num nível que exija ação. Se precisar registrar uma ação mesmo assim, use o botão abaixo."}
+              </p>
+            </div>
+            {editavel && (
+              <Button onClick={novaManual}><Plus className="h-4 w-4 mr-1" /> Nova ação</Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
       <Card>
         <CardContent className="p-3">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
@@ -278,6 +308,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
           )}
         </CardContent>
       </Card>
+      )}
 
       <PgrAcaoDialog
         open={dialogOpen} onOpenChange={setDialogOpen}
