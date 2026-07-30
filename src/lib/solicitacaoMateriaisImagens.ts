@@ -14,6 +14,51 @@ function desenharReduzido(bitmap: ImageBitmap, maxSide: number) {
   return canvas;
 }
 
+/** Largura e altura da foto sem decodificar a imagem toda. */
+function medirImagem(file: File): Promise<{ w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("imagem ilegivel")); };
+    img.src = url;
+  });
+}
+
+/**
+ * Decodifica a foto JA no tamanho reduzido.
+ *
+ * `createImageBitmap(file)` puro decodifica no tamanho original: uma foto de
+ * celular de 12 MP vira uma textura de 3000x4000x4 bytes — mais de 48 MB — só
+ * para ser desenhada com 1600px. Passando resizeWidth/resizeHeight, o navegador
+ * entrega o bitmap já pequeno e aquela textura gigante nunca chega a existir.
+ */
+async function decodificarNoTamanho(file: File, maxSide: number) {
+  const { w, h } = await medirImagem(file);
+  const ratio = Math.min(1, maxSide / Math.max(w, h));
+  return createImageBitmap(file, {
+    resizeWidth: Math.max(1, Math.round(w * ratio)),
+    resizeHeight: Math.max(1, Math.round(h * ratio)),
+    resizeQuality: "high",
+  });
+}
+
+/** JPEG do canvas como endereco de blob. */
+function canvasParaUrl(canvas: HTMLCanvasElement, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(URL.createObjectURL(b)) : reject(new Error("falha ao gerar miniatura"))),
+      "image/jpeg",
+      quality,
+    );
+  });
+}
+
+/** Libera o endereco de blob de uma miniatura que nao esta mais na tela. */
+export function descartarPreview(url?: string | null) {
+  if (url && url.startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
 /** Descarta o buffer do canvas — em alguns navegadores so sai da memoria assim. */
 function liberarCanvas(canvas: HTMLCanvasElement) {
   canvas.width = 0;
@@ -43,11 +88,15 @@ export async function prepararImagemItem(
 
   let bitmap: ImageBitmap | null = null;
   try {
-    bitmap = await createImageBitmap(file);
+    bitmap = await decodificarNoTamanho(file, maxSide);
     const grande = desenharReduzido(bitmap, maxSide);
     const blob: Blob = await new Promise((res) => grande.toBlob((b) => res(b || file), "image/jpeg", quality));
     const pequeno = desenharReduzido(bitmap, thumbSide);
-    const thumb = pequeno.toDataURL("image/jpeg", thumbQuality);
+    // `toDataURL` obriga o navegador a trazer o desenho de volta da placa de
+    // video e transformar tudo em texto base64, que ainda fica preso no
+    // atributo src de cada foto. `toBlob` + endereco de blob evita as duas
+    // coisas: o dado continua binario e o DOM guarda so um endereco curto.
+    const thumb = await canvasParaUrl(pequeno, thumbQuality);
     liberarCanvas(grande);
     liberarCanvas(pequeno);
     return { blob, type: "image/jpeg", ext: "jpg", thumb };
@@ -63,7 +112,7 @@ export async function compressImage(file: File, maxSide = 1600, quality = 0.85):
   if (!file.type.startsWith("image/")) return { blob: file, type: file.type, ext: (file.name.split(".").pop() || "bin").toLowerCase() };
   let bitmap: ImageBitmap | null = null;
   try {
-    bitmap = await createImageBitmap(file);
+    bitmap = await decodificarNoTamanho(file, maxSide);
     const canvas = desenharReduzido(bitmap, maxSide);
     const blob: Blob = await new Promise((res) => canvas.toBlob((b) => res(b || file), "image/jpeg", quality));
     liberarCanvas(canvas);
@@ -79,9 +128,9 @@ export async function compressImage(file: File, maxSide = 1600, quality = 0.85):
 export async function makeThumbnailDataUrl(file: File, maxSide = 480, quality = 0.7): Promise<string> {
   let bitmap: ImageBitmap | null = null;
   try {
-    bitmap = await createImageBitmap(file);
+    bitmap = await decodificarNoTamanho(file, maxSide);
     const canvas = desenharReduzido(bitmap, maxSide);
-    const url = canvas.toDataURL("image/jpeg", quality);
+    const url = await canvasParaUrl(canvas, quality);
     liberarCanvas(canvas);
     return url;
   } catch {

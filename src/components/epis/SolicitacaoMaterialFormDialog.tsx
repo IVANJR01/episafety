@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import {
   ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
   compressImage, prepararImagemItem, buildItemImagePath, uploadItemImage,
-  getSignedImageUrl, removeItemImage,
+  getSignedImageUrl, removeItemImage, descartarPreview,
 } from "@/lib/solicitacaoMateriaisImagens";
 
 interface Props {
@@ -262,6 +262,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   function addItem() { setItens((p) => [...p, emptyItem()]); }
   function removeItem(idx: number) {
     const it = itens[idx];
+    descartarPreview(it?.imagem_preview_url);
     if (it?.imagem_path) removeItemImage(it.imagem_path).catch(() => {});
     setItens((p) => p.filter((_, i) => i !== idx));
   }
@@ -270,6 +271,9 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     if (!file) return;
     if (!file.type.startsWith("image/") && !ACCEPTED_IMG_TYPES.includes(file.type)) { toast.error("Formato inválido. Use uma imagem da câmera ou galeria."); return; }
     if (file.size > MAX_IMG_BYTES) { toast.error("Imagem acima de 20 MB."); return; }
+    // A miniatura anterior deixa de existir aqui: sem devolver o endereco de
+    // blob, o binario dela fica preso na memoria ate a aba fechar.
+    descartarPreview(itens[idx]?.imagem_preview_url);
     updateItem(idx, {
       imagem_file: file,
       imagem_nome: file.name,
@@ -293,6 +297,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
   function handleClearImage(idx: number) {
     const current = itens[idx];
+    descartarPreview(current?.imagem_preview_url);
     if (current?.imagem_path) removeItemImage(current.imagem_path).catch(() => {});
     updateItem(idx, {
       imagem_path: null,
