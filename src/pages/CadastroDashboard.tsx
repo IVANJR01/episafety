@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Users, Building, Briefcase, TrendingUp } from "lucide-react";
+import { Users, Building, Briefcase, TrendingUp, AlertCircle, CheckCircle2, Clock, ClipboardList, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -13,6 +13,26 @@ interface Funcionario {
   nome: string;
   setor: string | null;
   cargo: string | null;
+}
+
+interface Inspecao {
+  id: string;
+  numero: number;
+  status: string;
+  foto_antes: string | null;
+  foto_antes_path: string | null;
+}
+
+interface Obra {
+  id: string;
+  nome: string;
+  status: string;
+}
+
+interface PgrAcao {
+  id: string;
+  status: string;
+  prioridade: string;
 }
 
 const COLORS = [
@@ -31,12 +51,17 @@ const cardVariants = {
 };
 
 export default function CadastroDashboard() {
-  const { data: funcionarios, loading } = useSupabaseQuery<Funcionario>("funcionarios", "nome", true);
+  const { data: funcionarios, loading: loadingFunc } = useSupabaseQuery<Funcionario>("funcionarios", "nome", true);
+  const { data: inspecoes, loading: loadingInsp } = useSupabaseQuery<Inspecao>("conformidade", "numero", false);
+  const { data: obras, loading: loadingObras } = useSupabaseQuery<Obra>("obras", "nome", true);
+  const { data: pgr_acoes, loading: loadingAcoes } = useSupabaseQuery<PgrAcao>("pgr_acoes", null, true);
+
+  const loading = loadingFunc || loadingInsp || loadingObras || loadingAcoes;
 
   const stats = useMemo(() => {
+    // Funcionários
     const setoresMap: Record<string, number> = {};
     const cargosMap: Record<string, number> = {};
-
     funcionarios.forEach(f => {
       if (f.setor) setoresMap[f.setor] = (setoresMap[f.setor] || 0) + 1;
       if (f.cargo) cargosMap[f.cargo] = (cargosMap[f.cargo] || 0) + 1;
@@ -50,23 +75,53 @@ export default function CadastroDashboard() {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
 
+    // Inspeções
+    const inspecoesComFoto = inspecoes.filter(i => i.foto_antes || i.foto_antes_path).length;
+    const inspecoesStatus: Record<string, number> = {};
+    inspecoes.forEach(i => {
+      inspecoesStatus[i.status] = (inspecoesStatus[i.status] || 0) + 1;
+    });
+
+    // Obras
+    const obrasStatus: Record<string, number> = {};
+    obras.forEach(o => {
+      obrasStatus[o.status] = (obrasStatus[o.status] || 0) + 1;
+    });
+
+    // PGR Ações
+    const acoesStatus: Record<string, number> = {};
+    pgr_acoes.forEach(a => {
+      acoesStatus[a.status] = (acoesStatus[a.status] || 0) + 1;
+    });
+
     return {
+      // Funcionários
       totalFuncionarios: funcionarios.length,
       totalSetores: Object.keys(setoresMap).length,
       totalCargos: Object.keys(cargosMap).length,
       setoresData,
       cargosData,
+      // Inspeções
+      totalInspecoes: inspecoes.length,
+      inspecoesComFoto,
+      inspecoesStatus,
+      // Obras
+      totalObras: obras.length,
+      obrasStatus,
+      // PGR Ações
+      totalAcoes: pgr_acoes.length,
+      acoesStatus,
     };
-  }, [funcionarios]);
+  }, [funcionarios, inspecoes, obras, pgr_acoes]);
 
   if (loading) {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Dashboard Cadastro"
-          subtitle="Visão geral dos cadastros da empresa."
+          title="Dashboard"
+          subtitle="Visão integrada dos cadastros e operações da empresa."
         />
-        <KpiSkeleton count={3} />
+        <KpiSkeleton count={5} />
       </div>
     );
   }
@@ -82,34 +137,44 @@ export default function CadastroDashboard() {
       borderColor: "border-primary/20",
     },
     {
-      label: "Setores",
-      value: stats.totalSetores,
-      icon: Building,
+      label: "Inspeções",
+      value: stats.totalInspecoes,
+      subtitle: `${stats.inspecoesComFoto} com foto`,
+      icon: ClipboardList,
       gradient: "from-emerald-500/20 to-emerald-500/5",
       iconBg: "bg-emerald-500/15",
       iconColor: "text-emerald-500",
       borderColor: "border-emerald-500/20",
     },
     {
-      label: "Funções / Cargos",
-      value: stats.totalCargos,
-      icon: Briefcase,
+      label: "Locais de Trabalho",
+      value: stats.totalObras,
+      icon: Building,
       gradient: "from-amber-500/20 to-amber-500/5",
       iconBg: "bg-amber-500/15",
       iconColor: "text-amber-500",
       borderColor: "border-amber-500/20",
+    },
+    {
+      label: "Ações do PGR",
+      value: stats.totalAcoes,
+      icon: Zap,
+      gradient: "from-red-500/20 to-red-500/5",
+      iconBg: "bg-red-500/15",
+      iconColor: "text-red-500",
+      borderColor: "border-red-500/20",
     },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Dashboard Cadastro"
-        subtitle="Visão geral dos cadastros da empresa."
+        title="Dashboard"
+        subtitle="Visão integrada dos cadastros e operações da empresa."
       />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((c, i) => (
           <motion.div
             key={c.label}
@@ -130,6 +195,7 @@ export default function CadastroDashboard() {
                     <p className="text-3xl font-extrabold text-foreground">{c.value}</p>
                     <TrendingUp className={`w-4 h-4 mb-1.5 ${c.iconColor} opacity-60`} />
                   </div>
+                  {(c as any).subtitle && <p className="text-xs text-muted-foreground mt-1">{(c as any).subtitle}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -137,13 +203,92 @@ export default function CadastroDashboard() {
         ))}
       </div>
 
-      {/* Charts */}
+      {/* Status Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Inspeções Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+        >
+          <Card className="overflow-hidden border-border/60 hover:shadow-lg transition-shadow duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2.5 mb-6">
+                <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <ClipboardList className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground">Status das Inspeções</h2>
+                  <p className="text-xs text-muted-foreground">{stats.totalInspecoes} inspeções cadastradas</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {Object.entries(stats.inspecoesStatus).length === 0 ? (
+                  <EmptyState icon={ClipboardList} title="Nenhuma inspeção cadastrada" description="Cadastre inspeções para ver o status aqui." bare />
+                ) : (
+                  Object.entries(stats.inspecoesStatus).map(([status, count]) => (
+                    <div key={status} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+                      <div className="flex items-center gap-3">
+                        {status === "SOLUCIONADO" && <CheckCircle2 className="w-4 h-4 text-green-600" />}
+                        {status === "EM ANDAMENTO" && <Clock className="w-4 h-4 text-amber-600" />}
+                        {status === "PENDENTE" && <AlertCircle className="w-4 h-4 text-red-600" />}
+                        <span className="text-sm font-medium">{status}</span>
+                      </div>
+                      <span className="text-lg font-bold text-foreground">{count}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* PGR Ações Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+        >
+          <Card className="overflow-hidden border-border/60 hover:shadow-lg transition-shadow duration-300">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2.5 mb-6">
+                <div className="p-2 rounded-lg bg-red-500/10">
+                  <Zap className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground">Status das Ações do PGR</h2>
+                  <p className="text-xs text-muted-foreground">{stats.totalAcoes} ações cadastradas</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {Object.entries(stats.acoesStatus).length === 0 ? (
+                  <EmptyState icon={Zap} title="Nenhuma ação cadastrada" description="Cadastre ações do PGR para ver o status aqui." bare />
+                ) : (
+                  Object.entries(stats.acoesStatus).map(([status, count]) => (
+                    <div key={status} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+                      <div className="flex items-center gap-3">
+                        {status === "CONCLUÍDA" && <CheckCircle2 className="w-4 h-4 text-green-600" />}
+                        {status === "EM PROGRESSO" && <Clock className="w-4 h-4 text-amber-600" />}
+                        {status === "PENDENTE" && <AlertCircle className="w-4 h-4 text-red-600" />}
+                        <span className="text-sm font-medium">{status}</span>
+                      </div>
+                      <span className="text-lg font-bold text-foreground">{count}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Detailedisablesection Bar Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Gráfico por Setor */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
         >
           <Card className="overflow-hidden border-border/60 hover:shadow-lg transition-shadow duration-300">
             <CardContent className="p-0">
@@ -191,7 +336,7 @@ export default function CadastroDashboard() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
         >
           <Card className="overflow-hidden border-border/60 hover:shadow-lg transition-shadow duration-300">
             <CardContent className="p-0">
