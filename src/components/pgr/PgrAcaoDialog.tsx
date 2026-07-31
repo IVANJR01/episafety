@@ -264,59 +264,14 @@ export default function PgrAcaoDialog({
 
   const editavel = pgrEditavel && canEdit;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* w-[calc(100vw-2rem)] + overflow-x-hidden: as media queries do Tailwind
-          medem a JANELA, nao o dialogo. Numa janela de ~740px o `sm:` liga e os
-          grids de 2 e 3 colunas entravam num dialogo bem mais estreito, jogando
-          metade dos campos para fora — com barra de rolagem horizontal. */}
-      {/*
-        A largura precisa do prefixo da faixa (sm:) para valer no computador.
-        Sem ele, o `max-w-4xl` era descartado em favor do `sm:max-w-lg` que vem
-        do DialogContent base — a janela ficava em 512px e os campos da direita
-        (Hierarquia da medida, Execução, Reavaliar risco) saíam cortados. Mesma
-        armadilha que já apareceu na solicitação de materiais e nas inspeções.
-      */}
-      <DialogContent className={[
-        "w-[calc(100vw-1rem)] max-h-[92vh] overflow-y-auto overflow-x-hidden",
-        "sm:w-[calc(100vw-4rem)] sm:max-w-3xl sm:max-h-[92vh]",
-        "lg:max-w-5xl",
-      ].join(" ")}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {acaoId ? "Ação do Plano de Ação" : "Nova ação"}
-            {acao && <Badge className={ACAO_STATUS_COLOR[status]} variant="outline">{ACAO_STATUS_LABEL[status]}</Badge>}
-            {acao && isAtrasada(acao) && <Badge className={ACAO_STATUS_COLOR.atrasada} variant="outline">ATRASADA</Badge>}
-          </DialogTitle>
-          <DialogDescription>
-            {acaoId
-              ? "5W2H: What/Why/Where/When/Who/How/How much. Evidências vão para o Google Drive da empresa."
-              : "Preencha o essencial. Depois de criar, abrem-se 5W2H, acompanhamento, eficácia e evidências."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <Tabs defaultValue="dados">
-          {/*
-            Acao NOVA nao mostra abas.
-            Eram seis, e ao criar tres delas nasciam desabilitadas — eficacia,
-            evidencias e historico so existem depois que a acao existe. Quem
-            abria para registrar uma acao levava seis abas na cara para
-            preencher meia duzia de campos. Ao editar, as abas voltam inteiras.
-            No celular a regua rola de lado, senao as ultimas ficam fora da
-            tela sem nenhum jeito de alcancar.
-          */}
-          {acaoId && (
-            <TabsList className="w-full justify-start overflow-x-auto">
-              <TabsTrigger value="dados">Dados</TabsTrigger>
-              <TabsTrigger value="5w2h">5W2H</TabsTrigger>
-              <TabsTrigger value="acomp">Acompanhamento</TabsTrigger>
-              <TabsTrigger value="eficacia">Eficácia</TabsTrigger>
-              <TabsTrigger value="evid">Evidências ({evidencias.length})</TabsTrigger>
-              <TabsTrigger value="hist">Histórico ({historico.length})</TabsTrigger>
-            </TabsList>
-          )}
-
-          <TabsContent value="dados" className="space-y-3">
+  /*
+   * Os dois blocos ficam em variaveis porque aparecem em dois arranjos:
+   * empilhados quando se cria a acao (uma tela so, sem abas) e dentro das
+   * abas quando se edita. Duplicar o JSX faria as duas versoes divergirem
+   * na primeira alteracao de campo.
+   */
+  const blocoDados = (
+    <div className="space-y-3">
             <div>
               <Label className="text-xs">Descrição da ação *</Label>
               <Textarea rows={2} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} disabled={!editavel} />
@@ -350,9 +305,11 @@ export default function PgrAcaoDialog({
                 <Input type="number" step="0.01" value={form.custo_estimado} onChange={(e) => setForm({ ...form, custo_estimado: e.target.value })} disabled={!editavel} />
               </div>
             </div>
-          </TabsContent>
+          </div>
+  );
 
-          <TabsContent value="5w2h" className="space-y-3">
+  const bloco5w2h = (
+    <div className="space-y-3">
             <div>
               <Label className="text-xs">What — O que será feito</Label>
               <Textarea rows={2} value={form.what || ""} onChange={(e) => setForm({ ...form, what: e.target.value })} disabled={!editavel} />
@@ -426,7 +383,80 @@ export default function PgrAcaoDialog({
                 })}
               </div>
             </div>
-          </TabsContent>
+          </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* w-[calc(100vw-2rem)] + overflow-x-hidden: as media queries do Tailwind
+          medem a JANELA, nao o dialogo. Numa janela de ~740px o `sm:` liga e os
+          grids de 2 e 3 colunas entravam num dialogo bem mais estreito, jogando
+          metade dos campos para fora — com barra de rolagem horizontal. */}
+      {/*
+        A largura precisa do prefixo da faixa (sm:) para valer no computador.
+        Sem ele, o `max-w-4xl` era descartado em favor do `sm:max-w-lg` que vem
+        do DialogContent base — a janela ficava em 512px e os campos da direita
+        (Hierarquia da medida, Execução, Reavaliar risco) saíam cortados. Mesma
+        armadilha que já apareceu na solicitação de materiais e nas inspeções.
+      */}
+      <DialogContent className={[
+        "w-[calc(100vw-1rem)] max-h-[92vh] overflow-y-auto overflow-x-hidden",
+        "sm:w-[calc(100vw-4rem)] sm:max-w-3xl sm:max-h-[92vh]",
+        "lg:max-w-5xl",
+      ].join(" ")}>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {acaoId ? "Ação do Plano de Ação" : "Nova ação"}
+            {acao && <Badge className={ACAO_STATUS_COLOR[status]} variant="outline">{ACAO_STATUS_LABEL[status]}</Badge>}
+            {acao && isAtrasada(acao) && <Badge className={ACAO_STATUS_COLOR.atrasada} variant="outline">ATRASADA</Badge>}
+          </DialogTitle>
+          <DialogDescription>
+            {acaoId
+              ? "5W2H: What/Why/Where/When/Who/How/How much. Evidências vão para o Google Drive da empresa."
+              : "Preencha a ação e o 5W2H. Acompanhamento, eficácia, evidências e histórico abrem depois de criada."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/*
+          Acao NOVA: uma tela so, com o essencial e o 5W2H logo abaixo.
+          Antes vinham seis abas, tres delas desabilitadas — eficacia,
+          evidencias e historico so existem depois que a acao existe. O 5W2H
+          fica junto porque e ele que descreve a acao no documento; deixar
+          para depois obrigava a criar e reabrir para completar.
+        */}
+        {!acaoId ? (
+          <div className="space-y-5">
+            {blocoDados}
+            <div className="border-t pt-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                5W2H — detalhamento
+              </p>
+              {bloco5w2h}
+            </div>
+          </div>
+        ) : (
+        <Tabs defaultValue="dados">
+          {/*
+            Ao editar, as abas voltam inteiras.
+            Eram seis, e ao criar tres delas nasciam desabilitadas — eficacia,
+            evidencias e historico so existem depois que a acao existe. Quem
+            abria para registrar uma acao levava seis abas na cara para
+            preencher meia duzia de campos. Ao editar, as abas voltam inteiras.
+            No celular a regua rola de lado, senao as ultimas ficam fora da
+            tela sem nenhum jeito de alcancar.
+          */}
+          <TabsList className="w-full justify-start overflow-x-auto">
+            <TabsTrigger value="dados">Dados</TabsTrigger>
+            <TabsTrigger value="5w2h">5W2H</TabsTrigger>
+            <TabsTrigger value="acomp">Acompanhamento</TabsTrigger>
+            <TabsTrigger value="eficacia">Eficácia</TabsTrigger>
+            <TabsTrigger value="evid">Evidências ({evidencias.length})</TabsTrigger>
+            <TabsTrigger value="hist">Histórico ({historico.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dados" className="space-y-3">{blocoDados}</TabsContent>
+
+          <TabsContent value="5w2h" className="space-y-3">{bloco5w2h}</TabsContent>
 
           <TabsContent value="acomp" className="space-y-3">
             <p className="text-xs text-muted-foreground">
@@ -590,6 +620,7 @@ export default function PgrAcaoDialog({
             )}
           </TabsContent>
         </Tabs>
+        )}
 
         {acaoId && editavel && (
           <div className="border-t pt-3 flex flex-wrap gap-2">
