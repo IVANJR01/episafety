@@ -873,19 +873,20 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     </SelectContent>
                   </Select>
                 </div>
-                {/* Estes campos alimentam a coluna "Características" da tabela e
-                    a seção "Caracterização dos Ambientes" do PDF. Sem eles a
-                    coluna existia e nunca podia ser preenchida. */}
+                {/* Pé-direito e nº de trabalhadores continuam campos próprios por
+                    serem valores curtos/numéricos, rápidos de preencher. O
+                    resto (piso, ventilação, iluminação, paredes, máquinas)
+                    virou um único campo de texto livre — eram 5 caixinhas
+                    pequenas para uma informação que sai mais natural em
+                    texto corrido. `caracteristicasAmbiente()` (sstEstrutura.ts)
+                    lê esse texto para a coluna "Características" da tabela e
+                    o PDF do PGR imprime como parágrafo na seção
+                    "Caracterização dos Ambientes". */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label>Pé-direito</Label>
                     <Input value={formData.pe_direito || ""} placeholder="Ex.: 3 m"
                       onChange={(e) => setFormData({ ...formData, pe_direito: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Piso</Label>
-                    <Input value={formData.piso || ""} placeholder="Cerâmico, concreto…"
-                      onChange={(e) => setFormData({ ...formData, piso: e.target.value })} />
                   </div>
                   {/* Coluna sst_ambientes.qtd_trabalhadores, criada pela migration
                       de 28/07. O campo ficou fora enquanto ela estava pendente:
@@ -898,34 +899,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                         qtd_trabalhadores: e.target.value === "" ? null : Number(e.target.value),
                       })} />
                   </div>
-                  <div>
-                    <Label>Ventilação</Label>
-                    <Input value={formData.ventilacao || ""} placeholder="Natural, forçada…"
-                      onChange={(e) => setFormData({ ...formData, ventilacao: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Iluminação</Label>
-                    <Input value={formData.iluminacao || ""} placeholder="Natural, artificial…"
-                      onChange={(e) => setFormData({ ...formData, iluminacao: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Paredes / cobertura</Label>
-                    <Input value={formData.paredes || ""} placeholder="Alvenaria, laje…"
-                      onChange={(e) => setFormData({ ...formData, paredes: e.target.value })} />
-                  </div>
                 </div>
                 <div>
-                  <Label>Máquinas e instalações</Label>
-                  <Input value={formData.maquinas_instalacoes || ""}
-                    onChange={(e) => setFormData({ ...formData, maquinas_instalacoes: e.target.value })}
-                    placeholder="Equipamentos presentes no ambiente" />
-                </div>
-                <div>
-                  <Label>Observações</Label>
+                  <Label>Descrição do ambiente</Label>
                   <Textarea
                     value={formData.descricao || ""}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    placeholder="Qualquer detalhe que os campos acima não cubram"
+                    placeholder="Piso, ventilação, iluminação, paredes/cobertura, máquinas e instalações, e qualquer outro detalhe relevante"
+                    rows={4}
                   />
                 </div>
               </>

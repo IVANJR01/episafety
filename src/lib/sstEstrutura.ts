@@ -20,6 +20,7 @@ export interface AmbienteCaracterizavel {
   iluminacao?: string | null;
   paredes?: string | null;
   maquinas_instalacoes?: string | null;
+  descricao?: string | null;
 }
 
 const limpo = (v?: string | null) => {
@@ -29,7 +30,15 @@ const limpo = (v?: string | null) => {
   return up === "N.A" || up === "N.A." || up === "N/A" || up === "NA" ? "" : s;
 };
 
-/** Só a caracterização, sem o nome. Vazio quando nada foi preenchido. */
+/**
+ * Só a caracterização, sem o nome. Vazio quando nada foi preenchido.
+ *
+ * Piso, ventilação, iluminação, paredes e máquinas eram campos separados no
+ * cadastro; viraram um único campo de texto livre (`descricao`) para reduzir
+ * a quantidade de caixinhas do formulário. Cadastros antigos ainda têm os
+ * campos separados preenchidos — por isso os dois formatos entram aqui, sem
+ * duplicar o nome.
+ */
 export function caracteristicasAmbiente(a?: AmbienteCaracterizavel | null): string {
   if (!a) return "";
   return [
@@ -39,6 +48,7 @@ export function caracteristicasAmbiente(a?: AmbienteCaracterizavel | null): stri
     limpo(a.iluminacao) && `Iluminação ${limpo(a.iluminacao)}`,
     limpo(a.paredes),
     limpo(a.maquinas_instalacoes),
+    limpo(a.descricao),
   ].filter(Boolean).join(" · ");
 }
 
