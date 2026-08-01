@@ -51,13 +51,46 @@ const statusLabel = (status: string): string => {
 };
 
 
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; unidade_origem_id?: string | null; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; unidade_origem_id?: string | null; data_prevista_substituicao?: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; empresa_id?: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; empresa_id?: string | null; source_epi_id?: string; tamanho?: string | null; }
 interface EpiItem { epi: EPI; quantidade: number; }
 interface Unidade { id: string; nome: string; tipo: string; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
+
+/** Data ISO (YYYY-MM-DD) no formato brasileiro, sem passar por fuso. */
+const fmtData = (d?: string | null): string => {
+  if (!d) return "—";
+  const [ano, mes, dia] = d.slice(0, 10).split("-");
+  return ano && mes && dia ? `${dia}/${mes}/${ano}` : d;
+};
+
+/**
+ * Quantos dias faltam para a data prevista de substituição.
+ * Negativo = já passou. `null` quando não há data.
+ */
+const diasParaSubstituir = (d?: string | null): number | null => {
+  if (!d) return null;
+  const alvo = new Date(`${d.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(alvo.getTime())) return null;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
+};
+
+/**
+ * Cor da previsão de substituição — o destaque é o motivo de o campo existir.
+ * O sistema anterior pintava a data de amarelo quando a troca se aproximava;
+ * aqui vencido fica vermelho e "falta pouco" (30 dias) fica âmbar, para o SESMT
+ * distinguir o que já está irregular do que ainda dá para programar.
+ */
+const corPrevisao = (dias: number | null): string => {
+  if (dias === null) return "text-muted-foreground";
+  if (dias < 0) return "text-destructive font-semibold";
+  if (dias <= 30) return "text-amber-600 font-semibold";
+  return "text-foreground";
+};
 
 const devolucaoDestinos = [
   { value: "estoque", label: "Retornar ao estoque" },
@@ -266,6 +299,7 @@ export default function Entregas() {
     data: new Date().toISOString().split("T")[0],
     tipo: "entrega" as string, observacao: "",
     unidade_origem_id: empresaId || "",
+    data_prevista_substituicao: "",
   };
   const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
 
@@ -552,6 +586,7 @@ export default function Entregas() {
           observacao: form.observacao || null,
           empresa_id: empresaId,
           unidade_origem_id: form.unidade_origem_id || null,
+          data_prevista_substituicao: form.data_prevista_substituicao || null,
         };
 
         const queued = addToSyncQueue({ table: "entregas", type: "insert", payload });
@@ -577,6 +612,7 @@ export default function Entregas() {
           created_at: new Date().toISOString(),
           assinatura_colaborador: null,
           foto_reconhecimento: null,
+          data_prevista_substituicao: form.data_prevista_substituicao || null,
         } as Entrega);
       }
 
@@ -628,6 +664,7 @@ export default function Entregas() {
             empresa_id: empresaId,
             created_by: currentUserId,
             unidade_origem_id: form.unidade_origem_id || null,
+            data_prevista_substituicao: form.data_prevista_substituicao || null,
           })
           .select("id")
           .single();
@@ -1031,6 +1068,18 @@ export default function Entregas() {
 
   const getName = (list: { id: string; nome: string }[], id: string) => list.find(i => i.id === id)?.nome || "—";
 
+  /*
+   * Índices por id. Antes cada célula fazia um `find` na lista inteira: com
+   * centenas de entregas × centenas de EPIs isso é varredura sobre varredura a
+   * cada render. Aqui também dá acesso ao registro completo — a matrícula do
+   * funcionário e o CA do EPI, que o card passou a mostrar.
+   */
+  const funcionarioPorId = useMemo(
+    () => new Map(funcionarios.map(f => [f.id, f])),
+    [funcionarios],
+  );
+  const epiPorId = useMemo(() => new Map(epis.map(e => [e.id, e])), [epis]);
+
   const openFicha = (funcId?: string) => {
     setFichaFuncId(funcId || "");
     setFichaSearch("");
@@ -1196,8 +1245,30 @@ export default function Entregas() {
                           <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-medium"><AlertCircle className="w-3 h-3" />Pendente</span>
                         )}
                       </div>
-                      <p className="font-semibold text-sm">{getName(funcionarios, e.funcionario_id)}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{getName(epis, e.epi_id)} • {e.quantidade}x</p>
+                      {/* Identificação em duas linhas, como no sistema anterior:
+                          matrícula + colaborador, depois CA + EPI. O código na
+                          frente é o que o SESMT confere no equipamento em mãos. */}
+                      {(() => {
+                        const func = funcionarioPorId.get(e.funcionario_id);
+                        const epi = epiPorId.get(e.epi_id);
+                        return (
+                          <>
+                            <p className="font-semibold text-sm">
+                              {func?.matricula && (
+                                <span className="font-mono text-muted-foreground mr-1.5">{func.matricula}</span>
+                              )}
+                              {func?.nome || "—"}
+                            </p>
+                            <p className="text-sm mt-0.5">
+                              {epi?.ca && <span className="font-mono text-muted-foreground mr-1.5">{epi.ca}</span>}
+                              {/* Sem o EPI no cadastro carregado o card mostrava
+                                  um "—" solto, idêntico a campo vazio. Dizer que
+                                  não foi localizado evita ler como "sem EPI". */}
+                              {epi?.nome || <span className="text-muted-foreground italic">EPI não localizado no cadastro</span>}
+                            </p>
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
@@ -1220,6 +1291,33 @@ export default function Entregas() {
                       </div>
                     </div>
                   </div>
+                  {/* Campos rotulados, no mesmo formato do sistema anterior.
+                      Antes o card resumia tudo em "EPI • 1x" e a data ficava
+                      solta no canto: dava para ver o que foi entregue, não em
+                      que condições. */}
+                  <dl className="mt-3 border-t pt-2 space-y-1 text-xs">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-muted-foreground">Motivo</dt>
+                      <dd>{tipoLabels[e.tipo] || e.tipo}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-muted-foreground">Quantidade</dt>
+                      <dd>{e.quantidade}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-muted-foreground">Data de entrega</dt>
+                      <dd className="font-mono">{fmtData(e.data)}</dd>
+                    </div>
+                    {/* Devolução não tem troca a programar. */}
+                    {e.tipo !== "devolucao" && (
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">Previsão de substituição</dt>
+                        <dd className={`font-mono ${corPrevisao(diasParaSubstituir(e.data_prevista_substituicao))}`}>
+                          {fmtData(e.data_prevista_substituicao)}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
                   {e.observacao && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{e.observacao}</p>}
                 </CardContent>
               </Card>
@@ -1238,6 +1336,7 @@ export default function Entregas() {
                     <TableHead>EPI</TableHead>
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Prev. substituição</TableHead>
                     <TableHead>Assinatura</TableHead>
                     <TableHead>Obs</TableHead>
                     <TableHead className="w-24"></TableHead>
@@ -1245,7 +1344,7 @@ export default function Entregas() {
                 </TableHeader>
                 <TableBody>
                   {filteredEntregas.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="p-0">
+                    <TableRow><TableCell colSpan={10} className="p-0">
                       <EmptyState
                         bare
                         icon={searchTerm ? Search : PackageOpen}
@@ -1264,11 +1363,28 @@ export default function Entregas() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">{getName(funcionarios, e.funcionario_id)}</TableCell>
-                      <TableCell>{getName(epis, e.epi_id)}</TableCell>
+                      <TableCell className="font-medium">
+                        {funcionarioPorId.get(e.funcionario_id)?.matricula && (
+                          <span className="font-mono text-xs text-muted-foreground mr-1.5">
+                            {funcionarioPorId.get(e.funcionario_id)?.matricula}
+                          </span>
+                        )}
+                        {funcionarioPorId.get(e.funcionario_id)?.nome || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {epiPorId.get(e.epi_id)?.ca && (
+                          <span className="font-mono text-xs text-muted-foreground mr-1.5">{epiPorId.get(e.epi_id)?.ca}</span>
+                        )}
+                        {epiPorId.get(e.epi_id)?.nome || (
+                          <span className="text-muted-foreground italic text-xs">EPI não localizado</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">{e.quantidade}</TableCell>
                       <TableCell>
                         <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
+                      </TableCell>
+                      <TableCell className={`font-mono text-xs ${corPrevisao(diasParaSubstituir(e.data_prevista_substituicao))}`}>
+                        {e.tipo === "devolucao" ? "—" : fmtData(e.data_prevista_substituicao)}
                       </TableCell>
 
                       <TableCell>
@@ -1452,9 +1568,21 @@ export default function Entregas() {
               })()}
             </div>
 
-            <div>
-              <Label>Data</Label>
-              <Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Data</Label>
+                <Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} />
+              </div>
+              <div>
+                <Label>Previsão de substituição</Label>
+                <Input
+                  type="date"
+                  value={form.data_prevista_substituicao || ""}
+                  min={form.data}
+                  onChange={e => setForm({...form, data_prevista_substituicao: e.target.value})}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Quando este EPI deve ser trocado. Opcional.</p>
+              </div>
             </div>
             <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e => setForm({...form, observacao: e.target.value})} placeholder="Observações opcionais" /></div>
           </div>
