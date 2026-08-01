@@ -18,10 +18,18 @@ interface SolicitacaoEmail {
   itens_count: number;
 }
 
+interface EmailPayload {
+  solicitacao: SolicitacaoEmail;
+  email: string;
+  pdfBase64?: string;
+  pdfFilename?: string;
+}
+
 async function sendEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
+  attachment?: { filename: string; base64: string }
 ): Promise<Response> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
 
@@ -31,6 +39,7 @@ async function sendEmail(
     console.log("Para:", to);
     console.log("Assunto:", subject);
     console.log("HTML:", html.substring(0, 200) + "...");
+    console.log("Anexo:", attachment ? attachment.filename : "(nenhum)");
 
     // Retorna sucesso mesmo sem enviar (para testes)
     return new Response(
@@ -59,6 +68,9 @@ async function sendEmail(
       to,
       subject,
       html,
+      attachments: attachment
+        ? [{ filename: attachment.filename, content: attachment.base64 }]
+        : undefined,
     }),
   });
 
@@ -70,7 +82,7 @@ async function sendEmail(
   return response;
 }
 
-function gerarHtmlEmail(solicitacao: SolicitacaoEmail): string {
+function gerarHtmlEmail(solicitacao: SolicitacaoEmail, temAnexo: boolean): string {
   const prioridades: Record<string, string> = {
     baixa: "Baixa",
     normal: "Normal",
@@ -182,6 +194,14 @@ function gerarHtmlEmail(solicitacao: SolicitacaoEmail): string {
         </div>
       </div>
 
+      ${temAnexo ? `
+      <div style="margin-bottom: 25px; text-align: center;">
+        <p style="margin: 0; color: #374151; font-size: 13px;">
+          📎 O PDF completo desta solicitação está anexado a este email.
+        </p>
+      </div>
+      ` : ""}
+
       <!-- CTA Button -->
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://safetysolucoes.com/epis/solicitacoes-materiais" style="display: inline-block; background-color: #ff9500; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
@@ -212,7 +232,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { solicitacao, email } = await req.json();
+    const { solicitacao, email, pdfBase64, pdfFilename }: EmailPayload = await req.json();
 
     if (!email || !solicitacao) {
       return new Response(
@@ -221,10 +241,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    const html = gerarHtmlEmail(solicitacao);
+    const anexo = pdfBase64 && pdfFilename ? { filename: pdfFilename, base64: pdfBase64 } : undefined;
+    const html = gerarHtmlEmail(solicitacao, !!anexo);
     const subject = `[${solicitacao.numero_solicitacao}] ${solicitacao.titulo}${solicitacao.prioridade === "urgente" ? " - 🔴 URGENTE" : ""}`;
 
-    await sendEmail(email, subject, html);
+    await sendEmail(email, subject, html, anexo);
 
     return new Response(
       JSON.stringify({ success: true, message: "Email enviado com sucesso" }),

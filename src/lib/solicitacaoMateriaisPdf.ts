@@ -53,7 +53,7 @@ const fmtDateTime = (d?: string | null) => {
 };
 const na = (v?: string | null) => (v && String(v).trim() ? String(v) : "N.A");
 
-export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
+function construirSolicitacaoPdfDoc(s: SolicitacaoPdfInput): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = 210;
   const H = 297;
@@ -414,5 +414,18 @@ export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
     drawFooter(p, totalPages);
   }
 
+  return doc;
+}
+
+export function gerarSolicitacaoPdf(s: SolicitacaoPdfInput) {
+  const doc = construirSolicitacaoPdfDoc(s);
   doc.save(`Solicitacao_${s.numero}.pdf`);
+}
+
+/** Gera o mesmo PDF em base64, para anexar em email em vez de baixar. */
+export function gerarSolicitacaoPdfBase64(s: SolicitacaoPdfInput): { base64: string; filename: string } {
+  const doc = construirSolicitacaoPdfDoc(s);
+  const datauri = doc.output("datauristring");
+  const base64 = datauri.substring(datauri.indexOf(",") + 1);
+  return { base64, filename: `Solicitacao_${s.numero}.pdf` };
 }

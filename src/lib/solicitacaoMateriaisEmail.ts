@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { carregarDadosPdfSolicitacao } from "@/lib/solicitacaoMateriaisPdfData";
+import { gerarSolicitacaoPdfBase64 } from "@/lib/solicitacaoMateriaisPdf";
 
 interface SolicitacaoEmailData {
   solicitacao_id: string;
@@ -120,8 +122,24 @@ export async function enviarEmailSolicitacao(
       itens_count: itensCount,
     };
 
+    // Anexa o PDF da solicitação para quem recebe o email não precisar entrar
+    // no sistema. Se a geração falhar por qualquer motivo, o email ainda sai,
+    // só que sem anexo — não vale travar a notificação por causa do PDF.
+    let pdfBase64: string | undefined;
+    let pdfFilename: string | undefined;
+    try {
+      const dadosPdf = await carregarDadosPdfSolicitacao(solicitacaoId, empresaId);
+      if (dadosPdf) {
+        const gerado = gerarSolicitacaoPdfBase64(dadosPdf);
+        pdfBase64 = gerado.base64;
+        pdfFilename = gerado.filename;
+      }
+    } catch (e) {
+      console.warn("[solicitacao] Não foi possível anexar o PDF ao email:", e);
+    }
+
     const { data, error } = await supabase.functions.invoke("send-purchase-email", {
-      body: { solicitacao: solicitacaoData, email: emailCompras },
+      body: { solicitacao: solicitacaoData, email: emailCompras, pdfBase64, pdfFilename },
     });
 
     if (error) {
