@@ -73,7 +73,7 @@ async function sendEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "noreply@episafety.com.br",
+      from: "EpiSafety <onboarding@resend.dev>",
       to,
       subject,
       html,
