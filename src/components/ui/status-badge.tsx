@@ -15,7 +15,7 @@ const toneClasses: Record<StatusTone, string> = {
   success:
     "bg-success/10 text-success border border-success/30 hover:bg-success/15",
   warning:
-    "bg-warning/10 text-warning-foreground border border-warning/40 hover:bg-warning/15 dark:text-warning",
+    "bg-warning/10 text-warning border border-warning/40 hover:bg-warning/15",
   pending:
     "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/15",
   danger:
