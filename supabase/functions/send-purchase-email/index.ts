@@ -184,7 +184,7 @@ function gerarHtmlEmail(solicitacao: SolicitacaoEmail): string {
 
       <!-- CTA Button -->
       <div style="text-align: center; margin: 30px 0;">
-        <a href="https://episafety.com.br/solicitacoes-materiais" style="display: inline-block; background-color: #ff9500; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
+        <a href="https://safetysolucoes.com/epis/solicitacoes-materiais" style="display: inline-block; background-color: #ff9500; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
           Revisar Solicitação
         </a>
       </div>
