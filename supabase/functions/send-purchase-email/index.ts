@@ -51,7 +51,11 @@ async function sendEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "noreply@episafety.com.br",
+      // Domínio de teste da própria Resend: funciona sem verificação de DNS,
+      // mas só entrega para o e-mail do dono da conta Resend enquanto nenhum
+      // domínio próprio for verificado. Trocar para um endereço @seudominio
+      // depois de verificar o domínio em resend.com/domains.
+      from: "EpiSafety <onboarding@resend.dev>",
       to,
       subject,
       html,
