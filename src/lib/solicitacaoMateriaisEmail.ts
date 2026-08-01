@@ -125,8 +125,21 @@ export async function enviarEmailSolicitacao(
     });
 
     if (error) {
-      console.error("[solicitacao] Erro ao enviar email:", error);
-      return { enviado: false, modoDebug: false, emailDestino: emailCompras, erro: error.message };
+      // supabase-js só coloca "Edge Function returned a non-2xx status code" em
+      // error.message — o motivo real (ex.: erro da Resend) vem no corpo da
+      // resposta, acessível via error.context, um Response.
+      let detalhe = error.message;
+      try {
+        const body = await error.context?.clone().json();
+        if (body?.error) detalhe = body.error;
+      } catch {
+        try {
+          const texto = await error.context?.clone().text();
+          if (texto) detalhe = texto;
+        } catch { /* mantém error.message */ }
+      }
+      console.error("[solicitacao] Erro ao enviar email:", detalhe, error);
+      return { enviado: false, modoDebug: false, emailDestino: emailCompras, erro: detalhe };
     }
 
     const modoDebug = !!(data && typeof data.message === "string" && data.message.toLowerCase().includes("debug"));
