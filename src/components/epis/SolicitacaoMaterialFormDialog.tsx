@@ -16,6 +16,7 @@ import {
   compressImage, prepararImagemItem, buildItemImagePath, uploadItemImage,
   getSignedImageUrl, removeItemImage, descartarPreview,
 } from "@/lib/solicitacaoMateriaisImagens";
+import { enviarEmailSolicitacao } from "@/lib/solicitacaoMateriaisEmail";
 
 interface Props {
   open: boolean;
@@ -437,8 +438,36 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           { description: `Motivo: ${fotosComFalha[0].falhaFoto}. O resto foi gravado normalmente.`, duration: 10000 },
         );
       } else {
-        toast.success(nextStatus === "enviada" ? "Solicitação enviada" : "Solicitação salva");
+        if (nextStatus === "enviada") {
+          toast.success("Solicitação enviada ✓ Email foi disparado para o setor de compras");
+        } else {
+          toast.success("Solicitação salva");
+        }
       }
+
+      // Enviar email automaticamente quando a solicitação for enviada
+      if (nextStatus === "enviada") {
+        // Obtém dados da empresa para complementar o email
+        const { data: empData } = await supabase
+          .from("empresa_config")
+          .select("nome")
+          .eq("id", empresaId)
+          .maybeSingle();
+
+        // Envia email de forma assíncrona (não bloqueia a UI)
+        enviarEmailSolicitacao(
+          solicId!,
+          (solicitacaoId ? head.numero_solicitacao : (await supabase.rpc("proximo_numero_solicitacao_material", { _empresa_id: empresaId })).data) as string || "—",
+          head.titulo,
+          empresaId,
+          (empData as any)?.nome,
+          head.setor,
+          head.solicitante_nome,
+          head.prioridade,
+          head.data_necessidade
+        ).catch((e) => console.error("[solicitacao] Erro ao enviar email:", e));
+      }
+
       // Gravado no banco: o rascunho local cumpriu o papel e sai de cena.
       try { localStorage.removeItem(chaveRascunho); } catch { /* nada a fazer */ }
       setRascunhoRecuperado(false);
