@@ -94,6 +94,9 @@ function gerarHtmlEmail(solicitacao: SolicitacaoEmail, temAnexo: boolean): strin
   const dataFormatada = solicitacao.data_necessidade
     ? new Date(solicitacao.data_necessidade).toLocaleDateString("pt-BR")
     : "Não especificado";
+  // Abre o modal de Aprovar/Recusar direto nessa solicitação — exige login,
+  // a decisão em si é sempre tomada dentro do sistema.
+  const linkAprovacao = `https://safetysolucoes.com/epis/solicitacoes-materiais?empresa_id=${solicitacao.empresa_id}&aprovar=${solicitacao.solicitacao_id}`;
 
   return `
 <!DOCTYPE html>
@@ -202,11 +205,21 @@ function gerarHtmlEmail(solicitacao: SolicitacaoEmail, temAnexo: boolean): strin
       </div>
       ` : ""}
 
-      <!-- CTA Button -->
+      <!-- CTA Buttons: Aprovar / Recusar levam ao mesmo modal no sistema —
+           a decisão final é sempre tomada lá dentro, com login, nunca só pelo
+           clique no email. -->
       <div style="text-align: center; margin: 30px 0;">
-        <a href="https://safetysolucoes.com/epis/solicitacoes-materiais" style="display: inline-block; background-color: #ff9500; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
-          Revisar Solicitação
+        <a href="${linkAprovacao}" style="display: inline-block; background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 0 6px 10px;">
+          ✅ Aprovar
         </a>
+        <a href="${linkAprovacao}" style="display: inline-block; background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 0 6px 10px;">
+          ❌ Recusar
+        </a>
+        <div style="margin-top: 6px;">
+          <a href="${linkAprovacao}" style="color: #6b7280; font-size: 12px; text-decoration: underline;">
+            Ver solicitação completa no sistema
+          </a>
+        </div>
       </div>
 
       <!-- Footer -->

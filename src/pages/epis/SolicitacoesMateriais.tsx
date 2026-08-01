@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
@@ -75,8 +76,27 @@ export default function SolicitacoesMateriais() {
   const [recebOpen, setRecebOpen] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Solicitacao | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const canApprove = isSuperAdmin || isPrincipal;
+
+  // Link "Aprovar/Recusar" do email de compras cai aqui com ?aprovar=<id> —
+  // abre o modal direto, sem precisar procurar a solicitação na lista.
+  useEffect(() => {
+    if (loading) return;
+    const aprovarId = searchParams.get("aprovar");
+    if (aprovarId) {
+      const alvo = items.find((s) => s.id === aprovarId);
+      if (alvo && canApprove && alvo.status === "enviada") {
+        setAprovOpen(aprovarId);
+      } else if (alvo && !canApprove) {
+        toast.error("Você não tem permissão para aprovar solicitações");
+      }
+      const next = new URLSearchParams(searchParams);
+      next.delete("aprovar");
+      setSearchParams(next, { replace: true });
+    }
+  }, [loading, items, searchParams, setSearchParams, canApprove]);
 
   async function load() {
     if (!empresaId) { setLoading(false); return; }
