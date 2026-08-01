@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Search, ClipboardList, Pencil, Trash2, FileDown, FileSpreadsheet, Eye, CheckCircle2, ShoppingCart, PackageCheck } from "lucide-react";
+import { Plus, Search, ClipboardList, Pencil, Trash2, FileDown, FileSpreadsheet, Eye, CheckCircle2, ShoppingCart, PackageCheck, Mail } from "lucide-react";
 import { toast } from "sonner";
 import SolicitacaoMaterialFormDialog from "@/components/epis/SolicitacaoMaterialFormDialog";
 import SolicitacaoAprovacaoDialog from "@/components/epis/SolicitacaoAprovacaoDialog";
@@ -18,6 +18,7 @@ import SolicitacaoRecebimentoDialog from "@/components/epis/SolicitacaoRecebimen
 import { gerarSolicitacaoPdf } from "@/lib/solicitacaoMateriaisPdf";
 import { exportarSolicitacaoExcel } from "@/lib/solicitacaoMateriaisExcel";
 import { loadImageAsDataUrl, removeSolicitacaoImages } from "@/lib/solicitacaoMateriaisImagens";
+import { enviarEmailSolicitacao } from "@/lib/solicitacaoMateriaisEmail";
 
 type Solicitacao = {
   id: string;
@@ -73,6 +74,7 @@ export default function SolicitacoesMateriais() {
   const [aprovOpen, setAprovOpen] = useState<string | null>(null);
   const [recebOpen, setRecebOpen] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Solicitacao | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   const canApprove = isSuperAdmin || isPrincipal;
 
@@ -270,6 +272,33 @@ export default function SolicitacoesMateriais() {
     else { toast.success("Marcada como comprada"); load(); }
   }
 
+  async function reenviarEmail(s: Solicitacao) {
+    setSendingEmailId(s.id);
+    try {
+      const { data: emp } = await (supabase.from as any)("empresa_config")
+        .select("nome")
+        .eq("id", s.empresa_id)
+        .maybeSingle();
+
+      await enviarEmailSolicitacao(
+        s.id,
+        s.numero_solicitacao,
+        s.titulo,
+        s.empresa_id,
+        (emp as any)?.nome,
+        s.setor || undefined,
+        s.solicitante_nome || undefined,
+        s.prioridade,
+        s.data_necessidade || undefined
+      );
+      toast.success("Email reenviado com sucesso para o setor de compras");
+    } catch (error: any) {
+      toast.error("Erro ao reenviar email", { description: error.message });
+    } finally {
+      setSendingEmailId(null);
+    }
+  }
+
   return (
     <div className="p-3 sm:p-6 space-y-4 max-w-full">
       <PageHeader
@@ -371,6 +400,7 @@ export default function SolicitacoesMateriais() {
                           <RowActions
                             s={s}
                             canApprove={canApprove}
+                            sendingEmail={sendingEmailId === s.id}
                             onEdit={() => { setEditingId(s.id); setFormOpen(true); }}
                             onDelete={() => setConfirmDelete(s)}
                             onApprove={() => setAprovOpen(s.id)}
@@ -378,6 +408,7 @@ export default function SolicitacoesMateriais() {
                             onBuy={() => marcarComprada(s)}
                             onPdf={() => handleExportPdf(s)}
                             onXlsx={() => handleExportExcel(s)}
+                            onResendEmail={() => reenviarEmail(s)}
                           />
                         </td>
                       </tr>
@@ -410,6 +441,7 @@ export default function SolicitacoesMateriais() {
                     s={s}
                     mobile
                     canApprove={canApprove}
+                    sendingEmail={sendingEmailId === s.id}
                     onEdit={() => { setEditingId(s.id); setFormOpen(true); }}
                     onDelete={() => setConfirmDelete(s)}
                     onApprove={() => setAprovOpen(s.id)}
@@ -417,6 +449,7 @@ export default function SolicitacoesMateriais() {
                     onBuy={() => marcarComprada(s)}
                     onPdf={() => handleExportPdf(s)}
                     onXlsx={() => handleExportExcel(s)}
+                    onResendEmail={() => reenviarEmail(s)}
                   />
                 </CardContent>
               </Card>
@@ -463,12 +496,13 @@ export default function SolicitacoesMateriais() {
 }
 
 function RowActions({
-  s, canApprove, mobile,
-  onEdit, onDelete, onApprove, onReceive, onBuy, onPdf, onXlsx,
+  s, canApprove, mobile, sendingEmail,
+  onEdit, onDelete, onApprove, onReceive, onBuy, onPdf, onXlsx, onResendEmail,
 }: {
   s: Solicitacao;
   canApprove: boolean;
   mobile?: boolean;
+  sendingEmail?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onApprove: () => void;
@@ -476,14 +510,18 @@ function RowActions({
   onBuy: () => void;
   onPdf: () => void;
   onXlsx: () => void;
+  onResendEmail: () => void;
 }) {
   const canEdit = ["rascunho", "enviada"].includes(s.status);
   const canApproveNow = canApprove && s.status === "enviada";
   const canBuyNow = s.status === "aprovada";
   const canReceiveNow = ["aprovada", "comprada", "recebida_parcial"].includes(s.status);
+  const canResendEmail = s.status === "enviada";
+
   return (
     <div className={`flex ${mobile ? "flex-wrap" : "justify-end"} gap-1`}>
       <Button size="sm" variant="ghost" onClick={onEdit} disabled={!canEdit} title="Editar"><Pencil className="w-4 h-4" /></Button>
+      {canResendEmail && <Button size="sm" variant="ghost" onClick={onResendEmail} disabled={sendingEmail} title="Reenviar email para compras" className="text-orange-600"><Mail className="w-4 h-4" /></Button>}
       {canApproveNow && <Button size="sm" variant="outline" onClick={onApprove} className="gap-1 text-success"><CheckCircle2 className="w-4 h-4" />{mobile && "Aprovar"}</Button>}
       {canBuyNow && <Button size="sm" variant="outline" onClick={onBuy} className="gap-1" title="Marcar como comprada"><ShoppingCart className="w-4 h-4" />{mobile && "Comprada"}</Button>}
       {canReceiveNow && <Button size="sm" variant="outline" onClick={onReceive} className="gap-1" title="Registrar recebimento"><PackageCheck className="w-4 h-4" />{mobile && "Receber"}</Button>}

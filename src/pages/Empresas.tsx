@@ -27,6 +27,7 @@ export default function Empresas() {
     endereco: "",
     telefone: "",
     email: "",
+    email_compras: "",
   });
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function Empresas() {
         const e = cached.find((c: any) => c.id === empresaId) || cached[0];
         setExistingId(e.id);
         setLogoUrl(e.logo_url || null);
-        setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "" });
+        setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "", email_compras: e.email_compras || "" });
       }
       return;
     }
@@ -50,7 +51,7 @@ export default function Empresas() {
       const e = data[0];
       setExistingId(e.id);
       setLogoUrl(e.logo_url || null);
-      setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "" });
+      setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "", email_compras: e.email_compras || "" });
       setCachedData("empresa_config", data);
     }
   };
@@ -259,8 +260,13 @@ export default function Empresas() {
                   <Input className="min-h-[44px]" value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} placeholder="(00) 00000-0000" />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label>E-mail</Label>
+                  <Label>E-mail Principal</Label>
                   <Input className="min-h-[44px]" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contato@empresa.com" />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label>E-mail para Compras 📧</Label>
+                  <p className="text-xs text-muted-foreground mb-2">Endereço para receber automaticamente as notificações de solicitação de materiais</p>
+                  <Input className="min-h-[44px]" type="email" value={form.email_compras} onChange={e => setForm({ ...form, email_compras: e.target.value })} placeholder="compras@empresa.com" />
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Endereço</Label>
