@@ -1245,33 +1245,34 @@ export default function Entregas() {
                           <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-medium"><AlertCircle className="w-3 h-3" />Pendente</span>
                         )}
                       </div>
-                      {/* Identificação em duas linhas, como no sistema anterior:
-                          matrícula + colaborador, depois CA + EPI. O código na
-                          frente é o que o SESMT confere no equipamento em mãos. */}
+                      {/* Identificação em grade de duas colunas: código à
+                          esquerda, descrição à direita. É o que alinha a
+                          segunda linha de um nome longo com a primeira palavra
+                          — e não embaixo do número, que é o que acontece
+                          quando código e nome ficam no mesmo parágrafo. */}
                       {(() => {
                         const func = funcionarioPorId.get(e.funcionario_id);
                         const epi = epiPorId.get(e.epi_id);
                         return (
-                          <>
-                            <p className="font-semibold text-sm">
-                              {func?.matricula && (
-                                <span className="font-mono text-muted-foreground mr-1.5">{func.matricula}</span>
-                              )}
-                              {func?.nome || "—"}
-                            </p>
-                            <p className="text-sm mt-0.5">
-                              {epi?.ca && <span className="font-mono text-muted-foreground mr-1.5">{epi.ca}</span>}
-                              {/* Sem o EPI no cadastro carregado o card mostrava
-                                  um "—" solto, idêntico a campo vazio. Dizer que
-                                  não foi localizado evita ler como "sem EPI". */}
+                          <div className="grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-0.5">
+                            <span className="font-mono text-sm text-muted-foreground tabular-nums">
+                              {func?.matricula || ""}
+                            </span>
+                            <span className="font-semibold text-sm leading-snug">{func?.nome || "—"}</span>
+                            <span className="font-mono text-sm text-muted-foreground tabular-nums">
+                              {epi?.ca || ""}
+                            </span>
+                            {/* Sem o EPI no cadastro carregado o card mostrava
+                                um "—" solto, idêntico a campo vazio. Dizer que
+                                não foi localizado evita ler como "sem EPI". */}
+                            <span className="text-sm leading-snug">
                               {epi?.nome || <span className="text-muted-foreground italic">EPI não localizado no cadastro</span>}
-                            </p>
-                          </>
+                            </span>
+                          </div>
                         );
                       })()}
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="text-[10px] text-muted-foreground font-mono">{e.data}</span>
                       <div className="flex gap-2">
                         {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
                           <Button size="icon" variant="outline" className="h-11 w-11" title="Desfazer devolução" aria-label="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
@@ -1291,33 +1292,44 @@ export default function Entregas() {
                       </div>
                     </div>
                   </div>
-                  {/* Campos rotulados, no mesmo formato do sistema anterior.
-                      Antes o card resumia tudo em "EPI • 1x" e a data ficava
-                      solta no canto: dava para ver o que foi entregue, não em
-                      que condições. */}
-                  <dl className="mt-3 border-t pt-2 space-y-1 text-xs">
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">Motivo</dt>
-                      <dd>{tipoLabels[e.tipo] || e.tipo}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">Quantidade</dt>
-                      <dd>{e.quantidade}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">Data de entrega</dt>
-                      <dd className="font-mono">{fmtData(e.data)}</dd>
-                    </div>
-                    {/* Devolução não tem troca a programar. */}
-                    {e.tipo !== "devolucao" && (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-muted-foreground">Previsão de substituição</dt>
-                        <dd className={`font-mono ${corPrevisao(diasParaSubstituir(e.data_prevista_substituicao))}`}>
-                          {fmtData(e.data_prevista_substituicao)}
-                        </dd>
-                      </div>
-                    )}
-                  </dl>
+                  {/*
+                   * Campos rotulados em grade: rótulo na coluna 1, valor na
+                   * coluna 2. Todos os valores começam no mesmo X, o que deixa
+                   * as datas alinhadas para leitura em varredura vertical —
+                   * com `justify-between` cada valor parava numa posição
+                   * diferente, conforme o tamanho do próprio texto.
+                   *
+                   * A largura da coluna 1 é a do maior rótulo ("Previsão de
+                   * substituição"), resolvida pelo próprio grid.
+                   */}
+                  {(() => {
+                    const dias = diasParaSubstituir(e.data_prevista_substituicao);
+                    // O realce vale para a linha inteira, rótulo incluído: é
+                    // assim que a troca vencida salta aos olhos na lista.
+                    const cor = corPrevisao(dias);
+                    return (
+                      <dl className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+                        <dt className="text-muted-foreground">Motivo</dt>
+                        <dd>{tipoLabels[e.tipo] || e.tipo}</dd>
+
+                        <dt className="text-muted-foreground">Quantidade</dt>
+                        <dd className="tabular-nums">{e.quantidade}</dd>
+
+                        <dt className="text-muted-foreground">Data de entrega</dt>
+                        <dd className="font-mono tabular-nums">{fmtData(e.data)}</dd>
+
+                        {/* Devolução não tem troca a programar. */}
+                        {e.tipo !== "devolucao" && (
+                          <>
+                            <dt className={cor}>Previsão de substituição</dt>
+                            <dd className={`font-mono tabular-nums ${cor}`}>
+                              {fmtData(e.data_prevista_substituicao)}
+                            </dd>
+                          </>
+                        )}
+                      </dl>
+                    );
+                  })()}
                   {e.observacao && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{e.observacao}</p>}
                 </CardContent>
               </Card>
