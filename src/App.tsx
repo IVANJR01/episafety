@@ -51,6 +51,7 @@ import Catalogo from "@/pages/comercial/Catalogo";
 import Faturas from "@/pages/Faturas";
 import AsoModule from "@/pages/aso/AsoModule";
 import VerificarAso from "@/pages/VerificarAso";
+import AprovacaoPublica from "@/pages/AprovacaoPublica";
 import CatModule from "@/pages/cat/CatModule";
 import CatNovo from "@/pages/cat/CatNovo";
 import CatDetalhe from "@/pages/cat/CatDetalhe";
@@ -405,6 +406,7 @@ const App = () => (
             <Route path="/termos" element={<Termos />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
+            <Route path="/aprovacao-publica" element={<AprovacaoPublica />} />
             <Route path="/setup-mfa" element={<SetupMfaGuarded />} />
             <Route path="/homolog/fase3-portal-rh-test" element={<Fase3PortalRHTest />} />
             <Route path="/homolog/fase3-all" element={<Fase3AllTest />} />

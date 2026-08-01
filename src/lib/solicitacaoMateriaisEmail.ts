@@ -138,8 +138,23 @@ export async function enviarEmailSolicitacao(
       console.warn("[solicitacao] Não foi possível anexar o PDF ao email:", e);
     }
 
+    // Token de aprovação/recusa sem login: quem recebe o email pode não ter
+    // (e nunca ter) usuário no sistema. Gera um token novo a cada envio —
+    // links de emails anteriores deixam de funcionar, e a decisão só é
+    // aceita enquanto o status ainda for "enviada" (checado no banco).
+    let tokenPublico: string | undefined;
+    try {
+      tokenPublico = crypto.randomUUID();
+      const expiraEm = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      await (supabase.from as any)("solicitacoes_materiais")
+        .update({ token_publico: tokenPublico, token_publico_expira_em: expiraEm, token_publico_usado_em: null })
+        .eq("id", solicitacaoId);
+    } catch (e) {
+      console.warn("[solicitacao] Não foi possível gerar o link de aprovação sem login:", e);
+    }
+
     const { data, error } = await supabase.functions.invoke("send-purchase-email", {
-      body: { solicitacao: solicitacaoData, email: emailCompras, pdfBase64, pdfFilename },
+      body: { solicitacao: solicitacaoData, email: emailCompras, pdfBase64, pdfFilename, tokenPublico },
     });
 
     if (error) {

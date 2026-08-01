@@ -23,6 +23,7 @@ interface EmailPayload {
   email: string;
   pdfBase64?: string;
   pdfFilename?: string;
+  tokenPublico?: string;
 }
 
 async function sendEmail(
@@ -82,7 +83,7 @@ async function sendEmail(
   return response;
 }
 
-function gerarHtmlEmail(solicitacao: SolicitacaoEmail, temAnexo: boolean): string {
+function gerarHtmlEmail(solicitacao: SolicitacaoEmail, temAnexo: boolean, tokenPublico?: string): string {
   const prioridades: Record<string, string> = {
     baixa: "Baixa",
     normal: "Normal",
@@ -94,9 +95,15 @@ function gerarHtmlEmail(solicitacao: SolicitacaoEmail, temAnexo: boolean): strin
   const dataFormatada = solicitacao.data_necessidade
     ? new Date(solicitacao.data_necessidade).toLocaleDateString("pt-BR")
     : "Não especificado";
-  // Abre o modal de Aprovar/Recusar direto nessa solicitação — exige login,
-  // a decisão em si é sempre tomada dentro do sistema.
-  const linkAprovacao = `https://safetysolucoes.com/epis/solicitacoes-materiais?empresa_id=${solicitacao.empresa_id}&aprovar=${solicitacao.solicitacao_id}`;
+  // Quem recebe este email normalmente não tem (e não vai ter) login no
+  // sistema. Com o token, o link abre uma página pública dedicada — sem
+  // senha — onde a pessoa confirma aprovar ou recusar. Sem token (falha ao
+  // gerar), cai no link interno de sempre, que exige login.
+  const baseAprovacao = tokenPublico
+    ? `https://safetysolucoes.com/aprovacao-publica?id=${solicitacao.solicitacao_id}&token=${tokenPublico}`
+    : `https://safetysolucoes.com/epis/solicitacoes-materiais?empresa_id=${solicitacao.empresa_id}&aprovar=${solicitacao.solicitacao_id}`;
+  const linkAprovar = tokenPublico ? `${baseAprovacao}&acao=aprovar` : baseAprovacao;
+  const linkRecusar = tokenPublico ? `${baseAprovacao}&acao=recusar` : baseAprovacao;
 
   return `
 <!DOCTYPE html>
@@ -209,15 +216,15 @@ function gerarHtmlEmail(solicitacao: SolicitacaoEmail, temAnexo: boolean): strin
            a decisão final é sempre tomada lá dentro, com login, nunca só pelo
            clique no email. -->
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${linkAprovacao}" style="display: inline-block; background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 0 6px 10px;">
+        <a href="${linkAprovar}" style="display: inline-block; background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 0 6px 10px;">
           ✅ Aprovar
         </a>
-        <a href="${linkAprovacao}" style="display: inline-block; background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 0 6px 10px;">
+        <a href="${linkRecusar}" style="display: inline-block; background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 0 6px 10px;">
           ❌ Recusar
         </a>
         <div style="margin-top: 6px;">
-          <a href="${linkAprovacao}" style="color: #6b7280; font-size: 12px; text-decoration: underline;">
-            Ver solicitação completa no sistema
+          <a href="${baseAprovacao}" style="color: #6b7280; font-size: 12px; text-decoration: underline;">
+            Ver detalhes antes de decidir
           </a>
         </div>
       </div>
@@ -245,7 +252,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { solicitacao, email, pdfBase64, pdfFilename }: EmailPayload = await req.json();
+    const { solicitacao, email, pdfBase64, pdfFilename, tokenPublico }: EmailPayload = await req.json();
 
     if (!email || !solicitacao) {
       return new Response(
@@ -255,7 +262,7 @@ Deno.serve(async (req) => {
     }
 
     const anexo = pdfBase64 && pdfFilename ? { filename: pdfFilename, base64: pdfBase64 } : undefined;
-    const html = gerarHtmlEmail(solicitacao, !!anexo);
+    const html = gerarHtmlEmail(solicitacao, !!anexo, tokenPublico);
     const subject = `[${solicitacao.numero_solicitacao}] ${solicitacao.titulo}${solicitacao.prioridade === "urgente" ? " - 🔴 URGENTE" : ""}`;
 
     await sendEmail(email, subject, html, anexo);
