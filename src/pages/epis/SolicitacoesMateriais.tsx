@@ -280,7 +280,7 @@ export default function SolicitacoesMateriais() {
         .eq("id", s.empresa_id)
         .maybeSingle();
 
-      await enviarEmailSolicitacao(
+      const resultado = await enviarEmailSolicitacao(
         s.id,
         s.numero_solicitacao,
         s.titulo,
@@ -291,7 +291,16 @@ export default function SolicitacoesMateriais() {
         s.prioridade,
         s.data_necessidade || undefined
       );
-      toast.success("Email reenviado com sucesso para o setor de compras");
+
+      if (resultado.enviado) {
+        toast.success("Email reenviado com sucesso para o setor de compras");
+      } else if (resultado.modoDebug) {
+        toast.warning("Email NÃO foi enviado de verdade", {
+          description: `A função de envio está em modo debug (sem chave de API configurada). Configure RESEND_API_KEY no Supabase. Destinatário: ${resultado.emailDestino}`,
+        });
+      } else {
+        toast.error("Erro ao reenviar email", { description: resultado.erro || "Falha desconhecida" });
+      }
     } catch (error: any) {
       toast.error("Erro ao reenviar email", { description: error.message });
     } finally {

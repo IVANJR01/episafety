@@ -438,34 +438,47 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           { description: `Motivo: ${fotosComFalha[0].falhaFoto}. O resto foi gravado normalmente.`, duration: 10000 },
         );
       } else {
-        if (nextStatus === "enviada") {
-          toast.success("Solicitação enviada ✓ Email foi disparado para o setor de compras");
-        } else {
-          toast.success("Solicitação salva");
-        }
+        toast.success(nextStatus === "enviada" ? "Solicitação enviada ✓" : "Solicitação salva");
       }
 
-      // Enviar email automaticamente quando a solicitação for enviada
+      // Enviar email automaticamente quando a solicitação for enviada.
+      // Roda de forma assíncrona (não bloqueia o fechamento do formulário), mas
+      // o resultado real do envio é sempre avisado — nunca só assumido.
       if (nextStatus === "enviada") {
-        // Obtém dados da empresa para complementar o email
-        const { data: empData } = await supabase
-          .from("empresa_config")
-          .select("nome")
-          .eq("id", empresaId)
-          .maybeSingle();
+        (async () => {
+          const { data: empData } = await supabase
+            .from("empresa_config")
+            .select("nome")
+            .eq("id", empresaId)
+            .maybeSingle();
 
-        // Envia email de forma assíncrona (não bloqueia a UI)
-        enviarEmailSolicitacao(
-          solicId!,
-          (solicitacaoId ? head.numero_solicitacao : (await supabase.rpc("proximo_numero_solicitacao_material", { _empresa_id: empresaId })).data) as string || "—",
-          head.titulo,
-          empresaId,
-          (empData as any)?.nome,
-          head.setor,
-          head.solicitante_nome,
-          head.prioridade,
-          head.data_necessidade
-        ).catch((e) => console.error("[solicitacao] Erro ao enviar email:", e));
+          const numero = (solicitacaoId
+            ? head.numero_solicitacao
+            : (await supabase.rpc("proximo_numero_solicitacao_material", { _empresa_id: empresaId })).data) as string || "—";
+
+          const resultado = await enviarEmailSolicitacao(
+            solicId!,
+            numero,
+            head.titulo,
+            empresaId,
+            (empData as any)?.nome,
+            head.setor,
+            head.solicitante_nome,
+            head.prioridade,
+            head.data_necessidade
+          );
+
+          if (resultado.enviado) {
+            toast.success(`Email enviado para o setor de compras (${resultado.emailDestino})`);
+          } else if (resultado.modoDebug) {
+            toast.warning("Email NÃO foi enviado de verdade", {
+              description: `A função de envio está em modo debug (sem chave de API configurada). Configure RESEND_API_KEY no Supabase. Destinatário: ${resultado.emailDestino}`,
+              duration: 10000,
+            });
+          } else {
+            toast.error("Falha ao enviar email para compras", { description: resultado.erro || "Falha desconhecida" });
+          }
+        })().catch((e) => console.error("[solicitacao] Erro ao enviar email:", e));
       }
 
       // Gravado no banco: o rascunho local cumpriu o papel e sai de cena.

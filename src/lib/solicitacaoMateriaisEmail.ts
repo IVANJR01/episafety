@@ -71,9 +71,21 @@ async function obterContagemItens(solicitacaoId: string): Promise<number> {
   }
 }
 
+export interface ResultadoEnvioEmail {
+  /** true somente quando o email foi de fato enviado (não em modo debug) */
+  enviado: boolean;
+  /** true quando a Edge Function respondeu em modo debug (sem RESEND_API_KEY) */
+  modoDebug: boolean;
+  emailDestino?: string;
+  erro?: string;
+}
+
 /**
  * Envia email de notificação quando uma solicitação é enviada.
- * Executa de forma assíncrona sem bloquear a operação principal.
+ * Não lança exceção: o chamador sempre recebe um resultado, mesmo em falha,
+ * para não interromper o fluxo principal (salvar/enviar solicitação).
+ * Use o campo `enviado`/`erro` do retorno para saber o que de fato aconteceu —
+ * a Edge Function pode responder "sucesso" em modo debug sem enviar nada.
  */
 export async function enviarEmailSolicitacao(
   solicitacaoId: string,
@@ -85,12 +97,12 @@ export async function enviarEmailSolicitacao(
   solicitanteNome?: string,
   prioridade: string = "normal",
   dataNecessidade?: string
-): Promise<void> {
+): Promise<ResultadoEnvioEmail> {
   try {
     const emailCompras = await obterEmailCompras(empresaId);
     if (!emailCompras) {
       console.warn("[solicitacao] Nenhum email de compras encontrado para a empresa");
-      return;
+      return { enviado: false, modoDebug: false, erro: "Nenhum email de compras configurado para a empresa" };
     }
 
     const itensCount = await obterContagemItens(solicitacaoId);
@@ -108,20 +120,24 @@ export async function enviarEmailSolicitacao(
       itens_count: itensCount,
     };
 
-    // Chama a Edge Function para enviar o email
-    // Executamos de forma assíncrona (sem await) para não bloquear a UI
-    const { error } = await supabase.functions.invoke("send-purchase-email", {
+    const { data, error } = await supabase.functions.invoke("send-purchase-email", {
       body: { solicitacao: solicitacaoData, email: emailCompras },
     });
 
     if (error) {
       console.error("[solicitacao] Erro ao enviar email:", error);
-      // Não lançamos erro aqui para não interromper a operação principal
+      return { enviado: false, modoDebug: false, emailDestino: emailCompras, erro: error.message };
+    }
+
+    const modoDebug = !!(data && typeof data.message === "string" && data.message.toLowerCase().includes("debug"));
+    if (modoDebug) {
+      console.warn("[solicitacao] Email NÃO enviado de verdade — Edge Function está em modo debug (RESEND_API_KEY ausente). Destino:", emailCompras);
     } else {
       console.log("[solicitacao] Email enviado com sucesso para:", emailCompras);
     }
-  } catch (error) {
+    return { enviado: !modoDebug, modoDebug, emailDestino: emailCompras };
+  } catch (error: any) {
     console.error("[solicitacao] Erro ao preparar envio de email:", error);
-    // Não lançamos erro aqui para não interromper a operação principal
+    return { enviado: false, modoDebug: false, erro: error?.message || String(error) };
   }
 }
