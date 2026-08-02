@@ -154,7 +154,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         ...item,
         tipo_ambiente: ambienteVinculado?.tipo_ambiente,
         pe_direito: ambienteVinculado?.pe_direito,
-        qtd_trabalhadores: (ambienteVinculado as any)?.qtd_trabalhadores,
         descricao: ambienteVinculado?.descricao,
       });
     } else {
@@ -189,15 +188,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           nome: formData.nome,
           tipo_ambiente: formData.tipo_ambiente || "interno",
           pe_direito: formData.pe_direito || null,
-          qtd_trabalhadores: formData.qtd_trabalhadores ?? null,
           descricao: formData.descricao || null,
         } as any);
         await saveSetor({
           id: formData.id,
           nome: formData.nome,
           ambiente_id: (ambienteSalvo as any).id,
-          responsavel_setor: formData.responsavel_setor || null,
-          jornada_turnos: formData.jornada_turnos || null,
         } as any);
       }
       if (modalType === "processo") await saveProcesso(formData);
@@ -366,14 +362,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 <TableRow>
                   <TableHead>Nome do Setor</TableHead>
                   <TableHead>Ambiente de trabalho</TableHead>
-                  <TableHead>Responsável</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {setores.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-slate-400">
+                    <TableCell colSpan={3} className="text-center py-6 text-slate-400">
                       Nenhum setor cadastrado.
                     </TableCell>
                   </TableRow>
@@ -391,7 +386,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                         <TableCell className="text-sm text-slate-600 max-w-xs truncate" title={caracteristicasAmbiente(amb)}>
                           {caracteristicasAmbiente(amb) || "—"}
                         </TableCell>
-                        <TableCell>{set.responsavel_setor || "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
                             <Button onClick={() => handleOpenModal("setor", set)} variant="ghost" size="sm">
@@ -878,20 +872,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label>Pé-direito</Label>
-                    <Input value={formData.pe_direito || ""} placeholder="Ex.: 3 m"
-                      onChange={(e) => setFormData({ ...formData, pe_direito: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Trabalhadores no ambiente</Label>
-                    <Input type="number" min={0} value={formData.qtd_trabalhadores ?? ""}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        qtd_trabalhadores: e.target.value === "" ? null : Number(e.target.value),
-                      })} />
-                  </div>
+                <div>
+                  <Label>Pé-direito</Label>
+                  <Input value={formData.pe_direito || ""} placeholder="Ex.: 3 m"
+                    onChange={(e) => setFormData({ ...formData, pe_direito: e.target.value })} />
                 </div>
                 <div>
                   {/* `caracteristicasAmbiente()` (sstEstrutura.ts) lê este texto
@@ -905,21 +889,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     placeholder="Piso, ventilação, iluminação, paredes/cobertura, máquinas e instalações, e qualquer outro detalhe relevante"
                     rows={4}
                   />
-                </div>
-
-                {/* Dados do Setor em si — organização, não o espaço físico. */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
-                  <div>
-                    <Label>Responsável pelo setor</Label>
-                    <Input value={formData.responsavel_setor || ""}
-                      onChange={(e) => setFormData({ ...formData, responsavel_setor: e.target.value })}
-                      placeholder="Nome de quem responde pelo setor" />
-                  </div>
-                  <div>
-                    <Label>Jornada / turnos</Label>
-                    <Input value={formData.jornada_turnos || ""} placeholder="Ex.: 08h-17h"
-                      onChange={(e) => setFormData({ ...formData, jornada_turnos: e.target.value })} />
-                  </div>
                 </div>
               </>
             )}
