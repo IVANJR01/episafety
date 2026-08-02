@@ -536,20 +536,26 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <Plus className="w-4 h-4 mr-1" /> Novo Processo
             </Button>
           </div>
+          {/* Sem a coluna "Nome do Processo": o nome é gerado a partir da
+              primeira frase das etapas, então ficava ao lado da própria
+              descrição, dizendo a mesma coisa cortada mais cedo. O nome segue
+              existindo — é o rótulo usado no PDF e nos seletores do PGR. */}
           <ListaEstrutura
             itens={processos}
             vazio="Nenhum processo cadastrado."
-            rotuloPrincipal="Nome do Processo"
-            /* Numa linha só no desktop: colar o texto inteiro aqui empurrava a
-               tabela. No cartão do celular pode quebrar à vontade. */
-            principal={(proc) => (
-              <span className="block sm:max-w-[280px] sm:truncate" title={proc.nome}>{proc.nome}</span>
-            )}
+            rotuloPrincipal="Setor"
+            principal={(proc) => setores.find((s) => s.id === proc.setor_id)?.nome || "-"}
             colunas={[
-              { rotulo: "Setor", celula: (proc) => setores.find((s) => s.id === proc.setor_id)?.nome || "-" },
               {
                 rotulo: "Característica",
                 celula: (proc) => <Badge variant="outline">{proc.caracteristica_atividade}</Badge>,
+              },
+              {
+                rotulo: "Descrição do processo",
+                longo: true,
+                classe: "text-sm text-slate-600 max-w-md truncate",
+                dica: (proc) => proc.descricao_etapas || "",
+                celula: (proc) => proc.descricao_etapas || "—",
               },
             ]}
             onEditar={(proc) => handleOpenModal("processo", proc)}
