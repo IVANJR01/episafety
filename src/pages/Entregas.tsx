@@ -1411,7 +1411,7 @@ export default function Entregas() {
       )}
 
       <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); setDescarteSubstituicao(true); setDescarteDescricao(""); } }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Nova Movimentação</DialogTitle>
             {contratoId && contractEpis.length > 0 && (
@@ -1574,7 +1574,7 @@ export default function Entregas() {
         }
         setSignOpen(true);
       }}>
-        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl sm:w-[95vw]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {signInputType === "facial" ? <ScanFace className="w-5 h-5" /> : <PenLine className="w-5 h-5" />}
@@ -1745,7 +1745,7 @@ export default function Entregas() {
       />
 
       <Dialog open={fichaOpen} onOpenChange={setFichaOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -1794,7 +1794,7 @@ export default function Entregas() {
 
       {/* Devolução confirmation dialog */}
       <Dialog open={devolucaoDialogOpen} onOpenChange={(v) => { if (!devolucaoSaving) setDevolucaoDialogOpen(v); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Undo2 className="w-5 h-5" />
@@ -1851,7 +1851,7 @@ export default function Entregas() {
       </Dialog>
 
       <Dialog open={estornoDialogOpen} onOpenChange={(v) => { if (!estornoSaving) setEstornoDialogOpen(v); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="w-5 h-5" />
