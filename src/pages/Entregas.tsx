@@ -1138,7 +1138,9 @@ export default function Entregas() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    /* pb no celular: o botão flutuante cobriria o rodapé do último card, que
+       é justamente onde ficam a observação e os botões de ação. */
+    <div className="space-y-4 sm:space-y-6 pb-16 lg:pb-0">
       <PageHeader
         title="Entregas de EPI"
         subtitle="Controle de entregas, assinaturas, devoluções e histórico de EPIs."
@@ -1155,8 +1157,12 @@ export default function Entregas() {
                 <FileText className="w-4 h-4 mr-1 sm:mr-2" />Ficha
               </Button>
             )}
+            {/* No celular esta ação vira o botão flutuante lá embaixo — perto
+                do polegar e sem ocupar altura no topo, que é onde a lista
+                precisa de espaço. No desktop não há barra inferior nem
+                problema de alcance, então segue como botão comum. */}
             {canCreate && (
-              <Button onClick={() => { refetchEpis(); setOpen(true); }} className="text-xs sm:text-sm">
+              <Button onClick={() => { refetchEpis(); setOpen(true); }} className="hidden lg:inline-flex text-xs sm:text-sm">
                 <Plus className="w-4 h-4 mr-1 sm:mr-2" />Nova Entrega
               </Button>
             )}
@@ -1382,6 +1388,26 @@ export default function Entregas() {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {/*
+       * Botão flutuante de nova entrega (só no celular).
+       *
+       * Fica acima da barra de navegação inferior, que é `fixed` com
+       * ~3,5rem de altura mais a área segura do aparelho — daí o cálculo no
+       * `bottom`, em vez de um valor fixo que encostaria na barra em telas
+       * com faixa inferior (iPhone) e flutuaria alto demais nas sem.
+       *
+       * z-40 fica abaixo do z-50 da barra: o botão não cobre a navegação.
+       */}
+      {canCreate && (
+        <Button
+          onClick={() => { refetchEpis(); setOpen(true); }}
+          aria-label="Nova entrega"
+          className="lg:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-40 h-14 w-14 rounded-full p-0 shadow-lg"
+        >
+          <Plus className="w-7 h-7" />
+        </Button>
       )}
 
       <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); setDescarteSubstituicao(true); setDescarteDescricao(""); } }}>
