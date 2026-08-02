@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ehSchemaDesatualizado, mensagemErro } from "@/lib/erroSupabase";
 import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
-import { Building2, Home, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Building2, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -143,7 +143,23 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
   const handleOpenModal = (type: any, item?: any) => {
     setModalType(type);
-    setFormData(item || {});
+    // Setor e Ambiente viraram um formulário só. O registro do Setor guarda
+    // apenas o `ambiente_id`; os campos que a pessoa vai editar (tipo,
+    // pé-direito, trabalhadores, descrição) moram no Ambiente vinculado, e
+    // sem essa busca eles abririam em branco toda vez que alguém editasse um
+    // setor já cadastrado.
+    if (type === "setor" && item?.ambiente_id) {
+      const ambienteVinculado = ambientes.find((a) => a.id === item.ambiente_id);
+      setFormData({
+        ...item,
+        tipo_ambiente: ambienteVinculado?.tipo_ambiente,
+        pe_direito: ambienteVinculado?.pe_direito,
+        qtd_trabalhadores: (ambienteVinculado as any)?.qtd_trabalhadores,
+        descricao: ambienteVinculado?.descricao,
+      });
+    } else {
+      setFormData(item || {});
+    }
     setErroSalvar("");
     setOpenModal(true);
   };
@@ -162,7 +178,28 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     try {
       if (modalType === "estabelecimento") await saveEstabelecimento(formData);
       if (modalType === "ambiente") await saveAmbiente(formData);
-      if (modalType === "setor") await saveSetor(formData);
+      if (modalType === "setor") {
+        // Um Setor sempre tem um Ambiente por trás — criado junto na primeira
+        // vez, atualizado nas próximas. A pessoa só vê e edita um formulário;
+        // por baixo continuam sendo dois registros, porque é assim que o PDF
+        // do PGR e o Núcleo Mestre já leem essa estrutura (mudar isso exigiria
+        // migrar dado de empresas que já têm PGR gerado).
+        const ambienteSalvo = await saveAmbiente({
+          id: formData.ambiente_id || undefined,
+          nome: formData.nome,
+          tipo_ambiente: formData.tipo_ambiente || "interno",
+          pe_direito: formData.pe_direito || null,
+          qtd_trabalhadores: formData.qtd_trabalhadores ?? null,
+          descricao: formData.descricao || null,
+        } as any);
+        await saveSetor({
+          id: formData.id,
+          nome: formData.nome,
+          ambiente_id: (ambienteSalvo as any).id,
+          responsavel_setor: formData.responsavel_setor || null,
+          jornada_turnos: formData.jornada_turnos || null,
+        } as any);
+      }
       if (modalType === "processo") await saveProcesso(formData);
       if (modalType === "funcao") await saveFuncao(formData);
       if (modalType === "atividade") await saveAtividade(formData);
@@ -229,9 +266,11 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">
               <Building2 className="w-4 h-4" /> Estabelecimentos
             </TabsTrigger>
-            <TabsTrigger value="ambientes" className="text-xs font-medium flex items-center gap-1">
-              <Home className="w-4 h-4" /> Ambientes
-            </TabsTrigger>
+            {/* "Ambientes" deixou de ser aba própria: cada Setor cadastra e
+                mantém seu próprio ambiente de trabalho junto (ver o
+                formulário de Setor e handleSave). Existir como aba separada
+                era o convite para cadastrar a caracterização física duas
+                vezes — uma vez aqui, outra de novo no Setor que a usa. */}
             <TabsTrigger value="setores" className="text-xs font-medium flex items-center gap-1">
               <LayoutGrid className="w-4 h-4" /> Setores
             </TabsTrigger>
@@ -313,60 +352,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           </Card>
         </TabsContent>
 
-        {/* 2. AMBIENTES */}
-        <TabsContent value="ambientes" className="mt-4 space-y-4">
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <h3 className="font-semibold text-slate-800">Ambientes de trabalho</h3>
-            <Button onClick={() => handleOpenModal("ambiente")} size="sm">
-              <Plus className="w-4 h-4 mr-1" /> Novo Ambiente
-            </Button>
-          </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Ambiente</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Características</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ambientes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-slate-400">
-                      Nenhum ambiente cadastrado.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  ambientes.map((amb) => (
-                    <TableRow key={amb.id}>
-                      <TableCell className="font-medium text-slate-900">{amb.nome}</TableCell>
-                      <TableCell><Badge className="bg-slate-800 text-white">{amb.tipo_ambiente}</Badge></TableCell>
-                      <TableCell className="text-sm text-slate-600">
-                        {/* Mesma regra usada na importação e no item do
-                            inventário — uma fonte só evita divergirem. */}
-                        {caracteristicasAmbiente(amb) || "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button onClick={() => handleOpenModal("ambiente", amb)} variant="ghost" size="sm">
-                            <Edit2 className="w-4 h-4 text-slate-600" />
-                          </Button>
-                          <Button onClick={() => setDeleteConfirm({ open: true, type: "ambiente", id: amb.id, nome: amb.nome })} variant="ghost" size="sm">
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        {/* 3. SETORES */}
+        {/* 2. SETORES (inclui o Ambiente de cada setor — ver comentário na aba) */}
         <TabsContent value="setores" className="mt-4 space-y-4">
           <div className="flex flex-wrap justify-between items-center gap-2">
             <h3 className="font-semibold text-slate-800">Setores</h3>
@@ -379,7 +365,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome do Setor</TableHead>
-                  <TableHead>Ambiente Vinculado</TableHead>
+                  <TableHead>Ambiente de trabalho</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -393,11 +379,18 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   </TableRow>
                 ) : (
                   setores.map((set) => {
-                    const ambName = ambientes.find((a) => a.id === set.ambiente_id)?.nome || "Não vinculado";
+                    // A coluna mostrava o nome do Ambiente vinculado — que hoje
+                    // é sempre o próprio ambiente deste setor, então repetia o
+                    // "Nome do Setor" da primeira coluna. As características
+                    // (mesma leitura usada no PDF do PGR) são a informação que
+                    // de fato falta ver aqui sem abrir o cadastro.
+                    const amb = ambientes.find((a) => a.id === set.ambiente_id);
                     return (
                       <TableRow key={set.id}>
                         <TableCell className="font-medium text-slate-900">{set.nome}</TableCell>
-                        <TableCell>{ambName}</TableCell>
+                        <TableCell className="text-sm text-slate-600 max-w-xs truncate" title={caracteristicasAmbiente(amb)}>
+                          {caracteristicasAmbiente(amb) || "—"}
+                        </TableCell>
                         <TableCell>{set.responsavel_setor || "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -645,7 +638,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       {/* DIALOG DE CADASTRO E EDIÇÃO */}
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         {/* Tela cheia no celular; largura confortável no desktop para os grids de 2-3 colunas. */}
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {formData.id ? "Editar" : "Cadastrar"} {ROTULO_MODAL[modalType]}
@@ -856,8 +849,20 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               </>
             )}
 
-            {modalType === "ambiente" && (
+            {/* modalType === "ambiente" não abre mais sozinho por nenhum botão
+                da UI — o cadastro de ambiente virou parte do formulário de
+                Setor, logo abaixo. A mutation saveAmbiente() continua existindo
+                porque handleSave a chama por baixo dos panos ao salvar um
+                Setor; só a tela separada para editar um Ambiente isolado é
+                que deixou de existir. */}
+
+            {modalType === "setor" && (
               <>
+                {/* Cadastro do Ambiente, embutido aqui — é o mesmo formulário
+                    que antes vivia numa aba própria. Cada Setor tem o seu:
+                    não existe mais escolher entre ambientes já cadastrados,
+                    porque era exatamente aí que a descrição acabava sendo
+                    escrita duas vezes (uma no Ambiente, outra de novo aqui). */}
                 <div>
                   <Label>Tipo de Ambiente</Label>
                   <Select
@@ -873,24 +878,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     </SelectContent>
                   </Select>
                 </div>
-                {/* Pé-direito e nº de trabalhadores continuam campos próprios por
-                    serem valores curtos/numéricos, rápidos de preencher. O
-                    resto (piso, ventilação, iluminação, paredes, máquinas)
-                    virou um único campo de texto livre — eram 5 caixinhas
-                    pequenas para uma informação que sai mais natural em
-                    texto corrido. `caracteristicasAmbiente()` (sstEstrutura.ts)
-                    lê esse texto para a coluna "Características" da tabela e
-                    o PDF do PGR imprime como parágrafo na seção
-                    "Caracterização dos Ambientes". */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label>Pé-direito</Label>
                     <Input value={formData.pe_direito || ""} placeholder="Ex.: 3 m"
                       onChange={(e) => setFormData({ ...formData, pe_direito: e.target.value })} />
                   </div>
-                  {/* Coluna sst_ambientes.qtd_trabalhadores, criada pela migration
-                      de 28/07. O campo ficou fora enquanto ela estava pendente:
-                      enviar coluna inexistente derrubava o insert inteiro. */}
                   <div>
                     <Label>Trabalhadores no ambiente</Label>
                     <Input type="number" min={0} value={formData.qtd_trabalhadores ?? ""}
@@ -901,6 +894,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   </div>
                 </div>
                 <div>
+                  {/* `caracteristicasAmbiente()` (sstEstrutura.ts) lê este texto
+                      para a coluna "Ambiente de trabalho" da tabela e o PDF do
+                      PGR imprime como parágrafo na seção "Caracterização dos
+                      Ambientes". */}
                   <Label>Descrição do ambiente</Label>
                   <Textarea
                     value={formData.descricao || ""}
@@ -909,27 +906,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     rows={4}
                   />
                 </div>
-              </>
-            )}
 
-            {modalType === "setor" && (
-              <>
-                <div>
-                  <Label>Ambiente Físico Vinculado</Label>
-                  <Select
-                    value={formData.ambiente_id || ""}
-                    onValueChange={(val) => setFormData({ ...formData, ambiente_id: val })}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Selecione o ambiente..." /></SelectTrigger>
-                    <SelectContent>
-                      {ambientes.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {/* "Responsável" era coluna na tabela sem campo aqui. */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Dados do Setor em si — organização, não o espaço físico. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
                   <div>
                     <Label>Responsável pelo setor</Label>
                     <Input value={formData.responsavel_setor || ""}
@@ -941,12 +920,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     <Input value={formData.jornada_turnos || ""} placeholder="Ex.: 08h-17h"
                       onChange={(e) => setFormData({ ...formData, jornada_turnos: e.target.value })} />
                   </div>
-                </div>
-                <div>
-                  <Label>Descrição</Label>
-                  <Textarea value={formData.descricao || ""}
-                    onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    placeholder="O que este setor faz" />
                 </div>
               </>
             )}

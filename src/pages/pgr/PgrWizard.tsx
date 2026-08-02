@@ -56,8 +56,13 @@ interface Etapa {
  */
 const ETAPAS: Etapa[] = [
   { id: "dados", n: 1, titulo: "Dados do PGR", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
-  { id: "ambientes", n: 2, titulo: "Ambientes e processos", ajuda: "Onde se trabalha e o que é feito em cada lugar." },
-  { id: "setores", n: 3, titulo: "Setores e GES", ajuda: "Divisão da empresa e agrupamento de quem tem a mesma exposição." },
+  // id "ambientes" mantido por compatibilidade com o progresso já salvo de
+  // PGRs em andamento (é essa string que fica gravada como etapa atual) — o
+  // cadastro de Ambiente em si não vive mais aqui, ele entrou dentro do
+  // formulário de Setor (etapa seguinte). Esta etapa passou a conter só
+  // Processos, que de qualquer forma dependem de um Setor já existir.
+  { id: "ambientes", n: 2, titulo: "Processos", ajuda: "O que é feito em cada setor." },
+  { id: "setores", n: 3, titulo: "Setores e GES", ajuda: "Divisão da empresa, o ambiente de trabalho de cada setor, e agrupamento de quem tem a mesma exposição." },
   { id: "funcoes", n: 4, titulo: "Funções e atividades", ajuda: "Cargos existentes e o que cada um faz." },
   { id: "perigos", n: 5, titulo: "Perigos e riscos", ajuda: "O que pode causar dano, onde ocorre e de onde veio a informação." },
   { id: "avaliacao", n: 6, titulo: "Avaliação", ajuda: "Os critérios usados para classificar cada risco." },
@@ -277,15 +282,10 @@ function Assistente() {
           </div>
         );
       case "ambientes":
-        return (
-          <div className="space-y-8 divide-y [&>*+*]:pt-8">
-            {/* `key` = seção: sem ela o React reaproveita a instância da etapa
-                anterior (mesma posição na árvore) e o estado interno vaza de
-                uma etapa para a outra. */}
-            <EstruturaOcupacionalTab key="ambientes" only="ambientes" />
-            <EstruturaOcupacionalTab key="processos" only="processos" />
-          </div>
-        );
+        // O cadastro de Ambiente saiu daqui — entrou no formulário de Setor,
+        // na etapa seguinte. Só sobrou Processos, que já dependia de um Setor
+        // existir antes mesmo dessa mudança.
+        return <EstruturaOcupacionalTab only="processos" />;
       case "setores":
         return (
           <div className="space-y-6">
