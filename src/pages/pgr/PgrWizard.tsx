@@ -19,7 +19,6 @@ import {
 import PgrDadosStep from "@/components/pgr/PgrDadosStep";
 import PgrResponsaveisStep from "@/components/pgr/PgrResponsaveisStep";
 import { EstruturaOcupacionalTab } from "@/components/documentacao/EstruturaOcupacionalTab";
-import LevantamentoPreliminarTab from "@/components/pgr/LevantamentoPreliminarTab";
 import PgrPerigoStep from "@/components/pgr/PgrPerigoStep";
 import ColetasCampoRevisao from "@/components/pgr/ColetasCampoRevisao";
 import InventarioTab from "@/components/pgr/InventarioTab";
@@ -305,15 +304,13 @@ function Assistente() {
         return (
           <div className="space-y-10">
             <ColetasCampoRevisao pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+            {/* "Rastreabilidade do levantamento" saiu daqui: era o
+                LevantamentoPreliminarTab, um segundo formulário gravando na
+                MESMA tabela (pgr_levantamento_preliminar) que a etapa acima —
+                dois lugares para cadastrar o mesmo perigo, com campos
+                diferentes. A lista do que foi levantado continua logo abaixo
+                do formulário, dentro do próprio PgrPerigoStep. */}
             <PgrPerigoStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
-            <details className="border rounded-lg">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
-                Rastreabilidade do levantamento (origem, evidências e perigos descartados)
-              </summary>
-              <div className="p-4 border-t">
-                <LevantamentoPreliminarTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
-              </div>
-            </details>
           </div>
         );
       case "avaliacao":

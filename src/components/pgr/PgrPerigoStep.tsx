@@ -58,7 +58,22 @@ const vazio = {
  */
 export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
   const qc = useQueryClient();
-  const { setores, funcoes, gesList } = useNucleoMestreSst();
+  const { setores, funcoes, gesList, gheFuncoes } = useNucleoMestreSst();
+
+  /**
+   * Quem está exposto sai das funções do GES — não de um texto digitado.
+   *
+   * O grupo já é o conjunto de quem tem a mesma exposição; redigitar os nomes a
+   * cada perigo era o retrabalho que o GES existe para evitar, e ainda deixava
+   * as duas listas divergirem quando uma função mudava de grupo.
+   */
+  const expostosDoGes = (gesId?: string | null) => {
+    if (!gesId) return "";
+    const ids = new Set(
+      (gheFuncoes as any[]).filter((v) => v.ghe_id === gesId && v.funcao_id).map((v) => v.funcao_id),
+    );
+    return funcoes.filter((f: any) => ids.has(f.id)).map((f: any) => f.nome).join(", ");
+  };
 
   const [formAberto, setFormAberto] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -92,7 +107,6 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
     if (!f.perigo_descricao.trim()) falta.push("perigo");
     if (!f.fonte_circunstancia.trim()) falta.push("fonte ou circunstância");
     if (!f.possiveis_lesoes.trim()) falta.push("possíveis lesões");
-    if (!String(f.trabalhadores_expostos).trim()) falta.push("trabalhadores expostos");
     if (!f.medidas_existentes.trim()) falta.push("medidas de prevenção existentes");
     return falta;
   }, [f, ctx]);
@@ -123,7 +137,7 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
         // e são recopiados campo a campo quando o item vira inventário.
         justificativa: [
           `Possíveis lesões: ${f.possiveis_lesoes.trim()}`,
-          `Trabalhadores expostos: ${String(f.trabalhadores_expostos).trim()}`,
+          `Trabalhadores expostos: ${expostosDoGes(ctx.ges_id) || "todo o GES"}`,
           f.medidas_existentes.trim() && `Medidas existentes: ${f.medidas_existentes.trim()}`,
         ].filter(Boolean).join("\n"),
       };
@@ -361,7 +375,7 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
         </p>
 
         <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">Categoria do perigo</Label>
               <Select value={f.grupo} onValueChange={(v) => setF({ ...f, grupo: v })} disabled={!canEdit}>
@@ -372,11 +386,6 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Data do levantamento</Label>
-              <Input type="date" className="h-11" value={f.data_levantamento}
-                onChange={(e) => setF({ ...f, data_levantamento: e.target.value })} disabled={!canEdit} />
             </div>
           </div>
 
@@ -409,15 +418,6 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
 
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">
-              Trabalhadores expostos <span className="text-red-500">*</span>
-            </Label>
-            <Textarea rows={2} value={f.trabalhadores_expostos} disabled={!canEdit}
-              onChange={(e) => setF({ ...f, trabalhadores_expostos: e.target.value })}
-              placeholder="Informe os trabalhadores expostos a este perigo" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">
               Medidas de prevenção existentes <span className="text-red-500">*</span>
             </Label>
             <Textarea rows={2} value={f.medidas_existentes} disabled={!canEdit}
@@ -425,24 +425,6 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
               placeholder="Descreva as medidas de prevenção já existentes" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Responsável pelo levantamento</Label>
-              <Input className="h-11" value={f.responsavel_nome} disabled={!canEdit}
-                onChange={(e) => setF({ ...f, responsavel_nome: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Encaminhamento</Label>
-              <Select value={f.tratamento} onValueChange={(v) => setF({ ...f, tratamento: v })}
-                disabled={!canEdit}>
-                <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tratado_diretamente">Tratado diretamente</SelectItem>
-                  <SelectItem value="avaliacao_aprofundada">Exige avaliação aprofundada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
         </div>
 
         {/* O que falta aparece aqui; gravar e avançar ficam no rodapé do
