@@ -558,15 +558,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   <TableHead>Atividade</TableHead>
                   <TableHead>Função</TableHead>
                   <TableHead>Característica</TableHead>
-                  <TableHead>Frequência / Duração</TableHead>
-                  <TableHead className="text-right">Envolvidos</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {atividades.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-slate-400">
+                    <TableCell colSpan={4} className="text-center py-6 text-slate-400">
                       Nenhuma atividade cadastrada.
                     </TableCell>
                   </TableRow>
@@ -587,10 +585,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                         <TableCell>
                           <Badge variant="outline">{ativ.caracteristica || "rotineira"}</Badge>
                         </TableCell>
-                        <TableCell className="text-xs">
-                          {[ativ.frequencia, ativ.duracao].filter(Boolean).join(" / ") || "-"}
-                        </TableCell>
-                        <TableCell className="text-right">{ativ.trabalhadores_envolvidos ?? "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
                             <Button onClick={() => handleOpenModal("atividade", ativ)} variant="ghost" size="sm">
@@ -1093,45 +1087,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <Label>Frequência</Label>
-                    <Input
-                      value={formData.frequencia || ""}
-                      onChange={(e) => setFormData({ ...formData, frequencia: e.target.value })}
-                      placeholder="Diária, semanal..."
-                    />
-                  </div>
-                  <div>
-                    <Label>Duração</Label>
-                    <Input
-                      value={formData.duracao || ""}
-                      onChange={(e) => setFormData({ ...formData, duracao: e.target.value })}
-                      placeholder="Ex.: 4h por turno"
-                    />
-                  </div>
-                  <div>
-                    <Label>Trabalhadores envolvidos</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={formData.trabalhadores_envolvidos ?? ""}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        trabalhadores_envolvidos: e.target.value === "" ? null : Number(e.target.value),
-                      })}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Postura / esforço exigido</Label>
-                  <Input
-                    value={formData.postura_esforco || ""}
-                    onChange={(e) => setFormData({ ...formData, postura_esforco: e.target.value })}
-                    placeholder="Em pé, agachado, carga de 20 kg..."
-                  />
-                </div>
                   </div>
                 </details>
               </>
