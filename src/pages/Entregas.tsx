@@ -23,6 +23,7 @@ import { PackageOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import SignatureCanvas, { type SignatureCanvasRef } from "@/components/SignatureCanvas";
 import FullscreenSignature from "@/components/FullscreenSignature";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
 import CameraCapture from "@/components/CameraCapture";
 
@@ -139,6 +140,9 @@ export default function Entregas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [fichaSearch, setFichaSearch] = useState("");
   const [fichaFuncId, setFichaFuncId] = useState("");
+  /* Exclusão é definitiva e leva a assinatura junto — precisa passar por
+     confirmação que diga exatamente qual registro está sendo apagado. */
+  const [confirmDelete, setConfirmDelete] = useState<Entrega | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingConfirmation, setSavingConfirmation] = useState(false);
   const [selectedUnsigned, setSelectedUnsigned] = useState<string[]>([]);
@@ -1311,8 +1315,12 @@ export default function Entregas() {
                           <PenLine className="w-4 h-4 text-amber-500" />
                         </Button>
                       )}
-                      {canDelete && (
-                        <Button size="icon" variant="outline" className="h-10 w-10" title="Excluir" aria-label="Excluir" onClick={() => remove(e.id)}>
+                      {/* Entrega assinada não se apaga: a assinatura mora na
+                          própria linha e é a prova de que o EPI foi entregue
+                          (CLT art. 166/167). Para tirá-la de circulação existe
+                          a devolução, que preserva o histórico. */}
+                      {canDelete && !e.assinatura_colaborador && (
+                        <Button size="icon" variant="outline" className="h-10 w-10" title="Excluir" aria-label="Excluir" onClick={() => setConfirmDelete(e)}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
@@ -1408,7 +1416,11 @@ export default function Entregas() {
                               <RotateCcw className="w-3.5 h-3.5 text-primary" />
                             </Button>
                           )}
-                          {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
+                          {canDelete && !e.assinatura_colaborador && (
+                            <Button size="icon" variant="ghost" title="Excluir" aria-label="Excluir" onClick={() => setConfirmDelete(e)}>
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1439,6 +1451,46 @@ export default function Entregas() {
           <Plus className="w-7 h-7" />
         </Button>
       )}
+
+      {/* Confirmação de exclusão.
+          Antes o toque na lixeira apagava na hora — num botão pequeno, num
+          celular, em campo. E o registro não vai para lixeira nenhuma: é
+          DELETE definitivo. O diálogo nomeia o que será perdido para que dê
+          para reconhecer o registro errado antes de confirmar. */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(v) => !v && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir esta movimentação?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Esta ação é definitiva e não pode ser desfeita.</p>
+                {confirmDelete && (
+                  <div className="rounded-md border bg-muted/40 p-3 text-sm text-foreground">
+                    <p className="font-semibold">{funcionarioPorId.get(confirmDelete.funcionario_id)?.nome || "—"}</p>
+                    <p>{epiPorId.get(confirmDelete.epi_id)?.nome || "EPI não localizado"}</p>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      {tipoLabels[confirmDelete.tipo] || confirmDelete.tipo} • {confirmDelete.quantidade}x • {fmtData(confirmDelete.data)}
+                    </p>
+                  </div>
+                )}
+                <p className="text-xs">
+                  O estoque <strong>não</strong> é devolvido automaticamente. Se o EPI voltou para a
+                  empresa, use <strong>devolução</strong> em vez de excluir.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (confirmDelete) remove(confirmDelete.id); setConfirmDelete(null); }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); setDescarteSubstituicao(true); setDescarteDescricao(""); } }}>
         <DialogContent className="sm:max-w-lg">
