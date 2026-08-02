@@ -31,6 +31,9 @@ interface Props {
 
 const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "acidente", "psicossocial", "outro"];
 
+/** Níveis que não aparecem no levantamento: o perigo é registrado por GES. */
+const OCULTOS: (keyof ContextoSst)[] = ["processo_id", "funcao_id"];
+
 const vazio = {
   perigo_descricao: "",
   grupo: "fisico",
@@ -80,12 +83,12 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
     // Ambiente não entra: vem junto com o Setor (ver PgrContextoSelector).
     if (!ctx.setor_id) falta.push("setor");
     if (!ctx.ges_id) falta.push("GES");
-    // Função e atividade NÃO são obrigatórias. O GES já é, por definição, o
-    // grupo de trabalhadores expostos aos mesmos agentes na mesma intensidade
-    // — é nesse nível que a NR-01 identifica o perigo. Exigir função E
-    // atividade em cada perigo obrigava a repetir o levantamento pessoa a
-    // pessoa e anulava a razão de existir do GES. Ficam como refinamento, para
-    // o perigo que atinge só uma função ou só uma tarefa dentro do grupo.
+    // Função não entra: o perigo é do GES. O grupo já é, por definição, o
+    // conjunto de quem tem a mesma exposição — é nesse nível que a NR-01
+    // identifica o perigo, e quem responde por ele sai das funções que
+    // compõem o grupo. Escolher função por perigo refazia o levantamento
+    // pessoa a pessoa e anulava a razão de o GES existir; quando a exposição
+    // for mesmo diferente, o caminho é outro grupo no setor.
     if (!f.perigo_descricao.trim()) falta.push("perigo");
     if (!f.fonte_circunstancia.trim()) falta.push("fonte ou circunstância");
     if (!f.possiveis_lesoes.trim()) falta.push("possíveis lesões");
@@ -339,16 +342,22 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
           </Button>
         </div>
 
-        <PgrContextoResumo valor={ctx} />
+        {/* O perigo é registrado no nível do GES, não da função. O grupo já é,
+            por definição, o conjunto de quem tem a mesma exposição — quem está
+            exposto sai das funções que compõem o GES, sem escolher de novo uma
+            a uma aqui. Escolher a função por perigo desfazia o agrupamento e
+            transformava o levantamento num trabalho pessoa a pessoa. */}
+        <PgrContextoResumo valor={ctx} ocultar={OCULTOS} />
 
         <PgrContextoSelector
           valor={ctx} onChange={setCtx} disabled={!canEdit}
           obrigatorios={["setor_id", "ges_id"]}
-          ocultar={["processo_id"]}
+          ocultar={OCULTOS}
         />
         <p className="-mt-3 text-xs text-muted-foreground">
-          Função e atividade são opcionais: preencha só quando o perigo atingir uma função
-          ou tarefa específica dentro do grupo. Em branco, o perigo vale para todo o GES.
+          O perigo vale para todo o GES — as funções que o compõem já respondem por
+          ele. Precisa separar? Crie outro grupo no setor, com as funções daquela
+          exposição.
         </p>
 
         <div className="space-y-5">

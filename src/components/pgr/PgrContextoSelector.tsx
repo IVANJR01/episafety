@@ -169,7 +169,9 @@ export function PgrContextoSelector({
  * Vira uma faixa horizontal acima do formulário: aparece por inteiro em
  * qualquer largura e devolve a largura toda para os campos.
  */
-export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
+export function PgrContextoResumo(
+  { valor, ocultar = [] }: { valor: ContextoSst; ocultar?: (keyof ContextoSst)[] },
+) {
   const { setores, funcoes, gesList } = useNucleoMestreSst();
 
   const nome = (lista: any[], id?: string | null) =>
@@ -177,10 +179,10 @@ export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
 
   // Ambiente saiu daqui: depois da unificação ele tem o mesmo nome do Setor,
   // então a faixa mostrava a mesma palavra duas vezes seguidas.
-  const linhas = [
-    { icone: HardHat, rotulo: "Setor", valor: nome(setores, valor.setor_id) },
-    { icone: ShieldCheck, rotulo: "GES", valor: nome(gesList, valor.ges_id) },
-    { icone: User, rotulo: "Função", valor: nome(funcoes, valor.funcao_id) },
+  const linhas: { campo: keyof ContextoSst; icone: any; rotulo: string; valor: string | null }[] = [
+    { campo: "setor_id", icone: HardHat, rotulo: "Setor", valor: nome(setores, valor.setor_id) },
+    { campo: "ges_id", icone: ShieldCheck, rotulo: "GES", valor: nome(gesList, valor.ges_id) },
+    { campo: "funcao_id", icone: User, rotulo: "Função", valor: nome(funcoes, valor.funcao_id) },
   ];
 
   return (
@@ -189,7 +191,7 @@ export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
         Contexto selecionado
       </h3>
       <ul className="flex flex-wrap gap-x-6 gap-y-3">
-        {linhas.map(({ icone: Icone, rotulo, valor: v }) => (
+        {linhas.filter((l) => !ocultar.includes(l.campo)).map(({ icone: Icone, rotulo, valor: v }) => (
           <li key={rotulo} className="flex items-center gap-2 min-w-0">
             <Icone className={`h-4 w-4 shrink-0 ${v ? "text-primary" : "text-muted-foreground"}`} />
             <div className="min-w-0">
