@@ -14,7 +14,8 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { mensagemErro } from "@/lib/erroSupabase";
 import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
-import { Building2, LayoutGrid, Workflow, Briefcase, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
+import { Building2, LayoutGrid, Workflow, Briefcase, Layers, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -84,7 +85,7 @@ interface ColunaEstrutura<T> {
  * rótulo e o texto pode quebrar à vontade.
  */
 function ListaEstrutura<T extends { id: string }>({
-  itens, vazio, rotuloPrincipal, principal, colunas, onEditar, onExcluir,
+  itens, vazio, rotuloPrincipal, principal, colunas, onEditar, onExcluir, acoesExtras,
 }: {
   itens: T[];
   vazio: string;
@@ -93,9 +94,12 @@ function ListaEstrutura<T extends { id: string }>({
   colunas: ColunaEstrutura<T>[];
   onEditar: (item: T) => void;
   onExcluir: (item: T) => void;
+  /** Botão adicional antes de editar/excluir (ex.: grupos do setor). */
+  acoesExtras?: (item: T) => React.ReactNode;
 }) {
   const acoes = (item: T) => (
     <div className="flex justify-end gap-1 shrink-0">
+      {acoesExtras?.(item)}
       <Button onClick={() => onEditar(item)} variant="ghost" size="sm" aria-label="Editar">
         <Edit2 className="w-4 h-4 text-slate-600" />
       </Button>
@@ -228,6 +232,8 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     id: "",
     nome: "",
   });
+
+  const [setorDosGrupos, setSetorDosGrupos] = useState<{ id: string; nome: string } | null>(null);
 
   const [erroSalvar, setErroSalvar] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -530,7 +536,24 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 celula: (set) =>
                   caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)) || "—",
               },
+              {
+                rotulo: "Grupos de exposição",
+                celula: (set) => {
+                  const ids = new Set((gheSetores as any[])
+                    .filter((v) => v.setor_id === set.id).map((v) => v.ghe_id));
+                  const grupos = gesList.filter((g: any) => ids.has(g.id));
+                  return grupos.length
+                    ? grupos.map((g: any) => g.nome).join(" · ")
+                    : "—";
+                },
+              },
             ]}
+            acoesExtras={(set) => (
+              <Button variant="ghost" size="sm" aria-label="Grupos de exposição deste setor"
+                onClick={() => setSetorDosGrupos({ id: set.id, nome: set.nome })}>
+                <Layers className="w-4 h-4 text-slate-600" />
+              </Button>
+            )}
             onEditar={(set) => handleOpenModal("setor", set)}
             onExcluir={(set) => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })}
           />
@@ -603,6 +626,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         </TabsContent>
 
       </Tabs>
+
+      <GruposDoSetorDialog
+        setor={setorDosGrupos}
+        open={!!setorDosGrupos}
+        onOpenChange={(aberto) => { if (!aberto) setSetorDosGrupos(null); }}
+      />
 
       {/* CONFIRMATION DIALOG DE EXCLUSÃO */}
       <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}>

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import type { SstGes } from "@/types/sst";
 import { useNavigate } from "react-router-dom";
@@ -29,8 +30,13 @@ import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
  * Sobrou o que só existe aqui e é usado de fato: o cadastro dos grupos.
  * Nenhuma tabela foi removida do banco; apenas a duplicidade saiu da tela.
  */
+const SEM_SETOR = "__sem_setor__";
+
 export function GesExposicoesTab() {
-  const { gesList, saveGes, deleteGes, funcoes, gheFuncoes, definirFuncoesDoGes } = useNucleoMestreSst();
+  const {
+    gesList, saveGes, deleteGes, funcoes, setores, gheFuncoes, gheSetores,
+    definirFuncoesDoGes, vincularGesSetor,
+  } = useNucleoMestreSst();
   const navigate = useNavigate();
 
   /** Funções de cada grupo, pelo vínculo real (ghe_funcoes.funcao_id). */
@@ -49,12 +55,15 @@ export function GesExposicoesTab() {
   const [openGesModal, setOpenGesModal] = useState(false);
   const [gesFormData, setGesFormData] = useState<Partial<SstGes>>({});
   const [funcoesSelecionadas, setFuncoesSelecionadas] = useState<string[]>([]);
+  const [setorSelecionado, setSetorSelecionado] = useState<string>(SEM_SETOR);
   const [salvando, setSalvando] = useState(false);
   const [confirmarExclusao, setConfirmarExclusao] = useState<{ id: string; nome: string } | null>(null);
 
   const abrirGes = (ges?: SstGes) => {
     setGesFormData(ges || {});
     setFuncoesSelecionadas(ges ? funcoesDoGes(ges.id).map((f: any) => f.id) : []);
+    const vinculo = ges && (gheSetores as any[]).find((v) => v.ghe_id === ges.id);
+    setSetorSelecionado(vinculo?.setor_id || SEM_SETOR);
     setOpenGesModal(true);
   };
 
@@ -62,8 +71,18 @@ export function GesExposicoesTab() {
     e.preventDefault();
     setSalvando(true);
     try {
-      const salvo = await saveGes(gesFormData);
-      await definirFuncoesDoGes({ ges_id: (salvo as any).id, funcao_ids: funcoesSelecionadas });
+      const proximoCodigo = String(
+        gesList.reduce((max: number, g: any) => Math.max(max, Number(g.codigo) || 0), 0) + 1,
+      ).padStart(2, "0");
+      const salvo: any = await saveGes({
+        ...gesFormData,
+        codigo: gesFormData.codigo || proximoCodigo,
+      } as any);
+      if (setorSelecionado !== SEM_SETOR) {
+        const setor = setores.find((s: any) => s.id === setorSelecionado);
+        await vincularGesSetor({ ges_id: salvo.id, setor_id: setorSelecionado, nome: setor?.nome || "" });
+      }
+      await definirFuncoesDoGes({ ges_id: salvo.id, funcao_ids: funcoesSelecionadas });
       setOpenGesModal(false);
     } catch (err) {
       console.error(err);
@@ -187,30 +206,35 @@ export function GesExposicoesTab() {
             <DialogTitle>{gesFormData.id ? "Editar grupo" : "Novo grupo"} de exposição</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSaveGes} className="space-y-4 text-sm">
-            <div>
-              <Label>Código *</Label>
-              <Input
-                value={gesFormData.codigo || ""}
-                onChange={(e) => setGesFormData({ ...gesFormData, codigo: e.target.value })}
-                required
-                placeholder="Ex.: GES-01"
-              />
-            </div>
+            {/* Sem campo de Código: sequencial, gerado por baixo. */}
             <div>
               <Label>Nome do grupo *</Label>
               <Input
                 value={gesFormData.nome || ""}
                 onChange={(e) => setGesFormData({ ...gesFormData, nome: e.target.value })}
                 required
-                placeholder="Ex.: Equipe de manutenção mecânica"
+                placeholder="Ex.: Administrativo do PCP"
               />
             </div>
             <div>
-              <Label>Por que estas pessoas formam um grupo?</Label>
+              <Label>Setor</Label>
+              <Select value={setorSelecionado || SEM_SETOR} onValueChange={setSetorSelecionado}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SEM_SETOR}>Sem setor (grupo entre setores)</SelectItem>
+                  {setores.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Descrição curta da exposição</Label>
               <Textarea
+                rows={2}
                 value={gesFormData.criterio_agrupamento || ""}
                 onChange={(e) => setGesFormData({ ...gesFormData, criterio_agrupamento: e.target.value })}
-                placeholder="Ex.: mesma exposição a ruído e óleo mineral, na mesma jornada, no galpão fabril."
+                placeholder="Ex.: atividades de apoio operacional, organização e movimentação de peças, lotes e materiais."
               />
             </div>
             <div>
