@@ -873,12 +873,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   </Select>
                 </div>
                 <div>
-                  <Label>Pé-direito</Label>
-                  <Input value={formData.pe_direito || ""} placeholder="Ex.: 3 m"
-                    onChange={(e) => setFormData({ ...formData, pe_direito: e.target.value })} />
-                </div>
-                <div>
-                  {/* `caracteristicasAmbiente()` (sstEstrutura.ts) lê este texto
+                  {/* Pé-direito não tem mais campo próprio — entra aqui junto
+                      com o resto, como piso/ventilação/iluminação já entravam.
+                      `caracteristicasAmbiente()` (sstEstrutura.ts) lê este texto
                       para a coluna "Ambiente de trabalho" da tabela e o PDF do
                       PGR imprime como parágrafo na seção "Caracterização dos
                       Ambientes". */}
@@ -886,7 +883,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   <Textarea
                     value={formData.descricao || ""}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    placeholder="Piso, ventilação, iluminação, paredes/cobertura, máquinas e instalações, e qualquer outro detalhe relevante"
+                    placeholder="Pé-direito, piso, ventilação, iluminação, paredes/cobertura, máquinas e instalações, e qualquer outro detalhe relevante"
                     rows={4}
                   />
                 </div>
