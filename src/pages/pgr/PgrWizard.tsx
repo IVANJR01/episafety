@@ -19,7 +19,6 @@ import {
 import PgrDadosStep from "@/components/pgr/PgrDadosStep";
 import PgrResponsaveisStep from "@/components/pgr/PgrResponsaveisStep";
 import { EstruturaOcupacionalTab } from "@/components/documentacao/EstruturaOcupacionalTab";
-import PgrPerigoStep from "@/components/pgr/PgrPerigoStep";
 import ColetasCampoRevisao from "@/components/pgr/ColetasCampoRevisao";
 import InventarioTab from "@/components/pgr/InventarioTab";
 import PlanoAcaoTab from "@/components/pgr/PlanoAcaoTab";
@@ -36,7 +35,7 @@ import { exportarPgrExcel } from "@/lib/pgrExcel";
 import { verificarEstruturasSst } from "@/lib/erroSupabase";
 
 type EtapaId =
-  | "dados" | "ambientes" | "setores" | "funcoes" | "perigos"
+  | "dados" | "ambientes" | "setores" | "funcoes"
   | "avaliacao" | "inventario" | "acoes" | "emissao";
 
 interface Etapa {
@@ -48,10 +47,11 @@ interface Etapa {
 }
 
 /**
- * Nove etapas. As anteriores "Empresa e unidade" e "Dados do PGR" tratavam do
- * mesmo cadastro em duas telas, e "Documentos complementares" e "Responsáveis"
- * eram dois cliques a mais logo antes de emitir — viraram seções dentro das
- * etapas correspondentes. Menos passos, mesmo conteúdo.
+ * Oito etapas. Cada fusão aqui saiu do mesmo problema: duas telas pedindo o
+ * mesmo dado. "Empresa e unidade" + "Dados do PGR" eram o mesmo cadastro;
+ * "Documentos complementares" e "Responsáveis" eram dois cliques a mais logo
+ * antes de emitir; e "Perigos e riscos" pedia perigo, fonte e lesões com
+ * outros nomes, para depois o Inventário pedir tudo de novo.
  */
 const ETAPAS: Etapa[] = [
   { id: "dados", n: 1, titulo: "Dados do PGR", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
@@ -63,11 +63,15 @@ const ETAPAS: Etapa[] = [
   { id: "ambientes", n: 2, titulo: "Processos", ajuda: "O que é feito em cada setor." },
   { id: "setores", n: 3, titulo: "Setores e GES", ajuda: "Divisão da empresa, o ambiente de trabalho de cada setor, e agrupamento de quem tem a mesma exposição." },
   { id: "funcoes", n: 4, titulo: "Funções", ajuda: "Cargos existentes e o que cada um faz." },
-  { id: "perigos", n: 5, titulo: "Perigos e riscos", ajuda: "O que pode causar dano, onde ocorre e de onde veio a informação." },
-  { id: "avaliacao", n: 6, titulo: "Avaliação", ajuda: "Os critérios usados para classificar cada risco." },
-  { id: "inventario", n: 7, titulo: "Inventário", ajuda: "A lista completa de riscos avaliados." },
-  { id: "acoes", n: 8, titulo: "Plano de ação", ajuda: "O que será feito para reduzir cada risco, por quem e até quando." },
-  { id: "emissao", n: 9, titulo: "Revisão e emissão", ajuda: "Complementares, responsáveis, pendências e geração do documento." },
+  // "Perigos e riscos" era uma etapa à parte que pedia perigo, fonte, lesões e
+  // categoria — os MESMOS campos do item do inventário, com outros nomes. Quem
+  // preenchia as duas digitava tudo duas vezes; quem preenchia só uma ficava
+  // com metade do trabalho fora do documento. O perigo passa a ser cadastrado
+  // uma vez só, já classificado na matriz, na etapa Inventário.
+  { id: "avaliacao", n: 5, titulo: "Avaliação", ajuda: "Os critérios usados para classificar cada risco." },
+  { id: "inventario", n: 6, titulo: "Inventário", ajuda: "Os perigos identificados, avaliados e classificados." },
+  { id: "acoes", n: 7, titulo: "Plano de ação", ajuda: "O que será feito para reduzir cada risco, por quem e até quando." },
+  { id: "emissao", n: 8, titulo: "Revisão e emissão", ajuda: "Complementares, responsáveis, pendências e geração do documento." },
 ];
 
 export default function PgrWizard() {
@@ -86,7 +90,10 @@ function Assistente() {
   const [menuAberto, setMenuAberto] = useState(false);
   const acoes = useAcoesEtapa();
 
-  const etapaAtual = (params.get("etapa") as EtapaId) || "dados";
+  // PGRs em andamento têm "perigos" gravado como etapa atual; a etapa deixou de
+  // existir e o conteúdo dela foi para o inventário.
+  const etapaSalva = params.get("etapa");
+  const etapaAtual = (etapaSalva === "perigos" ? "inventario" : etapaSalva || "dados") as EtapaId;
   const idx = Math.max(0, ETAPAS.findIndex((e) => e.id === etapaAtual));
   const etapa = ETAPAS[idx];
 
@@ -136,16 +143,15 @@ function Assistente() {
   const nomeEmpresa = empresa?.nome_fantasia || empresa?.nome || null;
   const nomeUnidade = unidade?.nome_fantasia || unidade?.nome || null;
 
-  // Progresso: cada etapa vale 1/9. É indicativo de preenchimento, não de
-  // conformidade — quem diz se pode emitir é o checklist da etapa 9.
+  // Progresso: cada etapa vale 1/8. É indicativo de preenchimento, não de
+  // conformidade — quem diz se pode emitir é o checklist da última etapa.
   const { data: progresso } = useQuery({
     queryKey: ["pgr-wiz-progresso", id],
     enabled: !!pgr,
     queryFn: async () => {
-      const [inv, acs, lev, resp, amb, set, fun] = await Promise.all([
+      const [inv, acs, resp, amb, set, fun] = await Promise.all([
         (supabase.from as any)("pgr_inventario_itens").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("pgr_acoes").select("id").eq("pgr_id", id).limit(1),
-        (supabase.from as any)("pgr_levantamento_preliminar").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("pgr_responsaveis").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("sst_ambientes").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
         (supabase.from as any)("sst_setores").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
@@ -157,7 +163,6 @@ function Assistente() {
         ambientes: tem(amb),
         setores: tem(set),
         funcoes: tem(fun),
-        perigos: tem(lev),
         avaliacao: !!(pgr as any)!.matriz_versao_id,
         inventario: tem(inv),
         acoes: tem(acs),
@@ -300,19 +305,6 @@ function Assistente() {
       // Desempenhadas", em vez de num segundo cadastro com o mesmo texto.
       case "funcoes":
         return <EstruturaOcupacionalTab only="funcoes" />;
-      case "perigos":
-        return (
-          <div className="space-y-10">
-            <ColetasCampoRevisao pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
-            {/* "Rastreabilidade do levantamento" saiu daqui: era o
-                LevantamentoPreliminarTab, um segundo formulário gravando na
-                MESMA tabela (pgr_levantamento_preliminar) que a etapa acima —
-                dois lugares para cadastrar o mesmo perigo, com campos
-                diferentes. A lista do que foi levantado continua logo abaixo
-                do formulário, dentro do próprio PgrPerigoStep. */}
-            <PgrPerigoStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
-          </div>
-        );
       case "avaliacao":
         return (
           <div className="space-y-6 max-w-3xl">
@@ -337,7 +329,14 @@ function Assistente() {
           </div>
         );
       case "inventario":
-        return <InventarioTab pgrId={pgr.id} empresaId={pgr.empresa_id} status={status} canEdit={perms.canEdit} />;
+        return (
+          <div className="space-y-10">
+            {/* O que veio do celular entra aqui: é no inventário que o perigo
+                identificado em campo vira item avaliado. */}
+            <ColetasCampoRevisao pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+            <InventarioTab pgrId={pgr.id} empresaId={pgr.empresa_id} status={status} canEdit={perms.canEdit} />
+          </div>
+        );
       case "acoes":
         return (
           <PlanoAcaoTab pgrId={pgr.id} empresaId={pgr.empresa_id} pgrVersao={pgr.versao}

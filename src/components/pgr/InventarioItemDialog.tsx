@@ -129,10 +129,15 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
       const tabela = (t: string) =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.from as any)(t).select("*").eq("empresa_id", empresaId);
-      const [set, amb, proc] = await Promise.all([
+      const [set, amb, proc, vinc] = await Promise.all([
         tabela("sst_setores"), tabela("sst_ambientes"), tabela("sst_processos"),
+        tabela("ghe_setores"),
       ]);
       return {
+        // Vínculo real do GES com o setor. O GES criado a partir do Setor não
+        // preenche as colunas de texto legadas de ghe_ges — era por isso que
+        // "Setor" abria vazio mesmo com o grupo escolhido.
+        gheSetores: (vinc.data || []) as { ghe_id: string; setor_id?: string | null }[],
         setores: (set.data || []) as { id: string; nome: string; ambiente_id?: string | null }[],
         // O ambiente inteiro: a descricao e a caracterizacao, nao so o nome.
         ambientes: (amb.data || []) as { id: string; nome: string }[],
@@ -144,6 +149,13 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
   const setores = estrutura?.setores || [];
   const ambientes = estrutura?.ambientes || [];
   const processos = estrutura?.processos || [];
+  const gheSetores = estrutura?.gheSetores || [];
+
+  /** O setor do GES, pelo vínculo real — não pelo texto legado de ghe_ges. */
+  const setorDoGes = (gesId?: string) => {
+    const v = gheSetores.find((x) => x.ghe_id === gesId && x.setor_id);
+    return v ? setores.find((s) => s.id === v.setor_id) : undefined;
+  };
 
   /**
    * Qual processo esta selecionado no seletor.
@@ -152,29 +164,10 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
    * processo. Bastava ajustar uma vírgula na descrição para o seletor perder a
    * referência e voltar a "Selecione".
    */
-  const [processoEscolhido, setProcessoEscolhido] = useState("");
-
-  /** Escolher o setor traz junto o ambiente vinculado a ele. */
-  const escolherSetor = (id: string) => {
-    const s = setores.find((x) => x.id === id);
-    if (!s) return;
-    const amb = ambientes.find((a) => a.id === s.ambiente_id);
-    // sst_processos.setor_id aponta para o setor: escolhido o setor, o processo
-    // dele vem junto. Antes so o ambiente vinha e o processo ficava em branco.
-    const proc = processos.find((p) => p.setor_id === s.id);
-    if (proc) setProcessoEscolhido(proc.id);
-    setForm((f: Record<string, unknown>) => ({
-      ...f,
-      setor: s.nome,
-      descricao_ambiente: descreverAmbiente(amb) || f.descricao_ambiente,
-      processo: descreverProcesso(proc) || f.processo,
-    }));
-  };
 
   useEffect(() => {
     if (!open) return;
     setTab("estrutura");
-    setProcessoEscolhido("");
     if (itemId) {
       (async () => {
         const { data } = await (supabase.from as any)("pgr_inventario_itens")
@@ -226,31 +219,39 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, itemId]);
 
-  // Preencher automaticamente ambiente/setor/processo ao escolher GES (apenas para novo item)
+  /**
+   * Escolhido o GES, o resto do "onde" vem junto.
+   *
+   * Setor, ambiente e processo deixaram de ser perguntados: o GES já pertence a
+   * um setor, o setor tem o seu ambiente e o processo é do setor. Perguntar de
+   * novo abria a porta para o item apontar para um setor diferente do grupo —
+   * duas respostas contraditórias na mesma linha do inventário.
+   */
+  const contextoDoGes = (() => {
+    const s = setorDoGes(form.ghe_id as string);
+    const amb = s ? ambientes.find((a: any) => a.id === (s as any).ambiente_id) : undefined;
+    const proc = s ? processos.find((p) => p.setor_id === s.id) : undefined;
+    return {
+      setorNome: s?.nome || "",
+      ambienteTexto: descreverAmbiente(amb) || "",
+      processoTexto: descreverProcesso(proc) || "",
+    };
+  })();
+
   useEffect(() => {
     if (!form.ghe_id || itemId) return;
     const g = ghes.find((x: any) => x.id === form.ghe_id);
-    if (!g) return;
     setForm((f: any) => ({
       ...f,
-      descricao_ambiente: f.descricao_ambiente || clean(g.descricao_ambiente) || clean(g.ambiente) || "",
-      setor: f.setor || clean(g.setor) || "",
-      processo: f.processo || clean(g.processo) || "",
+      // Vínculo real primeiro; texto legado de ghe_ges só como último recurso,
+      // para os grupos antigos que nunca foram ligados a um setor.
+      setor: contextoDoGes.setorNome || f.setor || clean(g?.setor) || "",
+      descricao_ambiente: contextoDoGes.ambienteTexto || f.descricao_ambiente
+        || clean(g?.descricao_ambiente) || clean(g?.ambiente) || "",
+      processo: contextoDoGes.processoTexto || f.processo || clean(g?.processo) || "",
     }));
-  }, [form.ghe_id, ghes, itemId]);
-
-  /** O que o GES escolhido tem para oferecer — lido do cadastro, não prometido. */
-  const herdadoDoGes = (() => {
-    const g = ghes.find((x: { id: string }) => x.id === form.ghe_id) as
-      | { descricao_ambiente?: string; ambiente?: string; setor?: string; processo?: string }
-      | undefined;
-    const partes = [
-      clean(g?.descricao_ambiente) || clean(g?.ambiente) ? `ambiente “${clean(g?.descricao_ambiente) || clean(g?.ambiente)}”` : "",
-      clean(g?.setor) ? `setor “${clean(g?.setor)}”` : "",
-      clean(g?.processo) ? `processo “${clean(g?.processo)}”` : "",
-    ].filter(Boolean);
-    return { temAlgo: partes.length > 0, resumo: partes.join(", ") };
-  })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.ghe_id, ghes, itemId, contextoDoGes.setorNome, contextoDoGes.ambienteTexto, contextoDoGes.processoTexto]);
 
   const total = Number(form.severidade) * Number(form.probabilidade);
   const classe = classificarRisco(Number(form.severidade), Number(form.probabilidade));
@@ -382,48 +383,25 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                 </Select>
               </div>
 
-              {/* Dizer o que o GES escolhido REALMENTE trouxe. Antes a linha
-                  prometia que setor, funções e processo vinham do GES; quando o
-                  grupo estava vazio nada vinha, o item saía todo "N.A" e não
-                  havia como saber por quê. */}
-              {form.ghe_id && herdadoDoGes.temAlgo && (
-                <div className="md:col-span-2 text-xs text-muted-foreground border rounded p-2 bg-muted/40">
-                  Herdado deste GES: {herdadoDoGes.resumo}.
+              {/* Setor, ambiente e processo não são mais perguntados: vêm do GES
+                  escolhido. Mostrados só para conferência — se estiverem
+                  errados, o lugar de corrigir é o cadastro do grupo, não aqui,
+                  senão o item passa a apontar para um setor diferente do
+                  próprio grupo. */}
+              {form.ghe_id && (
+                <div className="md:col-span-2 rounded border bg-muted/40 p-2 text-xs space-y-1">
+                  <p>
+                    <span className="text-muted-foreground">Setor: </span>
+                    <b>{contextoDoGes.setorNome || "não vinculado a um setor"}</b>
+                  </p>
+                  {!contextoDoGes.setorNome && (
+                    <p className="text-amber-700">
+                      Este grupo não está ligado a nenhum setor. Vincule em Estrutura →
+                      Setores → Grupos de exposição, senão o item sai sem setor no PGR.
+                    </p>
+                  )}
                 </div>
               )}
-
-              {/* Setor e processo eram gravados sem ter campo na tela. Vêm da
-                  estrutura já cadastrada na etapa 3 — escolher o setor traz o
-                  ambiente vinculado a ele. */}
-              <div>
-                <Label className="text-xs">Setor</Label>
-                <Select
-                  value={setores.find((s) => s.nome === form.setor)?.id || ""}
-                  onValueChange={escolherSetor}
-                >
-                  <SelectTrigger><SelectValue placeholder={setores.length ? "Selecione" : "Nenhum setor cadastrado"} /></SelectTrigger>
-                  <SelectContent>
-                    {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-xs">Processo</Label>
-                <Select
-                  value={processoEscolhido}
-                  onValueChange={(id) => {
-                    setProcessoEscolhido(id);
-                    const p = processos.find((x) => x.id === id);
-                    if (p) setForm((f: Record<string, unknown>) => ({ ...f, processo: descreverProcesso(p) }));
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder={processos.length ? "Selecione" : "Nenhum processo cadastrado"} /></SelectTrigger>
-                  <SelectContent>
-                    {processos.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* O que fica GRAVADO no inventario. O seletor acima mostra o nome
                   curto — util para escolher, mas escondia o texto real: quem
