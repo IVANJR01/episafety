@@ -1227,12 +1227,13 @@ export default function Entregas() {
                         {offlinePendingIds.has(e.id) && (
                           <StatusBadge tone="info" size="sm"><WifiOff className="w-3 h-3 mr-0.5" />Offline</StatusBadge>
                         )}
-                        {/* O tipo não vira selo aqui: ele já aparece logo
-                            abaixo, no campo "Motivo". Ter os dois deixava
-                            "Substituição" escrito duas vezes no mesmo card.
-                            Na tabela do desktop não há campo Motivo, então lá
-                            a coluna Tipo continua sendo a única fonte. */}
-                        <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
+                        {/* Nem tipo nem situação viram selo aqui: os dois
+                            aparecem logo abaixo, em campos rotulados. Lado a
+                            lado no topo, "Substituição" (motivo) e
+                            "Substituído" (situação) liam como a mesma palavra
+                            repetida — o rótulo é o que distingue as duas.
+                            Na tabela do desktop não há campos rotulados, então
+                            lá as colunas Tipo e Status seguem como estão. */}
 
                         {/* Devolução não é assinada — antes saía um "—" solto
                             entre os selos, que só polui: ausência de selo já
@@ -1288,6 +1289,17 @@ export default function Entregas() {
                   <dl className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
                     <dt className="text-muted-foreground">Motivo</dt>
                     <dd>{tipoLabels[e.tipo] || e.tipo}</dd>
+
+                    {/* Situação é o estado atual do EPI (ainda com o
+                        colaborador, já trocado, devolvido) — informação
+                        diferente do motivo, que diz por que a movimentação
+                        aconteceu. Uma entrega do tipo "Substituição" pode
+                        estar "Ativo" ou "Substituído" conforme já tenha sido
+                        trocada de novo. */}
+                    <dt className="text-muted-foreground">Situação</dt>
+                    <dd className={e.status === "ativo" ? "text-success font-medium" : ""}>
+                      {statusLabel(e.status)}
+                    </dd>
 
                     <dt className="text-muted-foreground">Quantidade</dt>
                     <dd className="tabular-nums">{e.quantidade}</dd>
