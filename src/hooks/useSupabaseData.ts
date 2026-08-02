@@ -69,7 +69,19 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     initialData: cachedData,
     staleTime: Infinity,
     gcTime: QUERY_GC_MS,
-    retry: false,
+    // Falha de rede sem cache local vira erro permanente sem isto: a linha
+    // 100-104 só devolve `cached` quando existe um `cached` — na primeira
+    // carga num aparelho novo (ou depois de limpar dados), ou quando essa
+    // tabela nunca sincronizou nele antes, não existe nada para devolver, e
+    // o erro sobe. Com retry:false a consulta desistia de vez no primeiro
+    // soluço de sinal — sobrava lista vazia para sempre, sem aviso nenhum,
+    // parecendo dado corrompido (nome de colaborador e de EPI sumindo da
+    // tela) quando era só a rede tropeçando uma vez.
+    //
+    // Só reage a falha de rede: erro de permissão/RLS repetir não resolve, e
+    // insistir nesses só atrasa mostrar o estado de erro real.
+    retry: (failureCount, error) => isNetworkFailure(error) && failureCount < 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
