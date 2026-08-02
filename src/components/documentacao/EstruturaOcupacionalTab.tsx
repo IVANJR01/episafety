@@ -62,6 +62,16 @@ interface ColunaEstrutura<T> {
   classe?: string;
   /** Texto do `title` (tooltip) da célula no desktop, quando ela trunca. */
   dica?: (item: T) => string;
+  /**
+   * Campo de texto corrido. No cartão do celular o rótulo vai numa linha
+   * própria e o valor ocupa a largura toda, cortado em 3 linhas.
+   *
+   * Lado a lado, um rótulo comprido ("Descrição das atividades:") comia metade
+   * da largura e sobrava uma coluna estreita onde um parágrafo virava vinte
+   * linhas — um único cadastro tomava a tela inteira e a lista deixava de ser
+   * navegável.
+   */
+  longo?: boolean;
 }
 
 /**
@@ -108,13 +118,18 @@ function ListaEstrutura<T extends { id: string }>({
               <div className="min-w-0 font-medium text-slate-900">{principal(item)}</div>
               {acoes(item)}
             </div>
-            <dl className="mt-2 space-y-1">
-              {colunas.map((c) => (
+            <dl className="mt-2 space-y-1.5">
+              {colunas.map((c) => (c.longo ? (
+                <div key={c.rotulo} className="text-xs">
+                  <dt className="text-slate-500">{c.rotulo}</dt>
+                  <dd className="mt-0.5 break-words text-slate-700 line-clamp-3">{c.celula(item)}</dd>
+                </div>
+              ) : (
                 <div key={c.rotulo} className="flex gap-2 text-xs">
                   <dt className="shrink-0 text-slate-500">{c.rotulo}:</dt>
                   <dd className="min-w-0 break-words text-slate-700">{c.celula(item)}</dd>
                 </div>
-              ))}
+              )))}
             </dl>
           </Card>
         ))}
@@ -421,6 +436,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               },
               {
                 rotulo: "Endereço",
+                longo: true,
                 classe: "text-xs text-slate-600 max-w-[220px]",
                 celula: (est) => formatarEndereco(est.endereco) || "-",
               },
@@ -451,6 +467,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             colunas={[
               {
                 rotulo: "Ambiente de trabalho",
+                longo: true,
                 classe: "text-sm text-slate-600 max-w-xs truncate",
                 dica: (set) => caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)),
                 celula: (set) =>
@@ -513,6 +530,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               { rotulo: "Setor", celula: (func) => setores.find((s) => s.id === func.setor_id)?.nome || "-" },
               {
                 rotulo: "Descrição das atividades",
+                longo: true,
                 classe: "text-sm text-slate-600 max-w-xs truncate",
                 dica: (func) => (func as any).descricao_atividades || "",
                 celula: (func) => (func as any).descricao_atividades || "—",
