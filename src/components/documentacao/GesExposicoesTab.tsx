@@ -30,20 +30,45 @@ import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
  * Nenhuma tabela foi removida do banco; apenas a duplicidade saiu da tela.
  */
 export function GesExposicoesTab() {
-  const { gesList, saveGes, deleteGes } = useNucleoMestreSst();
+  const { gesList, saveGes, deleteGes, funcoes, gheFuncoes, definirFuncoesDoGes } = useNucleoMestreSst();
   const navigate = useNavigate();
+
+  /** Funções de cada grupo, pelo vínculo real (ghe_funcoes.funcao_id). */
+  const funcoesDoGes = (gesId: string) => {
+    const ids = new Set(
+      (gheFuncoes as any[]).filter((v) => v.ghe_id === gesId && v.funcao_id).map((v) => v.funcao_id),
+    );
+    return funcoes.filter((f: any) => ids.has(f.id));
+  };
+  /** Em que grupo cada função está hoje — para avisar de onde ela sairia. */
+  const gesDaFuncao = (funcaoId: string) => {
+    const v = (gheFuncoes as any[]).find((x) => x.funcao_id === funcaoId);
+    return v ? gesList.find((g: any) => g.id === v.ghe_id) : undefined;
+  };
 
   const [openGesModal, setOpenGesModal] = useState(false);
   const [gesFormData, setGesFormData] = useState<Partial<SstGes>>({});
+  const [funcoesSelecionadas, setFuncoesSelecionadas] = useState<string[]>([]);
+  const [salvando, setSalvando] = useState(false);
   const [confirmarExclusao, setConfirmarExclusao] = useState<{ id: string; nome: string } | null>(null);
+
+  const abrirGes = (ges?: SstGes) => {
+    setGesFormData(ges || {});
+    setFuncoesSelecionadas(ges ? funcoesDoGes(ges.id).map((f: any) => f.id) : []);
+    setOpenGesModal(true);
+  };
 
   const handleSaveGes = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSalvando(true);
     try {
-      await saveGes(gesFormData);
+      const salvo = await saveGes(gesFormData);
+      await definirFuncoesDoGes({ ges_id: (salvo as any).id, funcao_ids: funcoesSelecionadas });
       setOpenGesModal(false);
     } catch (err) {
       console.error(err);
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -67,7 +92,7 @@ export function GesExposicoesTab() {
             com exposições distintas (quem opera a máquina e quem faz o acabamento).
           </p>
         </div>
-        <Button onClick={() => { setGesFormData({}); setOpenGesModal(true); }} size="sm" className="shrink-0">
+        <Button onClick={() => abrirGes()} size="sm" className="shrink-0">
           <Plus className="w-4 h-4 mr-1" /> Novo grupo
         </Button>
       </div>
@@ -98,7 +123,7 @@ export function GesExposicoesTab() {
                     >
                       <ListTree className="w-4 h-4 text-slate-600" />
                     </Button>
-                    <Button onClick={() => { setGesFormData(ges); setOpenGesModal(true); }} variant="ghost" size="sm" title="Editar grupo">
+                    <Button onClick={() => abrirGes(ges)} variant="ghost" size="sm" title="Editar grupo">
                       <Edit2 className="w-4 h-4 text-slate-600" />
                     </Button>
                     <Button
@@ -123,6 +148,27 @@ export function GesExposicoesTab() {
                   </p>
                 )}
                 {ges.descricao && <p className="text-slate-500">{ges.descricao}</p>}
+                {/* Quem está no grupo é a informação que decide se ele está
+                    certo: é olhando a lista que se percebe, por exemplo, um
+                    ajudante de produção junto de sete administrativos. */}
+                <div>
+                  <p className="text-[11px] font-medium text-slate-500 mb-1">
+                    Funções neste grupo ({funcoesDoGes(ges.id).length})
+                  </p>
+                  {funcoesDoGes(ges.id).length === 0 ? (
+                    <p className="text-amber-800">
+                      Nenhuma função ainda — o grupo não entra no quadro de EPIs do PGR assim.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {funcoesDoGes(ges.id).map((f: any) => (
+                        <Badge key={f.id} variant="secondary" className="text-[11px] font-normal">
+                          {f.nome}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))
@@ -167,9 +213,44 @@ export function GesExposicoesTab() {
                 placeholder="Ex.: mesma exposição a ruído e óleo mineral, na mesma jornada, no galpão fabril."
               />
             </div>
+            <div>
+              <Label>Funções neste grupo</Label>
+              <p className="text-xs text-slate-500 mb-2">
+                Uma função pertence a um grupo só. Marcar aqui a tira do grupo em que estiver.
+              </p>
+              {funcoes.length === 0 ? (
+                <p className="text-xs text-slate-400">Nenhuma função cadastrada na Estrutura Ocupacional.</p>
+              ) : (
+                <div className="max-h-56 overflow-y-auto rounded-md border divide-y">
+                  {funcoes.map((f: any) => {
+                    const marcada = funcoesSelecionadas.includes(f.id);
+                    const outro = gesDaFuncao(f.id);
+                    const vemDeOutro = !marcada && outro && outro.id !== gesFormData.id;
+                    return (
+                      <label key={f.id} className="flex items-start gap-2 p-2 cursor-pointer hover:bg-slate-50">
+                        <input
+                          type="checkbox" className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                          checked={marcada}
+                          onChange={(e) => setFuncoesSelecionadas((prev) =>
+                            e.target.checked ? [...prev, f.id] : prev.filter((id) => id !== f.id))}
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm">{f.nome}</span>
+                          {vemDeOutro && (
+                            <span className="block text-[11px] text-amber-700">
+                              hoje está em “{outro!.nome}” — marcar move para cá
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenGesModal(false)}>Cancelar</Button>
-              <Button type="submit">Salvar grupo</Button>
+              <Button type="submit" disabled={salvando}>{salvando ? "Salvando…" : "Salvar grupo"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

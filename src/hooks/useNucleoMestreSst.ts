@@ -520,6 +520,64 @@ export function useNucleoMestreSst() {
     },
   });
 
+  /**
+   * Define exatamente quais funções compõem um GES.
+   *
+   * Um setor nem sempre é um GES só: no PCP, os administrativos ficam sentados
+   * ao computador e o Ajudante de Confecção movimenta material — mesma
+   * lotação, exposições diferentes, dois grupos. É por aqui que essa separação
+   * é feita.
+   *
+   * A função é EXCLUSIVA de um grupo: marcar aqui a tira de onde estava. Deixar
+   * a mesma função em dois GES faria o risco dela ser contado duas vezes no
+   * inventário e no quadro de EPIs.
+   */
+  const definirFuncoesDoGesMutation = useMutation({
+    mutationFn: async ({ ges_id, funcao_ids }: { ges_id: string; funcao_ids: string[] }) => {
+      if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
+      const de = (supabase.from as any);
+
+      // Sai quem foi desmarcado.
+      const remover = de("ghe_funcoes").delete().eq("ghe_id", ges_id).eq("empresa_id", activeEmpresaId);
+      const { error: erroRemover } = funcao_ids.length
+        ? await remover.not("funcao_id", "in", `(${funcao_ids.join(",")})`)
+        : await remover;
+      if (erroRemover) throw erroRemover;
+
+      if (!funcao_ids.length) return;
+
+      // Entram os marcados, saindo antes de qualquer outro grupo.
+      const { error: erroExclusividade } = await de("ghe_funcoes")
+        .delete().in("funcao_id", funcao_ids).neq("ghe_id", ges_id).eq("empresa_id", activeEmpresaId);
+      if (erroExclusividade) throw erroExclusividade;
+
+      const { data: jaLigadas } = await de("ghe_funcoes")
+        .select("funcao_id").eq("ghe_id", ges_id).in("funcao_id", funcao_ids);
+      const existentes = new Set((jaLigadas || []).map((f: any) => f.funcao_id));
+      const novas = funcao_ids.filter((id) => !existentes.has(id));
+      if (!novas.length) return;
+
+      const setorNomePorFuncao = new Map(
+        funcoes.map((f: any) => [f.id, setores.find((s: any) => s.id === f.setor_id)?.nome || null]),
+      );
+      const { error } = await de("ghe_funcoes").insert(novas.map((id) => {
+        const f: any = funcoes.find((x: any) => x.id === id);
+        return {
+          ghe_id: ges_id, funcao_id: id, empresa_id: activeEmpresaId,
+          nome_funcao: f?.nome || "Função", setor: setorNomePorFuncao.get(id) || null,
+        };
+      }));
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "ghe_funcoes"] });
+      toast({ title: "Sucesso", description: "Funções do grupo atualizadas." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erro ao atualizar funções do grupo", description: err.message, variant: "destructive" });
+    },
+  });
+
   // SAVE EXPOSICAO MUTATION
   const saveExposicaoMutation = useMutation({
     mutationFn: async (exposicao: Partial<SstExposicao>) => {
@@ -748,6 +806,7 @@ export function useNucleoMestreSst() {
     saveGes: saveGesMutation.mutateAsync,
     vincularGesSetor: vincularGesSetorMutation.mutateAsync,
     vincularGesFuncao: vincularGesFuncaoMutation.mutateAsync,
+    definirFuncoesDoGes: definirFuncoesDoGesMutation.mutateAsync,
     saveExposicao: saveExposicaoMutation.mutateAsync,
     deleteEstabelecimento: deleteEstabelecimentoMutation.mutateAsync,
     deleteAmbiente: deleteAmbienteMutation.mutateAsync,

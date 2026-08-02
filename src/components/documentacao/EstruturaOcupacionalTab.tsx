@@ -192,6 +192,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     vincularGesFuncao,
     gesList,
     gheSetores,
+    gheFuncoes,
     deleteEstabelecimento,
     deleteAmbiente,
     deleteSetor,
@@ -338,8 +339,15 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         // A função entra no GES do seu setor. É `ghe_funcoes` que o "Quadro
         // sinóptico de EPIs" do PDF lê — sem este vínculo, o GES criado junto
         // com o Setor apareceria no documento sem ninguém dentro.
+        // Só entra no GES do setor quem ainda não está em grupo nenhum. Um
+        // setor pode ter mais de um GES — no PCP, os administrativos e o
+        // Ajudante de Confecção têm exposições diferentes — e reatribuir aqui
+        // desfaria essa separação a cada vez que a função fosse editada.
+        const jaEmAlgumGes = (gheFuncoes as any[]).some(
+          (v) => v.funcao_id === (funcaoSalva as any).id,
+        );
         const vinculoSetor = (gheSetores as any[]).find((v) => v.setor_id === dados.setor_id);
-        if (vinculoSetor?.ghe_id) {
+        if (!jaEmAlgumGes && vinculoSetor?.ghe_id) {
           await vincularGesFuncao({
             ges_id: vinculoSetor.ghe_id,
             funcao_id: (funcaoSalva as any).id,
