@@ -1223,7 +1223,11 @@ export default function Entregas() {
                         {offlinePendingIds.has(e.id) && (
                           <StatusBadge tone="info" size="sm"><WifiOff className="w-3 h-3 mr-0.5" />Offline</StatusBadge>
                         )}
-                        <StatusBadge tone={tipoTone[e.tipo] || "neutral"} size="sm">{tipoLabels[e.tipo] || e.tipo}</StatusBadge>
+                        {/* O tipo não vira selo aqui: ele já aparece logo
+                            abaixo, no campo "Motivo". Ter os dois deixava
+                            "Substituição" escrito duas vezes no mesmo card.
+                            Na tabela do desktop não há campo Motivo, então lá
+                            a coluna Tipo continua sendo a única fonte. */}
                         <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
 
                         {/* Devolução não é assinada — antes saía um "—" solto
