@@ -51,13 +51,13 @@ const statusLabel = (status: string): string => {
 };
 
 
-interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; unidade_origem_id?: string | null; data_prevista_substituicao?: string | null; }
+interface Entrega { id: string; funcionario_id: string; epi_id: string; quantidade: number; data: string; tipo: string; observacao: string | null; status: string; created_at: string; assinatura_colaborador: string | null; foto_reconhecimento: string | null; empresa_id?: string | null; unidade_origem_id?: string | null; }
 interface Funcionario { id: string; nome: string; cargo: string | null; setor: string | null; cpf: string | null; matricula: string | null; data_admissao: string | null; empresa_id?: string | null; }
 interface EPI { id: string; nome: string; estoque: number; ca: string | null; descricao: string | null; validade: string | null; empresa_id?: string | null; source_epi_id?: string; tamanho?: string | null; }
 interface EpiItem { epi: EPI; quantidade: number; }
 interface Unidade { id: string; nome: string; tipo: string; }
 
-const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano" };
+const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano", devolucao: "Devolução" };
 
 /** Data ISO (YYYY-MM-DD) no formato brasileiro, sem passar por fuso. */
 const fmtData = (d?: string | null): string => {
@@ -66,31 +66,7 @@ const fmtData = (d?: string | null): string => {
   return ano && mes && dia ? `${dia}/${mes}/${ano}` : d;
 };
 
-/**
- * Quantos dias faltam para a data prevista de substituição.
- * Negativo = já passou. `null` quando não há data.
- */
-const diasParaSubstituir = (d?: string | null): number | null => {
-  if (!d) return null;
-  const alvo = new Date(`${d.slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(alvo.getTime())) return null;
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  return Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
-};
 
-/**
- * Cor da previsão de substituição — o destaque é o motivo de o campo existir.
- * O sistema anterior pintava a data de amarelo quando a troca se aproximava;
- * aqui vencido fica vermelho e "falta pouco" (30 dias) fica âmbar, para o SESMT
- * distinguir o que já está irregular do que ainda dá para programar.
- */
-const corPrevisao = (dias: number | null): string => {
-  if (dias === null) return "text-muted-foreground";
-  if (dias < 0) return "text-destructive font-semibold";
-  if (dias <= 30) return "text-amber-600 font-semibold";
-  return "text-foreground";
-};
 
 const devolucaoDestinos = [
   { value: "estoque", label: "Retornar ao estoque" },
@@ -299,7 +275,6 @@ export default function Entregas() {
     data: new Date().toISOString().split("T")[0],
     tipo: "entrega" as string, observacao: "",
     unidade_origem_id: empresaId || "",
-    data_prevista_substituicao: "",
   };
   const { form, setForm, resetForm, hasDraft } = useFormDraft("entregas_mov", entregaDefaults);
 
@@ -586,7 +561,6 @@ export default function Entregas() {
           observacao: form.observacao || null,
           empresa_id: empresaId,
           unidade_origem_id: form.unidade_origem_id || null,
-          data_prevista_substituicao: form.data_prevista_substituicao || null,
         };
 
         const queued = addToSyncQueue({ table: "entregas", type: "insert", payload });
@@ -612,7 +586,6 @@ export default function Entregas() {
           created_at: new Date().toISOString(),
           assinatura_colaborador: null,
           foto_reconhecimento: null,
-          data_prevista_substituicao: form.data_prevista_substituicao || null,
         } as Entrega);
       }
 
@@ -664,7 +637,6 @@ export default function Entregas() {
             empresa_id: empresaId,
             created_by: currentUserId,
             unidade_origem_id: form.unidade_origem_id || null,
-            data_prevista_substituicao: form.data_prevista_substituicao || null,
           })
           .select("id")
           .single();
@@ -1298,38 +1270,17 @@ export default function Entregas() {
                    * as datas alinhadas para leitura em varredura vertical —
                    * com `justify-between` cada valor parava numa posição
                    * diferente, conforme o tamanho do próprio texto.
-                   *
-                   * A largura da coluna 1 é a do maior rótulo ("Previsão de
-                   * substituição"), resolvida pelo próprio grid.
                    */}
-                  {(() => {
-                    const dias = diasParaSubstituir(e.data_prevista_substituicao);
-                    // O realce vale para a linha inteira, rótulo incluído: é
-                    // assim que a troca vencida salta aos olhos na lista.
-                    const cor = corPrevisao(dias);
-                    return (
-                      <dl className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
-                        <dt className="text-muted-foreground">Motivo</dt>
-                        <dd>{tipoLabels[e.tipo] || e.tipo}</dd>
+                  <dl className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+                    <dt className="text-muted-foreground">Motivo</dt>
+                    <dd>{tipoLabels[e.tipo] || e.tipo}</dd>
 
-                        <dt className="text-muted-foreground">Quantidade</dt>
-                        <dd className="tabular-nums">{e.quantidade}</dd>
+                    <dt className="text-muted-foreground">Quantidade</dt>
+                    <dd className="tabular-nums">{e.quantidade}</dd>
 
-                        <dt className="text-muted-foreground">Data de entrega</dt>
-                        <dd className="font-mono tabular-nums">{fmtData(e.data)}</dd>
-
-                        {/* Devolução não tem troca a programar. */}
-                        {e.tipo !== "devolucao" && (
-                          <>
-                            <dt className={cor}>Previsão de substituição</dt>
-                            <dd className={`font-mono tabular-nums ${cor}`}>
-                              {fmtData(e.data_prevista_substituicao)}
-                            </dd>
-                          </>
-                        )}
-                      </dl>
-                    );
-                  })()}
+                    <dt className="text-muted-foreground">Data de entrega</dt>
+                    <dd className="font-mono tabular-nums">{fmtData(e.data)}</dd>
+                  </dl>
                   {e.observacao && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{e.observacao}</p>}
                 </CardContent>
               </Card>
@@ -1348,7 +1299,6 @@ export default function Entregas() {
                     <TableHead>EPI</TableHead>
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Prev. substituição</TableHead>
                     <TableHead>Assinatura</TableHead>
                     <TableHead>Obs</TableHead>
                     <TableHead className="w-24"></TableHead>
@@ -1356,7 +1306,7 @@ export default function Entregas() {
                 </TableHeader>
                 <TableBody>
                   {filteredEntregas.length === 0 ? (
-                    <TableRow><TableCell colSpan={10} className="p-0">
+                    <TableRow><TableCell colSpan={9} className="p-0">
                       <EmptyState
                         bare
                         icon={searchTerm ? Search : PackageOpen}
@@ -1394,9 +1344,6 @@ export default function Entregas() {
                       <TableCell className="text-right">{e.quantidade}</TableCell>
                       <TableCell>
                         <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
-                      </TableCell>
-                      <TableCell className={`font-mono text-xs ${corPrevisao(diasParaSubstituir(e.data_prevista_substituicao))}`}>
-                        {e.tipo === "devolucao" ? "—" : fmtData(e.data_prevista_substituicao)}
                       </TableCell>
 
                       <TableCell>
@@ -1580,21 +1527,9 @@ export default function Entregas() {
               })()}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label>Data</Label>
-                <Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} />
-              </div>
-              <div>
-                <Label>Previsão de substituição</Label>
-                <Input
-                  type="date"
-                  value={form.data_prevista_substituicao || ""}
-                  min={form.data}
-                  onChange={e => setForm({...form, data_prevista_substituicao: e.target.value})}
-                />
-                <p className="text-xs text-muted-foreground mt-1">Quando este EPI deve ser trocado. Opcional.</p>
-              </div>
+            <div>
+              <Label>Data</Label>
+              <Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} />
             </div>
             <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e => setForm({...form, observacao: e.target.value})} placeholder="Observações opcionais" /></div>
           </div>
