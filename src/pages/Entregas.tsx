@@ -122,9 +122,21 @@ const appendObservacao = (current: string | null | undefined, note: string) =>
   [current?.trim(), note.trim()].filter(Boolean).join(" • ");
 
 export default function Entregas() {
-  const { data: entregas, loading, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
-  const { data: funcionarios } = useSupabaseQuery<Funcionario>("funcionarios");
-  const { data: epis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
+  const { data: entregas, loading: loadingEntregas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
+  const { data: funcionarios, loading: loadingFuncionarios } = useSupabaseQuery<Funcionario>("funcionarios");
+  const { data: epis, loading: loadingEpis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
+
+  /*
+   * A lista só faz sentido com as três consultas prontas.
+   *
+   * Cada linha de entrega guarda apenas os ids do colaborador e do EPI — os
+   * nomes vêm de `funcionarios` e `epis`. Com o gate olhando só para
+   * `entregas`, a tela abria assim que ela resolvia (o que é imediato quando
+   * vem do cache local) e as buscas por id ainda caíam em listas vazias: todo
+   * card aparecia com "—" no lugar do colaborador e "EPI não localizado no
+   * cadastro", como se os dados tivessem sumido.
+   */
+  const loading = loadingEntregas || loadingFuncionarios || loadingEpis;
   const { toast } = useToast();
   const { canEdit, canCreate, canDelete } = usePermissions("entregas");
   const { user, empresaId, contratoId } = useAuth();
