@@ -1062,6 +1062,23 @@ export default function Entregas() {
 
   const getName = (list: { id: string; nome: string }[], id: string) => list.find(i => i.id === id)?.nome || "—";
 
+  /**
+   * Quando a lixeira faz sentido.
+   *
+   * Excluir é DELETE definitivo: não devolve estoque, não deixa rastro e não
+   * tem desfazer. Só cabe onde não existe caminho melhor — ou seja, num
+   * registro ainda sem consequência.
+   *
+   * - Assinada: a assinatura mora na linha e é a prova de entrega do EPI
+   *   (CLT art. 166/167). Sai de circulação por devolução, que preserva o
+   *   histórico.
+   * - Devolução: já tem "Desfazer devolução", que restaura o status anterior
+   *   da entrega original, acerta o estoque e grava auditoria. Apagar a linha
+   *   deixaria a entrega original travada como devolvida e o estoque errado.
+   */
+  const podeExcluir = (e: Entrega) =>
+    canDelete && !e.assinatura_colaborador && e.tipo !== "devolucao";
+
   /*
    * Índices por id. Antes cada célula fazia um `find` na lista inteira: com
    * centenas de entregas × centenas de EPIs isso é varredura sobre varredura a
@@ -1315,29 +1332,33 @@ export default function Entregas() {
                       comiam a largura útil: num card com três botões o nome do
                       colaborador quebrava em três linhas, e cards com um botão
                       só ficavam com aparência diferente dos demais. */}
-                  {(canDelete || canEdit) && (
+                  {/* O rodapé só existe quando há botão para pôr nele. Uma
+                      entrega assinada não tem nenhum dos três — antes sobrava
+                      a linha divisória com espaço vazio embaixo. */}
+                  {(() => {
+                    const podeEstornar = e.tipo === "devolucao" && e.status === "devolvido" && canEdit;
+                    const podeAssinar = !e.assinatura_colaborador && e.tipo !== "devolucao" && canEdit;
+                    if (!podeEstornar && !podeAssinar && !podeExcluir(e)) return null;
+                    return (
                     <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
-                      {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
+                      {podeEstornar && (
                         <Button size="icon" variant="outline" className="h-10 w-10" title="Desfazer devolução" aria-label="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
                           <RotateCcw className="w-4 h-4 text-primary" />
                         </Button>
                       )}
-                      {!e.assinatura_colaborador && e.tipo !== "devolucao" && canEdit && (
+                      {podeAssinar && (
                         <Button size="icon" variant="outline" className="h-10 w-10" title="Assinar" aria-label="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
                           <PenLine className="w-4 h-4 text-amber-500" />
                         </Button>
                       )}
-                      {/* Entrega assinada não se apaga: a assinatura mora na
-                          própria linha e é a prova de que o EPI foi entregue
-                          (CLT art. 166/167). Para tirá-la de circulação existe
-                          a devolução, que preserva o histórico. */}
-                      {canDelete && !e.assinatura_colaborador && (
+                      {podeExcluir(e) && (
                         <Button size="icon" variant="outline" className="h-10 w-10" title="Excluir" aria-label="Excluir" onClick={() => setConfirmDelete(e)}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
                     </div>
-                  )}
+                    );
+                  })()}
                 </CardContent>
               </Card>
             ))}
@@ -1428,7 +1449,7 @@ export default function Entregas() {
                               <RotateCcw className="w-3.5 h-3.5 text-primary" />
                             </Button>
                           )}
-                          {canDelete && !e.assinatura_colaborador && (
+                          {podeExcluir(e) && (
                             <Button size="icon" variant="ghost" title="Excluir" aria-label="Excluir" onClick={() => setConfirmDelete(e)}>
                               <Trash2 className="w-3.5 h-3.5 text-destructive" />
                             </Button>
