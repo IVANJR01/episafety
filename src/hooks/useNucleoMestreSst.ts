@@ -411,13 +411,17 @@ export function useNucleoMestreSst() {
 
   // SAVE FUNCAO MUTATION
   const saveFuncaoMutation = useMutation({
-    mutationFn: async (funcao: Partial<SstFuncao>) => {
+    // `_silencioso`: usado pelo cadastro em lote, que salva uma função por vez
+    // e daria uma pilha de toasts idênticos — lá o aviso é um só, no fim.
+    mutationFn: async ({ _silencioso, ...funcao }: Partial<SstFuncao> & { _silencioso?: boolean }) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
       return resilientSaveItem("sst_funcoes", "aso_funcoes", funcao, activeEmpresaId);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variaveis) => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_funcoes"] });
-      toast({ title: "Sucesso", description: "Função/Cargo cadastrado no Núcleo Mestre!" });
+      if (!variaveis?._silencioso) {
+        toast({ title: "Sucesso", description: "Função/Cargo cadastrado no Núcleo Mestre!" });
+      }
     },
     onError: (err: any) => {
       toast({ title: "Erro ao salvar função", description: err.message, variant: "destructive" });

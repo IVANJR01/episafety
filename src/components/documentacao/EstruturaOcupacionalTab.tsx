@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
+import { useToast } from "@/hooks/use-toast";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { mensagemErro } from "@/lib/erroSupabase";
 import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
-import { Building2, LayoutGrid, Workflow, Briefcase, Layers, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -204,6 +205,8 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     deleteFuncao,
   } = useNucleoMestreSst();
 
+  const { toast } = useToast();
+
   const [activeSubTab, setActiveSubTab] = useState<string>("estabelecimentos");
 
   /**
@@ -234,6 +237,73 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
   });
 
   const [setorDosGrupos, setSetorDosGrupos] = useState<{ id: string; nome: string } | null>(null);
+
+  // Cadastro de funções em lote: digitar oito cargos um a um, abrindo e
+  // fechando o mesmo formulário, é o tipo de trabalho que a tela devia poupar.
+  const [loteAberto, setLoteAberto] = useState(false);
+  const [loteTexto, setLoteTexto] = useState("");
+  const [loteSetor, setLoteSetor] = useState("");
+  const [loteSalvando, setLoteSalvando] = useState(false);
+
+  const normalizar = (v: string) => (v || "").normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+  /** Uma função por linha; "Nome | Descrição" quando quiser já descrever. */
+  const loteLinhas = useMemo(() => {
+    const jaExistem = new Set(funcoes.map((f: any) => normalizar(f.nome)));
+    const vistos = new Set<string>();
+    return loteTexto.split("\n").map((l) => l.trim()).filter(Boolean).map((linha) => {
+      const [nome, descricao] = linha.split(/[|\t]/).map((p) => p.trim());
+      const chave = normalizar(nome);
+      const duplicadaNoTexto = vistos.has(chave);
+      vistos.add(chave);
+      return {
+        nome, descricao: descricao || "",
+        repetida: jaExistem.has(chave) || duplicadaNoTexto,
+      };
+    }).filter((l) => l.nome);
+  }, [loteTexto, funcoes]);
+
+  const loteNovas = loteLinhas.filter((l) => !l.repetida);
+
+  const salvarLote = async () => {
+    setLoteSalvando(true);
+    try {
+      const vinculoSetor = (gheSetores as any[]).find((v) => v.setor_id === loteSetor);
+      for (const linha of loteNovas) {
+        const salva: any = await saveFuncao({
+          nome: linha.nome,
+          setor_id: loteSetor || null,
+          descricao_atividades: linha.descricao || null,
+          _silencioso: true,
+        } as any);
+        // Mesma regra do cadastro avulso: entra no GES do setor.
+        if (vinculoSetor?.ghe_id) {
+          await vincularGesFuncao({
+            ges_id: vinculoSetor.ghe_id,
+            funcao_id: salva.id,
+            nome_funcao: linha.nome,
+            setor_nome: setores.find((st) => st.id === loteSetor)?.nome,
+          });
+        }
+      }
+      toast({
+        title: "Funções cadastradas",
+        description: `${loteNovas.length} função(ões) adicionada(s).`,
+      });
+      setLoteTexto("");
+      setLoteAberto(false);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Erro ao cadastrar em lote",
+        description: mensagemErro(err, "função"),
+        variant: "destructive",
+      });
+    } finally {
+      setLoteSalvando(false);
+    }
+  };
 
   const [erroSalvar, setErroSalvar] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -598,9 +668,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         <TabsContent value="funcoes" className="mt-4 space-y-4">
           <div className="flex flex-wrap justify-between items-center gap-2">
             <h3 className="font-semibold text-slate-800">Funções</h3>
-            <Button onClick={() => handleOpenModal("funcao")} size="sm">
-              <Plus className="w-4 h-4 mr-1" /> Nova Função
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setLoteAberto(true)} size="sm" variant="outline">
+                <ClipboardPaste className="w-4 h-4 mr-1" /> Colar em lote
+              </Button>
+              <Button onClick={() => handleOpenModal("funcao")} size="sm">
+                <Plus className="w-4 h-4 mr-1" /> Nova Função
+              </Button>
+            </div>
           </div>
           {/* Os requisitos de NR continuam sendo marcados no cadastro e
               impressos no PDF — só saíram daqui, onde a descrição das
@@ -626,6 +701,69 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         </TabsContent>
 
       </Tabs>
+
+      {/* COLAR FUNÇÕES EM LOTE */}
+      <Dialog open={loteAberto} onOpenChange={setLoteAberto}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Colar funções em lote</DialogTitle>
+            <DialogDescription>
+              Uma função por linha. Para já descrever a rotina, use
+              {" "}<code>Nome | Descrição</code> na mesma linha.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm">
+            <div>
+              <Label>Setor de todas elas</Label>
+              <Select value={loteSetor} onValueChange={setLoteSetor}>
+                <SelectTrigger><SelectValue placeholder="Selecione o setor..." /></SelectTrigger>
+                <SelectContent>
+                  {setores.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Funções</Label>
+              <Textarea
+                rows={8}
+                value={loteTexto}
+                onChange={(e) => setLoteTexto(e.target.value)}
+                placeholder={"Analista de PCP\nAssistente Administrativo\nAuxiliar Administrativo\nCronometrista\nGerente de Produção"}
+              />
+            </div>
+
+            {loteLinhas.length > 0 && (
+              <div className="rounded-lg border bg-slate-50/60 p-3 text-xs space-y-1">
+                <p className="font-medium text-slate-700">
+                  {loteNovas.length} para cadastrar
+                  {loteLinhas.length - loteNovas.length > 0
+                    && `, ${loteLinhas.length - loteNovas.length} já existe(m) e será(ão) ignorada(s)`}
+                </p>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {loteLinhas.map((l, i) => (
+                    <Badge key={i} variant={l.repetida ? "outline" : "secondary"}
+                      className={`font-normal ${l.repetida ? "text-slate-400 line-through" : ""}`}>
+                      {l.nome}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setLoteAberto(false)}>Cancelar</Button>
+            <Button type="button" onClick={salvarLote}
+              disabled={loteSalvando || loteNovas.length === 0 || !loteSetor}>
+              {loteSalvando ? "Cadastrando…" : `Cadastrar ${loteNovas.length || ""}`.trim()}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <GruposDoSetorDialog
         setor={setorDosGrupos}
