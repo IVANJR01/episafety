@@ -525,7 +525,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             rotuloPrincipal="Nome da Função"
             principal={(func) => func.nome}
             colunas={[
-              { rotulo: "CBO", celula: (func) => func.cbo || "-" },
               { rotulo: "Setor", celula: (func) => setores.find((s) => s.id === func.setor_id)?.nome || "-" },
               {
                 rotulo: "Descrição das atividades",
@@ -863,32 +862,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
             {modalType === "funcao" && (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <Label>Código CBO</Label>
-                    <Input
-                      value={formData.cbo || ""}
-                      onChange={(e) => setFormData({ ...formData, cbo: e.target.value })}
-                      placeholder="Ex: 7152-10"
-                    />
-                  </div>
-                  {/* Colunas sst_funcoes.qtd_trabalhadores e .jornada, criadas
-                      pela migration de 28/07. Ficaram fora enquanto ela estava
-                      pendente — enviar coluna inexistente derrubava o insert. */}
-                  <div>
-                    <Label>Nº de trabalhadores</Label>
-                    <Input type="number" min={0} value={formData.qtd_trabalhadores ?? ""}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        qtd_trabalhadores: e.target.value === "" ? null : Number(e.target.value),
-                      })} />
-                  </div>
-                  <div>
-                    <Label>Jornada</Label>
-                    <Input value={formData.jornada || ""} placeholder="Ex.: 44h semanais"
-                      onChange={(e) => setFormData({ ...formData, jornada: e.target.value })} />
-                  </div>
-                </div>
                 <div>
                   <Label>Setor Principal</Label>
                   <Select
@@ -903,32 +876,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     </SelectContent>
                   </Select>
                 </div>
-                {/* A tabela tinha a coluna "Requisitos NRs" e mostrava "Padrão"
-                    quando vazia, sem lugar nenhum para marcar. "Padrão" também
-                    não dizia nada: o que existe é a função EXIGIR ou não cada
-                    treinamento. */}
-                <fieldset className="border rounded-md p-3 space-y-2">
-                  <legend className="px-1 text-xs font-semibold text-slate-600">
-                    Treinamentos obrigatórios
-                  </legend>
-                  <p className="text-xs text-slate-500">
-                    Marque apenas o que esta função exige. Sem marcação, nenhum treinamento
-                    especial é exigido.
-                  </p>
-                  {([
-                    ["exige_nr10", "NR-10 — Eletricidade"],
-                    ["exige_nr33", "NR-33 — Espaço confinado"],
-                    ["exige_nr35", "NR-35 — Trabalho em altura"],
-                  ] as [string, string][]).map(([campo, rotulo]) => (
-                    <label key={campo} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input type="checkbox" className="h-4 w-4 rounded border-slate-300"
-                        checked={!!formData[campo]}
-                        onChange={(e) => setFormData({ ...formData, [campo]: e.target.checked })} />
-                      {rotulo}
-                    </label>
-                  ))}
-                </fieldset>
 
+                {/* Sem CBO, nº de trabalhadores, jornada e treinamentos
+                    obrigatórios: alimentavam só a linha de detalhe abaixo de
+                    cada função na seção "Funções e Atividades" do PDF do PGR,
+                    que já omite o que estiver em branco. CBO e as NRs continuam
+                    sendo cadastrados onde de fato importam — o módulo ASO tem
+                    formulário próprio, e o PPP/eSocial lê de ghe_funcoes. */}
                 <div>
                   <Label>Descrição das Atividades Desempenhadas</Label>
                   <Textarea
