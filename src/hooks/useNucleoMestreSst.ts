@@ -539,10 +539,16 @@ export function useNucleoMestreSst() {
   const definirFuncoesDoGesMutation = useMutation({
     mutationFn: async ({ ges_id, funcao_ids }: { ges_id: string; funcao_ids: string[] }) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
-      const de = (supabase.from as any);
+      // `supabase.from(...)` sempre chamado como método: guardar a função numa
+      // variável (`const de = supabase.from`) a desprende do cliente, e lá
+      // dentro o `this.rest` vira undefined — "Cannot read properties of
+      // undefined (reading 'rest')" ao salvar as funções do grupo.
 
-      // Sai quem foi desmarcado.
-      const remover = de("ghe_funcoes").delete().eq("ghe_id", ges_id).eq("empresa_id", activeEmpresaId);
+      // Sai quem foi desmarcado. Linhas antigas sem funcao_id (texto solto do
+      // cadastro anterior) não entram no filtro e sobrevivem de propósito: são
+      // as que o PDF ainda lê pelo nome.
+      const remover = (supabase.from as any)("ghe_funcoes")
+        .delete().eq("ghe_id", ges_id).eq("empresa_id", activeEmpresaId);
       const { error: erroRemover } = funcao_ids.length
         ? await remover.not("funcao_id", "in", `(${funcao_ids.join(",")})`)
         : await remover;
@@ -551,11 +557,11 @@ export function useNucleoMestreSst() {
       if (!funcao_ids.length) return;
 
       // Entram os marcados, saindo antes de qualquer outro grupo.
-      const { error: erroExclusividade } = await de("ghe_funcoes")
+      const { error: erroExclusividade } = await (supabase.from as any)("ghe_funcoes")
         .delete().in("funcao_id", funcao_ids).neq("ghe_id", ges_id).eq("empresa_id", activeEmpresaId);
       if (erroExclusividade) throw erroExclusividade;
 
-      const { data: jaLigadas } = await de("ghe_funcoes")
+      const { data: jaLigadas } = await (supabase.from as any)("ghe_funcoes")
         .select("funcao_id").eq("ghe_id", ges_id).in("funcao_id", funcao_ids);
       const existentes = new Set((jaLigadas || []).map((f: any) => f.funcao_id));
       const novas = funcao_ids.filter((id) => !existentes.has(id));
@@ -564,7 +570,7 @@ export function useNucleoMestreSst() {
       const setorNomePorFuncao = new Map(
         funcoes.map((f: any) => [f.id, setores.find((s: any) => s.id === f.setor_id)?.nome || null]),
       );
-      const { error } = await de("ghe_funcoes").insert(novas.map((id) => {
+      const { error } = await (supabase.from as any)("ghe_funcoes").insert(novas.map((id) => {
         const f: any = funcoes.find((x: any) => x.id === id);
         return {
           ghe_id: ges_id, funcao_id: id, empresa_id: activeEmpresaId,
