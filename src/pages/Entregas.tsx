@@ -59,6 +59,24 @@ interface Unidade { id: string; nome: string; tipo: string; }
 
 const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano", devolucao: "Devolução" };
 
+/**
+ * A parte da observação que interessa a quem lê a lista.
+ *
+ * O descarte automático grava uma trilha de auditoria na própria observação —
+ * id da entrega de origem, status anterior, quem processou. É informação para
+ * conferência posterior, não para a tela: no card aparecia
+ * "Entrega origem: 1a61bc1e-7ea4-4d78-a8cd-…", um identificador interno que
+ * não diz nada e ainda ocupava as duas linhas disponíveis, escondendo o
+ * motivo real do registro. O texto completo continua gravado no banco.
+ */
+const TRECHOS_TECNICOS = /^(entrega origem|status anterior|processado por)\s*:/i;
+const observacaoLegivel = (obs?: string | null): string =>
+  (obs || "")
+    .split("•")
+    .map((p) => p.trim())
+    .filter((p) => p && !TRECHOS_TECNICOS.test(p))
+    .join(" • ");
+
 /** Data ISO (YYYY-MM-DD) no formato brasileiro, sem passar por fuso. */
 const fmtData = (d?: string | null): string => {
   if (!d) return "—";
@@ -1208,9 +1226,10 @@ export default function Entregas() {
                         <StatusBadge tone={tipoTone[e.tipo] || "neutral"} size="sm">{tipoLabels[e.tipo] || e.tipo}</StatusBadge>
                         <StatusBadge tone={statusTone(e.status)} size="sm">{statusLabel(e.status)}</StatusBadge>
 
-                        {e.tipo === "devolucao" ? (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground font-medium">—</span>
-                        ) : e.assinatura_colaborador ? (
+                        {/* Devolução não é assinada — antes saía um "—" solto
+                            entre os selos, que só polui: ausência de selo já
+                            diz que não há assinatura a mostrar. */}
+                        {e.tipo === "devolucao" ? null : e.assinatura_colaborador ? (
                           e.assinatura_colaborador === "BIOMETRIA_DIGITAL" || e.assinatura_colaborador === "RECONHECIMENTO_FACIAL" ? (
                             <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium">
                               <ScanFace className="w-3 h-3" />Rec. Facial
@@ -1250,25 +1269,6 @@ export default function Entregas() {
                         );
                       })()}
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <div className="flex gap-2">
-                        {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
-                          <Button size="icon" variant="outline" className="h-11 w-11" title="Desfazer devolução" aria-label="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
-                            <RotateCcw className="w-5 h-5 text-primary" />
-                          </Button>
-                        )}
-                        {!e.assinatura_colaborador && canEdit && (
-                          <Button size="icon" variant="outline" className="h-11 w-11" title="Assinar" aria-label="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
-                            <PenLine className="w-5 h-5 text-amber-500" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button size="icon" variant="outline" className="h-11 w-11" title="Excluir" aria-label="Excluir" onClick={() => remove(e.id)}>
-                            <Trash2 className="w-5 h-5 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
                   </div>
                   {/*
                    * Campos rotulados em grade: rótulo na coluna 1, valor na
@@ -1287,7 +1287,33 @@ export default function Entregas() {
                     <dt className="text-muted-foreground">Data de entrega</dt>
                     <dd className="font-mono tabular-nums">{fmtData(e.data)}</dd>
                   </dl>
-                  {e.observacao && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{e.observacao}</p>}
+                  {observacaoLegivel(e.observacao) && (
+                    <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{observacaoLegivel(e.observacao)}</p>
+                  )}
+
+                  {/* Ações em linha própria no rodapé. Ao lado do texto elas
+                      comiam a largura útil: num card com três botões o nome do
+                      colaborador quebrava em três linhas, e cards com um botão
+                      só ficavam com aparência diferente dos demais. */}
+                  {(canDelete || canEdit) && (
+                    <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
+                      {e.tipo === "devolucao" && e.status === "devolvido" && canEdit && (
+                        <Button size="icon" variant="outline" className="h-10 w-10" title="Desfazer devolução" aria-label="Desfazer devolução" onClick={() => handleOpenEstorno(e)}>
+                          <RotateCcw className="w-4 h-4 text-primary" />
+                        </Button>
+                      )}
+                      {!e.assinatura_colaborador && e.tipo !== "devolucao" && canEdit && (
+                        <Button size="icon" variant="outline" className="h-10 w-10" title="Assinar" aria-label="Assinar" onClick={() => openSignExisting(e.funcionario_id)}>
+                          <PenLine className="w-4 h-4 text-amber-500" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button size="icon" variant="outline" className="h-10 w-10" title="Excluir" aria-label="Excluir" onClick={() => remove(e.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
