@@ -597,13 +597,11 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     const fn = funcoes.find((f: any) => f.id === ativ.funcao_id);
                     return (
                       <TableRow key={ativ.id}>
-                        <TableCell className="font-medium text-slate-900">
+                        {/* Nome é sempre a primeira frase da descrição agora —
+                            repetir a descrição embaixo só mostrava a mesma
+                            frase duas vezes, cortada em pontos diferentes. */}
+                        <TableCell className="font-medium text-slate-900 max-w-xs truncate" title={ativ.nome}>
                           {ativ.nome}
-                          {ativ.descricao && (
-                            <span className="block text-xs font-normal text-slate-500 max-w-[260px] truncate">
-                              {ativ.descricao}
-                            </span>
-                          )}
                         </TableCell>
                         <TableCell>{fn?.nome || "-"}</TableCell>
                         <TableCell>
