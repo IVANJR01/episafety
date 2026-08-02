@@ -55,6 +55,99 @@ function sugerirNomeCurto(descricao: string): string {
 
 type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes";
 
+interface ColunaEstrutura<T> {
+  rotulo: string;
+  celula: (item: T) => React.ReactNode;
+  /** Classe da célula no desktop — é onde ficam truncamento e alinhamento. */
+  classe?: string;
+  /** Texto do `title` (tooltip) da célula no desktop, quando ela trunca. */
+  dica?: (item: T) => string;
+}
+
+/**
+ * Listagem da Estrutura Ocupacional: cartões no celular, tabela no desktop.
+ *
+ * As tabelas tinham até 7 colunas. Em 390px de largura isso não cabe de jeito
+ * nenhum: o CNPJ quebrava no meio do número ("51.213.683/000 04") e a coluna
+ * de Ações era empurrada para fora da tela — os botões de editar e excluir
+ * simplesmente não existiam no celular. No cartão cada campo ganha o próprio
+ * rótulo e o texto pode quebrar à vontade.
+ */
+function ListaEstrutura<T extends { id: string }>({
+  itens, vazio, rotuloPrincipal, principal, colunas, onEditar, onExcluir,
+}: {
+  itens: T[];
+  vazio: string;
+  rotuloPrincipal: string;
+  principal: (item: T) => React.ReactNode;
+  colunas: ColunaEstrutura<T>[];
+  onEditar: (item: T) => void;
+  onExcluir: (item: T) => void;
+}) {
+  const acoes = (item: T) => (
+    <div className="flex justify-end gap-1 shrink-0">
+      <Button onClick={() => onEditar(item)} variant="ghost" size="sm" aria-label="Editar">
+        <Edit2 className="w-4 h-4 text-slate-600" />
+      </Button>
+      <Button onClick={() => onExcluir(item)} variant="ghost" size="sm" aria-label="Excluir">
+        <Trash2 className="w-4 h-4 text-red-600" />
+      </Button>
+    </div>
+  );
+
+  if (itens.length === 0) {
+    return <Card className="p-6 text-center text-sm text-slate-400">{vazio}</Card>;
+  }
+
+  return (
+    <>
+      <div className="space-y-2 sm:hidden">
+        {itens.map((item) => (
+          <Card key={item.id} className="p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 font-medium text-slate-900">{principal(item)}</div>
+              {acoes(item)}
+            </div>
+            <dl className="mt-2 space-y-1">
+              {colunas.map((c) => (
+                <div key={c.rotulo} className="flex gap-2 text-xs">
+                  <dt className="shrink-0 text-slate-500">{c.rotulo}:</dt>
+                  <dd className="min-w-0 break-words text-slate-700">{c.celula(item)}</dd>
+                </div>
+              ))}
+            </dl>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="hidden sm:block overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{rotuloPrincipal}</TableHead>
+              {colunas.map((c) => <TableHead key={c.rotulo} className={c.classe}>{c.rotulo}</TableHead>)}
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {itens.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium text-slate-900">{principal(item)}</TableCell>
+                {colunas.map((c) => (
+                  <TableCell key={c.rotulo} className={c.classe} title={c.dica?.(item)}>
+                    {c.celula(item)}
+                  </TableCell>
+                ))}
+                <TableCell className="text-right">{acoes(item)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </>
+  );
+}
+
 interface EstruturaProps {
   /**
    * Restringe a exibição a uma única seção. Usado pelo assistente do PGR, que
@@ -305,62 +398,37 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <Plus className="w-4 h-4 mr-1" /> Novo Estabelecimento
             </Button>
           </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome / Unidade</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>CNPJ / CNO</TableHead>
-                  <TableHead>CNAE / Grau Risco</TableHead>
-                  <TableHead>Endereço</TableHead>
-                  <TableHead className="text-right">Trab.</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {estabelecimentos.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-slate-400">
-                      Nenhum estabelecimento cadastrado.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  estabelecimentos.map((est) => (
-                    <TableRow key={est.id}>
-                      <TableCell className="font-medium text-slate-900">
-                        {est.nome}
-                        {est.nome_fantasia && (
-                          <span className="block text-xs font-normal text-slate-500">{est.nome_fantasia}</span>
-                        )}
-                      </TableCell>
-                      <TableCell><Badge variant="outline">{est.tipo}</Badge></TableCell>
-                      <TableCell>{est.cnpj || est.cno || "-"}</TableCell>
-                      <TableCell>
-                        {est.cnae_principal
-                          ? `${est.cnae_principal}${est.grau_risco ? ` (Grau ${est.grau_risco})` : ""}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell className="text-xs text-slate-600 max-w-[220px]">
-                        {formatarEndereco(est.endereco) || "-"}
-                      </TableCell>
-                      <TableCell className="text-right">{est.qtd_trabalhadores ?? "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button onClick={() => handleOpenModal("estabelecimento", est)} variant="ghost" size="sm">
-                            <Edit2 className="w-4 h-4 text-slate-600" />
-                          </Button>
-                          <Button onClick={() => setDeleteConfirm({ open: true, type: "estabelecimento", id: est.id, nome: est.nome })} variant="ghost" size="sm">
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+          <ListaEstrutura
+            itens={estabelecimentos}
+            vazio="Nenhum estabelecimento cadastrado."
+            rotuloPrincipal="Nome / Unidade"
+            principal={(est) => (
+              <>
+                {est.nome}
+                {est.nome_fantasia && (
+                  <span className="block text-xs font-normal text-slate-500">{est.nome_fantasia}</span>
                 )}
-              </TableBody>
-            </Table>
-          </Card>
+              </>
+            )}
+            colunas={[
+              { rotulo: "Tipo", celula: (est) => <Badge variant="outline">{est.tipo}</Badge> },
+              { rotulo: "CNPJ / CNO", celula: (est) => est.cnpj || est.cno || "-" },
+              {
+                rotulo: "CNAE / Grau Risco",
+                celula: (est) => est.cnae_principal
+                  ? `${est.cnae_principal}${est.grau_risco ? ` (Grau ${est.grau_risco})` : ""}`
+                  : "-",
+              },
+              {
+                rotulo: "Endereço",
+                classe: "text-xs text-slate-600 max-w-[220px]",
+                celula: (est) => formatarEndereco(est.endereco) || "-",
+              },
+              { rotulo: "Trab.", classe: "text-right", celula: (est) => est.qtd_trabalhadores ?? "-" },
+            ]}
+            onEditar={(est) => handleOpenModal("estabelecimento", est)}
+            onExcluir={(est) => setDeleteConfirm({ open: true, type: "estabelecimento", id: est.id, nome: est.nome })}
+          />
         </TabsContent>
 
         {/* 2. SETORES (inclui o Ambiente de cada setor — ver comentário na aba) */}
@@ -371,53 +439,27 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <Plus className="w-4 h-4 mr-1" /> Novo Setor
             </Button>
           </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome do Setor</TableHead>
-                  <TableHead>Ambiente de trabalho</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {setores.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center py-6 text-slate-400">
-                      Nenhum setor cadastrado.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  setores.map((set) => {
-                    // A coluna mostrava o nome do Ambiente vinculado — que hoje
-                    // é sempre o próprio ambiente deste setor, então repetia o
-                    // "Nome do Setor" da primeira coluna. As características
-                    // (mesma leitura usada no PDF do PGR) são a informação que
-                    // de fato falta ver aqui sem abrir o cadastro.
-                    const amb = ambientes.find((a) => a.id === set.ambiente_id);
-                    return (
-                      <TableRow key={set.id}>
-                        <TableCell className="font-medium text-slate-900">{set.nome}</TableCell>
-                        <TableCell className="text-sm text-slate-600 max-w-xs truncate" title={caracteristicasAmbiente(amb)}>
-                          {caracteristicasAmbiente(amb) || "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button onClick={() => handleOpenModal("setor", set)} variant="ghost" size="sm">
-                              <Edit2 className="w-4 h-4 text-slate-600" />
-                            </Button>
-                            <Button onClick={() => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })} variant="ghost" size="sm">
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+          {/* A coluna mostrava o nome do Ambiente vinculado — que hoje é sempre
+              o próprio ambiente deste setor, então repetia o "Nome do Setor" da
+              primeira coluna. As características (mesma leitura usada no PDF do
+              PGR) são a informação que de fato falta ver aqui. */}
+          <ListaEstrutura
+            itens={setores}
+            vazio="Nenhum setor cadastrado."
+            rotuloPrincipal="Nome do Setor"
+            principal={(set) => set.nome}
+            colunas={[
+              {
+                rotulo: "Ambiente de trabalho",
+                classe: "text-sm text-slate-600 max-w-xs truncate",
+                dica: (set) => caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)),
+                celula: (set) =>
+                  caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)) || "—",
+              },
+            ]}
+            onEditar={(set) => handleOpenModal("setor", set)}
+            onExcluir={(set) => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })}
+          />
         </TabsContent>
 
         {/* 4. PROCESSOS */}
@@ -428,54 +470,26 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <Plus className="w-4 h-4 mr-1" /> Novo Processo
             </Button>
           </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome do Processo</TableHead>
-                  <TableHead>Setor</TableHead>
-                  <TableHead>Característica</TableHead>
-                  <TableHead>Máquinas</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {processos.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-slate-400">
-                      Nenhum processo cadastrado.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  processos.map((proc) => {
-                    const set = setores.find((s) => s.id === proc.setor_id);
-                    return (
-                      <TableRow key={proc.id}>
-                        {/* Nome numa linha só: quando alguém cola o texto
-                            inteiro aqui, a linha crescia e empurrava a tabela. */}
-                        <TableCell className="font-medium text-slate-900 max-w-[280px]">
-                          <span className="block truncate" title={proc.nome}>{proc.nome}</span>
-                        </TableCell>
-                        <TableCell>{set?.nome || "-"}</TableCell>
-                        <TableCell><Badge variant="outline">{proc.caracteristica_atividade}</Badge></TableCell>
-                        <TableCell>{proc.maquinas_equipamentos || "-"}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button onClick={() => handleOpenModal("processo", proc)} variant="ghost" size="sm">
-                              <Edit2 className="w-4 h-4 text-slate-600" />
-                            </Button>
-                            <Button onClick={() => setDeleteConfirm({ open: true, type: "processo", id: proc.id, nome: proc.nome })} variant="ghost" size="sm">
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+          <ListaEstrutura
+            itens={processos}
+            vazio="Nenhum processo cadastrado."
+            rotuloPrincipal="Nome do Processo"
+            /* Numa linha só no desktop: colar o texto inteiro aqui empurrava a
+               tabela. No cartão do celular pode quebrar à vontade. */
+            principal={(proc) => (
+              <span className="block sm:max-w-[280px] sm:truncate" title={proc.nome}>{proc.nome}</span>
+            )}
+            colunas={[
+              { rotulo: "Setor", celula: (proc) => setores.find((s) => s.id === proc.setor_id)?.nome || "-" },
+              {
+                rotulo: "Característica",
+                celula: (proc) => <Badge variant="outline">{proc.caracteristica_atividade}</Badge>,
+              },
+              { rotulo: "Máquinas", celula: (proc) => proc.maquinas_equipamentos || "-" },
+            ]}
+            onEditar={(proc) => handleOpenModal("processo", proc)}
+            onExcluir={(proc) => setDeleteConfirm({ open: true, type: "processo", id: proc.id, nome: proc.nome })}
+          />
         </TabsContent>
 
         {/* 5. FUNÇÕES */}
@@ -486,56 +500,27 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <Plus className="w-4 h-4 mr-1" /> Nova Função
             </Button>
           </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome da Função</TableHead>
-                  <TableHead>CBO</TableHead>
-                  <TableHead>Setor</TableHead>
-                  {/* Os requisitos de NR continuam sendo marcados no cadastro e
-                      impressos no PDF — só saíram daqui, onde a descrição das
-                      atividades diz muito mais sobre a função. */}
-                  <TableHead>Descrição das atividades</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {funcoes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-slate-400">
-                      Nenhuma função cadastrada.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  funcoes.map((func) => {
-                    const set = setores.find((s) => s.id === func.setor_id);
-                    return (
-                      <TableRow key={func.id}>
-                        <TableCell className="font-medium text-slate-900">{func.nome}</TableCell>
-                        <TableCell>{func.cbo || "-"}</TableCell>
-                        <TableCell>{set?.nome || "-"}</TableCell>
-                        <TableCell className="text-sm text-slate-600 max-w-xs truncate"
-                          title={(func as any).descricao_atividades || ""}>
-                          {(func as any).descricao_atividades || "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button onClick={() => handleOpenModal("funcao", func)} variant="ghost" size="sm">
-                              <Edit2 className="w-4 h-4 text-slate-600" />
-                            </Button>
-                            <Button onClick={() => setDeleteConfirm({ open: true, type: "funcao", id: func.id, nome: func.nome })} variant="ghost" size="sm">
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
+          {/* Os requisitos de NR continuam sendo marcados no cadastro e
+              impressos no PDF — só saíram daqui, onde a descrição das
+              atividades diz muito mais sobre a função. */}
+          <ListaEstrutura
+            itens={funcoes}
+            vazio="Nenhuma função cadastrada."
+            rotuloPrincipal="Nome da Função"
+            principal={(func) => func.nome}
+            colunas={[
+              { rotulo: "CBO", celula: (func) => func.cbo || "-" },
+              { rotulo: "Setor", celula: (func) => setores.find((s) => s.id === func.setor_id)?.nome || "-" },
+              {
+                rotulo: "Descrição das atividades",
+                classe: "text-sm text-slate-600 max-w-xs truncate",
+                dica: (func) => (func as any).descricao_atividades || "",
+                celula: (func) => (func as any).descricao_atividades || "—",
+              },
+            ]}
+            onEditar={(func) => handleOpenModal("funcao", func)}
+            onExcluir={(func) => setDeleteConfirm({ open: true, type: "funcao", id: func.id, nome: func.nome })}
+          />
         </TabsContent>
 
       </Tabs>
