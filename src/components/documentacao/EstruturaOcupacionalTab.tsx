@@ -173,10 +173,34 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setErroSalvar("");
+
+    // Processo e Atividade derivam o Nome da descrição/etapas — a pessoa não
+    // devia ter que escrever a mesma coisa duas vezes. O onBlur já cobre quem
+    // preenche a descrição e sai do campo, mas quem clica direto em "Salvar"
+    // (ou nunca chega a tirar o foco de lá) ficava barrado pelo required do
+    // Nome mesmo já tendo escrito tudo que precisava, na descrição.
+    let dados = formData;
+    if (modalType === "processo" || modalType === "atividade") {
+      if (!(formData.nome || "").trim()) {
+        const fonte = modalType === "processo" ? formData.descricao_etapas : formData.descricao;
+        const sugestao = sugerirNomeCurto(fonte || "");
+        if (!sugestao) {
+          setErroSalvar(
+            modalType === "processo"
+              ? "Escreva ao menos as etapas do processo — o nome é gerado a partir delas."
+              : "Escreva ao menos a descrição da atividade — o nome é gerado a partir dela.",
+          );
+          return;
+        }
+        dados = { ...formData, nome: sugestao };
+        setFormData(dados);
+      }
+    }
+
     setSalvando(true);
     try {
-      if (modalType === "estabelecimento") await saveEstabelecimento(formData);
-      if (modalType === "ambiente") await saveAmbiente(formData);
+      if (modalType === "estabelecimento") await saveEstabelecimento(dados);
+      if (modalType === "ambiente") await saveAmbiente(dados);
       if (modalType === "setor") {
         // Um Setor sempre tem um Ambiente por trás — criado junto na primeira
         // vez, atualizado nas próximas. A pessoa só vê e edita um formulário;
@@ -196,9 +220,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           ambiente_id: (ambienteSalvo as any).id,
         } as any);
       }
-      if (modalType === "processo") await saveProcesso(formData);
-      if (modalType === "funcao") await saveFuncao(formData);
-      if (modalType === "atividade") await saveAtividade(formData);
+      if (modalType === "processo") await saveProcesso(dados);
+      if (modalType === "funcao") await saveFuncao(dados);
+      if (modalType === "atividade") await saveAtividade(dados);
       setOpenModal(false);
     } catch (err) {
       // O erro ia só para o console: o modal ficava aberto, sem nada escrito, e
@@ -634,19 +658,21 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 text-sm">
             <div>
-              <Label>Nome / Identificação *</Label>
+              <Label>
+                Nome / Identificação
+                {modalType !== "atividade" && modalType !== "processo" && " *"}
+              </Label>
               <Input
                 value={formData.nome || ""}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                required
+                required={modalType !== "atividade" && modalType !== "processo"}
                 placeholder={PLACEHOLDER_NOME[modalType]}
               />
               {(modalType === "atividade" || modalType === "processo") && (
                 <p className="text-xs text-slate-500 mt-1">
-                  Só um rótulo curto, para identificar na lista. O detalhamento vai
-                  {modalType === "processo" ? " em “Etapas do processo”" : " na descrição"}, abaixo —
-                  e se você deixar este campo vazio, ele é preenchido sozinho com a primeira frase
-                  de lá.
+                  Pode deixar em branco: ao salvar, vira a primeira frase
+                  {modalType === "processo" ? " de “Etapas do processo”" : " da descrição"}, abaixo —
+                  não precisa escrever a mesma coisa duas vezes.
                 </p>
               )}
             </div>
