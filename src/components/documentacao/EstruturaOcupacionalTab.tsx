@@ -1124,39 +1124,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label>Local de execução</Label>
-                    <Input
-                      value={formData.local_execucao || ""}
-                      onChange={(e) => setFormData({ ...formData, local_execucao: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Postura / esforço exigido</Label>
-                    <Input
-                      value={formData.postura_esforco || ""}
-                      onChange={(e) => setFormData({ ...formData, postura_esforco: e.target.value })}
-                      placeholder="Em pé, agachado, carga de 20 kg..."
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label>Máquinas e equipamentos</Label>
-                    <Input
-                      value={formData.maquinas || ""}
-                      onChange={(e) => setFormData({ ...formData, maquinas: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label>Produtos utilizados</Label>
-                    <Input
-                      value={formData.produtos_utilizados || ""}
-                      onChange={(e) => setFormData({ ...formData, produtos_utilizados: e.target.value })}
-                    />
-                  </div>
+                <div>
+                  <Label>Postura / esforço exigido</Label>
+                  <Input
+                    value={formData.postura_esforco || ""}
+                    onChange={(e) => setFormData({ ...formData, postura_esforco: e.target.value })}
+                    placeholder="Em pé, agachado, carga de 20 kg..."
+                  />
                 </div>
                   </div>
                 </details>
