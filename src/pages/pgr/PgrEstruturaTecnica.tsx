@@ -45,7 +45,7 @@ export default function PgrEstruturaTecnica() {
   const { id: pgrId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    ambientes, processos, setores, funcoes, atividades, gesList, gesVinculos, isLoading,
+    ambientes, processos, setores, funcoes, atividades, gesList, gheSetores, gheFuncoes, isLoading,
   } = useNucleoMestreSst();
 
   // Guarda o que está FECHADO, não o que está aberto: a árvore nasce expandida,
@@ -102,12 +102,12 @@ export default function PgrEstruturaTecnica() {
 
   const funcoesDoGes = (gesId: string) => {
     const ids = new Set(
-      (gesVinculos as any[]).filter((v) => v.ges_id === gesId && v.funcao_id).map((v) => v.funcao_id));
+      (gheFuncoes as any[]).filter((v) => v.ghe_id === gesId && v.funcao_id).map((v) => v.funcao_id));
     return funcoes.filter((f: any) => ids.has(f.id));
   };
   const gesDoSetor = (setorId: string) => {
     const ids = new Set(
-      (gesVinculos as any[]).filter((v) => v.setor_id === setorId).map((v) => v.ges_id));
+      (gheSetores as any[]).filter((v) => v.setor_id === setorId).map((v) => v.ghe_id));
     return gesList.filter((g: any) => ids.has(g.id));
   };
 
@@ -134,7 +134,7 @@ export default function PgrEstruturaTecnica() {
       const g: any = gesList.find((x: any) => x.id === sel.id);
       const fns = funcoesDoGes(sel.id);
       const setorNome = setores.find((s: any) =>
-        (gesVinculos as any[]).some((v) => v.ges_id === sel.id && v.setor_id === s.id))?.nome;
+        (gheSetores as any[]).some((v) => v.ghe_id === sel.id && v.setor_id === s.id))?.nome;
       // Soma das funções como estimativa quando o GES não declara o total.
       // Soma zero vira null: nenhuma função informou quantos são, e mostrar 0
       // afirmaria que o GES não tem trabalhador.
@@ -158,7 +158,7 @@ export default function PgrEstruturaTecnica() {
       };
     }
     return { funcoes: null, trabalhadores: null, setor: null, jornada: null, criterio: null, lista: [] };
-  }, [sel, gesList, funcoes, setores, gesVinculos]);
+  }, [sel, gesList, funcoes, setores, gheSetores, gheFuncoes]);
 
   const No = ({
     chave, tipo, nome, contagem, filhos, nivel = 0,

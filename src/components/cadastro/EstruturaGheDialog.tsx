@@ -11,7 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Pencil, Save, X, ClipboardPaste } from "lucide-react";
+import { Plus, Trash2, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -104,14 +104,12 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const [setoresRows, setSetoresRows] = useState<any[]>([]);
   const [loadingS, setLoadingS] = useState(false);
   const [editS, setEditS] = useState<any | null>(null);
-  const [bulkSOpen, setBulkSOpen] = useState(false);
-  const [bulkS, setBulkS] = useState("");
 
   const loadSetores = async () => {
     setLoadingS(true);
     const { data, error } = await (supabase as any)
       .from("ghe_setores")
-      .select("id, nome, processo, observacoes, ativo")
+      .select("id, nome, processo, observacoes, ativo, setor_id")
       .eq("ghe_id", ghe.id)
       .order("nome");
     setLoadingS(false);
@@ -123,7 +121,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const salvarSetorRow = async (s: any) => {
     const nome = (s.nome || "").trim();
     const processo = (s.processo || "").trim();
-    if (!nome) return toast.error("Nome do setor é obrigatório");
+    if (!nome) return toast.error("Selecione o setor");
     if (!processo) return toast.error("Informe o processo do setor");
     const dup = setoresRows.find((x) => x.id !== s.id && (x.nome || "").trim().toLowerCase() === nome.toLowerCase());
     if (dup) return toast.error(`Setor "${nome}" já existe neste GES`);
@@ -131,6 +129,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       ghe_id: ghe.id,
       empresa_id: ghe.empresa_id,
       nome, processo,
+      setor_id: s.setor_id || null,
       observacoes: s.observacoes?.trim() || null,
       ativo: s.ativo ?? true,
     };
@@ -150,37 +149,11 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     loadSetores();
   };
 
-  const importarSetoresBulk = async () => {
-    const lines = bulkS.split("\n").map((l) => l.trim()).filter(Boolean);
-    if (!lines.length) return;
-    const rows = lines.map((l) => {
-      const [nome, processo, observacoes] = l.split(/[|\t]/).map((p) => p.trim());
-      return {
-        ghe_id: ghe.id,
-        empresa_id: ghe.empresa_id,
-        nome: nome || "",
-        processo: processo || null,
-        observacoes: observacoes || null,
-      };
-    }).filter((r) => r.nome && r.processo);
-    if (!rows.length) return toast.error("Nenhuma linha válida (precisa Setor | Processo)");
-    const existentes = new Set(setoresRows.map((s) => (s.nome || "").toLowerCase()));
-    const novos = rows.filter((r) => !existentes.has(r.nome.toLowerCase()));
-    if (!novos.length) { toast.info("Todos os setores da lista já existem"); setBulkS(""); setBulkSOpen(false); return; }
-    const { error } = await (supabase as any).from("ghe_setores").insert(novos);
-    if (error) return toast.error(error.message);
-    toast.success(`${novos.length} setor(es) importado(s)`);
-    setBulkS(""); setBulkSOpen(false);
-    loadSetores();
-  };
-
   /* ---------- Funções ---------- */
   const [funcoes, setFuncoes] = useState<any[]>([]);
   const [loadingF, setLoadingF] = useState(false);
   const [editF, setEditF] = useState<any | null>(null);
   const [modoTabela, setModoTabela] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulk, setBulk] = useState("");
 
   /**
    * Funções da empresa (Estrutura Ocupacional) e seus setores.
@@ -193,6 +166,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const [funcoesEmpresa, setFuncoesEmpresa] = useState<
     { id: string; nome: string; cbo?: string | null; setor_nome?: string }[]
   >([]);
+  const [setoresEmpresa, setSetoresEmpresa] = useState<{ id: string; nome: string }[]>([]);
   const [vinculando, setVinculando] = useState(false);
 
   useEffect(() => {
@@ -208,8 +182,17 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         id: f.id, nome: f.nome, cbo: f.cbo,
         setor_nome: f.setor_id ? setorPorId.get(f.setor_id) : undefined,
       })));
+      setSetoresEmpresa((set.data || []).map((s: { id: string; nome: string }) => ({ id: s.id, nome: s.nome })));
     })();
   }, [ghe.empresa_id]);
+
+  const funcoesEmpresaPorId = useMemo(
+    () => new Map(funcoesEmpresa.map((f) => [f.id, f])),
+    [funcoesEmpresa],
+  );
+  /** Setor de exibição: vem do vínculo real (sst_funcoes) quando existe; texto legado como último recurso. */
+  const setorDaFuncao = (f: any) =>
+    (f.funcao_id && funcoesEmpresaPorId.get(f.funcao_id)?.setor_nome) || f.setor || "(sem setor)";
 
   /** As que ainda não fazem parte deste grupo — comparação por nome normalizado. */
   const funcoesDisponiveis = useMemo(() => {
@@ -219,15 +202,27 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     return funcoesEmpresa.filter((f) => !jaNoGrupo.has(norm(f.nome)));
   }, [funcoesEmpresa, funcoes]);
 
-  const vincularFuncaoExistente = async (f: { nome: string; cbo?: string | null; setor_nome?: string }) => {
+  /** Setores da empresa (Estrutura Ocupacional) que ainda não fazem parte deste GES. */
+  const setoresDisponiveis = useMemo(() => {
+    const norm2 = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").trim();
+    const jaNoGrupo = new Set(setoresRows.map((s) => norm2(s.nome)));
+    return setoresEmpresa.filter((s) => !jaNoGrupo.has(norm2(s.nome)));
+  }, [setoresEmpresa, setoresRows]);
+
+  /** Abre o form de novo setor já com o setor real escolhido — só falta o Processo. */
+  const abrirNovoSetor = (s: { id: string; nome: string }) => {
+    setEditS({ nome: s.nome, setor_id: s.id, processo: "", observacoes: "", ativo: true });
+  };
+
+  const vincularFuncaoExistente = async (f: { id: string; nome: string; cbo?: string | null; setor_nome?: string }) => {
     // `setor` e `descricao_atividade` são exigidos pelo salvamento manual desta
     // tela; quando a função não traz setor, cai no primeiro setor do grupo.
     const setor = f.setor_nome || setoresAtivos[0] || "";
-    if (!setor) return toast.error("Cadastre ao menos um setor na aba Ambiente antes de vincular funções.");
+    if (!setor) return toast.error("Cadastre ao menos um setor na aba Setores antes de vincular funções.");
     setVinculando(true);
     const { error } = await supabase.from("ghe_funcoes").insert({
       ghe_id: ghe.id, empresa_id: ghe.empresa_id,
-      nome_funcao: f.nome, cbo: f.cbo || null,
+      nome_funcao: f.nome, cbo: f.cbo || null, funcao_id: f.id,
       descricao_atividade: "A detalhar", setor, processo: null,
     });
     setVinculando(false);
@@ -240,7 +235,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     setLoadingF(true);
     const { data, error } = await supabase
       .from("ghe_funcoes")
-      .select("id, nome_funcao, cbo, descricao_atividade, setor, processo, quantidade_trabalhadores, observacoes")
+      .select("id, nome_funcao, cbo, descricao_atividade, setor, processo, quantidade_trabalhadores, observacoes, funcao_id")
       .eq("ghe_id", ghe.id)
       .order("setor", { ascending: true })
       .order("nome_funcao", { ascending: true });
@@ -252,9 +247,9 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
   const setoresAtivos: string[] = useMemo(() => {
     const dos = setoresRows.map((s) => s.nome).filter(Boolean) as string[];
-    const dasFuncoes = Array.from(new Set(funcoes.map((f) => f.setor).filter(Boolean))) as string[];
+    const dasFuncoes = Array.from(new Set(funcoes.map((f) => setorDaFuncao(f)).filter(Boolean))) as string[];
     return Array.from(new Set([...dos, ...dasFuncoes]));
-  }, [setoresRows, funcoes]);
+  }, [setoresRows, funcoes, funcoesEmpresaPorId]);
 
 
   const funcoesPorSetor = useMemo(() => {
@@ -262,13 +257,14 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     for (const s of setoresAtivos) map.set(s, []);
     const semSetor: any[] = [];
     for (const f of funcoes) {
-      if (f.setor && map.has(f.setor)) map.get(f.setor)!.push(f);
-      else if (f.setor) map.set(f.setor, [f]);
+      const setor = setorDaFuncao(f);
+      if (setor && setor !== "(sem setor)" && map.has(setor)) map.get(setor)!.push(f);
+      else if (setor && setor !== "(sem setor)") map.set(setor, [f]);
       else semSetor.push(f);
     }
     if (semSetor.length) map.set("(sem setor)", semSetor);
     return map;
-  }, [funcoes, setoresAtivos]);
+  }, [funcoes, setoresAtivos, funcoesEmpresaPorId]);
 
   const salvarFuncao = async (f: any) => {
     const nome = (f.nome_funcao || "").trim();
@@ -312,42 +308,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     if (error) return toast.error(error.message);
     loadFuncoes();
   };
-
-  const importarBulk = async () => {
-    const lines = bulk.split("\n").map((l) => l.trim()).filter(Boolean);
-    if (!lines.length) return;
-    const rows = lines.map((l) => {
-      const parts = l.split(/[|\t]/).map((p) => p.trim());
-      const [setor, nome_funcao, processo, qtd, obs] = parts;
-      return {
-        ghe_id: ghe.id,
-        empresa_id: ghe.empresa_id,
-        setor: setor || null,
-        nome_funcao: nome_funcao || setor || "",
-        descricao_atividade: processo || null,
-        processo: null,
-        quantidade_trabalhadores: qtd && !isNaN(Number(qtd)) ? Number(qtd) : null,
-        observacoes: obs || null,
-      };
-    }).filter((r) => r.nome_funcao && r.setor && r.descricao_atividade);
-    if (!rows.length) return toast.error("Nenhuma linha válida (precisa Setor | Função | Processo)");
-    const { error } = await supabase.from("ghe_funcoes").insert(rows as any);
-    if (error) return toast.error(error.message);
-    toast.success(`${rows.length} linha(s) importadas`);
-    setBulk(""); setBulkOpen(false);
-    // garante que os setores usados existam em ghe_setores (sem processo — usuário completa depois)
-    const existentes = new Set(setoresRows.map((s) => (s.nome || "").toLowerCase()));
-    const novosSetores = Array.from(new Set(rows.map((r) => r.setor).filter(Boolean))) as string[];
-    const faltantes = novosSetores.filter((n) => !existentes.has(n.toLowerCase()));
-    if (faltantes.length) {
-      await (supabase as any).from("ghe_setores").insert(
-        faltantes.map((nome) => ({ ghe_id: ghe.id, empresa_id: ghe.empresa_id, nome, processo: null }))
-      );
-      loadSetores();
-    }
-    loadFuncoes();
-  };
-
 
   /* ---------- Riscos ---------- */
   const [riscos, setRiscos] = useState<any[]>([]);
@@ -454,30 +414,38 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
           {/* ---------- Aba Setores ---------- */}
           <TabsContent value="setores" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
-            <div className="flex flex-wrap gap-2 items-center justify-between">
-              <p className="text-xs text-muted-foreground flex-1 min-w-[220px]">
-                Cadastre cada <b>setor</b> deste GES com seu respectivo <b>processo</b>. Ex.: <i>PCP — Gerencia o processo produtivo</i>. As funções serão vinculadas a esses setores.
-              </p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setBulkSOpen(!bulkSOpen)}>
-                  <ClipboardPaste className="h-4 w-4 mr-1" />Colar em lote
-                </Button>
-                <Button size="sm" onClick={() => setEditS({ nome: "", processo: "", ativo: true })}>
-                  <Plus className="h-4 w-4 mr-1" />Adicionar setor
-                </Button>
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Escolha os <b>setores</b> (cadastrados na Estrutura Ocupacional) que fazem parte deste GES e informe
+              o <b>processo</b> de cada um nesta exposição. As funções serão vinculadas a esses setores.
+            </p>
 
-            {bulkSOpen && (
-              <div className="border rounded p-3 bg-muted/30 space-y-2">
-                <Label className="text-xs">Colar um setor por linha, campos separados por | ou tab</Label>
-                <p className="text-xs text-muted-foreground">Formato: <code>Setor | Processo | Observações (opc.)</code></p>
-                <Textarea rows={5} value={bulkS} onChange={(e) => setBulkS(e.target.value)}
-                  placeholder={"PCP | Gerencia todo o processo produtivo\nFinanceiro | Apura saldo, contas a pagar e receber\nRH | Rotinas de pessoal\nSESMT | Vistorias e acompanhamento de segurança"} />
-                <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="ghost" onClick={() => { setBulkS(""); setBulkSOpen(false); }}>Cancelar</Button>
-                  <Button size="sm" onClick={importarSetoresBulk} disabled={!bulkS.trim()}>Importar</Button>
+            {/* Setores já cadastrados na Estrutura Ocupacional (sst_setores) e
+                ainda fora deste grupo — mesma ponte usada em Funções, para não
+                deixar digitar de novo um nome de setor que já existe. */}
+            {setoresDisponiveis.length > 0 && (
+              <div className="border border-sky-300 bg-sky-50/60 rounded p-3 space-y-2">
+                <p className="text-xs text-sky-900">
+                  <b>{setoresDisponiveis.length}</b> {setoresDisponiveis.length === 1 ? "setor cadastrado" : "setores cadastrados"} na
+                  Estrutura Ocupacional ainda {setoresDisponiveis.length === 1 ? "não faz" : "não fazem"} parte deste grupo.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {setoresDisponiveis.map((s) => (
+                    <Button
+                      key={s.id} size="sm" variant="outline"
+                      className="h-7 text-xs bg-background"
+                      onClick={() => abrirNovoSetor(s)}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />{s.nome}
+                    </Button>
+                  ))}
                 </div>
+              </div>
+            )}
+
+            {setoresEmpresa.length === 0 && (
+              <div className="border border-amber-300 bg-amber-50/60 rounded p-3 text-xs text-amber-900">
+                Nenhum setor cadastrado na Estrutura Ocupacional desta empresa ainda.
+                Cadastre lá primeiro — é de onde este GES busca os setores.
               </div>
             )}
 
@@ -485,8 +453,8 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
               <div className="border rounded p-3 bg-muted/30 space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">Setor *</Label>
-                    <Input value={editS.nome || ""} onChange={(e) => setEditS({ ...editS, nome: e.target.value })} placeholder="Ex.: Financeiro" />
+                    <Label className="text-xs">Setor</Label>
+                    <p className="text-sm font-medium h-10 flex items-center">{editS.nome || "—"}</p>
                   </div>
                   <div className="flex items-end gap-2">
                     <div className="flex items-center gap-2">
@@ -514,9 +482,9 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
             {loadingS && <p className="text-sm text-muted-foreground">Carregando…</p>}
 
-            {!loadingS && setoresRows.length === 0 && !editS && (
+            {!loadingS && setoresRows.length === 0 && !editS && setoresEmpresa.length > 0 && (
               <div className="border rounded p-6 text-center text-sm text-muted-foreground">
-                Nenhum setor cadastrado. Clique em <b>Adicionar setor</b> para começar.
+                Nenhum setor neste grupo ainda. Clique em um dos setores acima para adicionar.
               </div>
             )}
 
@@ -582,20 +550,14 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                 <Button size="sm" variant={modoTabela ? "outline" : "default"} onClick={() => setModoTabela(false)}>Accordion</Button>
                 <Button size="sm" variant={modoTabela ? "default" : "outline"} onClick={() => setModoTabela(true)}>Tabela</Button>
               </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setBulkOpen(!bulkOpen)}>
-                  <ClipboardPaste className="h-4 w-4 mr-1" />Colar em lote
-                </Button>
-                <Button size="sm" onClick={() => setEditF({ nome_funcao: "", setor: setoresAtivos[0] || "" })}>
-                  <Plus className="h-4 w-4 mr-1" />Nova função
-                </Button>
-              </div>
             </div>
 
             {/* As funções da empresa já estão cadastradas na Estrutura
                 Ocupacional (sst_funcoes). Este grupo guarda quais delas o
                 compõem, em outra tabela (ghe_funcoes) — sem esta ponte, era
-                redigitar uma a uma aqui dentro. */}
+                redigitar uma a uma aqui dentro. Função nova ou com nome
+                diferente se cadastra lá, não aqui: uma função por grupo
+                só entra vinculando uma que já existe. */}
             {funcoesDisponiveis.length > 0 && (
               <div className="border border-sky-300 bg-sky-50/60 rounded p-3 space-y-2">
                 <p className="text-xs text-sky-900">
@@ -618,38 +580,19 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
               </div>
             )}
 
-            {bulkOpen && (
-              <div className="border rounded p-3 bg-muted/30 space-y-2">
-                <Label className="text-xs">Colar uma função por linha, campos separados por | ou tab</Label>
-                <p className="text-xs text-muted-foreground">Formato: <code>Setor | Função | Processo/Atividade | Qtd | Obs</code></p>
-                <Textarea rows={5} value={bulk} onChange={(e) => setBulk(e.target.value)}
-                  placeholder="PCP | Supervisor de Produção | Gerencia todo o processo produtivo | 1&#10;Financeiro | Assistente Financeiro | Apura e projeta saldo disponível | 2&#10;RH | Auxiliar Administrativo | Planeja e controla rotinas de pessoal | 1" />
-                <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="ghost" onClick={() => { setBulk(""); setBulkOpen(false); }}>Cancelar</Button>
-                  <Button size="sm" onClick={importarBulk} disabled={!bulk.trim()}>Importar</Button>
-                </div>
-              </div>
-            )}
-
             {editF && (
               <div className="border rounded p-3 bg-muted/30 space-y-2">
+                {/* Setor, Função e CBO vêm da Estrutura Ocupacional (vínculo
+                    feito ao clicar num dos botões acima) — não são mais
+                    editáveis aqui, só o que é específico deste GES. */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs">Setor</Label>
-                    {setoresAtivos.length > 0 ? (
-                      <Select value={editF.setor || ""} onValueChange={(v) => setEditF({ ...editF, setor: v })}>
-                        <SelectTrigger><SelectValue placeholder="Selecionar setor" /></SelectTrigger>
-                        <SelectContent>
-                          {setoresAtivos.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input value={editF.setor || ""} onChange={(e) => setEditF({ ...editF, setor: e.target.value })} />
-                    )}
+                    <p className="text-sm font-medium h-10 flex items-center">{editF.setor || "—"}</p>
                   </div>
                   <div>
-                    <Label className="text-xs">Função *</Label>
-                    <Input value={editF.nome_funcao || ""} onChange={(e) => setEditF({ ...editF, nome_funcao: e.target.value })} />
+                    <Label className="text-xs">Função</Label>
+                    <p className="text-sm font-medium h-10 flex items-center">{editF.nome_funcao || "—"}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -659,7 +602,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                   </div>
                   <div>
                     <Label className="text-xs">CBO</Label>
-                    <Input value={editF.cbo || ""} onChange={(e) => setEditF({ ...editF, cbo: e.target.value })} />
+                    <p className="text-sm text-muted-foreground h-10 flex items-center">{editF.cbo || "—"}</p>
                   </div>
                 </div>
                 <div>
@@ -740,15 +683,12 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                         </div>
                         );
                       })}
-                      <Button size="sm" variant="outline" onClick={() => setEditF({ nome_funcao: "", setor })}>
-                        <Plus className="h-3 w-3 mr-1" />Adicionar função em {setor}
-                      </Button>
                     </AccordionContent>
                   </AccordionItem>
                 ))}
                 {funcoesPorSetor.size === 0 && (
                   <div className="p-4 text-sm text-muted-foreground italic">
-                    Cadastre setores na aba <b>Ambiente</b> ou clique em <b>Nova função</b>.
+                    Cadastre setores na aba <b>Setores</b> e vincule funções acima.
                   </div>
                 )}
               </Accordion>
@@ -772,7 +712,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                     )}
                     {funcoes.map((f) => (
                       <TableRow key={f.id}>
-                        <TableCell className="text-sm">{f.setor || "—"}</TableCell>
+                        <TableCell className="text-sm">{setorDaFuncao(f)}</TableCell>
                         <TableCell className="text-sm font-medium">{f.nome_funcao}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{f.descricao_atividade || f.processo || "—"}</TableCell>
                         <TableCell className="text-sm">{f.quantidade_trabalhadores ?? "—"}</TableCell>

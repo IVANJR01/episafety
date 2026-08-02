@@ -146,18 +146,6 @@ export interface SstGes {
   updated_at?: string;
 }
 
-export interface SstGesVinculo {
-  id: string;
-  empresa_id: string;
-  ges_id: string;
-  ambiente_id?: string | null;
-  setor_id?: string | null;
-  processo_id?: string | null;
-  funcao_id?: string | null;
-  funcionario_id?: string | null;
-  created_at?: string;
-}
-
 export interface SstPerigoCatalogo {
   id: string;
   categoria: CategoriaPerigo;

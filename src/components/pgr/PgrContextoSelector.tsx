@@ -40,7 +40,7 @@ const SEM = "__sem__";
 export function PgrContextoSelector({
   valor, onChange, disabled, obrigatorios = [], ocultar = [],
 }: Props) {
-  const { ambientes, processos, setores, funcoes, atividades, gesList, gesVinculos } =
+  const { ambientes, processos, setores, funcoes, atividades, gesList, gheSetores, gheFuncoes } =
     useNucleoMestreSst();
 
   const req = (k: keyof ContextoSst) => obrigatorios.includes(k);
@@ -53,24 +53,24 @@ export function PgrContextoSelector({
     return doAmbiente.length > 0 ? doAmbiente : setores;
   }, [setores, valor.ambiente_id]);
 
-  // GES sugeridos pelos vínculos N:N. Sem vínculo cadastrado, mostra todos —
-  // um GES novo ainda não tem vínculo e precisa continuar acessível.
+  // GES sugeridos pelo vínculo real (ghe_setores.setor_id). Sem vínculo
+  // cadastrado, mostra todos — um GES novo ainda não tem vínculo e precisa
+  // continuar acessível.
   const gesVisiveis = useMemo(() => {
-    const alvo = valor.setor_id || valor.ambiente_id;
-    if (!alvo) return gesList;
+    if (!valor.setor_id) return gesList;
     const ids = new Set(
-      (gesVinculos as any[])
-        .filter((v) => v.setor_id === valor.setor_id || v.ambiente_id === valor.ambiente_id)
-        .map((v) => v.ges_id),
+      (gheSetores as any[])
+        .filter((v) => v.setor_id === valor.setor_id)
+        .map((v) => v.ghe_id),
     );
     const filtrados = gesList.filter((g: any) => ids.has(g.id));
     return filtrados.length > 0 ? filtrados : gesList;
-  }, [gesList, gesVinculos, valor.setor_id, valor.ambiente_id]);
+  }, [gesList, gheSetores, valor.setor_id]);
 
   const funcoesVisiveis = useMemo(() => {
     if (valor.ges_id) {
       const ids = new Set(
-        (gesVinculos as any[]).filter((v) => v.ges_id === valor.ges_id && v.funcao_id)
+        (gheFuncoes as any[]).filter((v) => v.ghe_id === valor.ges_id && v.funcao_id)
           .map((v) => v.funcao_id),
       );
       const doGes = funcoes.filter((f: any) => ids.has(f.id));
@@ -81,7 +81,7 @@ export function PgrContextoSelector({
       if (doSetor.length > 0) return doSetor;
     }
     return funcoes;
-  }, [funcoes, gesVinculos, valor.ges_id, valor.setor_id]);
+  }, [funcoes, gheFuncoes, valor.ges_id, valor.setor_id]);
 
   const atividadesVisiveis = useMemo(() => {
     if (!valor.funcao_id) return atividades;

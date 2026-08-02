@@ -12,7 +12,6 @@ import {
   SstProcesso,
   SstFuncao,
   SstGes,
-  SstGesVinculo,
   SstExposicao,
   SstPerigoCatalogo,
   SstAtividade,
@@ -212,8 +211,14 @@ export function useNucleoMestreSst() {
   const { data: gesList = [], isLoading: loadingGes } =
     useSupabaseQuery<SstGes>("sst_ges", "nome", true);
 
-  const { data: gesVinculos = [], isLoading: loadingGesVinculos } =
-    useSupabaseQuery<SstGesVinculo>("sst_ges_vinculos");
+  // Vínculo real de GES com Setor/Função — vive nas tabelas da tela "Estrutura
+  // do GES" (ghe_setores/ghe_funcoes), não em sst_ges_vinculos: essa nunca
+  // chegou a ter uma tela que a escrevesse, então ficava sempre vazia.
+  const { data: gheSetores = [], isLoading: loadingGheSetores } =
+    useSupabaseQuery<any>("ghe_setores");
+
+  const { data: gheFuncoes = [], isLoading: loadingGheFuncoes } =
+    useSupabaseQuery<any>("ghe_funcoes");
 
   const { data: perigosCatalogo = [], isLoading: loadingPerigos } =
     useSupabaseQuery<SstPerigoCatalogo>("sst_perigos_catalogo", "nome_agente", true);
@@ -642,7 +647,8 @@ export function useNucleoMestreSst() {
     funcoes: effectiveFuncoes,
     atividades,
     gesList: effectiveGesList,
-    gesVinculos,
+    gheSetores,
+    gheFuncoes,
     perigosCatalogo,
     exposicoes: effectiveExposicoes,
     activeEmpresaId,
@@ -654,7 +660,8 @@ export function useNucleoMestreSst() {
       loadingFuncoes ||
       loadingAtividades ||
       loadingGes ||
-      loadingGesVinculos ||
+      loadingGheSetores ||
+      loadingGheFuncoes ||
       loadingPerigos ||
       loadingExposicoes,
     saveAtividade: saveAtividadeMutation.mutateAsync,
