@@ -102,6 +102,7 @@ const normalizeEntregaTipo = (value?: string | null): keyof typeof tipoLabels =>
   if (normalized.includes("substit")) return "substituicao";
   if (normalized.includes("perda")) return "perda";
   if (normalized.includes("dano")) return "dano";
+  if (normalized.includes("devolu")) return "devolucao";
   return "entrega";
 };
 
@@ -1079,6 +1080,22 @@ export default function Entregas() {
   const podeExcluir = (e: Entrega) =>
     canDelete && !e.assinatura_colaborador && e.tipo !== "devolucao";
 
+  /**
+   * O que o colaborador tem em mãos hoje — as entregas que podem voltar.
+   *
+   * Devolução não é movimentação solta: ela aponta para uma entrega
+   * específica, marca aquela linha como devolvida e é por esse vínculo que o
+   * "Desfazer devolução" consegue restaurar o estado anterior. Por isso o
+   * formulário pede a entrega de origem em vez de deixar escolher um EPI
+   * qualquer do catálogo.
+   */
+  const entregasDevolviveis = useMemo(
+    () => entregas.filter(
+      (e) => e.funcionario_id === form.funcionario_id && e.status === "ativo" && e.tipo !== "devolucao",
+    ),
+    [entregas, form.funcionario_id],
+  );
+
   /*
    * Índices por id. Antes cada célula fazia um `find` na lista inteira: com
    * centenas de entregas × centenas de EPIs isso é varredura sobre varredura a
@@ -1525,7 +1542,7 @@ export default function Entregas() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); setDescarteSubstituicao(true); setDescarteDescricao(""); } }}>
+      <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setFormFuncSearch(""); setEpiCaSearch(""); setEpiList([]); setEpiDropdownResults([]); setDescarteSubstituicao(true); setDescarteDescricao(""); setDevolucaoTarget(null); setDevolucaoObs(""); setDevolucaoDestino("estoque"); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Nova Movimentação</DialogTitle>
@@ -1543,11 +1560,13 @@ export default function Entregas() {
                   <SelectItem value="substituicao">🔄 Substituição</SelectItem>
                   <SelectItem value="perda">❌ Perda</SelectItem>
                   <SelectItem value="dano">⚠️ Dano</SelectItem>
+                  <SelectItem value="devolucao">↩️ Devolução</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div>
+            {/* Devolução é o EPI voltando: não há unidade de onde ele sai. */}
+            <div className={normalizeEntregaTipo(form.tipo) === "devolucao" ? "hidden" : ""}>
               <Label>Local de Baixa (Unidade de Origem)</Label>
               <Select value={form.unidade_origem_id || ""} onValueChange={v => setForm({ ...form, unidade_origem_id: v })}>
                 <SelectTrigger className="min-h-[44px]"><SelectValue placeholder="Selecione a unidade..." /></SelectTrigger>
@@ -1567,14 +1586,14 @@ export default function Entregas() {
               <Input
                 placeholder="Buscar por CPF, matrícula ou nome..."
                 value={formFuncSearch}
-                onChange={e => { setFormFuncSearch(e.target.value); setForm({...form, funcionario_id: ""}); }}
+                onChange={e => { setFormFuncSearch(e.target.value); setForm({...form, funcionario_id: ""}); setDevolucaoTarget(null); }}
                 className="mb-2"
               />
               {formFuncSearch && formFilteredFuncs.length > 0 && !form.funcionario_id && (
                 <div className="border rounded-md max-h-40 overflow-y-auto">
                   {formFilteredFuncs.map(f => (
                     <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
-                      onClick={() => { setForm({...form, funcionario_id: f.id}); setFormFuncSearch(f.nome); }}>
+                      onClick={() => { setForm({...form, funcionario_id: f.id}); setFormFuncSearch(f.nome); setDevolucaoTarget(null); }}>
                       <span className="font-medium">{f.nome}</span>
                       {f.cpf && <span className="text-muted-foreground ml-2">CPF: {f.cpf}</span>}
                       {f.matricula && <span className="text-muted-foreground ml-2">Mat: {f.matricula}</span>}
@@ -1587,6 +1606,61 @@ export default function Entregas() {
               )}
             </div>
 
+            {/* Devolução: escolhe entre o que o colaborador tem em mãos, em vez
+                de buscar no catálogo. É essa entrega que será marcada como
+                devolvida e que o estorno usa para voltar atrás. */}
+            {normalizeEntregaTipo(form.tipo) === "devolucao" ? (
+              <>
+                <div>
+                  <Label>EPI a devolver</Label>
+                  {!form.funcionario_id ? (
+                    <p className="text-xs text-muted-foreground mt-1">Selecione o funcionário acima.</p>
+                  ) : entregasDevolviveis.length === 0 ? (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Este colaborador não tem EPI ativo para devolver.
+                    </p>
+                  ) : (
+                    <div className="mt-1 border rounded-md divide-y max-h-48 overflow-y-auto">
+                      {entregasDevolviveis.map((it) => {
+                        const epi = epiPorId.get(it.epi_id);
+                        const escolhido = devolucaoTarget?.id === it.id;
+                        return (
+                          <button
+                            key={it.id}
+                            type="button"
+                            onClick={() => setDevolucaoTarget(it)}
+                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${escolhido ? "bg-primary/10" : "hover:bg-accent"}`}
+                          >
+                            <span className="font-medium">{epi?.nome || "EPI não localizado"}</span>
+                            {epi?.ca && <span className="text-muted-foreground ml-2">C.A.: {epi.ca}</span>}
+                            <span className="block text-xs text-muted-foreground">
+                              {it.quantidade}x • entregue em {fmtData(it.data)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Destino</Label>
+                  <Select value={devolucaoDestino} onValueChange={(v) => setDevolucaoDestino(v as "estoque" | "descarte")}>
+                    <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {devolucaoDestinos.map((d) => (
+                        <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {devolucaoDestino === "estoque"
+                      ? "O EPI volta para o estoque e fica disponível."
+                      : "O EPI não retorna ao estoque (avaria ou descarte)."}
+                  </p>
+                </div>
+              </>
+            ) : (
             <div>
               <Label>EPI (buscar por C.A. ou nome)</Label>
               <div className="flex gap-2">
@@ -1667,14 +1741,43 @@ export default function Entregas() {
                 );
               })()}
             </div>
+            )}
 
-            <div>
+            {/* Devolução usa a data de hoje (é quando o EPI voltou), definida
+                pelo próprio fluxo de devolução. */}
+            <div className={normalizeEntregaTipo(form.tipo) === "devolucao" ? "hidden" : ""}>
               <Label>Data</Label>
               <Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} />
             </div>
-            <div><Label>Observação</Label><Textarea value={form.observacao} onChange={e => setForm({...form, observacao: e.target.value})} placeholder="Observações opcionais" /></div>
+            <div>
+              <Label>Observação</Label>
+              <Textarea
+                value={normalizeEntregaTipo(form.tipo) === "devolucao" ? devolucaoObs : form.observacao}
+                onChange={e => normalizeEntregaTipo(form.tipo) === "devolucao"
+                  ? setDevolucaoObs(e.target.value)
+                  : setForm({ ...form, observacao: e.target.value })}
+                placeholder="Observações opcionais"
+              />
+            </div>
           </div>
-          <DialogFooter><Button onClick={handleSave} disabled={epiList.length === 0 || saving}>{saving ? "Salvando..." : `Registrar (${epiList.length} EPI${epiList.length !== 1 ? "s" : ""})`}</Button></DialogFooter>
+          <DialogFooter>
+            {/* Devolução reaproveita confirmDevolver: é ele que marca a entrega
+                de origem como devolvida, acerta o estoque conforme o destino e
+                grava a trilha que o estorno usa depois. Duplicar essa lógica
+                aqui seria abrir espaço para as duas versões divergirem. */}
+            {normalizeEntregaTipo(form.tipo) === "devolucao" ? (
+              <Button
+                onClick={async () => { await confirmDevolver(); setOpen(false); }}
+                disabled={!devolucaoTarget || devolucaoSaving}
+              >
+                {devolucaoSaving ? "Registrando..." : "Registrar Devolução"}
+              </Button>
+            ) : (
+              <Button onClick={handleSave} disabled={epiList.length === 0 || saving}>
+                {saving ? "Salvando..." : `Registrar (${epiList.length} EPI${epiList.length !== 1 ? "s" : ""})`}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
