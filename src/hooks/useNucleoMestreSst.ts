@@ -193,22 +193,22 @@ export function useNucleoMestreSst() {
   const activeEmpresaId = searchEmpresaAutorizada ? searchEmpresaId : authEmpresaId;
 
   // READ QUERIES
-  const { data: estabelecimentos = [], isLoading: loadingEstabelecimentos } =
+  const { data: estabelecimentos = [], isLoading: loadingEstabelecimentos, error: erroEstabelecimentos } =
     useSupabaseQuery<SstEstabelecimento>("sst_estabelecimentos", "nome", true);
 
-  const { data: ambientes = [], isLoading: loadingAmbientes } =
+  const { data: ambientes = [], isLoading: loadingAmbientes, error: erroAmbientes } =
     useSupabaseQuery<SstAmbiente>("sst_ambientes", "nome", true);
 
-  const { data: setores = [], isLoading: loadingSetores } =
+  const { data: setores = [], isLoading: loadingSetores, error: erroSetores } =
     useSupabaseQuery<SstSetor>("sst_setores", "nome", true);
 
-  const { data: processos = [], isLoading: loadingProcessos } =
+  const { data: processos = [], isLoading: loadingProcessos, error: erroProcessos } =
     useSupabaseQuery<SstProcesso>("sst_processos", "nome", true);
 
-  const { data: funcoes = [], isLoading: loadingFuncoes } =
+  const { data: funcoes = [], isLoading: loadingFuncoes, error: erroFuncoes } =
     useSupabaseQuery<SstFuncao>("sst_funcoes", "nome", true);
 
-  const { data: gesList = [], isLoading: loadingGes } =
+  const { data: gesList = [], isLoading: loadingGes, error: erroGes } =
     useSupabaseQuery<SstGes>("sst_ges", "nome", true);
 
   // Vínculo real de GES com Setor/Função — vive nas tabelas da tela "Estrutura
@@ -652,6 +652,19 @@ export function useNucleoMestreSst() {
     perigosCatalogo,
     exposicoes: effectiveExposicoes,
     activeEmpresaId,
+    /**
+     * Falha ao CARREGAR a estrutura (não ao salvar).
+     *
+     * Sem isto, uma consulta que falha sem cache local devolve lista vazia
+     * (useSupabaseData: `data: query.data || []`) e a tela mostra "Nenhum setor
+     * cadastrado" — a mesma coisa que apareceria se o cadastro estivesse
+     * realmente vazio. No celular, com sinal instável, dá a impressão de que o
+     * cadastro sumiu.
+     */
+    erroCarregamento:
+      erroEstabelecimentos || erroAmbientes || erroSetores
+      || erroProcessos || erroFuncoes || erroGes || null,
+    recarregar: () => queryClient.invalidateQueries({ queryKey: ["supabase"] }),
     isLoading:
       loadingEstabelecimentos ||
       loadingAmbientes ||

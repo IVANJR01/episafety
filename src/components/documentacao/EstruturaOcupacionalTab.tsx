@@ -12,11 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { ehSchemaDesatualizado, mensagemErro } from "@/lib/erroSupabase";
+import { mensagemErro } from "@/lib/erroSupabase";
 import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
-import { Building2, LayoutGrid, Workflow, Briefcase, ClipboardList, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Building2, LayoutGrid, Workflow, Briefcase, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -74,6 +72,8 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     processos,
     funcoes,
     isLoading,
+    erroCarregamento,
+    recarregar,
     saveEstabelecimento,
     saveAmbiente,
     saveSetor,
@@ -221,6 +221,29 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       <div className="flex flex-col items-center justify-center p-12 text-slate-500">
         <Loader2 className="w-8 h-8 animate-spin mb-2 text-indigo-600" />
         <span>Carregando Estrutura Ocupacional do Núcleo Mestre...</span>
+      </div>
+    );
+  }
+
+  // Falha de carregamento não pode virar "Nenhum setor cadastrado": é a mesma
+  // tela que apareceria se o cadastro estivesse vazio, e quem está no celular
+  // com sinal ruim conclui que os dados sumiram.
+  if (erroCarregamento) {
+    return (
+      <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 space-y-3">
+        <div className="flex gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Não foi possível carregar a Estrutura Ocupacional.</p>
+            <p className="text-xs mt-1">
+              Nada foi perdido — só não deu para buscar os dados agora. Verifique a conexão
+              e tente de novo.
+            </p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => recarregar()}>
+          Tentar de novo
+        </Button>
       </div>
     );
   }
