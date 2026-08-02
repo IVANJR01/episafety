@@ -51,7 +51,12 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+      {/* O `top` precisa somar a área segura por conta própria: elemento
+          absoluto se posiciona pela borda do container, então o padding
+          superior do DialogContent não o desloca — o título desceu com o
+          padding e o X continuou sob a barra de status do iPhone.
+          No desktop (sm:) não há barra a evitar e o valor volta a ser fixo. */}
+      <DialogPrimitive.Close className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] sm:top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
         <X className="h-5 w-5 sm:h-4 sm:w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
