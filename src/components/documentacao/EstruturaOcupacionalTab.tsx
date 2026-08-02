@@ -317,6 +317,13 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           id: gesExistente?.id,
           codigo: gesExistente?.codigo || proximoCodigo,
           nome: formData.nome,
+          // Sem critério, o PDF do PGR imprime "não declarado — pendente de
+          // justificativa técnica" em todo grupo, e a tela de GES estampa o
+          // aviso amarelo. Como aqui o agrupamento É o setor, o critério é
+          // exatamente esse — dito por escrito, e editável na aba GES por quem
+          // quiser detalhar. Nunca sobrescreve um critério já escrito à mão.
+          criterio_agrupamento: gesExistente?.criterio_agrupamento
+            || `Agrupamento por setor: todos os trabalhadores de ${formData.nome} atuam no mesmo ambiente e estão sujeitos às mesmas condições de exposição.`,
           _silencioso: true,
         } as any);
         await vincularGesSetor({
