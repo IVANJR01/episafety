@@ -426,7 +426,10 @@ export function useNucleoMestreSst() {
 
   // SAVE GES MUTATION
   const saveGesMutation = useMutation({
-    mutationFn: async (ges: Partial<SstGes>) => {
+    // `_silencioso`: o GES criado junto com o Setor não é uma ação que a pessoa
+    // pediu conscientemente — dois toasts seguidos ("Setor salvo" + "GES
+    // salvo") só confundem quem nem abriu a tela de GES.
+    mutationFn: async ({ _silencioso, ...ges }: Partial<SstGes> & { _silencioso?: boolean }) => {
       if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
       return resilientSaveItem(
         "sst_ges",
@@ -448,14 +451,42 @@ export function useNucleoMestreSst() {
         true,
       );
     },
-    onSuccess: () => {
+    onSuccess: (_data, variaveis) => {
       queryClient.invalidateQueries({ queryKey: ["supabase", "sst_ges"] });
       queryClient.invalidateQueries({ queryKey: ["supabase", "ghe_ges"] });
       queryClient.invalidateQueries({ queryKey: ["cad-ghe-list"] });
-      toast({ title: "Sucesso", description: "GES/GHE salvo com sucesso no Núcleo Mestre!" });
+      if (!variaveis?._silencioso) {
+        toast({ title: "Sucesso", description: "GES/GHE salvo com sucesso no Núcleo Mestre!" });
+      }
     },
     onError: (err: any) => {
       toast({ title: "Erro ao salvar GES/GHE", description: err.message, variant: "destructive" });
+    },
+  });
+
+  /**
+   * Liga um GES a um Setor (tabela ghe_setores).
+   *
+   * É por aqui que o Setor cria o seu próprio GES sem a pessoa abrir a tela de
+   * GES: cada Setor vira um grupo de exposição com o mesmo nome. A NR-01 trata
+   * os dois como coisas diferentes — GES agrupa por exposição, não por
+   * organograma — e continua sendo possível criar um GES à mão para o caso de
+   * um mesmo setor ter exposições distintas. Mas exigir o cadastro separado
+   * como regra só produzia GES sem critério nenhum, batizados com nome de setor.
+   */
+  const vincularGesSetorMutation = useMutation({
+    mutationFn: async ({ ges_id, setor_id, nome }: { ges_id: string; setor_id: string; nome: string }) => {
+      if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
+      const { data: existente } = await (supabase.from as any)("ghe_setores")
+        .select("id").eq("ghe_id", ges_id).eq("setor_id", setor_id).maybeSingle();
+      const payload = { ghe_id: ges_id, setor_id, empresa_id: activeEmpresaId, nome };
+      const res = existente?.id
+        ? await (supabase.from as any)("ghe_setores").update(payload).eq("id", existente.id)
+        : await (supabase.from as any)("ghe_setores").insert(payload);
+      if (res.error) throw res.error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "ghe_setores"] });
     },
   });
 
@@ -685,6 +716,7 @@ export function useNucleoMestreSst() {
     saveProcesso: saveProcessoMutation.mutateAsync,
     saveFuncao: saveFuncaoMutation.mutateAsync,
     saveGes: saveGesMutation.mutateAsync,
+    vincularGesSetor: vincularGesSetorMutation.mutateAsync,
     saveExposicao: saveExposicaoMutation.mutateAsync,
     deleteEstabelecimento: deleteEstabelecimentoMutation.mutateAsync,
     deleteAmbiente: deleteAmbienteMutation.mutateAsync,

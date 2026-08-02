@@ -187,6 +187,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     saveSetor,
     saveProcesso,
     saveFuncao,
+    saveGes,
+    vincularGesSetor,
+    gesList,
+    gheSetores,
     deleteEstabelecimento,
     deleteAmbiente,
     deleteSetor,
@@ -291,11 +295,34 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           pe_direito: formData.pe_direito || null,
           descricao: formData.descricao || null,
         } as any);
-        await saveSetor({
+        const setorSalvo = await saveSetor({
           id: formData.id,
           nome: formData.nome,
           ambiente_id: (ambienteSalvo as any).id,
         } as any);
+
+        // O GES do setor também sai daqui. Exigir um cadastro separado só
+        // produzia GES sem critério nenhum, batizados com nome de setor — ou
+        // seja, o mesmo cadastro feito duas vezes. Continua dando para criar um
+        // GES à mão na aba GES quando um setor tiver exposições diferentes,
+        // que é o caso em que a NR-01 realmente separa os dois.
+        const setorId = (setorSalvo as any).id;
+        const vinculo = (gheSetores as any[]).find((v) => v.setor_id === setorId);
+        const gesExistente = vinculo && gesList.find((g: any) => g.id === vinculo.ghe_id);
+        const proximoCodigo = String(
+          gesList.reduce((max: number, g: any) => Math.max(max, Number(g.codigo) || 0), 0) + 1,
+        ).padStart(2, "0");
+        const gesSalvo = await saveGes({
+          id: gesExistente?.id,
+          codigo: gesExistente?.codigo || proximoCodigo,
+          nome: formData.nome,
+          _silencioso: true,
+        } as any);
+        await vincularGesSetor({
+          ges_id: (gesSalvo as any).id,
+          setor_id: setorId,
+          nome: formData.nome,
+        });
       }
       if (modalType === "processo") await saveProcesso(dados);
       if (modalType === "funcao") await saveFuncao(dados);

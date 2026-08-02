@@ -55,10 +55,16 @@ export function GesExposicoesTab() {
             <Layers className="w-6 h-6 text-slate-700" />
             Grupos de exposição (GES)
           </h2>
+          {/* Antes esta tela era o único caminho para ter um GES, e o resultado
+              prático era GES sem critério nenhum, batizados com nome de setor —
+              o mesmo cadastro feito duas vezes. Cada Setor agora já cria o seu.
+              A tela continua aqui para o caso que de fato justifica separar os
+              dois conceitos. */}
           <p className="text-sm text-slate-500 max-w-2xl">
-            Um GES reúne trabalhadores expostos aos mesmos agentes, na mesma intensidade.
-            Não é o mesmo que setor: pessoas de setores diferentes podem estar no mesmo GES,
-            e um GES pode conter mais de uma função.
+            Cada setor já cria o seu grupo automaticamente — normalmente não é preciso
+            cadastrar nada aqui. Só crie um grupo à parte quando ele <b>não</b> for igual a
+            um setor: gente de setores diferentes com a mesma exposição, ou um mesmo setor
+            com exposições distintas (quem opera a máquina e quem faz o acabamento).
           </p>
         </div>
         <Button onClick={() => { setGesFormData({}); setOpenGesModal(true); }} size="sm" className="shrink-0">
