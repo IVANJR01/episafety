@@ -657,25 +657,21 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 text-sm">
-            <div>
-              <Label>
-                Nome / Identificação
-                {modalType !== "atividade" && modalType !== "processo" && " *"}
-              </Label>
-              <Input
-                value={formData.nome || ""}
-                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                required={modalType !== "atividade" && modalType !== "processo"}
-                placeholder={PLACEHOLDER_NOME[modalType]}
-              />
-              {(modalType === "atividade" || modalType === "processo") && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Pode deixar em branco: ao salvar, vira a primeira frase
-                  {modalType === "processo" ? " de “Etapas do processo”" : " da descrição"}, abaixo —
-                  não precisa escrever a mesma coisa duas vezes.
-                </p>
-              )}
-            </div>
+            {/* Atividade e Processo não têm este campo: o nome/rótulo curto sai
+                sozinho da primeira frase da descrição/etapas, lá embaixo (ver
+                handleSave). Mostrar uma caixa "Nome" além da descrição fazia a
+                pessoa escrever a mesma coisa duas vezes à toa. */}
+            {modalType !== "atividade" && modalType !== "processo" && (
+              <div>
+                <Label>Nome / Identificação *</Label>
+                <Input
+                  value={formData.nome || ""}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                  required
+                  placeholder={PLACEHOLDER_NOME[modalType]}
+                />
+              </div>
+            )}
 
             {modalType === "estabelecimento" && (
               <>
@@ -956,18 +952,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     placeholder="Deixe em branco se não houver" />
                 </div>
                 <div>
-                  <Label>Etapas do processo</Label>
+                  <Label>Etapas do processo *</Label>
                   <Textarea value={formData.descricao_etapas || ""}
                     onChange={(e) => setFormData({ ...formData, descricao_etapas: e.target.value })}
-                    // Mesmo alívio dado à atividade: quem descreve as etapas não
-                    // precisa voltar lá em cima e inventar um título. A primeira
-                    // oração vira o nome, e continua editável.
-                    onBlur={(e) => {
-                      if (!(formData.nome || "").trim()) {
-                        const sugestao = sugerirNomeCurto(e.target.value);
-                        if (sugestao) setFormData((prev) => ({ ...prev, nome: sugestao }));
-                      }
-                    }}
                     placeholder="Como o trabalho é executado, do início ao fim" />
                 </div>
               </>
@@ -1085,36 +1072,17 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   </div>
                 </div>
 
-                {/* Só o nome e a função são exigidos: é o mínimo para pendurar
-                    um perigo na atividade certa no inventário do PGR. O resto
-                    alimenta laudo (LTCAT/insalubridade) e a probabilidade da
-                    matriz — útil, mas não no caminho de quem só quer cadastrar.
-                    Por isso fica fechado até alguém pedir. */}
-                <details className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2">
-                  <summary className="cursor-pointer text-xs font-medium text-slate-700 select-none">
-                    Detalhes para o laudo (opcional)
-                  </summary>
-
-                  <div className="mt-3 space-y-3">
+                {/* Não tem mais campo "Nome" separado (ver acima): esta descrição
+                    é a própria identificação da atividade, então precisa estar
+                    visível, não escondida atrás de "opcional". */}
                 <div>
-                  <Label>Descrição detalhada</Label>
+                  <Label>Descrição *</Label>
                   <Textarea
                     value={formData.descricao || ""}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    // No blur, e não a cada tecla: preencher enquanto a pessoa
-                    // digita ficaria trocando o nome a cada letra.
-                    onBlur={(e) => {
-                      if (!(formData.nome || "").trim()) {
-                        const sugestao = sugerirNomeCurto(e.target.value);
-                        if (sugestao) setFormData((prev) => ({ ...prev, nome: sugestao }));
-                      }
-                    }}
                     placeholder="Como a atividade é executada, passo a passo..."
                   />
                 </div>
-
-                  </div>
-                </details>
               </>
             )}
 
