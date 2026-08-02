@@ -5,10 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Download, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertTriangle, ArrowDownToLine, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import InventarioItemDialog from "./InventarioItemDialog";
-import ImportarGheDialog from "./ImportarGheDialog";
 import {
   classificarRisco, classeLabel, CLASSE_LABEL, CLASSE_TEXT,
   CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse,
@@ -46,7 +45,6 @@ export default function InventarioTab({
   const [editId, setEditId] = useState<string | null>(null);
   const [editGroupIds, setEditGroupIds] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
   const [preencher, setPreencher] = useState<Record<string, string> | null>(null);
 
@@ -184,9 +182,11 @@ export default function InventarioTab({
           <div className="flex gap-2">
             {editavel && (
               <>
-                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                  <Download className="h-4 w-4 mr-1" /> Importar GES
-                </Button>
+                {/* "Importar GES" saiu: criava linhas a partir dos setores com
+                    ambiente, processo e funções preenchidos — exatamente o que
+                    "Novo item" passou a fazer sozinho ao escolher o GES. Eram
+                    dois caminhos para a mesma linha, e o de importação ainda
+                    pedia para escolher o grupo de novo, no fim. */}
                 <Button size="sm" onClick={() => { setEditId(null); setPreencher(null); setDialogOpen(true); }}>
                   <Plus className="h-4 w-4 mr-1" /> Novo item
                 </Button>
@@ -200,16 +200,16 @@ export default function InventarioTab({
         </CardContent>
       </Card>
 
-      {/* Ponte entre a etapa 5 e o inventário. Sem ela, as mesmas seis
-          informações eram digitadas duas vezes. */}
+      {/* Perigos da antiga etapa "Perigos e riscos", que virou este inventário.
+          O painel drena o que ficou lá — depois de vazio, não aparece mais. */}
       {editavel && naoAproveitados.length > 0 && (
         <Card className="border-sky-300 bg-sky-50/60">
           <CardContent className="p-3 space-y-2">
             <div className="flex items-start gap-2">
               <ArrowDownToLine className="h-4 w-4 mt-0.5 shrink-0 text-sky-700" />
               <p className="text-sm text-sky-900">
-                <b>{naoAproveitados.length}</b> {naoAproveitados.length === 1 ? "perigo levantado" : "perigos levantados"} na
-                etapa <i>Perigos e riscos</i> ainda não {naoAproveitados.length === 1 ? "está" : "estão"} no inventário.
+                <b>{naoAproveitados.length}</b> {naoAproveitados.length === 1 ? "perigo levantado" : "perigos levantados"} antes
+                {naoAproveitados.length === 1 ? " ainda não está" : " ainda não estão"} no inventário.
                 Traga para cá já preenchido — só falta classificar na matriz.
               </p>
             </div>
@@ -261,7 +261,7 @@ export default function InventarioTab({
           ) : filtrados.length === 0 ? (
             <div className="text-center py-10">
               <p className="text-sm text-muted-foreground">Nenhum item no inventário ainda.</p>
-              {editavel && <p className="text-xs text-muted-foreground mt-1">Use “Importar GES” ou “Novo item”.</p>}
+              {editavel && <p className="text-xs text-muted-foreground mt-1">Clique em “Novo item”: escolhido o GES, ambiente, setor, processo e funções vêm junto.</p>}
             </div>
           ) : (
             <div className="overflow-x-auto -mx-3 px-3">
@@ -459,10 +459,6 @@ export default function InventarioTab({
         pgrId={pgrId} empresaId={empresaId} itemId={editId} valoresIniciais={preencher}
         groupItemIds={editGroupIds}
         onSaved={onSaved}
-      />
-      <ImportarGheDialog
-        open={importOpen} onOpenChange={setImportOpen}
-        pgrId={pgrId} onImported={onSaved}
       />
 
       <AlertDialog open={!!delState} onOpenChange={(o) => { if (!o) setDelState(null); }}>
