@@ -529,17 +529,18 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     title(b, "Processos de Trabalho");
     const setorNome = (id: string) =>
       (ctx.setores || []).find((s: any) => s.id === id)?.nome || "—";
+    // Sem a coluna "Máquinas e produtos": os campos que a alimentavam saíram do
+    // cadastro de Processo, então ela sairia "—" em toda linha. A largura foi
+    // para "Etapas / descrição", que é o conteúdo que interessa aqui.
     const linha = tabela(b, [
       { rotulo: "Processo", x: 12, w: 42 },
       { rotulo: "Setor", x: 57, w: 30 },
-      { rotulo: "Etapas / descrição", x: 90, w: 58 },
-      { rotulo: "Máquinas e produtos", x: 151, w: 46 },
+      { rotulo: "Etapas / descrição", x: 90, w: 107 },
     ]);
     ctx.processos.forEach((p: any) => linha([
       p.codigo ? `${p.codigo} — ${p.nome}` : p.nome,
       setorNome(p.setor_id),
       p.descricao_etapas || "—",
-      [p.maquinas_equipamentos, p.produtos_quimicos].filter(Boolean).join(" · ") || "—",
     ]));
     b.y += 3;
   }

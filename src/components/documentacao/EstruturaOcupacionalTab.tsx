@@ -502,7 +502,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 rotulo: "Característica",
                 celula: (proc) => <Badge variant="outline">{proc.caracteristica_atividade}</Badge>,
               },
-              { rotulo: "Máquinas", celula: (proc) => proc.maquinas_equipamentos || "-" },
             ]}
             onEditar={(proc) => handleOpenModal("processo", proc)}
             onExcluir={(proc) => setDeleteConfirm({ open: true, type: "processo", id: proc.id, nome: proc.nome })}
@@ -852,18 +851,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-                <div>
-                  <Label>Máquinas e equipamentos</Label>
-                  <Input value={formData.maquinas_equipamentos || ""}
-                    onChange={(e) => setFormData({ ...formData, maquinas_equipamentos: e.target.value })}
-                    placeholder="Ex.: betoneira, serra mármore, computador" />
-                </div>
-                <div>
-                  <Label>Produtos químicos utilizados</Label>
-                  <Input value={formData.produtos_quimicos || ""}
-                    onChange={(e) => setFormData({ ...formData, produtos_quimicos: e.target.value })}
-                    placeholder="Deixe em branco se não houver" />
                 </div>
                 <div>
                   <Label>Etapas do processo *</Label>
