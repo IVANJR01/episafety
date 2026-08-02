@@ -490,6 +490,36 @@ export function useNucleoMestreSst() {
     },
   });
 
+  /**
+   * Liga uma Função ao GES do seu Setor (tabela ghe_funcoes).
+   *
+   * Sem isto, o GES criado junto com o Setor nasceria sem função nenhuma — e é
+   * `ghe_funcoes` que o "Quadro sinóptico de EPIs" do PDF do PGR lê para dizer
+   * quem usa cada equipamento. O vínculo é gravado ao salvar a Função (e não só
+   * ao salvar o Setor) porque as funções entram depois, uma a uma.
+   */
+  const vincularGesFuncaoMutation = useMutation({
+    mutationFn: async (
+      { ges_id, funcao_id, nome_funcao, setor_nome }:
+      { ges_id: string; funcao_id: string; nome_funcao: string; setor_nome?: string | null },
+    ) => {
+      if (!activeEmpresaId) throw new Error("Nenhuma empresa ativa selecionada.");
+      const { data: existente } = await (supabase.from as any)("ghe_funcoes")
+        .select("id").eq("ghe_id", ges_id).eq("funcao_id", funcao_id).maybeSingle();
+      const payload = {
+        ghe_id: ges_id, funcao_id, empresa_id: activeEmpresaId,
+        nome_funcao, setor: setor_nome || null,
+      };
+      const res = existente?.id
+        ? await (supabase.from as any)("ghe_funcoes").update(payload).eq("id", existente.id)
+        : await (supabase.from as any)("ghe_funcoes").insert(payload);
+      if (res.error) throw res.error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", "ghe_funcoes"] });
+    },
+  });
+
   // SAVE EXPOSICAO MUTATION
   const saveExposicaoMutation = useMutation({
     mutationFn: async (exposicao: Partial<SstExposicao>) => {
@@ -717,6 +747,7 @@ export function useNucleoMestreSst() {
     saveFuncao: saveFuncaoMutation.mutateAsync,
     saveGes: saveGesMutation.mutateAsync,
     vincularGesSetor: vincularGesSetorMutation.mutateAsync,
+    vincularGesFuncao: vincularGesFuncaoMutation.mutateAsync,
     saveExposicao: saveExposicaoMutation.mutateAsync,
     deleteEstabelecimento: deleteEstabelecimentoMutation.mutateAsync,
     deleteAmbiente: deleteAmbienteMutation.mutateAsync,

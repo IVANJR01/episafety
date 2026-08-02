@@ -189,6 +189,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     saveFuncao,
     saveGes,
     vincularGesSetor,
+    vincularGesFuncao,
     gesList,
     gheSetores,
     deleteEstabelecimento,
@@ -325,7 +326,21 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         });
       }
       if (modalType === "processo") await saveProcesso(dados);
-      if (modalType === "funcao") await saveFuncao(dados);
+      if (modalType === "funcao") {
+        const funcaoSalva = await saveFuncao(dados);
+        // A função entra no GES do seu setor. É `ghe_funcoes` que o "Quadro
+        // sinóptico de EPIs" do PDF lê — sem este vínculo, o GES criado junto
+        // com o Setor apareceria no documento sem ninguém dentro.
+        const vinculoSetor = (gheSetores as any[]).find((v) => v.setor_id === dados.setor_id);
+        if (vinculoSetor?.ghe_id) {
+          await vincularGesFuncao({
+            ges_id: vinculoSetor.ghe_id,
+            funcao_id: (funcaoSalva as any).id,
+            nome_funcao: dados.nome,
+            setor_nome: setores.find((st) => st.id === dados.setor_id)?.nome,
+          });
+        }
+      }
       setOpenModal(false);
     } catch (err) {
       // O erro ia só para o console: o modal ficava aberto, sem nada escrito, e
