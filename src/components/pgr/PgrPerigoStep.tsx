@@ -55,7 +55,7 @@ const vazio = {
  */
 export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
   const qc = useQueryClient();
-  const { ambientes, setores, funcoes, gesList } = useNucleoMestreSst();
+  const { setores, funcoes, gesList } = useNucleoMestreSst();
 
   const [formAberto, setFormAberto] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
   // obrigatório que não aparece aqui viraria asterisco mentiroso.
   const faltando = useMemo(() => {
     const falta: string[] = [];
-    if (!ctx.ambiente_id) falta.push("ambiente");
+    // Ambiente não entra: vem junto com o Setor (ver PgrContextoSelector).
     if (!ctx.setor_id) falta.push("setor");
     if (!ctx.ges_id) falta.push("GES");
     // Função e atividade NÃO são obrigatórias. O GES já é, por definição, o
@@ -278,7 +278,8 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
                     <TableCell className="text-xs">{GRUPO_LABEL[i.grupo] || i.grupo || "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-[220px]">
                       {[
-                        nomeDe(ambientes, i.ambiente_id),
+                        // Ambiente saiu da trilha: tem o mesmo nome do Setor
+                        // desde a unificação, e repetia "PCP › PCP › …".
                         nomeDe(setores, i.setor_id),
                         nomeDe(gesList, i.ges_id),
                         nomeDe(funcoes, i.funcao_id),
@@ -342,7 +343,7 @@ export default function PgrPerigoStep({ pgrId, empresaId, canEdit }: Props) {
 
         <PgrContextoSelector
           valor={ctx} onChange={setCtx} disabled={!canEdit}
-          obrigatorios={["ambiente_id", "setor_id", "ges_id"]}
+          obrigatorios={["setor_id", "ges_id"]}
           ocultar={["processo_id"]}
         />
         <p className="-mt-3 text-xs text-muted-foreground">

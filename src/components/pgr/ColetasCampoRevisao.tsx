@@ -34,7 +34,7 @@ interface Props {
 export default function ColetasCampoRevisao({ pgrId, empresaId, canEdit }: Props) {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { ambientes, setores, funcoes, gesList } = useNucleoMestreSst();
+  const { setores, funcoes, gesList } = useNucleoMestreSst();
   const [descartando, setDescartando] = useState<any | null>(null);
   const [motivo, setMotivo] = useState("");
 
@@ -148,8 +148,10 @@ export default function ColetasCampoRevisao({ pgrId, empresaId, canEdit }: Props
       </p>
 
       {coletas.map((c) => {
+        // Sem o Ambiente: tem o mesmo nome do Setor desde a unificação dos dois
+        // cadastros, e a trilha saía repetindo "PCP › PCP › …".
         const onde = [
-          nomeDe(ambientes, c.ambiente_id), nomeDe(setores, c.setor_id),
+          nomeDe(setores, c.setor_id),
           nomeDe(gesList, c.ges_id), nomeDe(funcoes, c.funcao_id),
         ].filter(Boolean).join(" › ");
         return (

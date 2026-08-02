@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Building2, HardHat, ShieldCheck, User, ClipboardList } from "lucide-react";
+import { HardHat, ShieldCheck, User, ClipboardList } from "lucide-react";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 
 /** Onde, na hierarquia, o registro está sendo feito. */
@@ -40,18 +40,11 @@ const SEM = "__sem__";
 export function PgrContextoSelector({
   valor, onChange, disabled, obrigatorios = [], ocultar = [],
 }: Props) {
-  const { ambientes, processos, setores, funcoes, atividades, gesList, gheSetores, gheFuncoes } =
+  const { processos, setores, funcoes, atividades, gesList, gheSetores, gheFuncoes } =
     useNucleoMestreSst();
 
   const req = (k: keyof ContextoSst) => obrigatorios.includes(k);
   const vis = (k: keyof ContextoSst) => !ocultar.includes(k);
-
-  // Setores do ambiente escolhido; se o ambiente não foi escolhido, todos.
-  const setoresVisiveis = useMemo(() => {
-    if (!valor.ambiente_id) return setores;
-    const doAmbiente = setores.filter((s: any) => s.ambiente_id === valor.ambiente_id);
-    return doAmbiente.length > 0 ? doAmbiente : setores;
-  }, [setores, valor.ambiente_id]);
 
   // GES sugeridos pelo vínculo real (ghe_setores.setor_id). Sem vínculo
   // cadastrado, mostra todos — um GES novo ainda não tem vínculo e precisa
@@ -96,7 +89,7 @@ export function PgrContextoSelector({
   const set = (campo: keyof ContextoSst) => (v: string) => {
     const novo = v === SEM ? null : v;
     const limpar: Record<keyof ContextoSst, (keyof ContextoSst)[]> = {
-      ambiente_id: ["setor_id", "ges_id", "funcao_id", "atividade_id"],
+      ambiente_id: [],
       processo_id: [],
       setor_id: ["ges_id", "funcao_id", "atividade_id"],
       ges_id: ["funcao_id", "atividade_id"],
@@ -104,7 +97,16 @@ export function PgrContextoSelector({
       atividade_id: [],
     };
     const zerados = Object.fromEntries(limpar[campo].map((k) => [k, null]));
-    onChange({ ...valor, [campo]: novo, ...zerados });
+    const proximo: ContextoSst = { ...valor, [campo]: novo, ...zerados };
+    // Ambiente não é mais escolhido à parte: cada Setor tem o seu, criado junto
+    // no cadastro da Estrutura Ocupacional. Pedir os dois deixava escolher um
+    // ambiente de um setor e um setor de outro — dois nomes contraditórios na
+    // mesma linha do inventário. Vem junto com o Setor, para as tabelas e o PDF
+    // que ainda gravam/leem ambiente_id.
+    if (campo === "setor_id") {
+      proximo.ambiente_id = (setores.find((s: any) => s.id === novo) as any)?.ambiente_id || null;
+    }
+    onChange(proximo);
   };
 
   const Campo = ({
@@ -142,14 +144,12 @@ export function PgrContextoSelector({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {vis("ambiente_id") && (
-        <Campo campo="ambiente_id" rotulo="Ambiente" itens={ambientes} placeholder="Selecione o ambiente" />
-      )}
+      {/* Sem seletor de Ambiente: ele vem junto com o Setor (ver `set`). */}
       {vis("processo_id") && (
         <Campo campo="processo_id" rotulo="Processo" itens={processos} placeholder="Selecione o processo" />
       )}
       {vis("setor_id") && (
-        <Campo campo="setor_id" rotulo="Setor" itens={setoresVisiveis} placeholder="Selecione o setor" />
+        <Campo campo="setor_id" rotulo="Setor" itens={setores} placeholder="Selecione o setor" />
       )}
       {vis("ges_id") && (
         <Campo campo="ges_id" rotulo="GES" itens={gesVisiveis} placeholder="Selecione o GES" />
@@ -177,13 +177,14 @@ export function PgrContextoSelector({
  * qualquer largura e devolve a largura toda para os campos.
  */
 export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
-  const { ambientes, setores, funcoes, atividades, gesList } = useNucleoMestreSst();
+  const { setores, funcoes, atividades, gesList } = useNucleoMestreSst();
 
   const nome = (lista: any[], id?: string | null) =>
     (id && lista.find((i) => i.id === id)?.nome) || null;
 
+  // Ambiente saiu daqui: depois da unificação ele tem o mesmo nome do Setor,
+  // então a faixa mostrava a mesma palavra duas vezes seguidas.
   const linhas = [
-    { icone: Building2, rotulo: "Ambiente", valor: nome(ambientes, valor.ambiente_id) },
     { icone: HardHat, rotulo: "Setor", valor: nome(setores, valor.setor_id) },
     { icone: ShieldCheck, rotulo: "GES", valor: nome(gesList, valor.ges_id) },
     { icone: User, rotulo: "Função", valor: nome(funcoes, valor.funcao_id) },
