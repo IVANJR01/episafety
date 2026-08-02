@@ -129,11 +129,13 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
       const tabela = (t: string) =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.from as any)(t).select("*").eq("empresa_id", empresaId);
-      const [set, amb, proc, vinc] = await Promise.all([
+      const [set, amb, proc, vinc, fun, vincFun] = await Promise.all([
         tabela("sst_setores"), tabela("sst_ambientes"), tabela("sst_processos"),
-        tabela("ghe_setores"),
+        tabela("ghe_setores"), tabela("sst_funcoes"), tabela("ghe_funcoes"),
       ]);
       return {
+        funcoesEmpresa: (fun.data || []) as { id: string; nome: string; setor_id?: string | null }[],
+        gheFuncoes: (vincFun.data || []) as { ghe_id: string; funcao_id?: string | null }[],
         // Vínculo real do GES com o setor. O GES criado a partir do Setor não
         // preenche as colunas de texto legadas de ghe_ges — era por isso que
         // "Setor" abria vazio mesmo com o grupo escolhido.
@@ -150,11 +152,29 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
   const ambientes = estrutura?.ambientes || [];
   const processos = estrutura?.processos || [];
   const gheSetores = estrutura?.gheSetores || [];
+  const funcoesEmpresa = estrutura?.funcoesEmpresa || [];
+  const gheFuncoes = estrutura?.gheFuncoes || [];
 
-  /** O setor do GES, pelo vínculo real — não pelo texto legado de ghe_ges. */
+  /** As funções que compõem o GES — é quem responde pelo risco. */
+  const funcoesDoGes = (gesId?: string) => {
+    const ids = new Set(
+      gheFuncoes.filter((v) => v.ghe_id === gesId && v.funcao_id).map((v) => v.funcao_id),
+    );
+    return funcoesEmpresa.filter((f) => ids.has(f.id));
+  };
+
+  /**
+   * O setor do GES, pelo vínculo real — não pelo texto legado de ghe_ges.
+   *
+   * Sem vínculo explícito, cai no setor das funções do grupo: grupos criados
+   * antes do vínculo automático existir não têm a linha em ghe_setores, e
+   * deixá-los "sem setor" obrigava a reimportar a estrutura à mão.
+   */
   const setorDoGes = (gesId?: string) => {
     const v = gheSetores.find((x) => x.ghe_id === gesId && x.setor_id);
-    return v ? setores.find((s) => s.id === v.setor_id) : undefined;
+    if (v) return setores.find((s) => s.id === v.setor_id);
+    const daFuncao = funcoesDoGes(gesId).find((f) => f.setor_id);
+    return daFuncao ? setores.find((s) => s.id === daFuncao.setor_id) : undefined;
   };
 
   /**
@@ -235,6 +255,8 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
       setorNome: s?.nome || "",
       ambienteTexto: descreverAmbiente(amb) || "",
       processoTexto: descreverProcesso(proc) || "",
+      // Quem responde pelo risco sai do grupo, não de uma importação à parte.
+      funcoesTexto: funcoesDoGes(form.ghe_id as string).map((f) => f.nome).join("\n"),
     };
   })();
 
@@ -249,9 +271,11 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
       descricao_ambiente: contextoDoGes.ambienteTexto || f.descricao_ambiente
         || clean(g?.descricao_ambiente) || clean(g?.ambiente) || "",
       processo: contextoDoGes.processoTexto || f.processo || clean(g?.processo) || "",
+      funcoes_text: contextoDoGes.funcoesTexto || f.funcoes_text || "",
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.ghe_id, ghes, itemId, contextoDoGes.setorNome, contextoDoGes.ambienteTexto, contextoDoGes.processoTexto]);
+  }, [form.ghe_id, ghes, itemId, contextoDoGes.setorNome, contextoDoGes.ambienteTexto,
+      contextoDoGes.processoTexto, contextoDoGes.funcoesTexto]);
 
   const total = Number(form.severidade) * Number(form.probabilidade);
   const classe = classificarRisco(Number(form.severidade), Number(form.probabilidade));
@@ -394,10 +418,16 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                     <span className="text-muted-foreground">Setor: </span>
                     <b>{contextoDoGes.setorNome || "não vinculado a um setor"}</b>
                   </p>
-                  {!contextoDoGes.setorNome && (
+                  <p>
+                    <span className="text-muted-foreground">Expostos: </span>
+                    {contextoDoGes.funcoesTexto
+                      ? contextoDoGes.funcoesTexto.split("\n").join(", ")
+                      : <span className="text-amber-700">nenhuma função neste grupo</span>}
+                  </p>
+                  {(!contextoDoGes.setorNome || !contextoDoGes.funcoesTexto) && (
                     <p className="text-amber-700">
-                      Este grupo não está ligado a nenhum setor. Vincule em Estrutura →
-                      Setores → Grupos de exposição, senão o item sai sem setor no PGR.
+                      Complete o grupo em Estrutura → Setores → Grupos de exposição: é de lá
+                      que vêm o setor, o ambiente e quem está exposto.
                     </p>
                   )}
                 </div>
