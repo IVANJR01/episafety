@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power, Copy } from "lucide-react";
+import { Shield, UserPlus, Trash2, Save, Eye, EyeOff, Building2, Crown, GitBranch, Pencil, UserX, UserCheck, Power, Copy, AlertTriangle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
@@ -963,6 +963,32 @@ export default function UsuariosLiberados() {
 
                 {/* Tab: Permissões */}
                 <TabsContent value="permissoes" className="space-y-4 pt-2">
+                  {/*
+                   * Usuário Principal ignora esta tela por completo.
+                   *
+                   * `checkSuperAdmin()` trata is_principal como super admin, e
+                   * `usePermissions()` devolve tudo liberado nesse caso, sem
+                   * consultar os módulos. Desmarcar "Excluir" aqui e continuar
+                   * vendo a lixeira na tela parecia defeito — a tela deixava
+                   * editar e salvar sem efeito nenhum, calada.
+                   */}
+                  {permsUser.is_principal && (
+                    <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-xs text-amber-900 space-y-1">
+                        <p className="font-semibold">Estas permissões não se aplicam a este usuário</p>
+                        <p>
+                          Ele é <strong>Usuário Principal</strong> e mantém acesso total a todos os módulos —
+                          inclusive excluir — independentemente do que estiver marcado abaixo.
+                        </p>
+                        <p>
+                          Para que as permissões passem a valer, desative <strong>Usuário Principal</strong> na
+                          aba <strong>Dados do Usuário</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-end">
                     <div className="flex gap-2">
                       <button onClick={() => selectAll(permsUser.id)} className="text-xs text-primary hover:underline">Selecionar todos</button>
