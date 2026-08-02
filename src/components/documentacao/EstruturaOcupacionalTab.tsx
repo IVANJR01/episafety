@@ -25,7 +25,6 @@ const ROTULO_MODAL: Record<string, string> = {
   setor: "setor",
   processo: "processo",
   funcao: "função",
-  atividade: "atividade",
 };
 
 /** Placeholder do campo Nome. Era `Nome do ${modalType}`, que gerava
@@ -36,7 +35,6 @@ const PLACEHOLDER_NOME: Record<string, string> = {
   setor: "Nome do setor",
   processo: "Nome do processo",
   funcao: "Nome da função",
-  atividade: "O que é feito. Ex.: Operar serra circular",
 };
 
 /**
@@ -57,7 +55,7 @@ function sugerirNomeCurto(descricao: string): string {
   return curto.charAt(0).toUpperCase() + curto.slice(1);
 }
 
-type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes" | "atividades";
+type SecaoEstrutura = "estabelecimentos" | "ambientes" | "setores" | "processos" | "funcoes";
 
 interface EstruturaProps {
   /**
@@ -75,20 +73,17 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     setores,
     processos,
     funcoes,
-    atividades,
     isLoading,
     saveEstabelecimento,
     saveAmbiente,
     saveSetor,
     saveProcesso,
     saveFuncao,
-    saveAtividade,
     deleteEstabelecimento,
     deleteAmbiente,
     deleteSetor,
     deleteProcesso,
     deleteFuncao,
-    deleteAtividade,
   } = useNucleoMestreSst();
 
   const [activeSubTab, setActiveSubTab] = useState<string>("estabelecimentos");
@@ -109,27 +104,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
    */
   const secaoAtiva = only ?? activeSubTab;
 
-  /**
-   * A tabela sst_atividades vem de uma migration que ainda pode não ter sido
-   * aplicada. Conferir antes evita o pior caso: preencher o formulário inteiro,
-   * ver "Sucesso" e descobrir depois que nada foi para o banco.
-   */
-  const { data: atividadesNoBanco = true } = useQuery({
-    queryKey: ["sst-atividades-existe"],
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-    queryFn: async () => {
-      // sst_atividades não está nos tipos gerados justamente por não existir no banco.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from as any)("sst_atividades")
-        .select("id", { count: "exact", head: true });
-      return !(error && ehSchemaDesatualizado(error));
-    },
-  });
-
   // DIALOG STATES
   const [openModal, setOpenModal] = useState(false);
-  const [modalType, setModalType] = useState<"estabelecimento" | "ambiente" | "setor" | "processo" | "funcao" | "atividade">("estabelecimento");
+  const [modalType, setModalType] = useState<"estabelecimento" | "ambiente" | "setor" | "processo" | "funcao">("estabelecimento");
   const [formData, setFormData] = useState<any>({});
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; type: string; id: string; nome: string }>({
     open: false,
@@ -174,27 +151,19 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     e.preventDefault();
     setErroSalvar("");
 
-    // Processo e Atividade derivam o Nome da descrição/etapas — a pessoa não
-    // devia ter que escrever a mesma coisa duas vezes. O onBlur já cobre quem
-    // preenche a descrição e sai do campo, mas quem clica direto em "Salvar"
-    // (ou nunca chega a tirar o foco de lá) ficava barrado pelo required do
-    // Nome mesmo já tendo escrito tudo que precisava, na descrição.
+    // Processo deriva o Nome das etapas — a pessoa não devia ter que escrever a
+    // mesma coisa duas vezes. Sem isto, quem clica direto em "Salvar" (sem
+    // tirar o foco do campo de etapas) ficava barrado pelo required do Nome
+    // mesmo já tendo escrito tudo que precisava, logo abaixo.
     let dados = formData;
-    if (modalType === "processo" || modalType === "atividade") {
-      if (!(formData.nome || "").trim()) {
-        const fonte = modalType === "processo" ? formData.descricao_etapas : formData.descricao;
-        const sugestao = sugerirNomeCurto(fonte || "");
-        if (!sugestao) {
-          setErroSalvar(
-            modalType === "processo"
-              ? "Escreva ao menos as etapas do processo — o nome é gerado a partir delas."
-              : "Escreva ao menos a descrição da atividade — o nome é gerado a partir dela.",
-          );
-          return;
-        }
-        dados = { ...formData, nome: sugestao };
-        setFormData(dados);
+    if (modalType === "processo" && !(formData.nome || "").trim()) {
+      const sugestao = sugerirNomeCurto(formData.descricao_etapas || "");
+      if (!sugestao) {
+        setErroSalvar("Escreva ao menos as etapas do processo — o nome é gerado a partir delas.");
+        return;
       }
+      dados = { ...formData, nome: sugestao };
+      setFormData(dados);
     }
 
     setSalvando(true);
@@ -222,7 +191,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       }
       if (modalType === "processo") await saveProcesso(dados);
       if (modalType === "funcao") await saveFuncao(dados);
-      if (modalType === "atividade") await saveAtividade(dados);
       setOpenModal(false);
     } catch (err) {
       // O erro ia só para o console: o modal ficava aberto, sem nada escrito, e
@@ -242,7 +210,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       if (deleteConfirm.type === "setor") await deleteSetor(deleteConfirm.id);
       if (deleteConfirm.type === "processo") await deleteProcesso(deleteConfirm.id);
       if (deleteConfirm.type === "funcao") await deleteFuncao(deleteConfirm.id);
-      if (deleteConfirm.type === "atividade") await deleteAtividade(deleteConfirm.id);
       setDeleteConfirm({ open: false, type: "", id: "", nome: "" });
     } catch (err) {
       console.error(err);
@@ -300,9 +267,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center gap-1">
               <Briefcase className="w-4 h-4" /> Funções
             </TabsTrigger>
-            <TabsTrigger value="atividades" className="text-xs font-medium flex items-center gap-1">
-              <ClipboardList className="w-4 h-4" /> Atividades
-            </TabsTrigger>
+            {/* Atividades deixou de ser aba própria: na prática cada função
+                tinha exatamente uma atividade, com o mesmo texto já escrito em
+                "Descrição das Atividades Desempenhadas" da própria função —
+                era o mesmo cadastro feito duas vezes. */}
           </TabsList>
         )}
 
@@ -502,7 +470,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   <TableHead>Nome da Função</TableHead>
                   <TableHead>CBO</TableHead>
                   <TableHead>Setor</TableHead>
-                  <TableHead>Requisitos NRs</TableHead>
+                  {/* Os requisitos de NR continuam sendo marcados no cadastro e
+                      impressos no PDF — só saíram daqui, onde a descrição das
+                      atividades diz muito mais sobre a função. */}
+                  <TableHead>Descrição das atividades</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -521,13 +492,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                         <TableCell className="font-medium text-slate-900">{func.nome}</TableCell>
                         <TableCell>{func.cbo || "-"}</TableCell>
                         <TableCell>{set?.nome || "-"}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            {func.exige_nr10 && <Badge className="bg-amber-600 text-white text-[10px]">NR-10</Badge>}
-                            {func.exige_nr33 && <Badge className="bg-red-600 text-white text-[10px]">NR-33</Badge>}
-                            {func.exige_nr35 && <Badge className="bg-blue-600 text-white text-[10px]">NR-35</Badge>}
-                            {!func.exige_nr10 && !func.exige_nr33 && !func.exige_nr35 && <span className="text-slate-400">—</span>}
-                          </div>
+                        <TableCell className="text-sm text-slate-600 max-w-xs truncate"
+                          title={(func as any).descricao_atividades || ""}>
+                          {(func as any).descricao_atividades || "—"}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -548,83 +515,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           </Card>
         </TabsContent>
 
-        {/* 6. ATIVIDADES */}
-        <TabsContent value="atividades" className="mt-4 space-y-4">
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <div>
-              <h3 className="font-semibold text-slate-800">Atividades</h3>
-              <p className="text-xs text-slate-500 max-w-xl">
-                É a atividade que carrega o perigo no PGR — “operar serra circular” expõe a
-                ruído e corte; “conferir nota fiscal”, não. Duas funções com o mesmo nome
-                podem ter exposições diferentes, e é aqui que essa diferença aparece.
-              </p>
-            </div>
-            <Button onClick={() => handleOpenModal("atividade")} size="sm" disabled={!atividadesNoBanco}>
-              <Plus className="w-4 h-4 mr-1" /> Nova Atividade
-            </Button>
-          </div>
-
-          {!atividadesNoBanco && (
-            <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>
-                O banco ainda não tem a tabela de atividades — a migration pendente precisa ser
-                aplicada no Supabase. O cadastro está desativado até lá, para não dar a impressão
-                de que salvou. Nada do que já existe foi perdido.
-              </span>
-            </div>
-          )}
-
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Atividade</TableHead>
-                  <TableHead>Função</TableHead>
-                  <TableHead>Característica</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {atividades.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-slate-400">
-                      Nenhuma atividade cadastrada.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  atividades.map((ativ: any) => {
-                    const fn = funcoes.find((f: any) => f.id === ativ.funcao_id);
-                    return (
-                      <TableRow key={ativ.id}>
-                        {/* Nome é sempre a primeira frase da descrição agora —
-                            repetir a descrição embaixo só mostrava a mesma
-                            frase duas vezes, cortada em pontos diferentes. */}
-                        <TableCell className="font-medium text-slate-900 max-w-xs truncate" title={ativ.nome}>
-                          {ativ.nome}
-                        </TableCell>
-                        <TableCell>{fn?.nome || "-"}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{ativ.caracteristica || "rotineira"}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button onClick={() => handleOpenModal("atividade", ativ)} variant="ghost" size="sm">
-                              <Edit2 className="w-4 h-4 text-slate-600" />
-                            </Button>
-                            <Button onClick={() => setDeleteConfirm({ open: true, type: "atividade", id: ativ.id, nome: ativ.nome })} variant="ghost" size="sm">
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* CONFIRMATION DIALOG DE EXCLUSÃO */}
@@ -659,7 +549,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 sozinho da primeira frase da descrição/etapas, lá embaixo (ver
                 handleSave). Mostrar uma caixa "Nome" além da descrição fazia a
                 pessoa escrever a mesma coisa duas vezes à toa. */}
-            {modalType !== "atividade" && modalType !== "processo" && (
+            {modalType !== "processo" && (
               <div>
                 <Label>Nome / Identificação *</Label>
                 <Input
@@ -1037,52 +927,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               </>
             )}
 
-            {modalType === "atividade" && (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label>Função que executa</Label>
-                    <Select
-                      value={formData.funcao_id || ""}
-                      onValueChange={(val) => setFormData({ ...formData, funcao_id: val })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Selecione a função..." /></SelectTrigger>
-                      <SelectContent>
-                        {funcoes.map((f: any) => (
-                          <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Característica</Label>
-                    <Select
-                      value={formData.caracteristica || "rotineira"}
-                      onValueChange={(val) => setFormData({ ...formData, caracteristica: val })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="rotineira">Rotineira</SelectItem>
-                        <SelectItem value="nao_rotineira">Não rotineira</SelectItem>
-                        <SelectItem value="emergencia">Emergência</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Não tem mais campo "Nome" separado (ver acima): esta descrição
-                    é a própria identificação da atividade, então precisa estar
-                    visível, não escondida atrás de "opcional". */}
-                <div>
-                  <Label>Descrição *</Label>
-                  <Textarea
-                    value={formData.descricao || ""}
-                    onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    placeholder="Como a atividade é executada, passo a passo..."
-                  />
-                </div>
-              </>
-            )}
 
             {erroSalvar && (
               <div className="flex gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-800">

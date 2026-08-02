@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { HardHat, ShieldCheck, User, ClipboardList } from "lucide-react";
+import { HardHat, ShieldCheck, User } from "lucide-react";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 
 /** Onde, na hierarquia, o registro está sendo feito. */
@@ -40,7 +40,7 @@ const SEM = "__sem__";
 export function PgrContextoSelector({
   valor, onChange, disabled, obrigatorios = [], ocultar = [],
 }: Props) {
-  const { processos, setores, funcoes, atividades, gesList, gheSetores, gheFuncoes } =
+  const { processos, setores, funcoes, gesList, gheSetores, gheFuncoes } =
     useNucleoMestreSst();
 
   const req = (k: keyof ContextoSst) => obrigatorios.includes(k);
@@ -75,12 +75,6 @@ export function PgrContextoSelector({
     }
     return funcoes;
   }, [funcoes, gheFuncoes, valor.ges_id, valor.setor_id]);
-
-  const atividadesVisiveis = useMemo(() => {
-    if (!valor.funcao_id) return atividades;
-    const daFuncao = atividades.filter((a: any) => a.funcao_id === valor.funcao_id);
-    return daFuncao.length > 0 ? daFuncao : atividades;
-  }, [atividades, valor.funcao_id]);
 
   /**
    * Trocar um nível alto invalida os níveis abaixo: manter o "Pedreiro" depois
@@ -157,9 +151,8 @@ export function PgrContextoSelector({
       {vis("funcao_id") && (
         <Campo campo="funcao_id" rotulo="Função" itens={funcoesVisiveis} placeholder="Selecione a função" />
       )}
-      {vis("atividade_id") && (
-        <Campo campo="atividade_id" rotulo="Atividade" itens={atividadesVisiveis} placeholder="Selecione a atividade" />
-      )}
+      {/* Sem seletor de Atividade: o cadastro de Atividades saiu do Núcleo
+          Mestre — o que a função faz é descrito na própria função. */}
     </div>
   );
 }
@@ -177,7 +170,7 @@ export function PgrContextoSelector({
  * qualquer largura e devolve a largura toda para os campos.
  */
 export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
-  const { setores, funcoes, atividades, gesList } = useNucleoMestreSst();
+  const { setores, funcoes, gesList } = useNucleoMestreSst();
 
   const nome = (lista: any[], id?: string | null) =>
     (id && lista.find((i) => i.id === id)?.nome) || null;
@@ -188,7 +181,6 @@ export function PgrContextoResumo({ valor }: { valor: ContextoSst }) {
     { icone: HardHat, rotulo: "Setor", valor: nome(setores, valor.setor_id) },
     { icone: ShieldCheck, rotulo: "GES", valor: nome(gesList, valor.ges_id) },
     { icone: User, rotulo: "Função", valor: nome(funcoes, valor.funcao_id) },
-    { icone: ClipboardList, rotulo: "Atividade", valor: nome(atividades, valor.atividade_id) },
   ];
 
   return (

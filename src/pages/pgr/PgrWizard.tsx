@@ -63,7 +63,7 @@ const ETAPAS: Etapa[] = [
   // Processos, que de qualquer forma dependem de um Setor já existir.
   { id: "ambientes", n: 2, titulo: "Processos", ajuda: "O que é feito em cada setor." },
   { id: "setores", n: 3, titulo: "Setores e GES", ajuda: "Divisão da empresa, o ambiente de trabalho de cada setor, e agrupamento de quem tem a mesma exposição." },
-  { id: "funcoes", n: 4, titulo: "Funções e atividades", ajuda: "Cargos existentes e o que cada um faz." },
+  { id: "funcoes", n: 4, titulo: "Funções", ajuda: "Cargos existentes e o que cada um faz." },
   { id: "perigos", n: 5, titulo: "Perigos e riscos", ajuda: "O que pode causar dano, onde ocorre e de onde veio a informação." },
   { id: "avaliacao", n: 6, titulo: "Avaliação", ajuda: "Os critérios usados para classificar cada risco." },
   { id: "inventario", n: 7, titulo: "Inventário", ajuda: "A lista completa de riscos avaliados." },
@@ -296,13 +296,11 @@ function Assistente() {
             </p>
           </div>
         );
+      // Só Funções: a etapa de Atividades saiu do cadastro — o que cada função
+      // faz é escrito na própria função, em "Descrição das Atividades
+      // Desempenhadas", em vez de num segundo cadastro com o mesmo texto.
       case "funcoes":
-        return (
-          <div className="space-y-8 divide-y [&>*+*]:pt-8">
-            <EstruturaOcupacionalTab key="funcoes" only="funcoes" />
-            <EstruturaOcupacionalTab key="atividades" only="atividades" />
-          </div>
-        );
+        return <EstruturaOcupacionalTab only="funcoes" />;
       case "perigos":
         return (
           <div className="space-y-10">
