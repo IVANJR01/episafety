@@ -56,13 +56,14 @@ export default function DocumentacaoSst() {
             </TabsList>
           </div>
 
-          {/* SUBMÓDULO 1: DOCUMENTOS — a lista dos documentos existentes vem
-              primeiro; os tipos disponíveis ficam abaixo, como ponto de partida
-              para quem ainda não criou nenhum. */}
+          {/* SUBMÓDULO 1: DOCUMENTOS */}
           <TabsContent value="central" className="mt-4 space-y-8">
-            <ListaDocumentos />
+            {/* Tipos primeiro: é por onde se começa. Antes a lista do que já
+                existe vinha em cima, e quem chegava com o cadastro vazio via
+                uma lista quase vazia antes de descobrir o caminho de entrada. */}
+            <CentralDocumentacaoTab onNavigateSubmodulo={setActiveTab} />
             <div className="border-t pt-6">
-              <CentralDocumentacaoTab onNavigateSubmodulo={setActiveTab} />
+              <ListaDocumentos />
             </div>
           </TabsContent>
 

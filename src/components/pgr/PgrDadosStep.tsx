@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PGR_TIPO_LABEL, PgrDocumento, PgrTipo } from "@/lib/pgrTypes";
 import { useRegistrarEtapa } from "./PgrEtapaContext";
@@ -254,12 +253,11 @@ export default function PgrDadosStep({ pgr, canEdit, escopo = false }: Props) {
         </>
       )}
 
-      {canEdit && (
-        <Button onClick={salvar} disabled={busy} size="lg" className="w-full sm:w-auto">
-          {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Salvar esta etapa
-        </Button>
-      )}
+      {/* Sem botão de salvar aqui. O rodapé do assistente já grava — é para isso
+          que serve o useRegistrarEtapa acima. Como esta etapa monta o
+          componente duas vezes, o botão aparecia duas vezes: uma no meio do
+          formulário e outra no fim, somando quatro formas de salvar a mesma
+          tela junto com o "Salvar" do cabeçalho. */}
     </div>
   );
 }

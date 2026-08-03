@@ -96,11 +96,9 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Esta seção fica ABAIXO da lista de documentos existentes. Ela tinha o
-          mesmo título ("Documentos da empresa") e mais um botão de criar, então
-          a tela mostrava dois cabeçalhos iguais e dois botões concorrentes.
-          Aqui se escolhe o TIPO a elaborar; a lista acima é o que já existe. */}
+    <div className="space-y-6">
+      {/* Aqui se escolhe o TIPO a elaborar; a lista abaixo é o que já existe.
+          As duas seções tinham o mesmo título e botões concorrentes de criar. */}
       <div>
         <h2 className="text-lg font-semibold">Tipos de documento</h2>
         <p className="text-sm text-muted-foreground">
@@ -153,10 +151,6 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Ambientes, setores, GES e funções são cadastrados uma única vez e alimentam todos os
-        documentos. Você também pode preenchê-los dentro do assistente do PGR.
-      </p>
     </div>
   );
 }

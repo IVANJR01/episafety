@@ -277,12 +277,24 @@ function Assistente() {
   const conteudo = () => {
     switch (etapa.id) {
       case "dados":
+        // Duas montagens de propósito: cada bloco se registra no rodapé com uma
+        // chave própria, e é isso que faz "Salvar e continuar" gravar os dois.
+        // O que muda aqui é só a leitura — antes os campos desciam num paredão
+        // só, partido por uma linha sem rótulo no meio.
         return (
-          <div className="space-y-10">
-            <PgrDadosStep pgr={pgr} canEdit={editavel} escopo />
-            <div className="border-t pt-8">
+          <div className="space-y-8">
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Identificação
+              </h3>
+              <PgrDadosStep pgr={pgr} canEdit={editavel} escopo />
+            </section>
+            <section className="space-y-4 border-t pt-8">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Vigência e escopo
+              </h3>
               <PgrDadosStep pgr={pgr} canEdit={editavel} />
-            </div>
+            </section>
           </div>
         );
       case "ambientes":

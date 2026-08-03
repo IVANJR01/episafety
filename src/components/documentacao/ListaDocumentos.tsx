@@ -46,6 +46,9 @@ interface Documento {
  * registro). Um documento cujo progresso não pôde ser calculado mostra "—",
  * nunca 0%: "não sei" é diferente de "nada preenchido".
  */
+/** Abaixo disto a lista cabe na tela e filtrar não economiza nada. */
+const FILTROS_A_PARTIR_DE = 3;
+
 export function ListaDocumentos() {
   const navigate = useNavigate();
   const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
@@ -166,18 +169,21 @@ export function ListaDocumentos() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Documentos da empresa</h2>
-          <p className="text-sm text-muted-foreground">
-            {docs.length} documento(s) cadastrado(s).
-          </p>
-        </div>
-        <Button onClick={() => navigate("/pgr/novo")} size="lg" className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" /> Novo documento
-        </Button>
+      {/* Sem botão "Novo documento": ele dizia "documento" e ia direto para
+          /pgr/novo — só criava PGR. O grid de tipos acima é o caminho honesto,
+          com um destino por tipo. */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
+        <h2 className="text-lg font-semibold">Documentos da empresa</h2>
+        {docs.length > 0 && (
+          <span className="text-sm text-muted-foreground">
+            {docs.length === 1 ? "1 documento" : `${docs.length} documentos`}
+          </span>
+        )}
       </div>
 
+      {/* Quatro filtros para um punhado de documentos ocupavam mais altura que
+          a própria lista. Só aparecem quando há o que filtrar. */}
+      {docs.length > FILTROS_A_PARTIR_DE && (
       <Card>
         <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-1.5">
@@ -223,6 +229,7 @@ export function ListaDocumentos() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {isLoading ? (
         <Card><CardContent className="p-8 flex items-center justify-center text-muted-foreground">
