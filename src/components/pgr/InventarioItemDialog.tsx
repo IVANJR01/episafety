@@ -437,14 +437,10 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                   </p>
                   {(!contextoDoGes.setorNome || !contextoDoGes.funcoesTexto) && (
                     <p className="text-amber-700">
-                      {/* Apontar para "Setores → Grupos de exposição" era um beco:
-                          um grupo SEM setor não aparece na lista de nenhum setor.
-                          O único lugar onde ele pode ser consertado é a aba GES,
-                          que tem o seletor de Setor. */}
-                      Complete o grupo em <b>Documentação → GES</b>: abra “{
-                        ghes.find((g: any) => g.id === form.ghe_id)?.nome || "o grupo"
-                      }” no lápis, escolha o Setor e marque as funções. É de lá que vêm o
-                      setor, o ambiente e quem está exposto.
+                      Complete “{ghes.find((g: any) => g.id === form.ghe_id)?.nome || "o grupo"}”
+                      em <b>Estrutura → Setores</b>, no ícone de camadas do setor: um grupo
+                      sem setor aparece lá para ser trazido, e é onde se marca quem está
+                      exposto. É de lá que vêm o setor, o ambiente e as funções.
                     </p>
                   )}
                 </div>

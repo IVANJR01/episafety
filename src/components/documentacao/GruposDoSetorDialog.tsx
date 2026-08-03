@@ -43,6 +43,29 @@ export function GruposDoSetorDialog({
     return gesList.filter((g: any) => ids.has(g.id));
   }, [gesList, gheSetores, setor]);
 
+  /**
+   * Grupos que não estão em setor nenhum.
+   *
+   * Sem isto eles ficavam inalcançáveis: não apareciam na lista de setor
+   * algum — que é onde a tela manda ir — e o inventário só sabia dizer que o
+   * grupo estava incompleto. Aparecem aqui para serem trazidos para o setor.
+   */
+  const gruposSemSetor = useMemo(() => {
+    const comSetor = new Set(
+      (gheSetores as any[]).filter((v) => v.setor_id).map((v) => v.ghe_id),
+    );
+    return gesList.filter((g: any) => !comSetor.has(g.id));
+  }, [gesList, gheSetores]);
+
+  const adotar = async (ges: any) => {
+    if (!setor) return;
+    try {
+      await vincularGesSetor({ ges_id: ges.id, setor_id: setor.id, nome: setor.nome });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const funcoesDoGes = (gesId: string) => {
     const ids = new Set(
       (gheFuncoes as any[]).filter((v) => v.ghe_id === gesId && v.funcao_id).map((v) => v.funcao_id),
@@ -159,6 +182,25 @@ export function GruposDoSetorDialog({
                 </div>
               );
             })}
+
+            {gruposSemSetor.length > 0 && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 space-y-2">
+                <p className="text-xs text-amber-900">
+                  <b>{gruposSemSetor.length}</b> {gruposSemSetor.length === 1 ? "grupo não está" : "grupos não estão"} em
+                  setor nenhum — {gruposSemSetor.length === 1 ? "ele sai" : "eles saem"} sem setor e sem expostos no PGR.
+                  Traga para cá {gruposSemSetor.length === 1 ? "o que for" : "os que forem"} deste setor.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {gruposSemSetor.map((g: any) => (
+                    <Button key={g.id} size="sm" variant="outline"
+                      className="h-7 text-xs bg-background"
+                      onClick={() => adotar(g)}>
+                      <Plus className="h-3 w-3 mr-1" />{g.codigo ? `${g.codigo} — ${g.nome}` : g.nome}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <Button size="sm" variant="outline" onClick={abrirNovo}>
               <Plus className="w-4 h-4 mr-1" /> Novo grupo neste setor
