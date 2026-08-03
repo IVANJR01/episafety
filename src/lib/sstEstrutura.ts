@@ -89,3 +89,34 @@ export function descreverProcesso(p?: ProcessoDescritivel | null): string {
   if (!p) return "";
   return limpo(p.descricao_etapas) || limpo(p.nome);
 }
+
+/**
+ * Rascunho do critério de agrupamento de um GES.
+ *
+ * O critério é o que distingue um GES de um setor renomeado, e o PDF do PGR o
+ * imprime na seção dos Grupos de Exposição Semelhante — quando falta, o
+ * documento sai com "não declarado — pendente de justificativa técnica". Ou
+ * seja: deixar em branco não poupa trabalho, só empurra a falha para dentro do
+ * documento.
+ *
+ * Como o sistema já sabe o setor e as funções do grupo, o campo não precisa
+ * chegar vazio. O texto descreve a COMPOSIÇÃO do grupo, não uma conclusão
+ * técnica: dizer "todos do setor têm a mesma exposição" seria falso justamente
+ * no caso em que o usuário está separando dois grupos dentro do mesmo setor.
+ * É um rascunho para editar, não uma justificativa pronta.
+ */
+export function criterioAgrupamentoSugerido(
+  setorNome?: string | null,
+  funcoes?: { nome?: string | null }[],
+): string {
+  const setor = limpo(setorNome);
+  if (!setor) return "";
+  const nomes = (funcoes || []).map((f) => limpo(f?.nome)).filter(Boolean);
+  if (nomes.length === 0) {
+    return `Trabalhadores do setor ${setor}, sujeitos às mesmas condições de exposição.`;
+  }
+  const lista = nomes.length === 1
+    ? nomes[0]
+    : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
+  return `Trabalhadores do setor ${setor} nas funções ${lista}, sujeitos às mesmas condições de exposição.`;
+}

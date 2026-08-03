@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
+import { criterioAgrupamentoSugerido } from "@/lib/sstEstrutura";
 import type { SstGes } from "@/types/sst";
 import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
@@ -57,6 +58,21 @@ export function GesExposicoesTab() {
   const [funcoesSelecionadas, setFuncoesSelecionadas] = useState<string[]>([]);
   const [setorSelecionado, setSetorSelecionado] = useState<string>(SEM_SETOR);
   const [salvando, setSalvando] = useState(false);
+  /** Depois da primeira digitação o texto é do usuário e nunca mais é trocado. */
+  const [criterioTocado, setCriterioTocado] = useState(false);
+
+  /** Mesmo rascunho da tela de grupos do setor — os dois caminhos de criação
+   *  precisam produzir o mesmo texto, senão divergem de novo. */
+  const rascunhoCriterio = criterioAgrupamentoSugerido(
+    setores.find((s: any) => s.id === setorSelecionado)?.nome,
+    funcoesSelecionadas.map((id) => funcoes.find((f: any) => f.id === id)).filter(Boolean) as any[],
+  );
+
+  useEffect(() => {
+    if (!openGesModal || criterioTocado) return;
+    setGesFormData((g) => ({ ...g, criterio_agrupamento: rascunhoCriterio }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rascunhoCriterio, criterioTocado, openGesModal]);
   const [confirmarExclusao, setConfirmarExclusao] = useState<{ id: string; nome: string } | null>(null);
 
   const abrirGes = (ges?: SstGes) => {
@@ -64,6 +80,8 @@ export function GesExposicoesTab() {
     setFuncoesSelecionadas(ges ? funcoesDoGes(ges.id).map((f: any) => f.id) : []);
     const vinculo = ges && (gheSetores as any[]).find((v) => v.ghe_id === ges.id);
     setSetorSelecionado(vinculo?.setor_id || SEM_SETOR);
+    // Grupo que já tem critério escrito não é sobrescrito pelo rascunho.
+    setCriterioTocado(!!(ges?.criterio_agrupamento || "").trim());
     setOpenGesModal(true);
   };
 
@@ -233,9 +251,17 @@ export function GesExposicoesTab() {
               <Textarea
                 rows={2}
                 value={gesFormData.criterio_agrupamento || ""}
-                onChange={(e) => setGesFormData({ ...gesFormData, criterio_agrupamento: e.target.value })}
+                onChange={(e) => {
+                  setCriterioTocado(true);
+                  setGesFormData({ ...gesFormData, criterio_agrupamento: e.target.value });
+                }}
                 placeholder="Ex.: atividades de apoio operacional, organização e movimentação de peças, lotes e materiais."
               />
+              <p className="text-xs text-slate-500 mt-1">
+                {criterioTocado
+                  ? "Este texto sai no PGR, na seção dos grupos de exposição."
+                  : "Escrito a partir do setor e das funções marcadas — edite se quiser detalhar a exposição."}
+              </p>
             </div>
             <div>
               <Label>Funções neste grupo</Label>
