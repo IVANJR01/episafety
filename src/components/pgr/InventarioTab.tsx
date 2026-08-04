@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,11 +53,14 @@ export default function InventarioTab({
    * atenuação) escondidas por padrão.
    *
    * Elas só se aplicam a risco medido instrumentalmente — num levantamento
-   * qualitativo saem todas "N.A" — e custavam 420px de rolagem horizontal numa
-   * planilha que já tem 2100px. Nada foi removido: o Excel e o PDF continuam
-   * saindo com o formato completo, que é o que o documento exige.
+   * qualitativo saem todas "N.A" — e custavam 420px de rolagem horizontal.
+   * Nada foi removido: o Excel e o PDF continuam saindo com o formato
+   * completo, que é o que o documento exige.
    */
   const [detalhes, setDetalhes] = useState(false);
+
+  /** Quantas colunas a grade tem agora — usado no colSpan das faixas. */
+  const totalColunas = detalhes ? 12 : 8;
 
   const { data: itens = [], isLoading } = useQuery({
     queryKey: ["pgr-inventario", pgrId, "v2-ambiente"],
@@ -222,21 +225,21 @@ export default function InventarioTab({
           </div>
           <div className="flex gap-2">
             {editavel && (
-              <>
-                {/* "Importar GES" saiu: criava linhas a partir dos setores com
-                    ambiente, processo e funções preenchidos — exatamente o que
-                    "Novo item" passou a fazer sozinho ao escolher o GES. Eram
-                    dois caminhos para a mesma linha, e o de importação ainda
-                    pedia para escolher o grupo de novo, no fim. */}
-                <Button size="sm" onClick={() => { setEditId(null); setPreencher(null); setDialogOpen(true); }}>
-                  <Plus className="h-4 w-4 mr-1" /> Novo item
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setDetalhes((v) => !v)}
-                  title="Limite de exposição, intensidade, técnica utilizada e atenuação">
-                  {detalhes ? <><EyeOff className="h-4 w-4 mr-1" /> Menos colunas</> : <><Eye className="h-4 w-4 mr-1" /> Colunas de medição</>}
-                </Button>
-              </>
+              /* "Importar GES" saiu: criava linhas a partir dos setores com
+                 ambiente, processo e funções preenchidos — exatamente o que
+                 "Novo item" passou a fazer sozinho ao escolher o GES. Eram
+                 dois caminhos para a mesma linha, e o de importação ainda
+                 pedia para escolher o grupo de novo, no fim. */
+              <Button size="sm" onClick={() => { setEditId(null); setPreencher(null); setDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" /> Novo item
+              </Button>
             )}
+            {/* Ver as colunas de medição não é editar — quem só consulta o PGR
+                também precisa delas. */}
+            <Button variant="ghost" size="sm" onClick={() => setDetalhes((v) => !v)}
+              title="Limite de exposição, intensidade/concentração, técnica utilizada e atenuação">
+              {detalhes ? <><EyeOff className="h-4 w-4 mr-1" /> Menos colunas</> : <><Eye className="h-4 w-4 mr-1" /> Colunas de medição</>}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -305,31 +308,30 @@ export default function InventarioTab({
               {editavel && <p className="text-xs text-muted-foreground mt-1">Clique em “Novo item”: escolhido o GES, ambiente, setor, processo e funções vêm junto.</p>}
             </div>
           ) : (
+            /* Ambiente, Setor, Processo, GES e Função saíram da grade e viraram
+               faixas de cabeçalho acima das linhas. Eram cinco colunas — uma
+               delas um parágrafo inteiro — que sozinhas somavam 720px e
+               empurravam a tabela para além de 2000px: era preciso rolar de
+               lado para chegar na classificação, que é justamente o que se
+               quer bater o olho. Como esses cinco campos são idênticos dentro
+               do bloco (é o que a mesclagem já mostrava), na faixa eles cabem
+               em largura total e sobra tela para o risco em si. */
             <div className="overflow-x-auto -mx-3 px-3">
-              <table className={`w-full text-[11px] border-collapse ${detalhes ? "min-w-[2100px]" : "min-w-[1680px]"}`}>
+              <table className={`w-full text-[11px] border-collapse ${detalhes ? "min-w-[1360px]" : ""}`}>
                 <thead className="bg-amber-200 sticky top-0 z-10">
                   <tr className="text-amber-950">
-                    <th className="p-2 text-left border border-amber-400 min-w-[200px]">Descrição do ambiente</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">Setor</th>
-                    <th className="p-2 text-center border border-amber-400 w-[60px]">GES</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[170px]">Função</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[180px]">Processo</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">Agente</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[130px]">Tipo de Agente</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[170px]">Perigo / Fonte Exposição</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[170px]">Possíveis Lesões ou<br/>Agravos à Saúde</th>
-                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[100px]">Limite de<br/>Exposição</th>}
-                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[110px]">Intensidade /<br/>Concentração</th>}
-                    <th className="p-2 text-left border border-amber-400 min-w-[120px]">Tipo / Tempo<br/>de Exposição</th>
-                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[110px]">Técnica<br/>Utilizada</th>}
-                    <th className="p-2 text-left border border-amber-400 min-w-[200px]">Proc. Administrativo / EPC /<br/>Organização do Trabalho</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[110px]">EPI</th>
-                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[100px]">Atenuação /<br/>Fator de Proteção</th>}
-                    <th className="p-2 text-center border border-amber-400 w-[55px]">Prob.</th>
-                    <th className="p-2 text-center border border-amber-400 w-[55px]">Sev.</th>
-                    <th className="p-2 text-center border border-amber-400 w-[55px]">Total</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[120px]">Classificação<br/>do Risco</th>
-                    <th className="p-2 border border-amber-400 w-[76px] sticky right-0 z-20 bg-amber-200 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">Ações</th>
+                    <th className="p-2 text-left border border-amber-400 w-[86px]">Tipo</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[190px]">Agente / Perigo<br/>e fonte de exposição</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[160px]">Possíveis lesões ou<br/>agravos à saúde</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[96px]">Tipo / tempo<br/>de exposição</th>
+                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[100px]">Limite de<br/>exposição</th>}
+                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[110px]">Intensidade /<br/>concentração</th>}
+                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[110px]">Técnica<br/>utilizada</th>}
+                    <th className="p-2 text-left border border-amber-400 min-w-[190px]">Medidas de controle<br/>existentes</th>
+                    {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[100px]">Atenuação /<br/>fator de proteção</th>}
+                    <th className="p-2 text-center border border-amber-400 w-[62px]" title="Probabilidade × Severidade">Prob. ×<br/>Sev.</th>
+                    <th className="p-2 text-left border border-amber-400 w-[118px]">Classificação<br/>do risco</th>
+                    <th className="p-2 border border-amber-400 w-[72px] sticky right-0 z-20 bg-amber-200 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -350,14 +352,21 @@ export default function InventarioTab({
                     const primeiroDe = (chaveDe: (x: any) => string) =>
                       !prev || chaveDe(prev) !== chaveDe(i);
 
-                    // Ambiente, Setor e Processo saem uma vez por SETOR; GES e
-                    // Função, uma vez por GES; o resto, uma vez por risco.
                     const abreSetor = primeiroDe(chaveSetor);
-                    const linhasDoSetor = abreSetor ? alcance(chaveSetor) : 1;
                     const abreGes = primeiroDe(chaveGes);
-                    const linhasDoGes = abreGes ? alcance(chaveGes) : 1;
                     const isFirstOfRisk = primeiroDe(chaveRisco);
-                    const riskRowSpan = isFirstOfRisk ? alcance(chaveRisco) : 1;
+
+                    // Itens repetidos do mesmo risco não geram linha nenhuma:
+                    // todo o conteúdo deles é idêntico ao da primeira, e os
+                    // botões abaixo já editam/excluem o grupo inteiro. (Abrir
+                    // setor ou GES implica abrir risco, porque as chaves são
+                    // aninhadas — então isto não engole nenhuma faixa.)
+                    if (!isFirstOfRisk) return null;
+
+                    const riskRowSpan = alcance(chaveRisco);
+                    const riscosNoSetor = abreSetor
+                      ? new Set(filtrados.slice(idx, idx + alcance(chaveSetor)).map(chaveRisco)).size
+                      : 0;
 
                     // O valor gravado pelo trigger tem precedência; o cálculo local
                     // é apenas fallback para itens ainda não persistidos.
@@ -380,78 +389,101 @@ export default function InventarioTab({
                     const groupSetores: string[] = cobertos.map((x: any) => x.setor || NA);
 
                     return (
-                      <tr key={i.id} className={`hover:bg-muted/40 align-top ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
-                        {/* Ambiente, Setor e Processo pertencem ao setor: saem uma
-                            vez por setor, por mais GES que ele tenha. Antes o GES
-                            entrava na chave e o parágrafo do ambiente era
-                            reimpresso inteiro em cada grupo. */}
+                      <Fragment key={i.id}>
+                        {/* Faixa do setor: o que vale para todos os GES abaixo. */}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-2 border border-amber-300 align-top bg-amber-50/60 font-medium text-[11px] leading-snug">
-                            {ambiente || NA}
-                          </td>
+                          <tr className="bg-amber-100/70">
+                            <td colSpan={totalColunas} className="px-2 py-1.5 border-x border-amber-300 border-t-2 border-t-amber-400">
+                              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                <span className="text-[12px] font-bold uppercase tracking-wide text-amber-950">
+                                  {val(i.setor)}
+                                </span>
+                                <span className="text-[10px] text-amber-800 ml-auto shrink-0">
+                                  {riscosNoSetor} {riscosNoSetor === 1 ? "risco" : "riscos"}
+                                </span>
+                              </div>
+                              <div className="mt-0.5 space-y-0.5 text-[11px] leading-snug text-amber-900">
+                                <div><span className="font-semibold">Ambiente:</span> {ambiente || NA}</div>
+                                <div><span className="font-semibold">Processo:</span> {val(i.processo)}</div>
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                        {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-2 border align-top">{val(i.setor)}</td>
-                        )}
+                        {/* Faixa do GES: quem está exposto aos riscos que vêm a seguir. */}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} className="p-2 border border-amber-300 align-middle text-center font-bold text-sm bg-amber-50/80">
-                            {gesCod || NA}
-                          </td>
+                          <tr className="bg-amber-50">
+                            <td colSpan={totalColunas} className="px-2 py-1 border-x border-b border-amber-200">
+                              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                <Badge variant="outline" className="shrink-0 border-amber-400 bg-amber-200/70 text-[10px] font-bold text-amber-950">
+                                  GES {gesCod || NA}
+                                </Badge>
+                                {i.ghe?.nome && <span className="text-[11px] font-medium">{i.ghe.nome}</span>}
+                                <span className="text-[11px] text-muted-foreground">
+                                  <span className="font-semibold">Funções:</span> {funcoes}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                        {/* As funções vêm do GES — uma vez por grupo. */}
-                        {abreGes && (
-                          <td rowSpan={linhasDoGes} className="p-2 border align-top">{funcoes}</td>
-                        )}
-                        {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-2 border align-top">{val(i.processo)}</td>
-                        )}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.perigo_descricao)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.fonte_geradora)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.lesoes)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{intensidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{tecnica}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{controles}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.epi)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{atenuacao}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle bg-amber-50/30">{i.probabilidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle bg-amber-50/30">{i.severidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border text-center align-middle font-semibold bg-amber-50/30">{total}</td>}
                         {isFirstOfRisk && (
-                          <td rowSpan={riskRowSpan} className="p-2 border align-middle bg-amber-50/30">
-                            <Badge
-                              className={clsPgr ? CLASSE_TEXT[clsPgr] : "bg-slate-100 text-slate-700 border-slate-300"}
-                              variant="outline"
-                            >
-                              {classeLabel(clsPgr)}
-                            </Badge>
-                          </td>
+                          <tr className="hover:bg-muted/40 align-top">
+                            <td className="p-2 border align-top">{GRUPO_LABEL[i.grupo] || NA}</td>
+                            <td className="p-2 border align-top">
+                              <div className="font-medium leading-snug">{val(i.perigo_descricao)}</div>
+                              <div className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+                                <span className="font-semibold">Fonte:</span> {val(i.fonte_geradora)}
+                              </div>
+                            </td>
+                            <td className="p-2 border align-top">{val(i.lesoes)}</td>
+                            <td className="p-2 border align-top">{val(i.tipo_exposicao)}</td>
+                            {detalhes && <td className="p-2 border align-top">{val(i.limite_tolerancia)}</td>}
+                            {detalhes && <td className="p-2 border align-top">{intensidade}</td>}
+                            {detalhes && <td className="p-2 border align-top">{tecnica}</td>}
+                            {/* EPC e EPI eram duas colunas de 310px somados; empilhados
+                                e rotulados ocupam uma e continuam distinguíveis. */}
+                            <td className="p-2 border align-top">
+                              <div className="leading-snug">
+                                <span className="font-semibold text-[10px] text-muted-foreground">EPC / adm.: </span>{controles}
+                              </div>
+                              <div className="mt-0.5 leading-snug">
+                                <span className="font-semibold text-[10px] text-muted-foreground">EPI: </span>{val(i.epi)}
+                              </div>
+                            </td>
+                            {detalhes && <td className="p-2 border align-top">{atenuacao}</td>}
+                            <td className="p-2 border text-center align-middle whitespace-nowrap" title={`Probabilidade ${i.probabilidade} × Severidade ${i.severidade}`}>
+                              {i.probabilidade} × {i.severidade}
+                            </td>
+                            <td className="p-2 border align-middle">
+                              <Badge
+                                className={clsPgr ? CLASSE_TEXT[clsPgr] : "bg-slate-100 text-slate-700 border-slate-300"}
+                                variant="outline"
+                              >
+                                {classeLabel(clsPgr)}
+                              </Badge>
+                              <div className="mt-0.5 text-[10px] text-muted-foreground">Nível {total}</div>
+                            </td>
+                            <td className="p-2 border text-right whitespace-nowrap align-middle sticky right-0 z-10 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">
+                              {editavel && (
+                                <>
+                                  <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Editar grupo (${groupIds.length} setores)` : "Editar item"} onClick={() => { setEditId(i.id); setEditGroupIds(groupIds); setDialogOpen(true); }}>
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Excluir grupo (${groupIds.length} setores)` : "Excluir item"} onClick={() => setDelState({ ids: groupIds, setores: groupSetores })}>
+                                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                                  </Button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
                         )}
-
-                        {isFirstOfRisk && (
-                          <td rowSpan={riskRowSpan} className="p-2 border text-right whitespace-nowrap align-middle sticky right-0 z-10 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">
-                            {editavel && (
-                              <>
-                                <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Editar grupo (${groupIds.length} setores)` : "Editar item"} onClick={() => { setEditId(i.id); setEditGroupIds(groupIds); setDialogOpen(true); }}>
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Excluir grupo (${groupIds.length} setores)` : "Excluir item"} onClick={() => setDelState({ ids: groupIds, setores: groupSetores })}>
-                                  <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                                </Button>
-                              </>
-                            )}
-                          </td>
-                        )}
-                      </tr>
+                      </Fragment>
                     );
                   })}
                 </tbody>
               </table>
               <p className="text-[10px] text-muted-foreground mt-2">
                 Classificação PGR — Trivial (1-3) · Tolerável (4-8) · Moderado (9-12) · Substancial (13-15) · Intolerável (16-25).
-                Campos sem dado exibem <b>N.A</b>.
+                Campos sem dado exibem <b>N.A</b>. O documento emitido (PDF/Excel) continua saindo com todas as colunas.
               </p>
             </div>
           )}
