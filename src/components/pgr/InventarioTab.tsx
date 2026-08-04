@@ -105,6 +105,42 @@ export default function InventarioTab({
   const ambienteDe = (i: any): string =>
     clean(i.descricao_ambiente) || clean(i.ghe?.descricao_ambiente) || clean(i.ghe?.ambiente) || "";
 
+  /**
+   * As três chaves de agrupamento visual da tabela, do mais externo ao mais
+   * interno. Elas espelham a hierarquia real dos dados: ambiente e processo
+   * pertencem ao Setor, o GES pertence ao Setor, e as funções pertencem ao GES.
+   *
+   * Antes havia só duas, e a de fora era `GES + ambiente` — com o GES dentro
+   * dela, dois grupos do MESMO setor viravam blocos separados e o parágrafo do
+   * ambiente saía reimpresso por inteiro em cada um.
+   */
+  const chaveSetor = (i: any) =>
+    [i.setor || "", ambienteDe(i), i.processo || ""].join("§");
+  const chaveGes = (i: any) => [chaveSetor(i), i.ghe?.codigo || ""].join("§");
+
+  /**
+   * Chave do risco. Estava escrita três vezes, com a mesma lista de 14 campos
+   * copiada — mudar a composição em três cópias é erro na certa.
+   */
+  const chaveRisco = (i: any) => [
+    chaveGes(i),
+    i.grupo ?? "",
+    i.perigo_descricao ?? "",
+    i.fonte_geradora ?? "",
+    i.lesoes ?? "",
+    i.limite_tolerancia ?? "",
+    i.medicao_valor != null
+      ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA,
+    i.tipo_exposicao ?? "",
+    val(i.metodologia_avaliacao ?? i.tecnica_utilizada ?? i.tipo_avaliacao),
+    Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
+      ? i.controles_existentes.join("; ") : NA,
+    i.epi ?? "",
+    val(i.atenuacao ?? i.fator_protecao ?? i.epi_fator_protecao),
+    i.probabilidade ?? "",
+    i.severidade ?? "",
+  ].join("§");
+
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase();
     const base = !q ? itens : itens.filter((i: any) =>
@@ -112,13 +148,18 @@ export default function InventarioTab({
       i.fonte_geradora?.toLowerCase().includes(q) ||
       i.ghe?.codigo?.toLowerCase().includes(q) ||
       i.ghe?.nome?.toLowerCase().includes(q));
-    // Ordenar por GES + ambiente + setor para permitir agrupamento visual
+    // Setor → ambiente → GES → perigo: a ordem espelha o aninhamento das
+    // células mescladas, e mesclar só funciona em linhas vizinhas. Antes
+    // ordenava por GES primeiro, o que espalhava os grupos de um mesmo setor
+    // assim que existisse mais de um setor.
     return [...base].sort((a: any, b: any) => {
-      const ga = a.ghe?.codigo || ""; const gb = b.ghe?.codigo || "";
-      if (ga !== gb) return ga.localeCompare(gb);
+      const sa = a.setor || ""; const sb = b.setor || "";
+      if (sa !== sb) return sa.localeCompare(sb);
       const aa = ambienteDe(a); const ab = ambienteDe(b);
       if (aa !== ab) return aa.localeCompare(ab);
-      return (a.setor || "").localeCompare(b.setor || "");
+      const ga = a.ghe?.codigo || ""; const gb = b.ghe?.codigo || "";
+      if (ga !== gb) return ga.localeCompare(gb);
+      return (a.perigo_descricao || "").localeCompare(b.perigo_descricao || "");
     });
   }, [itens, busca]);
 
@@ -295,19 +336,29 @@ export default function InventarioTab({
                   {filtrados.map((i: any, idx: number) => {
                     const ambiente = ambienteDe(i);
                     const gesCod = i.ghe?.codigo || "";
-                    const groupKey = `${gesCod}||${ambiente}`;
                     const prev = idx > 0 ? filtrados[idx - 1] : null;
-                    const prevKey = prev ? `${prev.ghe?.codigo || ""}||${ambienteDe(prev)}` : null;
-                    const isFirstOfGroup = groupKey !== prevKey;
-                    let rowSpan = 1;
-                    if (isFirstOfGroup) {
+
+                    /** Quantas linhas seguidas, a partir daqui, compartilham a chave. */
+                    const alcance = (chaveDe: (x: any) => string) => {
+                      let n = 1;
                       for (let j = idx + 1; j < filtrados.length; j++) {
-                        const n = filtrados[j];
-                        const nKey = `${n.ghe?.codigo || ""}||${ambienteDe(n)}`;
-                        if (nKey === groupKey) rowSpan++;
-                        else break;
+                        if (chaveDe(filtrados[j]) !== chaveDe(i)) break;
+                        n++;
                       }
-                    }
+                      return n;
+                    };
+                    const primeiroDe = (chaveDe: (x: any) => string) =>
+                      !prev || chaveDe(prev) !== chaveDe(i);
+
+                    // Ambiente, Setor e Processo saem uma vez por SETOR; GES e
+                    // Função, uma vez por GES; o resto, uma vez por risco.
+                    const abreSetor = primeiroDe(chaveSetor);
+                    const linhasDoSetor = abreSetor ? alcance(chaveSetor) : 1;
+                    const abreGes = primeiroDe(chaveGes);
+                    const linhasDoGes = abreGes ? alcance(chaveGes) : 1;
+                    const isFirstOfRisk = primeiroDe(chaveRisco);
+                    const riskRowSpan = isFirstOfRisk ? alcance(chaveRisco) : 1;
+
                     // O valor gravado pelo trigger tem precedência; o cálculo local
                     // é apenas fallback para itens ainda não persistidos.
                     const clsPgr = (i.classificacao as PgrClasse | null)
@@ -322,84 +373,38 @@ export default function InventarioTab({
                     const tecnica = val(i.metodologia_avaliacao ?? i.tecnica_utilizada ?? i.tipo_avaliacao);
                     const atenuacao = val(i.atenuacao ?? i.fator_protecao ?? i.epi_fator_protecao);
 
-                    // Chave de agrupamento do risco (dentro do mesmo GES+ambiente)
-                    const riskKey = [
-                      groupKey,
-                      i.grupo ?? "",
-                      i.perigo_descricao ?? "",
-                      i.fonte_geradora ?? "",
-                      i.lesoes ?? "",
-                      i.limite_tolerancia ?? "",
-                      intensidade,
-                      i.tipo_exposicao ?? "",
-                      tecnica,
-                      controles,
-                      i.epi ?? "",
-                      atenuacao,
-                      i.probabilidade ?? "",
-                      i.severidade ?? "",
-                    ].join("§");
-                    const prevRiskKey = prev ? [
-                      prevKey,
-                      prev.grupo ?? "",
-                      prev.perigo_descricao ?? "",
-                      prev.fonte_geradora ?? "",
-                      prev.lesoes ?? "",
-                      prev.limite_tolerancia ?? "",
-                      prev.medicao_valor != null ? `${prev.medicao_valor}${prev.medicao_unidade ? " " + prev.medicao_unidade : ""}` : NA,
-                      prev.tipo_exposicao ?? "",
-                      val(prev.metodologia_avaliacao ?? prev.tecnica_utilizada ?? prev.tipo_avaliacao),
-                      Array.isArray(prev.controles_existentes) && prev.controles_existentes.length > 0 ? prev.controles_existentes.join("; ") : NA,
-                      prev.epi ?? "",
-                      val(prev.atenuacao ?? prev.fator_protecao ?? prev.epi_fator_protecao),
-                      prev.probabilidade ?? "",
-                      prev.severidade ?? "",
-                    ].join("§") : null;
-                    const isFirstOfRisk = riskKey !== prevRiskKey;
-                    let riskRowSpan = 1;
-                    const groupIds: string[] = [i.id];
-                    const groupSetores: string[] = [i.setor || NA];
-                    if (isFirstOfRisk) {
-                      for (let j = idx + 1; j < filtrados.length; j++) {
-                        const n = filtrados[j];
-                        const nAmb = ambienteDe(n);
-                        const nGroupKey = `${n.ghe?.codigo || ""}||${nAmb}`;
-                        const nIntensidade = n.medicao_valor != null ? `${n.medicao_valor}${n.medicao_unidade ? " " + n.medicao_unidade : ""}` : NA;
-                        const nKey = [
-                          nGroupKey,
-                          n.grupo ?? "",
-                          n.perigo_descricao ?? "",
-                          n.fonte_geradora ?? "",
-                          n.lesoes ?? "",
-                          n.limite_tolerancia ?? "",
-                          nIntensidade,
-                          n.tipo_exposicao ?? "",
-                          val(n.metodologia_avaliacao ?? n.tecnica_utilizada ?? n.tipo_avaliacao),
-                          Array.isArray(n.controles_existentes) && n.controles_existentes.length > 0 ? n.controles_existentes.join("; ") : NA,
-                          n.epi ?? "",
-                          val(n.atenuacao ?? n.fator_protecao ?? n.epi_fator_protecao),
-                          n.probabilidade ?? "",
-                          n.severidade ?? "",
-                        ].join("§");
-                        if (nKey === riskKey) { riskRowSpan++; groupIds.push(n.id); groupSetores.push(n.setor || NA); }
-                        else break;
-                      }
-                    }
+                    // Os itens cobertos por esta linha de risco — é o que os
+                    // botões de editar/excluir em grupo operam.
+                    const cobertos = filtrados.slice(idx, idx + riskRowSpan);
+                    const groupIds: string[] = cobertos.map((x: any) => x.id);
+                    const groupSetores: string[] = cobertos.map((x: any) => x.setor || NA);
+
                     return (
-                      <tr key={i.id} className={`hover:bg-muted/40 align-top ${isFirstOfGroup ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
-                        {isFirstOfGroup && (
-                          <td rowSpan={rowSpan} className="p-2 border border-amber-300 align-top bg-amber-50/60 font-medium text-[11px] leading-snug">
+                      <tr key={i.id} className={`hover:bg-muted/40 align-top ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
+                        {/* Ambiente, Setor e Processo pertencem ao setor: saem uma
+                            vez por setor, por mais GES que ele tenha. Antes o GES
+                            entrava na chave e o parágrafo do ambiente era
+                            reimpresso inteiro em cada grupo. */}
+                        {abreSetor && (
+                          <td rowSpan={linhasDoSetor} className="p-2 border border-amber-300 align-top bg-amber-50/60 font-medium text-[11px] leading-snug">
                             {ambiente || NA}
                           </td>
                         )}
-                        <td className="p-2 border align-top">{val(i.setor)}</td>
-                        {isFirstOfGroup && (
-                          <td rowSpan={rowSpan} className="p-2 border border-amber-300 align-middle text-center font-bold text-sm bg-amber-50/80">
+                        {abreSetor && (
+                          <td rowSpan={linhasDoSetor} className="p-2 border align-top">{val(i.setor)}</td>
+                        )}
+                        {abreGes && (
+                          <td rowSpan={linhasDoGes} className="p-2 border border-amber-300 align-middle text-center font-bold text-sm bg-amber-50/80">
                             {gesCod || NA}
                           </td>
                         )}
-                        <td className="p-2 border align-top">{funcoes}</td>
-                        <td className="p-2 border align-top">{val(i.processo)}</td>
+                        {/* As funções vêm do GES — uma vez por grupo. */}
+                        {abreGes && (
+                          <td rowSpan={linhasDoGes} className="p-2 border align-top">{funcoes}</td>
+                        )}
+                        {abreSetor && (
+                          <td rowSpan={linhasDoSetor} className="p-2 border align-top">{val(i.processo)}</td>
+                        )}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.perigo_descricao)}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-2 border align-top bg-amber-50/30">{val(i.fonte_geradora)}</td>}
