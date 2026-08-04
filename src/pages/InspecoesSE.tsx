@@ -165,6 +165,7 @@ export default function InspecoesSE() {
   // Filters
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterGravidade, setFilterGravidade] = useState("all");
+  const [filterObra, setFilterObra] = useState("all");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -1507,6 +1508,7 @@ export default function InspecoesSE() {
     return items.filter(i => {
       if (filterStatus !== "all" && i.status !== filterStatus) return false;
       if (filterGravidade !== "all" && i.gravidade !== filterGravidade) return false;
+      if (filterObra !== "all" && i.obra_id !== filterObra) return false;
       if (opts?.start || opts?.end) {
         const d = i.data_inspecao ? new Date(i.data_inspecao + "T00:00:00") : null;
         if (!d) return false;
@@ -1586,6 +1588,15 @@ export default function InspecoesSE() {
           <SelectContent>
             <SelectItem value="all">Todas Gravidades</SelectItem>
             {GRAVIDADE_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterObra} onValueChange={setFilterObra}>
+          <SelectTrigger className="w-[200px] h-10"><SelectValue placeholder="Obra" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as Obras</SelectItem>
+            {obras.map(o => (
+              <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
