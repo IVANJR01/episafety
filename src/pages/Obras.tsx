@@ -2,10 +2,10 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { SEED_OBRAS } from "@/lib/obrasSeed";
+import { gravarObrasDoCodigo, proximoCodigoObra } from "@/lib/obras";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -31,14 +31,14 @@ type Obra = {
 
 const STATUS_OPTIONS = ["ATIVA", "INATIVA", "CONCLUIDA"];
 
+// endereco/observacoes continuam na tabela (o texto gravado fica), mas
+// saíram do formulário — ver comentário em handleSave.
 const emptyForm = {
   nome: "",
   codigo: "",
-  endereco: "",
   cidade: "",
   uf: "",
   status: "ATIVA",
-  observacoes: "",
 };
 
 export default function Obras() {
@@ -67,14 +67,33 @@ export default function Obras() {
       return [...dbRows, ...missingSeed].sort((a, b) => a.nome.localeCompare(b.nome));
     };
 
-    try {
-      const { data, error } = await (supabase.from as any)("obras")
+    const buscar = async () => {
+      const { data } = await (supabase.from as any)("obras")
         .select("*")
         .in("empresa_id", targetIds)
         .order("nome", { ascending: true });
+      return (data || []) as Obra[];
+    };
 
-      const records = (data || []) as Obra[];
-      setItems(mergeSeed(records));
+    try {
+      const records = await buscar();
+
+      /*
+       * As obras que ainda moram no código-fonte viram registros de verdade
+       * aqui, na primeira vez que a tela abre. Antes elas só existiam na
+       * listagem: excluir respondia "este local ainda não foi salvo" e a
+       * mensagem mandava editar-e-salvar cada uma, à mão, uma por uma.
+       *
+       * É idempotente por nome — depois da primeira vez não acha nada para
+       * fazer. Se falhar (offline, permissão), a tela cai no comportamento
+       * antigo de juntar as duas listas, e ninguém fica sem ver suas obras.
+       */
+      try {
+        const gravadas = await gravarObrasDoCodigo(targetIds, records, user?.id);
+        setItems(gravadas > 0 ? await buscar() : mergeSeed(records));
+      } catch {
+        setItems(mergeSeed(records));
+      }
     } catch {
       setItems(mergeSeed([]));
     } finally {
@@ -95,11 +114,9 @@ export default function Obras() {
     setForm({
       nome: o.nome,
       codigo: o.codigo || "",
-      endereco: o.endereco || "",
       cidade: o.cidade || "",
       uf: o.uf || "",
       status: o.status || "ATIVA",
-      observacoes: o.observacoes || "",
     });
     setDialogOpen(true);
   }
@@ -111,15 +128,22 @@ export default function Obras() {
     }
     if (!empresaId) return;
     setSaving(true);
+    /*
+     * `endereco` e `observacoes` saíram do formulário e por isso não entram
+     * no payload: num UPDATE, mandá-los como null apagaria o texto que já
+     * está gravado. Fora do payload, a coluna fica intocada.
+     *
+     * O código também sai da mão de quem cadastra: numerar OBR-001, OBR-002…
+     * era trabalho manual que só se mantinha porque alguém lembrava do
+     * último. Ao editar, o código existente é preservado.
+     */
     const payload = {
       empresa_id: empresaId,
       nome: form.nome.trim(),
-      codigo: form.codigo.trim() || null,
-      endereco: form.endereco.trim() || null,
+      codigo: form.codigo.trim() || proximoCodigoObra(items),
       cidade: form.cidade.trim() || null,
       uf: form.uf.trim() || null,
       status: form.status,
-      observacoes: form.observacoes.trim() || null,
       created_by: user?.id,
     };
     /*
@@ -232,8 +256,8 @@ export default function Obras() {
               {(o.cidade || o.uf) && (
                 <div className="text-xs text-muted-foreground">📍 {[o.cidade, o.uf].filter(Boolean).join(" - ")}</div>
               )}
-              {o.endereco && <div className="text-xs text-muted-foreground break-words">{o.endereco}</div>}
-              {o.observacoes && <p className="text-xs text-muted-foreground break-words line-clamp-2">{o.observacoes}</p>}
+              {/* Endereço e observações não aparecem mais: repetiam o nome
+                  logo acima e faziam o card ter três linhas dizendo o mesmo. */}
               <div className="flex gap-1 pt-1">
                 <Button variant="ghost" size="sm" onClick={() => openEdit(o)}>
                   <Pencil className="w-4 h-4 mr-1" /> Editar
@@ -253,6 +277,12 @@ export default function Obras() {
             <DialogTitle>{editingId ? "Editar local" : "Novo local"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Três campos. "Endereço" e "Observações" saíram: na prática
+                repetiam o nome — a OBR-001 tinha nome "SE 69 KV BARROCAS",
+                endereço "Subestação Barrocas" e observações "Subestação
+                69 kV Barrocas — CG3 Engenharia", três vezes a mesma coisa,
+                sendo que a empresa o sistema já sabe. O texto que já estava
+                gravado continua no banco, intocado. */}
             <div>
               <Label className="font-semibold">Nome do local *</Label>
               <Input
@@ -262,26 +292,10 @@ export default function Obras() {
                 className="min-h-[44px]"
                 autoFocus
               />
-              <p className="text-xs text-muted-foreground mt-1">Único campo obrigatório. Os demais são opcionais.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label>Código (opcional)</Label>
-                <Input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value }))} className="min-h-[44px]" />
-              </div>
-              <div>
-                <Label>Status (opcional)</Label>
-                <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
-                  <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Endereço (opcional)</Label>
-              <Input value={form.endereco} onChange={e => setForm(p => ({ ...p, endereco: e.target.value }))} className="min-h-[44px]" />
+              <p className="text-xs text-muted-foreground mt-1">
+                Único campo obrigatório. O código sai automático
+                {editingId ? "" : `: ${proximoCodigoObra(items)}`}.
+              </p>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
@@ -294,8 +308,13 @@ export default function Obras() {
               </div>
             </div>
             <div>
-              <Label>Observações (opcional)</Label>
-              <Textarea rows={3} value={form.observacoes} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} />
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+                <SelectTrigger className="min-h-[44px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

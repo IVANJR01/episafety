@@ -29,6 +29,8 @@ import { ptBR } from "date-fns/locale";
 import { isOnline, addToSyncQueue, getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
 import ImportarFotosDialog from "@/components/inspecoes/ImportarFotosDialog";
+import ObraCombobox from "@/components/inspecoes/ObraCombobox";
+import { criarObra } from "@/lib/obras";
 import jsPDF from "jspdf";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
@@ -238,6 +240,25 @@ export default function InspecoesSE() {
       setObras((data || []) as ObraOption[]);
     })();
   }, [empresaId]);
+
+  /**
+   * Cria a obra digitada no próprio seletor e devolve o id, para o campo já
+   * ficar preenchido. Nasce com o nome e o próximo código da sequência —
+   * cidade, UF e status ficam para o Cadastro de Local, e não é preciso
+   * ter nada disso à mão para registrar a não conformidade agora.
+   */
+  const criarObraRapida = useCallback(async (nome: string): Promise<string | null> => {
+    if (!empresaId) return null;
+    try {
+      const nova = await criarObra({ empresaId, nome, userId: user?.id, existentes: obras });
+      setObras(prev => [...prev, nova as ObraOption].sort((a, b) => a.nome.localeCompare(b.nome)));
+      toast({ title: `Obra "${nova.nome}" criada`, description: `Código ${nova.codigo}` });
+      return nova.id as string;
+    } catch (e: any) {
+      toast({ title: "Erro ao criar obra", description: e?.message, variant: "destructive" });
+      return null;
+    }
+  }, [empresaId, obras, user?.id]);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -1841,29 +1862,18 @@ export default function InspecoesSE() {
                 </div>
                 <div data-error={!!errors.obra_id}>
                   <Label className="font-semibold">Obra *</Label>
-                  <Select
-                    value={form.obra_id || ""}
-                    onValueChange={v => { setForm(p => ({ ...p, obra_id: v })); setErrors(prev => ({ ...prev, obra_id: "" })); }}
-                  >
-                    <SelectTrigger className={cn("min-h-[44px]", errors.obra_id && "border-destructive")}>
-                      <SelectValue placeholder={obras.length === 0 ? "Nenhuma obra cadastrada" : "Selecione a obra"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {obras
-                        .filter(o => o.status === "ATIVA" || o.id === form.obra_id)
-                        .map(o => (
-                          <SelectItem key={o.id} value={o.id}>
-                            {o.nome}{o.codigo ? ` (${o.codigo})` : ""}{o.status !== "ATIVA" ? ` — ${o.status}` : ""}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <ObraCombobox
+                    obras={obras}
+                    valor={form.obra_id}
+                    invalido={!!errors.obra_id}
+                    onSelecionar={id => { setForm(p => ({ ...p, obra_id: id })); setErrors(prev => ({ ...prev, obra_id: "" })); }}
+                    onCriar={criarObraRapida}
+                  />
                   {errors.obra_id && <p className="text-xs text-destructive mt-1">{errors.obra_id}</p>}
-                  {obras.length === 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Cadastre uma obra em <strong>Inspeções → Cadastro de Obras</strong>.
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Obra que falta? Digite o nome e crie sem sair daqui — cidade e UF você
+                    completa depois em <strong>Cadastro de Local</strong>.
+                  </p>
                 </div>
               </div>
             </div>
