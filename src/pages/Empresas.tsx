@@ -288,9 +288,10 @@ export default function Empresas() {
                   </p>
                   {emailsCompras.validos.length > 1 && (
                     <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-2">
-                      Enviar para mais de um endereço exige domínio verificado na conta de email
-                      (resend.com/domains). Sem isso, a Resend recusa o envio inteiro — nem o
-                      primeiro da lista recebe.
+                      Se o envio para vários endereços ainda não estiver liberado, apenas o
+                      primeiro recebe e a tela avisa quem ficou de fora. A liberação é uma
+                      configuração única do sistema, feita pelo administrador — não precisa
+                      ser repetida por empresa.
                     </p>
                   )}
                   {/* Textarea, não Input `type="email"`: aquele campo trata uma

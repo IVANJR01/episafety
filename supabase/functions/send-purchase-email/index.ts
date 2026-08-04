@@ -29,13 +29,32 @@ interface EmailPayload {
   pdfBase64?: string;
   pdfFilename?: string;
   tokenPublico?: string;
+  /** Para onde vai a resposta de quem recebeu — quem pediu o material. */
+  replyTo?: string;
 }
+
+/**
+ * Remetente de TODOS os emails do produto — de todas as empresas clientes.
+ *
+ * Verificação de domínio na Resend é por REMETENTE, não por destinatário.
+ * Verificado UMA vez o domínio do próprio produto, o sistema passa a entregar
+ * em qualquer endereço, de qualquer empresa cliente, para sempre. Verificar o
+ * domínio de cada cliente seria trabalho por empresa e não resolveria nada: o
+ * cliente é quem recebe, não quem envia.
+ *
+ * O padrão continua sendo o domínio de teste da Resend — que só entrega para o
+ * dono da conta — de propósito: assim reimplantar esta função ANTES de
+ * verificar o domínio não derruba o envio que hoje funciona. Verificado o
+ * domínio, definir o secret RESEND_FROM já vale na hora, sem reimplantar.
+ */
+const REMETENTE = Deno.env.get("RESEND_FROM") || "EpiSafety <onboarding@resend.dev>";
 
 async function sendEmail(
   to: string | string[],
   subject: string,
   html: string,
-  attachment?: { filename: string; base64: string }
+  attachment?: { filename: string; base64: string },
+  replyTo?: string
 ): Promise<Response> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
 
@@ -66,17 +85,12 @@ async function sendEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      // Remetente. O padrão é o domínio de teste da própria Resend: funciona
-      // sem configurar DNS, mas SÓ entrega para o e-mail do dono da conta —
-      // com qualquer outro destinatário a Resend recusa o envio inteiro com
-      // 403, e ninguém recebe, nem o dono. É por isso que notificar mais de
-      // uma pessoa exige domínio verificado.
-      //
-      // Depois de verificar um domínio em resend.com/domains, basta definir o
-      // secret RESEND_FROM (ex.: "EpiSafety <naoresponda@seudominio.com.br>")
-      // — sem mexer neste arquivo de novo.
-      from: Deno.env.get("RESEND_FROM") || "EpiSafety <onboarding@resend.dev>",
+      from: REMETENTE,
       to,
+      // Todas as empresas compartilham o mesmo remetente, então sem isto um
+      // "responder" do setor de compras cairia numa caixa que ninguém lê.
+      // Com reply-to, a resposta volta para quem pediu o material.
+      reply_to: replyTo || undefined,
       subject,
       html,
       attachments: attachment
@@ -262,7 +276,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { solicitacao, email, pdfBase64, pdfFilename, tokenPublico }: EmailPayload = await req.json();
+    const { solicitacao, email, pdfBase64, pdfFilename, tokenPublico, replyTo }: EmailPayload = await req.json();
 
     if (!email || !solicitacao) {
       return new Response(
@@ -275,7 +289,7 @@ Deno.serve(async (req) => {
     const html = gerarHtmlEmail(solicitacao, !!anexo, tokenPublico);
     const subject = `[${solicitacao.numero_solicitacao}] ${solicitacao.titulo}${solicitacao.prioridade === "urgente" ? " - 🔴 URGENTE" : ""}`;
 
-    await sendEmail(email, subject, html, anexo);
+    await sendEmail(email, subject, html, anexo, replyTo);
 
     return new Response(
       JSON.stringify({ success: true, message: "Email enviado com sucesso" }),

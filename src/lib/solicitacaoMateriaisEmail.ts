@@ -103,12 +103,11 @@ async function obterContagemItens(solicitacaoId: string): Promise<number> {
 function traduzirErroEnvio(detalhe: string): string {
   const t = (detalhe || "").toLowerCase();
   if (t.includes("you can only send testing emails")) {
-    return "A conta de email está em modo de teste: a Resend só entrega para o endereço do dono da conta e recusa o envio INTEIRO quando há qualquer outro destinatário. "
-      + "Para liberar, verifique um domínio em resend.com/domains e defina o remetente no secret RESEND_FROM do Supabase (ex.: naoresponda@seudominio.com.br). "
-      + "Enquanto isso não for feito, deixe só o email do dono da conta cadastrado em Compras.";
+    return "O envio para múltiplos endereços ainda não foi liberado no sistema: a conta de email está em modo de teste e recusa o lote inteiro quando há mais de um destinatário. "
+      + "É uma configuração única do produto (verificar safetysolucoes.com em resend.com/domains e definir RESEND_FROM no Supabase) — vale para todas as empresas de uma vez, não precisa ser feita por empresa.";
   }
   if (t.includes("not verified") || t.includes("domain is not verified")) {
-    return "O domínio do remetente não está verificado na Resend. Verifique-o em resend.com/domains antes de enviar para endereços externos.";
+    return "O domínio do remetente do sistema não está verificado na conta de email. Verifique safetysolucoes.com em resend.com/domains — uma vez só, vale para todas as empresas.";
   }
   return detalhe;
 }
@@ -225,9 +224,19 @@ export async function enviarEmailSolicitacao(
     // nada. Com um destinatário só, continua indo string: preservar exatamente
     // a chamada que já funciona evita que um ajuste de vários endereços quebre
     // quem tem um, caso a função implantada esteja atrás deste repositório.
+    // Todas as empresas clientes compartilham o mesmo remetente (é o domínio do
+    // produto que fica verificado, não o de cada cliente). Sem reply-to, um
+    // "responder" do setor de compras cairia numa caixa que ninguém lê; com
+    // ele, a resposta volta para quem pediu o material.
+    let replyTo: string | undefined;
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      replyTo = auth?.user?.email || undefined;
+    } catch { /* sem reply-to o email ainda sai */ }
+
     const enviarPara = async (para: string | string[]) => {
       const { data, error } = await supabase.functions.invoke("send-purchase-email", {
-        body: { solicitacao: solicitacaoData, email: para, pdfBase64, pdfFilename, tokenPublico },
+        body: { solicitacao: solicitacaoData, email: para, pdfBase64, pdfFilename, tokenPublico, replyTo },
       });
       if (!error) return { data, detalhe: null as string | null };
       // supabase-js só coloca "Edge Function returned a non-2xx status code" em
