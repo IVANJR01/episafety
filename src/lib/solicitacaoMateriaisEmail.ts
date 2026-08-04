@@ -113,13 +113,34 @@ function traduzirErroEnvio(detalhe: string): string {
   return detalhe;
 }
 
+/**
+ * O endereço que a conta em modo de teste tem permissão de receber. A Resend
+ * o cita entre parênteses no próprio 403 ("...to your own email address
+ * (fulano@gmail.com)"), que é como dá para reenviar sem pedir nada a ninguém.
+ */
+function enderecoLiberadoNoErro(detalhe: string): string | null {
+  if (!/you can only send testing emails/i.test(detalhe || "")) return null;
+  const m = detalhe.match(/\(([^()\s]+@[^()\s]+)\)/);
+  return m ? m[1] : null;
+}
+
+/** "a@x.com" ou "a@x.com e mais 3" — cabe em mensagem de tela. */
+function resumoDestinatarios(lista: string[]): string {
+  if (lista.length === 0) return "";
+  return lista.length === 1 ? lista[0] : `${lista[0]} e mais ${lista.length - 1}`;
+}
+
 export interface ResultadoEnvioEmail {
   /** true somente quando o email foi de fato enviado (não em modo debug) */
   enviado: boolean;
   /** true quando a Edge Function respondeu em modo debug (sem RESEND_API_KEY) */
   modoDebug: boolean;
-  /** Todos os endereços que receberam (ou receberiam) o email. */
+  /** Endereços que de fato receberam (ou receberiam, em modo debug). */
   destinatarios?: string[];
+  /** Cadastrados que ficaram de fora — hoje, por limite da conta de email. */
+  naoEntregues?: string[];
+  /** Explicação do que ficou faltando, quando o envio saiu incompleto. */
+  aviso?: string;
   /** Resumo legível dos destinatários, para mensagem de tela. */
   emailDestino?: string;
   erro?: string;
@@ -204,15 +225,11 @@ export async function enviarEmailSolicitacao(
     // nada. Com um destinatário só, continua indo string: preservar exatamente
     // a chamada que já funciona evita que um ajuste de vários endereços quebre
     // quem tem um, caso a função implantada esteja atrás deste repositório.
-    const { data, error } = await supabase.functions.invoke("send-purchase-email", {
-      body: {
-        solicitacao: solicitacaoData,
-        email: emailsCompras.length === 1 ? emailsCompras[0] : emailsCompras,
-        pdfBase64, pdfFilename, tokenPublico,
-      },
-    });
-
-    if (error) {
+    const enviarPara = async (para: string | string[]) => {
+      const { data, error } = await supabase.functions.invoke("send-purchase-email", {
+        body: { solicitacao: solicitacaoData, email: para, pdfBase64, pdfFilename, tokenPublico },
+      });
+      if (!error) return { data, detalhe: null as string | null };
       // supabase-js só coloca "Edge Function returned a non-2xx status code" em
       // error.message — o motivo real (ex.: erro da Resend) vem no corpo da
       // resposta, acessível via error.context, um Response.
@@ -226,20 +243,61 @@ export async function enviarEmailSolicitacao(
           if (texto) detalhe = texto;
         } catch { /* mantém error.message */ }
       }
-      console.error("[solicitacao] Erro ao enviar email:", detalhe, error);
+      return { data: null, detalhe };
+    };
+
+    let entregues = emailsCompras;
+    let naoEntregues: string[] = [];
+    let { data, detalhe } = await enviarPara(
+      emailsCompras.length === 1 ? emailsCompras[0] : emailsCompras,
+    );
+
+    /**
+     * Conta de email em modo de teste: a Resend recusa o lote INTEIRO quando
+     * há qualquer endereço além do dono da conta — e aí ninguém é avisado da
+     * solicitação, nem o próprio dono, que receberia normalmente se estivesse
+     * sozinho na lista. Perder a notificação toda é o pior desfecho possível.
+     *
+     * O endereço liberado vem citado no próprio erro. Reenvia só para ele e
+     * devolve quem ficou de fora, para a tela dizer exatamente quem não
+     * recebeu — degradar avisando é diferente de degradar em silêncio.
+     */
+    const donoDaConta = detalhe ? enderecoLiberadoNoErro(detalhe) : null;
+    if (donoDaConta && emailsCompras.length > 1) {
+      console.warn("[solicitacao] Conta Resend em modo de teste; reenviando só para", donoDaConta);
+      const segunda = await enviarPara(donoDaConta);
+      if (!segunda.detalhe) {
+        data = segunda.data;
+        detalhe = null;
+        entregues = [donoDaConta];
+        naoEntregues = emailsCompras.filter((e) => e.toLowerCase() !== donoDaConta.toLowerCase());
+      }
+    }
+
+    if (detalhe) {
+      console.error("[solicitacao] Erro ao enviar email:", detalhe);
       return {
-        enviado: false, modoDebug: false, emailDestino: emailCompras,
+        enviado: false, modoDebug: false, emailDestino: resumoDestinatarios(emailsCompras),
         destinatarios: emailsCompras, erro: traduzirErroEnvio(detalhe),
       };
     }
 
     const modoDebug = !!(data && typeof data.message === "string" && data.message.toLowerCase().includes("debug"));
+    const resumo = resumoDestinatarios(entregues);
     if (modoDebug) {
-      console.warn("[solicitacao] Email NÃO enviado de verdade — Edge Function está em modo debug (RESEND_API_KEY ausente). Destino:", emailCompras);
+      console.warn("[solicitacao] Email NÃO enviado de verdade — Edge Function está em modo debug (RESEND_API_KEY ausente). Destino:", resumo);
     } else {
-      console.log("[solicitacao] Email enviado com sucesso para:", emailCompras);
+      console.log("[solicitacao] Email enviado com sucesso para:", entregues.join(", "));
     }
-    return { enviado: !modoDebug, modoDebug, emailDestino: emailCompras, destinatarios: emailsCompras };
+    return {
+      enviado: !modoDebug, modoDebug, emailDestino: resumo, destinatarios: entregues,
+      naoEntregues: naoEntregues.length ? naoEntregues : undefined,
+      aviso: naoEntregues.length
+        ? `A conta de email ainda está em modo de teste e só entrega para ${donoDaConta}. `
+          + `Não receberam: ${naoEntregues.join(", ")}. `
+          + `Para liberar os demais, verifique um domínio em resend.com/domains e defina o secret RESEND_FROM no Supabase.`
+        : undefined,
+    };
   } catch (error: any) {
     console.error("[solicitacao] Erro ao preparar envio de email:", error);
     return { enviado: false, modoDebug: false, erro: error?.message || String(error) };

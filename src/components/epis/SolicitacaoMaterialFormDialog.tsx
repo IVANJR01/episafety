@@ -468,7 +468,13 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
             head.data_necessidade
           );
 
-          if (resultado.enviado) {
+          if (resultado.enviado && resultado.aviso) {
+            // Saiu, mas não para todo mundo: dizer "sucesso" aqui faria
+            // acreditar que as outras pessoas foram avisadas.
+            toast.warning(`Email enviado só para ${resultado.emailDestino}`, {
+              description: resultado.aviso, duration: 12000,
+            });
+          } else if (resultado.enviado) {
             toast.success(`Email enviado para o setor de compras (${resultado.emailDestino})`);
           } else if (resultado.modoDebug) {
             toast.warning("Email NÃO foi enviado de verdade", {
