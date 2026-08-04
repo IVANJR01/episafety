@@ -66,11 +66,16 @@ async function sendEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      // Domínio de teste da própria Resend: funciona sem verificação de DNS,
-      // mas só entrega para o e-mail do dono da conta Resend enquanto nenhum
-      // domínio próprio for verificado. Trocar para um endereço @seudominio
-      // depois de verificar o domínio em resend.com/domains.
-      from: "EpiSafety <onboarding@resend.dev>",
+      // Remetente. O padrão é o domínio de teste da própria Resend: funciona
+      // sem configurar DNS, mas SÓ entrega para o e-mail do dono da conta —
+      // com qualquer outro destinatário a Resend recusa o envio inteiro com
+      // 403, e ninguém recebe, nem o dono. É por isso que notificar mais de
+      // uma pessoa exige domínio verificado.
+      //
+      // Depois de verificar um domínio em resend.com/domains, basta definir o
+      // secret RESEND_FROM (ex.: "EpiSafety <naoresponda@seudominio.com.br>")
+      // — sem mexer neste arquivo de novo.
+      from: Deno.env.get("RESEND_FROM") || "EpiSafety <onboarding@resend.dev>",
       to,
       subject,
       html,

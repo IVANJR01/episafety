@@ -286,6 +286,13 @@ export default function Empresas() {
                     Para mais de uma pessoa, separe por vírgula ou uma por linha — todas recebem
                     o mesmo email, com o PDF em anexo e o link de aprovação.
                   </p>
+                  {emailsCompras.validos.length > 1 && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-2">
+                      Enviar para mais de um endereço exige domínio verificado na conta de email
+                      (resend.com/domains). Sem isso, a Resend recusa o envio inteiro — nem o
+                      primeiro da lista recebe.
+                    </p>
+                  )}
                   {/* Textarea, não Input `type="email"`: aquele campo trata uma
                       lista separada por vírgula como endereço inválido, e uma
                       linha só não comporta seis endereços. */}

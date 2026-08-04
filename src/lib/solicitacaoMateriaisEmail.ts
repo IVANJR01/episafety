@@ -93,6 +93,26 @@ async function obterContagemItens(solicitacaoId: string): Promise<number> {
   }
 }
 
+/**
+ * Traduz os erros conhecidos da Resend para algo acionável.
+ *
+ * O texto cru chega em inglês, embrulhado em JSON, e vai parar no rodapé de
+ * um toast. Quem lê não tem como adivinhar que o problema está na CONTA de
+ * email — não na solicitação, nem nos endereços que acabou de cadastrar.
+ */
+function traduzirErroEnvio(detalhe: string): string {
+  const t = (detalhe || "").toLowerCase();
+  if (t.includes("you can only send testing emails")) {
+    return "A conta de email está em modo de teste: a Resend só entrega para o endereço do dono da conta e recusa o envio INTEIRO quando há qualquer outro destinatário. "
+      + "Para liberar, verifique um domínio em resend.com/domains e defina o remetente no secret RESEND_FROM do Supabase (ex.: naoresponda@seudominio.com.br). "
+      + "Enquanto isso não for feito, deixe só o email do dono da conta cadastrado em Compras.";
+  }
+  if (t.includes("not verified") || t.includes("domain is not verified")) {
+    return "O domínio do remetente não está verificado na Resend. Verifique-o em resend.com/domains antes de enviar para endereços externos.";
+  }
+  return detalhe;
+}
+
 export interface ResultadoEnvioEmail {
   /** true somente quando o email foi de fato enviado (não em modo debug) */
   enviado: boolean;
@@ -207,7 +227,10 @@ export async function enviarEmailSolicitacao(
         } catch { /* mantém error.message */ }
       }
       console.error("[solicitacao] Erro ao enviar email:", detalhe, error);
-      return { enviado: false, modoDebug: false, emailDestino: emailCompras, destinatarios: emailsCompras, erro: detalhe };
+      return {
+        enviado: false, modoDebug: false, emailDestino: emailCompras,
+        destinatarios: emailsCompras, erro: traduzirErroEnvio(detalhe),
+      };
     }
 
     const modoDebug = !!(data && typeof data.message === "string" && data.message.toLowerCase().includes("debug"));
