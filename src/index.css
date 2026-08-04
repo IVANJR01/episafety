@@ -75,6 +75,22 @@
     --accent: 200 60% 94%;
     --accent-foreground: 200 68% 20%;
   }
+
+  /*
+   * O conteúdo do app mora numa caixa de 1280px. É largura de leitura: certa
+   * para formulário e cadastro, errada para o PGR, que é planilha. Numa tela
+   * de 1900px sobravam ~400px em branco de cada lado ENQUANTO o inventário
+   * rolava de lado — a tabela apertada num terço da tela disponível.
+   *
+   * Onde a página traz um módulo largo, o teto sai e o respiro externo
+   * também: o módulo já tem o seu (`px-4 py-4`) e já se limita a 1800px por
+   * conta própria, então ninguém estica sem fim. As demais telas do app não
+   * são tocadas.
+   */
+  .app-content:has(.pgr-module) {
+    max-width: none;
+    padding: 0;
+  }
 }
 
 @layer base {

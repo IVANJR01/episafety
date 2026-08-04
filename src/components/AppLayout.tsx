@@ -815,7 +815,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <div className="p-4 lg:p-8 max-w-7xl mx-auto">{children}</div>
+        {/* `app-content` existe para o CSS soltar o teto de 1280px nas telas
+            que são planilha, não formulário — ver index.css. */}
+        <div className="app-content p-4 lg:p-8 max-w-7xl mx-auto">{children}</div>
       </main>
 
       {/* Mobile bottom navigation bar */}

@@ -320,18 +320,18 @@ export default function InventarioTab({
               <table className={`w-full text-[11px] border-collapse ${detalhes ? "min-w-[1360px]" : ""}`}>
                 <thead className="bg-amber-200 sticky top-0 z-10">
                   <tr className="text-amber-950">
-                    <th className="p-2 text-left border border-amber-400 w-[86px]">Tipo</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[190px]">Agente / Perigo<br/>e fonte de exposição</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[160px]">Possíveis lesões ou<br/>agravos à saúde</th>
-                    <th className="p-2 text-left border border-amber-400 min-w-[96px]">Tipo / tempo<br/>de exposição</th>
+                    <th className="p-2 text-left border border-amber-400 w-[74px]">Tipo</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[176px]">Agente / Perigo<br/>e fonte de exposição</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[150px]">Possíveis lesões ou<br/>agravos à saúde</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[86px]">Tipo / tempo<br/>de exposição</th>
                     {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[100px]">Limite de<br/>exposição</th>}
                     {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[110px]">Intensidade /<br/>concentração</th>}
                     {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[110px]">Técnica<br/>utilizada</th>}
-                    <th className="p-2 text-left border border-amber-400 min-w-[190px]">Medidas de controle<br/>existentes</th>
+                    <th className="p-2 text-left border border-amber-400 min-w-[176px]">Medidas de controle<br/>existentes</th>
                     {detalhes && <th className="p-2 text-left border border-amber-400 min-w-[100px]">Atenuação /<br/>fator de proteção</th>}
-                    <th className="p-2 text-center border border-amber-400 w-[62px]" title="Probabilidade × Severidade">Prob. ×<br/>Sev.</th>
-                    <th className="p-2 text-left border border-amber-400 w-[118px]">Classificação<br/>do risco</th>
-                    <th className="p-2 border border-amber-400 w-[72px] sticky right-0 z-20 bg-amber-200 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">Ações</th>
+                    <th className="p-2 text-center border border-amber-400 w-[58px]" title="Probabilidade × Severidade">Prob. ×<br/>Sev.</th>
+                    <th className="p-2 text-left border border-amber-400 w-[106px]">Classificação<br/>do risco</th>
+                    <th className="p-2 border border-amber-400 w-[68px] sticky right-0 z-20 bg-amber-200 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -339,6 +339,11 @@ export default function InventarioTab({
                     const ambiente = ambienteDe(i);
                     const gesCod = i.ghe?.codigo || "";
                     const prev = idx > 0 ? filtrados[idx - 1] : null;
+
+                    // Nome do GES só entra na faixa se acrescentar algo ao código.
+                    const nomeBruto = clean(i.ghe?.nome);
+                    const gesNome = nomeBruto.replace(/^ges\s*/i, "").trim().toLowerCase() === gesCod.trim().toLowerCase()
+                      ? "" : nomeBruto;
 
                     /** Quantas linhas seguidas, a partir daqui, compartilham a chave. */
                     const alcance = (chaveDe: (x: any) => string) => {
@@ -417,7 +422,10 @@ export default function InventarioTab({
                                 <Badge variant="outline" className="shrink-0 border-amber-400 bg-amber-200/70 text-[10px] font-bold text-amber-950">
                                   GES {gesCod || NA}
                                 </Badge>
-                                {i.ghe?.nome && <span className="text-[11px] font-medium">{i.ghe.nome}</span>}
+                                {/* Só quando o nome diz algo além do código: no
+                                    cadastro atual muitos GES se chamam "GES 01"
+                                    ou "01", e a faixa saía "GES 01  GES 01". */}
+                                {gesNome && <span className="text-[11px] font-medium">{gesNome}</span>}
                                 <span className="text-[11px] text-muted-foreground">
                                   <span className="font-semibold">Funções:</span> {funcoes}
                                 </span>
