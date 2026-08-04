@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Building2, Save, Upload, X, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { isOnline, getCachedData, setCachedData, addToSyncQueue } from "@/lib/offlineStorage";
@@ -6,7 +6,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { separarEmails } from "@/lib/solicitacaoMateriaisEmail";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Filiais from "@/pages/Filiais";
@@ -29,6 +31,9 @@ export default function Empresas() {
     email: "",
     email_compras: "",
   });
+
+  /** Mesma leitura que o envio faz — a tela mostra o que vai valer na hora. */
+  const emailsCompras = useMemo(() => separarEmails(form.email_compras), [form.email_compras]);
 
   useEffect(() => {
     loadEmpresa();
@@ -132,6 +137,17 @@ export default function Empresas() {
   };
 
   const handleSave = async () => {
+    // Endereço malformado é descartado na hora do envio, sem aviso nenhum —
+    // a notificação simplesmente não chega para aquela pessoa e ninguém fica
+    // sabendo. Barrar aqui é o único momento em que dá para mostrar o erro.
+    if (emailsCompras.invalidos.length > 0) {
+      toast({
+        title: "Confira os e-mails para compras",
+        description: `Sem formato de e-mail: ${emailsCompras.invalidos.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const payload = { ...form, logo_url: logoUrl };
@@ -264,9 +280,36 @@ export default function Empresas() {
                   <Input className="min-h-[44px]" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contato@empresa.com" />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label>E-mail para Compras 📧</Label>
-                  <p className="text-xs text-muted-foreground mb-2">Endereço para receber automaticamente as notificações de solicitação de materiais</p>
-                  <Input className="min-h-[44px]" type="email" value={form.email_compras} onChange={e => setForm({ ...form, email_compras: e.target.value })} placeholder="compras@empresa.com" />
+                  <Label>E-mails para Compras 📧</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Quem recebe automaticamente as notificações de solicitação de materiais.
+                    Para mais de uma pessoa, separe por vírgula ou uma por linha — todas recebem
+                    o mesmo email, com o PDF em anexo e o link de aprovação.
+                  </p>
+                  {/* Textarea, não Input `type="email"`: aquele campo trata uma
+                      lista separada por vírgula como endereço inválido, e uma
+                      linha só não comporta seis endereços. */}
+                  <Textarea
+                    rows={3}
+                    value={form.email_compras}
+                    onChange={e => setForm({ ...form, email_compras: e.target.value })}
+                    placeholder={"compras@empresa.com, engenharia@empresa.com\nseguranca@empresa.com"}
+                  />
+                  {(emailsCompras.validos.length > 0 || emailsCompras.invalidos.length > 0) && (
+                    <p className="text-xs mt-1.5">
+                      {emailsCompras.validos.length > 0 && (
+                        <span className="text-muted-foreground">
+                          {emailsCompras.validos.length} {emailsCompras.validos.length === 1 ? "destinatário" : "destinatários"}
+                        </span>
+                      )}
+                      {emailsCompras.invalidos.length > 0 && (
+                        <span className="text-destructive">
+                          {emailsCompras.validos.length > 0 ? " · " : ""}
+                          sem formato de e-mail: {emailsCompras.invalidos.join(", ")}
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Endereço</Label>

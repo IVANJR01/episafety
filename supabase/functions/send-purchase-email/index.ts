@@ -20,14 +20,19 @@ interface SolicitacaoEmail {
 
 interface EmailPayload {
   solicitacao: SolicitacaoEmail;
-  email: string;
+  /**
+   * Um endereço ou vários. A Resend aceita lista em `to`, e é assim que a
+   * empresa notifica compras, engenharia e segurança de uma vez — todos
+   * recebem o mesmo email e enxergam uns aos outros.
+   */
+  email: string | string[];
   pdfBase64?: string;
   pdfFilename?: string;
   tokenPublico?: string;
 }
 
 async function sendEmail(
-  to: string,
+  to: string | string[],
   subject: string,
   html: string,
   attachment?: { filename: string; base64: string }

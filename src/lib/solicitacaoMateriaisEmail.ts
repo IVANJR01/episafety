@@ -15,31 +15,55 @@ interface SolicitacaoEmailData {
   itens_count: number;
 }
 
+/** Frouxa de propósito: só o suficiente para pegar erro de digitação. */
+const FORMATO_EMAIL = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+
 /**
- * Busca o email do setor de compras (ou admin) da empresa.
- * Prioridade:
- * 1. Campo dedicado de email para compras na empresa_config
- * 2. Email do usuário principal da empresa
- * 3. Email de fallback (se não encontrar nada)
+ * Lê o campo "E-mails para Compras" como uma LISTA.
+ *
+ * O campo é um TEXT livre e aceita vírgula, ponto e vírgula, espaço ou quebra
+ * de linha como separador — quem preenche copia de onde tiver e cola.
+ *
+ * Devolve os inválidos separados em vez de descartá-los em silêncio: é o que
+ * permite a tela de configuração avisar na hora. Endereço repetido sai uma vez
+ * só (comparando sem diferenciar maiúsculas), senão a pessoa recebe duas
+ * cópias do mesmo email.
  */
-async function obterEmailCompras(empresaId: string): Promise<string | null> {
+export function separarEmails(texto?: string | null): { validos: string[]; invalidos: string[] } {
+  const partes = (texto || "").split(/[,;\s]+/).map((p) => p.trim()).filter(Boolean);
+  const validos: string[] = [];
+  const invalidos: string[] = [];
+  const vistos = new Set<string>();
+  for (const p of partes) {
+    if (!FORMATO_EMAIL.test(p)) { invalidos.push(p); continue; }
+    const chave = p.toLowerCase();
+    if (vistos.has(chave)) continue;
+    vistos.add(chave);
+    validos.push(p);
+  }
+  return { validos, invalidos };
+}
+
+/**
+ * Busca os emails do setor de compras da empresa, em ordem de preferência:
+ * 1. Campo dedicado de emails para compras na empresa_config (pode ter vários)
+ * 2. Email principal da empresa
+ * 3. Email do usuário principal
+ */
+async function obterEmailsCompras(empresaId: string): Promise<string[]> {
   try {
-    // Tenta buscar email de compras direto da empresa_config
     const { data: empresa } = await supabase
       .from("empresa_config")
       .select("email_compras, email")
       .eq("id", empresaId)
       .maybeSingle();
 
-    if (empresa?.email_compras) {
-      return empresa.email_compras;
-    }
+    const dedicados = separarEmails(empresa?.email_compras).validos;
+    if (dedicados.length) return dedicados;
 
-    if (empresa?.email) {
-      return empresa.email;
-    }
+    const daEmpresa = separarEmails(empresa?.email).validos;
+    if (daEmpresa.length) return daEmpresa;
 
-    // Se não encontrou, tenta buscar email do usuário principal
     const { data: users } = await supabase
       .from("user_profiles")
       .select("email")
@@ -47,14 +71,10 @@ async function obterEmailCompras(empresaId: string): Promise<string | null> {
       .eq("role", "principal")
       .limit(1);
 
-    if (users && users.length > 0) {
-      return users[0].email;
-    }
-
-    return null;
+    return separarEmails(users?.[0]?.email).validos;
   } catch (error) {
-    console.error("[solicitacao] Erro ao buscar email de compras:", error);
-    return null;
+    console.error("[solicitacao] Erro ao buscar emails de compras:", error);
+    return [];
   }
 }
 
@@ -78,6 +98,9 @@ export interface ResultadoEnvioEmail {
   enviado: boolean;
   /** true quando a Edge Function respondeu em modo debug (sem RESEND_API_KEY) */
   modoDebug: boolean;
+  /** Todos os endereços que receberam (ou receberiam) o email. */
+  destinatarios?: string[];
+  /** Resumo legível dos destinatários, para mensagem de tela. */
   emailDestino?: string;
   erro?: string;
 }
@@ -101,11 +124,14 @@ export async function enviarEmailSolicitacao(
   dataNecessidade?: string
 ): Promise<ResultadoEnvioEmail> {
   try {
-    const emailCompras = await obterEmailCompras(empresaId);
-    if (!emailCompras) {
+    const emailsCompras = await obterEmailsCompras(empresaId);
+    if (!emailsCompras.length) {
       console.warn("[solicitacao] Nenhum email de compras encontrado para a empresa");
       return { enviado: false, modoDebug: false, erro: "Nenhum email de compras configurado para a empresa" };
     }
+    const emailCompras = emailsCompras.length === 1
+      ? emailsCompras[0]
+      : `${emailsCompras[0]} e mais ${emailsCompras.length - 1}`;
 
     const itensCount = await obterContagemItens(solicitacaoId);
 
@@ -153,8 +179,17 @@ export async function enviarEmailSolicitacao(
       console.warn("[solicitacao] Não foi possível gerar o link de aprovação sem login:", e);
     }
 
+    // A Edge Function repassa `email` direto como `to` da Resend, e a Resend
+    // aceita lista — então dá para notificar várias pessoas sem reimplantar
+    // nada. Com um destinatário só, continua indo string: preservar exatamente
+    // a chamada que já funciona evita que um ajuste de vários endereços quebre
+    // quem tem um, caso a função implantada esteja atrás deste repositório.
     const { data, error } = await supabase.functions.invoke("send-purchase-email", {
-      body: { solicitacao: solicitacaoData, email: emailCompras, pdfBase64, pdfFilename, tokenPublico },
+      body: {
+        solicitacao: solicitacaoData,
+        email: emailsCompras.length === 1 ? emailsCompras[0] : emailsCompras,
+        pdfBase64, pdfFilename, tokenPublico,
+      },
     });
 
     if (error) {
@@ -172,7 +207,7 @@ export async function enviarEmailSolicitacao(
         } catch { /* mantém error.message */ }
       }
       console.error("[solicitacao] Erro ao enviar email:", detalhe, error);
-      return { enviado: false, modoDebug: false, emailDestino: emailCompras, erro: detalhe };
+      return { enviado: false, modoDebug: false, emailDestino: emailCompras, destinatarios: emailsCompras, erro: detalhe };
     }
 
     const modoDebug = !!(data && typeof data.message === "string" && data.message.toLowerCase().includes("debug"));
@@ -181,7 +216,7 @@ export async function enviarEmailSolicitacao(
     } else {
       console.log("[solicitacao] Email enviado com sucesso para:", emailCompras);
     }
-    return { enviado: !modoDebug, modoDebug, emailDestino: emailCompras };
+    return { enviado: !modoDebug, modoDebug, emailDestino: emailCompras, destinatarios: emailsCompras };
   } catch (error: any) {
     console.error("[solicitacao] Erro ao preparar envio de email:", error);
     return { enviado: false, modoDebug: false, erro: error?.message || String(error) };
