@@ -309,18 +309,27 @@ export default function SolicitacoesMateriais() {
         .rpc("proximo_numero_solicitacao_material", { _empresa_id: empresaId });
       if (e3) throw e3;
 
-      // Fora número e título, o que não passa para a cópia é tudo que registra
-      // o andamento da original: aprovação, compra, recebimento e recusa.
-      const {
-        id: _id, created_at: _ca, updated_at: _ua, numero_solicitacao: _num, status: _st,
-        aprovado_em: _ae, aprovado_por: _ap, aprovado_por_nome: _apn,
-        comprada_em: _ce, recebida_em: _re, recebida_por_nome: _rpn, nota_fiscal: _nf,
-        motivo_recusa: _mr, data_solicitacao: _ds, created_by: _cb,
-        ...cabecalho
-      } = orig;
-
+      // Lista do que COPIAR, não do que descartar. Copiar tudo menos uma lista
+      // de exceções já quebrou aqui: `select("*")` trouxe `token_publico` — a
+      // credencial do link de aprovação por email, com índice único — e o
+      // insert batia na constraint. O TypeScript não pegou porque os tipos
+      // gerados estão atrás do banco. Com lista de permitidos, coluna nova
+      // simplesmente não é copiada até alguém decidir que deve ser; o erro
+      // possível vira campo faltando, não vazamento de credencial.
       const { data: nova, error: e4 } = await supabase.from("solicitacoes_materiais").insert({
-        ...cabecalho,
+        empresa_id: orig.empresa_id,
+        contrato_id: orig.contrato_id,
+        unidade_id: orig.unidade_id,
+        obra_id: orig.obra_id,
+        local_obra: orig.local_obra,
+        setor: orig.setor,
+        prioridade: orig.prioridade,
+        justificativa: orig.justificativa,
+        observacoes: orig.observacoes,
+        data_necessidade: orig.data_necessidade,
+        solicitante_id: orig.solicitante_id,
+        solicitante_nome: orig.solicitante_nome,
+
         numero_solicitacao: numero as unknown as string,
         status: "rascunho",
         titulo: `${orig.titulo || ""} (cópia)`.trim(),
@@ -330,23 +339,30 @@ export default function SolicitacoesMateriais() {
       if (e4) throw e4;
 
       if (itens?.length) {
-        const novosItens = await Promise.all(itens.map(async (it) => {
-          const {
-            id: _iid, solicitacao_id: _sid, created_at: _ic, updated_at: _iu,
-            quantidade_aprovada: _qa, quantidade_comprada: _qc, quantidade_recebida: _qr,
-            imagem_path, ...resto
-          } = it;
-          return {
-            ...resto,
-            solicitacao_id: nova.id,
-            quantidade_aprovada: null,
-            quantidade_comprada: null,
-            quantidade_recebida: null,
-            imagem_path: imagem_path
-              ? await copiarImagemParaSolicitacao(imagem_path, s.id, nova.id)
-              : null,
-          };
-        }));
+        // Mesma regra do cabeçalho: lista do que copiar. As quantidades
+        // aprovada/comprada/recebida ficam de fora — a cópia repete o PEDIDO,
+        // não o que o aprovador cortou nem o que já entrou no estoque.
+        const novosItens = await Promise.all(itens.map(async (it) => ({
+          solicitacao_id: nova.id,
+          empresa_id: it.empresa_id,
+          tipo_item: it.tipo_item,
+          epi_id: it.epi_id,
+          nome_item: it.nome_item,
+          descricao: it.descricao,
+          ca: it.ca,
+          unidade_medida: it.unidade_medida,
+          quantidade_solicitada: it.quantidade_solicitada,
+          prioridade_item: it.prioridade_item,
+          justificativa_item: it.justificativa_item,
+          observacoes: it.observacoes,
+          ordem: it.ordem,
+          imagem_nome: it.imagem_nome,
+          imagem_tipo: it.imagem_tipo,
+          imagem_tamanho: it.imagem_tamanho,
+          imagem_path: it.imagem_path
+            ? await copiarImagemParaSolicitacao(it.imagem_path, s.id, nova.id)
+            : null,
+        })));
         const { error: e5 } = await supabase.from("solicitacoes_materiais_itens").insert(novosItens);
         if (e5) throw e5;
       }
