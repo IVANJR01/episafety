@@ -174,6 +174,36 @@ export async function removeItemImage(path?: string | null) {
   }
 }
 
+/**
+ * Copia a imagem de um item para a pasta de outra solicitação.
+ *
+ * Ao duplicar uma solicitação não dá para reaproveitar o `imagem_path` da
+ * original: o caminho carrega o id dela, e `removeSolicitacaoImages` apaga a
+ * pasta inteira quando a original é excluída — a cópia ficaria com as fotos
+ * quebradas, sem nada indicando o porquê. Aqui cada foto vira arquivo próprio,
+ * sob o id novo, e as duas solicitações passam a ser independentes.
+ *
+ * Falha em copiar devolve `null` (item fica sem foto) em vez de devolver o
+ * caminho antigo: apontar para o arquivo alheio é justamente o que se evita.
+ */
+export async function copiarImagemParaSolicitacao(
+  path: string, solicitacaoOrigemId: string, solicitacaoDestinoId: string,
+): Promise<string | null> {
+  const destino = path.replace(
+    `/solicitacoes/${solicitacaoOrigemId}/`,
+    `/solicitacoes/${solicitacaoDestinoId}/`,
+  );
+  if (destino === path) return null; // caminho fora do padrão desta lib
+  try {
+    const { error } = await supabase.storage.from(SOLIC_MAT_IMG_BUCKET).copy(path, destino);
+    if (error) { console.warn("[solic-mat-img] copy failed", error.message); return null; }
+    return destino;
+  } catch (e) {
+    console.warn("[solic-mat-img] copy threw", e);
+    return null;
+  }
+}
+
 /** Lista recursivamente e apaga todas as imagens de uma solicitação. */
 export async function removeSolicitacaoImages(empresaId: string, solicitacaoId: string) {
   const base = `${empresaId}/solicitacoes/${solicitacaoId}/itens`;

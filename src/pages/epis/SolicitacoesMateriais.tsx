@@ -11,14 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Search, ClipboardList, Pencil, Trash2, FileDown, FileSpreadsheet, Eye, CheckCircle2, ShoppingCart, PackageCheck, Mail } from "lucide-react";
+import { Plus, Search, ClipboardList, Pencil, Copy, Trash2, FileDown, FileSpreadsheet, Eye, CheckCircle2, ShoppingCart, PackageCheck, Mail } from "lucide-react";
 import { toast } from "sonner";
 import SolicitacaoMaterialFormDialog from "@/components/epis/SolicitacaoMaterialFormDialog";
 import SolicitacaoAprovacaoDialog from "@/components/epis/SolicitacaoAprovacaoDialog";
 import SolicitacaoRecebimentoDialog from "@/components/epis/SolicitacaoRecebimentoDialog";
 import { gerarSolicitacaoPdf } from "@/lib/solicitacaoMateriaisPdf";
 import { exportarSolicitacaoExcel } from "@/lib/solicitacaoMateriaisExcel";
-import { loadImageAsDataUrl, removeSolicitacaoImages } from "@/lib/solicitacaoMateriaisImagens";
+import { loadImageAsDataUrl, removeSolicitacaoImages, copiarImagemParaSolicitacao } from "@/lib/solicitacaoMateriaisImagens";
 import { enviarEmailSolicitacao } from "@/lib/solicitacaoMateriaisEmail";
 
 type Solicitacao = {
@@ -76,6 +76,7 @@ export default function SolicitacoesMateriais() {
   const [recebOpen, setRecebOpen] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Solicitacao | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [duplicandoId, setDuplicandoId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const canApprove = isSuperAdmin || isPrincipal;
@@ -284,6 +285,83 @@ export default function SolicitacoesMateriais() {
     setConfirmDelete(null);
   }
 
+  /**
+   * Duplica a solicitação inteira como um novo rascunho.
+   *
+   * Solicitação aprovada não abre para edição — ela é o registro do que o
+   * aprovador autorizou, e mexer nela apagaria essa prova. Só que quando ele
+   * aprova parte dos itens, pedir o resto significava redigitar tudo à mão.
+   *
+   * A cópia sai com as quantidades SOLICITADAS, não as aprovadas: o ponto é
+   * repetir o pedido original e ajustar, não repetir o corte.
+   */
+  async function duplicar(s: Solicitacao) {
+    if (!empresaId) return;
+    setDuplicandoId(s.id);
+    try {
+      const { data: orig, error: e1 } = await supabase
+        .from("solicitacoes_materiais").select("*").eq("id", s.id).single();
+      if (e1) throw e1;
+      const { data: itens, error: e2 } = await supabase
+        .from("solicitacoes_materiais_itens").select("*").eq("solicitacao_id", s.id).order("ordem");
+      if (e2) throw e2;
+      const { data: numero, error: e3 } = await supabase
+        .rpc("proximo_numero_solicitacao_material", { _empresa_id: empresaId });
+      if (e3) throw e3;
+
+      // Fora número e título, o que não passa para a cópia é tudo que registra
+      // o andamento da original: aprovação, compra, recebimento e recusa.
+      const {
+        id: _id, created_at: _ca, updated_at: _ua, numero_solicitacao: _num, status: _st,
+        aprovado_em: _ae, aprovado_por: _ap, aprovado_por_nome: _apn,
+        comprada_em: _ce, recebida_em: _re, recebida_por_nome: _rpn, nota_fiscal: _nf,
+        motivo_recusa: _mr, data_solicitacao: _ds, created_by: _cb,
+        ...cabecalho
+      } = orig;
+
+      const { data: nova, error: e4 } = await supabase.from("solicitacoes_materiais").insert({
+        ...cabecalho,
+        numero_solicitacao: numero as unknown as string,
+        status: "rascunho",
+        titulo: `${orig.titulo || ""} (cópia)`.trim(),
+        data_solicitacao: new Date().toISOString().slice(0, 10),
+        created_by: user?.id || null,
+      }).select("id").single();
+      if (e4) throw e4;
+
+      if (itens?.length) {
+        const novosItens = await Promise.all(itens.map(async (it) => {
+          const {
+            id: _iid, solicitacao_id: _sid, created_at: _ic, updated_at: _iu,
+            quantidade_aprovada: _qa, quantidade_comprada: _qc, quantidade_recebida: _qr,
+            imagem_path, ...resto
+          } = it;
+          return {
+            ...resto,
+            solicitacao_id: nova.id,
+            quantidade_aprovada: null,
+            quantidade_comprada: null,
+            quantidade_recebida: null,
+            imagem_path: imagem_path
+              ? await copiarImagemParaSolicitacao(imagem_path, s.id, nova.id)
+              : null,
+          };
+        }));
+        const { error: e5 } = await supabase.from("solicitacoes_materiais_itens").insert(novosItens);
+        if (e5) throw e5;
+      }
+
+      toast.success(`Cópia criada — ${numero}`);
+      await load();
+      setEditingId(nova.id);
+      setFormOpen(true);
+    } catch (e: any) {
+      toast.error("Erro ao duplicar", { description: e.message });
+    } finally {
+      setDuplicandoId(null);
+    }
+  }
+
   async function marcarComprada(s: Solicitacao) {
     const { error } = await supabase.from("solicitacoes_materiais")
       .update({ status: "comprada", comprada_em: new Date().toISOString() })
@@ -430,7 +508,9 @@ export default function SolicitacoesMateriais() {
                             s={s}
                             canApprove={canApprove}
                             sendingEmail={sendingEmailId === s.id}
+                            duplicando={duplicandoId === s.id}
                             onEdit={() => { setEditingId(s.id); setFormOpen(true); }}
+                            onDuplicate={() => duplicar(s)}
                             onDelete={() => setConfirmDelete(s)}
                             onApprove={() => setAprovOpen(s.id)}
                             onReceive={() => setRecebOpen(s.id)}
@@ -471,7 +551,9 @@ export default function SolicitacoesMateriais() {
                     mobile
                     canApprove={canApprove}
                     sendingEmail={sendingEmailId === s.id}
+                    duplicando={duplicandoId === s.id}
                     onEdit={() => { setEditingId(s.id); setFormOpen(true); }}
+                    onDuplicate={() => duplicar(s)}
                     onDelete={() => setConfirmDelete(s)}
                     onApprove={() => setAprovOpen(s.id)}
                     onReceive={() => setRecebOpen(s.id)}
@@ -525,14 +607,16 @@ export default function SolicitacoesMateriais() {
 }
 
 function RowActions({
-  s, canApprove, mobile, sendingEmail,
-  onEdit, onDelete, onApprove, onReceive, onBuy, onPdf, onXlsx, onResendEmail,
+  s, canApprove, mobile, sendingEmail, duplicando,
+  onEdit, onDuplicate, onDelete, onApprove, onReceive, onBuy, onPdf, onXlsx, onResendEmail,
 }: {
   s: Solicitacao;
   canApprove: boolean;
   mobile?: boolean;
   sendingEmail?: boolean;
+  duplicando?: boolean;
   onEdit: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
   onApprove: () => void;
   onReceive: () => void;
@@ -550,6 +634,11 @@ function RowActions({
   return (
     <div className={`flex ${mobile ? "flex-wrap" : "justify-end"} gap-1`}>
       <Button size="sm" variant="ghost" onClick={onEdit} disabled={!canEdit} title="Editar"><Pencil className="w-4 h-4" /></Button>
+      {/* Sem restrição de status: duplicar é criar, e criar não tem guard nesta
+          tela. É a saída para a solicitação já aprovada — que não abre para
+          edição — e também para o pedido que se repete todo mês. */}
+      <Button size="sm" variant="ghost" onClick={onDuplicate} disabled={duplicando}
+        title="Duplicar em uma nova solicitação"><Copy className="w-4 h-4" /></Button>
       {canResendEmail && <Button size="sm" variant="ghost" onClick={onResendEmail} disabled={sendingEmail} title="Reenviar email para compras" className="text-orange-600"><Mail className="w-4 h-4" /></Button>}
       {canApproveNow && <Button size="sm" variant="outline" onClick={onApprove} className="gap-1 text-success"><CheckCircle2 className="w-4 h-4" />{mobile && "Aprovar"}</Button>}
       {canBuyNow && <Button size="sm" variant="outline" onClick={onBuy} className="gap-1" title="Marcar como comprada"><ShoppingCart className="w-4 h-4" />{mobile && "Comprada"}</Button>}
