@@ -329,9 +329,9 @@ export default function InventarioTab({
                         obrigava a voltar para saber de qual setor/GES era. As
                         larguras aqui são fixas porque o `left` das seguintes é
                         a soma delas. */}
-                    <th className={`${CTX_TH} w-[180px] left-0`}>Descrição do ambiente</th>
-                    <th className={`${CTX_TH} w-[88px] left-[180px]`}>Setor</th>
-                    <th className={`${CTX_TH} w-[48px] left-[268px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>GES</th>
+                    <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-0`}>Descrição do ambiente</th>
+                    <th className={`${CTX_TH} w-[88px] min-w-[88px] max-w-[88px] left-[200px]`}>Setor</th>
+                    <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>GES</th>
                     <th className="p-1.5 text-left border border-amber-400 min-w-[140px]">Função</th>
                     <th className="p-1.5 text-left border border-amber-400 min-w-[150px]">Processo</th>
                     {/* Estes dois rótulos estavam trocados entre si: a coluna
@@ -403,42 +403,42 @@ export default function InventarioTab({
                     const groupSetores: string[] = cobertos.map((x: any) => x.setor || NA);
 
                     return (
-                      <tr key={i.id} className={`hover:bg-muted/40 align-top ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
+                      <tr key={i.id} className={`hover:bg-muted/40 align-middle ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
                         {/* Ambiente, Setor e Processo pertencem ao setor: saem uma
                             vez por setor, por mais GES que ele tenha. Antes o GES
                             entrava na chave e o parágrafo do ambiente era
                             reimpresso inteiro em cada grupo. */}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className={`p-1.5 border border-amber-300 align-top font-medium leading-snug sticky left-0 z-10 ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoSetor} className={`p-1.5 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] break-words ${AMBAR_CHAPADO}`}>
                             {ambiente || NA}
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-top sticky left-[180px] z-10 bg-white">{val(i.setor)}</td>
+                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-middle sticky left-[200px] z-10 bg-white w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
                         )}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} className={`p-1.5 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[268px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoGes} className={`p-1.5 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words ${AMBAR_CHAPADO}`}>
                             {gesCod || NA}
                           </td>
                         )}
                         {/* As funções vêm do GES — uma vez por grupo. */}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} className="p-1.5 border align-top">{funcoes}</td>
+                          <td rowSpan={linhasDoGes} className="p-1.5 border align-middle">{funcoes}</td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-top">{val(i.processo)}</td>
+                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-middle">{val(i.processo)}</td>
                         )}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.perigo_descricao)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.fonte_geradora)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.lesoes)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{intensidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{tecnica}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{controles}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.epi)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{atenuacao}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.perigo_descricao)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.fonte_geradora)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.lesoes)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{intensidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{tecnica}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{controles}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.epi)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{atenuacao}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border text-center align-middle bg-amber-50/30">{i.probabilidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border text-center align-middle bg-amber-50/30">{i.severidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border text-center align-middle font-semibold bg-amber-50/30">{total}</td>}
