@@ -172,13 +172,56 @@ function drawTableHeader(doc: jsPDF, y: number, colWidths: number[]): number {
   return y + 7;
 }
 
-function drawFooter(doc: jsPDF) {
+/**
+ * Uma entrega só conta como assinada quando há assinatura registrada.
+ *
+ * Devolução é a exceção: o EPI está voltando, não há o que o trabalhador
+ * ateste receber — a tela de entregas usa a mesma regra para não cobrar
+ * assinatura dela.
+ */
+function pendenteDeAssinatura(e: EntregaItem): boolean {
+  return !e.assinatura_colaborador && e.tipo !== "devolucao";
+}
+
+/**
+ * O rodapé afirmava "Documento assinado eletronicamente" em toda ficha,
+ * independentemente de existir uma assinatura sequer.
+ *
+ * A ficha de EPI é a prova de entrega exigida pela NR-6. Declarar assinatura
+ * eletrônica sobre entregas que ninguém assinou torna o documento falso
+ * justamente onde ele precisa valer — e quem lia não tinha como perceber,
+ * porque a linha sem assinatura saía apenas com a caixa vazia.
+ *
+ * Agora a afirmação só aparece quando ela é verdadeira para a ficha inteira;
+ * havendo pendência, o rodapé diz quantas são.
+ */
+function drawFooter(doc: jsPDF, pendentes: number) {
   const footerY = PAGE_H - 15;
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
   doc.text("Gerado no sistema SafetySoluções", PAGE_W / 2, footerY, { align: "center" });
-  doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, footerY + 4, { align: "center" });
+
+  if (pendentes === 0) {
+    doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, footerY + 4, { align: "center" });
+    doc.setTextColor(0);
+    return;
+  }
+
+  doc.text(
+    "Entregas com assinatura registrada valem como assinadas eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.",
+    PAGE_W / 2, footerY + 4, { align: "center" },
+  );
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(180, 0, 0);
+  doc.text(
+    pendentes === 1
+      ? "ATENÇÃO: 1 entrega desta ficha está SEM ASSINATURA."
+      : `ATENÇÃO: ${pendentes} entregas desta ficha estão SEM ASSINATURA.`,
+    PAGE_W / 2, footerY + 8, { align: "center" },
+  );
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0);
 }
 
 /** Convert an image URL to a base64 data URL via canvas */
@@ -227,6 +270,8 @@ export function gerarFichaEPI(data: FichaData) {
   const rowsPerPage = Math.floor((MAX_Y - headerHeight) / ROW_H);
   const totalPages = Math.max(1, Math.ceil(data.entregas.length / Math.max(1, rowsPerPage)));
 
+  const pendentes = data.entregas.filter(pendenteDeAssinatura).length;
+
   let pageNum = 1;
   let y = drawPageHeader(doc, data, pageNum, totalPages);
   y = drawTableHeader(doc, y, colWidths);
@@ -235,7 +280,7 @@ export function gerarFichaEPI(data: FichaData) {
 
   data.entregas.forEach((entrega) => {
     if (y + ROW_H > MAX_Y) {
-      drawFooter(doc);
+      drawFooter(doc, pendentes);
       doc.addPage();
       pageNum++;
       y = drawPageHeader(doc, data, pageNum, totalPages);
@@ -374,14 +419,29 @@ export function gerarFichaEPI(data: FichaData) {
           doc.addImage(entrega.assinatura_colaborador, "PNG", sigX + 2, y + 1, sigW - 4, ROW_H * 0.55);
         } catch (e) { /* ignore */ }
       }
+    } else if (pendenteDeAssinatura(entrega)) {
+      // Sem isto a linha saía como caixa vazia com uma data embaixo — que
+      // qualquer um lê como registro de assinatura. Falta de assinatura
+      // precisa estar escrita, não subentendida num espaço em branco.
+      const cx = sigX + sigW / 2;
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(180, 0, 0);
+      doc.text("PENDENTE", cx, y + ROW_H / 2 - 1, { align: "center" });
+      doc.setFontSize(5.5);
+      doc.setFont("helvetica", "normal");
+      doc.text("entrega sem assinatura do trabalhador", cx, y + ROW_H / 2 + 3, { align: "center" });
+      doc.setTextColor(0);
     }
 
-    // Timestamp
-    doc.setFontSize(4.5);
-    doc.setTextColor(100);
-    const sigDateTime = formatDateTime(entrega.created_at);
-    doc.text(sigDateTime, sigX + sigW / 2, y + ROW_H - 2, { align: "center" });
-    doc.setTextColor(0);
+    // Data/hora do registro. Só sai onde há assinatura: embaixo de uma caixa
+    // vazia ela era lida como a hora em que o trabalhador teria assinado.
+    if (entrega.assinatura_colaborador) {
+      doc.setFontSize(4.5);
+      doc.setTextColor(100);
+      doc.text(formatDateTime(entrega.created_at), sigX + sigW / 2, y + ROW_H - 2, { align: "center" });
+      doc.setTextColor(0);
+    }
 
     y += ROW_H;
   });
@@ -400,6 +460,6 @@ export function gerarFichaEPI(data: FichaData) {
     y += ROW_H;
   }
 
-  drawFooter(doc);
+  drawFooter(doc, pendentes);
   return doc;
 }
