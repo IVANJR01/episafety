@@ -329,9 +329,9 @@ export default function InventarioTab({
                         obrigava a voltar para saber de qual setor/GES era. As
                         larguras aqui são fixas porque o `left` das seguintes é
                         a soma delas. */}
-                    <th className={`${CTX_TH} w-[180px] left-0`}>Descrição do ambiente</th>
-                    <th className={`${CTX_TH} w-[88px] left-[180px]`}>Setor</th>
-                    <th className={`${CTX_TH} w-[48px] left-[268px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>GES</th>
+                    <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-0`}>Descrição do ambiente</th>
+                    <th className={`${CTX_TH} w-[88px] min-w-[88px] max-w-[88px] left-[200px]`}>Setor</th>
+                    <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>GES</th>
                     <th className="p-1.5 text-left border border-amber-400 min-w-[140px]">Função</th>
                     <th className="p-1.5 text-left border border-amber-400 min-w-[150px]">Processo</th>
                     {/* Estes dois rótulos estavam trocados entre si: a coluna
@@ -409,15 +409,15 @@ export default function InventarioTab({
                             entrava na chave e o parágrafo do ambiente era
                             reimpresso inteiro em cada grupo. */}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className={`p-1.5 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-10 ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoSetor} className={`p-1.5 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] break-words ${AMBAR_CHAPADO}`}>
                             {ambiente || NA}
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-middle sticky left-[180px] z-10 bg-white">{val(i.setor)}</td>
+                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-middle sticky left-[200px] z-10 bg-white w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
                         )}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} className={`p-1.5 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[268px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoGes} className={`p-1.5 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words ${AMBAR_CHAPADO}`}>
                             {gesCod || NA}
                           </td>
                         )}
