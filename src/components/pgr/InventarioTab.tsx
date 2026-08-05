@@ -403,18 +403,18 @@ export default function InventarioTab({
                     const groupSetores: string[] = cobertos.map((x: any) => x.setor || NA);
 
                     return (
-                      <tr key={i.id} className={`hover:bg-muted/40 align-top ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
+                      <tr key={i.id} className={`hover:bg-muted/40 align-middle ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
                         {/* Ambiente, Setor e Processo pertencem ao setor: saem uma
                             vez por setor, por mais GES que ele tenha. Antes o GES
                             entrava na chave e o parágrafo do ambiente era
                             reimpresso inteiro em cada grupo. */}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className={`p-1.5 border border-amber-300 align-top font-medium leading-snug sticky left-0 z-10 ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoSetor} className={`p-1.5 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-10 ${AMBAR_CHAPADO}`}>
                             {ambiente || NA}
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-top sticky left-[180px] z-10 bg-white">{val(i.setor)}</td>
+                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-middle sticky left-[180px] z-10 bg-white">{val(i.setor)}</td>
                         )}
                         {abreGes && (
                           <td rowSpan={linhasDoGes} className={`p-1.5 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[268px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] ${AMBAR_CHAPADO}`}>
@@ -423,22 +423,22 @@ export default function InventarioTab({
                         )}
                         {/* As funções vêm do GES — uma vez por grupo. */}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} className="p-1.5 border align-top">{funcoes}</td>
+                          <td rowSpan={linhasDoGes} className="p-1.5 border align-middle">{funcoes}</td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-top">{val(i.processo)}</td>
+                          <td rowSpan={linhasDoSetor} className="p-1.5 border align-middle">{val(i.processo)}</td>
                         )}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.perigo_descricao)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.fonte_geradora)}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.lesoes)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{intensidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{tecnica}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{controles}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{val(i.epi)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-top bg-amber-50/30">{atenuacao}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.perigo_descricao)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.fonte_geradora)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.lesoes)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{intensidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{tecnica}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{controles}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{val(i.epi)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">{atenuacao}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border text-center align-middle bg-amber-50/30">{i.probabilidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border text-center align-middle bg-amber-50/30">{i.severidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 border text-center align-middle font-semibold bg-amber-50/30">{total}</td>}
