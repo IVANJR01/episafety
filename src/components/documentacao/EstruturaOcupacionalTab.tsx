@@ -208,6 +208,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
   const { toast } = useToast();
 
   const [activeSubTab, setActiveSubTab] = useState<string>("estabelecimentos");
+  const [setorDetalheId, setSetorDetalheId] = useState<string | null>(null);
 
   /**
    * Com `only`, a seção vem SEMPRE da prop — nunca do estado.
@@ -322,6 +323,16 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
   const [erroSalvar, setErroSalvar] = useState("");
   const [salvando, setSalvando] = useState(false);
+
+  const handleFuncaoNameChange = (nome: string) => {
+    setFormData((prev: any) => ({ ...prev, nome }));
+    if (!formData.descricao_atividades || formData.descricao_atividades.trim() === "") {
+      const existente = funcoes.find((f: any) => normalizar(f.nome) === normalizar(nome) && f.descricao_atividades);
+      if (existente) {
+        setFormData((prev: any) => ({ ...prev, nome, descricao_atividades: (existente as any).descricao_atividades }));
+      }
+    }
+  };
 
   const handleOpenModal = (type: any, item?: any) => {
     setModalType(type);
@@ -459,6 +470,107 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     }
   };
 
+  const [duplicandoId, setDuplicandoId] = useState<string | null>(null);
+
+  const duplicarSetor = async (setorId: string) => {
+    try {
+      setDuplicandoId(setorId);
+      const setorOriginal = setores.find(s => s.id === setorId);
+      if (!setorOriginal) return;
+
+      const ambienteOriginal = ambientes.find(a => a.id === setorOriginal.ambiente_id);
+      
+      // 1. Clonar Ambiente
+      let novoAmbienteId = undefined;
+      if (ambienteOriginal) {
+        const ambSalvo: any = await saveAmbiente({
+          nome: `${ambienteOriginal.nome} (Cópia)`,
+          tipo_ambiente: ambienteOriginal.tipo_ambiente,
+          pe_direito: ambienteOriginal.pe_direito,
+          descricao: ambienteOriginal.descricao,
+        } as any);
+        novoAmbienteId = ambSalvo.id;
+      }
+
+      // 2. Clonar Setor
+      const setorSalvo: any = await saveSetor({
+        nome: `${setorOriginal.nome} (Cópia)`,
+        ambiente_id: novoAmbienteId,
+      } as any);
+      
+      const novoSetorId = setorSalvo.id;
+
+      // 3. Clonar GES
+      const vinculo = (gheSetores as any[]).find((v) => v.setor_id === setorId);
+      const gesExistente = vinculo && gesList.find((g: any) => g.id === vinculo.ghe_id);
+      
+      let novoGesId = null;
+      if (gesExistente) {
+        const proximoCodigo = String(
+          gesList.reduce((max: number, g: any) => Math.max(max, Number(g.codigo) || 0), 0) + 1,
+        ).padStart(2, "0");
+        const gesSalvo = await saveGes({
+          codigo: proximoCodigo,
+          nome: `${setorOriginal.nome} (Cópia)`,
+          criterio_agrupamento: gesExistente.criterio_agrupamento,
+          _silencioso: true,
+        } as any);
+        novoGesId = (gesSalvo as any).id;
+        await vincularGesSetor({
+          ges_id: novoGesId,
+          setor_id: novoSetorId,
+          nome: `${setorOriginal.nome} (Cópia)`,
+        });
+      }
+
+      // 4. Clonar Processos
+      const processosDoSetor = processos.filter(p => p.setor_id === setorId);
+      for (const p of processosDoSetor) {
+        await saveProcesso({
+          nome: p.nome,
+          descricao_etapas: p.descricao_etapas,
+          caracteristica_atividade: p.caracteristica_atividade,
+          setor_id: novoSetorId,
+        } as any);
+      }
+
+      // 5. Clonar Funções
+      const funcoesDoSetor = funcoes.filter(f => f.setor_id === setorId);
+      for (const f of funcoesDoSetor) {
+        const funcSalva: any = await saveFuncao({
+          nome: f.nome,
+          descricao_atividades: f.descricao_atividades,
+          setor_id: novoSetorId,
+          _silencioso: true,
+        } as any);
+
+        if (novoGesId) {
+          await vincularGesFuncao({
+            ges_id: novoGesId,
+            funcao_id: funcSalva.id,
+            nome_funcao: f.nome,
+            setor_nome: `${setorOriginal.nome} (Cópia)`,
+          });
+        }
+      }
+
+      toast({
+        title: "Setor duplicado",
+        description: "O setor, seus processos e funções foram copiados.",
+      });
+      recarregar();
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Erro ao duplicar setor",
+        description: mensagemErro(err, "setor"),
+        variant: "destructive",
+      });
+    } finally {
+      setDuplicandoId(null);
+    }
+  };
+
   const handleDelete = async () => {
     try {
       if (deleteConfirm.type === "estabelecimento") await deleteEstabelecimento(deleteConfirm.id);
@@ -527,29 +639,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       )}
 
       <Tabs value={secaoAtiva} onValueChange={setActiveSubTab} className="w-full">
-        {!only && (
-          <TabsList className="grid grid-cols-3 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
+        {!only && !setorDetalheId && (
+          <TabsList className="grid grid-cols-2 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
             <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">
               <Building2 className="w-4 h-4" /> Estabelecimentos
             </TabsTrigger>
-            {/* "Ambientes" deixou de ser aba própria: cada Setor cadastra e
-                mantém seu próprio ambiente de trabalho junto (ver o
-                formulário de Setor e handleSave). Existir como aba separada
-                era o convite para cadastrar a caracterização física duas
-                vezes — uma vez aqui, outra de novo no Setor que a usa. */}
             <TabsTrigger value="setores" className="text-xs font-medium flex items-center gap-1">
               <LayoutGrid className="w-4 h-4" /> Setores
             </TabsTrigger>
-            <TabsTrigger value="processos" className="text-xs font-medium flex items-center gap-1">
-              <Workflow className="w-4 h-4" /> Processos
-            </TabsTrigger>
-            <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center gap-1">
-              <Briefcase className="w-4 h-4" /> Funções
-            </TabsTrigger>
-            {/* Atividades deixou de ser aba própria: na prática cada função
-                tinha exatamente uma atividade, com o mesmo texto já escrito em
-                "Descrição das Atividades Desempenhadas" da própria função —
-                era o mesmo cadastro feito duas vezes. */}
           </TabsList>
         )}
 
@@ -595,53 +692,185 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           />
         </TabsContent>
 
-        {/* 2. SETORES (inclui o Ambiente de cada setor — ver comentário na aba) */}
+        {/* 2. SETORES */}
         <TabsContent value="setores" className="mt-4 space-y-4">
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <h3 className="font-semibold text-slate-800">Setores</h3>
-            <Button onClick={() => handleOpenModal("setor")} size="sm">
-              <Plus className="w-4 h-4 mr-1" /> Novo Setor
-            </Button>
-          </div>
-          {/* A coluna mostrava o nome do Ambiente vinculado — que hoje é sempre
-              o próprio ambiente deste setor, então repetia o "Nome do Setor" da
-              primeira coluna. As características (mesma leitura usada no PDF do
-              PGR) são a informação que de fato falta ver aqui. */}
-          <ListaEstrutura
-            itens={setores}
-            vazio="Nenhum setor cadastrado."
-            rotuloPrincipal="Nome do Setor"
-            principal={(set) => set.nome}
-            colunas={[
-              {
-                rotulo: "Ambiente de trabalho",
-                longo: true,
-                classe: "text-sm text-slate-600 max-w-xs truncate",
-                dica: (set) => caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)),
-                celula: (set) =>
-                  caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)) || "—",
-              },
-              {
-                rotulo: "Grupos de exposição",
-                celula: (set) => {
-                  const ids = new Set((gheSetores as any[])
-                    .filter((v) => v.setor_id === set.id).map((v) => v.ghe_id));
-                  const grupos = gesList.filter((g: any) => ids.has(g.id));
-                  return grupos.length
-                    ? grupos.map((g: any) => g.nome).join(" · ")
-                    : "—";
-                },
-              },
-            ]}
-            acoesExtras={(set) => (
-              <Button variant="ghost" size="sm" aria-label="Grupos de exposição deste setor"
-                onClick={() => setSetorDosGrupos({ id: set.id, nome: set.nome })}>
-                <Layers className="w-4 h-4 text-slate-600" />
-              </Button>
-            )}
-            onEditar={(set) => handleOpenModal("setor", set)}
-            onExcluir={(set) => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })}
-          />
+          {setorDetalheId ? (
+            (() => {
+              const setorAtual = setores.find(s => s.id === setorDetalheId);
+              if (!setorAtual) return null;
+              
+              const ambienteAtual = ambientes.find(a => a.id === setorAtual.ambiente_id);
+              const processosDoSetor = processos.filter(p => p.setor_id === setorDetalheId);
+              const funcoesDoSetor = funcoes.filter(f => f.setor_id === setorDetalheId);
+              const vinculo = (gheSetores as any[]).find((v) => v.setor_id === setorDetalheId);
+              const gesExistente = vinculo && gesList.find((g: any) => g.id === vinculo.ghe_id);
+
+              return (
+                <div className="space-y-8 animate-in fade-in duration-300">
+                  <div className="flex flex-wrap items-center gap-4 border-b pb-4">
+                    <Button variant="ghost" size="sm" onClick={() => setSetorDetalheId(null)} className="shrink-0">
+                      &larr; Voltar
+                    </Button>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">Setor: {setorAtual.nome}</h3>
+                      <p className="text-sm text-slate-500">
+                        {gesExistente ? `Grupo de Exposição: ${gesExistente.nome}` : 'Sem grupo de exposição vinculado'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Detalhes do Ambiente */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-slate-800 text-lg">Ambiente de Trabalho</h4>
+                      <Button variant="outline" size="sm" onClick={() => handleOpenModal("setor", setorAtual)}>
+                        <Edit2 className="w-4 h-4 mr-1" /> Editar
+                      </Button>
+                    </div>
+                    {ambienteAtual ? (
+                      <Card className="p-4 bg-slate-50/50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-slate-500 block mb-1">Tipo de Ambiente</span>
+                            <Badge variant="outline">{ambienteAtual.tipo_ambiente}</Badge>
+                          </div>
+                          {ambienteAtual.pe_direito && (
+                            <div>
+                              <span className="text-slate-500 block mb-1">Pé-direito</span>
+                              <span className="font-medium text-slate-700">{ambienteAtual.pe_direito} m</span>
+                            </div>
+                          )}
+                          <div className="md:col-span-2">
+                            <span className="text-slate-500 block mb-1">Caracterização Física</span>
+                            <p className="text-slate-700">{ambienteAtual.descricao || "Não informada"}</p>
+                          </div>
+                        </div>
+                      </Card>
+                    ) : (
+                      <p className="text-sm text-slate-500 italic">Ambiente não caracterizado.</p>
+                    )}
+                  </div>
+
+                  {/* Processos */}
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap justify-between items-center gap-2">
+                      <h4 className="font-semibold text-slate-800 text-lg">Processos de Trabalho</h4>
+                      <Button onClick={() => {
+                        setFormData({ setor_id: setorDetalheId });
+                        setModalType("processo");
+                        setOpenModal(true);
+                      }} size="sm">
+                        <Plus className="w-4 h-4 mr-1" /> Novo Processo
+                      </Button>
+                    </div>
+                    <ListaEstrutura
+                      itens={processosDoSetor}
+                      vazio="Nenhum processo neste setor."
+                      rotuloPrincipal="Nome / Etapas"
+                      principal={(proc) => proc.descricao_etapas || "-"}
+                      colunas={[
+                        {
+                          rotulo: "Característica",
+                          celula: (proc) => <Badge variant="outline">{proc.caracteristica_atividade}</Badge>,
+                        }
+                      ]}
+                      onEditar={(proc) => handleOpenModal("processo", proc)}
+                      onExcluir={(proc) => setDeleteConfirm({ open: true, type: "processo", id: proc.id, nome: proc.nome })}
+                    />
+                  </div>
+
+                  {/* Funções */}
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap justify-between items-center gap-2">
+                      <h4 className="font-semibold text-slate-800 text-lg">Funções</h4>
+                      <div className="flex gap-2">
+                        <Button onClick={() => {
+                          setLoteSetor(setorDetalheId);
+                          setLoteAberto(true);
+                        }} size="sm" variant="outline">
+                          <ClipboardPaste className="w-4 h-4 mr-1" /> Colar em lote
+                        </Button>
+                        <Button onClick={() => {
+                          setFormData({ setor_id: setorDetalheId });
+                          setModalType("funcao");
+                          setOpenModal(true);
+                        }} size="sm">
+                          <Plus className="w-4 h-4 mr-1" /> Nova Função
+                        </Button>
+                      </div>
+                    </div>
+                    <ListaEstrutura
+                      itens={funcoesDoSetor}
+                      vazio="Nenhuma função neste setor."
+                      rotuloPrincipal="Nome da Função"
+                      principal={(func) => func.nome}
+                      colunas={[
+                        {
+                          rotulo: "Descrição das atividades",
+                          longo: true,
+                          classe: "text-sm text-slate-600 max-w-xs truncate",
+                          dica: (func) => (func as any).descricao_atividades || "",
+                          celula: (func) => (func as any).descricao_atividades || "—",
+                        },
+                      ]}
+                      onEditar={(func) => handleOpenModal("funcao", func)}
+                      onExcluir={(func) => setDeleteConfirm({ open: true, type: "funcao", id: func.id, nome: func.nome })}
+                    />
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <>
+              <div className="flex flex-wrap justify-between items-center gap-2">
+                <h3 className="font-semibold text-slate-800">Setores</h3>
+                <Button onClick={() => handleOpenModal("setor")} size="sm">
+                  <Plus className="w-4 h-4 mr-1" /> Novo Setor
+                </Button>
+              </div>
+              <ListaEstrutura
+                itens={setores}
+                vazio="Nenhum setor cadastrado."
+                rotuloPrincipal="Nome do Setor"
+                principal={(set) => set.nome}
+                colunas={[
+                  {
+                    rotulo: "Ambiente de trabalho",
+                    longo: true,
+                    classe: "text-sm text-slate-600 max-w-xs truncate",
+                    dica: (set) => caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)),
+                    celula: (set) =>
+                      caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)) || "—",
+                  },
+                  {
+                    rotulo: "Grupos de exposição",
+                    celula: (set) => {
+                      const ids = new Set((gheSetores as any[])
+                        .filter((v) => v.setor_id === set.id).map((v) => v.ghe_id));
+                      const grupos = gesList.filter((g: any) => ids.has(g.id));
+                      return grupos.length
+                        ? grupos.map((g: any) => g.nome).join(" · ")
+                        : "—";
+                    },
+                  },
+                ]}
+                acoesExtras={(set) => (
+                  <>
+                    <Button variant="ghost" size="sm" aria-label="Duplicar setor"
+                      onClick={() => duplicarSetor(set.id)} disabled={duplicandoId === set.id}>
+                      {duplicandoId === set.id ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <ClipboardPaste className="w-4 h-4 text-slate-600" />}
+                    </Button>
+                    <Button variant="default" size="sm" className="ml-1 px-3 bg-indigo-600 hover:bg-indigo-700" aria-label="Gerenciar este setor"
+                      onClick={() => setSetorDetalheId(set.id)}>
+                      Gerenciar
+                    </Button>
+                  </>
+                )}
+                onEditar={(set) => handleOpenModal("setor", set)}
+                onExcluir={(set) => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })}
+              />
+            </>
+          )}
         </TabsContent>
 
         {/* 4. PROCESSOS */}
@@ -842,7 +1071,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 <Label>Nome / Identificação *</Label>
                 <Input
                   value={formData.nome || ""}
-                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                  onChange={(e) => modalType === "funcao" ? handleFuncaoNameChange(e.target.value) : setFormData({ ...formData, nome: e.target.value })}
                   required
                   placeholder={PLACEHOLDER_NOME[modalType]}
                 />
