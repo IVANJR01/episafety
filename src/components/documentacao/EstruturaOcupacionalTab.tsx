@@ -702,8 +702,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               const ambienteAtual = ambientes.find(a => a.id === setorAtual.ambiente_id);
               const processosDoSetor = processos.filter(p => p.setor_id === setorDetalheId);
               const funcoesDoSetor = funcoes.filter(f => f.setor_id === setorDetalheId);
-              const vinculo = (gheSetores as any[]).find((v) => v.setor_id === setorDetalheId);
-              const gesExistente = vinculo && gesList.find((g: any) => g.id === vinculo.ghe_id);
+              const vinculos = (gheSetores as any[]).filter((v) => v.setor_id === setorDetalheId);
+              const gesDoSetor = vinculos
+                .map((v) => gesList.find((g: any) => g.id === v.ghe_id))
+                .filter(Boolean);
 
               return (
                 <div className="space-y-8 animate-in fade-in duration-300">
@@ -714,7 +716,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     <div>
                       <h3 className="text-xl font-bold text-slate-900">Setor: {setorAtual.nome}</h3>
                       <p className="text-sm text-slate-500">
-                        {gesExistente ? `Grupo de Exposição: ${gesExistente.nome}` : 'Sem grupo de exposição vinculado'}
+                        {gesDoSetor.length > 0
+                          ? `Grupo de Exposição: ${gesDoSetor.map((g: any) => `${g.codigo || ''} - ${g.nome}`).join(' · ')}`
+                          : 'Sem grupo de exposição vinculado'}
                       </p>
                     </div>
                   </div>
