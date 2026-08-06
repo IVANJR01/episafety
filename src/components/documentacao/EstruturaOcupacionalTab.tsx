@@ -248,6 +248,21 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
   const normalizar = (v: string) => (v || "").normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 
+  const [filtroFuncaoTexto, setFiltroFuncaoTexto] = useState("");
+  const [filtroFuncaoSetor, setFiltroFuncaoSetor] = useState("todos");
+
+  const funcoesFiltradas = useMemo(() => {
+    let filtradas = funcoes;
+    if (filtroFuncaoSetor !== "todos") {
+      filtradas = filtradas.filter((f: any) => f.setor_id === filtroFuncaoSetor);
+    }
+    if (filtroFuncaoTexto.trim()) {
+      const q = normalizar(filtroFuncaoTexto);
+      filtradas = filtradas.filter((f: any) => normalizar(f.nome).includes(q));
+    }
+    return filtradas;
+  }, [funcoes, filtroFuncaoTexto, filtroFuncaoSetor]);
+
   /** Uma função por linha; "Nome | Descrição" quando quiser já descrever. */
   const loteLinhas = useMemo(() => {
     const jaExistem = new Set(funcoes.map((f: any) => normalizar(f.nome)));
@@ -666,9 +681,28 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
         {/* 5. FUNÇÕES */}
         <TabsContent value="funcoes" className="mt-4 space-y-4">
-          <div className="flex flex-wrap justify-between items-center gap-2">
+          <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-3">
             <h3 className="font-semibold text-slate-800">Funções</h3>
-            <div className="flex gap-2">
+            <div className="flex flex-1 w-full sm:max-w-xl lg:ml-auto gap-2">
+              <Input 
+                placeholder="Buscar função..." 
+                value={filtroFuncaoTexto} 
+                onChange={e => setFiltroFuncaoTexto(e.target.value)} 
+                className="h-9" 
+              />
+              <Select value={filtroFuncaoSetor} onValueChange={setFiltroFuncaoSetor}>
+                <SelectTrigger className="w-[180px] h-9 shrink-0">
+                  <SelectValue placeholder="Setor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os setores</SelectItem>
+                  {setores.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 shrink-0">
               <Button onClick={() => setLoteAberto(true)} size="sm" variant="outline">
                 <ClipboardPaste className="w-4 h-4 mr-1" /> Colar em lote
               </Button>
@@ -681,7 +715,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               impressos no PDF — só saíram daqui, onde a descrição das
               atividades diz muito mais sobre a função. */}
           <ListaEstrutura
-            itens={funcoes}
+            itens={funcoesFiltradas}
             vazio="Nenhuma função cadastrada."
             rotuloPrincipal="Nome da Função"
             principal={(func) => func.nome}
