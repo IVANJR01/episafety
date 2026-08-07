@@ -494,8 +494,18 @@ export default function Entregas() {
   const matchFunc = (func: Funcionario, term: string) => {
     if (!term) return true;
     const t = term.toLowerCase();
-    return func.nome.toLowerCase().includes(t) || (func.cpf && func.cpf.includes(t)) || (func.matricula && func.matricula.toLowerCase().includes(t));
+    return (func.nome || "").toLowerCase().includes(t) || (func.cpf && func.cpf.includes(t)) || (func.matricula && func.matricula.toLowerCase().includes(t));
   };
+
+  /** Contagem de entregas por funcionário — pré-computada uma vez para
+   *  evitar O(n×m) toda vez que o dropdown renderiza. */
+  const entregaCountByFunc = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of entregas) {
+      map.set(e.funcionario_id, (map.get(e.funcionario_id) || 0) + 1);
+    }
+    return map;
+  }, [entregas]);
 
   const filteredEntregas = useMemo(() => {
     if (!searchTerm) return entregas;
@@ -508,11 +518,11 @@ export default function Entregas() {
   const fichaFilteredFuncs = useMemo(() => {
     const base = fichaSearch ? funcionarios.filter(f => matchFunc(f, fichaSearch)) : funcionarios;
     return [...base].sort((a, b) => {
-      const countA = entregas.filter(e => e.funcionario_id === a.id).length;
-      const countB = entregas.filter(e => e.funcionario_id === b.id).length;
+      const countA = entregaCountByFunc.get(a.id) || 0;
+      const countB = entregaCountByFunc.get(b.id) || 0;
       return countB - countA;
     });
-  }, [funcionarios, fichaSearch, entregas]);
+  }, [funcionarios, fichaSearch, entregaCountByFunc]);
 
   const [formFuncSearch, setFormFuncSearch] = useState("");
   const formFilteredFuncs = useMemo(() => {
@@ -1991,7 +2001,7 @@ export default function Entregas() {
               {fichaSearch && fichaFilteredFuncs.length > 0 && !fichaFuncId && (
                 <div className="border rounded-md max-h-40 overflow-y-auto">
                   {fichaFilteredFuncs.map(f => {
-                    const count = entregas.filter(e => e.funcionario_id === f.id).length;
+                    const count = entregaCountByFunc.get(f.id) || 0;
                     return (
                       <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
                         onClick={() => { setFichaFuncId(f.id); setFichaSearch(f.nome); }}>
