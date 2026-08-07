@@ -84,7 +84,30 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
   }, [applyEmpresaFilter, empresaScopeIds]);
 
   const cacheKey = chaveDeCache(table, columns);
-  const cachedData = useMemo(() => filterByEmpresaScope(getCachedData<T>(cacheKey)) ?? undefined, [filterByEmpresaScope, cacheKey]);
+
+  /**
+   * Retrato local que serve de `initialData` — ou nada, quando não serve.
+   *
+   * Filtrar por empresa pode esvaziar um retrato que existe e tem linhas: é o
+   * que acontece quando ele é de OUTRA empresa. Devolver `[]` nesse caso é o
+   * pior dos mundos, porque lista vazia não é estado de carregando: a tela
+   * abre pronta, com zero registros, e as buscas por id caem no vazio — o
+   * colaborador vira "—" e o EPI vira "EPI não localizado no cadastro", como
+   * se os cadastros tivessem sumido.
+   *
+   * `[]` só é resposta legítima vinda do servidor. Vindo do filtro, significa
+   * "este retrato não é desta empresa" — e aí o certo é não ter retrato
+   * nenhum, deixando a tela em carregando até a busca real responder.
+   */
+  const lerRetratoLocal = useCallback((): T[] | undefined => {
+    const bruto = getCachedData<T>(cacheKey);
+    if (!bruto || bruto.length === 0) return undefined;
+    const noEscopo = filterByEmpresaScope(bruto);
+    if (!noEscopo || noEscopo.length === 0) return undefined;
+    return noEscopo;
+  }, [filterByEmpresaScope, cacheKey]);
+
+  const cachedData = useMemo(() => lerRetratoLocal(), [lerRetratoLocal]);
   const queryKey = useMemo(
     () => getSupabaseQueryKey(table, orderBy, ascending, columns, scopeKey),
     [table, orderBy, ascending, columns, scopeKey],
@@ -113,7 +136,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const cached = filterByEmpresaScope(getCachedData<T>(cacheKey));
+      const cached = lerRetratoLocal();
 
       if (!isOnline()) {
         return cached || [];
