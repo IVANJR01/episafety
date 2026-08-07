@@ -1058,12 +1058,7 @@ export default function Entregas() {
       }
 
       refetch();
-      setSignOpen(false);
-      setPendingEntrega(null);
-      setSelectedUnsigned([]);
-      setSignMode("new");
-      setSignFuncId("");
-      setCapturedPhoto(null);
+      resetSignState();
     } finally {
       setSavingConfirmation(false);
     }
