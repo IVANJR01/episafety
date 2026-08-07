@@ -180,6 +180,19 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     data: query.data || [],
     loading: query.isLoading && query.data === undefined,
     refreshing: query.isFetching,
+    /**
+     * O servidor já confirmou estes dados DESDE que a tela abriu?
+     *
+     * Com retrato guardado no aparelho, `initialData` entrega a lista de
+     * imediato e o react-query não busca sozinho — então `refreshing` fica
+     * FALSO durante os 0-2s até a atualização em segundo plano começar. Quem
+     * usasse só `refreshing` para saber se pode confiar no que está na tela
+     * teria um buraco exatamente nessa janela, que é onde o usuário olha.
+     *
+     * `isFetchedAfterMount` não tem esse buraco: só vira verdadeiro quando
+     * uma resposta do servidor chega depois da montagem.
+     */
+    verificado: query.isFetchedAfterMount,
     error: query.error,
     refetch: fetch,
   };
@@ -190,7 +203,7 @@ export function useSupabaseCrud<T extends { id: string } = any>(table: string, o
   // tela abrir com o retrato guardado no aparelho. Sem repassá-lo, quem
   // consome este hook não tem como saber que o que está na tela ainda pode
   // estar velho — e acaba anunciando número como se fosse definitivo.
-  const { data, loading, refreshing, refetch } = useSupabaseQuery<T>(table, orderBy, ascending);
+  const { data, loading, refreshing, verificado, refetch } = useSupabaseQuery<T>(table, orderBy, ascending);
   const { toast } = useToast();
   const { empresaId } = useAuth();
   const queryClient = useQueryClient();
@@ -269,5 +282,5 @@ export function useSupabaseCrud<T extends { id: string } = any>(table: string, o
     return true;
   };
 
-  return { data, loading, refreshing, refetch, add, update, remove };
+  return { data, loading, refreshing, verificado, refetch, add, update, remove };
 }

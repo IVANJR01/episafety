@@ -123,7 +123,7 @@ const appendObservacao = (current: string | null | undefined, note: string) =>
   [current?.trim(), note.trim()].filter(Boolean).join(" • ");
 
 export default function Entregas() {
-  const { data: entregas, loading: loadingEntregas, refreshing: revalidandoEntregas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
+  const { data: entregas, loading: loadingEntregas, verificado: assinaturasConferidas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios, loading: loadingFuncionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis, loading: loadingEpis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
 
@@ -1113,9 +1113,14 @@ export default function Entregas() {
    * - Devolução: já tem "Desfazer devolução", que restaura o status anterior
    *   da entrega original, acerta o estoque e grava auditoria. Apagar a linha
    *   deixaria a entrega original travada como devolvida e o estoque errado.
+   * - Não conferida com o servidor nesta abertura: enquanto a lista vem só do
+   *   retrato guardado no aparelho, campo de assinatura ausente pode ser campo
+   *   que não veio, não assinatura que falta. Oferecer excluir aí é oferecer
+   *   apagar prova de entrega por causa de dado incompleto — o botão aparece
+   *   quando a confirmação chega, um ou dois segundos depois.
    */
   const podeExcluir = (e: Entrega) =>
-    canDelete && !e.assinatura_colaborador && e.tipo !== "devolucao";
+    canDelete && assinaturasConferidas && !e.assinatura_colaborador && e.tipo !== "devolucao";
 
   /**
    * O que o colaborador tem em mãos hoje — as entregas que podem voltar.
@@ -1246,9 +1251,9 @@ export default function Entregas() {
                 à toa: enquanto a atualização não chega, o botão diz que está
                 conferindo em vez de afirmar quantas faltam. */}
             {canEdit && unsignedEntregas.length > 0 && (
-              <Button variant="outline" onClick={() => openSignExisting()} disabled={revalidandoEntregas}
+              <Button variant="outline" onClick={() => openSignExisting()} disabled={!assinaturasConferidas}
                 className="text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
-                {revalidandoEntregas
+                {!assinaturasConferidas
                   ? <><Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />Conferindo assinaturas…</>
                   : <><PenLine className="w-4 h-4 mr-1 sm:mr-2" />Assinar ({unsignedEntregas.length})</>}
               </Button>
@@ -1327,7 +1332,15 @@ export default function Entregas() {
                             <span className="inline-flex items-center gap-0.5 text-[10px] text-success font-medium"><CheckCircle2 className="w-3 h-3" />Assinado</span>
                           )
                         ) : (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-medium"><AlertCircle className="w-3 h-3" />Pendente</span>
+                          /* Enquanto o servidor não confirmou nesta abertura, a
+                             ausência de assinatura no retrato local não prova
+                             nada — pode ser só campo que não veio. Marcar
+                             "Pendente" aqui alarma com entrega já assinada. */
+                          !assinaturasConferidas ? (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground"><Loader2 className="w-3 h-3 animate-spin" />Conferindo</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500 font-medium"><AlertCircle className="w-3 h-3" />Pendente</span>
+                          )
                         )}
                       </div>
                       {/* Identificação em grade de duas colunas: código à
@@ -1497,6 +1510,13 @@ export default function Entregas() {
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs text-success font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Assinado</span>
                           )
+                        ) : !assinaturasConferidas ? (
+                          /* Ver comentário no cartão do celular: sem confirmação
+                             do servidor nesta abertura, campo ausente no retrato
+                             local não é prova de assinatura faltando. */
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />Conferindo
+                          </span>
                         ) : (
                           <Button size="sm" variant="ghost" className="text-xs text-amber-500 hover:text-amber-600 p-0 h-auto font-medium" onClick={() => openSignExisting(e.funcionario_id)}>
                             <AlertCircle className="w-3.5 h-3.5 mr-1" />Pendente
