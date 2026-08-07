@@ -293,8 +293,7 @@ export default function Entregas() {
           refetch();
         } finally {
           setSavingConfirmation(false);
-          setPendingEntrega(null);
-          setSavedSignatureDataUrl(null);
+          resetSignState();
         }
       };
       saveDirectly();
@@ -304,7 +303,7 @@ export default function Entregas() {
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setSignOpen(true));
     });
-  }, [savingConfirmation, signMode, pendingEntrega, refetch, toast, handleCancelSignatureFlow]);
+  }, [savingConfirmation, signMode, pendingEntrega, refetch, toast, handleCancelSignatureFlow, resetSignState]);
 
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
