@@ -264,12 +264,14 @@ export default function Entregas() {
     }
 
     setSavedSignatureDataUrl(dataUrl);
-    setFullscreenSigOpen(false);
 
     if (dataUrl && signMode === "new" && pendingEntrega) {
       const saveDirectly = async () => {
         const ids = pendingEntrega?.entrega_ids || [];
-        if (ids.length === 0) return;
+        if (ids.length === 0) {
+          setFullscreenSigOpen(false);
+          return;
+        }
 
         setSavingConfirmation(true);
         try {
@@ -283,16 +285,28 @@ export default function Entregas() {
             setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
             toast({ title: "Assinatura salva offline", description: `${ids.length} entrega(s) atualizada(s).` });
           } else {
-            await Promise.all(
+            const results = await Promise.all(
               ids.map(id =>
                 (supabase.from as any)("entregas").update(updatePayload).eq("id", id)
               )
             );
-            toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+            
+            const failed = results.filter(r => r.error);
+            if (failed.length > 0) {
+              console.error("Failed to save signature directly:", failed.map(r => r.error));
+              if (failed.length === ids.length) {
+                toast({ title: "Falha ao salvar assinatura", description: "Ocorreu um erro no servidor. Tente novamente.", variant: "destructive" });
+              } else {
+                toast({ title: "Salvo parcialmente", description: "Alguns itens falharam ao salvar.", variant: "destructive" });
+              }
+            } else {
+              toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+            }
           }
           refetch();
         } finally {
           setSavingConfirmation(false);
+          setFullscreenSigOpen(false);
           resetSignState();
         }
       };
@@ -300,6 +314,7 @@ export default function Entregas() {
       return;
     }
 
+    setFullscreenSigOpen(false);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setSignOpen(true));
     });
