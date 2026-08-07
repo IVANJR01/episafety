@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { PackageOpen } from "lucide-react";
