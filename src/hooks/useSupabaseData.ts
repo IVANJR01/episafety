@@ -40,6 +40,33 @@ const getSupabaseQueryKey = (
 const TABLES_WITHOUT_EMPRESA_ID = new Set<string>([
 ]);
 
+/**
+ * Gaveta do cache local: a tabela, mais a lista de colunas quando ela é
+ * parcial.
+ *
+ * A chave do react-query já separava consultas por `columns`; a do cache no
+ * aparelho, não — era só o nome da tabela. Duas telas lendo a MESMA tabela com
+ * colunas diferentes dividiam a mesma gaveta, e a mais estreita apagava a
+ * mais completa.
+ *
+ * Foi o que aconteceu com as entregas. O Dashboard busca
+ * "id, funcionario_id, epi_id, quantidade, data, created_at, tipo,
+ * created_by, empresa_id" — sem `assinatura_colaborador` e sem `status`. Esse
+ * retrato mutilado virava o conteúdo de `entregas`, e a tela de Entregas
+ * abria com ele: sem o campo da assinatura, TODA entrega parecia pendente.
+ * Daí "Assinar (24)" e a coluna Status em branco por um ou dois segundos, até
+ * a busca completa chegar e corrigir tudo.
+ *
+ * Consulta sem `columns` traz a linha inteira e continua na gaveta com o nome
+ * puro da tabela — é a mesma chave que as telas usam ao gravar direto, para
+ * edição offline.
+ */
+function chaveDeCache(table: string, columns?: string): string {
+  return columns && columns.trim() && columns.trim() !== "*"
+    ? `${table}::${columns.replace(/\s+/g, "")}`
+    : table;
+}
+
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
   const { toast } = useToast();
   const { empresaScopeIds } = useAuth();
@@ -56,7 +83,8 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     return rows.filter((row: any) => row?.empresa_id && allowed.has(row.empresa_id));
   }, [applyEmpresaFilter, empresaScopeIds]);
 
-  const cachedData = useMemo(() => filterByEmpresaScope(getCachedData<T>(table)) ?? undefined, [filterByEmpresaScope, table]);
+  const cacheKey = chaveDeCache(table, columns);
+  const cachedData = useMemo(() => filterByEmpresaScope(getCachedData<T>(cacheKey)) ?? undefined, [filterByEmpresaScope, cacheKey]);
   const queryKey = useMemo(
     () => getSupabaseQueryKey(table, orderBy, ascending, columns, scopeKey),
     [table, orderBy, ascending, columns, scopeKey],
@@ -85,7 +113,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const cached = filterByEmpresaScope(getCachedData<T>(table));
+      const cached = filterByEmpresaScope(getCachedData<T>(cacheKey));
 
       if (!isOnline()) {
         return cached || [];
@@ -102,7 +130,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
         if (error) throw error;
 
         const result = filterByEmpresaScope((rows as T[]) || []) || [];
-        setCachedData(table, result);
+        setCachedData(cacheKey, result);
         return result;
       } catch (error) {
         if (cached && isNetworkFailure(error)) {
