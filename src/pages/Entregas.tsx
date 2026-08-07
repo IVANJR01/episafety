@@ -393,17 +393,22 @@ export default function Entregas() {
         }
       }
 
-      const mapped = ((data || []) as any[]).map((item) => ({
-        id: item.epi_id,
-        source_epi_id: item.epi_id,
-        nome: item.epis.nome,
-        ca: item.epis.ca,
-        descricao: item.epis.descricao,
-        validade: item.epis.validade,
-        empresa_id: item.empresa_id ?? item.epis.empresa_id,
-        estoque: item.estoque || 0,
-        tamanho: item.epis.tamanho,
-      }));
+      const mapped = ((data || []) as any[])
+        .filter((item) => item && item.epi_id)
+        .map((item) => {
+          const ep = Array.isArray(item.epis) ? item.epis[0] : item.epis;
+          return {
+            id: item.epi_id,
+            source_epi_id: item.epi_id,
+            nome: ep?.nome || "EPI não localizado",
+            ca: ep?.ca || null,
+            descricao: ep?.descricao || null,
+            validade: ep?.validade || null,
+            empresa_id: item.empresa_id ?? ep?.empresa_id,
+            estoque: item.estoque || 0,
+            tamanho: ep?.tamanho || null,
+          };
+        });
 
       setContractEpis(mapped);
     };

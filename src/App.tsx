@@ -268,16 +268,16 @@ function ProtectedRoute() {
       <MfaGate>
       <Routes>
         <Route path="/" element={<NetworkErrorBoundary><DashboardGuard /></NetworkErrorBoundary>} />
-        <Route path="/documentacao-sst" element={<DocumentacaoSst />} />
-        <Route path="/epis" element={<EPIs />} />
+        <Route path="/documentacao-sst" element={<NetworkErrorBoundary><DocumentacaoSst /></NetworkErrorBoundary>} />
+        <Route path="/epis" element={<NetworkErrorBoundary><EPIs /></NetworkErrorBoundary>} />
         <Route path="/epis/controle-contrato" element={<NetworkErrorBoundary><ControleEstoqueContrato /></NetworkErrorBoundary>} />
         <Route path="/epis/solicitacoes-materiais" element={<NetworkErrorBoundary><SolicitacoesMateriais /></NetworkErrorBoundary>} />
-        <Route path="/entregas" element={<Entregas />} />
-        <Route path="/relatorios" element={<Relatorios />} />
-        <Route path="/cadastro" element={<CadastroDashboard />} />
-        <Route path="/cadastro/empresas" element={<Empresas />} />
+        <Route path="/entregas" element={<NetworkErrorBoundary><Entregas /></NetworkErrorBoundary>} />
+        <Route path="/relatorios" element={<NetworkErrorBoundary><Relatorios /></NetworkErrorBoundary>} />
+        <Route path="/cadastro" element={<NetworkErrorBoundary><CadastroDashboard /></NetworkErrorBoundary>} />
+        <Route path="/cadastro/empresas" element={<NetworkErrorBoundary><Empresas /></NetworkErrorBoundary>} />
         <Route path="/cadastro/filiais" element={<Navigate to="/cadastro/empresas" replace />} />
-        <Route path="/cadastro/funcionarios" element={<Funcionarios />} />
+        <Route path="/cadastro/funcionarios" element={<NetworkErrorBoundary><Funcionarios /></NetworkErrorBoundary>} />
         {/* A tela de GES era duplicada: /cadastro/ghe montava o mesmo
             componente da aba GES em Documentação. Vira redirecionamento para
             não quebrar links já existentes (ex.: os do PCMSO). */}
