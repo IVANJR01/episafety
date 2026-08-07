@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, Undo2, RotateCcw } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, Undo2, RotateCcw, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1859,8 +1859,21 @@ export default function Entregas() {
 
                 {signFuncId && (() => {
                   const funcUnsigned = unsignedEntregas.filter(e => e.funcionario_id === signFuncId);
+                  
+                  const handleCopyLink = () => {
+                    const url = `${window.location.origin}/assinar/${signFuncId}`;
+                    navigator.clipboard.writeText(`Acesse este link para assinar o recebimento dos seus EPIs: ${url}`);
+                    toast({ title: "Link copiado!", description: "Envie este link para o colaborador assinar remotamente pelo celular." });
+                  };
+
                   return (
                     <>
+                      <div className="flex justify-end mb-2">
+                        <Button variant="outline" size="sm" onClick={handleCopyLink} className="text-xs flex items-center gap-2">
+                          <Link className="w-3 h-3" />
+                          Copiar link p/ WhatsApp
+                        </Button>
+                      </div>
                       <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
                         {funcUnsigned.map(e => (
                           <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">

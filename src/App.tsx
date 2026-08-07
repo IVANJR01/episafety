@@ -99,6 +99,7 @@ import MfaBanner from "@/components/MfaBanner";
 import MfaGate from "@/components/MfaGate";
 import Fase3PortalRHTest from "@/pages/homolog/Fase3PortalRHTest";
 import Fase3AllTest from "@/pages/homolog/Fase3AllTest";
+import AssinaturaRemota from "@/pages/AssinaturaRemota";
 
 
 
@@ -407,6 +408,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
             <Route path="/aprovacao-publica" element={<AprovacaoPublica />} />
+            <Route path="/assinar/:id" element={<AssinaturaRemota />} />
             <Route path="/setup-mfa" element={<SetupMfaGuarded />} />
             <Route path="/homolog/fase3-portal-rh-test" element={<Fase3PortalRHTest />} />
             <Route path="/homolog/fase3-all" element={<Fase3AllTest />} />
