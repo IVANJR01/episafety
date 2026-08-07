@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, Undo2, RotateCcw } from "lucide-react";
+import { Plus, Trash2, FileText, Search, Loader2, PenLine, CheckCircle2, AlertCircle, ScanFace, ShieldCheck, Camera, WifiOff, Undo2, RotateCcw, Link } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSupabaseCrud, useSupabaseQuery } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { PackageOpen } from "lucide-react";
@@ -263,12 +264,14 @@ export default function Entregas() {
     }
 
     setSavedSignatureDataUrl(dataUrl);
-    setFullscreenSigOpen(false);
 
     if (dataUrl && signMode === "new" && pendingEntrega) {
       const saveDirectly = async () => {
         const ids = pendingEntrega?.entrega_ids || [];
-        if (ids.length === 0) return;
+        if (ids.length === 0) {
+          setFullscreenSigOpen(false);
+          return;
+        }
 
         setSavingConfirmation(true);
         try {
@@ -282,28 +285,40 @@ export default function Entregas() {
             setCachedData("entregas", cached.map(e => ids.includes(e.id) ? { ...e, ...updatePayload } : e));
             toast({ title: "Assinatura salva offline", description: `${ids.length} entrega(s) atualizada(s).` });
           } else {
-            await Promise.all(
+            const results = await Promise.all(
               ids.map(id =>
                 (supabase.from as any)("entregas").update(updatePayload).eq("id", id)
               )
             );
-            toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+            
+            const failed = results.filter(r => r.error);
+            if (failed.length > 0) {
+              console.error("Failed to save signature directly:", failed.map(r => r.error));
+              if (failed.length === ids.length) {
+                toast({ title: "Falha ao salvar assinatura", description: "Ocorreu um erro no servidor. Tente novamente.", variant: "destructive" });
+              } else {
+                toast({ title: "Salvo parcialmente", description: "Alguns itens falharam ao salvar.", variant: "destructive" });
+              }
+            } else {
+              toast({ title: `Assinatura salva em ${ids.length} entrega(s)!` });
+            }
           }
           refetch();
         } finally {
           setSavingConfirmation(false);
-          setPendingEntrega(null);
-          setSavedSignatureDataUrl(null);
+          setFullscreenSigOpen(false);
+          resetSignState();
         }
       };
       saveDirectly();
       return;
     }
 
+    setFullscreenSigOpen(false);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => setSignOpen(true));
     });
-  }, [savingConfirmation, signMode, pendingEntrega, refetch, toast, handleCancelSignatureFlow]);
+  }, [savingConfirmation, signMode, pendingEntrega, refetch, toast, handleCancelSignatureFlow, resetSignState]);
 
   const entregaDefaults = {
     funcionario_id: "", quantidade: 1,
@@ -393,17 +408,22 @@ export default function Entregas() {
         }
       }
 
-      const mapped = ((data || []) as any[]).map((item) => ({
-        id: item.epi_id,
-        source_epi_id: item.epi_id,
-        nome: item.epis.nome,
-        ca: item.epis.ca,
-        descricao: item.epis.descricao,
-        validade: item.epis.validade,
-        empresa_id: item.empresa_id ?? item.epis.empresa_id,
-        estoque: item.estoque || 0,
-        tamanho: item.epis.tamanho,
-      }));
+      const mapped = ((data || []) as any[])
+        .filter((item) => item && item.epi_id)
+        .map((item) => {
+          const ep = Array.isArray(item.epis) ? item.epis[0] : item.epis;
+          return {
+            id: item.epi_id,
+            source_epi_id: item.epi_id,
+            nome: ep?.nome || "EPI não localizado",
+            ca: ep?.ca || null,
+            descricao: ep?.descricao || null,
+            validade: ep?.validade || null,
+            empresa_id: item.empresa_id ?? ep?.empresa_id,
+            estoque: item.estoque || 0,
+            tamanho: ep?.tamanho || null,
+          };
+        });
 
       setContractEpis(mapped);
     };
@@ -494,8 +514,18 @@ export default function Entregas() {
   const matchFunc = (func: Funcionario, term: string) => {
     if (!term) return true;
     const t = term.toLowerCase();
-    return func.nome.toLowerCase().includes(t) || (func.cpf && func.cpf.includes(t)) || (func.matricula && func.matricula.toLowerCase().includes(t));
+    return (func.nome || "").toLowerCase().includes(t) || (func.cpf && func.cpf.includes(t)) || (func.matricula && func.matricula.toLowerCase().includes(t));
   };
+
+  /** Contagem de entregas por funcionário — pré-computada uma vez para
+   *  evitar O(n×m) toda vez que o dropdown renderiza. */
+  const entregaCountByFunc = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of entregas) {
+      map.set(e.funcionario_id, (map.get(e.funcionario_id) || 0) + 1);
+    }
+    return map;
+  }, [entregas]);
 
   const filteredEntregas = useMemo(() => {
     if (!searchTerm) return entregas;
@@ -508,11 +538,11 @@ export default function Entregas() {
   const fichaFilteredFuncs = useMemo(() => {
     const base = fichaSearch ? funcionarios.filter(f => matchFunc(f, fichaSearch)) : funcionarios;
     return [...base].sort((a, b) => {
-      const countA = entregas.filter(e => e.funcionario_id === a.id).length;
-      const countB = entregas.filter(e => e.funcionario_id === b.id).length;
+      const countA = entregaCountByFunc.get(a.id) || 0;
+      const countB = entregaCountByFunc.get(b.id) || 0;
       return countB - countA;
     });
-  }, [funcionarios, fichaSearch, entregas]);
+  }, [funcionarios, fichaSearch, entregaCountByFunc]);
 
   const [formFuncSearch, setFormFuncSearch] = useState("");
   const formFilteredFuncs = useMemo(() => {
@@ -1042,12 +1072,7 @@ export default function Entregas() {
       }
 
       refetch();
-      setSignOpen(false);
-      setPendingEntrega(null);
-      setSelectedUnsigned([]);
-      setSignMode("new");
-      setSignFuncId("");
-      setCapturedPhoto(null);
+      resetSignState();
     } finally {
       setSavingConfirmation(false);
     }
@@ -1851,8 +1876,21 @@ export default function Entregas() {
 
                 {signFuncId && (() => {
                   const funcUnsigned = unsignedEntregas.filter(e => e.funcionario_id === signFuncId);
+                  
+                  const handleCopyLink = () => {
+                    const url = `${window.location.origin}/assinar/${signFuncId}`;
+                    navigator.clipboard.writeText(`Acesse este link para assinar o recebimento dos seus EPIs: ${url}`);
+                    toast({ title: "Link copiado!", description: "Envie este link para o colaborador assinar remotamente pelo celular." });
+                  };
+
                   return (
                     <>
+                      <div className="flex justify-end mb-2">
+                        <Button variant="outline" size="sm" onClick={handleCopyLink} className="text-xs flex items-center gap-2">
+                          <Link className="w-3 h-3" />
+                          Copiar link p/ WhatsApp
+                        </Button>
+                      </div>
                       <div className="border rounded-md max-h-48 overflow-y-auto divide-y">
                         {funcUnsigned.map(e => (
                           <label key={e.id} className="flex items-center gap-3 px-3 py-2 hover:bg-accent/50 cursor-pointer text-sm">
@@ -1999,7 +2037,7 @@ export default function Entregas() {
               {fichaSearch && fichaFilteredFuncs.length > 0 && !fichaFuncId && (
                 <div className="border rounded-md max-h-40 overflow-y-auto">
                   {fichaFilteredFuncs.map(f => {
-                    const count = entregas.filter(e => e.funcionario_id === f.id).length;
+                    const count = entregaCountByFunc.get(f.id) || 0;
                     return (
                       <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
                         onClick={() => { setFichaFuncId(f.id); setFichaSearch(f.nome); }}>
