@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
-import { setCacheUserScope, clearAllCachedData } from "@/lib/offlineStorage";
+import { setCacheUserScope, setCacheEmpresaScope, clearAllCachedData } from "@/lib/offlineStorage";
 import { clearCachedSession, loadCachedSession, saveCachedSession } from "@/lib/authSessionCache";
 import { resolveOfflineSession } from "@/lib/authState";
 import { purgeQueryCache } from "@/lib/queryClient";
@@ -199,6 +199,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { purgeQueryCache(); } catch {}
     try { clearAllCachedData(); } catch {}
   }, [empresasIds, isSuperAdmin, isPrincipal, empresaId]);
+
+  /*
+   * O cache no aparelho passa a ter uma gaveta por empresa.
+   *
+   * Antes era uma gaveta por usuário: cada empresa sobrescrevia o retrato da
+   * anterior na mesma chave. Precisa ser aplicado ANTES de qualquer leitura,
+   * senão a tela lê a gaveta errada no primeiro render.
+   */
+  useEffect(() => {
+    setCacheEmpresaScope(empresaScopeIds);
+  }, [empresaScopeIds]);
 
   // Resolve empresa scope (matriz + todas as filiais da mesma árvore) para isolamento estrito por empresa.
   useEffect(() => {

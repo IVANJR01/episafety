@@ -158,7 +158,11 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
 }
 
 export function useSupabaseCrud<T extends { id: string } = any>(table: string, orderBy?: string, ascending?: boolean) {
-  const { data, loading, refetch } = useSupabaseQuery<T>(table, orderBy, ascending);
+  // `refreshing` sinaliza a atualização em segundo plano que roda logo após a
+  // tela abrir com o retrato guardado no aparelho. Sem repassá-lo, quem
+  // consome este hook não tem como saber que o que está na tela ainda pode
+  // estar velho — e acaba anunciando número como se fosse definitivo.
+  const { data, loading, refreshing, refetch } = useSupabaseQuery<T>(table, orderBy, ascending);
   const { toast } = useToast();
   const { empresaId } = useAuth();
   const queryClient = useQueryClient();
@@ -237,5 +241,5 @@ export function useSupabaseCrud<T extends { id: string } = any>(table: string, o
     return true;
   };
 
-  return { data, loading, refetch, add, update, remove };
+  return { data, loading, refreshing, refetch, add, update, remove };
 }

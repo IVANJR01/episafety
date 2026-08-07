@@ -7,7 +7,11 @@ const SYNC_QUEUE_KEY = "offline_sync_queue";
 const CACHE_SCOPE_KEY = "offline_cache_scope_uid";
 const LEGACY_PURGE_FLAG = "offline_cache_legacy_purged_v1";
 const CACHE_VERSION_KEY = "offline_cache_schema_version";
-const CACHE_SCHEMA_VERSION = "v2_strict_company_scope";
+// Trocar esta string apaga todo cache local na próxima abertura. A v3 existe
+// porque a v2 guardava as tabelas numa única gaveta por usuário: quem
+// alternava de empresa sobrescrevia a gaveta da outra, e sobraram snapshots
+// misturados no aparelho de quem já usava o sistema.
+const CACHE_SCHEMA_VERSION = "v3_scope_por_empresa";
 
 // One-shot purge of stale/unscoped cache entries left over from older editor/preview sessions.
 (function purgeLegacyUnscopedCache() {
@@ -48,9 +52,34 @@ const getScope = (): string | null => {
   return currentUserScope;
 };
 
+/**
+ * Escopo de empresa da gaveta de cache.
+ *
+ * Sem ele, todas as empresas dividiam a MESMA gaveta por tabela: entrar na
+ * empresa A gravava as entregas de A em `entregas`, entrar na B sobrescrevia
+ * com as de B. Ao voltar para A, a tela abria com o retrato da B — filtrado
+ * por empresa, então o que sobrava era uma lista velha ou incompleta, exibida
+ * como se fosse a verdade até a atualização em segundo plano chegar, segundos
+ * depois. Era isso que fazia entrega já assinada aparecer como pendente por
+ * alguns segundos, e a contagem de "Assinar (N)" mentir nesse intervalo.
+ *
+ * Com o escopo na chave, cada empresa tem a sua gaveta: alternar não
+ * sobrescreve nada e voltar reabre o retrato certo.
+ */
+let currentEmpresaScope: string | null = null;
+
+export function setCacheEmpresaScope(empresaIds: string[] | null | undefined) {
+  const next = empresaIds && empresaIds.length > 0
+    ? [...empresaIds].sort().join(",")
+    : null;
+  currentEmpresaScope = next;
+}
+
 const buildKey = (key: string): string => {
   const scope = getScope();
-  return scope ? `${CACHE_PREFIX}${scope}__${key}` : `${CACHE_PREFIX}__nouser__${key}`;
+  const base = scope ? `${CACHE_PREFIX}${scope}` : `${CACHE_PREFIX}__nouser__`;
+  const empresa = currentEmpresaScope ? `emp:${currentEmpresaScope}__` : "";
+  return `${base}__${empresa}${key}`;
 };
 
 export function clearAllCachedData() {

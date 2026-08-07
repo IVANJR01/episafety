@@ -122,7 +122,7 @@ const appendObservacao = (current: string | null | undefined, note: string) =>
   [current?.trim(), note.trim()].filter(Boolean).join(" • ");
 
 export default function Entregas() {
-  const { data: entregas, loading: loadingEntregas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
+  const { data: entregas, loading: loadingEntregas, refreshing: revalidandoEntregas, add, remove, refetch } = useSupabaseCrud<Entrega>("entregas", "created_at");
   const { data: funcionarios, loading: loadingFuncionarios } = useSupabaseQuery<Funcionario>("funcionarios");
   const { data: epis, loading: loadingEpis, refetch: refetchEpis } = useSupabaseQuery<EPI>("epis");
 
@@ -1214,10 +1214,18 @@ export default function Entregas() {
         subtitle="Controle de entregas, assinaturas, devoluções e histórico de EPIs."
         actions={
           <>
+            {/* A tela abre com o retrato guardado no aparelho e só depois
+                recebe o dado do servidor. Nesse intervalo a contagem pode
+                estar velha — entrega já assinada em outro aparelho ainda
+                aparece como pendente. Anunciar um número nessa hora assusta
+                à toa: enquanto a atualização não chega, o botão diz que está
+                conferindo em vez de afirmar quantas faltam. */}
             {canEdit && unsignedEntregas.length > 0 && (
-              <Button variant="outline" onClick={() => openSignExisting()} className="text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
-                <PenLine className="w-4 h-4 mr-1 sm:mr-2" />
-                Assinar ({unsignedEntregas.length})
+              <Button variant="outline" onClick={() => openSignExisting()} disabled={revalidandoEntregas}
+                className="text-xs sm:text-sm border-amber-500 text-amber-600 hover:bg-amber-50">
+                {revalidandoEntregas
+                  ? <><Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />Conferindo assinaturas…</>
+                  : <><PenLine className="w-4 h-4 mr-1 sm:mr-2" />Assinar ({unsignedEntregas.length})</>}
               </Button>
             )}
             {canEdit && (
