@@ -1,1 +1,7 @@
 project_id = "estmuducawmftvpbeutm"
+
+# Chamada só pelo cron (net.http_post), sem sessão de usuário por trás —
+# não tem JWT de plataforma pra verificar. A autorização real é o header
+# x-cron-secret, checado dentro da própria function.
+[functions.alertas-vencimento-sst]
+verify_jwt = false

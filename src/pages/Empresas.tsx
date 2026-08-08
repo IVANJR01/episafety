@@ -30,10 +30,12 @@ export default function Empresas() {
     telefone: "",
     email: "",
     email_compras: "",
+    email_sst: "",
   });
 
   /** Mesma leitura que o envio faz — a tela mostra o que vai valer na hora. */
   const emailsCompras = useMemo(() => separarEmails(form.email_compras), [form.email_compras]);
+  const emailsSst = useMemo(() => separarEmails(form.email_sst), [form.email_sst]);
 
   useEffect(() => {
     loadEmpresa();
@@ -47,7 +49,7 @@ export default function Empresas() {
         const e = cached.find((c: any) => c.id === empresaId) || cached[0];
         setExistingId(e.id);
         setLogoUrl(e.logo_url || null);
-        setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "", email_compras: e.email_compras || "" });
+        setForm({ nome: e.nome || "", cnpj: e.cnpj || "", endereco: e.endereco || "", telefone: e.telefone || "", email: e.email || "", email_compras: e.email_compras || "", email_sst: e.email_sst || "" });
       }
       return;
     }
@@ -144,6 +146,14 @@ export default function Empresas() {
       toast({
         title: "Confira os e-mails para compras",
         description: `Sem formato de e-mail: ${emailsCompras.invalidos.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (emailsSst.invalidos.length > 0) {
+      toast({
+        title: "Confira os e-mails de alertas de SST",
+        description: `Sem formato de e-mail: ${emailsSst.invalidos.join(", ")}`,
         variant: "destructive",
       });
       return;
@@ -314,6 +324,36 @@ export default function Empresas() {
                         <span className="text-destructive">
                           {emailsCompras.validos.length > 0 ? " · " : ""}
                           sem formato de e-mail: {emailsCompras.invalidos.join(", ")}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+                <div className="sm:col-span-2">
+                  <Label>E-mails para Alertas de Vencimento SST 🔔</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Quem recebe o resumo diário de documentos do Arquivo Digital (ASO,
+                    capacitações, ficha de EPI, ordem de serviço) vencidos ou prestes a vencer.
+                    Sem preencher, ninguém recebe — o Painel de Vencimentos continua disponível
+                    na tela normalmente.
+                  </p>
+                  <Textarea
+                    rows={3}
+                    value={form.email_sst}
+                    onChange={e => setForm({ ...form, email_sst: e.target.value })}
+                    placeholder={"seguranca@empresa.com, rh@empresa.com"}
+                  />
+                  {(emailsSst.validos.length > 0 || emailsSst.invalidos.length > 0) && (
+                    <p className="text-xs mt-1.5">
+                      {emailsSst.validos.length > 0 && (
+                        <span className="text-muted-foreground">
+                          {emailsSst.validos.length} {emailsSst.validos.length === 1 ? "destinatário" : "destinatários"}
+                        </span>
+                      )}
+                      {emailsSst.invalidos.length > 0 && (
+                        <span className="text-destructive">
+                          {emailsSst.validos.length > 0 ? " · " : ""}
+                          sem formato de e-mail: {emailsSst.invalidos.join(", ")}
                         </span>
                       )}
                     </p>
