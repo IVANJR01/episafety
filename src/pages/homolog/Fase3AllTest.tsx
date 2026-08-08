@@ -102,12 +102,7 @@ function isRlsDenied(err: any) {
 function isAllowed() {
   if (typeof window === "undefined") return false;
   const h = window.location.hostname;
-  return (
-    h === "localhost" ||
-    h.startsWith("127.") ||
-    h.endsWith(".lovable.app") ||
-    h.endsWith(".lovableproject.com")
-  );
+  return h === "localhost" || h.startsWith("127.");
 }
 
 async function callEdge(asoId: string) {
