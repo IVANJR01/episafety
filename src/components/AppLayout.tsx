@@ -59,7 +59,18 @@ const gestaoDocItems: NavItem[] = [
   { path: "/treinamentos", label: "Capacitações", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
-  { path: "/arquivo-digital/vencimentos", label: "Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
+];
+
+// Arquivo Digital SST — o dossiê do colaborador e tudo que o alimenta.
+// Os três itens de pendência apontam para a mesma tela com filtro na URL:
+// são visões do mesmo painel, não telas diferentes.
+const arquivoDigitalItems: NavItem[] = [
+  { path: "/arquivo-digital/dossies", label: "Dossiê de Colaboradores", icon: FolderOpen, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/vencimentos?situacao=vencido", label: "Documentos Vencidos", icon: FileWarning, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/vencimentos?situacao=vence_em_breve", label: "Vencendo em breve", icon: Bell, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/vencimentos?situacao=nao_enviado", label: "Documentos Não Enviados", icon: ClipboardList, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/historico", label: "Histórico de Versões", icon: GitBranch, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/tipos", label: "Configuração de Tipos", icon: Settings, moduleKey: "arquivo_digital" },
   { path: "/arquivo-digital/importar-drive", label: "Importar do Drive", icon: HardDrive, moduleKey: "arquivo_digital" },
 ];
 
@@ -190,6 +201,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleAsoItems = asoItems.filter((i) => canAccess(i.moduleKey));
   const visiblePortalRhItems = portalRhItems.filter((i) => canAccess(i.moduleKey));
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
+  const visibleArquivoDigitalItems = arquivoDigitalItems.filter((i) => canAccess(i.moduleKey));
   // eSocial ocultado temporariamente do menu (rotas/páginas/dados preservados).
   const visibleEsocialItems: NavItem[] = [];
   void esocialItems;
@@ -202,6 +214,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isAsoActive = visibleAsoItems.some((i) => location.pathname.startsWith(i.path));
   const isPortalRhActive = visiblePortalRhItems.some((i) => location.pathname.startsWith(i.path));
   const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
+  const isArquivoDigitalActive = location.pathname.startsWith("/arquivo-digital");
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
   const isProgramasActive = location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat");
@@ -211,6 +224,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [asoOpen, setAsoOpen] = useState(isAsoActive);
   const [portalRhOpen, setPortalRhOpen] = useState(isPortalRhActive);
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
+  const [arquivoDigitalOpen, setArquivoDigitalOpen] = useState(isArquivoDigitalActive);
   const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
   const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
@@ -563,6 +577,47 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
                   {visibleGestaoDocItems.map((item) => {
                     const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visibleArquivoDigitalItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setArquivoDigitalOpen(!arquivoDigitalOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isArquivoDigitalActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <FolderOpen className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Arquivo Digital SST</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${arquivoDigitalOpen ? "rotate-180" : ""}`} />
+              </button>
+              {arquivoDigitalOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleArquivoDigitalItems.map((item) => {
+                    // Três itens apontam para a mesma rota com filtro na URL,
+                    // então comparar só o pathname marcaria os três de uma vez.
+                    const active = `${location.pathname}${location.search}` === item.path;
                     return (
                       <Link
                         key={item.path}

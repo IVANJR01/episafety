@@ -2,9 +2,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const BUCKET_DOCS = "documentos-internos";
 
-/** Situações que a view calcula. A cor da tela sai daqui. */
+/**
+ * Situações do documento. As seis primeiras vêm calculadas da view; as
+ * duas últimas são derivadas na tela:
+ *  - `substituido`  → versão que não é mais a atual (view de histórico).
+ *  - `nao_aplicavel` → tipo que a função do colaborador não exige
+ *    (internal_document_requirements). Não existe linha de documento
+ *    para esse caso, por isso a view não teria como devolver.
+ */
 export type SituacaoDocumento =
-  | "nao_enviado" | "vigente" | "vence_em_breve" | "vencido" | "arquivado";
+  | "nao_enviado" | "vigente" | "vence_em_breve" | "vencido"
+  | "em_renovacao" | "arquivado" | "substituido" | "nao_aplicavel";
 
 export interface DocumentoSituacao {
   id: string;
@@ -31,7 +39,10 @@ export const ROTULO_SITUACAO: Record<SituacaoDocumento, string> = {
   vigente: "Vigente",
   vence_em_breve: "Vence em breve",
   vencido: "Vencido",
+  em_renovacao: "Em renovação",
+  substituido: "Substituído",
   arquivado: "Arquivado",
+  nao_aplicavel: "Não aplicável",
 };
 
 /** Classes de cor, na mesma convenção que o restante do sistema usa. */
@@ -40,7 +51,40 @@ export const COR_SITUACAO: Record<SituacaoDocumento, string> = {
   vigente: "bg-green-100 text-green-800 border-green-300",
   vence_em_breve: "bg-orange-100 text-orange-800 border-orange-300",
   vencido: "bg-red-100 text-red-800 border-red-300",
+  em_renovacao: "bg-blue-100 text-blue-800 border-blue-300",
+  substituido: "bg-slate-100 text-slate-600 border-slate-300",
   arquivado: "bg-slate-100 text-slate-600 border-slate-300",
+  nao_aplicavel: "bg-slate-100 text-slate-600 border-slate-300",
+};
+
+/**
+ * Ícone por situação, em nome de ícone do lucide.
+ *
+ * Cor sozinha não comunica: quem não distingue vermelho de verde veria
+ * duas tarjas iguais, e num controle de vencimento isso é a diferença
+ * entre "em dia" e "irregular". Toda tarja sai com cor + texto + ícone.
+ */
+export const ICONE_SITUACAO: Record<SituacaoDocumento, string> = {
+  nao_enviado: "AlertCircle",
+  vigente: "CheckCircle2",
+  vence_em_breve: "Clock",
+  vencido: "XCircle",
+  em_renovacao: "RefreshCw",
+  substituido: "History",
+  arquivado: "Archive",
+  nao_aplicavel: "MinusCircle",
+};
+
+/** Ordem de urgência — usada para ordenar o dossiê e os painéis. */
+export const PESO_SITUACAO: Record<SituacaoDocumento, number> = {
+  vencido: 0,
+  vence_em_breve: 1,
+  nao_enviado: 2,
+  em_renovacao: 3,
+  vigente: 4,
+  substituido: 5,
+  arquivado: 6,
+  nao_aplicavel: 7,
 };
 
 /**
@@ -281,11 +325,126 @@ export async function garantirDocumento(p: {
   return data.id as string;
 }
 
-/** Histórico completo, da versão mais nova para a mais antiga. */
+/**
+ * Histórico completo, da versão mais nova para a mais antiga.
+ *
+ * Lê da view, que já marca cada versão como `atual` ou `substituida` —
+ * derivado da numeração, nunca gravado, porque versão nenhuma é apagada
+ * nem reescrita (o bucket não tem política de UPDATE/DELETE).
+ */
 export async function historicoVersoes(documentoId: string) {
-  const { data } = await (supabase.from as any)("internal_document_versions")
+  const { data } = await (supabase.from as any)("internal_document_versions_historico")
     .select("*")
     .eq("documento_id", documentoId)
     .order("versao", { ascending: false });
   return (data || []) as any[];
+}
+
+/**
+ * Registra uma MUTAÇÃO no documento (enviou/renovou/arquivou/...).
+ *
+ * Best-effort, como o registro de leitura: falhar aqui não pode desfazer
+ * a ação que o usuário já concluiu.
+ */
+export async function registrarEvento(p: {
+  empresaId: string;
+  documentoId?: string | null;
+  versaoId?: string | null;
+  colaboradorId?: string | null;
+  acao: "enviou" | "renovou" | "iniciou_renovacao" | "cancelou_renovacao" | "arquivou" | "desarquivou" | "importou";
+  detalhe?: string | null;
+  userId?: string | null;
+  userEmail?: string | null;
+}): Promise<void> {
+  try {
+    await (supabase.from as any)("document_audit_events").insert({
+      empresa_id: p.empresaId,
+      documento_id: p.documentoId || null,
+      versao_id: p.versaoId || null,
+      colaborador_id: p.colaboradorId || null,
+      acao: p.acao,
+      detalhe: p.detalhe || null,
+      usuario_id: p.userId || null,
+      usuario_email: p.userEmail || null,
+    });
+  } catch {
+    // Silencioso de propósito — ver comentário acima.
+  }
+}
+
+/**
+ * Arquiva o documento: tira de circulação sem destruir.
+ *
+ * Exclusão física nunca acontece — some com a prova justamente do
+ * período que uma fiscalização pediria. O motivo é obrigatório: sem ele,
+ * seis meses depois ninguém sabe por que aquele ASO saiu do dossiê.
+ */
+export async function arquivarDocumento(p: {
+  documentoId: string;
+  empresaId: string;
+  colaboradorId?: string | null;
+  motivo: string;
+  userId?: string | null;
+  userEmail?: string | null;
+}): Promise<void> {
+  const motivo = p.motivo.trim();
+  if (!motivo) throw new Error("Informe o motivo do arquivamento.");
+
+  const { error } = await (supabase.from as any)("internal_documents")
+    .update({
+      arquivado_em: new Date().toISOString(),
+      arquivado_por: p.userId || null,
+      arquivado_motivo: motivo,
+      updated_by: p.userId || null,
+    })
+    .eq("id", p.documentoId);
+  if (error) throw error;
+
+  await registrarEvento({
+    empresaId: p.empresaId, documentoId: p.documentoId, colaboradorId: p.colaboradorId,
+    acao: "arquivou", detalhe: motivo, userId: p.userId, userEmail: p.userEmail,
+  });
+}
+
+export async function desarquivarDocumento(p: {
+  documentoId: string;
+  empresaId: string;
+  colaboradorId?: string | null;
+  userId?: string | null;
+  userEmail?: string | null;
+}): Promise<void> {
+  const { error } = await (supabase.from as any)("internal_documents")
+    .update({ arquivado_em: null, arquivado_por: null, arquivado_motivo: null, updated_by: p.userId || null })
+    .eq("id", p.documentoId);
+  if (error) throw error;
+
+  await registrarEvento({
+    empresaId: p.empresaId, documentoId: p.documentoId, colaboradorId: p.colaboradorId,
+    acao: "desarquivou", userId: p.userId, userEmail: p.userEmail,
+  });
+}
+
+/**
+ * Marca/desmarca "em renovação" — o documento foi cobrado e alguém está
+ * atrás do arquivo novo. Some sozinho quando a versão nova é publicada
+ * (trigger no banco), então não fica preso se a pessoa desistir no meio.
+ */
+export async function definirEmRenovacao(p: {
+  documentoId: string;
+  empresaId: string;
+  colaboradorId?: string | null;
+  emRenovacao: boolean;
+  userId?: string | null;
+  userEmail?: string | null;
+}): Promise<void> {
+  const { error } = await (supabase.from as any)("internal_documents")
+    .update({ em_renovacao: p.emRenovacao, updated_by: p.userId || null })
+    .eq("id", p.documentoId);
+  if (error) throw error;
+
+  await registrarEvento({
+    empresaId: p.empresaId, documentoId: p.documentoId, colaboradorId: p.colaboradorId,
+    acao: p.emRenovacao ? "iniciou_renovacao" : "cancelou_renovacao",
+    userId: p.userId, userEmail: p.userEmail,
+  });
 }

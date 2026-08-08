@@ -21,6 +21,9 @@ import Funcionarios from "@/pages/Funcionarios";
 import DossieColaborador from "@/pages/DossieColaborador";
 import PainelVencimentos from "@/pages/PainelVencimentos";
 import ImportarDrive from "@/pages/ImportarDrive";
+import DossieColaboradores from "@/pages/DossieColaboradores";
+import HistoricoVersoes from "@/pages/HistoricoVersoes";
+import ConfiguracaoTiposDocumento from "@/pages/ConfiguracaoTiposDocumento";
 import Entregas from "@/pages/Entregas";
 import Relatorios from "@/pages/Relatorios";
 import Empresas from "@/pages/Empresas";
@@ -282,8 +285,15 @@ function ProtectedRoute() {
         <Route path="/cadastro/empresas" element={<NetworkErrorBoundary><Empresas /></NetworkErrorBoundary>} />
         <Route path="/cadastro/filiais" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/cadastro/funcionarios" element={<NetworkErrorBoundary><Funcionarios /></NetworkErrorBoundary>} />
-        <Route path="/cadastro/funcionarios/:id/dossie" element={<NetworkErrorBoundary><DossieColaborador /></NetworkErrorBoundary>} />
+        {/* O dossiê morava sob /cadastro/funcionarios; agora tem casa própria
+            no Arquivo Digital. A rota antiga segue redirecionando para não
+            quebrar link que alguém já tenha salvo. */}
+        <Route path="/cadastro/funcionarios/:id/dossie" element={<Navigate to="/arquivo-digital/dossies" replace />} />
+        <Route path="/arquivo-digital/dossies" element={<NetworkErrorBoundary><DossieColaboradores /></NetworkErrorBoundary>} />
+        <Route path="/arquivo-digital/dossie/:id" element={<NetworkErrorBoundary><DossieColaborador /></NetworkErrorBoundary>} />
         <Route path="/arquivo-digital/vencimentos" element={<NetworkErrorBoundary><PainelVencimentos /></NetworkErrorBoundary>} />
+        <Route path="/arquivo-digital/historico" element={<NetworkErrorBoundary><HistoricoVersoes /></NetworkErrorBoundary>} />
+        <Route path="/arquivo-digital/tipos" element={<NetworkErrorBoundary><ConfiguracaoTiposDocumento /></NetworkErrorBoundary>} />
         <Route path="/arquivo-digital/importar-drive" element={<NetworkErrorBoundary><ImportarDrive /></NetworkErrorBoundary>} />
         {/* A tela de GES era duplicada: /cadastro/ghe montava o mesmo
             componente da aba GES em Documentação. Vira redirecionamento para

@@ -591,7 +591,7 @@ export default function Funcionarios() {
                           <RotateCcw className="w-3 h-3" />Reativar
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Dossiê" onClick={() => navigate(`/cadastro/funcionarios/${f.id}/dossie`)}><FolderOpen className="w-3.5 h-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Dossiê" onClick={() => navigate(`/arquivo-digital/dossie/${f.id}`)}><FolderOpen className="w-3.5 h-3.5" /></Button>
                       {canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
                       {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
@@ -660,7 +660,7 @@ export default function Funcionarios() {
                               <RotateCcw className="w-3 h-3" />Reativar
                             </Button>
                           )}
-                          <Button size="icon" variant="ghost" title="Dossiê" onClick={() => navigate(`/cadastro/funcionarios/${f.id}/dossie`)}><FolderOpen className="w-3.5 h-3.5" /></Button>
+                          <Button size="icon" variant="ghost" title="Dossiê" onClick={() => navigate(`/arquivo-digital/dossie/${f.id}`)}><FolderOpen className="w-3.5 h-3.5" /></Button>
                           {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>

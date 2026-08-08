@@ -17,6 +17,23 @@ import DocumentoEvidencia from "@/components/treinamentos/DocumentoEvidencia";
 
 const NOME_TIPO_ASO = "ASO - Atestado de Saúde Ocupacional";
 
+/**
+ * Cada tipo de exame tem seu próprio tipo de documento no dossiê — é como
+ * a NR-07 trata o assunto, e é o que permite ver "falta o demissional"
+ * sem que o periódico vigente mascare a ausência.
+ *
+ * O tipo genérico continua existindo como reserva: documentos anexados
+ * nele antes desta separação seguem lá, e documento publicado não se
+ * remaneja.
+ */
+const TIPO_POR_EXAME: Record<string, string> = {
+  admissional: "ASO Admissional",
+  periodico: "ASO Periódico",
+  retorno: "ASO Retorno ao Trabalho",
+  mudanca_risco: "ASO Mudança de Risco/Função",
+  demissional: "ASO Demissional",
+};
+
 const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno",
   mudanca_risco: "Mudança de Risco", demissional: "Demissional",
@@ -45,20 +62,31 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
   const [tipo, setTipo] = useState<string>("all");
   const [valid, setValid] = useState<string>("all");
 
-  // Tipo único e global (não depende de empresa) — o mesmo "slot" de
-  // documento pra todo ASO de todo colaborador, em qualquer empresa.
-  const { data: asoTipoId } = useQuery({
-    queryKey: ["internal-document-type-aso"],
+  // Tipos globais de ASO (não dependem de empresa): um por tipo de exame,
+  // mais o genérico como reserva.
+  const { data: tiposAso } = useQuery({
+    queryKey: ["internal-document-types-aso"],
     queryFn: async () => {
+      const nomes = [...Object.values(TIPO_POR_EXAME), NOME_TIPO_ASO];
       const { data } = await (supabase.from as any)("internal_document_types")
-        .select("id")
+        .select("id, nome")
         .is("empresa_id", null)
-        .ilike("nome", NOME_TIPO_ASO)
-        .maybeSingle();
-      return (data?.id as string) || null;
+        .in("nome", nomes);
+      const m = new Map<string, string>();
+      (data || []).forEach((t: any) => m.set(t.nome.toLowerCase(), t.id));
+      return m;
     },
     staleTime: Infinity,
   });
+
+  /** Tipo do exame; cai no genérico se o subtipo ainda não foi semeado. */
+  const tipoDocumentoDoAso = (tipoExame?: string | null): string | null => {
+    if (!tiposAso) return null;
+    const especifico = TIPO_POR_EXAME[tipoExame || ""];
+    return (especifico && tiposAso.get(especifico.toLowerCase()))
+      || tiposAso.get(NOME_TIPO_ASO.toLowerCase())
+      || null;
+  };
 
   const { data: asos = [], isLoading } = useQuery({
     queryKey: ["asos-list", empresaId],
@@ -181,7 +209,7 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
                       <DocumentoEvidencia
                         empresaId={a.empresa_id}
                         colaboradorId={a.funcionario_id}
-                        tipoDocumentoId={asoTipoId}
+                        tipoDocumentoId={tipoDocumentoDoAso(a.tipo_exame)}
                         dataValidade={a.data_vencimento}
                         registroId={a.id}
                         origemTabela="asos"
