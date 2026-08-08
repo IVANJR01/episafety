@@ -353,6 +353,10 @@ export default function Entregas() {
 
   const [epiCaSearch, setEpiCaSearch] = useState("");
   const [epiSearching, setEpiSearching] = useState(false);
+  const [quickRegisterCA, setQuickRegisterCA] = useState<string | null>(null);
+  const [quickRegisterNome, setQuickRegisterNome] = useState("");
+  const [quickRegisterTamanho, setQuickRegisterTamanho] = useState("");
+  const [quickRegisterSaving, setQuickRegisterSaving] = useState(false);
   const [epiDropdownResults, setEpiDropdownResults] = useState<EPI[]>([]);
   const [epiList, setEpiList] = useState<EpiItem[]>([]);
   const [epiQtd, setEpiQtd] = useState(1);
@@ -480,8 +484,10 @@ export default function Entregas() {
         body: { ca: epiCaSearch.trim() },
       });
       if (error || !data?.nome) {
-        toast({ title: "C.A. não encontrado", description: "Verifique o número do C.A. e tente novamente.", variant: "destructive" });
+        toast({ title: "C.A. não encontrado", description: "Você pode cadastrar esse EPI manualmente abaixo.", variant: "destructive" });
         setEpiSearching(false);
+        setQuickRegisterCA(epiCaSearch.trim());
+        setEpiCaSearch("");
         return;
       }
       const { data: newEpi, error: insertErr } = await (supabase.from as any)("epis").insert({
@@ -509,6 +515,35 @@ export default function Entregas() {
       toast({ title: "Erro na consulta do C.A.", variant: "destructive" });
     }
     setEpiSearching(false);
+  };
+
+  const handleQuickRegister = async () => {
+    if (!quickRegisterNome.trim()) return;
+    setQuickRegisterSaving(true);
+    try {
+      const { data: newEpi, error: insertErr } = await (supabase.from as any)("epis").insert({
+        nome: quickRegisterNome.trim(),
+        ca: quickRegisterCA?.trim() || null,
+        tamanho: quickRegisterTamanho.trim() || null,
+        estoque: 0,
+        estoque_minimo: 5,
+        empresa_id: empresaId,
+      }).select().single();
+      
+      if (insertErr) {
+        toast({ title: "Erro ao cadastrar EPI", description: insertErr.message, variant: "destructive" });
+      } else {
+        toast({ title: "EPI cadastrado com sucesso!" });
+        addEpiToList(newEpi);
+        setQuickRegisterCA(null);
+        setQuickRegisterNome("");
+        setQuickRegisterTamanho("");
+        refetchEpis(); // Reload the EPI list in the background
+      }
+    } catch {
+      toast({ title: "Erro de conexão", variant: "destructive" });
+    }
+    setQuickRegisterSaving(false);
   };
 
   const matchFunc = (func: Funcionario, term: string) => {
@@ -1760,6 +1795,49 @@ export default function Entregas() {
                 </div>
               )}
 
+              {quickRegisterCA !== null && (
+                <div className="mt-3 p-3 border rounded-md bg-destructive/10 border-destructive/20">
+                  <p className="text-sm font-medium mb-2 text-destructive">EPI não encontrado. Cadastrar agora?</p>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs">Nome do EPI *</Label>
+                      <Input 
+                        value={quickRegisterNome} 
+                        onChange={e => setQuickRegisterNome(e.target.value)} 
+                        placeholder="Ex: Luva de Vaqueta" 
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <Label className="text-xs">C.A. (opcional)</Label>
+                        <Input 
+                          value={quickRegisterCA} 
+                          onChange={e => setQuickRegisterCA(e.target.value)} 
+                          className="bg-background"
+                        />
+                      </div>
+                      <div className="w-24">
+                        <Label className="text-xs">Tamanho (opc)</Label>
+                        <Input 
+                          value={quickRegisterTamanho} 
+                          onChange={e => setQuickRegisterTamanho(e.target.value)} 
+                          placeholder="Ex: G" 
+                          className="bg-background"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end pt-1">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setQuickRegisterCA(null)}>Cancelar</Button>
+                      <Button type="button" size="sm" onClick={handleQuickRegister} disabled={!quickRegisterNome.trim() || quickRegisterSaving}>
+                        {quickRegisterSaving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Plus className="w-3 h-3 mr-1" />}
+                        Cadastrar e Adicionar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Lista de EPIs adicionados */}
               {epiList.length > 0 && (
                 <div className="mt-3 space-y-2">
@@ -2057,7 +2135,6 @@ export default function Entregas() {
               {fichaSearch && fichaFilteredFuncs.length > 0 && !fichaFuncId && (
                 <div className="border rounded-md max-h-40 overflow-y-auto">
                   {fichaFilteredFuncs.map(f => {
-                    const count = entregaCountByFunc.get(f.id) || 0;
                     return (
                       <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
                         onClick={() => { setFichaFuncId(f.id); setFichaSearch(f.nome); }}>
@@ -2066,9 +2143,6 @@ export default function Entregas() {
                           {f.cpf && <span className="text-muted-foreground text-xs ml-2">CPF: {f.cpf}</span>}
                           {f.matricula && <span className="text-muted-foreground text-xs ml-2">Mat: {f.matricula}</span>}
                         </div>
-                        <Badge variant={count > 0 ? "default" : "outline"} className="text-xs">
-                          {count} {count === 1 ? "entrega" : "entregas"}
-                        </Badge>
                       </button>
                     );
                   })}
