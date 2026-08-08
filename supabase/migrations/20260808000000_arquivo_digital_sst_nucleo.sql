@@ -43,10 +43,22 @@ CREATE TABLE IF NOT EXISTS public.internal_document_types (
   -- Dias antes do vencimento em que o aviso deve disparar.
   dias_aviso INTEGER[] NOT NULL DEFAULT '{60,30,15,7,1}',
   ativo BOOLEAN NOT NULL DEFAULT true,
+
+  -- O catálogo de tipos JÁ EXISTE: é `cursos_documentos`, a aba "Cursos e
+  -- Evidências". Criar uma lista paralela aqui produziria um terceiro
+  -- catálogo — exatamente a doença que este módulo veio curar. Este vínculo
+  -- mantém uma verdade só: quem cadastra curso continua cadastrando lá, e
+  -- cada curso ganha o tipo correspondente aqui.
+  origem_curso_id UUID REFERENCES public.cursos_documentos(id) ON DELETE CASCADE,
+
   created_by UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_idt_origem_curso
+  ON public.internal_document_types(origem_curso_id)
+  WHERE origem_curso_id IS NOT NULL;
 
 -- Mesmo nome duas vezes na mesma empresa vira dois "ASO" distintos na
 -- matriz, e ninguém sabe qual é o certo.
@@ -285,6 +297,53 @@ CREATE POLICY "docint_write" ON storage.objects FOR INSERT TO authenticated
 
 -- Sem UPDATE e sem DELETE de propósito: o arquivo de uma versão publicada
 -- não se troca nem se apaga. Retirar de circulação é arquivar o documento.
+
+-- ---------- SEMEADURA A PARTIR DO CATÁLOGO EXISTENTE ----------
+--
+-- Cada curso/documento já cadastrado vira um tipo. Idempotente: rodar de
+-- novo não duplica, e curso criado depois é semeado pelo gatilho abaixo.
+--
+-- `validade_meses = 0` é como o sistema já representa "permanente" (ficha
+-- de EPI, escolaridade). Aqui permanente é NULL, então a conversão é
+-- explícita — 0 mês de validade significaria vencido no ato.
+INSERT INTO public.internal_document_types
+  (empresa_id, nome, categoria, validade_meses, origem_curso_id, created_by)
+SELECT c.empresa_id,
+       c.nome,
+       'capacitacao',
+       NULLIF(c.validade_meses, 0),
+       c.id,
+       c.created_by
+FROM public.cursos_documentos c
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.internal_document_types t WHERE t.origem_curso_id = c.id
+);
+
+CREATE OR REPLACE FUNCTION public.sincronizar_tipo_documento()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.internal_document_types
+    (empresa_id, nome, categoria, validade_meses, origem_curso_id, created_by)
+  VALUES (NEW.empresa_id, NEW.nome, 'capacitacao',
+          NULLIF(NEW.validade_meses, 0), NEW.id, NEW.created_by)
+  ON CONFLICT (origem_curso_id) DO UPDATE
+    SET nome = EXCLUDED.nome,
+        -- Só o tipo muda; documento já emitido guarda a validade que valia
+        -- na emissão, em internal_document_versions.
+        validade_meses = EXCLUDED.validade_meses,
+        updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_curso_vira_tipo ON public.cursos_documentos;
+CREATE TRIGGER trg_curso_vira_tipo
+  AFTER INSERT OR UPDATE ON public.cursos_documentos
+  FOR EACH ROW EXECUTE FUNCTION public.sincronizar_tipo_documento();
 
 COMMENT ON TABLE public.internal_documents IS
   'Arquivo Digital SST: o documento de um colaborador. As renovações vivem em internal_document_versions — renovar nunca sobrescreve.';

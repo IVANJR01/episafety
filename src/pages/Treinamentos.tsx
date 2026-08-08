@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import DocumentoEvidencia from "@/components/treinamentos/DocumentoEvidencia";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -80,7 +81,7 @@ function statusOrder(dataRenovacao: string | null): number {
 }
 
 export default function Treinamentos() {
-  const { empresaId } = useAuth();
+  const { empresaId, user } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<ControleTreinamento[]>([]);
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -139,6 +140,40 @@ export default function Treinamentos() {
     if (reqData) { setRequisitos(reqData); setCachedData("requisitos_cliente", reqData); }
     if (dispData) setDispensas(dispData);
   }, []);
+
+  /*
+   * Tipos do Arquivo Digital, para a coluna de evidência saber onde pendurar
+   * o arquivo.
+   *
+   * O registro guarda o curso por NOME (`controle_treinamentos.nome_curso` é
+   * texto, não chave), então o casamento é pelo nome normalizado — mesma
+   * regra que a tela já usa para comparar curso com requisito.
+   *
+   * Enquanto a migration do Arquivo Digital não roda, a consulta falha e o
+   * mapa fica vazio: a coluna volta ao comportamento atual em vez de quebrar.
+   */
+  const [tiposPorNome, setTiposPorNome] = useState<Map<string, { id: string; validade_meses: number | null }>>(new Map());
+
+  useEffect(() => {
+    if (!isOnline()) return;
+    void (async () => {
+      const { data, error } = await (supabase.from as any)("internal_document_types")
+        .select("id, nome, validade_meses")
+        .eq("ativo", true);
+      if (error || !data) return;
+      const norm = (s: string) => (s || "").normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+      setTiposPorNome(new Map(
+        (data as any[]).map((t) => [norm(t.nome), { id: t.id, validade_meses: t.validade_meses }]),
+      ));
+    })();
+  }, []);
+
+  const tipoDoCurso = useCallback((nomeCurso: string) => {
+    const norm = (nomeCurso || "").normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    return tiposPorNome.get(norm);
+  }, [tiposPorNome]);
 
   // Multi-course mode
   interface CursoEntry { nome_curso: string; data_realizacao: string; data_renovacao: string; documento_pendente: string; cursoSearch: string; showCursoList: boolean; docPopoverOpen: boolean; }
@@ -1129,18 +1164,33 @@ export default function Treinamentos() {
                               {status.label}
                             </StatusBadge>
                           </TableCell>
+                          {/* Antes esta coluna era um cabeçalho sem arquivo:
+                              `controle_treinamentos` não tem coluna de
+                              documento nenhuma. Agora mostra o comprovante de
+                              verdade — quantas versões, quando foi enviado e
+                              um link temporário para abrir. Os documentos
+                              anotados no registro continuam abaixo. */}
                           <TableCell>
-                            {t.documento_pendente ? (
-                              <div className="flex flex-wrap gap-1">
-                                {t.documento_pendente.split(" | ").filter(Boolean).map(doc => (
-                                  <Badge key={doc} variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
-                                    <CheckCircle className="w-3 h-3 mr-1" />{doc}
-                                  </Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
+                            <div className="space-y-1">
+                              <DocumentoEvidencia
+                                empresaId={t.empresa_id || empresaId || ""}
+                                colaboradorId={t.funcionario_id}
+                                tipoDocumentoId={tipoDoCurso(t.nome_curso)?.id}
+                                validadeMeses={tipoDoCurso(t.nome_curso)?.validade_meses}
+                                registroId={t.id}
+                                userId={user?.id}
+                                podeEditar
+                              />
+                              {t.documento_pendente && (
+                                <div className="flex flex-wrap gap-1">
+                                  {t.documento_pendente.split(" | ").filter(Boolean).map(doc => (
+                                    <Badge key={doc} variant="outline" className="bg-success/10 text-success border-success/30 text-xs">
+                                      <CheckCircle className="w-3 h-3 mr-1" />{doc}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1 justify-end">
