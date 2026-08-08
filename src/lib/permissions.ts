@@ -82,6 +82,7 @@ export const MODULOS = [
   { key: "portal_rh", label: "Portal RH", path: "/rh/asos" },
   { key: "video_treinamentos", label: "Treinamentos em Vídeo", path: "/video-treinamentos" },
   { key: "comercial", label: "Comercial — Orçamentos e Cotações", path: "/comercial/orcamentos" },
+  { key: "arquivo_digital", label: "Arquivo Digital — Vencimentos", path: "/arquivo-digital/vencimentos" },
 ] as const;
 
 /**
