@@ -213,6 +213,36 @@ export async function urlTemporaria(caminho: string, segundos = 300): Promise<st
 }
 
 /**
+ * Registra que alguém abriu um documento — a outra metade da auditoria
+ * (a versão já registra quem enviou; isto registra quem depois olhou).
+ *
+ * Best-effort de propósito: quem chama já tem a URL assinada e o
+ * `window.open` em mãos quando isso roda — uma falha aqui não pode
+ * atrapalhar quem só queria ver o PDF.
+ */
+export async function registrarAcesso(p: {
+  documentoId: string;
+  versaoId?: string | null;
+  empresaId: string;
+  colaboradorId?: string | null;
+  userId?: string | null;
+  userEmail?: string | null;
+}): Promise<void> {
+  try {
+    await (supabase.from as any)("document_access_log").insert({
+      documento_id: p.documentoId,
+      versao_id: p.versaoId || null,
+      empresa_id: p.empresaId,
+      colaborador_id: p.colaboradorId || null,
+      usuario_id: p.userId || null,
+      usuario_email: p.userEmail || null,
+    });
+  } catch {
+    // Silencioso de propósito — ver comentário acima.
+  }
+}
+
+/**
  * Garante o documento (o "slot" do tipo para o colaborador) e devolve o id.
  *
  * `origem` amarra o documento ao registro que já existe na tela atual, para

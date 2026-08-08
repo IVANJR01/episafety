@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { AlertTriangle, Clock, CheckCircle2, Archive, FileStack, ExternalLink, FolderOpen, Search, Info } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import {
-  ROTULO_SITUACAO, COR_SITUACAO, urlTemporaria,
+  ROTULO_SITUACAO, COR_SITUACAO, urlTemporaria, registrarAcesso,
   type SituacaoDocumento, type DocumentoSituacao,
 } from "@/lib/arquivoDigital";
 
@@ -43,7 +43,7 @@ const dataBr = (iso?: string | null) =>
 
 export default function PainelVencimentos() {
   const navigate = useNavigate();
-  const { empresaId, empresaScopeIds, isSuperAdmin } = useAuth();
+  const { empresaId, empresaScopeIds, isSuperAdmin, user } = useAuth();
   const perms = usePermissions("arquivo_digital");
 
   const [busca, setBusca] = useState("");
@@ -56,7 +56,7 @@ export default function PainelVencimentos() {
     enabled: perms.canView,
     queryFn: async () => {
       let q = (supabase.from as any)("internal_documents_situacao")
-        .select("colaborador_id, tipo_documento_id, tipo_nome, categoria, data_validade, situacao, dias_para_vencer, caminho_arquivo, empresa_id")
+        .select("id, versao_id, colaborador_id, tipo_documento_id, tipo_nome, categoria, data_validade, situacao, dias_para_vencer, caminho_arquivo, empresa_id")
         .not("colaborador_id", "is", null);
       if (empresaScopeIds.length && !isSuperAdmin) q = q.in("empresa_id", empresaScopeIds);
       else if (empresaId) q = q.eq("empresa_id", empresaId);
@@ -106,10 +106,15 @@ export default function PainelVencimentos() {
     });
   }, [documentos, filtroTipo, filtroSituacao, busca, nomePorColaborador]);
 
-  const abrir = async (caminho: string | null) => {
-    if (!caminho) return;
-    const url = await urlTemporaria(caminho);
-    if (url) window.open(url, "_blank", "noopener");
+  const abrir = async (d: DocumentoSituacao) => {
+    if (!d.caminho_arquivo) return;
+    const url = await urlTemporaria(d.caminho_arquivo);
+    if (!url) return;
+    window.open(url, "_blank", "noopener");
+    void registrarAcesso({
+      documentoId: d.id, versaoId: d.versao_id, empresaId: d.empresa_id,
+      colaboradorId: d.colaborador_id, userId: user?.id,
+    });
   };
 
   if (!perms.canView) return null;
@@ -200,7 +205,7 @@ export default function PainelVencimentos() {
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       {d.caminho_arquivo && (
-                        <Button size="icon" variant="ghost" title="Ver PDF" onClick={() => abrir(d.caminho_arquivo)}>
+                        <Button size="icon" variant="ghost" title="Ver PDF" onClick={() => abrir(d)}>
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       )}

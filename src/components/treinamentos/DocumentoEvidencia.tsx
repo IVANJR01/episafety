@@ -8,7 +8,7 @@ import {
 import { FileText, Upload, Loader2, History, ExternalLink, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
-  publicarVersao, garantirDocumento, urlTemporaria, historicoVersoes,
+  publicarVersao, garantirDocumento, urlTemporaria, historicoVersoes, registrarAcesso,
 } from "@/lib/arquivoDigital";
 
 /**
@@ -32,6 +32,9 @@ interface VersaoResumo {
 
 const dataBr = (iso?: string | null) =>
   iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("pt-BR") : "—";
+
+const dataHoraBr = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
 /**
  * Coluna "Documento / Evidência" da tela de Capacitações.
@@ -69,9 +72,11 @@ export default function DocumentoEvidencia({
   semTipoTitulo?: string;
 }) {
   const [versoes, setVersoes] = useState<VersaoResumo[] | null>(null);
+  const [documentoId, setDocumentoId] = useState<string | null>(null);
   const [indisponivel, setIndisponivel] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [histAberto, setHistAberto] = useState(false);
+  const [acessosPorVersao, setAcessosPorVersao] = useState<Map<string, { total: number; ultimo: string }>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
 
   const carregar = useCallback(async () => {
@@ -88,6 +93,7 @@ export default function DocumentoEvidencia({
       setVersoes([]);
       return;
     }
+    setDocumentoId(data?.id || null);
     const lista = ((data?.internal_document_versions || []) as VersaoResumo[])
       .sort((a, b) => b.versao - a.versao);
     setVersoes(lista);
@@ -95,13 +101,38 @@ export default function DocumentoEvidencia({
 
   useEffect(() => { void carregar(); }, [carregar]);
 
-  const abrir = async (caminho: string) => {
+  // Carrega a contagem de acesso só quando o Histórico abre — não vale a
+  // pena consultar isso pra toda linha da tabela o tempo todo.
+  useEffect(() => {
+    if (!histAberto || !documentoId) return;
+    (supabase.from as any)("document_access_log")
+      .select("versao_id, created_at")
+      .eq("documento_id", documentoId)
+      .then(({ data }: any) => {
+        const mapa = new Map<string, { total: number; ultimo: string }>();
+        (data || []).forEach((row: any) => {
+          if (!row.versao_id) return;
+          const atual = mapa.get(row.versao_id);
+          if (!atual || row.created_at > atual.ultimo) {
+            mapa.set(row.versao_id, { total: (atual?.total || 0) + 1, ultimo: row.created_at });
+          } else {
+            mapa.set(row.versao_id, { ...atual, total: atual.total + 1 });
+          }
+        });
+        setAcessosPorVersao(mapa);
+      });
+  }, [histAberto, documentoId]);
+
+  const abrir = async (caminho: string, versaoId: string) => {
     const url = await urlTemporaria(caminho);
     if (!url) {
       toast({ title: "Não foi possível abrir o documento", variant: "destructive" });
       return;
     }
     window.open(url, "_blank", "noopener");
+    if (documentoId) {
+      void registrarAcesso({ documentoId, versaoId, empresaId, colaboradorId, userId });
+    }
   };
 
   const enviar = async (file: File) => {
@@ -161,7 +192,7 @@ export default function DocumentoEvidencia({
       {atual ? (
         <>
           <button
-            type="button" onClick={() => abrir(atual.caminho_arquivo)}
+            type="button" onClick={() => abrir(atual.caminho_arquivo, atual.id)}
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
           >
             <FileText className="w-3.5 h-3.5" />Ver PDF
@@ -221,9 +252,14 @@ export default function DocumentoEvidencia({
                   <div className="text-muted-foreground text-[11px]">
                     Emissão {dataBr(v.data_emissao)} · Validade {v.data_validade ? dataBr(v.data_validade) : "permanente"}
                   </div>
+                  <div className="text-muted-foreground text-[11px]">
+                    {acessosPorVersao.has(v.id)
+                      ? `${acessosPorVersao.get(v.id)!.total} ${acessosPorVersao.get(v.id)!.total === 1 ? "visualização" : "visualizações"} · última em ${dataHoraBr(acessosPorVersao.get(v.id)!.ultimo)}`
+                      : "Nunca aberto"}
+                  </div>
                 </div>
                 <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
-                  onClick={() => abrir(v.caminho_arquivo)}>Abrir</Button>
+                  onClick={() => abrir(v.caminho_arquivo, v.id)}>Abrir</Button>
               </div>
             ))}
           </div>
