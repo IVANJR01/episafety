@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter, UserX, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter, UserX, RotateCcw, FolderOpen } from "lucide-react";
 import BaixaDesligamento from "@/components/BaixaDesligamento";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -93,6 +94,7 @@ function validateRow(row: Omit<ImportRow, "valid" | "error">): { valid: boolean;
 }
 
 export default function Funcionarios() {
+  const navigate = useNavigate();
   const { data: items, loading, add, update, remove, refetch } = useSupabaseCrud<Funcionario>("funcionarios", "nome", true);
   const { canEdit, canCreate, canDelete } = usePermissions("cadastro_funcionarios");
   const { empresaId } = useAuth();
@@ -589,6 +591,7 @@ export default function Funcionarios() {
                           <RotateCcw className="w-3 h-3" />Reativar
                         </Button>
                       )}
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Dossiê" onClick={() => navigate(`/cadastro/funcionarios/${f.id}/dossie`)}><FolderOpen className="w-3.5 h-3.5" /></Button>
                       {canEdit && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
                       {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
@@ -657,6 +660,7 @@ export default function Funcionarios() {
                               <RotateCcw className="w-3 h-3" />Reativar
                             </Button>
                           )}
+                          <Button size="icon" variant="ghost" title="Dossiê" onClick={() => navigate(`/cadastro/funcionarios/${f.id}/dossie`)}><FolderOpen className="w-3.5 h-3.5" /></Button>
                           {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(f)}><Pencil className="w-3.5 h-3.5" /></Button>}
                           {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                         </div>

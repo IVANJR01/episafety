@@ -18,6 +18,7 @@ import EPIs from "@/pages/EPIs";
 import ControleEstoqueContrato from "@/pages/ControleEstoqueContrato";
 import SolicitacoesMateriais from "@/pages/epis/SolicitacoesMateriais";
 import Funcionarios from "@/pages/Funcionarios";
+import DossieColaborador from "@/pages/DossieColaborador";
 import Entregas from "@/pages/Entregas";
 import Relatorios from "@/pages/Relatorios";
 import Empresas from "@/pages/Empresas";
@@ -279,6 +280,7 @@ function ProtectedRoute() {
         <Route path="/cadastro/empresas" element={<NetworkErrorBoundary><Empresas /></NetworkErrorBoundary>} />
         <Route path="/cadastro/filiais" element={<Navigate to="/cadastro/empresas" replace />} />
         <Route path="/cadastro/funcionarios" element={<NetworkErrorBoundary><Funcionarios /></NetworkErrorBoundary>} />
+        <Route path="/cadastro/funcionarios/:id/dossie" element={<NetworkErrorBoundary><DossieColaborador /></NetworkErrorBoundary>} />
         {/* A tela de GES era duplicada: /cadastro/ghe montava o mesmo
             componente da aba GES em Documentação. Vira redirecionamento para
             não quebrar links já existentes (ex.: os do PCMSO). */}
