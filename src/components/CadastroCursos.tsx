@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Search, BookOpen, GraduationCap, FileText, Infinity } from "lucide-react";
+import { Plus, Pencil, Archive, RotateCcw, Search, BookOpen, GraduationCap, FileText, Infinity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ interface CursoDocumento {
   nome: string;
   validade_meses: number;
   empresa_id: string | null;
+  ativo: boolean;
 }
 
 interface CadastroCursosProps {
@@ -32,6 +34,7 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CursoDocumento | null>(null);
   const [search, setSearch] = useState("");
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [form, setForm] = useState({ nome: "", validade_meses: 0 });
 
   const fetchData = async () => {
@@ -55,6 +58,7 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
   useEffect(() => { fetchData(); }, []);
 
   const filtered = items.filter(i => {
+    if (!mostrarArquivados && i.ativo === false) return false;
     if (!search.trim()) return true;
     return i.nome.toLowerCase().includes(search.toLowerCase());
   });
@@ -219,18 +223,25 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
     onUpdate?.();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleArquivar = async (item: CursoDocumento) => {
+    const novoAtivo = !item.ativo;
     if (!isOnline()) {
-      addToSyncQueue({ table: "cursos_documentos", type: "delete", payload: { id } });
-      const nextItems = (getCachedData<CursoDocumento>("cursos_documentos") || items).filter((item) => item.id !== id);
+      addToSyncQueue({ table: "cursos_documentos", type: "update", payload: { id: item.id, ativo: novoAtivo } });
+      const nextItems = (getCachedData<CursoDocumento>("cursos_documentos") || items)
+        .map((i) => i.id === item.id ? { ...i, ativo: novoAtivo } : i);
       setItems(nextItems);
       setCachedData("cursos_documentos", nextItems);
-      toast({ title: "Removido offline", description: "Será sincronizado quando houver conexão." });
+      toast({ title: novoAtivo ? "Reativado offline" : "Arquivado offline", description: "Será sincronizado quando houver conexão." });
       onUpdate?.();
       return;
     }
 
-    await (supabase.from as any)("cursos_documentos").delete().eq("id", id);
+    const { error } = await (supabase.from as any)("cursos_documentos").update({ ativo: novoAtivo }).eq("id", item.id);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    toast({
+      title: novoAtivo ? "Reativado" : "Arquivado",
+      description: novoAtivo ? undefined : "Continua no histórico — só sai das listas de seleção de novos registros.",
+    });
     fetchData();
     onUpdate?.();
   };
@@ -257,8 +268,11 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
                   </TableCell>
                 </TableRow>
               ) : data.map(item => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.nome}</TableCell>
+                <TableRow key={item.id} className={item.ativo === false ? "opacity-60" : ""}>
+                  <TableCell className="font-medium">
+                    {item.nome}
+                    {item.ativo === false && <Badge variant="outline" className="ml-2 text-[10px] text-muted-foreground">Arquivado</Badge>}
+                  </TableCell>
                   <TableCell>
                     {item.validade_meses > 0 ? (
                       <Badge variant="outline" className="text-xs">{item.validade_meses} meses</Badge>
@@ -271,7 +285,11 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
                   <TableCell>
                     <div className="flex gap-1 justify-end">
                       <Button size="icon" variant="ghost" onClick={() => openEdit(item)}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                      {item.ativo === false ? (
+                        <Button size="icon" variant="ghost" title="Reativar" onClick={() => handleArquivar(item)}><RotateCcw className="w-3.5 h-3.5" /></Button>
+                      ) : (
+                        <Button size="icon" variant="ghost" title="Arquivar" onClick={() => handleArquivar(item)}><Archive className="w-3.5 h-3.5 text-muted-foreground" /></Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -296,9 +314,15 @@ export default function CadastroCursos({ onUpdate }: CadastroCursosProps) {
         </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Pesquisar curso ou documento..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Pesquisar curso ou documento..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+          <Checkbox checked={mostrarArquivados} onCheckedChange={(v) => setMostrarArquivados(!!v)} />
+          Mostrar arquivados
+        </label>
       </div>
 
       <Tabs defaultValue="cursos" className="w-full">

@@ -70,7 +70,7 @@ export default function CadastroFuncaoRequisitos({ onUpdate }: CadastroFuncaoReq
 
     const [{ data: reqData }, { data: cursosData }, { data: funcsData }] = await Promise.all([
       (supabase.from as any)("requisitos_cliente").select("*").order("curso_nome"),
-      (supabase.from as any)("cursos_documentos").select("nome, validade_meses").order("nome"),
+      (supabase.from as any)("cursos_documentos").select("nome, validade_meses").eq("ativo", true).order("nome"),
       supabase.from("funcionarios").select("cargo"),
     ]);
     if (reqData) {

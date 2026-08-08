@@ -105,7 +105,7 @@ export default function Treinamentos() {
   const [showCursoList, setShowCursoList] = useState(false);
 
   // DB-based courses
-  const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number; empresa_id?: string | null }[]>([]);
+  const [dbCursos, setDbCursos] = useState<{ nome: string; validade_meses: number; empresa_id?: string | null; ativo?: boolean }[]>([]);
   // Requisitos da Matriz Unificada
   const [requisitos, setRequisitos] = useState<RequisitoCliente[]>([]);
   // Dispensas de requisito por colaborador
@@ -132,7 +132,7 @@ export default function Treinamentos() {
       return;
     }
     const [{ data }, { data: reqData }, { data: dispData }] = await Promise.all([
-      (supabase.from as any)("cursos_documentos").select("nome, validade_meses, empresa_id").order("nome"),
+      (supabase.from as any)("cursos_documentos").select("nome, validade_meses, empresa_id, ativo").order("nome"),
       (supabase.from as any)("requisitos_cliente").select("id, curso_nome, funcoes_exigidas, carga_horaria_minima, validade_meses"),
       (supabase.from as any)("dispensas_requisito").select("id, funcionario_id, curso_nome, motivo"),
     ]);
@@ -269,8 +269,11 @@ export default function Treinamentos() {
     return m;
   }, [dbCursos]);
 
+  // Curso arquivado some da sugestão pra registro novo, mas cursosValidade
+  // (acima) continua enxergando todos — um registro antigo que usa um curso
+  // arquivado não pode perder o cálculo de vencimento por causa disso.
   const CURSOS_SUGERIDOS = useMemo(() => {
-    return dbCursos.map(c => c.nome).sort();
+    return dbCursos.filter(c => c.ativo !== false).map(c => c.nome).sort();
   }, [dbCursos]);
 
   const calcularRenovacao = (curso: string, dataRealizacao: string, forceNoPermanent?: boolean): string => {
