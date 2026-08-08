@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { gerarPdfAso } from "@/lib/asoPdf";
 import { usePermissions } from "@/hooks/usePermissions";
+import DocumentoEvidencia from "@/components/treinamentos/DocumentoEvidencia";
+
+const NOME_TIPO_ASO = "ASO - Atestado de Saúde Ocupacional";
 
 const TIPO: Record<string, string> = {
   admissional: "Admissional", periodico: "Periódico", retorno: "Retorno",
@@ -35,12 +38,27 @@ function aptidaoBadge(a?: string | null) {
 }
 
 export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
-  const { empresaId } = useAuth();
+  const { empresaId, user } = useAuth();
   const { canEdit, canDelete } = usePermissions("aso");
   const qc = useQueryClient();
   const [filter, setFilter] = useState("");
   const [tipo, setTipo] = useState<string>("all");
   const [valid, setValid] = useState<string>("all");
+
+  // Tipo único e global (não depende de empresa) — o mesmo "slot" de
+  // documento pra todo ASO de todo colaborador, em qualquer empresa.
+  const { data: asoTipoId } = useQuery({
+    queryKey: ["internal-document-type-aso"],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("internal_document_types")
+        .select("id")
+        .is("empresa_id", null)
+        .ilike("nome", NOME_TIPO_ASO)
+        .maybeSingle();
+      return (data?.id as string) || null;
+    },
+    staleTime: Infinity,
+  });
 
   const { data: asos = [], isLoading } = useQuery({
     queryKey: ["asos-list", empresaId],
@@ -133,12 +151,13 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
                 <TableHead>Emissão</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Documento/Evidência</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Carregando…</TableCell></TableRow>}
-              {!isLoading && rows.length === 0 && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum ASO encontrado.</TableCell></TableRow>}
+              {isLoading && <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Carregando…</TableCell></TableRow>}
+              {!isLoading && rows.length === 0 && <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhum ASO encontrado.</TableCell></TableRow>}
               {rows.map((a: any) => {
                 const sv = statusValidade(a.data_vencimento);
                 return (
@@ -157,6 +176,21 @@ export default function AsoList({ onEdit }: { onEdit?: (id: string) => void }) {
                       {a.status === "cancelado"
                         ? <Badge variant="outline">Cancelado</Badge>
                         : <Badge className={sv.cls + " border-0"}>{sv.label}</Badge>}
+                    </TableCell>
+                    <TableCell>
+                      <DocumentoEvidencia
+                        empresaId={a.empresa_id}
+                        colaboradorId={a.funcionario_id}
+                        tipoDocumentoId={asoTipoId}
+                        dataValidade={a.data_vencimento}
+                        registroId={a.id}
+                        origemTabela="asos"
+                        origemId={a.id}
+                        userId={user?.id}
+                        podeEditar={canEdit}
+                        semTipoTexto="Arquivo Digital indisponível"
+                        semTipoTitulo="O tipo de documento do ASO ainda não foi configurado neste banco."
+                      />
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button size="icon" variant="ghost" onClick={() => gerarPdf(a.id)} title="Gerar PDF"><FileDown className="h-4 w-4" /></Button>

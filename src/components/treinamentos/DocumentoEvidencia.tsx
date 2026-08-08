@@ -42,7 +42,10 @@ const dataBr = (iso?: string | null) =>
  * enviado, e um link temporário para abrir.
  */
 export default function DocumentoEvidencia({
-  empresaId, colaboradorId, tipoDocumentoId, registroId, validadeMeses, userId, podeEditar,
+  empresaId, colaboradorId, tipoDocumentoId, registroId, validadeMeses, dataValidade,
+  origemTabela, origemId, userId, podeEditar,
+  semTipoTexto = "Curso não cadastrado",
+  semTipoTitulo = "Cadastre este curso em 'Cursos e Evidências' para poder anexar o comprovante",
 }: {
   empresaId: string;
   colaboradorId: string;
@@ -50,8 +53,20 @@ export default function DocumentoEvidencia({
   tipoDocumentoId?: string | null;
   registroId: string;
   validadeMeses?: number | null;
+  /**
+   * Validade já pronta (ex.: `asos.data_vencimento`), quando quem chama já
+   * sabe o vencimento exato em vez de "N meses após a emissão". Vence
+   * `validadeMeses` quando informada.
+   */
+  dataValidade?: string | null;
+  /** Registro de origem desta versão. Sem isso, cai no padrão de Treinamentos. */
+  origemTabela?: string;
+  origemId?: string;
   userId?: string | null;
   podeEditar: boolean;
+  /** Texto/título quando não há tipo de documento — padrão é o de cursos. */
+  semTipoTexto?: string;
+  semTipoTitulo?: string;
 }) {
   const [versoes, setVersoes] = useState<VersaoResumo[] | null>(null);
   const [indisponivel, setIndisponivel] = useState(false);
@@ -95,12 +110,13 @@ export default function DocumentoEvidencia({
     try {
       const documentoId = await garantirDocumento({
         empresaId, colaboradorId, tipoDocumentoId,
-        origemTabela: "controle_treinamentos", origemId: registroId, userId,
+        origemTabela: origemTabela || "controle_treinamentos", origemId: origemId || registroId, userId,
       });
       await publicarVersao({
         empresaId, documentoId, colaboradorId, file,
         dataEmissao: new Date().toISOString().slice(0, 10),
-        validadeMeses, userId,
+        validadeMeses, dataValidade, userId,
+        origemTabela: origemTabela || "controle_treinamentos", origemId: origemId || registroId,
       });
       toast({ title: "Documento anexado" });
       await carregar();
@@ -126,8 +142,8 @@ export default function DocumentoEvidencia({
   if (!tipoDocumentoId) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-        title="Cadastre este curso em 'Cursos e Evidências' para poder anexar o comprovante">
-        <AlertCircle className="w-3.5 h-3.5" />Curso não cadastrado
+        title={semTipoTitulo}>
+        <AlertCircle className="w-3.5 h-3.5" />{semTipoTexto}
       </span>
     );
   }

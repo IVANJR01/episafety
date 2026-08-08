@@ -119,8 +119,17 @@ export interface EnvioDocumento {
   file: File;
   dataEmissao: string;
   validadeMeses?: number | null;
+  /**
+   * Validade já pronta, quando quem chama já sabe o vencimento exato (ex.:
+   * ASO, cujo prazo depende do tipo de exame/risco, não de "N meses após a
+   * emissão"). Se informado, vence `validadeMeses`/`calcularValidade`.
+   */
+  dataValidade?: string | null;
   observacao?: string | null;
   userId?: string | null;
+  /** Registro específico (não o do documento) que originou esta versão. */
+  origemTabela?: string | null;
+  origemId?: string | null;
 }
 
 /**
@@ -166,9 +175,11 @@ export async function publicarVersao(p: EnvioDocumento) {
       tamanho_bytes: p.file.size,
       hash_sha256: hash,
       data_emissao: p.dataEmissao,
-      data_validade: calcularValidade(p.dataEmissao, p.validadeMeses),
+      data_validade: p.dataValidade !== undefined ? p.dataValidade : calcularValidade(p.dataEmissao, p.validadeMeses),
       observacao: p.observacao || null,
       created_by: p.userId || null,
+      origem_tabela: p.origemTabela || null,
+      origem_id: p.origemId || null,
     })
     .select("*")
     .single();
