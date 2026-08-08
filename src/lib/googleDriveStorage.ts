@@ -138,6 +138,22 @@ export async function listDriveFiles(folder: string) {
 }
 
 /**
+ * Baixa o conteúdo de um arquivo do Drive (uses token from gdrive-token).
+ *
+ * Reaproveita o mesmo accessToken que upload/list/delete já recebem
+ * direto no navegador — não precisa de edge function nova só pra isso.
+ */
+export async function downloadFileFromDrive(fileId: string, folder: string): Promise<Blob> {
+  const { accessToken } = await getDriveToken(folder);
+
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Download do Drive falhou: ${res.status}`);
+  return await res.blob();
+}
+
+/**
  * Get a public view URL for a Drive file
  */
 export function getDrivePublicUrl(fileId: string): string {

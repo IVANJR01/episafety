@@ -60,6 +60,7 @@ const gestaoDocItems: NavItem[] = [
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
   { path: "/arquivo-digital/vencimentos", label: "Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/importar-drive", label: "Importar do Drive", icon: HardDrive, moduleKey: "arquivo_digital" },
 ];
 
 // Programas — Módulo Mestre Unificado
