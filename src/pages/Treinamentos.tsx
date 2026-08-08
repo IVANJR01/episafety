@@ -175,6 +175,43 @@ export default function Treinamentos() {
     return tiposPorNome.get(norm);
   }, [tiposPorNome]);
 
+  /*
+   * Situa\u00e7\u00e3o real de quem TEM documento anexado no Arquivo Digital.
+   *
+   * A matriz calculava tudo a partir de `data_renovacao`, um campo digitado
+   * \u00e0 m\u00e3o em `controle_treinamentos` \u2014 sem nenhum v\u00ednculo com o arquivo que
+   * a coluna de evid\u00eancia mostra ao lado. Dava para o mesmo curso aparecer
+   * "\ud83d\udfe2 Vigente" na matriz e "Sem comprovante" na evid\u00eancia, porque eram
+   * duas fontes que nunca se falavam.
+   *
+   * Aqui s\u00f3 entra quem tem vers\u00e3o de verdade (`versao_numero` n\u00e3o nulo): \u00e9
+   * o registro que reflete um arquivo publicado. Quem ainda n\u00e3o anexou nada
+   * continua na r\u00e9gua antiga (`data_renovacao` digitada) \u2014 trocar TODOS de
+   * uma vez faria colaborador sem nenhum documento cadastrado at\u00e9 hoje
+   * virar "N\u00e3o enviado" em massa, contra a decis\u00e3o de introduzir o m\u00f3dulo
+   * aos poucos.
+   */
+  const [evidenciaPorColabTipo, setEvidenciaPorColabTipo] = useState<
+    Map<string, { data_validade: string | null; data_emissao: string | null; situacao: string }>
+  >(new Map());
+
+  useEffect(() => {
+    if (!isOnline()) return;
+    void (async () => {
+      const { data, error } = await (supabase.from as any)("internal_documents_situacao")
+        .select("colaborador_id, tipo_documento_id, situacao, data_validade, data_emissao, versao_numero")
+        .not("colaborador_id", "is", null)
+        .not("versao_numero", "is", null);
+      if (error || !data) return;
+      setEvidenciaPorColabTipo(new Map(
+        (data as any[]).map((r) => [
+          `${r.colaborador_id}::${r.tipo_documento_id}`,
+          { data_validade: r.data_validade, data_emissao: r.data_emissao, situacao: r.situacao },
+        ]),
+      ));
+    })();
+  }, []);
+
   // Multi-course mode
   interface CursoEntry { nome_curso: string; data_realizacao: string; data_renovacao: string; documento_pendente: string; cursoSearch: string; showCursoList: boolean; docPopoverOpen: boolean; }
   const emptyCurso = (): CursoEntry => ({ nome_curso: "", data_realizacao: new Date().toISOString().split("T")[0], data_renovacao: "", documento_pendente: "", cursoSearch: "", showCursoList: false, docPopoverOpen: false });
@@ -829,7 +866,27 @@ export default function Treinamentos() {
           .filter(tr => tr.nome_curso === curso)
           .sort((a, b) => (b.data_realizacao || "").localeCompare(a.data_realizacao || ""));
         const t = sortedTreinos[0];
-        if (t) {
+
+        // Documento real anexado no Arquivo Digital, se houver: a validade
+        // do arquivo publicado tem prioridade sobre a data digitada à mão.
+        // Sem isto, "Vigente" na matriz e "Sem comprovante" na coluna ao
+        // lado seriam duas leituras diferentes do mesmo colaborador.
+        const tipoInfo = tipoDoCurso(curso);
+        const evidencia = tipoInfo ? evidenciaPorColabTipo.get(`${fid}::${tipoInfo.id}`) : undefined;
+
+        if (evidencia) {
+          const value = {
+            realizacao: evidencia.data_emissao || t?.data_realizacao || "",
+            renovacao: evidencia.data_validade,
+            status: evidencia.data_validade
+              ? getStatus(evidencia.data_validade)
+              // versao existe mas data_validade é null: documento permanente
+              // com arquivo de fato anexado — mais forte que "sem renovação".
+              : { label: "∞ Vitalício", variant: "default" as const, key: "permanente" },
+          };
+          cursoData[curso] = value;
+          cursoDataNormalizado[normalizeCourseName(curso)] = value;
+        } else if (t) {
           const value = { realizacao: t.data_realizacao, renovacao: t.data_renovacao, status: getStatus(t.data_renovacao) };
           cursoData[curso] = value;
           cursoDataNormalizado[normalizeCourseName(curso)] = value;
@@ -880,7 +937,7 @@ export default function Treinamentos() {
     }[];
 
     return { cursos, rows };
-  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, unidadeFilter, contratoFilter, dispensas]);
+  }, [items, funcMap, requisitos, funcionarios, getRequiredCourses, setorFilter, unidadeFilter, contratoFilter, dispensas, tipoDoCurso, evidenciaPorColabTipo]);
 
   // === Dispensa helpers ===
   const openDispensaDialog = (funcId: string) => {
