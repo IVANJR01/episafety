@@ -106,9 +106,11 @@ serve(async (req) => {
     const regra = matchRegras(situacao);
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
-      // Sem IA disponível: retorna direto a regra interna se houver
+    if (!GEMINI_API_KEY) {
+      // Sem IA disponível: retorna direto a regra interna se houver. Isto
+      // não tem relação com Lovable — é a base de palavras-chave própria
+      // deste arquivo, que continua servindo de rede de segurança mesmo
+      // com Gemini como único provedor de IA.
       if (regra) {
         return new Response(JSON.stringify({
           referencia_normativa: regra.referencias.join("\n"),
@@ -117,14 +119,11 @@ serve(async (req) => {
           trecho_norma: regra.referencias[0],
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      throw new Error("Nenhuma chave de IA configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)");
+      throw new Error("GEMINI_API_KEY não configurada");
     }
-    const useGemini = !!GEMINI_API_KEY;
-    const aiUrl = useGemini
-      ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-      : "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const aiKey = useGemini ? GEMINI_API_KEY : LOVABLE_API_KEY;
-    const aiModel = useGemini ? "gemini-2.5-flash" : "google/gemini-2.5-flash";
+    const aiUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    const aiKey = GEMINI_API_KEY;
+    const aiModel = "gemini-2.5-flash";
 
     const dicaInterna = regra
       ? `\n\nDICA DE BASE INTERNA (use como principal, adaptando à situação; pode acrescentar itens complementares se fizer sentido):\n${regra.referencias.map(r => `- ${r}`).join("\n")}\nGravidade sugerida pela base: ${regra.gravidade}\nAção corretiva sugerida pela base: ${regra.acao}`

@@ -60,18 +60,12 @@ serve(async (req) => {
     }
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!GEMINI_API_KEY && !LOVABLE_API_KEY) throw new Error("Sem chave de IA configurada");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY não configurada");
 
     let content = "{}";
 
     if (pdf_base64) {
-      // Use native Gemini API for PDF input (supports inline_data)
-      if (!GEMINI_API_KEY) {
-        return new Response(JSON.stringify({ error: "Importação de PDF requer GEMINI_API_KEY configurada" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Native Gemini API para PDF (suporta inline_data).
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
       const resp = await fetch(url, {
         method: "POST",
@@ -97,18 +91,13 @@ serve(async (req) => {
       const j = await resp.json();
       content = j?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "{}";
     } else {
-      const useGemini = !!GEMINI_API_KEY;
-      const aiUrl = useGemini
-        ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-        : "https://ai.gateway.lovable.dev/v1/chat/completions";
-      const aiKey = useGemini ? GEMINI_API_KEY : LOVABLE_API_KEY;
-      const aiModel = useGemini ? "gemini-2.5-flash" : "google/gemini-2.5-flash";
-
-      const resp = await fetch(aiUrl, {
+      // Removida a chamada de reserva ao gateway de IA da Lovable — a conta
+      // está sob suspensão (Trust & Safety, ver docs/lovable-forensic/).
+      const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${aiKey}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${GEMINI_API_KEY}` },
         body: JSON.stringify({
-          model: aiModel,
+          model: "gemini-2.5-flash",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: texto },

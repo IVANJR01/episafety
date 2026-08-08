@@ -211,44 +211,6 @@ const toolSchema = {
   },
 };
 
-function extractAnalysis(aiResult: any): any {
-  try {
-    const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      const args = typeof toolCall.function.arguments === "string"
-        ? JSON.parse(toolCall.function.arguments)
-        : toolCall.function.arguments;
-      console.log("Parsed from tool call successfully");
-      return args;
-    }
-  } catch (e) {
-    console.error("Failed to parse tool call:", e);
-  }
-
-  try {
-    const content = aiResult.choices?.[0]?.message?.content || "";
-    const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch {
-    const content = aiResult.choices?.[0]?.message?.content || "";
-    return {
-      curso: "Não identificado",
-      descricao_completa: content || "IA não conseguiu analisar o documento",
-      confianca: 0.3,
-      conforme_nr: false,
-      conforme_matriz: false,
-      motivo_nr: "IA não conseguiu estruturar a resposta",
-      motivo_nao_conforme: "IA não conseguiu estruturar a resposta",
-      carga_horaria: 0,
-      nome_certificado: "",
-      assinatura_colaborador: false,
-      assinatura_instrutor: false,
-      assinatura_responsavel: false,
-      parecer_bernhoeft: "REPROVADO" as const,
-    };
-  }
-}
-
 serve(async (req) => {
   const corsHeaders = resolveCors(req);
   if (req.method === "OPTIONS") {
@@ -265,10 +227,9 @@ serve(async (req) => {
   }
   try {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
-      throw new Error("Nenhuma chave de IA configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)");
+
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY não configurada");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -469,115 +430,38 @@ Identifique primeiro se é um CERTIFICADO ou uma ANUÊNCIA/AUTORIZAÇÃO FORMAL 
       throw new Error("Gemini returned no usable content");
     };
 
-    // ==================== LOVABLE GATEWAY (FALLBACK) ====================
-    const callLovableGateway = async (): Promise<any> => {
-      const messages = [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: userPrompt },
-            {
-              type: "image_url",
-              image_url: { url: `data:application/pdf;base64,${pdfBase64}` },
-            },
-          ],
-        },
-      ];
-
-      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages,
-          tools: [toolSchema],
-          tool_choice: { type: "function", function: { name: "analyze_certificate" } },
-        }),
-      });
-
-      if (!resp.ok) {
-        const errText = await resp.text();
-        console.error(`Lovable gateway error ${resp.status}: ${errText}`);
-        if (resp.status === 429) {
-          throw new Error("Rate limit excedido. Tente novamente em alguns segundos.");
-        }
-        if (resp.status === 402) {
-          throw new Error("Créditos insuficientes. Adicione créditos em Settings > Workspace > Usage.");
-        }
-        throw new Error(`Lovable gateway error: ${resp.status}`);
-      }
-
-      const aiResult = await resp.json();
-      return extractAnalysis(aiResult);
-    };
-
     // ==================== EXECUTION FLOW ====================
+    // Gemini é o único provedor. Antes havia um segundo caminho para o
+    // gateway de IA da Lovable como reserva — a conta Lovable do projeto está
+    // sob suspensão (Trust & Safety, ver docs/lovable-forensic/), então
+    // manter aquele caminho era manter uma dependência de algo que pode
+    // parar de responder a qualquer momento sem aviso. Falha do Gemini cai
+    // na mesma fila de reprocessamento (`pending_credit`) que já existia.
     let parsed: any;
-    let provider = "gemini_direct";
+    const provider = "gemini_direct";
 
-    if (GEMINI_API_KEY) {
-      try {
-        console.log("Using Gemini Direct API (primary)...");
-        parsed = await callGeminiDirect();
-      } catch (geminiErr) {
-        console.error("Gemini Direct failed:", geminiErr);
-        if (LOVABLE_API_KEY) {
-          try {
-            console.log("Falling back to Lovable AI Gateway...");
-            provider = "lovable_gateway";
-            parsed = await callLovableGateway();
-          } catch (lovableErr) {
-            console.error("Lovable Gateway also failed:", lovableErr);
-            if (funcionarioId && empresaId) {
-              const { data: row } = await supabase.from("analises_ia").insert({
-                empresa_id: empresaId,
-                funcionario_id: funcionarioId,
-                arquivo_nome: file.name,
-                ia_metadata: {},
-                status: "pending_credit",
-              }).select("id").single();
-              return new Response(JSON.stringify({
-                error: "Ambos provedores falharam. Documento salvo na fila.",
-                status: "pending_credit",
-                analysisId: row?.id || null,
-              }), {
-                status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
-            }
-            throw lovableErr;
-          }
-        } else {
-          throw geminiErr;
-        }
+    try {
+      console.log("Using Gemini Direct API...");
+      parsed = await callGeminiDirect();
+    } catch (geminiErr) {
+      console.error("Gemini Direct failed:", geminiErr);
+      if (funcionarioId && empresaId) {
+        const { data: row } = await supabase.from("analises_ia").insert({
+          empresa_id: empresaId,
+          funcionario_id: funcionarioId,
+          arquivo_nome: file.name,
+          ia_metadata: {},
+          status: "pending_credit",
+        }).select("id").single();
+        return new Response(JSON.stringify({
+          error: "Falha na análise por IA. Documento salvo na fila para reprocessar.",
+          status: "pending_credit",
+          analysisId: row?.id || null,
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-    } else {
-      console.log("No GEMINI_API_KEY, using Lovable AI Gateway...");
-      provider = "lovable_gateway";
-      try {
-        parsed = await callLovableGateway();
-      } catch (err: any) {
-        if (funcionarioId && empresaId) {
-          const { data: row } = await supabase.from("analises_ia").insert({
-            empresa_id: empresaId,
-            funcionario_id: funcionarioId,
-            arquivo_nome: file.name,
-            ia_metadata: {},
-            status: "pending_credit",
-          }).select("id").single();
-          return new Response(JSON.stringify({
-            error: err.message || "Créditos insuficientes. Documento salvo na fila.",
-            status: "pending_credit",
-            analysisId: row?.id || null,
-          }), {
-            status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        throw err;
-      }
+      throw geminiErr;
     }
 
     console.log(`Analysis complete via ${provider}: curso=${parsed.curso}, confianca=${parsed.confianca}`);
