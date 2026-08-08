@@ -77,7 +77,7 @@ export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: b
     <div className="fixed bottom-0 left-0 right-0 z-50 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-300">
       <div className="max-w-lg mx-auto bg-primary text-primary-foreground rounded-xl shadow-lg p-3 flex items-center gap-3">
         <img
-          src="/lovable-uploads/8df588ff-740d-4376-9653-dc6f07556c80.png"
+          src="/marca/8df588ff-740d-4376-9653-dc6f07556c80.png"
           alt="SafetySoluções"
           className="w-10 h-10 rounded-lg shrink-0"
         />

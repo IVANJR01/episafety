@@ -5,7 +5,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/((?!assets/|images/|lovable-uploads/|.*\\.[a-zA-Z0-9]+$).*)",
+      "source": "/((?!assets/|images/|marca/|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     }
   ],

@@ -13,7 +13,7 @@ import SignatureCanvas, { SignatureCanvasRef } from "@/components/SignatureCanva
 import {
   Video, Play, Pause, CheckCircle, Clock, LogOut, ChevronRight, BookOpen, ChevronDown, ChevronUp, Volume2, VolumeX, Maximize, Minimize
 } from "lucide-react";
-const logoImg = "/lovable-uploads/8df588ff-740d-4376-9653-dc6f07556c80.png";
+const logoImg = "/marca/8df588ff-740d-4376-9653-dc6f07556c80.png";
 
 interface CursoVideo {
   id: string;
