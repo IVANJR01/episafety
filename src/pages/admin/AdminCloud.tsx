@@ -5,7 +5,7 @@ const sections = [
   {
     icon: Database,
     title: "Banco de Dados",
-    desc: "Tabelas, RLS, funções e migrações são gerenciadas pelo Lovable Cloud.",
+    desc: "Tabelas, RLS, funções e migrações são gerenciadas pelo Supabase (projeto estmuducawmftvpbeutm).",
   },
   {
     icon: Server,
@@ -59,9 +59,9 @@ export default function AdminCloud() {
         <CardContent className="p-4 text-sm">
           <p className="font-semibold mb-1">⚠ Operações destrutivas</p>
           <p className="text-muted-foreground">
-            Alterações de schema, políticas RLS e backups são feitas via console do Lovable Cloud.
-            Esta tela é apenas informativa para evitar que ações administrativas sejam executadas no
-            mesmo fluxo dos usuários operacionais.
+            Alterações de schema, políticas RLS e backups são feitas via painel do Supabase
+            (projeto estmuducawmftvpbeutm), não por aqui. Esta tela é apenas informativa para evitar
+            que ações administrativas sejam executadas no mesmo fluxo dos usuários operacionais.
           </p>
         </CardContent>
       </Card>
