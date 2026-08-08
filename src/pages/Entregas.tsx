@@ -2057,7 +2057,6 @@ export default function Entregas() {
               {fichaSearch && fichaFilteredFuncs.length > 0 && !fichaFuncId && (
                 <div className="border rounded-md max-h-40 overflow-y-auto">
                   {fichaFilteredFuncs.map(f => {
-                    const count = entregaCountByFunc.get(f.id) || 0;
                     return (
                       <button key={f.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between"
                         onClick={() => { setFichaFuncId(f.id); setFichaSearch(f.nome); }}>
@@ -2066,9 +2065,6 @@ export default function Entregas() {
                           {f.cpf && <span className="text-muted-foreground text-xs ml-2">CPF: {f.cpf}</span>}
                           {f.matricula && <span className="text-muted-foreground text-xs ml-2">Mat: {f.matricula}</span>}
                         </div>
-                        <Badge variant={count > 0 ? "default" : "outline"} className="text-xs">
-                          {count} {count === 1 ? "entrega" : "entregas"}
-                        </Badge>
                       </button>
                     );
                   })}
