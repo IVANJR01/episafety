@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,10 +11,12 @@ import { toast } from "sonner";
 import { OrdemServicoSst, OS_STATUS_LABEL, OS_STATUS_COLOR, OS_ESCOPO_LABEL } from "@/lib/osTypes";
 import { gerarOsPdf } from "@/lib/osPdf";
 import { GRUPO_RISCO_LABEL } from "@/lib/gesFicha";
+import { garantirDocumento, publicarVersao } from "@/lib/arquivoDigital";
 
 export default function OrdemServicoDetalhe() {
   const nav = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
   const [os, setOs] = useState<OrdemServicoSst | null>(null);
   const [empresa, setEmpresa] = useState<{ nome: string; cnpj: string | null } | null>(null);
   const [ghe, setGhe] = useState<{ codigo: string; nome: string } | null>(null);
@@ -71,9 +74,48 @@ export default function OrdemServicoDetalhe() {
       status: "emitida",
       data_emissao: os.data_emissao || new Date().toISOString().slice(0, 10),
     }).eq("id", os.id);
-    setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { setBusy(false); return toast.error(error.message); }
     toast.success("OS emitida");
+
+    // Arquiva no Arquivo Digital só quando a OS é de um colaborador
+    // específico — de função/GHE é modelo compartilhado, sem dono pra
+    // pendurar o documento. Best-effort: a emissão já está confirmada,
+    // uma falha aqui não pode desfazer isso nem travar o usuário.
+    if (os.escopo === "funcionario" && os.funcionario_id) {
+      try {
+        const { data: tipo } = await (supabase.from as any)("internal_document_types")
+          .select("id").is("empresa_id", null).ilike("nome", "Ordem de Serviço").maybeSingle();
+        if (tipo?.id) {
+          const doc = gerarOsPdf({
+            os,
+            empresaNome: empresa?.nome || null,
+            empresaCnpj: empresa?.cnpj || null,
+            gheNome: ghe ? `${ghe.codigo} — ${ghe.nome}` : null,
+            funcaoNome: funcao?.nome_funcao || null,
+            funcionarioNome: funcionario?.nome || null,
+            funcionarioMatricula: funcionario?.matricula || null,
+          });
+          const documentoId = await garantirDocumento({
+            empresaId: os.empresa_id, colaboradorId: os.funcionario_id, tipoDocumentoId: tipo.id,
+            origemTabela: "ordens_servico_sst", origemId: os.id, userId: user?.id,
+          });
+          const arquivo = new File(
+            [doc.output("blob")],
+            `OS-${os.titulo.replace(/[^a-z0-9]+/gi, "_")}-v${os.versao}.pdf`,
+            { type: "application/pdf" },
+          );
+          await publicarVersao({
+            empresaId: os.empresa_id, documentoId, colaboradorId: os.funcionario_id, file: arquivo,
+            dataEmissao: new Date().toISOString().slice(0, 10), dataValidade: null, userId: user?.id,
+            origemTabela: "ordens_servico_sst", origemId: os.id,
+          });
+        }
+      } catch {
+        // Silencioso de propósito — ver comentário acima.
+      }
+    }
+
+    setBusy(false);
     load();
   };
 

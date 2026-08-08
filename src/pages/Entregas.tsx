@@ -26,6 +26,7 @@ import SignatureCanvas, { type SignatureCanvasRef } from "@/components/Signature
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
+import { garantirDocumento, publicarVersao } from "@/lib/arquivoDigital";
 import CameraCapture from "@/components/CameraCapture";
 
 const tipoTone: Record<string, StatusTone> = {
@@ -167,6 +168,21 @@ export default function Entregas() {
   const [shouldOpenSignatureAfterSave, setShouldOpenSignatureAfterSave] = useState(false);
   const sigEntregaRef = useRef<SignatureCanvasRef>(null);
   const [signInputType, setSignInputType] = useState<"assinatura" | "facial">("assinatura");
+
+  // Tipo único e global do Arquivo Digital pra Ficha de EPI — mesmo padrão
+  // do asoTipoId em AsoList.tsx. Resolvido uma vez; se a migration ainda não
+  // rodou, fica null e o arquivamento em handleGerarFicha vira no-op.
+  const [fichaEpiTipoId, setFichaEpiTipoId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isOnline()) return;
+    (supabase.from as any)("internal_document_types")
+      .select("id")
+      .is("empresa_id", null)
+      .ilike("nome", "Ficha de EPI")
+      .maybeSingle()
+      .then(({ data }: any) => setFichaEpiTipoId(data?.id || null))
+      .catch(() => {});
+  }, []);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [fullscreenSigOpen, setFullscreenSigOpen] = useState(false);
   const [savedSignatureDataUrl, setSavedSignatureDataUrl] = useState<string | null>(null);
@@ -1267,6 +1283,31 @@ export default function Entregas() {
 
     doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);
     toast({ title: "Ficha gerada com sucesso!", description: "O PDF foi baixado." });
+
+    // Arquiva a mesma ficha no Arquivo Digital, best-effort: o download já
+    // aconteceu, então uma falha aqui (migration não aplicada, offline etc.)
+    // não pode voltar atrás nem incomodar quem só queria o PDF.
+    if (fichaEpiTipoId && empresaId && isOnline()) {
+      try {
+        const documentoId = await garantirDocumento({
+          empresaId, colaboradorId: fichaFuncId, tipoDocumentoId: fichaEpiTipoId,
+          origemTabela: "ficha_epi", origemId: fichaFuncId, userId: user?.id,
+        });
+        const arquivo = new File(
+          [doc.output("blob")],
+          `Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`,
+          { type: "application/pdf" },
+        );
+        await publicarVersao({
+          empresaId, documentoId, colaboradorId: fichaFuncId, file: arquivo,
+          dataEmissao: now.toISOString().slice(0, 10), dataValidade: null, userId: user?.id,
+          origemTabela: "ficha_epi", origemId: fichaFuncId,
+        });
+      } catch {
+        // Silencioso de propósito — ver comentário acima.
+      }
+    }
+
     setFichaOpen(false);
   };
 

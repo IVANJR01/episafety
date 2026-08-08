@@ -5,11 +5,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, FileText, GraduationCap, Clock } from "lucide-react";
+import { ArrowLeft, User, FileText, GraduationCap, Clock, Shield, ClipboardList } from "lucide-react";
 import DocumentoEvidencia from "@/components/treinamentos/DocumentoEvidencia";
 import { isOnline } from "@/lib/offlineStorage";
 
 const NOME_TIPO_ASO = "ASO - Atestado de Saúde Ocupacional";
+const NOME_TIPO_FICHA_EPI = "Ficha de EPI";
+const NOME_TIPO_OS = "Ordem de Serviço";
 
 function maskCpf(cpf?: string | null) {
   if (!cpf) return "—";
@@ -242,13 +244,53 @@ export default function DossieColaborador() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><Shield className="w-4 h-4" />Ficha de EPI</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DocumentoEvidencia
+            empresaId={funcionario.empresa_id || ""}
+            colaboradorId={funcionario.id}
+            tipoDocumentoId={tipoDoCurso(NOME_TIPO_FICHA_EPI)?.id}
+            registroId={funcionario.id}
+            origemTabela="ficha_epi"
+            origemId={funcionario.id}
+            userId={user?.id}
+            podeEditar={canEdit}
+            semTipoTexto="Arquivo Digital indisponível"
+            semTipoTitulo="O tipo de documento da Ficha de EPI ainda não foi configurado neste banco."
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><ClipboardList className="w-4 h-4" />Ordem de Serviço</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DocumentoEvidencia
+            empresaId={funcionario.empresa_id || ""}
+            colaboradorId={funcionario.id}
+            tipoDocumentoId={tipoDoCurso(NOME_TIPO_OS)?.id}
+            registroId={funcionario.id}
+            origemTabela="ordens_servico_sst"
+            origemId={funcionario.id}
+            userId={user?.id}
+            podeEditar={canEdit}
+            semTipoTexto="Arquivo Digital indisponível"
+            semTipoTitulo="O tipo de documento da Ordem de Serviço ainda não foi configurado neste banco."
+          />
+        </CardContent>
+      </Card>
+
       <Card className="border-dashed">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2 text-muted-foreground"><Clock className="w-4 h-4" />Em breve</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Ficha de EPI, Ordem de Serviço e documentos pessoais ainda não fazem parte do Arquivo Digital — entram em rodadas futuras.
+            Documentos pessoais (RG, CPF, CNH) ainda não fazem parte do Arquivo Digital — entram em rodada futura.
           </p>
         </CardContent>
       </Card>
