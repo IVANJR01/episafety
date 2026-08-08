@@ -612,15 +612,15 @@ export default function Funcionarios() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>CPF</TableHead>
-                    <TableHead>Matrícula</TableHead>
-                    <TableHead>Unidade</TableHead>
-                    <TableHead>Contrato</TableHead>
+                    <TableHead className="min-w-[250px]">Nome</TableHead>
+                    <TableHead className="whitespace-nowrap">CPF</TableHead>
+                    <TableHead className="whitespace-nowrap">Matrícula</TableHead>
+                    <TableHead className="whitespace-nowrap">Unidade</TableHead>
+                    <TableHead className="whitespace-nowrap">Contrato</TableHead>
                     <TableHead>GHE</TableHead>
                     <TableHead>Cargo</TableHead>
-                    <TableHead>Admissão</TableHead>
-                    {activeTab === "demitidos" && <TableHead>Demissão</TableHead>}
+                    <TableHead className="whitespace-nowrap">Admissão</TableHead>
+                    {activeTab === "demitidos" && <TableHead className="whitespace-nowrap">Demissão</TableHead>}
                     <TableHead className="w-36"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -636,9 +636,9 @@ export default function Funcionarios() {
                     </TableCell></TableRow>
                   ) : filteredItems.map(f => (
                     <TableRow key={f.id}>
-                      <TableCell className="font-medium">{f.nome}</TableCell>
-                      <TableCell className="font-mono text-xs">{f.cpf || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{f.matricula || "—"}</TableCell>
+                      <TableCell className="font-medium min-w-[250px]">{f.nome}</TableCell>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">{f.cpf || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">{f.matricula || "—"}</TableCell>
                       <TableCell>{f.unidade_id ? unidadeMap.get(f.unidade_id) || "—" : "—"}</TableCell>
                       <TableCell>{f.contrato_id ? contratoMap.get(f.contrato_id) || "—" : "—"}</TableCell>
                       <TableCell>{f.setor || "—"}</TableCell>
