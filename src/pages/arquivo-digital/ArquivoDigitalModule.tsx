@@ -13,7 +13,7 @@ export default function ArquivoDigitalModule() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Arquivo Digital SST" 
+        title="Dossiê do Colaborador" 
         description="Gestão centralizada do dossiê dos colaboradores, vencimentos e histórico de arquivos."
         icon={FolderOpen}
       />
