@@ -189,9 +189,40 @@ export default function OrdemServicoNovo() {
     const q = editing
       ? await (supabase as any).from("ordens_servico_sst").update(payload).eq("id", id).select("id").maybeSingle()
       : await (supabase as any).from("ordens_servico_sst").insert(payload).select("id").maybeSingle();
+    
+    if (!q.error && form.escopo === "funcao" && form.funcao_id) {
+      try {
+        const fn = funcoes.find(f => f.id === form.funcao_id);
+        if (fn) {
+          // Garante que existe o tipo "Ordem de Serviço" no Arquivo Digital
+          let { data: tipos } = await (supabase as any).from("internal_document_types")
+            .select("id").eq("empresa_id", form.empresa_id).ilike("nome", "%Ordem de Serviço%").limit(1);
+          let tipoId = tipos?.[0]?.id;
+          if (!tipoId) {
+            const ins = await (supabase as any).from("internal_document_types").insert({
+              empresa_id: form.empresa_id, nome: "Ordem de Serviço", categoria: "Segurança", created_by: user?.id
+            }).select("id").single();
+            tipoId = ins.data?.id;
+          }
+          if (tipoId) {
+            // Verifica se o requisito já existe para não dar erro de constraint
+            const { data: reqs } = await (supabase as any).from("internal_document_requirements")
+              .select("id").eq("empresa_id", form.empresa_id).eq("tipo_documento_id", tipoId).eq("cargo", fn.nome);
+            if (!reqs || reqs.length === 0) {
+              await (supabase as any).from("internal_document_requirements").insert({
+                empresa_id: form.empresa_id, tipo_documento_id: tipoId, cargo: fn.nome, obrigatorio: true, created_by: user?.id
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Erro na automação do Dossiê", err);
+      }
+    }
+
     setSaving(false);
     if (q.error) return toast.error(q.error.message);
-    toast.success(editing ? "OS atualizada" : "OS criada");
+    toast.success(editing ? "OS atualizada e vinculada ao Dossiê" : "OS criada e vinculada ao Dossiê");
     nav(`/programas/ordem-servico/${q.data?.id || id}`);
   };
 
