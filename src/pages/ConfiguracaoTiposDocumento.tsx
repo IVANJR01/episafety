@@ -11,7 +11,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { PageHeader } from "@/components/ui/page-header";
 import { Plus, Search, Settings2, Loader2, Info, Globe, Building2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -167,15 +166,7 @@ export default function ConfiguracaoTiposDocumento() {
   if (!perms.canView) return null;
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-5xl mx-auto">
-      <PageHeader
-        title="Configuração de Tipos de Documentos"
-        subtitle="Que documentos existem e quais funções precisam de cada um."
-        actions={perms.canEdit ? (
-          <Button onClick={() => setNovoAberto(true)}><Plus className="w-4 h-4 mr-2" />Novo tipo</Button>
-        ) : undefined}
-      />
-
+    <div className="space-y-4 max-w-5xl mx-auto">
       {indisponivel && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="p-4 text-sm text-amber-800 flex items-center gap-2">
@@ -194,10 +185,15 @@ export default function ConfiguracaoTiposDocumento() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="relative max-w-md">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input value={busca} onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar tipo de documento…" className="pl-8" />
+          <div className="flex flex-col sm:flex-row justify-between gap-3">
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input value={busca} onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar tipo de documento…" className="pl-8" />
+            </div>
+            {perms.canEdit && (
+              <Button onClick={() => setNovoAberto(true)} className="w-full sm:w-auto"><Plus className="w-4 h-4 mr-2" />Novo tipo</Button>
+            )}
           </div>
 
           <div className="rounded-lg border overflow-x-auto">

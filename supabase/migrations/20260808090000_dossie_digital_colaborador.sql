@@ -136,6 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_dae_empresa ON public.document_audit_events(empre
 
 -- ============ 6. VIEW DE SITUAÇÃO — acrescenta "em_renovacao" ============
 
+DROP VIEW IF EXISTS public.internal_documents_situacao CASCADE;
 CREATE OR REPLACE VIEW public.internal_documents_situacao AS
 SELECT
   d.id, d.empresa_id, d.unidade_id, d.colaborador_id, d.tipo_documento_id,
@@ -242,11 +243,6 @@ INSERT INTO public.internal_document_types
   (empresa_id, nome, categoria, validade_meses, exige_arquivo, dias_aviso, ativo)
 SELECT NULL, nome, categoria, NULL, true, '{60,30,15,7,1}', true
 FROM (VALUES
-  ('ASO Admissional',                  'saude'),
-  ('ASO Periódico',                    'saude'),
-  ('ASO Mudança de Risco/Função',      'saude'),
-  ('ASO Retorno ao Trabalho',          'saude'),
-  ('ASO Demissional',                  'saude'),
   ('Integração',                       'capacitacao'),
   ('NR-10 SEP',                        'capacitacao'),
   ('CNH',                              'pessoal'),

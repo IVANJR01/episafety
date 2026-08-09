@@ -8,8 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PageHeader } from "@/components/ui/page-header";
-import { Search, ExternalLink, FolderOpen, Info, History } from "lucide-react";
+import { Info, Search, ExternalLink, History, FileCheck2 } from "lucide-react";
 import SituacaoBadge from "@/components/arquivo-digital/SituacaoBadge";
 import { urlTemporaria, registrarAcesso } from "@/lib/arquivoDigital";
 import { toast } from "@/hooks/use-toast";
@@ -110,11 +109,7 @@ export default function HistoricoVersoes() {
   if (!perms.canView) return null;
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
-      <PageHeader
-        title="Histórico de Versões"
-        subtitle="Todo arquivo já publicado — inclusive os substituídos por renovação."
-      />
+    <div className="space-y-4 max-w-6xl mx-auto">
 
       {indisponivel && (
         <Card className="border-amber-300 bg-amber-50">

@@ -20,7 +20,6 @@ import SolicitacoesMateriais from "@/pages/epis/SolicitacoesMateriais";
 import Funcionarios from "@/pages/Funcionarios";
 import DossieColaborador from "@/pages/DossieColaborador";
 import PainelVencimentos from "@/pages/PainelVencimentos";
-import ImportarDrive from "@/pages/ImportarDrive";
 import DossieColaboradores from "@/pages/DossieColaboradores";
 import HistoricoVersoes from "@/pages/HistoricoVersoes";
 import ConfiguracaoTiposDocumento from "@/pages/ConfiguracaoTiposDocumento";
@@ -94,6 +93,7 @@ import LaudoInsalubridade from "@/pages/programas/LaudoInsalubridade";
 import LaudoPericulosidade from "@/pages/programas/LaudoPericulosidade";
 
 import DocumentacaoSst from "@/pages/DocumentacaoSst";
+import ArquivoDigitalModule from "@/pages/arquivo-digital/ArquivoDigitalModule";
 import NotFound from "./pages/NotFound";
 import NetworkErrorBoundary from "@/components/NetworkErrorBoundary";
 import AdminLayout from "@/components/AdminLayout";
@@ -289,12 +289,19 @@ function ProtectedRoute() {
             no Arquivo Digital. A rota antiga segue redirecionando para não
             quebrar link que alguém já tenha salvo. */}
         <Route path="/cadastro/funcionarios/:id/dossie" element={<Navigate to="/arquivo-digital/dossies" replace />} />
-        <Route path="/arquivo-digital/dossies" element={<NetworkErrorBoundary><DossieColaboradores /></NetworkErrorBoundary>} />
+        
+        <Route path="/arquivo-digital" element={<ArquivoDigitalModule />}>
+          <Route path="dossies" element={<NetworkErrorBoundary><DossieColaboradores /></NetworkErrorBoundary>} />
+          <Route path="vencimentos" element={<NetworkErrorBoundary><PainelVencimentos /></NetworkErrorBoundary>} />
+          <Route path="historico" element={<NetworkErrorBoundary><HistoricoVersoes /></NetworkErrorBoundary>} />
+          <Route path="configuracao" element={<NetworkErrorBoundary><ConfiguracaoTiposDocumento /></NetworkErrorBoundary>} />
+
+          <Route index element={<Navigate to="dossies" replace />} />
+        </Route>
+        
+        {/* Standalone detail page without tabs */}
         <Route path="/arquivo-digital/dossie/:id" element={<NetworkErrorBoundary><DossieColaborador /></NetworkErrorBoundary>} />
-        <Route path="/arquivo-digital/vencimentos" element={<NetworkErrorBoundary><PainelVencimentos /></NetworkErrorBoundary>} />
-        <Route path="/arquivo-digital/historico" element={<NetworkErrorBoundary><HistoricoVersoes /></NetworkErrorBoundary>} />
-        <Route path="/arquivo-digital/tipos" element={<NetworkErrorBoundary><ConfiguracaoTiposDocumento /></NetworkErrorBoundary>} />
-        <Route path="/arquivo-digital/importar-drive" element={<NetworkErrorBoundary><ImportarDrive /></NetworkErrorBoundary>} />
+        
         {/* A tela de GES era duplicada: /cadastro/ghe montava o mesmo
             componente da aba GES em Documentação. Vira redirecionamento para
             não quebrar links já existentes (ex.: os do PCMSO). */}

@@ -602,10 +602,10 @@ export default function Funcionarios() {
         {setores.length > 0 && (
           <Select value={filterSetor} onValueChange={v => setFilterSetor(v === "all" ? "" : v)}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filtrar por GHE..." />
+              <SelectValue placeholder="Filtrar por GHS..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os GHE</SelectItem>
+              <SelectItem value="all">Todos os GHS</SelectItem>
               {setores.map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
@@ -700,7 +700,7 @@ export default function Funcionarios() {
                     {colunas.matricula && <TableHead className="whitespace-nowrap">Matrícula</TableHead>}
                     {colunas.unidade && <TableHead className="whitespace-nowrap">Unidade</TableHead>}
                     {colunas.contrato && <TableHead className="whitespace-nowrap">Contrato</TableHead>}
-                    {colunas.ghe && <TableHead>GHE</TableHead>}
+                    {colunas.ghe && <TableHead>GHS</TableHead>}
                     {colunas.cargo && <TableHead>Cargo</TableHead>}
                     {colunas.admissao && <TableHead className="whitespace-nowrap">Admissão</TableHead>}
                     {activeTab === "demitidos" && <TableHead className="whitespace-nowrap">Demissão</TableHead>}
@@ -794,9 +794,9 @@ export default function Funcionarios() {
               </div>
             </div>
             <div>
-              <Label>GHE/GES <span className="text-destructive">*</span></Label>
+              <Label>GHS/GES <span className="text-destructive">*</span></Label>
               <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v, cargo: ""})}>
-                <SelectTrigger><SelectValue placeholder="Selecione o GHE/GES do colaborador" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecione o GHS/GES do colaborador" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
                   {ghes.map(g => <SelectItem key={g.id} value={g.id}>{g.codigo} — {g.nome}</SelectItem>)}
@@ -812,13 +812,13 @@ export default function Funcionarios() {
               <Label>Cargo/Função <span className="text-destructive">*</span></Label>
               {form.ghe_id && gheFuncoes.length > 0 ? (
                 <Select value={form.cargo || ""} onValueChange={v => setForm({...form, cargo: v})}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a função do GHE" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione a função do GHS" /></SelectTrigger>
                   <SelectContent>
                     {gheFuncoes.map(fn => <SelectItem key={fn.id} value={fn.nome_funcao}>{fn.nome_funcao}</SelectItem>)}
                   </SelectContent>
                 </Select>
               ) : (
-                <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder={form.ghe_id ? "Ex: Operador (GHE sem funções cadastradas)" : "Selecione um GHE/GES primeiro"} disabled={!form.ghe_id} />
+                <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder={form.ghe_id ? "Ex: Operador (GHS sem funções cadastradas)" : "Selecione um GHS/GES primeiro"} disabled={!form.ghe_id} />
               )}
             </div>
 
