@@ -44,12 +44,7 @@ export default function ArquivoDigitalModule() {
               Tipos de Documento
             </Link>
           </TabsTrigger>
-          <TabsTrigger value="importar" asChild>
-            <Link to="/arquivo-digital/importar" className="gap-1.5 flex items-center">
-              <HardDriveDownload className="w-4 h-4" />
-              Importar do Drive
-            </Link>
-          </TabsTrigger>
+
         </TabsList>
       </Tabs>
 

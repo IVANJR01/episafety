@@ -20,7 +20,6 @@ import SolicitacoesMateriais from "@/pages/epis/SolicitacoesMateriais";
 import Funcionarios from "@/pages/Funcionarios";
 import DossieColaborador from "@/pages/DossieColaborador";
 import PainelVencimentos from "@/pages/PainelVencimentos";
-import ImportarDrive from "@/pages/ImportarDrive";
 import DossieColaboradores from "@/pages/DossieColaboradores";
 import HistoricoVersoes from "@/pages/HistoricoVersoes";
 import ConfiguracaoTiposDocumento from "@/pages/ConfiguracaoTiposDocumento";
@@ -296,7 +295,7 @@ function ProtectedRoute() {
           <Route path="vencimentos" element={<NetworkErrorBoundary><PainelVencimentos /></NetworkErrorBoundary>} />
           <Route path="historico" element={<NetworkErrorBoundary><HistoricoVersoes /></NetworkErrorBoundary>} />
           <Route path="configuracao" element={<NetworkErrorBoundary><ConfiguracaoTiposDocumento /></NetworkErrorBoundary>} />
-          <Route path="importar" element={<NetworkErrorBoundary><ImportarDrive /></NetworkErrorBoundary>} />
+
           <Route index element={<Navigate to="dossies" replace />} />
         </Route>
         
