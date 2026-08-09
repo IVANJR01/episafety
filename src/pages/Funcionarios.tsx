@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter, UserX, RotateCcw, FolderOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, User, Upload, Download, FileSpreadsheet, X, CheckCircle2, AlertCircle, Search, Filter, UserX, RotateCcw, FolderOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import BaixaDesligamento from "@/components/BaixaDesligamento";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -478,6 +478,83 @@ export default function Funcionarios() {
     return result;
   }, [currentList, searchTerm, filterSetor]);
 
+  /**
+   * Colunas que somem quando ninguém na aba preencheu o campo.
+   *
+   * Matrícula, Unidade e Contrato ficam vazios em empresa que não usa
+   * esses controles — três colunas de "—" empurravam as ações para fora
+   * da tela e obrigavam a rolar de lado só para clicar em editar.
+   *
+   * A conta é sobre a aba inteira, não sobre o resultado da busca: assim
+   * a coluna não pisca a cada letra digitada.
+   */
+  const colunas = useMemo(() => ({
+    matricula: currentList.some(f => !!f.matricula),
+    unidade: currentList.some(f => !!f.unidade_id),
+    contrato: currentList.some(f => !!f.contrato_id),
+    ghe: currentList.some(f => !!f.setor),
+    cargo: currentList.some(f => !!f.cargo),
+    admissao: currentList.some(f => !!f.data_admissao),
+  }), [currentList]);
+
+  const totalColunas = 2 // Nome + ações
+    + Object.values(colunas).filter(Boolean).length
+    + (activeTab === "demitidos" ? 1 : 0)
+    + 1; // CPF, sempre visível
+
+  // Paginação: 226 linhas de uma vez é rolagem sem fim, e joga a barra de
+  // rolagem lateral da tabela para o fim da página.
+  const [porPagina, setPorPagina] = useState(50);
+  const [pagina, setPagina] = useState(1);
+
+  // Conjunto mudou debaixo dos pés: volta para a primeira página.
+  useEffect(() => { setPagina(1); }, [searchTerm, filterSetor, activeTab, porPagina]);
+
+  const totalPaginas = Math.max(1, Math.ceil(filteredItems.length / porPagina));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const inicio = (paginaAtual - 1) * porPagina;
+  const itensPagina = useMemo(
+    () => filteredItems.slice(inicio, inicio + porPagina),
+    [filteredItems, inicio, porPagina]
+  );
+
+  /**
+   * Coluna de ações grudada na direita: mesmo quando a tabela é larga
+   * demais, Dossiê/Editar/Excluir continuam à vista, sem precisar puxar.
+   * A sombra faz as vezes da borda — borda de célula não acompanha
+   * `position: sticky` com `border-collapse: collapse`.
+   */
+  const acoesFixas = "sticky right-0 bg-card shadow-[inset_1px_0_0_hsl(var(--border))] group-hover:bg-muted/50";
+
+  const rodapePaginacao = filteredItems.length > 0 && (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-xs text-muted-foreground">
+        Mostrando {inicio + 1}–{Math.min(inicio + porPagina, filteredItems.length)} de {filteredItems.length}
+      </p>
+      <div className="flex items-center gap-2">
+        <Select value={String(porPagina)} onValueChange={v => setPorPagina(Number(v))}>
+          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[25, 50, 100, 200].map(n => (
+              <SelectItem key={n} value={String(n)}>{n} por página</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button size="icon" variant="outline" className="h-8 w-8" disabled={paginaAtual <= 1}
+          onClick={() => setPagina(paginaAtual - 1)} title="Página anterior">
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+          {paginaAtual} / {totalPaginas}
+        </span>
+        <Button size="icon" variant="outline" className="h-8 w-8" disabled={paginaAtual >= totalPaginas}
+          onClick={() => setPagina(paginaAtual + 1)} title="Próxima página">
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -567,7 +644,7 @@ export default function Funcionarios() {
                   <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo Funcionário</Button>
                 ) : undefined}
               />
-            ) : filteredItems.map(f => (
+            ) : itensPagina.map(f => (
               <Card key={f.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -596,17 +673,20 @@ export default function Funcionarios() {
                       {canDelete && <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(f.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
                     </div>
                   </div>
+                  {/* Só o que o colaborador realmente tem — campo vazio vira
+                      linha de "—" que não informa nada e alonga o cartão. */}
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-muted-foreground">CPF:</span> <span className="font-mono">{f.cpf || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Matrícula:</span> <span className="font-mono">{f.matricula || "—"}</span></div>
-                    <div><span className="text-muted-foreground">Unidade:</span> <span>{f.unidade_id ? unidadeMap.get(f.unidade_id) || "—" : "—"}</span></div>
-                    <div><span className="text-muted-foreground">Contrato:</span> <span>{f.contrato_id ? contratoMap.get(f.contrato_id) || "—" : "—"}</span></div>
+                    {f.cpf && <div><span className="text-muted-foreground">CPF:</span> <span className="font-mono">{f.cpf}</span></div>}
+                    {f.matricula && <div><span className="text-muted-foreground">Matrícula:</span> <span className="font-mono">{f.matricula}</span></div>}
+                    {f.unidade_id && unidadeMap.get(f.unidade_id) && <div><span className="text-muted-foreground">Unidade:</span> <span>{unidadeMap.get(f.unidade_id)}</span></div>}
+                    {f.contrato_id && contratoMap.get(f.contrato_id) && <div><span className="text-muted-foreground">Contrato:</span> <span>{contratoMap.get(f.contrato_id)}</span></div>}
                     {f.data_admissao && <div><span className="text-muted-foreground">Admissão:</span> <span className="font-mono">{f.data_admissao.split("-").reverse().join("/")}</span></div>}
                     {f.data_demissao && <div><span className="text-muted-foreground">Demissão:</span> <span className="font-mono text-destructive">{f.data_demissao.split("-").reverse().join("/")}</span></div>}
                   </div>
                 </CardContent>
               </Card>
             ))}
+            {rodapePaginacao}
           </div>
 
           {/* Desktop table layout */}
@@ -615,21 +695,21 @@ export default function Funcionarios() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[250px]">Nome</TableHead>
+                    <TableHead className="min-w-[220px]">Nome</TableHead>
                     <TableHead className="whitespace-nowrap">CPF</TableHead>
-                    <TableHead className="whitespace-nowrap">Matrícula</TableHead>
-                    <TableHead className="whitespace-nowrap">Unidade</TableHead>
-                    <TableHead className="whitespace-nowrap">Contrato</TableHead>
-                    <TableHead>GHE</TableHead>
-                    <TableHead>Cargo</TableHead>
-                    <TableHead className="whitespace-nowrap">Admissão</TableHead>
+                    {colunas.matricula && <TableHead className="whitespace-nowrap">Matrícula</TableHead>}
+                    {colunas.unidade && <TableHead className="whitespace-nowrap">Unidade</TableHead>}
+                    {colunas.contrato && <TableHead className="whitespace-nowrap">Contrato</TableHead>}
+                    {colunas.ghe && <TableHead>GHE</TableHead>}
+                    {colunas.cargo && <TableHead>Cargo</TableHead>}
+                    {colunas.admissao && <TableHead className="whitespace-nowrap">Admissão</TableHead>}
                     {activeTab === "demitidos" && <TableHead className="whitespace-nowrap">Demissão</TableHead>}
-                    <TableHead className="w-36"></TableHead>
+                    <TableHead className={`w-36 ${acoesFixas}`}>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={activeTab === "demitidos" ? 10 : 9} className="p-0">
+                    <TableRow><TableCell colSpan={totalColunas} className="p-0">
                       <EmptyState
                         icon={User}
                         title={searchTerm ? "Nenhum resultado" : activeTab === "demitidos" ? "Nenhum funcionário demitido" : "Nenhum funcionário cadastrado"}
@@ -637,18 +717,18 @@ export default function Funcionarios() {
                         bare
                       />
                     </TableCell></TableRow>
-                  ) : filteredItems.map(f => (
-                    <TableRow key={f.id}>
-                      <TableCell className="font-medium min-w-[250px]">{f.nome}</TableCell>
+                  ) : itensPagina.map(f => (
+                    <TableRow key={f.id} className="group">
+                      <TableCell className="font-medium min-w-[220px]">{f.nome}</TableCell>
                       <TableCell className="font-mono text-xs whitespace-nowrap">{f.cpf || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs whitespace-nowrap">{f.matricula || "—"}</TableCell>
-                      <TableCell>{f.unidade_id ? unidadeMap.get(f.unidade_id) || "—" : "—"}</TableCell>
-                      <TableCell>{f.contrato_id ? contratoMap.get(f.contrato_id) || "—" : "—"}</TableCell>
-                      <TableCell>{f.setor || "—"}</TableCell>
-                      <TableCell>{f.cargo || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{f.data_admissao ? f.data_admissao.split("-").reverse().join("/") : "—"}</TableCell>
+                      {colunas.matricula && <TableCell className="font-mono text-xs whitespace-nowrap">{f.matricula || "—"}</TableCell>}
+                      {colunas.unidade && <TableCell>{(f.unidade_id && unidadeMap.get(f.unidade_id)) || "—"}</TableCell>}
+                      {colunas.contrato && <TableCell>{(f.contrato_id && contratoMap.get(f.contrato_id)) || "—"}</TableCell>}
+                      {colunas.ghe && <TableCell>{f.setor || "—"}</TableCell>}
+                      {colunas.cargo && <TableCell>{f.cargo || "—"}</TableCell>}
+                      {colunas.admissao && <TableCell className="font-mono text-xs">{f.data_admissao ? f.data_admissao.split("-").reverse().join("/") : "—"}</TableCell>}
                       {activeTab === "demitidos" && <TableCell className="font-mono text-xs text-destructive">{f.data_demissao ? f.data_demissao.split("-").reverse().join("/") : "—"}</TableCell>}
-                      <TableCell>
+                      <TableCell className={acoesFixas}>
                         <div className="flex gap-1 justify-end">
                           {activeTab === "ativos" && canEdit && (
                             <Button size="sm" variant="outline" className="h-8 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => openDemissao(f)}>
@@ -669,6 +749,7 @@ export default function Funcionarios() {
                   ))}
                 </TableBody>
               </Table>
+              {rodapePaginacao && <div className="border-t px-4 py-3">{rodapePaginacao}</div>}
             </CardContent>
           </Card>
         </>
