@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, FileWarning, Briefcase, Network, BookOpen, Flame, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -314,45 +314,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
           })}
 
-          {visibleEpiItems.length > 0 && (
-            <>
-              <button
-                onClick={() => setEpiOpen(!epiOpen)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isEpiActive
-                    ? "bg-sidebar-accent text-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <Package className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão de EPIs</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${epiOpen ? "rotate-180" : ""}`} />
-              </button>
-              {epiOpen && (
-                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleEpiItems.map((item) => {
-                    const active = location.pathname === item.path;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active
-                            ? "bg-sidebar-accent text-primary"
-                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
           {visibleCadastroItems.length > 0 && (
             <>
               <button
@@ -392,42 +353,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {visibleAsoItems.length > 0 && (
-            <>
-              <button
-                onClick={() => setAsoOpen(!asoOpen)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isAsoActive
+          {visibleAfterCadastroItems.map((item) => {
+            const active = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  active
                     ? "bg-sidebar-accent text-primary"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
-                <Stethoscope className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão de ASO</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${asoOpen ? "rotate-180" : ""}`} />
-              </button>
-              {asoOpen && (
-                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleAsoItems.map((item) => {
-                    const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
 
           {visiblePortalRhItems.length > 0 && (
             <>
@@ -507,26 +450,61 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {visibleComercialItems.length > 0 && (
+          {visibleAsoItems.length > 0 && (
             <>
               <button
-                onClick={() => setComercialOpen(!comercialOpen)}
+                onClick={() => setAsoOpen(!asoOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isComercialActive
+                  isAsoActive
                     ? "bg-sidebar-accent text-primary"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
-                <Briefcase className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Comercial</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${comercialOpen ? "rotate-180" : ""}`} />
+                <Stethoscope className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Gestão de ASO</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${asoOpen ? "rotate-180" : ""}`} />
               </button>
-              {comercialOpen && (
+              {asoOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleComercialItems.map((item) => {
-                    const active =
-                      location.pathname === item.path ||
-                      (item.path === "/comercial/orcamentos" && location.pathname.startsWith("/comercial/orcamentos"));
+                  {visibleAsoItems.map((item) => {
+                    const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visibleGestaoDocItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setGestaoDocOpen(!gestaoDocOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isGestaoDocActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Gestão Documental</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
+              </button>
+              {gestaoDocOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleGestaoDocItems.map((item) => {
+                    const active = location.pathname === item.path || (item.path === "/arquivo-digital" && location.pathname.startsWith("/arquivo-digital"));
                     return (
                       <Link
                         key={item.path}
@@ -548,25 +526,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-
-          {visibleGestaoDocItems.length > 0 && (
+          {visibleEpiItems.length > 0 && (
             <>
               <button
-                onClick={() => setGestaoDocOpen(!gestaoDocOpen)}
+                onClick={() => setEpiOpen(!epiOpen)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isGestaoDocActive
+                  isEpiActive
                     ? "bg-sidebar-accent text-primary"
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 }`}
               >
-                <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão Documental</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
+                <Package className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Gestão de EPIs</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${epiOpen ? "rotate-180" : ""}`} />
               </button>
-              {gestaoDocOpen && (
+              {epiOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleGestaoDocItems.map((item) => {
-                    const active = location.pathname === item.path || (item.path === "/arquivo-digital" && location.pathname.startsWith("/arquivo-digital"));
+                  {visibleEpiItems.map((item) => {
+                    const active = location.pathname === item.path;
                     return (
                       <Link
                         key={item.path}
@@ -627,6 +604,87 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {visibleInspecoesItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setInspecoesOpen(!inspecoesOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isInspecoesActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <HardHat className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Inspeções</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${inspecoesOpen ? "rotate-180" : ""}`} />
+              </button>
+              {inspecoesOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleInspecoesItems.map((item) => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {visibleComercialItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setComercialOpen(!comercialOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isComercialActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <Briefcase className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Comercial</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${comercialOpen ? "rotate-180" : ""}`} />
+              </button>
+              {comercialOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleComercialItems.map((item) => {
+                    const active =
+                      location.pathname === item.path ||
+                      (item.path === "/comercial/orcamentos" && location.pathname.startsWith("/comercial/orcamentos"));
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+
           {visibleEsocialItems.length > 0 && (
             <>
               <button
@@ -655,64 +713,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           active ? "bg-sidebar-accent text-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {visibleAfterCadastroItems.map((item) => {
-            const active = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-sidebar-accent text-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </Link>
-            );
-          })}
-
-          {visibleInspecoesItems.length > 0 && (
-            <>
-              <button
-                onClick={() => setInspecoesOpen(!inspecoesOpen)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isInspecoesActive
-                    ? "bg-sidebar-accent text-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <HardHat className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Inspeções</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${inspecoesOpen ? "rotate-180" : ""}`} />
-              </button>
-              {inspecoesOpen && (
-                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleInspecoesItems.map((item) => {
-                    const active = location.pathname === item.path;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active
-                            ? "bg-sidebar-accent text-primary"
-                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         }`}
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
