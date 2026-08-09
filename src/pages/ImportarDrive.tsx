@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { PageHeader } from "@/components/ui/page-header";
 import { Check, ChevronsUpDown, ExternalLink, Upload, Loader2, RefreshCw, Info, FileStack, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -129,16 +128,15 @@ export default function ImportarDrive() {
   if (!perms.canView) return null;
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-5xl mx-auto">
-      <PageHeader
-        title="Importar do Drive"
-        subtitle={`Arquivos soltos em "EPISafety/(sua empresa)/${PASTA_IMPORTACAO}" no Drive, prontos pra entrar no Arquivo Digital.`}
-        actions={
-          <Button variant="outline" onClick={carregarArquivos} disabled={carregando}>
-            <RefreshCw className={cn("w-4 h-4 mr-2", carregando && "animate-spin")} />Atualizar
-          </Button>
-        }
-      />
+    <div className="space-y-4 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground flex-1">
+          Arquivos soltos em "EPISafety/(sua empresa)/{PASTA_IMPORTACAO}" no Drive, prontos pra entrar no Arquivo Digital.
+        </p>
+        <Button variant="outline" size="sm" onClick={carregarArquivos} disabled={carregando}>
+          <RefreshCw className={cn("w-4 h-4 mr-2", carregando && "animate-spin")} />Atualizar
+        </Button>
+      </div>
 
       {indisponivel && (
         <Card className="border-amber-300 bg-amber-50">

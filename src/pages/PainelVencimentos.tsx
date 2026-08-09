@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PageHeader } from "@/components/ui/page-header";
 import {
   AlertTriangle, Clock, CheckCircle2, Archive, FileStack, ExternalLink, FolderOpen, Search, Info,
 } from "lucide-react";
@@ -226,11 +225,7 @@ export default function PainelVencimentos() {
   if (!perms.canView) return null;
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
-      <PageHeader
-        title={titulo}
-        subtitle="Arquivo Digital SST — ASO, capacitações, ficha de EPI, OS e documentos pessoais."
-      />
+    <div className="space-y-4 max-w-6xl mx-auto">
 
       {indisponivel && (
         <Card className="border-amber-300 bg-amber-50">
