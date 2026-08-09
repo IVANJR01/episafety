@@ -227,6 +227,7 @@ export default function DossieColaborador() {
     // Regra do módulo: documento sem arquivo não entra. Data sozinha não
     // é evidência — é exatamente o que o Arquivo Digital veio substituir.
     if (!arquivoSel) { toast({ title: "Anexe o arquivo do documento", variant: "destructive" }); return; }
+    if (arquivoSel.type !== "application/pdf") { toast({ title: "Apenas arquivos PDF são aceitos. Imagens não são permitidas.", variant: "destructive" }); return; }
     if (!empresaDoc) { toast({ title: "Colaborador sem empresa definida", variant: "destructive" }); return; }
 
     setEnviando(true);
@@ -489,12 +490,12 @@ export default function DossieColaborador() {
             <div>
               <Label>Arquivo *</Label>
               <input ref={arquivoRef} type="file" className="hidden"
-                accept="application/pdf,image/jpeg,image/png,image/webp"
+                accept="application/pdf"
                 onChange={(e) => setArquivoSel(e.target.files?.[0] || null)} />
               <Button variant="outline" className="w-full justify-start font-normal mt-1"
                 onClick={() => arquivoRef.current?.click()}>
                 <Upload className="w-4 h-4 mr-2" />
-                <span className="truncate">{arquivoSel?.name || "Selecionar PDF ou imagem…"}</span>
+                <span className="truncate">{arquivoSel?.name || "Selecionar arquivo PDF…"}</span>
               </Button>
             </div>
             <div>
