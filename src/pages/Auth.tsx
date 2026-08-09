@@ -7,20 +7,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import InstallBanner from "@/components/InstallBanner";
-import { TERMS_VERSION } from "@/lib/termsConfig";
 
-type AuthMode = "login" | "signup" | "forgot";
+/*
+ * Não existe autocadastro.
+ *
+ * Quem libera acesso é o administrador da empresa, ou alguém autorizado
+ * por ele, pela tela de Usuários Liberados. Por isso o modo "signup" saiu
+ * inteiro — e não só o link: deixar `supabase.auth.signUp` no código, sem
+ * botão que chegue nele, seria uma porta fechada só por fora.
+ *
+ * Sobraram entrar e recuperar senha.
+ */
+type AuthMode = "login" | "forgot";
 
 export default function Auth() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const { toast } = useToast();
@@ -70,33 +76,9 @@ export default function Auth() {
           description: "Verifique sua caixa de entrada para redefinir a senha."
         });
         setMode("login");
-      } else if (mode === "login") {
+      } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-      } else {
-        if (!acceptedTerms) {
-          throw new Error("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
-        }
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { nome }, emailRedirectTo: window.location.origin }
-        });
-        if (error) throw error;
-        // Registra aceite dos termos (best-effort — não bloqueia se houver sessão pendente de confirmação)
-        try {
-          const userId = data.user?.id;
-          if (userId) {
-            await supabase.from("termos_aceites" as any).insert({
-              user_id: userId,
-              versao_termos: TERMS_VERSION,
-              user_agent: navigator.userAgent.slice(0, 500),
-            });
-          }
-        } catch {
-          /* silencioso — banner de aceite cobrirá o registro no primeiro login */
-        }
-        toast({ title: "Conta criada!", description: "Verifique seu email para confirmar o cadastro." });
       }
 
     } catch (error: any) {
@@ -123,12 +105,6 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" &&
-            <div>
-                <Label>Nome</Label>
-                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" required />
-              </div>
-            }
             <div>
               <Label>Email</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required />
@@ -150,34 +126,10 @@ export default function Auth() {
                 </button>
               </div>
             }
-            {mode === "signup" && (
-              <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer">
-                <Checkbox
-                  checked={acceptedTerms}
-                  onCheckedChange={(v) => setAcceptedTerms(Boolean(v))}
-                  className="mt-0.5"
-                />
-                <span>
-                  Li e aceito os{" "}
-                  <Link to="/termos" target="_blank" className="text-primary hover:underline">
-                    Termos de Uso
-                  </Link>{" "}
-                  e a{" "}
-                  <Link to="/privacidade" target="_blank" className="text-primary hover:underline">
-                    Política de Privacidade
-                  </Link>
-                  .
-                </span>
-              </label>
-            )}
-            <Button type="submit" className="w-full" disabled={loading || (mode === "signup" && !acceptedTerms)}>
-              {loading ?
-              "Aguarde..." :
-              mode === "login" ?
-              "Entrar" :
-              mode === "signup" ?
-              "Criar Conta" :
-              "Enviar Link de Recuperação"}
+            {/* O aceite dos termos é pedido no primeiro acesso pelo
+                TermsAcceptanceBanner, dentro do aplicativo. */}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Enviar Link de Recuperação"}
             </Button>
 
           </form>
@@ -197,19 +149,17 @@ export default function Auth() {
             Instalar App
           </Button>
           <div className="mt-4 text-center">
-            {mode === "forgot" ?
-            <button type="button" onClick={() => setMode("login")} className="text-sm text-primary hover:underline">
+            {mode === "forgot" ? (
+              <button type="button" onClick={() => setMode("login")} className="text-sm text-primary hover:underline">
                 Voltar ao login
-              </button> :
-
-            <button
-              type="button"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
-              className="text-sm text-primary hover:underline">
-              
-                {mode === "login" ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
               </button>
-            }
+            ) : (
+              /* No lugar do "Cadastre-se": quem chega aqui sem conta precisa
+                 saber a quem pedir, senão fica sem link e sem saída. */
+              <p className="text-xs text-muted-foreground">
+                O acesso é liberado pelo administrador da empresa.
+              </p>
+            )}
           </div>
 
           <div className="mt-6 pt-4 border-t border-border flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
