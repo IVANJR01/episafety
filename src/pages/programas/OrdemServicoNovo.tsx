@@ -81,7 +81,7 @@ export default function OrdemServicoNovo() {
     (async () => {
       const { data } = await (supabase as any)
         .from("ghe_funcoes")
-        .select(`id, nome_funcao, ghe_id, cargos_funcoes(descricao_atividades)`)
+        .select("id, nome_funcao, ghe_id, descricao_atividade")
         .eq("ghe_id", form.ghe_id)
         .order("nome_funcao");
       setFuncoes((data || []) as any);
@@ -138,7 +138,7 @@ export default function OrdemServicoNovo() {
         ? funcoes.find((f: any) => f.id === form.funcao_id) 
         : null;
       
-      const atividadesFuncao = fnSelecionada?.cargos_funcoes?.descricao_atividades;
+      const atividadesFuncao = fnSelecionada?.descricao_atividade;
       
       const atividades = atividadesFuncao || ficha.cabecalho.descricao_atividades || form.atividades;
       const medidas = [ficha.cabecalho.medidas_controle_existentes, ficha.cabecalho.medidas_controle_recomendadas]
