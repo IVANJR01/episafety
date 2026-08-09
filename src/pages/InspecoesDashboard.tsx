@@ -33,7 +33,16 @@ interface Conformidade {
   referencia_normativa: string | null;
   responsavel: string | null;
   situacao_detectada: string | null;
+  obra_id: string | null;
 }
+
+interface Obra {
+  id: string;
+  nome: string;
+  codigo: string | null;
+}
+
+const TODAS_OBRAS = "todas";
 
 /*
  * Paleta dos gráficos.
@@ -145,8 +154,10 @@ function ranking(itens: Conformidade[], chave: (c: Conformidade) => string | nul
 export default function InspecoesDashboard() {
   const { empresaId, empresaScopeIds } = useAuth();
   const [registros, setRegistros] = useState<Conformidade[]>([]);
+  const [obras, setObras] = useState<Obra[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState("365");
+  const [obraId, setObraId] = useState(TODAS_OBRAS);
 
   const targetIds = useMemo(
     () => (empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : empresaId ? [empresaId] : []),
@@ -177,7 +188,7 @@ export default function InspecoesDashboard() {
         const { data: linhas, error } = (await withTimeout(
           (supabase.from as any)("conformidades")
             .select(
-              "id, numero, status, gravidade, empresa_id, data_inspecao, data_realizado, prazo_correcao, local, local_especifico, referencia_normativa, responsavel, situacao_detectada",
+              "id, numero, status, gravidade, empresa_id, obra_id, data_inspecao, data_realizado, prazo_correcao, local, local_especifico, referencia_normativa, responsavel, situacao_detectada",
             )
             .in("empresa_id", targetIds),
         )) as any;
@@ -196,20 +207,62 @@ export default function InspecoesDashboard() {
     return () => window.removeEventListener("online", handleOnline);
   }, [cachedData, targetIds]);
 
+  // Obras do mesmo escopo de empresa dos registros — sem elas o seletor
+  // mostraria id cru. Falha de rede aqui só apaga o seletor, não a tela.
+  useEffect(() => {
+    if (targetIds.length === 0) {
+      setObras([]);
+      return;
+    }
+    let ativo = true;
+    (async () => {
+      try {
+        const { data: linhas } = await (supabase.from as any)("obras")
+          .select("id, nome, codigo")
+          .in("empresa_id", targetIds)
+          .order("nome", { ascending: true });
+        if (ativo) setObras((linhas || []) as Obra[]);
+      } catch {
+        if (ativo) setObras([]);
+      }
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, [targetIds]);
+
+  const nomeObra = useMemo(() => {
+    const m = new Map<string, string>();
+    obras.forEach((o) => m.set(o.id, o.codigo ? `${o.codigo} — ${o.nome}` : o.nome));
+    return m;
+  }, [obras]);
+
   /*
-   * O filtro de período vale para tudo que está abaixo dele — uma faixa de
-   * filtro, um recorte só. Corta pela data da inspeção: é quando o problema
+   * A obra escolhida some da lista? Acontece quando se troca de empresa com
+   * o filtro aplicado. Volta para "todas" em vez de mostrar tela vazia sem
+   * explicação.
+   */
+  useEffect(() => {
+    if (obraId !== TODAS_OBRAS && obras.length > 0 && !obras.some((o) => o.id === obraId)) {
+      setObraId(TODAS_OBRAS);
+    }
+  }, [obras, obraId]);
+
+  /*
+   * Os filtros valem para tudo que está abaixo deles — uma faixa de filtro,
+   * um recorte só. O período corta pela data da inspeção: é quando o problema
    * foi detectado, e é isso que o período de uma apresentação delimita.
    */
   const itens = useMemo(() => {
-    if (periodo === "tudo") return registros;
-    const dias = Number(periodo);
+    const dias = periodo === "tudo" ? null : Number(periodo);
     const hoje = new Date();
     return registros.filter((c) => {
+      if (obraId !== TODAS_OBRAS && c.obra_id !== obraId) return false;
+      if (dias === null) return true;
       const d = data(c.data_inspecao);
       return d ? differenceInCalendarDays(hoje, d) <= dias : false;
     });
-  }, [registros, periodo]);
+  }, [registros, periodo, obraId]);
 
   const m = useMemo(() => {
     const hoje = new Date();
@@ -316,6 +369,13 @@ export default function InspecoesDashboard() {
     };
   }, [itens]);
 
+  /*
+   * A coluna Obra só aparece quando ela informa algo: filtrando por uma obra
+   * só, repetir o mesmo nome em toda linha é coluna gasta à toa.
+   */
+  const mostrarObra =
+    obraId === TODAS_OBRAS && m.prioridades.some(({ c }) => c.obra_id && nomeObra.get(c.obra_id));
+
   const cabecalho = (
     <PageHeader
       title="Dashboard de Inspeções"
@@ -336,13 +396,17 @@ export default function InspecoesDashboard() {
     return (
       <div className="tela-larga space-y-6">
         {cabecalho}
-        <FiltroPeriodo periodo={periodo} setPeriodo={setPeriodo} />
+        <BarraFiltros periodo={periodo} setPeriodo={setPeriodo} obraId={obraId} setObraId={setObraId} obras={obras} />
         <Card>
           <CardContent className="py-4">
             <EmptyState
               icon={BarChart3}
-              title="Nenhuma inspeção no período"
-              description="Amplie o período ou registre inspeções para acompanhar os indicadores."
+              title="Nenhuma inspeção neste recorte"
+              description={
+                obraId !== TODAS_OBRAS
+                  ? "Esta obra não tem inspeções no período escolhido. Troque a obra ou amplie o período."
+                  : "Amplie o período ou registre inspeções para acompanhar os indicadores."
+              }
               bare
             />
           </CardContent>
@@ -356,7 +420,7 @@ export default function InspecoesDashboard() {
       {cabecalho}
 
       {/* Uma faixa de filtro acima de tudo: todos os painéis leem o mesmo recorte. */}
-      <FiltroPeriodo periodo={periodo} setPeriodo={setPeriodo} />
+      <BarraFiltros periodo={periodo} setPeriodo={setPeriodo} obraId={obraId} setObraId={setObraId} obras={obras} />
 
       {/* Números de referência */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -584,6 +648,7 @@ export default function InspecoesDashboard() {
                   <TableHead className="w-14">Nº</TableHead>
                   <TableHead className="min-w-[240px]">Situação detectada</TableHead>
                   <TableHead className="whitespace-nowrap">Gravidade</TableHead>
+                  {mostrarObra && <TableHead className="whitespace-nowrap">Obra</TableHead>}
                   <TableHead className="whitespace-nowrap">Local</TableHead>
                   <TableHead className="whitespace-nowrap">Prazo</TableHead>
                   <TableHead className="whitespace-nowrap text-right">Situação do prazo</TableHead>
@@ -600,6 +665,9 @@ export default function InspecoesDashboard() {
                       </span>
                     </TableCell>
                     <TableCell><BadgeGravidade gravidade={c.gravidade} /></TableCell>
+                    {mostrarObra && (
+                      <TableCell className="text-sm">{(c.obra_id && nomeObra.get(c.obra_id)) || "—"}</TableCell>
+                    )}
                     <TableCell className="text-sm">{c.local_especifico || c.local || "—"}</TableCell>
                     <TableCell className="font-mono text-xs whitespace-nowrap">
                       {c.prazo_correcao ? format(parseISO(c.prazo_correcao), "dd/MM/yyyy") : "—"}
@@ -621,18 +689,45 @@ export default function InspecoesDashboard() {
   );
 }
 
-function FiltroPeriodo({ periodo, setPeriodo }: { periodo: string; setPeriodo: (v: string) => void }) {
+function BarraFiltros({
+  periodo, setPeriodo, obraId, setObraId, obras,
+}: {
+  periodo: string;
+  setPeriodo: (v: string) => void;
+  obraId: string;
+  setObraId: (v: string) => void;
+  obras: Obra[];
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground">Período</span>
-      <Select value={periodo} onValueChange={setPeriodo}>
-        <SelectTrigger className="h-9 w-[190px] text-sm"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          {PERIODOS.map((p) => (
-            <SelectItem key={p.valor} value={p.valor}>{p.rotulo}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Período</span>
+        <Select value={periodo} onValueChange={setPeriodo}>
+          <SelectTrigger className="h-9 w-[180px] text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PERIODOS.map((p) => (
+              <SelectItem key={p.valor} value={p.valor}>{p.rotulo}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {/* Sem obra cadastrada o seletor não aparece: escolha de um item só não é escolha. */}
+      {obras.length > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Obra</span>
+          <Select value={obraId} onValueChange={setObraId}>
+            <SelectTrigger className="h-9 w-[240px] text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODAS_OBRAS}>Todas as obras</SelectItem>
+              {obras.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.codigo ? `${o.codigo} — ${o.nome}` : o.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 }
