@@ -60,7 +60,6 @@ const gestaoDocItems: NavItem[] = [
 ];
 
 const treinamentosItems: NavItem[] = [
-  { path: "/treinamentos", label: "Capacitações", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];

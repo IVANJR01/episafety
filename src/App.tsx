@@ -312,7 +312,7 @@ function ProtectedRoute() {
         <Route path="/inspecoes-se" element={<InspecoesSE />} />
         <Route path="/inspecoes-se/dashboard" element={<InspecoesDashboard />} />
         <Route path="/inspecoes-se/obras" element={<Obras />} />
-        <Route path="/treinamentos" element={<Treinamentos />} />
+        <Route path="/treinamentos" element={<Navigate to="/arquivo-digital" replace />} />
         <Route path="/exames" element={<Navigate to="/aso" replace />} />
         <Route path="/aso" element={<AsoModule />} />
         <Route path="/rh/asos" element={<PortalRH />} />
