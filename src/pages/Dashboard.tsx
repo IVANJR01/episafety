@@ -924,15 +924,15 @@ export default function Dashboard() {
             <EmptyState icon={Package} title="Sem entregas com valor" description="Registre entregas com custo para visualizar a distribuição por EPI." bare />
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(320, consumoChartData.length * 44)}>
-              <ComposedChart data={consumoChartData} margin={{ left: isMobile ? 8 : 8, right: 24, top: 20, bottom: 4 }}>
+              <ComposedChart data={consumoChartData} margin={{ left: isMobile ? 8 : 8, right: 24, top: 20, bottom: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                 <XAxis
                   dataKey="nome"
-                  tick={{ fill: 'hsl(220, 25%, 10%)', fontSize: isMobile ? 10 : 11 }}
+                  tick={{ fill: 'hsl(220, 25%, 10%)', fontSize: isMobile ? 9 : 10 }}
                   interval={0}
-                  angle={isMobile ? -45 : -30}
+                  angle={-45}
                   textAnchor="end"
-                  height={isMobile ? 80 : 70}
+                  height={140}
                 />
                 <YAxis
                   yAxisId="valor"
