@@ -252,6 +252,38 @@ export default function InspecoesSE() {
     })();
   }, [empresaId, empresaScopeIds]);
 
+  /*
+   * Segunda passada: busca pelo id exato que as inspeções referenciam.
+   *
+   * A busca por empresa acima depende de a obra estar numa empresa do
+   * escopo atual. Quando não está — e a inspeção continua apontando para
+   * ela — a tela dizia "Obra removida" para uma obra viva e cadastrada.
+   * Aqui o filtro de empresa sai: pergunta-se pelos ids em si.
+   *
+   * O que sobrar sem resposta depois disso não é obra apagada; é obra que
+   * este usuário não tem permissão de ler. São coisas diferentes e a tela
+   * passa a dizer cada uma pelo nome.
+   */
+  const idsTentados = useRef<Set<string>>(new Set());
+  const [obrasSemAcesso, setObrasSemAcesso] = useState(false);
+
+  useEffect(() => {
+    const conhecidas = new Set(obras.map(o => o.id));
+    const faltando = [...new Set(
+      items.map(i => i.obra_id).filter((id): id is string => !!id && !conhecidas.has(id) && !idsTentados.current.has(id)),
+    )];
+    if (faltando.length === 0) return;
+    faltando.forEach(id => idsTentados.current.add(id));
+    (async () => {
+      const { data } = await (supabase.from as any)("obras")
+        .select("id,nome,codigo,status")
+        .in("id", faltando);
+      const achadas = (data || []) as ObraOption[];
+      if (achadas.length > 0) setObras(prev => [...prev, ...achadas.filter(a => !prev.some(p => p.id === a.id))]);
+      if (achadas.length < faltando.length) setObrasSemAcesso(true);
+    })();
+  }, [items, obras]);
+
   /**
    * Cria a obra digitada no próprio seletor e devolve o id, para o campo já
    * ficar preenchido. Nasce com o nome e o próximo código da sequência —
@@ -1566,6 +1598,17 @@ export default function InspecoesSE() {
         }
       />
 
+      {obrasSemAcesso && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          <p className="font-medium text-destructive">Algumas obras não puderam ser lidas.</p>
+          <p className="mt-1 text-muted-foreground">
+            As inspeções abaixo continuam ligadas às suas obras — elas não foram apagadas. O banco de dados está
+            recusando a leitura da tabela <code className="text-xs">obras</code> para este usuário (política RLS).
+            Enquanto isso não for ajustado, o nome da obra não aparece aqui nem no relatório.
+          </p>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-lg border bg-card p-4 text-center">
@@ -1692,7 +1735,9 @@ export default function InspecoesSE() {
                       )}
                       {(() => {
                         const obra = obras.find(o => o.id === item.obra_id);
-                        const obraNome = obra?.nome || (item.obra_id ? "Obra removida" : null);
+                        // "Removida" so quando a obra realmente sumiu; sem permissao
+                        // de leitura a obra existe, e dizer o contrario e mentira.
+                        const obraNome = obra?.nome || (item.obra_id ? (obrasSemAcesso ? "Obra sem permissão de leitura" : "Obra removida") : null);
                         const partes: string[] = [];
                         if (obraNome) partes.push(`Obra: ${obraNome}`);
                         if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
@@ -1793,7 +1838,7 @@ export default function InspecoesSE() {
                   <GravidadeBadge gravidade={item.gravidade} />
                   {(() => {
                     const obra = obras.find(o => o.id === item.obra_id);
-                    const obraNome = obra?.nome || (item.obra_id ? "Obra removida" : null);
+                    const obraNome = obra?.nome || (item.obra_id ? (obrasSemAcesso ? "Obra sem permissão de leitura" : "Obra removida") : null);
                     const partes: string[] = [];
                     if (obraNome) partes.push(`Obra: ${obraNome}`);
                     if (!obraNome && item.local) partes.push(`📍 ${item.local}`);
