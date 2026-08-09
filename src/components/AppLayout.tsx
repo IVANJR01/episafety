@@ -54,9 +54,13 @@ const portalRhItems: NavItem[] = [
 ];
 
 // Gestão Documental SST
+//
+// Ordens de Serviço não entra aqui: a Central Documentação SST já traz o
+// cartão que abre a mesma tela (CentralDocumentacaoTab, chave "os"), e a OS
+// é um documento entre os outros do rol legal. Ter os dois caminhos duplica
+// o menu sem acrescentar nada. A rota continua a mesma.
 const gestaoDocItems: NavItem[] = [
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
-  { path: "/programas/ordem-servico", label: "Ordens de Serviço", icon: ClipboardList, moduleKey: "pgr" },
 ];
 
 const treinamentosItems: NavItem[] = [
