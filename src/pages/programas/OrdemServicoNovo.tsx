@@ -79,11 +79,13 @@ export default function OrdemServicoNovo() {
       return;
     }
     (async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("ghe_funcoes")
-        .select("id, nome_funcao, ghe_id, descricao_atividade")
+        .select("id, nome_funcao, ghe_id, funcao_id")
         .eq("ghe_id", form.ghe_id)
         .order("nome_funcao");
+      
+      if (error) console.error("Erro ao buscar ghe_funcoes:", error);
       setFuncoes((data || []) as any);
     })();
   }, [form.ghe_id]);
@@ -138,7 +140,17 @@ export default function OrdemServicoNovo() {
         ? funcoes.find((f: any) => f.id === form.funcao_id) 
         : null;
       
-      const atividadesFuncao = fnSelecionada?.descricao_atividade;
+      let atividadesFuncao = null;
+      if (fnSelecionada?.funcao_id) {
+        const { data: sstFn } = await (supabase as any)
+          .from("sst_funcoes")
+          .select("descricao_atividades")
+          .eq("id", fnSelecionada.funcao_id)
+          .maybeSingle();
+        if (sstFn?.descricao_atividades) {
+          atividadesFuncao = sstFn.descricao_atividades;
+        }
+      }
       
       const atividades = atividadesFuncao || ficha.cabecalho.descricao_atividades || form.atividades;
       const medidas = [ficha.cabecalho.medidas_controle_existentes, ficha.cabecalho.medidas_controle_recomendadas]
