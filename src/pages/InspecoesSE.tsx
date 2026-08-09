@@ -230,17 +230,27 @@ export default function InspecoesSE() {
     void loadData();
   }, [loadData]);
 
-  // Carrega obras da empresa (apenas ATIVAS por padrão, mas incluímos concluídas caso a inspeção antiga referencie)
+  /*
+   * Carrega obras (inclusive concluídas, caso uma inspeção antiga aponte
+   * para elas).
+   *
+   * O escopo aqui tem que ser o MESMO das inspeções, que carregam com
+   * `.in("empresa_id", targetIds)`. Buscar obra só da empresa ativa deixava
+   * de fora a obra de qualquer outra empresa do escopo — e a inspeção dela
+   * aparecia como "Obra removida", embora a obra existisse e estivesse
+   * listada normalmente no Cadastro de Local.
+   */
   useEffect(() => {
-    if (!empresaId) { setObras([]); return; }
+    const escopo = empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
+    if (escopo.length === 0) { setObras([]); return; }
     (async () => {
       const { data } = await (supabase.from as any)("obras")
         .select("id,nome,codigo,status")
-        .eq("empresa_id", empresaId)
+        .in("empresa_id", escopo)
         .order("nome", { ascending: true });
       setObras((data || []) as ObraOption[]);
     })();
-  }, [empresaId]);
+  }, [empresaId, empresaScopeIds]);
 
   /**
    * Cria a obra digitada no próprio seletor e devolve o id, para o campo já

@@ -51,6 +51,7 @@ export default function Obras() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("TODOS");
+  const [avisoPersistencia, setAvisoPersistencia] = useState<string | null>(null);
 
   const targetIds = useMemo(() => {
     return empresaScopeIds && empresaScopeIds.length > 0 ? empresaScopeIds : (empresaId ? [empresaId] : []);
@@ -91,7 +92,16 @@ export default function Obras() {
       try {
         const gravadas = await gravarObrasDoCodigo(targetIds, records, user?.id);
         setItems(gravadas > 0 ? await buscar() : mergeSeed(records));
-      } catch {
+        setAvisoPersistencia(null);
+      } catch (e: any) {
+        /*
+         * Este catch já existia mudo, e o silêncio custava caro: a tela
+         * mostrava os locais do código-fonte como se fossem cadastro, e
+         * salvar um deles devolvia "new row violates row-level security
+         * policy" sem dizer que a gravação vinha falhando desde a abertura.
+         * O motivo agora aparece na tela.
+         */
+        setAvisoPersistencia(e?.message || "não foi possível gravar");
         setItems(mergeSeed(records));
       }
     } catch {
@@ -217,6 +227,18 @@ export default function Obras() {
           <Plus className="w-4 h-4 mr-1" /> Novo local
         </Button>
       </div>
+
+      {avisoPersistencia && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          <p className="font-medium text-destructive">Os locais abaixo ainda não estão no banco de dados.</p>
+          <p className="mt-1 text-muted-foreground">
+            Eles vêm da lista inicial do sistema, e a gravação automática falhou — por isso Editar e Excluir
+            devolvem erro, e as inspeções ligadas a eles aparecem sem local. É permissão do banco (RLS) na
+            tabela <code className="text-xs">obras</code>, não erro de preenchimento.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Resposta do banco: {avisoPersistencia}</p>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">

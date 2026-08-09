@@ -364,10 +364,20 @@ export default function InspecoesDashboard() {
       prazoBarra,
       temPrazo: emDia.length + vencendo.length + vencidas.length + semPrazo.length > 0,
       topNormas: ranking(itens, (c) => c.referencia_normativa, 8),
-      topLocais: ranking(itens, (c) => c.local_especifico || c.local, 8),
+      /*
+       * `local` e `local_especifico` são texto livre e ficam em branco em
+       * quem registra a localização pela obra — e aí o cartão dizia "nenhum
+       * local preenchido" com a tela cheia de inspeções. A obra entra como
+       * terceira opção: é o local, só que vindo do cadastro.
+       */
+      topLocais: ranking(
+        itens,
+        (c) => c.local_especifico || c.local || (c.obra_id ? nomeObra.get(c.obra_id) ?? null : null),
+        8,
+      ),
       prioridades,
     };
-  }, [itens]);
+  }, [itens, nomeObra]);
 
   /*
    * A coluna Obra só aparece quando ela informa algo: filtrando por uma obra
