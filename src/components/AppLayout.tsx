@@ -57,6 +57,7 @@ const gestaoDocItems: NavItem[] = [
   { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
+  { path: "/programas/ordem-servico", label: "Ordens de Serviço", icon: ClipboardList, moduleKey: "pgr" },
 ];
 
 const treinamentosItems: NavItem[] = [
@@ -67,7 +68,6 @@ const treinamentosItems: NavItem[] = [
 // Programas — Módulo Mestre Unificado
 const programasItems: NavItem[] = [
   { path: "/documentacao-sst", label: "Central Documentação SST", icon: ShieldCheck, moduleKey: "pgr" },
-  { path: "/programas/ordem-servico", label: "Ordens de Serviço", icon: ClipboardList, moduleKey: "pgr" },
 ];
 
 // Comercial — Orçamentos, Clientes, Catálogo
