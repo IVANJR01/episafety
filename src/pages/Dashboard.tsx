@@ -374,12 +374,12 @@ export default function Dashboard() {
   const custoMensalData = useMemo(() => {
     const mesesSaida: Record<string, number> = {};
     const epiIdsInContracts = new Set(contratoEpis.map(ce => ce.epi_id));
-    const saidaTypes = new Set(["entrega", "troca", "substituicao", "perda", "dano"]);
+    const saidaTypes = new Set(["entrega", "troca", "substituicao", "perda", "dano", "saida"]);
 
     // 1) Contract-based exits: "entrada" into contracts = exits from matriz
     movimentacoes.filter(m => m.tipo === "entrada").forEach(m => {
       const epi = epis.find(e => e.id === m.epi_id);
-      const valor = (epi?.valor || 0) * m.quantidade;
+      const valor = (Number(epi?.valor) || 0) * m.quantidade;
       const mes = m.created_at?.substring(0, 7);
       if (mes && valor > 0) {
         mesesSaida[mes] = (mesesSaida[mes] || 0) + valor;
@@ -389,8 +389,18 @@ export default function Dashboard() {
     // 2) Direct deliveries for EPIs NOT managed through contracts
     entregas.filter(e => saidaTypes.has(e.tipo) && !epiIdsInContracts.has(e.epi_id)).forEach(e => {
       const epi = epis.find(ep => ep.id === e.epi_id);
-      const valor = (epi?.valor || 0) * e.quantidade;
+      const valor = (Number(epi?.valor) || 0) * e.quantidade;
       const mes = e.data?.substring(0, 7);
+      if (mes && valor > 0) {
+        mesesSaida[mes] = (mesesSaida[mes] || 0) + valor;
+      }
+    });
+
+    // 3) General stock exits (saida, perda, dano) not captured by entregas
+    movimentacoes.filter(m => ["saida", "perda", "dano"].includes(m.tipo)).forEach(m => {
+      const epi = epis.find(e => e.id === m.epi_id);
+      const valor = (Number(epi?.valor) || 0) * m.quantidade;
+      const mes = m.created_at?.substring(0, 7);
       if (mes && valor > 0) {
         mesesSaida[mes] = (mesesSaida[mes] || 0) + valor;
       }
@@ -404,28 +414,35 @@ export default function Dashboard() {
     }));
   }, [entregas, epis, valorEstoqueAtual, movimentacoes, contratoEpis]);
 
-  // Pareto de Consumo (baseado em entregas reais)
+  // Pareto de Consumo (baseado em entregas reais + saídas genéricas)
   const { consumoChartData, totalConsumoValor } = useMemo(() => {
     const epiMap = new Map(epis.map(e => [e.id, e]));
     // Aggregate consumption by EPI from entregas (only outgoing types)
     const consumoPorEpi: Record<string, { nome: string; qtd: number; valor: number }> = {};
+    
+    const addConsumo = (epi_id: string, quantidade: number) => {
+      const epi = epiMap.get(epi_id);
+      if (!epi) return;
+      const custoUnit = Number(epi.valor) || 0;
+      if (!consumoPorEpi[epi_id]) {
+        const label = epi.tamanho ? `${epi.nome} (${epi.tamanho})` : epi.nome;
+        consumoPorEpi[epi_id] = {
+          nome: label.length > 30 ? label.substring(0, 27) + "..." : label,
+          qtd: 0,
+          valor: 0,
+        };
+      }
+      consumoPorEpi[epi_id].qtd += quantidade;
+      consumoPorEpi[epi_id].valor += custoUnit * quantidade;
+    };
+
     entregas
       .filter(ent => ["entrega", "substituicao", "troca"].includes(ent.tipo))
-      .forEach(ent => {
-        const epi = epiMap.get(ent.epi_id);
-        if (!epi) return;
-        const custoUnit = epi.valor || 0;
-        if (!consumoPorEpi[ent.epi_id]) {
-          const label = epi.tamanho ? `${epi.nome} (${epi.tamanho})` : epi.nome;
-          consumoPorEpi[ent.epi_id] = {
-            nome: label.length > 30 ? label.substring(0, 27) + "..." : label,
-            qtd: 0,
-            valor: 0,
-          };
-        }
-        consumoPorEpi[ent.epi_id].qtd += ent.quantidade;
-        consumoPorEpi[ent.epi_id].valor += custoUnit * ent.quantidade;
-      });
+      .forEach(ent => addConsumo(ent.epi_id, ent.quantidade));
+
+    movimentacoes
+      .filter(m => ["saida", "perda", "dano"].includes(m.tipo))
+      .forEach(m => addConsumo(m.epi_id, m.quantidade));
 
     const items = Object.values(consumoPorEpi)
       .filter(i => i.valor > 0)
