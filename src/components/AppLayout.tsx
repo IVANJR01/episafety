@@ -56,23 +56,13 @@ const portalRhItems: NavItem[] = [
 const gestaoDocItems: NavItem[] = [
   { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
+  { path: "/arquivo-digital", label: "Arquivo Digital SST", icon: FolderOpen, moduleKey: "arquivo_digital" },
+];
+
+const treinamentosItems: NavItem[] = [
   { path: "/treinamentos", label: "Capacitações", icon: GraduationCap, moduleKey: "treinamentos" },
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
-];
-
-// Arquivo Digital SST — o dossiê do colaborador e tudo que o alimenta.
-//
-// Vencidos / Vencendo / Não enviados eram três itens de menu apontando
-// para a MESMA tela, que já traz esses mesmos filtros como cartões
-// clicáveis no topo. Três atalhos para uma tela só é menu comprido sem
-// nada a mais: viraram um item, e o filtro se escolhe lá dentro.
-const arquivoDigitalItems: NavItem[] = [
-  { path: "/arquivo-digital/dossies", label: "Dossiê de Colaboradores", icon: FolderOpen, moduleKey: "arquivo_digital" },
-  { path: "/arquivo-digital/vencimentos", label: "Pendências e Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
-  { path: "/arquivo-digital/historico", label: "Histórico de Versões", icon: GitBranch, moduleKey: "arquivo_digital" },
-  { path: "/arquivo-digital/tipos", label: "Configuração de Tipos", icon: Settings, moduleKey: "arquivo_digital" },
-  { path: "/arquivo-digital/importar-drive", label: "Importar do Drive", icon: HardDrive, moduleKey: "arquivo_digital" },
 ];
 
 // Programas — Módulo Mestre Unificado
@@ -202,7 +192,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleAsoItems = asoItems.filter((i) => canAccess(i.moduleKey));
   const visiblePortalRhItems = portalRhItems.filter((i) => canAccess(i.moduleKey));
   const visibleGestaoDocItems = gestaoDocItems.filter((i) => canAccess(i.moduleKey));
-  const visibleArquivoDigitalItems = arquivoDigitalItems.filter((i) => canAccess(i.moduleKey));
+  const visibleTreinamentosItems = treinamentosItems.filter((i) => canAccess(i.moduleKey));
   // eSocial ocultado temporariamente do menu (rotas/páginas/dados preservados).
   const visibleEsocialItems: NavItem[] = [];
   void esocialItems;
@@ -214,8 +204,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
   const isAsoActive = visibleAsoItems.some((i) => location.pathname.startsWith(i.path));
   const isPortalRhActive = visiblePortalRhItems.some((i) => location.pathname.startsWith(i.path));
-  const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path);
-  const isArquivoDigitalActive = location.pathname.startsWith("/arquivo-digital");
+  const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path) || location.pathname.startsWith("/arquivo-digital");
+  const isTreinamentosActive = visibleTreinamentosItems.some((i) => location.pathname === i.path);
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
   const isProgramasActive = location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat");
@@ -225,7 +215,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [asoOpen, setAsoOpen] = useState(isAsoActive);
   const [portalRhOpen, setPortalRhOpen] = useState(isPortalRhActive);
   const [gestaoDocOpen, setGestaoDocOpen] = useState(isGestaoDocActive);
-  const [arquivoDigitalOpen, setArquivoDigitalOpen] = useState(isArquivoDigitalActive);
+  const [treinamentosOpen, setTreinamentosOpen] = useState(isTreinamentosActive);
   const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
   const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
@@ -577,7 +567,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {gestaoDocOpen && (
                 <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
                   {visibleGestaoDocItems.map((item) => {
-                    const active = location.pathname === item.path;
+                    const active = location.pathname === item.path || (item.path === "/arquivo-digital" && location.pathname.startsWith("/arquivo-digital"));
                     return (
                       <Link
                         key={item.path}
@@ -599,19 +589,43 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {visibleArquivoDigitalItems.length > 0 && (
-            <Link
-              to="/arquivo-digital"
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                isArquivoDigitalActive
-                  ? "bg-sidebar-accent text-primary"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              }`}
-            >
-              <FolderOpen className="w-4 h-4 shrink-0" />
-              <span className="truncate flex-1 text-left">Arquivo Digital SST</span>
-            </Link>
+          {visibleTreinamentosItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setTreinamentosOpen(!treinamentosOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isTreinamentosActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <GraduationCap className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Treinamentos</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${treinamentosOpen ? "rotate-180" : ""}`} />
+              </button>
+              {treinamentosOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleTreinamentosItems.map((item) => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
 
           {visibleEsocialItems.length > 0 && (
