@@ -56,7 +56,7 @@ const portalRhItems: NavItem[] = [
 const gestaoDocItems: NavItem[] = [
   { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
-  { path: "/arquivo-digital", label: "Arquivo Digital SST", icon: FolderOpen, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
 ];
 
 const treinamentosItems: NavItem[] = [
