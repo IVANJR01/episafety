@@ -130,14 +130,14 @@ export default function OrdemServicoNovo() {
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
-  const carregarDoGhe = async () => {
-    if (!form.ghe_id) return toast.error("Selecione um GES/GHE primeiro");
+  const carregarDoGhe = async (gheId = form.ghe_id, funcaoId = form.funcao_id, escopo = form.escopo) => {
+    if (!gheId) return toast.error("Selecione um GES/GHE primeiro");
     try {
-      const ficha = await loadGheFicha(form.ghe_id);
+      const ficha = await loadGheFicha(gheId);
       const riscos = riscosToSnapshot(ficha.riscos);
       
-      const fnSelecionada = form.escopo === "funcao" && form.funcao_id 
-        ? funcoes.find((f: any) => f.id === form.funcao_id) 
+      const fnSelecionada = escopo === "funcao" && funcaoId 
+        ? funcoes.find((f: any) => f.id === funcaoId) 
         : null;
       
       let atividadesFuncao = null;
@@ -286,7 +286,12 @@ export default function OrdemServicoNovo() {
             </div>
             <div>
               <Label>Escopo *</Label>
-              <Select value={form.escopo} onValueChange={(v) => set("escopo", v)}>
+              <Select value={form.escopo} onValueChange={(v) => {
+                set("escopo", v);
+                if (form.ghe_id) {
+                  carregarDoGhe(form.ghe_id, form.funcao_id, v);
+                }
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ghe">Por GES/GHE</SelectItem>
@@ -301,7 +306,10 @@ export default function OrdemServicoNovo() {
             </div>
             <div>
               <Label>GES/GHE {form.escopo !== "funcionario" ? "*" : ""}</Label>
-              <Select value={form.ghe_id} onValueChange={(v) => set("ghe_id", v)}>
+              <Select value={form.ghe_id} onValueChange={(v) => {
+                setForm((f: any) => ({ ...f, ghe_id: v, funcao_id: "" }));
+                carregarDoGhe(v, "", form.escopo);
+              }}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   {ghes.map((g) => <SelectItem key={g.id} value={g.id}>{g.codigo} — {g.nome}</SelectItem>)}
@@ -310,7 +318,11 @@ export default function OrdemServicoNovo() {
             </div>
             <div>
               <Label>Função</Label>
-              <Select value={form.funcao_id || "__none__"} onValueChange={(v) => set("funcao_id", v === "__none__" ? "" : v)}>
+              <Select value={form.funcao_id || "__none__"} onValueChange={(v) => {
+                const newVal = v === "__none__" ? "" : v;
+                set("funcao_id", newVal);
+                if (form.ghe_id) carregarDoGhe(form.ghe_id, newVal, form.escopo);
+              }}>
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— nenhum —</SelectItem>
