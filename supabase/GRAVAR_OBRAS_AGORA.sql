@@ -101,6 +101,29 @@ USING (
 
 
 -- ---------------------------------------------------------------------
+-- PARTE 2B — Super Admin (esta é a que faz o seu erro parar)
+--
+-- As policies acima reconhecem administrador só por has_role(...,'admin').
+-- O aplicativo trata como Super Admin quem passa em is_super_admin(), ou
+-- tem papel 'super_admin'/'superadmin', ou é principal em
+-- usuarios_liberados. Quem é Super Admin por um desses caminhos, e não
+-- tem vínculo explícito com a empresa, não satisfazia nenhum ramo — e era
+-- exatamente esse o "new row violates row-level security policy".
+--
+-- Mesmo padrão que empresa_config, epis, funcionarios e entregas já usam.
+-- ---------------------------------------------------------------------
+
+DROP POLICY IF EXISTS "Super admin full access obras" ON public.obras;
+CREATE POLICY "Super admin full access obras" ON public.obras
+FOR ALL TO authenticated
+USING (public.is_super_admin(auth.uid()))
+WITH CHECK (public.is_super_admin(auth.uid()));
+
+-- Confira que você é reconhecido como Super Admin (tem que voltar true):
+-- SELECT public.is_super_admin(auth.uid());
+
+
+-- ---------------------------------------------------------------------
 -- PARTE 3 — Inspeções que ficaram apontando para obra inexistente
 --
 -- Primeiro veja quantas são. Se der 0, não há nada a fazer aqui.
