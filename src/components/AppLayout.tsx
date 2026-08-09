@@ -53,11 +53,15 @@ const portalRhItems: NavItem[] = [
 
 // Gestão Documental SST (ASO incluído; sem Portal RH, sem eSocial)
 // PGR e LTCAT foram movidos para o módulo "Programas".
+//
+// Ordens de Serviço saiu daqui: a Central Documentação SST já traz o
+// cartão que abre a mesma tela (CentralDocumentacaoTab, chave "os"), e o
+// documento é um entre os outros do rol legal — separá-lo no menu
+// duplicava o caminho sem acrescentar nada. A rota continua a mesma.
 const gestaoDocItems: NavItem[] = [
   { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
   { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
-  { path: "/programas/ordem-servico", label: "Ordens de Serviço", icon: ClipboardList, moduleKey: "pgr" },
 ];
 
 const treinamentosItems: NavItem[] = [
