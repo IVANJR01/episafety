@@ -62,13 +62,14 @@ const gestaoDocItems: NavItem[] = [
 ];
 
 // Arquivo Digital SST — o dossiê do colaborador e tudo que o alimenta.
-// Os três itens de pendência apontam para a mesma tela com filtro na URL:
-// são visões do mesmo painel, não telas diferentes.
+//
+// Vencidos / Vencendo / Não enviados eram três itens de menu apontando
+// para a MESMA tela, que já traz esses mesmos filtros como cartões
+// clicáveis no topo. Três atalhos para uma tela só é menu comprido sem
+// nada a mais: viraram um item, e o filtro se escolhe lá dentro.
 const arquivoDigitalItems: NavItem[] = [
   { path: "/arquivo-digital/dossies", label: "Dossiê de Colaboradores", icon: FolderOpen, moduleKey: "arquivo_digital" },
-  { path: "/arquivo-digital/vencimentos?situacao=vencido", label: "Documentos Vencidos", icon: FileWarning, moduleKey: "arquivo_digital" },
-  { path: "/arquivo-digital/vencimentos?situacao=vence_em_breve", label: "Vencendo em breve", icon: Bell, moduleKey: "arquivo_digital" },
-  { path: "/arquivo-digital/vencimentos?situacao=nao_enviado", label: "Documentos Não Enviados", icon: ClipboardList, moduleKey: "arquivo_digital" },
+  { path: "/arquivo-digital/vencimentos", label: "Pendências e Vencimentos", icon: Bell, moduleKey: "arquivo_digital" },
   { path: "/arquivo-digital/historico", label: "Histórico de Versões", icon: GitBranch, moduleKey: "arquivo_digital" },
   { path: "/arquivo-digital/tipos", label: "Configuração de Tipos", icon: Settings, moduleKey: "arquivo_digital" },
   { path: "/arquivo-digital/importar-drive", label: "Importar do Drive", icon: HardDrive, moduleKey: "arquivo_digital" },
