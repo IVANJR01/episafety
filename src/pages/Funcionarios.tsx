@@ -556,7 +556,7 @@ export default function Funcionarios() {
   );
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="tela-larga space-y-4 sm:space-y-6">
       <PageHeader
         title="Funcionários"
         subtitle="Cadastro e gestão dos colaboradores vinculados à empresa."

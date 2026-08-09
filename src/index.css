@@ -91,6 +91,21 @@
     max-width: none;
     padding: 0;
   }
+
+  /*
+   * Mesma história nas telas de listagem grande (funcionários, entregas):
+   * são planilha, não formulário. Com o teto de 1280px numa tela larga —
+   * ou com o zoom do navegador reduzido, que é o mesmo efeito — sobra
+   * faixa branca dos dois lados ENQUANTO a tabela rola de lado, e o
+   * cabeçalho fica solto lá no meio, longe do menu.
+   *
+   * Aqui o teto sobe para os mesmos 1800px que o PGR já usa, mas o respiro
+   * externo do `.app-content` fica: diferente do módulo do PGR, estas telas
+   * não trazem padding próprio.
+   */
+  .app-content:has(.tela-larga) {
+    max-width: 112.5rem; /* 1800px */
+  }
 }
 
 @layer base {

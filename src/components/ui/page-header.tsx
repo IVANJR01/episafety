@@ -22,10 +22,13 @@ export function PageHeader({ title, subtitle, actions, className }: PageHeaderPr
         className,
       )}
     >
+      {/* `min-w-0` deixa a caixa encolher abaixo do texto quando as ações
+          disputam a linha; sem `break-words` o título transborda em vez de
+          quebrar, e o que passa do limite some cortado. */}
       <div className="min-w-0">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground break-words">{title}</h1>
         {subtitle && (
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">{subtitle}</p>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5 break-words">{subtitle}</p>
         )}
       </div>
       {actions && (
