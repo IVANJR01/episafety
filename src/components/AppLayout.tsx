@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Package, Users, ClipboardList, BarChart3, Menu, LogOut, Building2, ChevronDown, FolderOpen, Shield, ShieldCheck, Crown, X, Settings, MessageSquare, HardHat, Download, GraduationCap, Stethoscope, HardDrive, GitBranch, Video, FileText, Bell, Boxes, RefreshCw, FileWarning, Briefcase, Network, BookOpen, Flame, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -42,26 +42,21 @@ const epiItems: NavItem[] = [
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, moduleKey: "relatorios" },
 ];
 
-// Gestão de ASO — mantida como array vazio para não quebrar refs.
-// ASO agora aparece dentro de "Gestão Documental" como "ASO / Saúde Ocupacional".
-const asoItems: NavItem[] = [];
+// Gestão de ASO — Saúde Ocupacional e Ocorrências
+const asoItems: NavItem[] = [
+  { path: "/aso", label: "Exames Ocupacionais", icon: Stethoscope, moduleKey: "aso" },
+  { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
+];
 
 // Portal RH — acesso restrito do RH a ASOs liberados
 const portalRhItems: NavItem[] = [
   { path: "/rh/asos", label: "Portal RH — ASO", icon: Briefcase, moduleKey: "portal_rh" },
 ];
 
-// Gestão Documental SST (ASO incluído; sem Portal RH, sem eSocial)
-// PGR e LTCAT foram movidos para o módulo "Programas".
-//
-// Ordens de Serviço saiu daqui: a Central Documentação SST já traz o
-// cartão que abre a mesma tela (CentralDocumentacaoTab, chave "os"), e o
-// documento é um entre os outros do rol legal — separá-lo no menu
-// duplicava o caminho sem acrescentar nada. A rota continua a mesma.
+// Gestão Documental SST
 const gestaoDocItems: NavItem[] = [
-  { path: "/aso", label: "Exames", icon: Stethoscope, moduleKey: "aso" },
-  { path: "/cat", label: "CAT — Acidente de Trabalho", icon: FileWarning, moduleKey: "cat" },
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
+  { path: "/programas/ordem-servico", label: "Ordens de Serviço", icon: ClipboardList, moduleKey: "pgr" },
 ];
 
 const treinamentosItems: NavItem[] = [
@@ -69,9 +64,9 @@ const treinamentosItems: NavItem[] = [
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
-// Programas — Módulo Mestre Unificado
+// Programas — Módulo Mestre Unificado (PGR, PCMSO, LTCAT)
 const programasItems: NavItem[] = [
-  { path: "/documentacao-sst", label: "Central Documentação SST", icon: ShieldCheck, moduleKey: "pgr" },
+  { path: "/documentacao-sst", label: "PGR / PCMSO", icon: ShieldCheck, moduleKey: "pgr" },
 ];
 
 // Comercial — Orçamentos, Clientes, Catálogo
