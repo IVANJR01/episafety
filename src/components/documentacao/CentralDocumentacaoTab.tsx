@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertTriangle, ArrowRight, FileSpreadsheet, FileText, Loader2,
-  ShieldCheck, Stethoscope, Users,
+  ShieldCheck, Stethoscope, Users, ClipboardList,
 } from "lucide-react";
 
 interface Props {
@@ -41,14 +41,15 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
         const { count, error } = await q;
         return error ? null : (count ?? 0);
       };
-      const [pgr, pgrVigentes, aso, ltcat, ppp] = await Promise.all([
+      const [pgr, pgrVigentes, aso, ltcat, ppp, os] = await Promise.all([
         conta("pgr_documentos"),
         conta("pgr_documentos", ["status", "vigente"]),
         conta("asos"),
         conta("ltcat_documentos"),
         conta("ppp_documentos"),
+        conta("ordens_servico_sst"),
       ]);
-      return { pgr, pgrVigentes, aso, ltcat, ppp };
+      return { pgr, pgrVigentes, aso, ltcat, ppp, os };
     },
   });
 
@@ -73,6 +74,13 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
       icone: ShieldCheck, cor: "text-purple-600",
       total: c?.ltcat,
       abrir: () => navigate("/ltcat"),
+    },
+    {
+      key: "os", nome: "Ordem de Serviço", norma: "CLT / NR-01",
+      descricao: "Instruções de segurança e ciência de riscos",
+      icone: ClipboardList, cor: "text-teal-600",
+      total: c?.os,
+      abrir: () => navigate("/programas/ordem-servico"),
     },
     {
       key: "insalubridade", nome: "Laudo de Insalubridade", norma: "NR-15",
