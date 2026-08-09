@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Check, X } from "lucide-react";
 const logoEpiSafety = "/marca/8df588ff-740d-4376-9653-dc6f07556c80.png";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -141,7 +141,7 @@ export default function ResetPassword() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Nova Senha</Label>
-              <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
+              <PasswordInput value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required autoComplete="new-password" />
               {password.length > 0 && (
                 <ul className="mt-2 space-y-1">
                   {passwordRules.map((rule) => (
@@ -161,7 +161,7 @@ export default function ResetPassword() {
             </div>
             <div>
               <Label>Confirmar Senha</Label>
-              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" required />
+              <PasswordInput value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••" required autoComplete="new-password" />
               {confirmPassword.length > 0 && confirmPassword !== password && (
                 <p className="text-xs text-destructive mt-1 flex items-center gap-1">
                   <X className="w-3.5 h-3.5" /> As senhas não coincidem
