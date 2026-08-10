@@ -188,10 +188,7 @@ export default function Funcionarios() {
       return;
     }
     */
-    if (!form.cargo.trim()) {
-      toast({ title: "Cargo/Função obrigatório", variant: "destructive" });
-      return;
-    }
+    // Cargo/Função opcional agora
     const setorAuto = selectedGhe?.setor || form.setor || null;
     const data = { nome: form.nome, matricula: form.matricula || null, setor: setorAuto, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null, unidade_id: form.unidade_id || null, contrato_id: form.contrato_id || null, ghe_id: form.ghe_id || null };
     if (editing) await update(editing.id, data);
@@ -810,7 +807,7 @@ export default function Funcionarios() {
               </div>
             </div>
             <div>
-              <Label>GHS/GES <span className="text-destructive">*</span></Label>
+              <Label>GHS/GES</Label>
               <Select value={form.ghe_id || "none"} onValueChange={v => setForm({...form, ghe_id: v === "none" ? "" : v, cargo: ""})}>
                 <SelectTrigger><SelectValue placeholder="Selecione o GHS/GES do colaborador" /></SelectTrigger>
                 <SelectContent>
@@ -825,7 +822,7 @@ export default function Funcionarios() {
               )}
             </div>
             <div>
-              <Label>Cargo/Função <span className="text-destructive">*</span></Label>
+              <Label>Cargo/Função</Label>
               {form.ghe_id && gheFuncoes.length > 0 ? (
                 <Select value={form.cargo || ""} onValueChange={v => setForm({...form, cargo: v})}>
                   <SelectTrigger><SelectValue placeholder="Selecione a função do GHS" /></SelectTrigger>
@@ -834,7 +831,7 @@ export default function Funcionarios() {
                   </SelectContent>
                 </Select>
               ) : (
-                <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder={form.ghe_id ? "Ex: Operador (GHS sem funções cadastradas)" : "Selecione um GHS/GES primeiro"} disabled={!form.ghe_id} />
+                <Input value={form.cargo} onChange={e => setForm({...form, cargo: e.target.value})} placeholder="Ex: Operador" />
               )}
             </div>
 
