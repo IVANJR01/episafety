@@ -597,18 +597,6 @@ export default function PortalRH() {
                           {gesDerivado.ges.motivo === "funcao+setor" && <> no setor <b>{funcSel.setor}</b></>}.
                           Os riscos abaixo vêm desse grupo.
                         </p>
-                        <Button
-                          size="sm" variant="outline" className="h-7 text-xs"
-                          onClick={async () => {
-                            const { error } = await supabase.from("funcionarios")
-                              .update({ ghe_id: gesDerivado.ges.ghe_id }).eq("id", funcSel.id);
-                            if (error) return toast.error(error.message);
-                            toast.success("Colaborador vinculado ao GES.");
-                            qc.invalidateQueries({ queryKey: ["portal-rh-aso-colaboradores"] });
-                          }}
-                        >
-                          Fixar este vínculo no cadastro
-                        </Button>
                       </div>
                     )}
 
