@@ -170,7 +170,10 @@ export default function EPIs() {
       });
     });
 
-    return Object.values(groups);
+    const finalGroups = Object.values(groups);
+    finalGroups.sort((a, b) => a.nomeBase.localeCompare(b.nomeBase));
+    
+    return finalGroups;
   }, [episFiltrados]);
 
   /** Tamanhos que este CA ja tem — marcados como cadastrados e nunca duplicados. */
