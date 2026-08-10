@@ -72,8 +72,14 @@ export function resolverGesPorFuncao(
     }
   }
 
-  // Sem desempate, devolve os candidatos em vez de escolher um. Errar o GES
-  // significa listar no ASO riscos aos quais a pessoa não está exposta — ou
-  // omitir os que ela está.
-  return { tipo: "ambiguo", candidatos: porFuncao };
+  // Sem desempate, o usuário prefere que puxe automaticamente o primeiro que encontrar
+  // em vez de pedir para escolher.
+  return { 
+    tipo: "resolvido", 
+    ges: { 
+      ghe_id: Array.from(ges)[0], 
+      motivo: "funcao", 
+      nome_funcao: porFuncao[0].nome_funcao 
+    } 
+  };
 }
