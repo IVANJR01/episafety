@@ -182,6 +182,23 @@ export default function Funcionarios() {
       toast({ title: "CPF obrigatório", variant: "destructive" });
       return;
     }
+    /*
+     * Sem empresa ativa o cadastro vira registro fantasma.
+     *
+     * `add` grava `empresa_id: empresaId`, e a coluna aceita nulo. Um
+     * funcionário gravado com empresa nula é descartado pelo filtro de
+     * escopo em toda leitura do app (useSupabaseQuery) — ele existe no
+     * banco e não aparece em lugar nenhum: nem na busca, nem na Ficha de
+     * EPI. Melhor recusar antes de gravar do que criar o fantasma.
+     */
+    if (!empresaId) {
+      toast({
+        title: "Nenhuma empresa ativa",
+        description: "Selecione a empresa no topo da tela antes de cadastrar. Sem ela o funcionário não fica vinculado e some das listas.",
+        variant: "destructive",
+      });
+      return;
+    }
     /* GHE opcional agora
     if (!form.ghe_id) {
       toast({ title: "GHE/GES obrigatório", description: "Selecione o GHE/GES do colaborador. Esse vínculo é necessário para gerar o ASO automaticamente.", variant: "destructive" });
@@ -191,8 +208,17 @@ export default function Funcionarios() {
     // Cargo/Função opcional agora
     const setorAuto = selectedGhe?.setor || form.setor || null;
     const data = { nome: form.nome, matricula: form.matricula || null, setor: setorAuto, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null, unidade_id: form.unidade_id || null, contrato_id: form.contrato_id || null, ghe_id: form.ghe_id || null };
-    if (editing) await update(editing.id, data);
-    else await add(data);
+    /*
+     * Fechar o formulário só quando a gravação deu certo.
+     *
+     * Antes o diálogo fechava e o rascunho era descartado mesmo quando
+     * `add`/`update` devolviam falso. O aviso de erro aparecia, mas o
+     * formulário sumia junto — de fora, parecia cadastro concluído, e o
+     * funcionário simplesmente não estava lá depois. Dando errado, o que foi
+     * digitado continua na tela para tentar de novo.
+     */
+    const gravou = editing ? await update(editing.id, data) : await add(data);
+    if (!gravou) return;
     resetForm();
     setOpen(false);
   };
