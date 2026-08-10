@@ -118,7 +118,22 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
   const query = useQuery<T[]>({
     queryKey,
     initialData: cachedData,
-    staleTime: Infinity,
+    /*
+     * Sincronizar de novo ao voltar para o aplicativo e ao recuperar o sinal.
+     *
+     * Com `staleTime: Infinity` e as duas opções abaixo desligadas, cada tela
+     * buscava do servidor UMA vez por montagem e nunca mais. No aplicativo
+     * instalado do celular, que fica aberto em segundo plano, a tela podia
+     * passar horas mostrando a lista de quando foi aberta: funcionário
+     * cadastrado em outro aparelho aparecia no computador e não no celular,
+     * nem na busca nem na Ficha de EPI.
+     *
+     * Os 30 segundos evitam o outro extremo. Trocar de tela e voltar não
+     * dispara busca nova; voltar ao aplicativo depois de um tempo, sim.
+     */
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     gcTime: QUERY_GC_MS,
     // Falha de rede sem cache local vira erro permanente sem isto: a linha
     // 100-104 só devolve `cached` quando existe um `cached` — na primeira
@@ -133,8 +148,6 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     // insistir nesses só atrasa mostrar o estado de erro real.
     retry: (failureCount, error) => isNetworkFailure(error) && failureCount < 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
     queryFn: async () => {
       const cached = lerRetratoLocal();
 
