@@ -1,7 +1,17 @@
-import { useRef, useEffect, useLayoutEffect, useCallback, useState } from "react";
+import { useRef, useLayoutEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import SignaturePad from "signature_pad";
 import { Loader2 } from "lucide-react";
+
+/*
+ * Assinatura em tela cheia.
+ *
+ * Duas coisas quebravam aqui, e as duas estão anotadas onde foram
+ * corrigidas: girar o aparelho apagava a assinatura, e "Limpar" demorava.
+ * O ponto comum é o canvas: mudar largura ou altura de um canvas apaga o
+ * que está desenhado, então todo redimensionamento tem que redesenhar a
+ * partir de uma cópia dos traços — e essa cópia precisa ser confiável.
+ */
 
 interface Props {
   open: boolean;
@@ -16,82 +26,54 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
-  const retryTimerRef = useRef<number | null>(null);
-  const resizeTimerRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const canvasSizeRef = useRef({ width: 0, height: 0 });
-  const isClearingRef = useRef(false);
+  /*
+   * Os traços vivem AQUI, não dentro do SignaturePad.
+   *
+   * A cada redimensionamento o pad é recriado, e antes se lia `toData()` do
+   * pad na hora de redesenhar. Bastava uma recriação intermediária para a
+   * leitura vir vazia e a assinatura sumir. Guardando os traços por fora,
+   * atualizados ao fim de cada traço, o redesenho não depende do estado de
+   * um objeto que acabou de ser substituído.
+   */
+  const tracosRef = useRef<any[]>([]);
+  /** Escala de pixels do último desenho — usada para limpar sem excesso. */
+  const dprRef = useRef(1);
   const isSubmittingRef = useRef(false);
   const [showNameInput, setShowNameInput] = useState(false);
   const [indicativeName, setIndicativeName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const scaleStrokeData = useCallback((data: any[], fromWidth: number, fromHeight: number, toWidth: number, toHeight: number) => {
-    if (!Array.isArray(data) || fromWidth <= 0 || fromHeight <= 0 || toWidth <= 0 || toHeight <= 0) return data;
-    const scaleX = toWidth / fromWidth;
-    const scaleY = toHeight / fromHeight;
+  /**
+   * Reposiciona os traços quando a área de desenho muda de tamanho.
+   *
+   * A escala é a MESMA nos dois eixos, e o resultado fica centralizado. Com
+   * um fator para largura e outro para altura, girar o aparelho de retrato
+   * para paisagem esticava a assinatura na horizontal e achatava na
+   * vertical — ela sobrevivia, mas chegava irreconhecível, e assinatura
+   * deformada não serve como assinatura.
+   */
+  const reescalarTracos = useCallback(
+    (data: any[], deLargura: number, deAltura: number, paraLargura: number, paraAltura: number) => {
+      if (!Array.isArray(data) || deLargura <= 0 || deAltura <= 0 || paraLargura <= 0 || paraAltura <= 0) return data;
+      const escala = Math.min(paraLargura / deLargura, paraAltura / deAltura);
+      const deslocX = (paraLargura - deLargura * escala) / 2;
+      const deslocY = (paraAltura - deAltura * escala) / 2;
 
-    return data.map((group) => ({
-      ...group,
-      points: Array.isArray(group?.points)
-        ? group.points.map((point: any) => ({
-            ...point,
-            x: typeof point?.x === "number" ? point.x * scaleX : point?.x,
-            y: typeof point?.y === "number" ? point.y * scaleY : point?.y,
-          }))
-        : group?.points,
-    }));
-  }, []);
-
-  const initPad = useCallback(() => {
-    if (!canvasRef.current) return false;
-
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const width = Math.round(rect.width);
-    const height = Math.round(rect.height);
-
-    if (width < 2 || height < 2) return false;
-
-    const previousSize = canvasSizeRef.current;
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    const nextWidth = Math.round(width * ratio);
-    const nextHeight = Math.round(height * ratio);
-    const previousData = isClearingRef.current ? [] : (padRef.current?.toData() ?? []);
-
-    canvas.width = nextWidth;
-    canvas.height = nextHeight;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return false;
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(ratio, ratio);
-    ctx.fillStyle = "rgb(255, 255, 255)";
-    ctx.fillRect(0, 0, width, height);
-
-    padRef.current?.off();
-    padRef.current = new SignaturePad(canvas, {
-      backgroundColor: "rgb(255, 255, 255)",
-      penColor: "rgb(0, 0, 0)",
-      minWidth: 0.5,
-      maxWidth: 2.5,
-      throttle: 0,
-      velocityFilterWeight: 0.4,
-    });
-
-    if (previousData.length > 0) {
-      const scaledData = scaleStrokeData(previousData, previousSize.width, previousSize.height, width, height);
-      padRef.current.fromData(scaledData);
-    } else {
-      padRef.current.clear();
-    }
-
-    canvasSizeRef.current = { width, height };
-    isClearingRef.current = false;
-    return true;
-  }, [scaleStrokeData]);
+      return data.map((grupo) => ({
+        ...grupo,
+        points: Array.isArray(grupo?.points)
+          ? grupo.points.map((p: any) => ({
+              ...p,
+              x: typeof p?.x === "number" ? p.x * escala + deslocX : p?.x,
+              y: typeof p?.y === "number" ? p.y * escala + deslocY : p?.y,
+            }))
+          : grupo?.points,
+      }));
+    },
+    [],
+  );
 
   // Primary resize logic using useLayoutEffect for immediate DOM sync
   useLayoutEffect(() => {
@@ -121,7 +103,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     };
     document.addEventListener("touchmove", preventScroll, { passive: false });
 
-    isClearingRef.current = false;
+    tracosRef.current = [];
+    canvasSizeRef.current = { width: 0, height: 0 };
     isSubmittingRef.current = false;
     setIsSubmitting(false);
     setShowNameInput(false);
@@ -140,10 +123,12 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       const height = Math.round(r.height);
       if (width < 2 || height < 2) return;
 
-      const previousSize = canvasSizeRef.current;
+      const tamanhoAnterior = canvasSizeRef.current;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const previousData = isClearingRef.current ? [] : (padRef.current?.toData() ?? []);
+      dprRef.current = dpr;
 
+      // Mexer em canvas.width/height apaga o desenho — por isso os traços
+      // precisam vir de fora e ser redesenhados logo abaixo.
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
       canvas.width = Math.round(width * dpr);
@@ -156,7 +141,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       ctx.fillRect(0, 0, width, height);
 
       padRef.current?.off();
-      padRef.current = new SignaturePad(canvas, {
+      const pad = new SignaturePad(canvas, {
         backgroundColor: "rgb(255, 255, 255)",
         penColor: "rgb(0, 0, 0)",
         minWidth: 0.5,
@@ -164,14 +149,22 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         throttle: 0,
         velocityFilterWeight: 0.4,
       });
+      // A cópia de fora é atualizada ao fim de cada traço. É ela que
+      // sobrevive à recriação do pad no próximo giro de tela.
+      pad.addEventListener("endStroke", () => {
+        tracosRef.current = pad.toData();
+      });
+      padRef.current = pad;
 
-      if (previousData.length > 0 && previousSize.width > 0 && previousSize.height > 0) {
-        const scaledData = scaleStrokeData(previousData, previousSize.width, previousSize.height, width, height);
-        padRef.current.fromData(scaledData);
+      const tracos = tracosRef.current;
+      if (tracos.length > 0 && tamanhoAnterior.width > 0 && tamanhoAnterior.height > 0) {
+        const reescalados = reescalarTracos(tracos, tamanhoAnterior.width, tamanhoAnterior.height, width, height);
+        pad.fromData(reescalados);
+        // Guarda já reescalado: o próximo giro parte deste tamanho.
+        tracosRef.current = reescalados;
       }
 
       canvasSizeRef.current = { width, height };
-      isClearingRef.current = false;
     };
 
     // Initial resize with small delay for DOM readiness (dialog animations)
@@ -227,7 +220,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       body.style.touchAction = previousTouchAction;
       window.scrollTo(0, scrollY);
     };
-  }, [open, initPad, scaleStrokeData]);
+  }, [open, reescalarTracos]);
 
   const handleCancel = () => {
     if (isSubmittingRef.current) return;
@@ -236,22 +229,35 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     onCancel();
   };
 
+  /*
+   * Limpar estava lento por pintar a tela muito mais vezes do que precisava.
+   *
+   * `pad.clear()` da biblioteca pinta uma área de `canvas.width` por
+   * `canvas.height` — que são pixels de dispositivo — usando a matriz de
+   * transformação em vigor. Como havia uma escala de `dpr` aplicada, cada
+   * unidade valia 2 pixels: a área pintada saía 4x maior que o canvas. E
+   * logo depois este método repetia clearRect + fillRect por conta própria,
+   * dobrando tudo de novo — cerca de oito vezes o trabalho necessário.
+   *
+   * Agora a matriz volta à identidade antes de limpar, então a pintura
+   * cobre exatamente o canvas, uma vez só. A escala é devolvida em seguida,
+   * senão os próximos traços sairiam com metade do tamanho.
+   */
   const handleClear = () => {
     if (isSubmittingRef.current) return;
-    isClearingRef.current = true;
-    padRef.current?.clear();
+    tracosRef.current = [];
+
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx) {
+      padRef.current?.clear();
+      return;
+    }
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.save();
+    const dpr = dprRef.current || 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "rgb(255, 255, 255)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
+    padRef.current?.clear();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
   /** Downscale canvas to max 800px wide and export as JPEG 0.7 */
