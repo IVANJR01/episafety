@@ -755,72 +755,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     )}
                   </div>
 
-                  {/* Processos */}
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap justify-between items-center gap-2">
-                      <h4 className="font-semibold text-slate-800 text-lg">Processos de Trabalho</h4>
-                      <Button onClick={() => {
-                        setFormData({ setor_id: setorDetalheId });
-                        setModalType("processo");
-                        setOpenModal(true);
-                      }} size="sm">
-                        <Plus className="w-4 h-4 mr-1" /> Novo Processo
-                      </Button>
-                    </div>
-                    <ListaEstrutura
-                      itens={processosDoSetor}
-                      vazio="Nenhum processo neste setor."
-                      rotuloPrincipal="Nome / Etapas"
-                      principal={(proc) => proc.descricao_etapas || "-"}
-                      colunas={[
-                        {
-                          rotulo: "Característica",
-                          celula: (proc) => <Badge variant="outline">{proc.caracteristica_atividade}</Badge>,
-                        }
-                      ]}
-                      onEditar={(proc) => handleOpenModal("processo", proc)}
-                      onExcluir={(proc) => setDeleteConfirm({ open: true, type: "processo", id: proc.id, nome: proc.nome })}
-                    />
-                  </div>
 
-                  {/* Funções */}
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap justify-between items-center gap-2">
-                      <h4 className="font-semibold text-slate-800 text-lg">Funções</h4>
-                      <div className="flex gap-2">
-                        <Button onClick={() => {
-                          setLoteSetor(setorDetalheId);
-                          setLoteAberto(true);
-                        }} size="sm" variant="outline">
-                          <ClipboardPaste className="w-4 h-4 mr-1" /> Colar em lote
-                        </Button>
-                        <Button onClick={() => {
-                          setFormData({ setor_id: setorDetalheId });
-                          setModalType("funcao");
-                          setOpenModal(true);
-                        }} size="sm">
-                          <Plus className="w-4 h-4 mr-1" /> Nova Função
-                        </Button>
-                      </div>
-                    </div>
-                    <ListaEstrutura
-                      itens={funcoesDoSetor}
-                      vazio="Nenhuma função neste setor."
-                      rotuloPrincipal="Nome da Função"
-                      principal={(func) => func.nome}
-                      colunas={[
-                        {
-                          rotulo: "Descrição das atividades",
-                          longo: true,
-                          classe: "text-sm text-slate-600 max-w-xs truncate",
-                          dica: (func) => (func as any).descricao_atividades || "",
-                          celula: (func) => (func as any).descricao_atividades || "—",
-                        },
-                      ]}
-                      onEditar={(func) => handleOpenModal("funcao", func)}
-                      onExcluir={(func) => setDeleteConfirm({ open: true, type: "funcao", id: func.id, nome: func.nome })}
-                    />
-                  </div>
                 </div>
               );
             })()
