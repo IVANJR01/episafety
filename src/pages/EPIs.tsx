@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { Plus, Pencil, Trash2, Search, Loader2, Download, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, Download, Package, ChevronDown, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useSupabaseCrud } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,6 +93,79 @@ export default function EPIs() {
   const [tamanhoLivre, setTamanhoLivre] = useState("");
   const [busca, setBusca] = useState("");
   const { toast } = useToast();
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const groupedEpis = useMemo(() => {
+    const groups: Record<string, {
+      key: string;
+      nomeBase: string;
+      ca: string | null;
+      categoria: string | null;
+      fabricante: string | null;
+      validade: string | null;
+      aprovado_para: string | null;
+      descricao: string | null;
+      estoqueTotal: number;
+      estoqueMinimoMax: number;
+      valorMin: number | null;
+      valorMax: number | null;
+      itens: EPI[];
+    }> = {};
+
+    episFiltrados.forEach(e => {
+      const caKey = e.ca?.trim();
+      const tamanho = tamanhoDoRegistro(e);
+      const base = nomeBase(e.nome, tamanho);
+      const key = caKey ? `ca-${caKey}` : `nome-${base.toLowerCase()}`;
+
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          nomeBase: base,
+          ca: e.ca,
+          categoria: e.categoria,
+          fabricante: e.fabricante,
+          validade: e.validade,
+          aprovado_para: e.aprovado_para,
+          descricao: e.descricao,
+          estoqueTotal: 0,
+          estoqueMinimoMax: 0,
+          valorMin: null,
+          valorMax: null,
+          itens: []
+        };
+      }
+
+      groups[key].estoqueTotal += e.estoque || 0;
+      groups[key].estoqueMinimoMax = Math.max(groups[key].estoqueMinimoMax, e.estoque_minimo || 0);
+      
+      if (e.valor !== null && e.valor !== undefined) {
+        const val = Number(e.valor);
+        if (groups[key].valorMin === null || val < groups[key].valorMin) groups[key].valorMin = val;
+        if (groups[key].valorMax === null || val > groups[key].valorMax) groups[key].valorMax = val;
+      }
+      
+      groups[key].itens.push(e);
+    });
+
+    Object.values(groups).forEach(g => {
+      g.itens.sort((a, b) => {
+        const ta = tamanhoDoRegistro(a);
+        const tb = tamanhoDoRegistro(b);
+        const na = Number(ta);
+        const nb = Number(tb);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return ta.localeCompare(tb);
+      });
+    });
+
+    return Object.values(groups);
+  }, [episFiltrados]);
 
   /** Tamanhos que este CA ja tem — marcados como cadastrados e nunca duplicados. */
   const tamanhosJaCadastrados = (() => {
@@ -280,7 +353,7 @@ export default function EPIs() {
         <>
           {/* Mobile card layout */}
           <div className="space-y-3 lg:hidden">
-            {episFiltrados.length === 0 ? (
+            {groupedEpis.length === 0 ? (
               <EmptyState
                 icon={Package}
                 title={busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}
@@ -289,63 +362,103 @@ export default function EPIs() {
                   <Button onClick={openNew}><Plus className="w-4 h-4 mr-2" />Novo EPI</Button>
                 ) : undefined}
               />
-            ) : episFiltrados.map(e => {
-              const zerado = e.estoque === 0;
-              const baixo = !zerado && e.estoque <= e.estoque_minimo;
+            ) : groupedEpis.map(g => {
+              const isExpanded = expandedGroups[g.key];
+              const hasMultiple = g.itens.length > 1;
+              const zerado = g.estoqueTotal === 0;
+              const baixo = !zerado && g.estoqueTotal <= g.estoqueMinimoMax;
+              
               const statusBadge = zerado
                 ? <StatusBadge tone="danger" size="sm">Zerado</StatusBadge>
                 : baixo
                   ? <StatusBadge tone="warning" size="sm">Baixo</StatusBadge>
                   : <StatusBadge tone="success" size="sm">OK</StatusBadge>;
-              const valorTotal = (Number(e.valor) || 0) * e.estoque;
+
+              const valorFormatado = g.valorMin === null
+                ? "—"
+                : g.valorMin === g.valorMax
+                  ? `R$ ${g.valorMin.toFixed(2)}`
+                  : `R$ ${g.valorMin.toFixed(2)} - R$ ${g.valorMax.toFixed(2)}`;
+
               return (
-              <Card key={e.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${zerado ? "bg-destructive/10" : baixo ? "bg-amber-100 dark:bg-amber-900/30" : "bg-primary/10"}`}>
-                        <Package className={`w-5 h-5 ${zerado ? "text-destructive" : baixo ? "text-amber-600" : "text-primary"}`} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-sm leading-tight">{e.nome}{tamanhoVisivel(e) && <span className="ml-1 text-[10px] text-muted-foreground font-normal">({tamanhoVisivel(e)})</span>}</p>
-                          {statusBadge}
+                <Card key={g.key} className="overflow-hidden">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${zerado ? "bg-destructive/10" : baixo ? "bg-amber-100 dark:bg-amber-900/30" : "bg-primary/10"}`}>
+                          <Package className={`w-5 h-5 ${zerado ? "text-destructive" : baixo ? "text-amber-600" : "text-primary"}`} />
                         </div>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {e.ca && <span className="text-[11px] font-mono text-muted-foreground">CA: {e.ca}</span>}
-                          {e.categoria && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{e.categoria}</Badge>}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm leading-tight">
+                              {g.nomeBase}
+                              {!hasMultiple && g.itens[0]?.tamanho && (
+                                <span className="ml-1 text-[10px] text-muted-foreground font-normal">({g.itens[0].tamanho})</span>
+                              )}
+                            </p>
+                            {statusBadge}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {g.ca && <span className="text-[11px] font-mono text-muted-foreground">CA: {g.ca}</span>}
+                            {g.categoria && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{g.categoria}</Badge>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      {canEdit && <Button size="icon" variant="outline" className="h-11 w-11" aria-label="Editar" onClick={() => openEdit(e)}><Pencil className="w-5 h-5" /></Button>}
-                      {canDelete && <Button size="icon" variant="outline" className="h-11 w-11" aria-label="Excluir" onClick={() => remove(e.id)}><Trash2 className="w-5 h-5 text-destructive" /></Button>}
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-md bg-muted/40 px-2 py-1.5">
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Estoque</div>
-                      <div className={`font-mono font-semibold text-sm ${zerado ? "text-destructive" : baixo ? "text-amber-600" : ""}`}>{e.estoque} <span className="text-[10px] text-muted-foreground font-normal">/ mín {e.estoque_minimo}</span></div>
-                    </div>
-                    <div className="rounded-md bg-muted/40 px-2 py-1.5">
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor un.</div>
-                      <div className="font-mono text-sm">{e.valor ? `R$ ${Number(e.valor).toFixed(2)}` : "—"}</div>
-                    </div>
-                    {e.valor ? (
-                      <div className="rounded-md bg-muted/40 px-2 py-1.5">
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</div>
-                        <div className="font-mono text-sm">R$ {valorTotal.toFixed(2)}</div>
+                      <div className="flex gap-2 shrink-0">
+                        {hasMultiple ? (
+                          <Button size="icon" variant="outline" className="h-11 w-11" onClick={() => toggleGroup(g.key)}>
+                            {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                          </Button>
+                        ) : (
+                          <>
+                            {canEdit && <Button size="icon" variant="outline" className="h-11 w-11" aria-label="Editar" onClick={() => openEdit(g.itens[0])}><Pencil className="w-5 h-5" /></Button>}
+                            {canDelete && <Button size="icon" variant="outline" className="h-11 w-11" aria-label="Excluir" onClick={() => remove(g.itens[0].id)}><Trash2 className="w-5 h-5 text-destructive" /></Button>}
+                          </>
+                        )}
                       </div>
-                    ) : null}
-                    {e.validade && (
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="rounded-md bg-muted/40 px-2 py-1.5">
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Validade CA</div>
-                        <div className="font-mono text-sm">{e.validade}</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Estoque total</div>
+                        <div className={`font-mono font-semibold text-sm ${zerado ? "text-destructive" : baixo ? "text-amber-600" : ""}`}>
+                          {g.estoqueTotal} <span className="text-[10px] text-muted-foreground font-normal">/ mín {g.estoqueMinimoMax}</span>
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-muted/40 px-2 py-1.5">
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Valor unitário</div>
+                        <div className="font-mono text-sm">{valorFormatado}</div>
+                      </div>
+                      {g.validade && (
+                        <div className="rounded-md bg-muted/40 px-2 py-1.5 col-span-2">
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide mr-2">Validade CA:</span>
+                          <span className="font-mono text-sm font-semibold">{g.validade}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {hasMultiple && isExpanded && (
+                      <div className="pt-2 border-t space-y-2">
+                        <p className="text-[11px] font-semibold text-muted-foreground">Tamanhos disponíveis:</p>
+                        <div className="space-y-1.5">
+                          {g.itens.map(e => (
+                            <div key={e.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30 text-xs">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="font-bold">{tamanhoDoRegistro(e) || "Sem tamanho"}</Badge>
+                                <span className="text-muted-foreground">Estoque: <b>{e.estoque}</b></span>
+                                {e.valor ? <span className="text-muted-foreground font-mono">| R$ {Number(e.valor).toFixed(2)}</span> : null}
+                              </div>
+                              <div className="flex gap-1">
+                                {canEdit && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                                {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
@@ -356,6 +469,7 @@ export default function EPIs() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10"></TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>CA</TableHead>
                     <TableHead>Categoria</TableHead>
@@ -367,30 +481,86 @@ export default function EPIs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {episFiltrados.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</TableCell></TableRow>
-                  ) : episFiltrados.map(e => (
-                    <TableRow key={e.id}>
-                      <TableCell className="font-medium">
-                        {e.nome}
-                        {tamanhoVisivel(e) && <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">({tamanhoVisivel(e)})</span>}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{e.ca || "—"}</TableCell>
-                      <TableCell><Badge variant="secondary">{e.categoria || "—"}</Badge></TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{e.fabricante || "—"}</TableCell>
-                      <TableCell>{e.validade || "—"}</TableCell>
-                      <TableCell className="text-right font-mono text-xs">{e.valor ? `R$ ${Number(e.valor).toFixed(2)}` : "—"}</TableCell>
-                      <TableCell className="text-right">
-                        <span className={e.estoque <= e.estoque_minimo ? "text-destructive font-semibold" : ""}>{e.estoque}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 justify-end">
-                          {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>}
-                          {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {groupedEpis.length === 0 ? (
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">{busca ? "Nenhum EPI encontrado" : "Nenhum EPI cadastrado"}</TableCell></TableRow>
+                  ) : groupedEpis.map(g => {
+                    const isExpanded = expandedGroups[g.key];
+                    const hasMultiple = g.itens.length > 1;
+                    const zerado = g.estoqueTotal === 0;
+                    const baixo = !zerado && g.estoqueTotal <= g.estoqueMinimoMax;
+                    
+                    const valorFormatado = g.valorMin === null
+                      ? "—"
+                      : g.valorMin === g.valorMax
+                        ? `R$ ${g.valorMin.toFixed(2)}`
+                        : `R$ ${g.valorMin.toFixed(2)} - R$ ${g.valorMax.toFixed(2)}`;
+
+                    return (
+                      <>
+                        <TableRow key={g.key} className="hover:bg-muted/30 cursor-pointer" onClick={() => hasMultiple && toggleGroup(g.key)}>
+                          <TableCell className="text-center">
+                            {hasMultiple && (
+                              <span className="text-muted-foreground hover:text-foreground">
+                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <span>{g.nomeBase}</span>
+                            {hasMultiple && (
+                              <span className="ml-2 text-xs text-muted-foreground font-normal">
+                                ({g.itens.length} tamanhos)
+                              </span>
+                            )}
+                            {!hasMultiple && g.itens[0]?.tamanho && (
+                              <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">{g.itens[0].tamanho}</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{g.ca || "—"}</TableCell>
+                          <TableCell><Badge variant="secondary">{g.categoria || "—"}</Badge></TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{g.fabricante || "—"}</TableCell>
+                          <TableCell>{g.validade || "—"}</TableCell>
+                          <TableCell className="text-right font-mono text-xs">{valorFormatado}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={baixo ? "text-destructive font-semibold" : ""}>{g.estoqueTotal}</span>
+                          </TableCell>
+                          <TableCell onClick={e => e.stopPropagation()}>
+                            {!hasMultiple ? (
+                              <div className="flex gap-1 justify-end">
+                                {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(g.itens[0])}><Pencil className="w-3.5 h-3.5" /></Button>}
+                                {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(g.itens[0].id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
+                              </div>
+                            ) : null}
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Linhas filhas (tamanhos específicos) */}
+                        {hasMultiple && isExpanded && g.itens.map(e => (
+                          <TableRow key={e.id} className="bg-muted/20 border-l-2 border-primary">
+                            <TableCell></TableCell>
+                            <TableCell className="pl-6 text-xs text-muted-foreground flex items-center gap-2">
+                              <span>Tamanho:</span>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 font-semibold">{tamanhoDoRegistro(e) || "Sem tamanho"}</Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">—</TableCell>
+                            <TableCell>—</TableCell>
+                            <TableCell>—</TableCell>
+                            <TableCell>—</TableCell>
+                            <TableCell className="text-right font-mono text-xs">{e.valor ? `R$ ${Number(e.valor).toFixed(2)}` : "—"}</TableCell>
+                            <TableCell className="text-right">
+                              <span className={e.estoque <= e.estoque_minimo ? "text-destructive font-semibold" : ""}>{e.estoque}</span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1 justify-end">
+                                {canEdit && <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="w-3.5 h-3.5" /></Button>}
+                                {canDelete && <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
