@@ -100,6 +100,12 @@ export default function EPIs() {
     setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const episFiltrados = epis.filter(e => {
+    if (!busca.trim()) return true;
+    const termo = busca.toLowerCase();
+    return e.nome.toLowerCase().includes(termo) || (e.ca && e.ca.toLowerCase().includes(termo));
+  });
+
   const groupedEpis = useMemo(() => {
     const groups: Record<string, {
       key: string;
@@ -178,11 +184,6 @@ export default function EPIs() {
     return [...doCa, ...doForm].filter(Boolean);
   })();
 
-  const episFiltrados = epis.filter(e => {
-    if (!busca.trim()) return true;
-    const termo = busca.toLowerCase();
-    return e.nome.toLowerCase().includes(termo) || (e.ca && e.ca.toLowerCase().includes(termo));
-  });
 
   const openNew = () => { setEditing(null); if (!hasDraft()) resetForm(); setOpen(true); };
   const openEdit = (e: EPI) => {
