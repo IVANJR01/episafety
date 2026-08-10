@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData, addToSyncQueue, isOnline } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
+import { QUERY_STALE_MS } from "@/lib/queryClient";
 
 const QUERY_TIMEOUT_MS = 10000;
 const QUERY_GC_MS = 24 * 60 * 60 * 1000;
@@ -131,7 +132,7 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
      * Os 30 segundos evitam o outro extremo. Trocar de tela e voltar não
      * dispara busca nova; voltar ao aplicativo depois de um tempo, sim.
      */
-    staleTime: 30_000,
+    staleTime: QUERY_STALE_MS,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     gcTime: QUERY_GC_MS,

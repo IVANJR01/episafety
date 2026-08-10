@@ -213,13 +213,32 @@ export function useOfflineSync() {
       setTimeout(processQueue, 1000);
     };
 
+    /*
+     * Também ao voltar para o aplicativo.
+     *
+     * Só o evento `online` não basta no celular: o sistema suspende a página
+     * quando o aplicativo vai para segundo plano, e a volta da conexão pode
+     * acontecer sem que esse evento chegue à página adormecida. O que estava
+     * na fila ficava lá parado até alguém reabrir a tela do zero — gravação
+     * feita em campo, sem sinal, esperando indefinidamente para subir.
+     */
+    const handleVisible = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        setTimeout(processQueue, 500);
+      }
+    };
+
     window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisible);
 
     if (navigator.onLine) {
       processQueue();
     }
 
-    return () => window.removeEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisible);
+    };
   }, [processQueue]);
 
   return { processQueue, pendingCount: getSyncQueue().length };
