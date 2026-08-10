@@ -349,6 +349,36 @@ export default function EPIs() {
     toast({ title: "Relatório exportado com sucesso!" });
   };
 
+  const sincronizarEpisAntigos = async () => {
+    setConsultando(true);
+    try {
+      let atualizados = 0;
+      for (const g of groupedEpis) {
+        if (g.itens.length <= 1) continue; // Grupo com 1 item já está ok
+        
+        // Pega os melhores dados do grupo para servir de base
+        const valorPadrao = g.valorMax || g.valorMin || null;
+        const estoqueMinimoBase = g.estoqueMinimoMax || 5;
+        
+        const updateDadosGlobais = {
+           ca: g.ca, categoria: g.categoria, fabricante: g.fabricante,
+           validade: g.validade, descricao: g.descricao, aprovado_para: g.aprovado_para,
+           valor: valorPadrao, estoque_minimo: estoqueMinimoBase
+        };
+
+        const ids = g.itens.map(i => i.id);
+        const { error } = await supabase.from("epis").update(updateDadosGlobais).in("id", ids);
+        if (!error) atualizados += ids.length;
+      }
+      toast({ title: "Sincronização concluída", description: `${atualizados} registros atualizados.` });
+      refetch();
+    } catch (err: any) {
+      toast({ title: "Erro na sincronização", variant: "destructive" });
+    } finally {
+      setConsultando(false);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
@@ -356,6 +386,11 @@ export default function EPIs() {
         subtitle="Gerenciar equipamentos de proteção"
         actions={
           <>
+            {canEdit && (
+              <Button variant="outline" onClick={sincronizarEpisAntigos} disabled={consultando} className="text-xs sm:text-sm">
+                {consultando ? <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" /> : <Loader2 className="w-4 h-4 mr-1 sm:mr-2" />} Sincronizar Antigos
+              </Button>
+            )}
             <Button variant="outline" onClick={exportarExcel} disabled={epis.length === 0} className="text-xs sm:text-sm">
               <Download className="w-4 h-4 mr-1 sm:mr-2" />Exportar
             </Button>
