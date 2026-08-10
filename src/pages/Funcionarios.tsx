@@ -247,13 +247,19 @@ export default function Funcionarios() {
           if (EXPECTED_COLUMNS.includes(norm)) headerMap[h] = norm;
         });
 
-        // Build map of existing CPFs to their IDs for update detection
-        const existingCpfMap = new Map<string, string>();
+        // Guardar nomes, cpfs e matrículas existentes para barrar duplicados
+        const existingCpfSet = new Set<string>();
+        const existingMatriculaSet = new Set<string>();
+        const existingNomeSet = new Set<string>();
         items.forEach((f: Funcionario) => {
-          if (f.cpf) existingCpfMap.set(f.cpf.replace(/\D/g, ""), f.id);
+          if (f.cpf) existingCpfSet.add(f.cpf.replace(/\D/g, ""));
+          if (f.matricula) existingMatriculaSet.add(f.matricula.trim().toLowerCase());
+          if (f.nome) existingNomeSet.add(f.nome.trim().toLowerCase());
         });
 
         const seenCpfs = new Set<string>();
+        const seenMatriculas = new Set<string>();
+        const seenNomes = new Set<string>();
 
         // Build name-to-id maps for unidade/contrato matching
         const unidadeNameMap = new Map(unidades.map(u => [u.nome.toLowerCase().trim(), u.id]));
@@ -289,17 +295,27 @@ export default function Funcionarios() {
           let action: "insert" | "update" = "insert";
           let existingId: string | undefined;
 
-          if (validation.valid && mapped.cpf) {
-            const cpfDigits = mapped.cpf.replace(/\D/g, "");
-            if (cpfDigits.length >= 11) {
-              if (existingCpfMap.has(cpfDigits)) {
-                action = "update";
-                existingId = existingCpfMap.get(cpfDigits);
-              } else if (seenCpfs.has(cpfDigits)) {
-                validation = { valid: false, error: "CPF duplicado na planilha" };
-              } else {
-                seenCpfs.add(cpfDigits);
-              }
+          if (validation.valid) {
+            const nomeNorm = (mapped.nome || "").trim().toLowerCase();
+            const matriculaNorm = (mapped.matricula || "").trim().toLowerCase();
+            const cpfDigits = mapped.cpf ? mapped.cpf.replace(/\D/g, "") : "";
+
+            let duplicatedError = "";
+
+            if (nomeNorm && (existingNomeSet.has(nomeNorm) || seenNomes.has(nomeNorm))) {
+              duplicatedError = "Nome já cadastrado/duplicado";
+            } else if (matriculaNorm && (existingMatriculaSet.has(matriculaNorm) || seenMatriculas.has(matriculaNorm))) {
+              duplicatedError = "Matrícula já cadastrada/duplicada";
+            } else if (cpfDigits && cpfDigits.length >= 11 && (existingCpfSet.has(cpfDigits) || seenCpfs.has(cpfDigits))) {
+              duplicatedError = "CPF já cadastrado/duplicado";
+            }
+
+            if (duplicatedError) {
+              validation = { valid: false, error: duplicatedError };
+            } else {
+              if (nomeNorm) seenNomes.add(nomeNorm);
+              if (matriculaNorm) seenMatriculas.add(matriculaNorm);
+              if (cpfDigits && cpfDigits.length >= 11) seenCpfs.add(cpfDigits);
             }
           }
 
