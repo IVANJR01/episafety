@@ -16,9 +16,11 @@ import {
 } from "@/components/ui/dialog";
 import {
   ArrowLeft, User, Upload, Loader2, History, ExternalLink, Archive, RefreshCw, Info, FileStack,
+  ScanLine, FileText,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import SituacaoBadge from "@/components/arquivo-digital/SituacaoBadge";
+import ScannerDocumento from "@/components/ScannerDocumento";
 import {
   garantirDocumento, publicarVersao, urlTemporaria, registrarAcesso, registrarEvento,
   historicoVersoes, arquivarDocumento, definirEmRenovacao,
@@ -92,6 +94,7 @@ export default function DossieColaborador() {
   const [enviando, setEnviando] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
   const [arquivoSel, setArquivoSel] = useState<File | null>(null);
+  const [scannerAberto, setScannerAberto] = useState(false);
 
   const [histDe, setHistDe] = useState<LinhaDossie | null>(null);
   const [versoes, setVersoes] = useState<any[] | null>(null);
@@ -489,14 +492,28 @@ export default function DossieColaborador() {
           <div className="space-y-3 py-2">
             <div>
               <Label>Arquivo *</Label>
+              {/* Dois caminhos para o mesmo fim: o PDF que já existe, ou o
+                  papel que está na mão. Digitalizar entrega um PDF igual ao
+                  do outro botão — daqui para frente o fluxo é o mesmo. */}
               <input ref={arquivoRef} type="file" className="hidden"
                 accept="application/pdf"
                 onChange={(e) => setArquivoSel(e.target.files?.[0] || null)} />
-              <Button variant="outline" className="w-full justify-start font-normal mt-1"
-                onClick={() => arquivoRef.current?.click()}>
-                <Upload className="w-4 h-4 mr-2" />
-                <span className="truncate">{arquivoSel?.name || "Selecionar arquivo PDF…"}</span>
-              </Button>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Button variant="outline" className="font-normal" onClick={() => arquivoRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-2 shrink-0" />
+                  Escolher PDF
+                </Button>
+                <Button variant="outline" className="font-normal" onClick={() => setScannerAberto(true)}>
+                  <ScanLine className="w-4 h-4 mr-2 shrink-0" />
+                  Digitalizar
+                </Button>
+              </div>
+              {arquivoSel && (
+                <p className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{arquivoSel.name}</span>
+                </p>
+              )}
             </div>
             <div>
               <Label>Data de emissão *</Label>
@@ -524,6 +541,15 @@ export default function DossieColaborador() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Digitalizar entrega um PDF; daí em diante é o mesmo caminho do
+          arquivo escolhido do aparelho, inclusive a exigência de ser PDF. */}
+      <ScannerDocumento
+        open={scannerAberto}
+        nomeSugerido={envio?.tipo.nome}
+        onCancel={() => setScannerAberto(false)}
+        onReady={(arquivo) => { setArquivoSel(arquivo); setScannerAberto(false); }}
+      />
 
       {/* ── Diálogo: histórico de versões ── */}
       <Dialog open={!!histDe} onOpenChange={(v) => { if (!v) setHistDe(null); }}>
