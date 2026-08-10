@@ -257,6 +257,31 @@ export default function EPIs() {
       if (form.ajuste_tipo && form.ajuste_quantidade > 0) {
         toast({ title: `${form.ajuste_tipo === "entrada" ? "Entrada" : "Saída"} registrada`, description: `${form.ajuste_quantidade} unidade(s) ${form.ajuste_tipo === "entrada" ? "adicionada(s) ao" : "removida(s) do"} estoque` });
       }
+
+      // Propagar campos em comum (como valor) para outros tamanhos (irmãos) do mesmo grupo
+      const caKey = editing.ca?.trim();
+      const editingTamanho = tamanhoDoRegistro(editing);
+      const editingBase = nomeBase(editing.nome, editingTamanho);
+      
+      const irmaos = epis.filter(e => {
+        if (e.id === editing.id) return false;
+        if (caKey && e.ca?.trim() === caKey) return true;
+        if (!caKey && !e.ca?.trim() && nomeBase(e.nome, tamanhoDoRegistro(e)).toLowerCase() === editingBase.toLowerCase()) return true;
+        return false;
+      });
+
+      if (irmaos.length > 0) {
+        const idsIrmaos = irmaos.map(i => i.id);
+        const updateDadosGlobais = {
+           ca: data.ca, categoria: data.categoria, fabricante: data.fabricante,
+           validade: data.validade, descricao: data.descricao, aprovado_para: data.aprovado_para,
+           valor: data.valor, estoque_minimo: data.estoque_minimo
+        };
+        const { error } = await supabase.from("epis").update(updateDadosGlobais).in("id", idsIrmaos);
+        if (!error) {
+           await refetch();
+        }
+      }
     }
 
     // Tamanhos marcados viram um EPI cada, com os mesmos dados — no cadastro
