@@ -40,7 +40,6 @@ import Obras from "@/pages/Obras";
 import Treinamentos from "@/pages/Treinamentos";
 
 import CadastroDashboard from "@/pages/CadastroDashboard";
-import PcmsoGhe from "@/pages/aso/PcmsoGhe";
 import EstruturaGhePage from "@/pages/cadastro/EstruturaGhePage";
 import CentralPPP from "@/pages/CentralPPP";
 import Backups from "@/pages/Backups";
