@@ -29,7 +29,7 @@ interface EPI {
 
 const emptyForm = {
   nome: "", ca: "", validade: "", estoque: 0, estoque_minimo: 5,
-  categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: 0,
+  categoria: "", descricao: "", fabricante: "", aprovado_para: "", valor: "" as string | number,
   tamanho: "",
   /** Cadastro em lote: um EPI por tamanho marcado (so em cadastro novo). */
   tamanhos: [] as string[],
@@ -119,7 +119,7 @@ export default function EPIs() {
       estoque: e.estoque, estoque_minimo: e.estoque_minimo,
       categoria: e.categoria || "", descricao: e.descricao || "",
       fabricante: e.fabricante || "", aprovado_para: e.aprovado_para || "",
-      valor: e.valor || 0, tamanho: e.tamanho || "", tamanhos: [],
+      valor: e.valor !== null && e.valor !== undefined ? String(e.valor) : "", tamanho: e.tamanho || "", tamanhos: [],
       ajuste_tipo: "", ajuste_quantidade: 0, ajuste_motivo: ""
     });
     setOpen(true);
@@ -176,7 +176,7 @@ export default function EPIs() {
       estoque: estoqueAjustado, estoque_minimo: form.estoque_minimo,
       categoria: form.categoria || null, descricao: form.descricao || null,
       fabricante: form.fabricante || null, aprovado_para: form.aprovado_para || null,
-      valor: form.valor || 0, tamanho: form.tamanho || null
+      valor: form.valor === "" ? null : Number(form.valor), tamanho: form.tamanho || null
     };
     if (editing) {
       await update(editing.id, data);
@@ -475,7 +475,7 @@ export default function EPIs() {
             <div><Label>Fabricante</Label><Input value={form.fabricante} onChange={e => setForm({...form, fabricante: e.target.value})} placeholder="Preenchido automaticamente pela consulta" /></div>
             <div><Label>Aprovado Para</Label><Textarea value={form.aprovado_para} onChange={e => setForm({...form, aprovado_para: e.target.value})} placeholder="Proteção contra..." rows={2} /></div>
             <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Descrição técnica do EPI" rows={3} /></div>
-            <div><Label>Valor Unitário (R$)</Label><Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({...form, valor: Number(e.target.value)})} placeholder="0.00" /></div>
+            <div><Label>Valor Unitário (R$)</Label><Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm({...form, valor: e.target.value})} placeholder="0.00" /></div>
             {editing && (
               <div className="border rounded-lg p-3 bg-muted/30 space-y-3">
                 <Label className="text-sm font-semibold">Movimentação de Estoque</Label>
