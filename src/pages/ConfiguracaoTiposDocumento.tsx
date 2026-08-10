@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Search, Settings2, Loader2, Info, Globe, Building2 } from "lucide-react";
+import { Plus, Search, Settings2, Loader2, Info, Globe, Building2, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const TABELA_AUSENTE = new Set(["42P01", "PGRST205", "PGRST202"]);
@@ -117,6 +117,21 @@ export default function ConfiguracaoTiposDocumento() {
       await carregar();
     } catch (e: any) {
       toast({ title: "Erro ao criar tipo", description: e?.message, variant: "destructive" });
+    } finally { setSalvando(false); }
+  };
+
+  const excluirTipo = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir este tipo de documento?")) return;
+    setSalvando(true);
+    try {
+      const { error } = await (supabase.from as any)("internal_document_types")
+        .update({ ativo: false })
+        .eq("id", id);
+      if (error) throw error;
+      toast({ title: "Tipo excluído" });
+      await carregar();
+    } catch (e: any) {
+      toast({ title: "Erro ao excluir", description: e?.message, variant: "destructive" });
     } finally { setSalvando(false); }
   };
 
@@ -237,10 +252,18 @@ export default function ConfiguracaoTiposDocumento() {
                     </TableCell>
                     <TableCell className="text-right">
                       {perms.canEdit && (
-                        <Button size="sm" variant="outline" className="h-8 text-xs"
-                          onClick={() => abrirRequisitos(t)}>
-                          <Settings2 className="w-3.5 h-3.5 mr-1" />Requisitos
-                        </Button>
+                        <div className="flex justify-end items-center gap-2">
+                          <Button size="sm" variant="outline" className="h-8 text-xs"
+                            onClick={() => abrirRequisitos(t)}>
+                            <Settings2 className="w-3.5 h-3.5 mr-1" />Requisitos
+                          </Button>
+                          {t.empresa_id && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => excluirTipo(t.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
