@@ -113,7 +113,7 @@ export default function Funcionarios() {
   const fetchUnidadesContratos = async () => {
     const [uResult, cResult] = await Promise.all([
       cachedQuery<Unidade>("empresa_config_unidades", () =>
-        supabase.from("empresa_config").select("id, nome, tipo").neq("tipo", "empresa").order("nome") as any
+        supabase.from("empresa_config").select("id, nome, tipo").order("nome") as any
       ),
       cachedQuery<Contrato>("contratos_list", () =>
         supabase.from("contratos").select("id, nome, unidade_id").order("nome") as any
