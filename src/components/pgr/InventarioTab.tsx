@@ -417,7 +417,7 @@ export default function InventarioTab({
                           <td rowSpan={linhasDoGes} className={`p-1.5 pt-2 border border-amber-300 align-top sticky left-[200px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[136px] min-w-[136px] max-w-[136px] break-words ${AMBAR_CHAPADO}`}>
                             <span className="font-medium">{val(i.setor)}</span>
                             {gesCod && gesCod !== NA && gesCod !== val(i.setor) ? (
-                              <span className="block text-[11px] font-bold text-muted-foreground mt-0.5">GES: {gesCod}</span>
+                              <span className="text-[11px] font-bold text-muted-foreground ml-1">(GES: {gesCod})</span>
                             ) : null}
                           </td>
                         )}
