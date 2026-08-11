@@ -114,8 +114,8 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
       responsavel_id: pgr?.responsavel_tecnico_id || null,
       what: `Implantar controle do risco "${item.perigo_descricao}"`,
       why: `Risco classificado como ${String(item.classe || "").toUpperCase()} no inventário.`,
-      where_local: item.fonte_geradora || "",
-      responsavel_setor: item.ges?.nome || item.ges?.codigo || "",
+      where_local: item.ges?.nome || item.ges?.codigo || item.descricao_ambiente || "Geral",
+      responsavel_setor: item.ges?.codigo || item.ges?.nome || "",
     });
     setDialogOpen(true);
   };
