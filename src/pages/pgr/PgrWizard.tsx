@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type EtapaId =
-  | "escopo" | "estrutura" | "ges_funcoes" | "atividades_perigos"
+  | "escopo" | "estrutura" | "ges_funcoes"
   | "avaliacao" | "inventario" | "acoes" | "emissao";
 
 interface Etapa {
@@ -51,20 +51,19 @@ interface Etapa {
 const ETAPAS: Etapa[] = [
   { id: "escopo", n: 1, titulo: "Escopo e identificação", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
   { id: "estrutura", n: 2, titulo: "Estrutura ocupacional", ajuda: "Estabelecimento, ambientes e setores." },
-  // Processo vem antes de função: é o processo do setor que define o que se
-  // faz ali, e a função é quem executa. Cadastrar função antes obrigava a
-  // voltar depois para amarrar cada uma ao processo.
+  // A etapa "Processos" saiu: o processo passou a aparecer na linha do setor,
+  // na Estrutura ocupacional, e é lá que se cadastra — abrindo o setor. Uma
+  // etapa inteira do assistente só para repetir o que a etapa anterior já
+  // mostra não se justificava.
   //
-  // Os ids "atividades_perigos" e "ges_funcoes" continuam os mesmos, apesar
-  // dos rótulos: são gravados em etapa_atual e vão na URL (?etapa=), então
-  // renomear quebraria PGR salvo e link guardado. A ORDEM do array é que
-  // manda no Voltar/Continuar e na numeração.
-  { id: "atividades_perigos", n: 3, titulo: "Processos", ajuda: "Processos de trabalho de cada setor, com característica e descrição." },
-  { id: "ges_funcoes", n: 4, titulo: "Funções", ajuda: "Funções e cargos, com o setor de cada um." },
-  { id: "avaliacao", n: 5, titulo: "Avaliação de riscos e controles", ajuda: "Matriz de risco, probabilidade, severidade e controles." },
-  { id: "inventario", n: 6, titulo: "Inventário de riscos", ajuda: "Consolidação dos perigos, avaliações e classificações." },
-  { id: "acoes", n: 7, titulo: "Plano de ação", ajuda: "Medidas que serão implementadas." },
-  { id: "emissao", n: 8, titulo: "Revisão e emissão", ajuda: "Complementares, pendências e geração do documento." },
+  // O id "ges_funcoes" continua o mesmo apesar do rótulo "Funções": é gravado
+  // em etapa_atual e vai na URL (?etapa=), então renomear quebraria PGR salvo
+  // e link guardado.
+  { id: "ges_funcoes", n: 3, titulo: "Funções", ajuda: "Funções e cargos, com o setor de cada um." },
+  { id: "avaliacao", n: 4, titulo: "Avaliação de riscos e controles", ajuda: "Matriz de risco, probabilidade, severidade e controles." },
+  { id: "inventario", n: 5, titulo: "Inventário de riscos", ajuda: "Consolidação dos perigos, avaliações e classificações." },
+  { id: "acoes", n: 6, titulo: "Plano de ação", ajuda: "Medidas que serão implementadas." },
+  { id: "emissao", n: 7, titulo: "Revisão e emissão", ajuda: "Complementares, pendências e geração do documento." },
 ];
 
 export default function PgrWizard() {
@@ -83,10 +82,16 @@ function Assistente() {
   const [menuAberto, setMenuAberto] = useState(false);
   const acoes = useAcoesEtapa();
 
-  // PGRs em andamento têm "perigos" gravado como etapa atual; a etapa deixou de
-  // existir e o conteúdo dela foi para o inventário.
-  const etapaSalva = params.get("etapa");
-  const etapaAtual = (etapaSalva === "perigos" ? "inventario" : etapaSalva === "dados" ? "escopo" : etapaSalva || "escopo") as EtapaId;
+  // Etapas que deixaram de existir continuam gravadas em PGRs antigos e em
+  // links guardados. Sem estas trocas, `findIndex` devolveria -1 e a pessoa
+  // cairia na etapa 1 sem entender por quê.
+  const ETAPA_APOSENTADA: Record<string, EtapaId> = {
+    perigos: "inventario",            // virou o inventário
+    dados: "escopo",
+    atividades_perigos: "estrutura",  // o processo foi para a Estrutura ocupacional
+  };
+  const etapaSalva = params.get("etapa") || "";
+  const etapaAtual = (ETAPA_APOSENTADA[etapaSalva] || etapaSalva || "escopo") as EtapaId;
   const idx = Math.max(0, ETAPAS.findIndex((e) => e.id === etapaAtual));
   const etapa = ETAPAS[idx];
 
@@ -136,7 +141,7 @@ function Assistente() {
   const nomeEmpresa = empresa?.nome_fantasia || empresa?.nome || null;
   const nomeUnidade = unidade?.nome_fantasia || unidade?.nome || null;
 
-  // Progresso: cada etapa vale 1/8. É indicativo de preenchimento, não de
+  // Progresso: cada etapa vale o mesmo. É indicativo de preenchimento, não de
   // conformidade — quem diz se pode emitir é o checklist da última etapa.
   const { data: progresso } = useQuery({
     queryKey: ["pgr-wiz-progresso", id],
@@ -154,12 +159,10 @@ function Assistente() {
       const tem = (r: any) => (r?.data?.length ?? 0) > 0;
       return {
         escopo: !!(pgr!.data_emissao || pgr!.escopo) && !!(pgr!.cnpj_snapshot || pgr!.cnae_principal),
-        estrutura: tem(set) && tem(amb),
+        // Processo entrou na Estrutura ocupacional junto com o setor: a etapa
+        // só está pronta quando setor, ambiente e processo existem.
+        estrutura: tem(set) && tem(amb) && tem(proc),
         ges_funcoes: tem(fun),
-        // Era `true` fixo, de quando a etapa não tinha lista própria: contava
-        // como concluída mesmo vazia e inflava a barra. Agora ela cadastra
-        // processo, então quem responde é o cadastro.
-        atividades_perigos: tem(proc),
         avaliacao: !!(pgr as any)!.matriz_versao_id,
         inventario: tem(inv),
         acoes: tem(acs),
@@ -299,12 +302,6 @@ function Assistente() {
                 central": esta etapa não cria, não edita e não valida GES —
                 citá-los aqui só levantava um assunto que não é desta tela. */}
             <EstruturaOcupacionalTab key="funcoes" only="funcoes" />
-          </div>
-        );
-      case "atividades_perigos":
-        return (
-          <div className="space-y-6">
-            <EstruturaOcupacionalTab only="processos" />
           </div>
         );
       case "avaliacao":

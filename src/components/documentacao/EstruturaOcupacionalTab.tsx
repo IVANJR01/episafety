@@ -753,7 +753,54 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     )}
                   </div>
 
-
+                  {/*
+                    Processos do setor.
+                    
+                    Aqui é o lugar deles desde que a etapa "Processos" do
+                    assistente saiu: o processo pertence ao setor, e cadastrar
+                    numa lista solta obrigava a escolher o setor de novo num
+                    seletor — com chance de escolher o errado. Entrando por
+                    dentro do setor, o vínculo já vem pronto.
+                  */}
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="font-semibold text-slate-800 text-lg">Processos de trabalho</h4>
+                      <Button variant="outline" size="sm"
+                        onClick={() => handleOpenModal("processo", { setor_id: setorAtual.id })}>
+                        <Plus className="w-4 h-4 mr-1" /> Novo processo
+                      </Button>
+                    </div>
+                    {processosDoSetor.length === 0 ? (
+                      <p className="text-sm text-slate-500 italic">
+                        Nenhum processo cadastrado neste setor.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {processosDoSetor.map((pr: any) => (
+                          <Card key={pr.id} className="p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 space-y-1">
+                                <Badge variant="outline">{pr.caracteristica_atividade || "—"}</Badge>
+                                <p className="text-sm text-slate-700 break-words">
+                                  {pr.descricao_etapas || "Sem descrição."}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 gap-1">
+                                <Button variant="ghost" size="sm" aria-label="Editar processo"
+                                  onClick={() => handleOpenModal("processo", pr)}>
+                                  <Edit2 className="w-4 h-4 text-slate-600" />
+                                </Button>
+                                <Button variant="ghost" size="sm" aria-label="Excluir processo"
+                                  onClick={() => setDeleteConfirm({ open: true, type: "processo", id: pr.id, nome: pr.nome })}>
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })()
