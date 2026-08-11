@@ -658,27 +658,36 @@ export default function InventarioTab({
                     <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-0`}>Descrição do ambiente</th>
                     <th className={`${CTX_TH} w-[88px] min-w-[88px] max-w-[88px] left-[200px]`}>Setor</th>
                     <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>GES</th>
-                    <th className="p-1.5 text-left border border-amber-400 w-[140px]">Função</th>
-                    <th className="p-1.5 text-left border border-amber-400 w-[150px]">Processo</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[120px]">Função</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[130px]">Processo</th>
                     {/* Estes dois rótulos estavam trocados entre si: a coluna
                         "Agente" imprimia o grupo ("Ergonômico") e a "Tipo de
                         Agente" imprimia o perigo ("Pressão por metas"). */}
-                    <th className="p-1.5 text-left border border-amber-400 w-[84px]">Tipo de<br/>agente</th>
-                    <th className="p-1.5 text-left border border-amber-400 w-[130px]">Agente / perigo</th>
-                    <th className="p-1.5 text-left border border-amber-400 w-[130px]">Fonte de<br/>exposição</th>
-                    <th className="p-1.5 text-left border border-amber-400 w-[130px]">Possíveis lesões ou<br/>agravos à saúde</th>
-                    {detalhes && <th className="p-1.5 text-left border border-amber-400 w-[96px]">Limite de<br/>exposição</th>}
-                    {detalhes && <th className="p-1.5 text-left border border-amber-400 w-[104px]">Intensidade /<br/>concentração</th>}
-                    <th className="p-1.5 text-left border border-amber-400 w-[88px]">Tipo / tempo<br/>de exposição</th>
-                    {detalhes && <th className="p-1.5 text-left border border-amber-400 w-[104px]">Técnica<br/>utilizada</th>}
-                    <th className="p-1.5 text-left border border-amber-400 w-[150px]">Proc. administrativo / EPC /<br/>organização do trabalho</th>
-                    <th className="p-1.5 text-left border border-amber-400 w-[90px]">EPI</th>
-                    {detalhes && <th className="p-1.5 text-left border border-amber-400 w-[96px]">Atenuação /<br/>fator de proteção</th>}
-                    <th className="p-1.5 text-center border border-amber-400 w-[44px]">Prob.</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[44px]">Sev.</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[44px]">Total</th>
-                    <th className="p-1.5 text-left border border-amber-400 w-[104px]">Classificação<br/>do risco</th>
-                    <th className="p-1.5 border border-amber-400 w-[68px] sticky right-0 z-20 bg-amber-200 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">Ações</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[70px]">Tipo de<br/>agente</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[110px]">Agente / perigo</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[110px]">Fonte de<br/>exposição</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[110px]">Possíveis lesões ou<br/>agravos à saúde</th>
+                    {detalhes && <th className="p-1.5 text-center border border-amber-400 w-[80px]">Limite de<br/>exposição</th>}
+                    {detalhes && <th className="p-1.5 text-center border border-amber-400 w-[80px]">Intensidade /<br/>concentração</th>}
+                    <th className="p-1.5 text-center border border-amber-400 w-[70px]">Tipo / tempo<br/>de exposição</th>
+                    {detalhes && <th className="p-1.5 text-center border border-amber-400 w-[80px]">Técnica<br/>utilizada</th>}
+                    <th className="p-1.5 text-center border border-amber-400 w-[130px]">Proc. administrativo / EPC /<br/>organização do trabalho</th>
+                    <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
+                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">EPI</div>
+                    </th>
+                    {detalhes && <th className="p-1.5 text-center border border-amber-400 w-[80px]">Atenuação /<br/>fator de proteção</th>}
+                    <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
+                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Prob.</div>
+                    </th>
+                    <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
+                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Sev.</div>
+                    </th>
+                    <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
+                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Total</div>
+                    </th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[80px]">Classificação<br/>do risco</th>
+                    {/* Ações não precisa de texto para economizar espaço */}
+                    <th className="p-1 border border-amber-400 bg-amber-200"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -780,13 +789,13 @@ export default function InventarioTab({
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top max-w-[200px] bg-amber-50/30">
                           <ExpandableText text={controles} />
                         </td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top bg-amber-50/30">{val(i.epi)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top bg-amber-50/30">{atenuacao}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top bg-amber-50/30">{val(i.epi)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top bg-amber-50/30">{atenuacao}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top bg-amber-50/30">{i.probabilidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top bg-amber-50/30">{i.severidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top font-semibold bg-amber-50/30">{total}</td>}
                         {isFirstOfRisk && (
-                          <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30">
+                          <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30 text-center">
                             <Badge
                               className={clsPgr ? CLASSE_TEXT[clsPgr] : "bg-slate-100 text-slate-700 border-slate-300"}
                               variant="outline"
@@ -797,16 +806,16 @@ export default function InventarioTab({
                         )}
 
                         {isFirstOfRisk && (
-                          <td rowSpan={riskRowSpan} className="p-1.5 border text-right whitespace-nowrap align-middle sticky right-0 z-10 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">
+                          <td rowSpan={riskRowSpan} className="p-1 border text-center align-middle bg-white">
                             {editavel && (
-                              <>
+                              <div className="flex flex-col items-center gap-1 justify-center">
                                 <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Editar grupo (${groupIds.length} setores)` : "Editar item"} onClick={() => { setEditId(i.id); setEditGroupIds(groupIds); setDialogOpen(true); }}>
-                                  <Pencil className="h-3.5 w-3.5" />
+                                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                                 </Button>
-                                <Button size="icon" variant="ghost" title={groupIds.length > 1 ? `Excluir grupo (${groupIds.length} setores)` : "Excluir item"} onClick={() => setDelState({ ids: groupIds, setores: groupSetores })}>
-                                  <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                                <Button size="icon" variant="ghost" className="hover:bg-destructive/10 hover:text-destructive" title={groupIds.length > 1 ? `Excluir grupo (${groupIds.length} setores)` : "Excluir item"} onClick={() => setDelState({ ids: groupIds, setores: groupSetores })}>
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
-                              </>
+                              </div>
                             )}
                           </td>
                         )}
