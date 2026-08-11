@@ -715,11 +715,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     </Button>
                     <div>
                       <h3 className="text-xl font-bold text-slate-900">Setor: {setorAtual.nome}</h3>
-                      <p className="text-sm text-slate-500">
-                        {gesDoSetor.length > 0
-                          ? `Grupo de Exposição: ${gesDoSetor.map((g: any) => `${g.codigo || ''} - ${g.nome}`).join(' · ')}`
-                          : 'Sem grupo de exposição vinculado'}
-                      </p>
+
                     </div>
                   </div>
 
