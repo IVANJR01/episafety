@@ -783,9 +783,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                       const ids = new Set((gheSetores as any[])
                         .filter((v) => v.setor_id === set.id).map((v) => v.ghe_id));
                       const grupos = gesList.filter((g: any) => ids.has(g.id));
-                      return grupos.length
-                        ? grupos.map((g: any) => g.nome).join(" · ")
-                        : "—";
+                      return (
+                        <div className="flex items-center gap-2 group cursor-pointer w-fit" onClick={() => setSetorDosGrupos({ id: set.id, nome: set.nome })}>
+                          <span className={!grupos.length ? "text-slate-400 italic" : ""}>
+                            {grupos.length ? grupos.map((g: any) => g.nome).join(" · ") : "Nenhum vinculado"}
+                          </span>
+                          <Edit2 className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition" />
+                        </div>
+                      );
                     },
                   },
                 ]}
@@ -1337,6 +1342,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           </form>
         </DialogContent>
       </Dialog>
+
+      <GruposDoSetorDialog
+        setor={setorDosGrupos}
+        open={!!setorDosGrupos}
+        onOpenChange={(open) => { if (!open) setSetorDosGrupos(null); }}
+      />
     </div>
   );
 }
