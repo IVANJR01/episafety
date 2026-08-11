@@ -319,6 +319,60 @@ export default function DossieColaborador() {
 
   const desligado = !!funcionario.data_demissao;
 
+  /**
+   * Ações de um documento — as mesmas na tabela e no cartão.
+   *
+   * `comRotulos` é para o celular: no cartão, botão só com ícone não se
+   * entende. Ninguém adivinha que a seta circular é "marcar em renovação"
+   * nem que a caixinha é "arquivar" sem passar o mouse por cima — e no
+   * celular não existe passar o mouse por cima.
+   */
+  function AcoesDocumento({ l, comRotulos = false }: { l: LinhaDossie; comRotulos?: boolean }) {
+    const arquivado = l.situacao === "arquivado";
+    const emRenovacao = l.situacao === "em_renovacao";
+    return (
+      <div className={`flex gap-1 flex-wrap ${comRotulos ? "" : "justify-end"}`}>
+        {l.doc?.caminho_arquivo && (
+          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => abrir(l)}>
+            <ExternalLink className="w-3.5 h-3.5 mr-1" />Ver
+          </Button>
+        )}
+        {canEdit && !arquivado && (
+          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => abrirEnvio(l)}>
+            <Upload className="w-3.5 h-3.5 mr-1" />
+            {/* "Renovar" só quando existe versão para renovar. A linha do
+                documento pode existir com zero versões — foi o que sobrou das
+                tentativas de anexo barradas pela permissão do bucket —, e aí
+                oferecer "Renovar" num item "Não enviado" não faz sentido. */}
+            {(l.doc?.total_versoes || 0) > 0 ? "Renovar" : "Anexar"}
+          </Button>
+        )}
+        {canEdit && l.doc && !arquivado && (
+          <Button size="sm" variant="ghost" className="h-8 text-xs"
+            title={emRenovacao ? "Cancelar renovação" : "Marcar em renovação"}
+            onClick={() => alternarRenovacao(l)}>
+            <RefreshCw className={`w-3.5 h-3.5 ${emRenovacao ? "text-blue-600" : ""} ${comRotulos ? "mr-1" : ""}`} />
+            {comRotulos && (emRenovacao ? "Cancelar renovação" : "Em renovação")}
+          </Button>
+        )}
+        {l.doc && (l.doc.total_versoes || 0) > 0 && (
+          <Button size="sm" variant="ghost" className="h-8 text-xs" title="Histórico de versões"
+            onClick={() => abrirHistorico(l)}>
+            <History className={`w-3.5 h-3.5 ${comRotulos ? "mr-1" : ""}`} />
+            {comRotulos && "Histórico"}
+          </Button>
+        )}
+        {canDelete && l.doc && !arquivado && (
+          <Button size="sm" variant="ghost" className="h-8 text-xs" title="Arquivar"
+            onClick={() => { setArquivarDe(l); setMotivoArquivo(""); }}>
+            <Archive className={`w-3.5 h-3.5 text-muted-foreground ${comRotulos ? "mr-1" : ""}`} />
+            {comRotulos && "Arquivar"}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-6xl mx-auto">
       <Button variant="ghost" size="sm" onClick={() => navigate("/arquivo-digital/dossies")}>
@@ -383,7 +437,64 @@ export default function DossieColaborador() {
             </label>
           </div>
 
-          <div className="rounded-lg border overflow-x-auto">
+          {/* Celular: cartões. A tabela tem oito colunas — em tela estreita
+              metade fica fora da vista, inclusive a coluna de Ações, que é
+              onde estão Anexar e Renovar. */}
+          <div className="space-y-2 lg:hidden">
+            {linhas.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileStack className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Nenhum documento neste dossiê ainda.</p>
+                <Button variant="link" className="text-xs h-auto"
+                  onClick={() => navigate("/arquivo-digital/tipos")}>Configuração de Tipos</Button>
+              </div>
+            )}
+            {linhas.map((l) => {
+              const naoAplicavel = l.situacao === "nao_aplicavel";
+              const arquivado = l.situacao === "arquivado";
+              const fatos: [string, React.ReactNode][] = [];
+              if (l.doc?.data_emissao) fatos.push(["Emissão", dataBr(l.doc.data_emissao)]);
+              fatos.push(["Validade", l.doc?.data_validade ? dataBr(l.doc.data_validade) : (l.doc ? "Permanente" : "—")]);
+              if (l.doc?.dias_para_vencer !== null && l.doc?.dias_para_vencer !== undefined) {
+                fatos.push(["Dias", (
+                  <span className={l.doc.dias_para_vencer < 0 ? "text-destructive font-medium" : ""}>
+                    {l.doc.dias_para_vencer}
+                  </span>
+                )]);
+              }
+              fatos.push(["Versões", l.doc?.total_versoes ?? 0]);
+              if (l.responsavel) fatos.push(["Responsável", l.responsavel]);
+
+              return (
+                <div key={l.tipo.id}
+                  className={`rounded-lg border p-3 ${naoAplicavel || arquivado ? "opacity-60" : ""}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{l.tipo.nome}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
+                        {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
+                      </p>
+                    </div>
+                    <div className="shrink-0"><SituacaoBadge situacao={l.situacao} /></div>
+                  </div>
+
+                  <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    {fatos.map(([rotulo, valor]) => (
+                      <div key={rotulo} className="flex gap-1.5 min-w-0">
+                        <dt className="text-muted-foreground shrink-0">{rotulo}:</dt>
+                        <dd className="truncate">{valor}</dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  <div className="mt-2.5"><AcoesDocumento l={l} comRotulos /></div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-lg border overflow-x-auto hidden lg:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -438,36 +549,7 @@ export default function DossieColaborador() {
                       </TableCell>
                       <TableCell className="text-sm">{l.doc?.total_versoes ?? 0}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end flex-wrap">
-                          {l.doc?.caminho_arquivo && (
-                            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => abrir(l)}>
-                              <ExternalLink className="w-3.5 h-3.5 mr-1" />Ver
-                            </Button>
-                          )}
-                          {canEdit && !arquivado && (
-                            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => abrirEnvio(l)}>
-                              <Upload className="w-3.5 h-3.5 mr-1" />{l.doc ? "Renovar" : "Anexar"}
-                            </Button>
-                          )}
-                          {canEdit && l.doc && !arquivado && (
-                            <Button size="sm" variant="ghost" className="h-8 text-xs"
-                              title={l.situacao === "em_renovacao" ? "Cancelar renovação" : "Marcar em renovação"}
-                              onClick={() => alternarRenovacao(l)}>
-                              <RefreshCw className={`w-3.5 h-3.5 ${l.situacao === "em_renovacao" ? "text-blue-600" : ""}`} />
-                            </Button>
-                          )}
-                          {l.doc && (l.doc.total_versoes || 0) > 0 && (
-                            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => abrirHistorico(l)}>
-                              <History className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                          {canDelete && l.doc && !arquivado && (
-                            <Button size="sm" variant="ghost" className="h-8 text-xs" title="Arquivar"
-                              onClick={() => { setArquivarDe(l); setMotivoArquivo(""); }}>
-                              <Archive className="w-3.5 h-3.5 text-muted-foreground" />
-                            </Button>
-                          )}
-                        </div>
+                        <AcoesDocumento l={l} />
                       </TableCell>
                     </TableRow>
                   );
