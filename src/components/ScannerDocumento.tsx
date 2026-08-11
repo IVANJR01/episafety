@@ -31,27 +31,55 @@ const LADO_MAXIMO = 1600;
 const RECUO_INICIAL = 0.06;
 
 /**
- * Deixa a imagem com cara de digitalização.
+ * Como a página é acabada depois de endireitada.
  *
- * Foto de papel sai acinzentada e com sombra. O tratamento é o mesmo que uma
- * copiadora faz: joga fora a cor, descobre onde estão o papel e a tinta, e
- * estica o contraste entre os dois até o papel virar branco e o texto, preto.
- *
- * Os cortes saem do histograma da própria imagem, não de números fixos: assim
- * funciona tanto na foto clara demais quanto na tirada em luz fraca.
+ * Antes só existia o modo "pb", aplicado sem perguntar — e documento de
+ * pessoal é cheio de coisa que só existe em cor: carimbo do médico,
+ * assinatura em caneta azul, foto do RG, marca-d'água. Jogar a cor fora
+ * apaga tudo isso do arquivo que vale como prova. Por isso o padrão passou
+ * a ser colorido, e o preto e branco virou escolha de quem quer o efeito
+ * de copiadora.
  */
-function tratarComoDigitalizacao(ctx: CanvasRenderingContext2D, largura: number, altura: number) {
+export type ModoCor = "cor" | "cinza" | "pb";
+
+const ROTULO_MODO: Record<ModoCor, string> = {
+  cor: "Colorido",
+  cinza: "Tons de cinza",
+  pb: "Preto e branco",
+};
+
+/**
+ * Ajusta a página capturada conforme o modo escolhido.
+ *
+ * Em todos os modos o ponto de partida é o mesmo: o histograma da própria
+ * imagem diz onde estão o papel e a tinta, então o resultado funciona tanto
+ * na foto estourada de luz quanto na tirada em ambiente fraco — sem números
+ * fixos que só valem para uma condição.
+ *
+ * - `cor`: só clareia, com ganho igual nos três canais. Levanta o papel para
+ *   perto do branco sem mexer no matiz — carimbo continua vermelho, caneta
+ *   continua azul. O ganho é limitado a 1,8× porque acima disso o papel já
+ *   saturou e o que cresce é só o ruído da câmera.
+ * - `cinza`: mesmo ganho, sem cor. Arquivo menor, tons preservados.
+ * - `pb`: o tratamento de copiadora — estica o contraste entre tinta e papel
+ *   até virar quase dois níveis. Ótimo para texto impresso, destrutivo para
+ *   qualquer coisa colorida.
+ */
+function tratarPagina(
+  ctx: CanvasRenderingContext2D,
+  largura: number,
+  altura: number,
+  modo: ModoCor,
+) {
   const imagem = ctx.getImageData(0, 0, largura, altura);
   const d = imagem.data;
-  const histograma = new Uint32Array(256);
+  const total = largura * altura;
 
+  const histograma = new Uint32Array(256);
   for (let i = 0; i < d.length; i += 4) {
-    const cinza = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
-    d[i] = d[i + 1] = d[i + 2] = cinza;
-    histograma[cinza]++;
+    histograma[(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0]++;
   }
 
-  const total = largura * altura;
   let acumulado = 0;
   let tinta = 0;
   for (let v = 0; v < 256; v++) {
@@ -65,26 +93,54 @@ function tratarComoDigitalizacao(ctx: CanvasRenderingContext2D, largura: number,
     if (acumulado >= total * 0.25) { papel = v; break; }
   }
 
-  /*
-   * Papel e tinta colados significam folha em branco ou foto sem contraste:
-   * esticar aí só amplificaria ruído. Nesse caso fica só o cinza.
-   *
-   * O cinza é gravado de qualquer jeito. Sair antes do `putImageData`
-   * devolveria a foto colorida — a conversão acontece numa cópia, e cópia
-   * que não é escrita de volta não vale nada.
-   */
-  if (papel - tinta >= 30) {
+  const tabela = new Uint8ClampedArray(256);
+  // Papel e tinta colados significam folha em branco ou foto sem contraste:
+  // esticar aí só amplificaria ruído, então o pb cai no mesmo clareamento
+  // dos outros modos em vez de inventar contraste que não existe.
+  if (modo === "pb" && papel - tinta >= 30) {
     const escala = 255 / (papel - tinta);
-    const tabela = new Uint8ClampedArray(256);
     for (let v = 0; v < 256; v++) {
       tabela[v] = Math.max(0, Math.min(255, Math.round((v - tinta) * escala)));
     }
+  } else {
+    const ganho = Math.min(1.8, papel > 0 ? 255 / papel : 1);
+    for (let v = 0; v < 256; v++) tabela[v] = Math.min(255, Math.round(v * ganho));
+  }
+
+  if (modo === "cor") {
     for (let i = 0; i < d.length; i += 4) {
-      const v = tabela[d[i]];
+      d[i] = tabela[d[i]];
+      d[i + 1] = tabela[d[i + 1]];
+      d[i + 2] = tabela[d[i + 2]];
+    }
+  } else {
+    // O cinza é gravado de qualquer jeito, mesmo quando a tabela é neutra:
+    // a conversão acontece numa cópia, e cópia que não volta pro canvas não
+    // vale nada — foi assim que as miniaturas saíram esverdeadas uma vez.
+    for (let i = 0; i < d.length; i += 4) {
+      const v = tabela[(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0];
       d[i] = d[i + 1] = d[i + 2] = v;
     }
   }
   ctx.putImageData(imagem, 0, 0);
+}
+
+/** Reaplica o acabamento sobre a página endireitada original. */
+async function renderizarPagina(base: string, modo: ModoCor): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error("Página ilegível."));
+    i.src = base;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) throw new Error("Não foi possível preparar a imagem.");
+  ctx.drawImage(img, 0, 0);
+  tratarPagina(ctx, canvas.width, canvas.height, modo);
+  return canvas.toDataURL("image/jpeg", modo === "cor" ? 0.85 : 0.82);
 }
 
 /** Reduz a imagem e devolve o canvas, sem tratar ainda. */
@@ -103,6 +159,13 @@ function reduzir(origem: CanvasImageSource, larguraOrig: number, alturaOrig: num
 
 interface Captura { url: string; largura: number; altura: number }
 
+/**
+ * `base` é a página já endireitada, ainda colorida e sem acabamento; `final`
+ * é o que vai pro PDF. Guardar as duas é o que permite trocar de modo depois
+ * de capturar — sem a base, virar para colorido exigiria fotografar de novo.
+ */
+interface Pagina { base: string; final: string }
+
 export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -110,11 +173,13 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const areaAjusteRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const [paginas, setPaginas] = useState<string[]>([]);
+  const [paginas, setPaginas] = useState<Pagina[]>([]);
   const [camera, setCamera] = useState(false);
   const [aspecto, setAspecto] = useState("4 / 3");
   const [erroCamera, setErroCamera] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
+  const [modo, setModo] = useState<ModoCor>("cor");
+  const [reprocessando, setReprocessando] = useState(false);
 
   // Passo de ajuste: a foto recém-tirada, com os quatro cantos da folha.
   const [ajuste, setAjuste] = useState<Captura | null>(null);
@@ -236,9 +301,12 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
       saida.height = altura;
       const sctx = saida.getContext("2d", { willReadFrequently: true })!;
       sctx.putImageData(reto, 0, 0);
-      tratarComoDigitalizacao(sctx, largura, altura);
+      // A base sai antes do acabamento e em qualidade mais alta: é dela que
+      // qualquer troca de modo depois vai partir.
+      const base = saida.toDataURL("image/jpeg", 0.92);
+      tratarPagina(sctx, largura, altura, modo);
 
-      setPaginas((p) => [...p, saida.toDataURL("image/jpeg", 0.82)]);
+      setPaginas((p) => [...p, { base, final: saida.toDataURL("image/jpeg", modo === "cor" ? 0.85 : 0.82) }]);
       setAjuste(null);
     } catch (e: any) {
       toast({ title: "Não foi possível preparar a página", description: e?.message, variant: "destructive" });
@@ -267,6 +335,30 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     setCantos((c) => c.map((v, i) => (i === arrastando ? p : v)));
   };
 
+  /**
+   * Troca o acabamento e refaz as páginas já capturadas.
+   *
+   * O modo vale para as próximas capturas e para as anteriores: quem
+   * fotografou tudo e só então percebeu que o carimbo sumiu não precisa
+   * começar de novo.
+   */
+  const trocarModo = async (novo: ModoCor) => {
+    if (novo === modo || reprocessando) return;
+    setModo(novo);
+    if (paginas.length === 0) return;
+    setReprocessando(true);
+    try {
+      const refeitas = await Promise.all(
+        paginas.map(async (p) => ({ base: p.base, final: await renderizarPagina(p.base, novo) })),
+      );
+      setPaginas(refeitas);
+    } catch (e: any) {
+      toast({ title: "Não foi possível aplicar o modo", description: e?.message, variant: "destructive" });
+    } finally {
+      setReprocessando(false);
+    }
+  };
+
   const gerarPdf = async () => {
     if (paginas.length === 0) return;
     setGerando(true);
@@ -279,15 +371,16 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
 
       for (let i = 0; i < paginas.length; i++) {
         if (i > 0) pdf.addPage();
+        const pagina = paginas[i].final;
         const dim = await new Promise<{ w: number; h: number }>((resolve) => {
           const img = new Image();
           img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-          img.src = paginas[i];
+          img.src = pagina;
         });
         const escala = Math.min((larguraPagina - margem * 2) / dim.w, (alturaPagina - margem * 2) / dim.h);
         const larg = dim.w * escala;
         const alt = dim.h * escala;
-        pdf.addImage(paginas[i], "JPEG", (larguraPagina - larg) / 2, (alturaPagina - alt) / 2, larg, alt);
+        pdf.addImage(pagina, "JPEG", (larguraPagina - larg) / 2, (alturaPagina - alt) / 2, larg, alt);
       }
 
       const blob = pdf.output("blob");
@@ -394,6 +487,40 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
               </Button>
             </div>
 
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <p className="text-xs font-medium">Cor do documento</p>
+                {reprocessando && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" /> aplicando…
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(["cor", "cinza", "pb"] as ModoCor[]).map((m) => (
+                  <Button
+                    key={m}
+                    type="button"
+                    size="sm"
+                    variant={modo === m ? "default" : "outline"}
+                    aria-pressed={modo === m}
+                    disabled={gerando || reprocessando}
+                    onClick={() => void trocarModo(m)}
+                    className="text-xs"
+                  >
+                    {ROTULO_MODO[m]}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                {modo === "cor"
+                  ? "Mantém carimbos, assinaturas em azul e foto do documento."
+                  : modo === "cinza"
+                    ? "Sem cor, com os tons preservados. Arquivo menor."
+                    : "Efeito de copiadora: bom para texto impresso, apaga o que é colorido."}
+              </p>
+            </div>
+
             {paginas.length > 0 && (
               <div>
                 <p className="text-xs text-muted-foreground mb-1.5">
@@ -402,7 +529,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {paginas.map((p, i) => (
                     <div key={i} className="relative shrink-0">
-                      <img src={p} alt={`Página ${i + 1}`} className="h-24 w-auto rounded border bg-white" />
+                      <img src={p.final} alt={`Página ${i + 1}`} className="h-24 w-auto rounded border bg-white" />
                       <span className="absolute bottom-1 left-1 text-[10px] bg-black/70 text-white px-1 rounded">{i + 1}</span>
                       <button type="button" onClick={() => setPaginas((ps) => ps.filter((_, j) => j !== i))}
                         className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-1"
