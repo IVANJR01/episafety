@@ -45,7 +45,7 @@ interface Props {
   onSaved: () => void;
 }
 
-const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "acidente", "outro"];
+const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "psicossocial", "acidente", "outro"];
 
 /** Normaliza leitura: sentinelas legados ("N.A", "N/A") viram vazio. */
 const clean = (v: any) => {
