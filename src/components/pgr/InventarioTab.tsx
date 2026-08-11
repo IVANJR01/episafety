@@ -647,7 +647,7 @@ export default function InventarioTab({
             </div>
           ) : (
             <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] -mx-3 px-3">
-              <table className={`w-full text-[11px] border-collapse ${detalhes ? "min-w-[2120px]" : "min-w-[1720px]"}`}>
+              <table className="w-full text-[11px] border-collapse">
                 <thead className="bg-amber-200 sticky top-0 z-10">
                   <tr className="text-amber-950">
                     {/* As três primeiras ficam congeladas à esquerda: são o
@@ -658,26 +658,26 @@ export default function InventarioTab({
                     <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-0`}>Descrição do ambiente</th>
                     <th className={`${CTX_TH} w-[88px] min-w-[88px] max-w-[88px] left-[200px]`}>Setor</th>
                     <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>GES</th>
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[140px]">Função</th>
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[150px]">Processo</th>
+                    <th className="p-1.5 text-left border border-amber-400 w-[140px]">Função</th>
+                    <th className="p-1.5 text-left border border-amber-400 w-[150px]">Processo</th>
                     {/* Estes dois rótulos estavam trocados entre si: a coluna
                         "Agente" imprimia o grupo ("Ergonômico") e a "Tipo de
                         Agente" imprimia o perigo ("Pressão por metas"). */}
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[84px]">Tipo de<br/>agente</th>
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[130px]">Agente / perigo</th>
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[130px]">Fonte de<br/>exposição</th>
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[130px]">Possíveis lesões ou<br/>agravos à saúde</th>
-                    {detalhes && <th className="p-1.5 text-left border border-amber-400 min-w-[96px]">Limite de<br/>exposição</th>}
-                    {detalhes && <th className="p-1.5 text-left border border-amber-400 min-w-[104px]">Intensidade /<br/>concentração</th>}
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[88px]">Tipo / tempo<br/>de exposição</th>
-                    {detalhes && <th className="p-1.5 text-left border border-amber-400 min-w-[104px]">Técnica<br/>utilizada</th>}
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[150px]">Proc. administrativo / EPC /<br/>organização do trabalho</th>
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[90px]">EPI</th>
-                    {detalhes && <th className="p-1.5 text-left border border-amber-400 min-w-[96px]">Atenuação /<br/>fator de proteção</th>}
+                    <th className="p-1.5 text-left border border-amber-400 w-[84px]">Tipo de<br/>agente</th>
+                    <th className="p-1.5 text-left border border-amber-400 w-[130px]">Agente / perigo</th>
+                    <th className="p-1.5 text-left border border-amber-400 w-[130px]">Fonte de<br/>exposição</th>
+                    <th className="p-1.5 text-left border border-amber-400 w-[130px]">Possíveis lesões ou<br/>agravos à saúde</th>
+                    {detalhes && <th className="p-1.5 text-left border border-amber-400 w-[96px]">Limite de<br/>exposição</th>}
+                    {detalhes && <th className="p-1.5 text-left border border-amber-400 w-[104px]">Intensidade /<br/>concentração</th>}
+                    <th className="p-1.5 text-left border border-amber-400 w-[88px]">Tipo / tempo<br/>de exposição</th>
+                    {detalhes && <th className="p-1.5 text-left border border-amber-400 w-[104px]">Técnica<br/>utilizada</th>}
+                    <th className="p-1.5 text-left border border-amber-400 w-[150px]">Proc. administrativo / EPC /<br/>organização do trabalho</th>
+                    <th className="p-1.5 text-left border border-amber-400 w-[90px]">EPI</th>
+                    {detalhes && <th className="p-1.5 text-left border border-amber-400 w-[96px]">Atenuação /<br/>fator de proteção</th>}
                     <th className="p-1.5 text-center border border-amber-400 w-[44px]">Prob.</th>
                     <th className="p-1.5 text-center border border-amber-400 w-[44px]">Sev.</th>
                     <th className="p-1.5 text-center border border-amber-400 w-[44px]">Total</th>
-                    <th className="p-1.5 text-left border border-amber-400 min-w-[104px]">Classificação<br/>do risco</th>
+                    <th className="p-1.5 text-left border border-amber-400 w-[104px]">Classificação<br/>do risco</th>
                     <th className="p-1.5 border border-amber-400 w-[68px] sticky right-0 z-20 bg-amber-200 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.25)]">Ações</th>
                   </tr>
                 </thead>
