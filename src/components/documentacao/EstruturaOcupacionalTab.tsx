@@ -495,6 +495,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
   const [duplicandoId, setDuplicandoId] = useState<string | null>(null);
 
+  /** Os processos de um setor, na ordem em que foram cadastrados. */
+  const processosDoSetor = (setorId: string) =>
+    processos.filter((p) => p.setor_id === setorId);
+
   const duplicarSetor = async (setorId: string) => {
     try {
       setDuplicandoId(setorId);
@@ -774,6 +778,48 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     dica: (set) => caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)),
                     celula: (set) =>
                       caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)) || "—",
+                  },
+                  /*
+                   * Processo dentro da linha do setor.
+                   *
+                   * Um setor pode ter mais de um processo (`sst_processos` tem
+                   * `setor_id`, não o contrário), então a célula empilha todos
+                   * em vez de mostrar só o primeiro — mostrar um e esconder o
+                   * resto seria pior do que não mostrar nenhum. Setor sem
+                   * processo fica com "—", e é o próprio buraco aparecendo.
+                   */
+                  {
+                    rotulo: "Descrição do processo",
+                    longo: true,
+                    classe: "text-sm text-slate-600 max-w-md",
+                    dica: (set) => processosDoSetor(set.id).map((p) => p.descricao_etapas).join("\n\n"),
+                    celula: (set) => {
+                      const ps = processosDoSetor(set.id);
+                      if (!ps.length) return "—";
+                      return (
+                        <div className="space-y-1">
+                          {ps.map((pr) => (
+                            <p key={pr.id} className="truncate">{pr.descricao_etapas || "—"}</p>
+                          ))}
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    rotulo: "Característica",
+                    celula: (set) => {
+                      const ps = processosDoSetor(set.id);
+                      if (!ps.length) return <span className="text-slate-400">—</span>;
+                      return (
+                        <div className="space-y-1">
+                          {ps.map((pr) => (
+                            <Badge key={pr.id} variant="outline" className="whitespace-nowrap">
+                              {pr.caracteristica_atividade || "—"}
+                            </Badge>
+                          ))}
+                        </div>
+                      );
+                    },
                   },
                   {
                     rotulo: "Grupos de exposição",
