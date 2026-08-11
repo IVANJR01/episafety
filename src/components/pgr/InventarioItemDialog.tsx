@@ -525,7 +525,19 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
               </div>
               <div>
                 <Label className="text-xs">Tipo / Tempo de Exposição</Label>
-                <Input value={form.tempo_exposicao} onChange={upd("tempo_exposicao")} placeholder="Ex.: Habitual e permanente / 8h" />
+                <Select
+                  value={form.tempo_exposicao}
+                  onValueChange={(v) => setForm({ ...form, tempo_exposicao: v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Raro">Raro</SelectItem>
+                    <SelectItem value="Ocasional">Ocasional</SelectItem>
+                    <SelectItem value="Intermitente">Intermitente</SelectItem>
+                    <SelectItem value="Habitual">Habitual</SelectItem>
+                    <SelectItem value="Contínuo">Contínuo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label className="text-xs">Técnica Utilizada</Label>
