@@ -84,7 +84,7 @@ export default function InventarioTab({
    * planilha que já passa de 1700px. Nada foi removido: o Excel e o PDF
    * continuam saindo com o formato completo, que é o que o documento exige.
    */
-  const [detalhes, setDetalhes] = useState(false);
+  const [detalhes, setDetalhes] = useState(true);
 
   const { data: itens = [], isLoading } = useQuery({
     queryKey: ["pgr-inventario", pgrId, "v2-ambiente"],
