@@ -531,12 +531,7 @@ export default function InventarioTab({
                 <Plus className="h-4 w-4 mr-1" /> Novo item
               </Button>
             )}
-            {/* Ver as colunas de medição não é editar — quem só consulta o PGR
-                também precisa delas. */}
-            <Button variant="ghost" size="sm" onClick={() => setDetalhes((v) => !v)}
-              title="Limite de exposição, intensidade/concentração, técnica utilizada e atenuação">
-              {detalhes ? <><EyeOff className="h-4 w-4 mr-1" /> Menos colunas</> : <><Eye className="h-4 w-4 mr-1" /> Colunas de medição</>}
-            </Button>
+
           </div>
         </CardContent>
       </Card>
