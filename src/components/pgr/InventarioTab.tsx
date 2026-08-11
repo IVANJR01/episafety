@@ -63,6 +63,7 @@ export default function InventarioTab({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
   const [preencher, setPreencher] = useState<Record<string, string> | null>(null);
+  const [busyTrazer, setBusyTrazer] = useState(false);
 
   /**
    * Colunas de detalhe (limite de exposição, intensidade, técnica utilizada,
@@ -109,7 +110,6 @@ export default function InventarioTab({
     return s && s.toUpperCase() !== "N.A" && s.toUpperCase() !== "N/A" ? s : "";
   };
 
-  /** Já está no inventário? Compara pelo texto do perigo, normalizado. */
   const naoAproveitados = useMemo(() => {
     const norm = (s: string) => (s || "").normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -118,8 +118,40 @@ export default function InventarioTab({
     );
     return levantados.filter((l) => !jaNoInventario.has(norm(l.perigo_descricao)));
   }, [levantados, itens]);
+
   const ambienteDe = (i: any): string =>
     clean(i.descricao_ambiente) || clean(i.ghe?.descricao_ambiente) || clean(i.ghe?.ambiente) || "";
+
+  const trazerTodos = async () => {
+    setBusyTrazer(true);
+    try {
+      const inserts = naoAproveitados.map(l => ({
+        pgr_id: pgrId,
+        empresa_id: empresaId,
+        grupo: l.grupo || "fisico",
+        perigo_descricao: clean(l.perigo_descricao),
+        fonte_geradora: clean(l.fonte_circunstancia),
+        lesoes: clean(l.possiveis_lesoes),
+        funcoes_text: clean(l.trabalhadores_expostos),
+        controles_text: clean(l.medidas_existentes),
+        ghe_id: clean(l.ges_id) || null,
+        severidade: 3,
+        probabilidade: 3,
+        classificacao: null, 
+        avaliacao_estado: "pendente"
+      }));
+
+      const { error } = await (supabase.from as any)("pgr_inventario_itens").insert(inserts);
+      if (error) throw error;
+      
+      toast.success(`${inserts.length} perigos importados automaticamente!`);
+      qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setBusyTrazer(false);
+    }
+  };
 
   /**
    * As três chaves de agrupamento visual da tabela, do mais externo ao mais
@@ -262,13 +294,17 @@ export default function InventarioTab({
       {editavel && naoAproveitados.length > 0 && (
         <Card className="border-sky-300 bg-sky-50/60">
           <CardContent className="p-3 space-y-2">
-            <div className="flex items-start gap-2">
-              <ArrowDownToLine className="h-4 w-4 mt-0.5 shrink-0 text-sky-700" />
-              <p className="text-sm text-sky-900">
-                <b>{naoAproveitados.length}</b> {naoAproveitados.length === 1 ? "perigo levantado" : "perigos levantados"} antes
-                {naoAproveitados.length === 1 ? " ainda não está" : " ainda não estão"} no inventário.
-                Traga para cá já preenchido — só falta classificar na matriz.
-              </p>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-start gap-2">
+                <ArrowDownToLine className="h-4 w-4 mt-0.5 shrink-0 text-sky-700" />
+                <p className="text-sm text-sky-900">
+                  <b>{naoAproveitados.length}</b> {naoAproveitados.length === 1 ? "perigo levantado" : "perigos levantados"} antes
+                  {naoAproveitados.length === 1 ? " ainda não está" : " ainda não estão"} no inventário.
+                </p>
+              </div>
+              <Button size="sm" onClick={trazerTodos} disabled={busyTrazer} className="bg-sky-600 hover:bg-sky-700 text-white shrink-0">
+                {busyTrazer ? "Importando..." : "Importar todos automaticamente"}
+              </Button>
             </div>
             <ul className="space-y-1">
               {naoAproveitados.map((l) => (
