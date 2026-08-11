@@ -646,7 +646,7 @@ export default function InventarioTab({
               {editavel && <p className="text-xs text-muted-foreground mt-1">Clique em “Novo item”: escolhido o GES, ambiente, setor, processo e funções vêm junto.</p>}
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-3 px-3">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] -mx-3 px-3">
               <table className={`w-full text-[11px] border-collapse ${detalhes ? "min-w-[2120px]" : "min-w-[1720px]"}`}>
                 <thead className="bg-amber-200 sticky top-0 z-10">
                   <tr className="text-amber-950">
