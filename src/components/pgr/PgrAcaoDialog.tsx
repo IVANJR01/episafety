@@ -113,6 +113,22 @@ export default function PgrAcaoDialog({
     enabled: !!acaoId && open,
   });
 
+  const { data: listaSetoresGes = [] } = useQuery({
+    queryKey: ["pgr-setores-ges-list", pgrId],
+    queryFn: async () => {
+      if (!pgrId || !open) return [];
+      const [rsGes, rsSetores] = await Promise.all([
+        (supabase.from as any)("pgr_ges").select("nome, codigo").eq("pgr_id", pgrId),
+        (supabase.from as any)("pgr_setores").select("nome").eq("pgr_id", pgrId)
+      ]);
+      const nomes = new Set<string>();
+      (rsGes.data || []).forEach((g: any) => { if (g.nome) nomes.add(g.nome); if (g.codigo) nomes.add(g.codigo); });
+      (rsSetores.data || []).forEach((s: any) => { if (s.nome) nomes.add(s.nome); });
+      return Array.from(nomes).sort();
+    },
+    enabled: !!pgrId && open,
+  });
+
   const status: PgrAcaoStatus = acao?.status || "pendente";
   const isCritica = (acao?.prioridade ?? form.prioridade) >= 4;
 
@@ -320,7 +336,7 @@ export default function PgrAcaoDialog({
             </div>
             <div>
               <Label className="text-xs">Where — Onde</Label>
-              <Input value={form.where_local || ""} onChange={(e) => setForm({ ...form, where_local: e.target.value })} disabled={!editavel} />
+              <Input list="lista-ges-sugestoes" value={form.where_local || ""} onChange={(e) => setForm({ ...form, where_local: e.target.value })} disabled={!editavel} />
             </div>
             <div>
               <Label className="text-xs">How — Como será feito</Label>
@@ -336,7 +352,7 @@ export default function PgrAcaoDialog({
               </div>
               <div>
                 <Label className="text-xs">Where — Setor / GES</Label>
-                <Input value={form.responsavel_setor || ""}
+                <Input list="lista-ges-sugestoes" value={form.responsavel_setor || ""}
                   onChange={(e) => setForm({ ...form, responsavel_setor: e.target.value })}
                   disabled={!editavel} />
               </div>
@@ -383,6 +399,10 @@ export default function PgrAcaoDialog({
                 })}
               </div>
             </div>
+
+            <datalist id="lista-ges-sugestoes">
+              {listaSetoresGes.map((item) => <option key={item} value={item} />)}
+            </datalist>
           </div>
   );
 
