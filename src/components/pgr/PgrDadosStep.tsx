@@ -114,10 +114,10 @@ export default function PgrDadosStep({ pgr, canEdit, escopo = false }: Props) {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-8 w-full">
       {escopo ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 xl:gap-6">
             <Campo label="Unidade abrangida"
               dica="Matriz ou filial que este PGR cobre.">
               <Select value={f.unidade_id || "__matriz__"}
@@ -151,7 +151,7 @@ export default function PgrDadosStep({ pgr, canEdit, escopo = false }: Props) {
             </Button>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 xl:gap-6">
             <Campo label="CNPJ"><Input className="h-11" value={f.cnpj_snapshot || ""}
               onChange={set("cnpj_snapshot")} disabled={!canEdit} /></Campo>
             <Campo label="CNO" dica="Obrigatório quando o PGR é de obra.">
@@ -177,7 +177,7 @@ export default function PgrDadosStep({ pgr, canEdit, escopo = false }: Props) {
           {f.tipo_pgr === "frente_contrato" && (
             <div className="border rounded-lg p-4 space-y-4">
               <h3 className="text-sm font-semibold">Contratante</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 xl:gap-6">
                 <Campo label="Nome do contratante"><Input className="h-11"
                   value={f.contratante_nome || ""} onChange={set("contratante_nome")} disabled={!canEdit} /></Campo>
                 <Campo label="CNPJ do contratante"><Input className="h-11"
@@ -192,7 +192,7 @@ export default function PgrDadosStep({ pgr, canEdit, escopo = false }: Props) {
         </>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 xl:gap-6">
             <Campo label="Data de emissão"><Input type="date" className="h-11"
               value={f.data_emissao || ""} onChange={set("data_emissao")} disabled={!canEdit} /></Campo>
             <Campo label="Data do levantamento"><Input type="date" className="h-11"
@@ -204,7 +204,7 @@ export default function PgrDadosStep({ pgr, canEdit, escopo = false }: Props) {
             </Campo>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 xl:gap-6">
             <Campo label="Período de referência — início"><Input type="date" className="h-11"
               value={f.periodo_ref_inicio || ""} onChange={set("periodo_ref_inicio")} disabled={!canEdit} /></Campo>
             <Campo label="Período de referência — fim"><Input type="date" className="h-11"
