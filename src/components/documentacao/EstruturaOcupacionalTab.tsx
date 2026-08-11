@@ -17,7 +17,7 @@ import { mensagemErro } from "@/lib/erroSupabase";
 import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
 import { GesExposicoesTab } from "./GesExposicoesTab";
-import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users } from "lucide-react";
+import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ChevronRight, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -87,7 +87,7 @@ interface ColunaEstrutura<T> {
  * rótulo e o texto pode quebrar à vontade.
  */
 function ListaEstrutura<T extends { id: string }>({
-  itens, vazio, rotuloPrincipal, principal, colunas, onEditar, onExcluir, acoesExtras,
+  itens, vazio, rotuloPrincipal, principal, colunas, onEditar, onExcluir, acoesExtras, aoAbrir,
 }: {
   itens: T[];
   vazio: string;
@@ -98,6 +98,17 @@ function ListaEstrutura<T extends { id: string }>({
   onExcluir: (item: T) => void;
   /** Botão adicional antes de editar/excluir (ex.: grupos do setor). */
   acoesExtras?: (item: T) => React.ReactNode;
+  /**
+   * Abre o detalhamento do item. Quando existe, é o PRÓPRIO NOME que abre.
+   *
+   * Antes isso era um botão sólido "Gerenciar" em cada linha, do lado do lápis
+   * e da lixeira. Três alvos de ação por linha, sendo um deles pintado de azul
+   * chapado, e ninguém distinguia "Gerenciar" de "Editar" — são coisas
+   * diferentes (um abre o detalhamento, o outro o formulário do cadastro), mas
+   * o rótulo não dizia isso. Nome clicável é o padrão que toda lista de sistema
+   * usa para "entrar no registro", e devolve a linha ao conteúdo.
+   */
+  aoAbrir?: (item: T) => void;
 }) {
   const acoes = (item: T) => (
     <div className="flex justify-end gap-1 shrink-0">
@@ -111,6 +122,17 @@ function ListaEstrutura<T extends { id: string }>({
     </div>
   );
 
+  /** O nome: texto simples, ou botão de abrir quando há detalhamento. */
+  const nome = (item: T) => (aoAbrir ? (
+    <button type="button" onClick={() => aoAbrir(item)}
+      className="text-left text-indigo-700 hover:underline focus-visible:underline
+        focus-visible:outline-none inline-flex items-center gap-1 group"
+      title="Abrir o detalhamento">
+      {principal(item)}
+      <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </button>
+  ) : principal(item));
+
   if (itens.length === 0) {
     return <Card className="p-6 text-center text-sm text-slate-400">{vazio}</Card>;
   }
@@ -121,7 +143,7 @@ function ListaEstrutura<T extends { id: string }>({
         {itens.map((item) => (
           <Card key={item.id} className="p-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 font-medium text-slate-900">{principal(item)}</div>
+              <div className="min-w-0 font-medium text-slate-900">{nome(item)}</div>
               {acoes(item)}
             </div>
             <dl className="mt-2 space-y-1.5">
@@ -153,7 +175,7 @@ function ListaEstrutura<T extends { id: string }>({
           <TableBody>
             {itens.map((item) => (
               <TableRow key={item.id}>
-                <TableCell className="font-medium text-slate-900">{principal(item)}</TableCell>
+                <TableCell className="font-medium text-slate-900">{nome(item)}</TableCell>
                 {colunas.map((c) => (
                   <TableCell key={c.rotulo} className={c.classe} title={c.dica?.(item)}>
                     {c.celula(item)}
@@ -769,17 +791,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     },
                   },
                 ]}
+                aoAbrir={(set) => setSetorDetalheId(set.id)}
                 acoesExtras={(set) => (
-                  <>
-                    <Button variant="ghost" size="sm" aria-label="Duplicar setor"
-                      onClick={() => duplicarSetor(set.id)} disabled={duplicandoId === set.id}>
-                      {duplicandoId === set.id ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <ClipboardPaste className="w-4 h-4 text-slate-600" />}
-                    </Button>
-                    <Button variant="default" size="sm" className="ml-1 px-3 bg-indigo-600 hover:bg-indigo-700" aria-label="Gerenciar este setor"
-                      onClick={() => setSetorDetalheId(set.id)}>
-                      Gerenciar
-                    </Button>
-                  </>
+                  <Button variant="ghost" size="sm" aria-label="Duplicar setor"
+                    onClick={() => duplicarSetor(set.id)} disabled={duplicandoId === set.id}>
+                    {duplicandoId === set.id ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <ClipboardPaste className="w-4 h-4 text-slate-600" />}
+                  </Button>
                 )}
                 onEditar={(set) => handleOpenModal("setor", set)}
                 onExcluir={(set) => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })}
