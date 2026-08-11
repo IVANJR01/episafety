@@ -87,6 +87,20 @@ export function GesExposicoesTab() {
 
   const handleSaveGes = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Bloquear duplicidades para manter o banco limpo
+    if (!gesFormData.id) {
+      const nomeNovo = (gesFormData.nome || "").trim().toLowerCase();
+      const existente = gesList.find((g: any) => g.nome.trim().toLowerCase() === nomeNovo);
+      if (existente) {
+        const confirmar = window.confirm(
+          `Atenção! Já existe um Grupo de Exposição chamado "${gesFormData.nome?.trim()}".\n\n` +
+          `A duplicação de GES no sistema causará relatórios espelhados.\nTem certeza que deseja forçar a criação?`
+        );
+        if (!confirmar) return;
+      }
+    }
+
     setSalvando(true);
     try {
       const proximoCodigo = String(
@@ -144,9 +158,12 @@ export function GesExposicoesTab() {
             <Card key={ges.id} className="border border-slate-200 shadow-sm hover:border-indigo-500 transition-all">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-indigo-600 border-indigo-200">{ges.codigo}</Badge>
-                    <CardTitle className="text-base font-bold mt-1 break-words">{ges.nome}</CardTitle>
+                    <CardTitle className="text-base font-bold break-words">{ges.nome}</CardTitle>
+                    {funcoesDoGes(ges.id).length === 0 && (
+                      <Badge variant="destructive" className="ml-1">Incompleto</Badge>
+                    )}
                   </div>
                   <div className="flex shrink-0">
                     {/* Funções, riscos e EPIs deste GES. Essa tela era acessível

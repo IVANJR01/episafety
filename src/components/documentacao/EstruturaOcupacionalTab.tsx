@@ -500,28 +500,9 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       
       const novoSetorId = setorSalvo.id;
 
-      // 3. Clonar GES
-      const vinculo = (gheSetores as any[]).find((v) => v.setor_id === setorId);
-      const gesExistente = vinculo && gesList.find((g: any) => g.id === vinculo.ghe_id);
-      
-      let novoGesId = null;
-      if (gesExistente) {
-        const proximoCodigo = String(
-          gesList.reduce((max: number, g: any) => Math.max(max, Number(g.codigo) || 0), 0) + 1,
-        ).padStart(2, "0");
-        const gesSalvo = await saveGes({
-          codigo: proximoCodigo,
-          nome: `${setorOriginal.nome} (Cópia)`,
-          criterio_agrupamento: gesExistente.criterio_agrupamento,
-          _silencioso: true,
-        } as any);
-        novoGesId = (gesSalvo as any).id;
-        await vincularGesSetor({
-          ges_id: novoGesId,
-          setor_id: novoSetorId,
-          nome: `${setorOriginal.nome} (Cópia)`,
-        });
-      }
+      // Não clonamos mais o GES automaticamente, para evitar duplicações 
+      // indevidas de "Nome (Cópia)" e grupos vazios. O GES agora é gerenciado 
+      // exclusivamente na aba de Exposições e Riscos.
 
       // 4. Clonar Processos
       const processosDoSetor = processos.filter(p => p.setor_id === setorId);
@@ -537,21 +518,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
       // 5. Clonar Funções
       const funcoesDoSetor = funcoes.filter(f => f.setor_id === setorId);
       for (const f of funcoesDoSetor) {
-        const funcSalva: any = await saveFuncao({
+        await saveFuncao({
           nome: f.nome,
           descricao_atividades: f.descricao_atividades,
           setor_id: novoSetorId,
           _silencioso: true,
         } as any);
-
-        if (novoGesId) {
-          await vincularGesFuncao({
-            ges_id: novoGesId,
-            funcao_id: funcSalva.id,
-            nome_funcao: f.nome,
-            setor_nome: `${setorOriginal.nome} (Cópia)`,
-          });
-        }
       }
 
       toast({
@@ -784,11 +756,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                         .filter((v) => v.setor_id === set.id).map((v) => v.ghe_id));
                       const grupos = gesList.filter((g: any) => ids.has(g.id));
                       return (
-                        <div className="flex items-center gap-2 group cursor-pointer w-fit" onClick={() => setSetorDosGrupos({ id: set.id, nome: set.nome })}>
+                        <div className="flex items-center gap-2 w-fit">
                           <span className={!grupos.length ? "text-slate-400 italic" : ""}>
-                            {grupos.length ? grupos.map((g: any) => g.nome).join(" · ") : "Nenhum vinculado"}
+                            {grupos.length ? grupos.map((g: any) => g.nome).join(" · ") : "Sem GES definido"}
                           </span>
-                          <Edit2 className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition" />
                         </div>
                       );
                     },
