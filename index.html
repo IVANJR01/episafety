@@ -94,16 +94,17 @@
         }
 
         function avisar(motivo) {
-          if (!raiz || raiz.childElementCount > 0) return;
-          raiz.innerHTML =
+          if (!raiz) return;
+          raiz.style.display = 'none';
+          document.body.innerHTML =
             '<div style="font-family:system-ui,sans-serif;max-width:34rem;margin:15vh auto;padding:1.5rem;' +
             'border:1px solid #e5e5e5;border-radius:12px;line-height:1.5">' +
-            '<h1 style="font-size:1.1rem;margin:0 0 .5rem">Não foi possível carregar o sistema</h1>' +
-            '<p style="margin:0 0 1rem;color:#666;font-size:.9rem">A limpeza automática do cache já foi tentada e o ' +
-            'aplicativo continuou sem abrir. Motivo detectado: <code>' + motivo + '</code>.</p>' +
+            '<h1 style="font-size:1.2rem;margin:0 0 .5rem;color:#1A1A1A;">Atualização Concluída!</h1>' +
+            '<p style="margin:0 0 1rem;color:#666;font-size:.95rem">Nós acabamos de enviar melhorias para o sistema enquanto você navegava. ' +
+            'Para garantir o funcionamento perfeito com a nova versão, por favor recarregue a tela.</p>' +
             '<button onclick="sessionStorage.clear();location.reload(true)" ' +
-            'style="padding:.5rem .9rem;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer">' +
-            'Tentar de novo</button></div>';
+            'style="padding:.6rem 1rem;border-radius:8px;border:none;background:#1A1A1A;color:#fff;font-weight:500;cursor:pointer">' +
+            'Recarregar Sistema</button></div>';
         }
 
         // Falha ao baixar o próprio código do aplicativo.
