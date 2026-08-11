@@ -609,28 +609,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
               </div>
             </div>
 
-            {/* Justificativa técnica — a NR-01 exige critério documentado, não
-                apenas o número escolhido na matriz. */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Justificativa da Probabilidade</Label>
-                <Textarea
-                  rows={2}
-                  value={form.justificativa_probabilidade}
-                  onChange={upd("justificativa_probabilidade")}
-                  placeholder="Por que esta probabilidade? Frequência, histórico, controles existentes..."
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Justificativa da Severidade</Label>
-                <Textarea
-                  rows={2}
-                  value={form.justificativa_severidade}
-                  onChange={upd("justificativa_severidade")}
-                  placeholder="Por que esta severidade? Consequência de maior magnitude considerada..."
-                />
-              </div>
-            </div>
+
 
             <div>
               <Label className="text-xs">Estado da Avaliação</Label>
@@ -654,55 +633,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
               </p>
             </div>
 
-            {/* Risco inicial (antes dos controles) e residual (esperado após as ações).
-                Ambos opcionais: ficam nulos até que exista avaliação real. */}
-            <fieldset className="border rounded-md p-3">
-              <legend className="px-1 text-xs font-semibold text-slate-600">
-                Cenários comparativos (opcional)
-              </legend>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div>
-                  <Label className="text-xs">Sev. inicial</Label>
-                  <Input
-                    type="number" min={1} max={5}
-                    value={form.severidade_inicial ?? ""}
-                    onChange={updNum("severidade_inicial")}
-                    placeholder="antes"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Prob. inicial</Label>
-                  <Input
-                    type="number" min={1} max={5}
-                    value={form.probabilidade_inicial ?? ""}
-                    onChange={updNum("probabilidade_inicial")}
-                    placeholder="antes"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Sev. residual</Label>
-                  <Input
-                    type="number" min={1} max={5}
-                    value={form.severidade_residual ?? ""}
-                    onChange={updNum("severidade_residual")}
-                    placeholder="após ações"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Prob. residual</Label>
-                  <Input
-                    type="number" min={1} max={5}
-                    value={form.probabilidade_residual ?? ""}
-                    onChange={updNum("probabilidade_residual")}
-                    placeholder="após ações"
-                  />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-2">
-                <b>Inicial</b> = cenário antes dos controles. <b>Atual</b> = matriz acima, com os
-                controles de hoje. <b>Residual</b> = esperado após concluir o plano de ação.
-              </p>
-            </fieldset>
+
           </TabsContent>
 
           </div>
