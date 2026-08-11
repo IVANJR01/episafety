@@ -16,7 +16,8 @@ import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { mensagemErro } from "@/lib/erroSupabase";
 import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
-import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { GesExposicoesTab } from "./GesExposicoesTab";
+import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -601,23 +602,26 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           <div>
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Building2 className="w-6 h-6 text-indigo-600" />
-              Estrutura Ocupacional
+              Repositório Técnico
             </h2>
             <p className="text-sm text-slate-500">
-              Cadastre uma única vez. Estes dados alimentam PGR, PCMSO, LTCAT, Laudos e PPP.
+              Cadastre a sua estrutura e riscos uma única vez. Estes dados alimentam automaticamente PGR, PCMSO, LTCAT, Laudos e PPP.
             </p>
           </div>
         </div>
       )}
 
-      <Tabs value={secaoAtiva} onValueChange={setActiveSubTab} className="w-full">
+      <Tabs value={secaoAtiva} onValueChange={(v) => setActiveSubTab(v as any)} className="w-full">
         {!only && !setorDetalheId && (
-          <TabsList className="grid grid-cols-2 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
-            <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center gap-1">
+          <TabsList className="grid grid-cols-3 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
+            <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center justify-center gap-1">
               <Building2 className="w-4 h-4" /> Estabelecimentos
             </TabsTrigger>
-            <TabsTrigger value="setores" className="text-xs font-medium flex items-center gap-1">
+            <TabsTrigger value="setores" className="text-xs font-medium flex items-center justify-center gap-1">
               <LayoutGrid className="w-4 h-4" /> Setores
+            </TabsTrigger>
+            <TabsTrigger value="riscos" className="text-xs font-medium flex items-center justify-center gap-1">
+              <Users className="w-4 h-4" /> Exposições e Riscos
             </TabsTrigger>
           </TabsList>
         )}
@@ -874,6 +878,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           />
         </TabsContent>
 
+        {/* 3. EXPOSIÇÕES E RISCOS (GES) */}
+        <TabsContent value="riscos" className="mt-4">
+          <GesExposicoesTab />
+        </TabsContent>
       </Tabs>
 
       {/* COLAR FUNÇÕES EM LOTE */}

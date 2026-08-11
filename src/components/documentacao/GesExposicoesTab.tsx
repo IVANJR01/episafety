@@ -127,20 +127,11 @@ export function GesExposicoesTab() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Layers className="w-6 h-6 text-slate-700" />
-            Grupos de exposição (GES)
-          </h2>
-          {/* Antes esta tela era o único caminho para ter um GES, e o resultado
-              prático era GES sem critério nenhum, batizados com nome de setor —
-              o mesmo cadastro feito duas vezes. Cada Setor agora já cria o seu.
-              A tela continua aqui para o caso que de fato justifica separar os
-              dois conceitos. */}
-          <p className="text-sm text-slate-500 max-w-2xl">
-            Cada setor já cria o seu grupo automaticamente — normalmente não é preciso
-            cadastrar nada aqui. Só crie um grupo à parte quando ele <b>não</b> for igual a
-            um setor: gente de setores diferentes com a mesma exposição, ou um mesmo setor
-            com exposições distintas (quem opera a máquina e quem faz o acabamento).
+          <h3 className="text-lg font-semibold text-slate-800">
+            Grupos de Exposição (GES) e Riscos
+          </h3>
+          <p className="text-sm text-slate-500 max-w-3xl mt-1">
+            Cada setor cria seu grupo automaticamente. Apenas acesse esta aba para fundir funções de setores diferentes com exposições idênticas (ex.: equipe de manutenção móvel).
           </p>
         </div>
         <Button onClick={() => abrirGes()} size="sm" className="shrink-0">

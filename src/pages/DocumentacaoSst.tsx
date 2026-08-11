@@ -3,12 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { CentralDocumentacaoTab } from "@/components/documentacao/CentralDocumentacaoTab";
 import { ListaDocumentos } from "@/components/documentacao/ListaDocumentos";
 import { EstruturaOcupacionalTab } from "@/components/documentacao/EstruturaOcupacionalTab";
-import { GesExposicoesTab } from "@/components/documentacao/GesExposicoesTab";
 import PainelVencimentos from "@/pages/PainelVencimentos";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Database, FileText, CheckCircle2, Clock, Factory, Users } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Database, FileText, CheckCircle2, Clock } from "lucide-react";
 
 export default function DocumentacaoSst() {
   const [searchParams] = useSearchParams();
@@ -18,9 +15,6 @@ export default function DocumentacaoSst() {
   const [activeTab, setActiveTab] = useState(
     ["basetecnica", "elaborar", "emitidos", "vencimentos"].includes(abaUrl || "") ? abaUrl! : "basetecnica",
   );
-
-  // Sub-abas dentro da Base Técnica para organizar o espaço sem sobrecarregar a tela
-  const [subAbaBase, setSubAbaBase] = useState("estrutura");
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto pb-10">
@@ -58,38 +52,8 @@ export default function DocumentacaoSst() {
 
         {/* ABA 1: BASE TÉCNICA (O motor de dados) */}
         <TabsContent value="basetecnica" className="mt-2 space-y-4">
-          <Card className="border-indigo-100 shadow-sm bg-indigo-50/30">
-            <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <h3 className="font-semibold text-slate-800 text-base">Repositório Técnico</h3>
-                <p className="text-sm text-slate-600">
-                  Todo o mapeamento da empresa é feito aqui. Nenhuma informação de risco ou setor será redigitada nos documentos.
-                </p>
-              </div>
-              <div className="flex bg-white rounded-lg p-1 border shadow-sm shrink-0">
-                <Button 
-                  variant={subAbaBase === "estrutura" ? "default" : "ghost"} 
-                  size="sm" 
-                  onClick={() => setSubAbaBase("estrutura")}
-                  className={subAbaBase === "estrutura" ? "bg-indigo-600 hover:bg-indigo-700" : ""}
-                >
-                  <Factory className="w-4 h-4 mr-2" /> Estrutura Ocupacional
-                </Button>
-                <Button 
-                  variant={subAbaBase === "riscos" ? "default" : "ghost"} 
-                  size="sm" 
-                  onClick={() => setSubAbaBase("riscos")}
-                  className={subAbaBase === "riscos" ? "bg-indigo-600 hover:bg-indigo-700" : ""}
-                >
-                  <Users className="w-4 h-4 mr-2" /> Exposições e Riscos
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           <div className="pt-2">
-            {subAbaBase === "estrutura" && <EstruturaOcupacionalTab />}
-            {subAbaBase === "riscos" && <GesExposicoesTab />}
+            <EstruturaOcupacionalTab />
           </div>
         </TabsContent>
 
