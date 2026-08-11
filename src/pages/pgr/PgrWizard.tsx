@@ -236,25 +236,25 @@ function Assistente() {
 
   /** Trilha numerada com o fio ligando as etapas, como no desenho. */
   const ListaEtapas = () => (
-    <nav className="relative">
-      <span className="absolute left-[19px] top-4 bottom-4 w-px bg-border" aria-hidden />
-      <ul className="relative space-y-1">
+    <nav className="relative w-full overflow-x-auto scrollbar-hide pb-2">
+      <span className="absolute top-[24px] left-8 right-8 h-px bg-border" aria-hidden />
+      <ul className="relative flex items-start justify-between min-w-max gap-4 px-2">
         {ETAPAS.map((e) => {
           const ativa = e.id === etapaAtual;
           const feita = progresso?.[e.id];
           return (
-            <li key={e.id}>
+            <li key={e.id} className="flex-1 min-w-[120px]">
               <button
                 onClick={() => irPara(e.id)}
                 aria-current={ativa ? "step" : undefined}
-                className={`w-full text-left rounded-full pl-1.5 pr-4 py-1.5 flex items-center gap-3 transition ${
-                  ativa ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                className={`w-full flex-col text-center rounded-xl p-2 flex items-center gap-2 transition ${
+                  ativa ? "bg-primary/5 text-primary" : "hover:bg-muted"
                 }`}
               >
                 <span
-                  className={`shrink-0 w-8 h-8 rounded-full grid place-items-center text-sm font-semibold ring-4 ring-background ${
+                  className={`shrink-0 w-8 h-8 rounded-full grid place-items-center text-sm font-semibold ring-4 ring-background z-10 ${
                     ativa
-                      ? "bg-primary-foreground text-primary"
+                      ? "bg-primary text-primary-foreground"
                       : feita
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-muted text-muted-foreground"
@@ -262,7 +262,7 @@ function Assistente() {
                 >
                   {feita && !ativa ? <Check className="h-4 w-4" /> : e.n}
                 </span>
-                <span className="text-sm leading-tight">{e.titulo}</span>
+                <span className="text-xs leading-tight font-medium line-clamp-2">{e.titulo}</span>
               </button>
             </li>
           );
@@ -463,44 +463,38 @@ function Assistente() {
       {/* O teto de 1600px sobrava tela em monitor grande justo onde a planilha
           do inventario tem 2100px de largura e cada pixel economiza rolagem.
           Padding e respiro tambem cederam um pouco. */}
-      <div className="flex gap-5 px-3 sm:px-4 py-4 w-full mx-auto">
-        <aside className="hidden lg:block w-64 shrink-0">
-          <div className="sticky top-24">
+      <div className="flex flex-col gap-5 px-3 sm:px-4 py-4 w-full mx-auto">
+        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between w-full bg-card border rounded-xl p-4 sm:p-6">
+          <div className="flex-1 w-full overflow-hidden">
             <ListaEtapas />
-            {/* Quatro botões de mesmo peso logo abaixo das etapas competiam
-                com a própria navegação do assistente, que é o que a coluna
-                existe para mostrar. São ações de uso ocasional — outra vista
-                do mesmo PGR, coleta no celular, comparação de versões e
-                exportação —, então cabem atrás de um menu: some o ruído sem
-                tirar nada de lugar. */}
-            <div className="mt-6 pt-5 border-t">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full justify-between">
-                    <span className="flex items-center">
-                      <Wrench className="h-4 w-4 mr-2" /> Mais ações
-                    </span>
-                    <ChevronDown className="h-4 w-4 opacity-60" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuItem onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
-                    <Network className="h-4 w-4 mr-2" /> Estrutura técnica
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
-                    <Smartphone className="h-4 w-4 mr-2" /> Levantamento em campo
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate(`/pgr/${pgr.id}/comparar`)}>
-                    <GitCompare className="h-4 w-4 mr-2" /> Comparar versões
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={exportarExcel} disabled={!pend.data}>
-                    <FileSpreadsheet className="h-4 w-4 mr-2" /> Exportar para Excel
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
           </div>
-        </aside>
+          <div className="shrink-0 w-full lg:w-auto">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full justify-between">
+                  <span className="flex items-center">
+                    <Wrench className="h-4 w-4 mr-2" /> Mais ações
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
+                  <Network className="h-4 w-4 mr-2" /> Estrutura técnica
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
+                  <Smartphone className="h-4 w-4 mr-2" /> Levantamento em campo
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate(`/pgr/${pgr.id}/comparar`)}>
+                  <GitCompare className="h-4 w-4 mr-2" /> Comparar versões
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarExcel} disabled={!pend.data}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" /> Exportar para Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
         <main className="flex-1 min-w-0">
           <div className="bg-card border rounded-xl">
