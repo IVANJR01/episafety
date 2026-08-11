@@ -116,19 +116,19 @@ export default function PgrAcaoDialog({
   });
 
   const { data: listaSetoresGes = [] } = useQuery({
-    queryKey: ["pgr-setores-ges-list", pgrId],
+    queryKey: ["pgr-setores-ges-list", empresaId],
     queryFn: async () => {
-      if (!pgrId || !open) return [];
+      if (!empresaId || !open) return [];
       const [rsGes, rsSetores] = await Promise.all([
-        (supabase.from as any)("pgr_ges").select("nome, codigo").eq("pgr_id", pgrId),
-        (supabase.from as any)("pgr_setores").select("nome").eq("pgr_id", pgrId)
+        (supabase.from as any)("ghe_ges").select("nome, codigo").eq("empresa_id", empresaId),
+        (supabase.from as any)("sst_setores").select("nome").eq("empresa_id", empresaId)
       ]);
       const nomes = new Set<string>();
       (rsGes.data || []).forEach((g: any) => { if (g.nome) nomes.add(g.nome); if (g.codigo) nomes.add(g.codigo); });
       (rsSetores.data || []).forEach((s: any) => { if (s.nome) nomes.add(s.nome); });
       return Array.from(nomes).sort();
     },
-    enabled: !!pgrId && open,
+    enabled: !!empresaId && open,
   });
 
   const status: PgrAcaoStatus = acao?.status || "pendente";
