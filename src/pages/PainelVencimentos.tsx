@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import SituacaoBadge from "@/components/arquivo-digital/SituacaoBadge";
 import {
-  urlTemporaria, registrarAcesso, ROTULO_SITUACAO, PESO_SITUACAO, type SituacaoDocumento,
-} from "@/lib/arquivoDigital";
+  urlTemporaria, registrarAcesso, ROTULO_SITUACAO, PESO_SITUACAO, type SituacaoDocumento, prepararAbertura } from "@/lib/arquivoDigital";
 
 const TABELA_AUSENTE = new Set(["42P01", "PGRST205", "PGRST202"]);
 const ehTabelaAusente = (e: any) =>
@@ -213,9 +212,10 @@ export default function PainelVencimentos() {
 
   const abrir = async (l: Linha) => {
     if (!l.doc?.caminho_arquivo) return;
+    const ir = prepararAbertura();
     const url = await urlTemporaria(l.doc.caminho_arquivo);
-    if (!url) return;
-    window.open(url, "_blank", "noopener");
+    if (!url) { ir(null); return; }
+    ir(url);
     void registrarAcesso({
       documentoId: l.doc.id, versaoId: l.doc.versao_id, empresaId: l.doc.empresa_id,
       colaboradorId: l.colaboradorId, userId: user?.id, userEmail: user?.email,

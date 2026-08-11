@@ -8,8 +8,7 @@ import {
 import { FileText, Upload, Loader2, History, ExternalLink, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
-  publicarVersao, garantirDocumento, urlTemporaria, historicoVersoes, registrarAcesso,
-} from "@/lib/arquivoDigital";
+  publicarVersao, garantirDocumento, urlTemporaria, historicoVersoes, registrarAcesso, prepararAbertura } from "@/lib/arquivoDigital";
 
 /**
  * Enquanto a migration do Arquivo Digital não roda, as tabelas não existem e
@@ -124,12 +123,14 @@ export default function DocumentoEvidencia({
   }, [histAberto, documentoId]);
 
   const abrir = async (caminho: string, versaoId: string) => {
+    const ir = prepararAbertura();
     const url = await urlTemporaria(caminho);
     if (!url) {
+      ir(null);
       toast({ title: "Não foi possível abrir o documento", variant: "destructive" });
       return;
     }
-    window.open(url, "_blank", "noopener");
+    ir(url);
     if (documentoId) {
       void registrarAcesso({ documentoId, versaoId, empresaId, colaboradorId, userId });
     }

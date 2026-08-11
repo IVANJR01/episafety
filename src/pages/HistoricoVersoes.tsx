@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Info, Search, ExternalLink, History, FileCheck2 } from "lucide-react";
 import SituacaoBadge from "@/components/arquivo-digital/SituacaoBadge";
-import { urlTemporaria, registrarAcesso } from "@/lib/arquivoDigital";
+import { urlTemporaria, registrarAcesso, prepararAbertura } from "@/lib/arquivoDigital";
 import { toast } from "@/hooks/use-toast";
 
 const TABELA_AUSENTE = new Set(["42P01", "PGRST205", "PGRST202"]);
@@ -97,9 +97,10 @@ export default function HistoricoVersoes() {
   }, [versoes, docPorId, nomePorId, busca]);
 
   const abrir = async (l: (typeof linhas)[number]) => {
+    const ir = prepararAbertura();
     const url = await urlTemporaria(l.v.caminho_arquivo);
-    if (!url) { toast({ title: "Não foi possível abrir o arquivo", variant: "destructive" }); return; }
-    window.open(url, "_blank", "noopener");
+    if (!url) { ir(null); toast({ title: "Não foi possível abrir o arquivo", variant: "destructive" }); return; }
+    ir(url);
     void registrarAcesso({
       documentoId: l.v.documento_id, versaoId: l.v.id, empresaId: l.v.empresa_id,
       colaboradorId: l.colaboradorId, userId: user?.id, userEmail: user?.email,
