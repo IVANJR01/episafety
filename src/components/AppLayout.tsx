@@ -68,10 +68,8 @@ const treinamentosItems: NavItem[] = [
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
 
-// Programas — Módulo Mestre Unificado (PGR, PCMSO, LTCAT)
-const programasItems: NavItem[] = [
-  { path: "/documentacao-sst", label: "PGR / PCMSO", icon: ShieldCheck, moduleKey: "pgr" },
-];
+// Documentação — Módulo Mestre Unificado (PGR, PCMSO, LTCAT, Laudos, OS, etc.)
+const documentacaoItem: NavItem = { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" };
 
 // Comercial — Orçamentos, Clientes, Catálogo
 const comercialItems: NavItem[] = [
@@ -198,8 +196,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // eSocial ocultado temporariamente do menu (rotas/páginas/dados preservados).
   const visibleEsocialItems: NavItem[] = [];
   void esocialItems;
-  const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
-  const visibleProgramasItems = programasItems.filter((i) => canAccess(i.moduleKey));
+  const canAccessDocumentacao = canAccess(documentacaoItem.moduleKey);
   const visibleComercialItems = comercialItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
@@ -210,7 +207,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isTreinamentosActive = visibleTreinamentosItems.some((i) => location.pathname === i.path);
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
-  const isProgramasActive = location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat");
+  const isDigitalActive = location.pathname.startsWith("/arquivo-digital");
+  const isDocumentacaoActive = location.pathname.startsWith("/documentacao-sst") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/aso") || location.pathname.startsWith("/ppp") || location.pathname.startsWith("/central-ppp");
   const isComercialActive = location.pathname.startsWith("/comercial");
   const [epiOpen, setEpiOpen] = useState(true);
   const [cadastroOpen, setCadastroOpen] = useState(isCadastroActive);
@@ -220,7 +218,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [treinamentosOpen, setTreinamentosOpen] = useState(isTreinamentosActive);
   const [esocialOpen, setEsocialOpen] = useState(isEsocialActive);
   const [inspecoesOpen, setInspecoesOpen] = useState(isInspecoesActive);
-  const [programasOpen, setProgramasOpen] = useState(isProgramasActive);
+
   const [comercialOpen, setComercialOpen] = useState(isComercialActive);
 
   // Bottom nav items for mobile
@@ -412,45 +410,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {visibleProgramasItems.length > 0 && (
-            <>
-              <button
-                onClick={() => setProgramasOpen(!programasOpen)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isProgramasActive
-                    ? "bg-sidebar-accent text-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <BookOpen className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Programas</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${programasOpen ? "rotate-180" : ""}`} />
-              </button>
-              {programasOpen && (
-                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleProgramasItems.map((item) => {
-                    const active =
-                      location.pathname === item.path ||
-                      (item.path !== "/programas" && location.pathname.startsWith(item.path + "/"));
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active
-                            ? "bg-sidebar-accent text-primary"
-                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </>
+          {canAccessDocumentacao && (
+            <Link
+              to={documentacaoItem.path}
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isDocumentacaoActive
+                  ? "bg-sidebar-accent text-primary"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              }`}
+            >
+              <documentacaoItem.icon className="w-4 h-4 shrink-0" />
+              <span className="truncate flex-1 text-left">{documentacaoItem.label}</span>
+            </Link>
           )}
 
           {visibleAsoItems.length > 0 && (
