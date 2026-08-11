@@ -50,12 +50,17 @@ interface Etapa {
 
 const ETAPAS: Etapa[] = [
   { id: "escopo", n: 1, titulo: "Escopo e identificação", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
-  { id: "estrutura", n: 2, titulo: "Estrutura ocupacional", ajuda: "Estabelecimento, ambientes, setores e processos." },
-  // O id da etapa continua "ges_funcoes": ele é gravado em etapa_atual e vai
-  // na URL (?etapa=), então renomear quebraria PGR salvo e link guardado. O
-  // rótulo é outra coisa — a tela só cadastra função, não mexe em GES.
-  { id: "ges_funcoes", n: 3, titulo: "Funções", ajuda: "Funções e cargos, com o setor de cada um." },
-  { id: "atividades_perigos", n: 4, titulo: "Atividades e perigos", ajuda: "Atividades realizadas, perigos e grupos expostos." },
+  { id: "estrutura", n: 2, titulo: "Estrutura ocupacional", ajuda: "Estabelecimento, ambientes e setores." },
+  // Processo vem antes de função: é o processo do setor que define o que se
+  // faz ali, e a função é quem executa. Cadastrar função antes obrigava a
+  // voltar depois para amarrar cada uma ao processo.
+  //
+  // Os ids "atividades_perigos" e "ges_funcoes" continuam os mesmos, apesar
+  // dos rótulos: são gravados em etapa_atual e vão na URL (?etapa=), então
+  // renomear quebraria PGR salvo e link guardado. A ORDEM do array é que
+  // manda no Voltar/Continuar e na numeração.
+  { id: "atividades_perigos", n: 3, titulo: "Processos", ajuda: "Processos de trabalho de cada setor, com característica e descrição." },
+  { id: "ges_funcoes", n: 4, titulo: "Funções", ajuda: "Funções e cargos, com o setor de cada um." },
   { id: "avaliacao", n: 5, titulo: "Avaliação de riscos e controles", ajuda: "Matriz de risco, probabilidade, severidade e controles." },
   { id: "inventario", n: 6, titulo: "Inventário de riscos", ajuda: "Consolidação dos perigos, avaliações e classificações." },
   { id: "acoes", n: 7, titulo: "Plano de ação", ajuda: "Medidas que serão implementadas." },
@@ -137,20 +142,24 @@ function Assistente() {
     queryKey: ["pgr-wiz-progresso", id],
     enabled: !!pgr,
     queryFn: async () => {
-      const [inv, acs, resp, amb, set, fun] = await Promise.all([
+      const [inv, acs, resp, amb, set, fun, proc] = await Promise.all([
         (supabase.from as any)("pgr_inventario_itens").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("pgr_acoes").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("pgr_responsaveis").select("id").eq("pgr_id", id).limit(1),
         (supabase.from as any)("sst_ambientes").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
         (supabase.from as any)("sst_setores").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
         (supabase.from as any)("sst_funcoes").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
+        (supabase.from as any)("sst_processos").select("id").eq("empresa_id", pgr!.empresa_id).limit(1),
       ]);
       const tem = (r: any) => (r?.data?.length ?? 0) > 0;
       return {
         escopo: !!(pgr!.data_emissao || pgr!.escopo) && !!(pgr!.cnpj_snapshot || pgr!.cnae_principal),
         estrutura: tem(set) && tem(amb),
         ges_funcoes: tem(fun),
-        atividades_perigos: true,
+        // Era `true` fixo, de quando a etapa não tinha lista própria: contava
+        // como concluída mesmo vazia e inflava a barra. Agora ela cadastra
+        // processo, então quem responde é o cadastro.
+        atividades_perigos: tem(proc),
         avaliacao: !!(pgr as any)!.matriz_versao_id,
         inventario: tem(inv),
         acoes: tem(acs),
