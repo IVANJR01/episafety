@@ -196,6 +196,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // eSocial ocultado temporariamente do menu (rotas/páginas/dados preservados).
   const visibleEsocialItems: NavItem[] = [];
   void esocialItems;
+  const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
   const canAccessDocumentacao = canAccess(documentacaoItem.moduleKey);
   const visibleComercialItems = comercialItems.filter((i) => canAccess(i.moduleKey));
 
