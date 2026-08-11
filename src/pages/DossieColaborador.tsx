@@ -448,7 +448,7 @@ export default function DossieColaborador() {
                 <FileStack className="w-6 h-6 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Nenhum documento neste dossiê ainda.</p>
                 <Button variant="link" className="text-xs h-auto"
-                  onClick={() => navigate("/arquivo-digital/tipos")}>Configuração de Tipos</Button>
+                  onClick={() => navigate("/arquivo-digital/configuracao")}>Configuração de Tipos</Button>
               </div>
             )}
             {linhas.map((l) => {
@@ -518,7 +518,7 @@ export default function DossieColaborador() {
                     <div className="text-xs mt-1">
                       Configure quais documentos cada função exige em
                       <Button variant="link" className="px-1 h-auto text-xs"
-                        onClick={() => navigate("/arquivo-digital/tipos")}>Configuração de Tipos</Button>
+                        onClick={() => navigate("/arquivo-digital/configuracao")}>Configuração de Tipos</Button>
                     </div>
                   </TableCell></TableRow>
                 )}

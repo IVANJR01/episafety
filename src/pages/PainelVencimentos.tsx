@@ -256,7 +256,7 @@ export default function PainelVencimentos() {
         "Não enviado" cruza cada colaborador ativo com os documentos que a função dele exige — o que
         depende dos requisitos estarem configurados em
         <Button variant="link" className="px-1 h-auto text-xs"
-          onClick={() => navigate("/arquivo-digital/tipos")}>Configuração de Tipos</Button>.
+          onClick={() => navigate("/arquivo-digital/configuracao")}>Configuração de Tipos</Button>.
       </p>
 
       <Card>

@@ -127,12 +127,17 @@ export default function PgrModule() {
                   </CardDescription>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
+                  {/* O assistente mora em /pgr/:id. Este botão apontava para
+                      /pgr/wizard/:id, caminho que nunca existiu como rota — o
+                      botão principal do módulo caía no 404. */}
                   {pgrAtivo.status !== "arquivado" && (
                      <Button onClick={() => navigate(`/pgr/${pgrAtivo.id}`)} className="bg-indigo-600 hover:bg-indigo-700">
-                       <Edit className="h-4 w-4 mr-2" /> 
+                       <Edit className="h-4 w-4 mr-2" />
                        {pgrAtivo.status === "vigente" ? "Revisar" : "Continuar elaboração"}
                      </Button>
                   )}
+                  {/* Vista clássica em abas: destino diferente do assistente,
+                      senão os dois botões abririam a mesma tela. */}
                   <Button variant="outline" onClick={() => navigate(`/pgr/${pgrAtivo.id}/classico`)}>
                     <Eye className="h-4 w-4 mr-2" /> Visualizar
                   </Button>
