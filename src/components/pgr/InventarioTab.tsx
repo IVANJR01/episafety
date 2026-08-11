@@ -788,10 +788,10 @@ export default function InventarioTab({
                         )}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
-                          <ExpandableText text={val(i.perigo_descricao)} />
+                          <ExpandableText text={val(i.tipo_agente)} />
                         </td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
-                          <ExpandableText text={val(i.fonte_geradora)} />
+                          <ExpandableText text={val(i.perigo_descricao) || val(i.fonte_geradora)} />
                         </td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
                           <ExpandableText text={val(i.lesoes)} />
