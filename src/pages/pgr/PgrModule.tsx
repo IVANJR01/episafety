@@ -128,12 +128,19 @@ export default function PgrModule() {
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
                   {pgrAtivo.status !== "arquivado" && (
-                     <Button onClick={() => navigate(`/pgr/wizard/${pgrAtivo.id}`)} className="bg-indigo-600 hover:bg-indigo-700">
-                       <Edit className="h-4 w-4 mr-2" /> 
+                     /* O assistente mora em /pgr/:id. O caminho /pgr/wizard/:id
+                        nunca existiu como rota, então este botão caía no 404 —
+                        justamente o botão principal do módulo. */
+                     <Button onClick={() => navigate(`/pgr/${pgrAtivo.id}`)} className="bg-indigo-600 hover:bg-indigo-700">
+                       <Edit className="h-4 w-4 mr-2" />
                        {pgrAtivo.status === "vigente" ? "Revisar" : "Continuar elaboração"}
                      </Button>
                   )}
-                  <Button variant="outline" onClick={() => navigate(`/pgr/${pgrAtivo.id}`)}>
+                  {/* Visualizar vai direto à etapa de emissão, que é onde o
+                      documento é conferido e gerado — é o mesmo destino do
+                      "Visualizar" de dentro do assistente. Sem o parâmetro, os
+                      dois botões abriam exatamente a mesma tela. */}
+                  <Button variant="outline" onClick={() => navigate(`/pgr/${pgrAtivo.id}?etapa=emissao`)}>
                     <Eye className="h-4 w-4 mr-2" /> Visualizar
                   </Button>
                 </div>

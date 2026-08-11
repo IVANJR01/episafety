@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData } from "@/lib/offlineStorage";
 import { mensagemErro } from "@/lib/erroSupabase";
+import { unirPorId, unirPorIdENome } from "@/lib/unirCadastros";
 import {
   SstEstabelecimento,
   SstAmbiente,
@@ -174,10 +175,7 @@ async function resilientSaveItem<T extends { id?: string }>(
 }
 
 /** Une duas listas de mesmo formato por `id`, priorizando o registro da fonte primária em caso de conflito. */
-function unionById<T extends { id: string }>(primary: T[], legacy: T[]): T[] {
-  const seen = new Set(primary.map((p) => p.id));
-  return [...primary, ...legacy.filter((l) => !seen.has(l.id))];
-}
+const unionById = unirPorId;
 
 export function useNucleoMestreSst() {
   const { toast } = useToast();
@@ -304,7 +302,7 @@ export function useNucleoMestreSst() {
     nome: s.nome,
     descricao: s.descricao || "Setor importado do cadastro existente",
   }));
-  const effectiveSetores = unionById(setores, legacySetoresAsSst);
+  const effectiveSetores = unirPorIdENome(setores, legacySetoresAsSst);
 
   const legacyFuncoesAsSst = legacyFuncoes.map((f: any) => ({
     id: f.id,
@@ -316,7 +314,10 @@ export function useNucleoMestreSst() {
     exige_nr33: !!f.exige_nr33,
     exige_nr35: !!f.exige_nr35,
   }));
-  const effectiveFuncoes = unionById(funcoes, legacyFuncoesAsSst);
+  // Por nome também: a mesma função cadastrada nas duas tabelas tem ids
+  // diferentes e aparecia duas vezes na lista — a linha legada, sem setor
+  // nenhum, ao lado da linha certa. Ver unirCadastros.ts.
+  const effectiveFuncoes = unirPorIdENome(funcoes, legacyFuncoesAsSst);
 
   const legacyExposicoesAsSst = legacyInventario.map((inv: any) => ({
     id: inv.id,

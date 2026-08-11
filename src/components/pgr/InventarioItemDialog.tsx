@@ -229,9 +229,12 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
             severidade_residual: data.severidade_residual ?? null,
             probabilidade_residual: data.probabilidade_residual ?? null,
           });
-          const proc = (estrutura?.processos || [])
-            .find((p) => descreverProcesso(p) === clean(data.processo));
-          if (proc) setProcessoEscolhido(proc.id);
+          // Aqui havia uma busca do processo pelo TEXTO gravado, para marcar um
+          // seletor que não existe mais — o estado foi removido e a chamada
+          // ficou. `setProcessoEscolhido` não está definido em lugar nenhum, e
+          // abrir para edição um item cujo processo casasse com o cadastro
+          // estourava ReferenceError dentro do async, deixando o formulário
+          // pela metade sem erro visível.
         }
       })();
     } else {

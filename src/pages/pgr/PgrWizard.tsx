@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  ArrowLeft, ArrowRight, Building2, Check, Eye, FileSpreadsheet, FileText, GitCompare,
-  Loader2, MapPin, Menu, Network, Save, Smartphone, TriangleAlert,
+  ArrowLeft, ArrowRight, Building2, Check, ChevronDown, Eye, FileSpreadsheet, FileText,
+  GitCompare, Loader2, MapPin, Menu, Network, Save, Smartphone, TriangleAlert, Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -33,6 +33,9 @@ import PgrPendenciasPainel, { usePgrPendencias } from "@/components/pgr/PgrPende
 import { CLASSE_DECISAO, CLASSE_LABEL, CLASSE_TEXT, CLASSES_ORDENADAS } from "@/lib/pgrMatriz";
 import { exportarPgrExcel } from "@/lib/pgrExcel";
 import { verificarEstruturasSst } from "@/lib/erroSupabase";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type EtapaId =
   | "escopo" | "estrutura" | "ges_funcoes" | "atividades_perigos"
@@ -452,23 +455,37 @@ function Assistente() {
         <aside className="hidden lg:block w-64 shrink-0">
           <div className="sticky top-24">
             <ListaEtapas />
-            <div className="mt-6 pt-5 border-t space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start"
-                onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
-                <Network className="h-4 w-4 mr-2" /> Estrutura técnica
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start"
-                onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
-                <Smartphone className="h-4 w-4 mr-2" /> Levantamento em campo
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start"
-                onClick={() => navigate(`/pgr/${pgr.id}/comparar`)}>
-                <GitCompare className="h-4 w-4 mr-2" /> Comparar versões
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start"
-                onClick={exportarExcel} disabled={!pend.data}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" /> Exportar para Excel
-              </Button>
+            {/* Quatro botões de mesmo peso logo abaixo das etapas competiam
+                com a própria navegação do assistente, que é o que a coluna
+                existe para mostrar. São ações de uso ocasional — outra vista
+                do mesmo PGR, coleta no celular, comparação de versões e
+                exportação —, então cabem atrás de um menu: some o ruído sem
+                tirar nada de lugar. */}
+            <div className="mt-6 pt-5 border-t">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full justify-between">
+                    <span className="flex items-center">
+                      <Wrench className="h-4 w-4 mr-2" /> Mais ações
+                    </span>
+                    <ChevronDown className="h-4 w-4 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuItem onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
+                    <Network className="h-4 w-4 mr-2" /> Estrutura técnica
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
+                    <Smartphone className="h-4 w-4 mr-2" /> Levantamento em campo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate(`/pgr/${pgr.id}/comparar`)}>
+                    <GitCompare className="h-4 w-4 mr-2" /> Comparar versões
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportarExcel} disabled={!pend.data}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" /> Exportar para Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </aside>
