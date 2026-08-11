@@ -55,7 +55,9 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
   const { data: inventario = [] } = useQuery({
     queryKey: ["pgr-inventario", pgrId],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("pgr_inventario_itens").select("*").eq("pgr_id", pgrId);
+      const { data } = await (supabase.from as any)("pgr_inventario_itens")
+        .select("*, ges:ghe_id(codigo, nome)")
+        .eq("pgr_id", pgrId);
       return data || [];
     },
   });
@@ -113,6 +115,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
       what: `Implantar controle do risco "${item.perigo_descricao}"`,
       why: `Risco classificado como ${String(item.classe || "").toUpperCase()} no inventário.`,
       where_local: item.fonte_geradora || "",
+      responsavel_setor: item.ges?.nome || item.ges?.codigo || "",
     });
     setDialogOpen(true);
   };
@@ -170,7 +173,12 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
               {sugestoes.slice(0, 8).map((it: any) => (
                 <li key={it.id} className="py-2 flex items-center justify-between gap-2 text-sm">
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{it.perigo_descricao}</div>
+                    <div className="font-medium flex flex-wrap items-center gap-2">
+                      <span className="truncate max-w-[400px] sm:max-w-none">{it.perigo_descricao}</span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 font-normal whitespace-nowrap bg-slate-100 text-slate-600">
+                        {it.ges?.codigo || it.ges?.nome || it.descricao_ambiente || "Geral"}
+                      </Badge>
+                    </div>
                     <div className="text-[11px] text-muted-foreground truncate">
                       Classe <b className="uppercase">{it.classe}</b>{prazoSugerido(it.classe) ? ` · SLA sugerido até ${new Date(prazoSugerido(it.classe)!+"T00:00:00").toLocaleDateString("pt-BR")}` : " · sem SLA automático"} · prioridade {prioridadeSugerida(it.classe, it.trabalhadores_expostos)}
                     </div>
