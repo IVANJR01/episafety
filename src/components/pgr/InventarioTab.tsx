@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ExpandableText } from "@/components/ui/ExpandableText";
+import { candidatosDeGes, indexarVinculos, type AlvoVinculo } from "@/lib/pgrGesVinculo";
 
 /** Linha de pgr_levantamento_preliminar, na forma que esta tela consome. */
 interface Levantado {
@@ -28,6 +29,7 @@ interface Levantado {
   possiveis_lesoes?: string | null;
   trabalhadores_expostos?: string | null;
   medidas_existentes?: string | null;
+  setor_id?: string | null;
   ges_id?: string | null;
   ges?: { id: string; codigo: string; nome: string } | null;
 }
@@ -107,6 +109,132 @@ export default function InventarioTab({
   const clean = (v: any) => {
     const s = (v ?? "").toString().trim();
     return s && s.toUpperCase() !== "N.A" && s.toUpperCase() !== "N/A" ? s : "";
+  };
+
+  /**
+   * A estrutura da empresa — é ela que diz a qual GES um item pertence.
+   *
+   * `ghe_id` é opcional no item do inventário, e sempre foi: linha trazida do
+   * levantamento preliminar sem grupo escolhido, ou criada antes de o GES
+   * existir, nasce sem vínculo e imprime "N.A" na coluna GES. Só que a
+   * informação existe do outro lado — o setor e as funções da linha estão
+   * cadastrados dentro de um grupo. Faltava alguém cruzar as duas pontas.
+   */
+  const { data: vinculos } = useQuery({
+    queryKey: ["pgr-inventario-vinculos", empresaId],
+    enabled: !!empresaId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const t = (n: string, cols = "*") =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from as any)(n).select(cols).eq("empresa_id", empresaId);
+      const [ges, gSet, gFun, setores, funcoes, nucleo] = await Promise.all([
+        t("ghe_ges", "id, codigo, nome, status"),
+        t("ghe_setores", "ghe_id, nome, setor_id, ativo"),
+        t("ghe_funcoes", "ghe_id, nome_funcao, funcao_id, status"),
+        t("sst_setores", "id, nome"),
+        t("sst_funcoes", "id, nome"),
+        t("sst_ges", "id"),
+      ]);
+      return {
+        ges: (ges.data || []) as { id: string; codigo: string; nome: string; status?: string }[],
+        gheSetores: (gSet.data || []) as { ghe_id: string; nome?: string; setor_id?: string | null; ativo?: boolean }[],
+        gheFuncoes: (gFun.data || []) as { ghe_id: string; nome_funcao?: string; funcao_id?: string | null; status?: string }[],
+        setores: (setores.data || []) as { id: string; nome: string }[],
+        funcoes: (funcoes.data || []) as { id: string; nome: string }[],
+        nucleoIds: new Set<string>(((nucleo.data || []) as { id: string }[]).map((g) => g.id)),
+      };
+    },
+  });
+
+  /** Índice nome→grupo, montado uma vez por carga da estrutura. */
+  const indice = useMemo(() => (vinculos ? indexarVinculos(vinculos) : null), [vinculos]);
+
+  /** Os grupos possíveis para uma linha órfã. Vazio enquanto a estrutura carrega. */
+  const candidatosDe = useMemo(
+    () => (alvo: AlvoVinculo) => (indice ? candidatosDeGes(indice, alvo) : []),
+    [indice],
+  );
+
+  const codigoDoGes = (id: string) =>
+    vinculos?.ges.find((g) => g.id === id)?.codigo || "";
+
+  /** Itens sem GES, já com o(s) grupo(s) que a estrutura sugere. */
+  const orfaos = useMemo(
+    () => (itens as any[]).filter((i) => !i.ghe_id)
+      .map((i) => ({
+        item: i,
+        cand: candidatosDe({
+          setor: i.setor,
+          funcoes: Array.isArray(i.funcoes_snapshot) ? i.funcoes_snapshot : [],
+        }),
+      })),
+    [itens, candidatosDe],
+  );
+
+  /**
+   * Vincula sozinho o que tem resposta única.
+   *
+   * Deixar a linha "N.A" esperando alguém reabrir e escolher o grupo à mão é
+   * pedir para o PGR sair com buraco: o GES é quem responde pelo risco no
+   * documento. Quando a estrutura aponta um único grupo possível, o vínculo é
+   * gravado e a tela avisa o que fez — nada é adivinhado em silêncio.
+   *
+   * A trava por id evita repetir a tentativa a cada renderização quando a
+   * gravação falha (PGR bloqueado, permissão, rede).
+   */
+  const jaTentado = useRef(new Set<string>());
+  useEffect(() => {
+    if (!editavel || !vinculos) return;
+    const ligar = orfaos.filter((o) => o.cand.length === 1 && !jaTentado.current.has(o.item.id));
+    if (!ligar.length) return;
+    ligar.forEach((o) => jaTentado.current.add(o.item.id));
+
+    void (async () => {
+      const porGes = new Map<string, string[]>();
+      ligar.forEach((o) => {
+        const g = o.cand[0];
+        porGes.set(g, [...(porGes.get(g) || []), o.item.id]);
+      });
+      let ligados = 0;
+      const codigos: string[] = [];
+      for (const [gesId, ids] of porGes) {
+        // ges_id só quando o grupo existe no Núcleo Mestre: gravar um id de
+        // ghe_ges que não está em sst_ges violaria a chave estrangeira.
+        const payload: Record<string, string> = { ghe_id: gesId };
+        if (vinculos.nucleoIds.has(gesId)) payload.ges_id = gesId;
+        const { error } = await (supabase.from as any)("pgr_inventario_itens")
+          .update(payload).in("id", ids);
+        if (!error) { ligados += ids.length; codigos.push(codigoDoGes(gesId) || "?"); }
+      }
+      if (ligados > 0) {
+        toast.success(
+          `${ligados === 1 ? "1 item ficou" : `${ligados} itens ficaram`} sem GES e ${ligados === 1 ? "foi vinculado" : "foram vinculados"} ao ${codigos.length === 1 ? `GES ${codigos[0]}` : `GES ${[...new Set(codigos)].join(", ")}`} pela estrutura cadastrada.`,
+        );
+        qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orfaos, editavel, vinculos]);
+
+  /** Os que sobraram: nenhum grupo bate, ou mais de um bate. */
+  const semResposta = useMemo(() => orfaos.filter((o) => o.cand.length !== 1), [orfaos]);
+
+  /**
+   * O GES do perigo levantado, para o botão "Trazer" já abrir com ele escolhido.
+   *
+   * O levantamento pode ter sido feito por setor, sem apontar grupo — e era daí
+   * que saíam as linhas "N.A" do inventário. Resolver aqui evita criar o
+   * problema, em vez de só consertá-lo depois.
+   */
+  const gesSugeridoPara = (l: Levantado): string => {
+    if (l.ges_id) return l.ges_id;
+    const nomeSetor = vinculos?.setores.find((s) => s.id === l.setor_id)?.nome || "";
+    const cand = candidatosDe({
+      setor: nomeSetor,
+      funcoes_snapshot: (l.trabalhadores_expostos || "").split(/\n|,|;/),
+    });
+    return cand.length === 1 ? cand[0] : "";
   };
 
   /** Já está no inventário? Compara pelo texto do perigo, normalizado. */
@@ -293,12 +421,48 @@ export default function InventarioTab({
                         lesoes: l.possiveis_lesoes || "",
                         funcoes_text: l.trabalhadores_expostos || "",
                         controles_text: l.medidas_existentes || "",
-                        ghe_id: l.ges_id || "",
+                        ghe_id: gesSugeridoPara(l),
                       });
                       setDialogOpen(true);
                     }}
                   >
                     Trazer
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* O que o vínculo automático não conseguiu resolver sozinho. Não dá para
+          escolher no lugar de quem responde tecnicamente pelo documento: ou
+          nenhum grupo bate com o setor/função da linha, ou mais de um bate. */}
+      {editavel && semResposta.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50/70">
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-700" />
+              <p className="text-sm text-amber-900">
+                <b>{semResposta.length}</b> {semResposta.length === 1 ? "item está sem GES" : "itens estão sem GES"}.
+                O GES é quem responde pelo risco no documento — sem ele a linha sai <b>N.A</b> no PGR.
+              </p>
+            </div>
+            <ul className="space-y-1">
+              {semResposta.map(({ item, cand }) => (
+                <li key={item.id} className="flex items-center gap-2 rounded border bg-background px-2 py-1.5">
+                  <span className="text-sm min-w-0 flex-1 truncate" title={item.perigo_descricao}>
+                    {clean(item.setor) && <b className="mr-1">{item.setor} ·</b>}
+                    {item.perigo_descricao}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground shrink-0">
+                    {cand.length === 0
+                      ? "nenhum grupo bate com o setor/função"
+                      : `${cand.length} grupos possíveis: ${cand.map(codigoDoGes).filter(Boolean).join(", ")}`}
+                  </span>
+                  <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                    onClick={() => { setEditId(item.id); setEditGroupIds([item.id]); setDialogOpen(true); }}>
+                    Escolher GES
                   </Button>
                 </li>
               ))}
@@ -418,6 +582,11 @@ export default function InventarioTab({
                             <span className="font-medium">{val(i.setor)}</span>
                             {gesCod && gesCod !== NA && gesCod !== val(i.setor) ? (
                               <span className="text-[11px] font-bold text-muted-foreground ml-1">(GES: {gesCod})</span>
+                            ) : !gesCod ? (
+                              /* Sem grupo a linha sai N.A no PGR emitido. Marcar
+                                 aqui é o que faz a falha aparecer antes da
+                                 emissão, e não depois. */
+                              <span className="text-[11px] font-semibold text-amber-700 ml-1">(sem GES)</span>
                             ) : null}
                           </td>
                         )}
