@@ -655,15 +655,15 @@ export default function InventarioTab({
                     <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>
                       <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap">GES</div>
                     </th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[150px]">Função</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[300px]">Processo</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[180px] min-w-[180px]">Função</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[400px] min-w-[400px]">Processo</th>
                     {/* Estes dois rótulos estavam trocados entre si: a coluna
                         "Agente" imprimia o grupo ("Ergonômico") e a "Tipo de
                         Agente" imprimia o perigo ("Pressão por metas"). */}
-                    <th className="p-1.5 text-center border border-amber-400 w-[70px]">Tipo de<br/>agente</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[150px]">Agente / perigo</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[150px]">Fonte de<br/>exposição</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[150px]">Possíveis lesões ou<br/>agravos à saúde</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[90px] min-w-[90px]">Tipo de<br/>agente</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[200px] min-w-[200px]">Agente / perigo</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[250px] min-w-[250px]">Fonte de<br/>exposição</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[250px] min-w-[250px]">Possíveis lesões ou<br/>agravos à saúde</th>
                     {detalhes && (
                       <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
                         <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Limite de exposição</div>
