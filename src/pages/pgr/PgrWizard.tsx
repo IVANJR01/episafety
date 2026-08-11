@@ -35,43 +35,25 @@ import { exportarPgrExcel } from "@/lib/pgrExcel";
 import { verificarEstruturasSst } from "@/lib/erroSupabase";
 
 type EtapaId =
-  | "dados" | "ambientes" | "setores" | "funcoes"
+  | "escopo" | "estrutura" | "ges_funcoes" | "atividades_perigos"
   | "avaliacao" | "inventario" | "acoes" | "emissao";
 
 interface Etapa {
   id: EtapaId;
   n: number;
   titulo: string;
-  /** Frase curta em linguagem comum — o usuário leigo precisa saber o que fazer aqui. */
   ajuda: string;
 }
 
-/**
- * Oito etapas. Cada fusão aqui saiu do mesmo problema: duas telas pedindo o
- * mesmo dado. "Empresa e unidade" + "Dados do PGR" eram o mesmo cadastro;
- * "Documentos complementares" e "Responsáveis" eram dois cliques a mais logo
- * antes de emitir; e "Perigos e riscos" pedia perigo, fonte e lesões com
- * outros nomes, para depois o Inventário pedir tudo de novo.
- */
 const ETAPAS: Etapa[] = [
-  { id: "dados", n: 1, titulo: "Dados do PGR", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
-  // id "ambientes" mantido por compatibilidade com o progresso já salvo de
-  // PGRs em andamento (é essa string que fica gravada como etapa atual) — o
-  // cadastro de Ambiente em si não vive mais aqui, ele entrou dentro do
-  // formulário de Setor (etapa seguinte). Esta etapa passou a conter só
-  // Processos, que de qualquer forma dependem de um Setor já existir.
-  { id: "ambientes", n: 2, titulo: "Processos", ajuda: "O que é feito em cada setor." },
-  { id: "setores", n: 3, titulo: "Setores e GES", ajuda: "Divisão da empresa, o ambiente de trabalho de cada setor, e agrupamento de quem tem a mesma exposição." },
-  { id: "funcoes", n: 4, titulo: "Funções", ajuda: "Cargos existentes e o que cada um faz." },
-  // "Perigos e riscos" era uma etapa à parte que pedia perigo, fonte, lesões e
-  // categoria — os MESMOS campos do item do inventário, com outros nomes. Quem
-  // preenchia as duas digitava tudo duas vezes; quem preenchia só uma ficava
-  // com metade do trabalho fora do documento. O perigo passa a ser cadastrado
-  // uma vez só, já classificado na matriz, na etapa Inventário.
-  { id: "avaliacao", n: 5, titulo: "Avaliação", ajuda: "Os critérios usados para classificar cada risco." },
-  { id: "inventario", n: 6, titulo: "Inventário", ajuda: "Os perigos identificados, avaliados e classificados." },
-  { id: "acoes", n: 7, titulo: "Plano de ação", ajuda: "O que será feito para reduzir cada risco, por quem e até quando." },
-  { id: "emissao", n: 8, titulo: "Revisão e emissão", ajuda: "Complementares, responsáveis, pendências e geração do documento." },
+  { id: "escopo", n: 1, titulo: "Escopo e identificação", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
+  { id: "estrutura", n: 2, titulo: "Estrutura ocupacional", ajuda: "Estabelecimento, ambientes, setores e processos." },
+  { id: "ges_funcoes", n: 3, titulo: "GES e funções", ajuda: "Grupos de Exposição Similar e funções vinculadas." },
+  { id: "atividades_perigos", n: 4, titulo: "Atividades e perigos", ajuda: "Atividades realizadas, perigos e grupos expostos." },
+  { id: "avaliacao", n: 5, titulo: "Avaliação de riscos e controles", ajuda: "Matriz de risco, probabilidade, severidade e controles." },
+  { id: "inventario", n: 6, titulo: "Inventário de riscos", ajuda: "Consolidação dos perigos, avaliações e classificações." },
+  { id: "acoes", n: 7, titulo: "Plano de ação", ajuda: "Medidas que serão implementadas." },
+  { id: "emissao", n: 8, titulo: "Revisão e emissão", ajuda: "Complementares, pendências e geração do documento." },
 ];
 
 export default function PgrWizard() {
@@ -93,7 +75,7 @@ function Assistente() {
   // PGRs em andamento têm "perigos" gravado como etapa atual; a etapa deixou de
   // existir e o conteúdo dela foi para o inventário.
   const etapaSalva = params.get("etapa");
-  const etapaAtual = (etapaSalva === "perigos" ? "inventario" : etapaSalva || "dados") as EtapaId;
+  const etapaAtual = (etapaSalva === "perigos" ? "inventario" : etapaSalva === "dados" ? "escopo" : etapaSalva || "escopo") as EtapaId;
   const idx = Math.max(0, ETAPAS.findIndex((e) => e.id === etapaAtual));
   const etapa = ETAPAS[idx];
 
@@ -159,10 +141,10 @@ function Assistente() {
       ]);
       const tem = (r: any) => (r?.data?.length ?? 0) > 0;
       return {
-        dados: !!(pgr!.data_emissao || pgr!.escopo) && !!(pgr!.cnpj_snapshot || pgr!.cnae_principal),
-        ambientes: tem(amb),
-        setores: tem(set),
-        funcoes: tem(fun),
+        escopo: !!(pgr!.data_emissao || pgr!.escopo) && !!(pgr!.cnpj_snapshot || pgr!.cnae_principal),
+        estrutura: tem(set) && tem(amb),
+        ges_funcoes: tem(fun),
+        atividades_perigos: true,
         avaliacao: !!(pgr as any)!.matriz_versao_id,
         inventario: tem(inv),
         acoes: tem(acs),
@@ -275,12 +257,8 @@ function Assistente() {
   );
 
   const conteudo = () => {
-    switch (etapa.id) {
-      case "dados":
-        // Duas montagens de propósito: cada bloco se registra no rodapé com uma
-        // chave própria, e é isso que faz "Salvar e continuar" gravar os dois.
-        // O que muda aqui é só a leitura — antes os campos desciam num paredão
-        // só, partido por uma linha sem rótulo no meio.
+    switch (etapaAtual) {
+      case "escopo":
         return (
           <div className="space-y-8">
             <section className="space-y-4">
@@ -297,26 +275,23 @@ function Assistente() {
             </section>
           </div>
         );
-      case "ambientes":
-        // O cadastro de Ambiente saiu daqui — entrou no formulário de Setor,
-        // na etapa seguinte. Só sobrou Processos, que já dependia de um Setor
-        // existir antes mesmo dessa mudança.
-        return <EstruturaOcupacionalTab only="processos" />;
-      case "setores":
+      case "estrutura":
+        return <EstruturaOcupacionalTab only="setores" />;
+      case "ges_funcoes":
         return (
           <div className="space-y-6">
-            <EstruturaOcupacionalTab key="setores" only="setores" />
+            <EstruturaOcupacionalTab key="funcoes" only="funcoes" />
             <p className="text-sm text-muted-foreground">
-              Os GES são cadastrados na aba GES do módulo de documentação. Um GES reúne
-              trabalhadores com a mesma exposição — não é outro nome para setor.
+              Os GES são configurados e validados na aba de Documentação central.
             </p>
           </div>
         );
-      // Só Funções: a etapa de Atividades saiu do cadastro — o que cada função
-      // faz é escrito na própria função, em "Descrição das Atividades
-      // Desempenhadas", em vez de num segundo cadastro com o mesmo texto.
-      case "funcoes":
-        return <EstruturaOcupacionalTab only="funcoes" />;
+      case "atividades_perigos":
+        return (
+          <div className="space-y-6">
+            <EstruturaOcupacionalTab only="processos" />
+          </div>
+        );
       case "avaliacao":
         return (
           <div className="space-y-6 max-w-3xl">
