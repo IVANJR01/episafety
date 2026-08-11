@@ -652,7 +652,9 @@ export default function InventarioTab({
                         a soma delas. */}
                     <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-0`}>Descrição do ambiente</th>
                     <th className={`${CTX_TH} w-[88px] min-w-[88px] max-w-[88px] left-[200px]`}>Setor</th>
-                    <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>GES</th>
+                    <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>
+                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap">GES</div>
+                    </th>
                     <th className="p-1.5 text-center border border-amber-400 w-[120px]">Função</th>
                     <th className="p-1.5 text-center border border-amber-400 w-[130px]">Processo</th>
                     {/* Estes dois rótulos estavam trocados entre si: a coluna
@@ -662,10 +664,22 @@ export default function InventarioTab({
                     <th className="p-1.5 text-center border border-amber-400 w-[110px]">Agente / perigo</th>
                     <th className="p-1.5 text-center border border-amber-400 w-[110px]">Fonte de<br/>exposição</th>
                     <th className="p-1.5 text-center border border-amber-400 w-[110px]">Possíveis lesões ou<br/>agravos à saúde</th>
-                    {detalhes && <th className="p-1.5 text-center border border-amber-400 w-[80px]">Limite de<br/>exposição</th>}
-                    {detalhes && <th className="p-1.5 text-center border border-amber-400 w-[80px]">Intensidade /<br/>concentração</th>}
+                    {detalhes && (
+                      <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
+                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Limite de exposição</div>
+                      </th>
+                    )}
+                    {detalhes && (
+                      <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
+                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Intensidade / concentração</div>
+                      </th>
+                    )}
                     <th className="p-1.5 text-center border border-amber-400 w-[70px]">Tipo / tempo<br/>de exposição</th>
-                    {detalhes && <th className="p-1.5 text-center border border-amber-400 w-[80px]">Técnica<br/>utilizada</th>}
+                    {detalhes && (
+                      <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
+                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Técnica utilizada</div>
+                      </th>
+                    )}
                     <th className="p-1.5 text-center border border-amber-400 w-[130px]">Proc. administrativo / EPC /<br/>organização do trabalho</th>
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
                       <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">EPI</div>
