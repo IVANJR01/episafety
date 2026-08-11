@@ -114,9 +114,9 @@ export const PROBABILIDADE_LABEL: Record<number, string> = {
 };
 
 export const GRUPO_LABEL: Record<string, string> = {
-  fisico: "Agentes físicos", quimico: "Agentes químicos", biologico: "Agentes biológicos",
-  acidente: "Riscos de acidentes", ergonomico: "Fatores ergonômicos", 
-  psicossocial: "Fatores psicossociais", outro: "Outros",
+  fisico: "Físico", quimico: "Químico", biologico: "Biológico",
+  acidente: "Acidente", ergonomico: "Ergonômico", 
+  psicossocial: "Psicossocial", outro: "Outros",
 };
 
 export const EXPOSICAO_LABEL: Record<string, string> = {
