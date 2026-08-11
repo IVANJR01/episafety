@@ -244,7 +244,18 @@ export function GesExposicoesTab() {
             </div>
             <div>
               <Label>Setor</Label>
-              <Select value={setorSelecionado || SEM_SETOR} onValueChange={setSetorSelecionado}>
+              <Select value={setorSelecionado || SEM_SETOR} onValueChange={(v) => {
+                setSetorSelecionado(v);
+                // Automação: se for grupo novo, auto-marcar as funções que pertencem ao setor escolhido
+                if (!gesFormData.id) {
+                  if (v === SEM_SETOR) {
+                    setFuncoesSelecionadas([]);
+                  } else {
+                    const funcIds = funcoes.filter((f: any) => f.setor_id === v).map((f: any) => f.id);
+                    setFuncoesSelecionadas(funcIds);
+                  }
+                }
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={SEM_SETOR}>Sem setor (grupo entre setores)</SelectItem>
