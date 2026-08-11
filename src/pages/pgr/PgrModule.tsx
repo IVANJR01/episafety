@@ -128,12 +128,12 @@ export default function PgrModule() {
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
                   {pgrAtivo.status !== "arquivado" && (
-                     <Button onClick={() => navigate(`/pgr/wizard/${pgrAtivo.id}`)} className="bg-indigo-600 hover:bg-indigo-700">
+                     <Button onClick={() => navigate(`/pgr/${pgrAtivo.id}`)} className="bg-indigo-600 hover:bg-indigo-700">
                        <Edit className="h-4 w-4 mr-2" /> 
                        {pgrAtivo.status === "vigente" ? "Revisar" : "Continuar elaboração"}
                      </Button>
                   )}
-                  <Button variant="outline" onClick={() => navigate(`/pgr/${pgrAtivo.id}`)}>
+                  <Button variant="outline" onClick={() => navigate(`/pgr/${pgrAtivo.id}/classico`)}>
                     <Eye className="h-4 w-4 mr-2" /> Visualizar
                   </Button>
                 </div>
