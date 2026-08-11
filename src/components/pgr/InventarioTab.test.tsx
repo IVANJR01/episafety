@@ -24,14 +24,20 @@ vi.mock("@/integrations/supabase/client", () => {
   const consulta = (tabela: string) => {
     let modo: "select" | "update" | "insert" | "delete" = "select";
     let payload: unknown = null;
+    let criadas: { id: string }[] = [];
     const alvo: any = {
       select: () => alvo,
-      eq: () => alvo,
+      eq: (_col: string, valor: unknown) => {
+        if (modo === "update") updates.push({ tabela, payload, ids: valor });
+        return alvo;
+      },
       order: () => alvo,
       update: (p: unknown) => { modo = "update"; payload = p; return alvo; },
       insert: (linhas: Record<string, unknown>[]) => {
         modo = "insert";
-        inserts.push({ tabela, linhas });
+        const lista = Array.isArray(linhas) ? linhas : [linhas];
+        inserts.push({ tabela, linhas: lista });
+        criadas = lista.map((_, i) => ({ id: `novo-${i}` }));
         return alvo;
       },
       delete: () => { modo = "delete"; return alvo; },
@@ -39,10 +45,14 @@ vi.mock("@/integrations/supabase/client", () => {
         if (modo === "update") updates.push({ tabela, payload, ids });
         return alvo;
       },
-      then: (ok: (r: unknown) => unknown) =>
-        Promise.resolve(modo === "select"
-          ? { data: tabelas[tabela] || [], error: null }
-          : { data: null, error: null }).then(ok),
+      then: (ok: (r: unknown) => unknown) => {
+        // O insert devolve os ids criados, como o PostgREST com .select("id")
+        // faz — é deles que sai o vínculo de volta no levantamento.
+        const resposta = modo === "select" ? { data: tabelas[tabela] || [], error: null }
+          : modo === "insert" ? { data: criadas, error: null }
+          : { data: null, error: null };
+        return Promise.resolve(resposta).then(ok);
+      },
     };
     return alvo;
   };
@@ -170,6 +180,77 @@ describe("InventarioTab — item sem GES", () => {
     expect(linha.setor).toBe("PCP");
     expect(linha.descricao_ambiente).toContain("Escritório PCP");
     expect(linha.processo).toContain("Planejamento");
+  });
+
+  it("fecha a pendência do levantamento ao importar, para o aviso não voltar", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [],
+      pgr_levantamento_preliminar: [{
+        id: "l1", pgr_id: "pgr-1", grupo: "ergonomico", perigo_descricao: "Sobrecarga",
+        setor_id: "s-pcp", tratamento: "avaliacao_aprofundada", inventario_item_id: null,
+      }],
+    };
+    montar();
+    fireEvent.click(await screen.findByRole("button", { name: /Importar todos automaticamente/ }));
+
+    // O update grava inventario_item_id no levantamento com o id devolvido
+    // pelo insert — é o que a etapa 5 lê como "No inventário".
+    await waitFor(() => expect(
+      updates.filter((u) => u.tabela === "pgr_levantamento_preliminar"),
+    ).toHaveLength(1));
+  });
+
+  it("não cobra perigo tratado na hora nem descartado com justificativa", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [],
+      pgr_levantamento_preliminar: [
+        { id: "l1", perigo_descricao: "Piso molhado", tratamento: "tratado_diretamente" },
+        { id: "l2", perigo_descricao: "Radiação ionizante", tratamento: "nao_identificado",
+          justificativa: "Não há fonte radioativa na operação." },
+        { id: "l3", perigo_descricao: "Ruído de prensa", tratamento: "avaliacao_aprofundada" },
+      ],
+    };
+    montar();
+
+    // Só o terceiro é pendência de verdade.
+    expect(await screen.findByTitle("Ruído de prensa")).toBeInTheDocument();
+    expect(screen.queryByTitle("Piso molhado")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Radiação ionizante")).not.toBeInTheDocument();
+  });
+
+  it("não cobra perigo já trazido cuja descrição foi detalhada no item", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [item({
+        ghe_id: "g01",
+        perigo_descricao: "Pressão por metas, prazos curtos, sobrecarga",
+      })],
+      pgr_levantamento_preliminar: [
+        { id: "l1", perigo_descricao: "Sobrecarga", tratamento: "avaliacao_aprofundada" },
+      ],
+    };
+    montar();
+
+    await screen.findByText("Pressão por metas, prazos curtos, sobrecarga");
+    expect(screen.queryByTitle("Sobrecarga")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Trazer" })).not.toBeInTheDocument();
+  });
+
+  it("continua cobrando quando o perigo curto só coincide por acaso", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      // "Gás" tem 3 letras e aparece dentro de "Gases de solda" por acaso —
+      // curto demais para valer como "já está coberto".
+      pgr_inventario_itens: [item({ ghe_id: "g01", perigo_descricao: "Gases de solda" })],
+      pgr_levantamento_preliminar: [
+        { id: "l1", perigo_descricao: "Gás", tratamento: "avaliacao_aprofundada" },
+      ],
+    };
+    montar();
+
+    expect(await screen.findByTitle("Gás")).toBeInTheDocument();
   });
 
   it("não mexe em item que já tem grupo", async () => {

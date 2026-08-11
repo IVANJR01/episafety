@@ -33,6 +33,10 @@ interface Levantado {
   setor_id?: string | null;
   ges_id?: string | null;
   ges?: { id: string; codigo: string; nome: string } | null;
+  /** 'avaliacao_aprofundada' | 'tratado_diretamente' | 'nao_identificado'. */
+  tratamento?: string | null;
+  /** Preenchido quando o perigo já virou item — é o que encerra a pendência. */
+  inventario_item_id?: string | null;
 }
 
 const NA = "N.A";
@@ -67,6 +71,9 @@ export default function InventarioTab({
   const [delState, setDelState] = useState<{ ids: string[]; setores: string[] } | null>(null);
   const [preencher, setPreencher] = useState<Record<string, string> | null>(null);
   const [busyTrazer, setBusyTrazer] = useState(false);
+  /** Qual perigo do levantamento o diálogo está trazendo — para fechar a
+      pendência no vínculo depois que o item for criado. */
+  const [trazendoDe, setTrazendoDe] = useState<string | null>(null);
 
   /**
    * Colunas de detalhe (limite de exposição, intensidade, técnica utilizada,
@@ -267,19 +274,48 @@ export default function InventarioTab({
     const nomeSetor = vinculos?.setores.find((s) => s.id === l.setor_id)?.nome || "";
     const cand = candidatosDe({
       setor: nomeSetor,
-      funcoes_snapshot: (l.trabalhadores_expostos || "").split(/\n|,|;/),
+      funcoes: (l.trabalhadores_expostos || "").split(/\n|,|;/),
     });
     return cand.length === 1 ? cand[0] : "";
   };
 
-  /** Já está no inventário? Compara pelo texto do perigo, normalizado. */
+  /**
+   * O que ainda está mesmo pendente do levantamento preliminar.
+   *
+   * Antes o aviso listava a tabela inteira e só descontava o que casasse
+   * LETRA POR LETRA com a descrição de algum item — ignorando o estado que a
+   * própria etapa 5 registra. Dava aviso eterno em três situações legítimas:
+   *
+   * - perigo `tratado_diretamente`: resolvido na hora, não gera item;
+   * - perigo `nao_identificado`: descartado com justificativa, que é o
+   *   registro que a NR-01 exige — trazer para o inventário seria errado;
+   * - perigo já trazido cuja descrição foi detalhada no item ("Sobrecarga"
+   *   virando "Pressão por metas, prazos curtos, sobrecarga"): o texto deixa
+   *   de bater e o aviso ressuscita.
+   *
+   * Agora vale o mesmo critério da etapa 5 — pendente é `avaliacao_aprofundada`
+   * sem `inventario_item_id` —, e a comparação por texto fica só como rede para
+   * os perigos trazidos antes de o vínculo passar a ser gravado.
+   */
   const naoAproveitados = useMemo(() => {
     const norm = (s: string) => (s || "").normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
-    const jaNoInventario = new Set(
-      (itens as { perigo_descricao?: string }[]).map((i) => norm(i.perigo_descricao || "")),
-    );
-    return levantados.filter((l) => !jaNoInventario.has(norm(l.perigo_descricao)));
+    const textos = (itens as { perigo_descricao?: string }[])
+      .map((i) => norm(i.perigo_descricao || "")).filter(Boolean);
+
+    /** O perigo aparece em algum item, inteiro ou dentro de uma descrição maior? */
+    const jaNoInventario = (bruto: string) => {
+      const alvo = norm(bruto);
+      if (!alvo) return false;
+      // Abaixo de 6 caracteres, "conter" acerta por acaso ("EPI", "gás").
+      const podeConter = alvo.length >= 6;
+      return textos.some((t) => t === alvo || (podeConter && t.includes(alvo)));
+    };
+
+    return levantados.filter((l) =>
+      (l.tratamento || "avaliacao_aprofundada") === "avaliacao_aprofundada"
+      && !l.inventario_item_id
+      && !jaNoInventario(l.perigo_descricao));
   }, [levantados, itens]);
 
   const ambienteDe = (i: any): string =>
@@ -288,6 +324,24 @@ export default function InventarioTab({
   /** Texto de uma linha ("A; B" ou em linhas) para o array que a coluna espera. */
   const emLista = (v?: string | null) =>
     (v || "").split(/\n|;/).map((s) => s.trim()).filter(Boolean);
+
+  /**
+   * Fecha a pendência do levantamento apontando para o item criado.
+   *
+   * É esse vínculo que faz o aviso sumir de vez — e é ele que a etapa 5 lê
+   * para mostrar "No inventário" em vez de "Pendente". Sem ele, a única defesa
+   * era comparar textos, que quebra assim que alguém detalha a descrição.
+   *
+   * O casamento é por posição: o insert em lote devolve as linhas na ordem em
+   * que foram enviadas. Se as contagens não baterem, prefiro não ligar nada a
+   * ligar errado — o aviso continua, o que é chato, mas não mente.
+   */
+  const ligarAoLevantamento = async (idsLevantados: string[], idsCriados: string[]) => {
+    if (idsLevantados.length !== idsCriados.length) return;
+    await Promise.all(idsLevantados.map((idLev, i) =>
+      (supabase.from as any)("pgr_levantamento_preliminar")
+        .update({ inventario_item_id: idsCriados[i] }).eq("id", idLev)));
+  };
 
   const trazerTodos = async () => {
     setBusyTrazer(true);
@@ -326,8 +380,11 @@ export default function InventarioTab({
         };
       });
 
-      const { error } = await (supabase.from as any)("pgr_inventario_itens").insert(inserts);
+      const { data: criados, error } = await (supabase.from as any)("pgr_inventario_itens")
+        .insert(inserts).select("id");
       if (error) throw error;
+
+      await ligarAoLevantamento(naoAproveitados.map((l) => l.id), (criados || []).map((c: any) => c.id));
 
       const semGrupo = inserts.filter((i) => !i.ghe_id).length;
       toast.success(
@@ -335,6 +392,7 @@ export default function InventarioTab({
         + (semGrupo ? ` ${semGrupo} sem GES — escolha o grupo no aviso abaixo.` : ""),
       );
       qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
+      qc.invalidateQueries({ queryKey: ["pgr-levantamento-pendente", pgrId] });
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -426,7 +484,12 @@ export default function InventarioTab({
     setDelState(null);
   };
 
-  const onSaved = () => qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
+  const onSaved = () => {
+    qc.invalidateQueries({ queryKey: ["pgr-inventario", pgrId] });
+    // O item trazido fecha a pendência do levantamento — sem recarregar esta
+    // lista, o aviso continuaria na tela cobrando um perigo já resolvido.
+    qc.invalidateQueries({ queryKey: ["pgr-levantamento-pendente", pgrId] });
+  };
 
   return (
     <div className="space-y-3">
@@ -511,6 +574,7 @@ export default function InventarioTab({
                     size="sm" variant="outline" className="h-7 text-xs shrink-0"
                     onClick={() => {
                       setEditId(null);
+                      setTrazendoDe(l.id);
                       setPreencher({
                         grupo: l.grupo || "fisico",
                         perigo_descricao: l.perigo_descricao || "",
@@ -762,9 +826,9 @@ export default function InventarioTab({
 
       <InventarioItemDialog
         open={dialogOpen}
-        onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditGroupIds([]); }}
+        onOpenChange={(o) => { setDialogOpen(o); if (!o) { setEditGroupIds([]); setTrazendoDe(null); } }}
         pgrId={pgrId} empresaId={empresaId} itemId={editId} valoresIniciais={preencher}
-        groupItemIds={editGroupIds}
+        groupItemIds={editGroupIds} levantamentoId={trazendoDe}
         onSaved={onSaved}
       />
 

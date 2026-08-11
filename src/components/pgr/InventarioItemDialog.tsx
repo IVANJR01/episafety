@@ -35,6 +35,13 @@ interface Props {
    * Um deve virar o outro, não ser redigitado.
    */
   valoresIniciais?: Record<string, string> | null;
+  /**
+   * Id do perigo levantado que originou este item, quando veio do botão
+   * "Trazer". Salvo o item, a pendência do levantamento é fechada apontando
+   * para ele — é esse vínculo que a etapa 5 lê para mostrar "No inventário",
+   * e é ele que faz o aviso da etapa 6 parar de cobrar o mesmo perigo.
+   */
+  levantamentoId?: string | null;
   onSaved: () => void;
 }
 
@@ -56,7 +63,7 @@ const clean = (v: any) => {
  */
 const toSave = (v: any) => clean(v) || null;
 
-export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, groupItemIds = [], valoresIniciais = null, onSaved }: Props) {
+export default function InventarioItemDialog({ open, onOpenChange, pgrId, empresaId, itemId, groupItemIds = [], valoresIniciais = null, levantamentoId = null, onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState("estrutura");
   const [form, setForm] = useState<any>({
@@ -342,8 +349,16 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
           toast.success("Item atualizado");
         }
       } else {
-        const { error } = await (supabase.from as any)("pgr_inventario_itens").insert(payload);
+        const { data: criado, error } = await (supabase.from as any)("pgr_inventario_itens")
+          .insert(payload).select("id").maybeSingle();
         if (error) throw error;
+        // Fecha a pendência do levantamento. Falha aqui não desfaz o item
+        // salvo: o pior caso é o aviso continuar aparecendo, e reclamar de um
+        // item que já existe é melhor do que perder o item.
+        if (levantamentoId && criado?.id) {
+          await (supabase.from as any)("pgr_levantamento_preliminar")
+            .update({ inventario_item_id: criado.id }).eq("id", levantamentoId);
+        }
         toast.success("Item adicionado");
       }
       onSaved();
