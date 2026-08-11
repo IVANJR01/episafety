@@ -275,13 +275,12 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
     const g = ghes.find((x: any) => x.id === form.ghe_id);
     setForm((f: any) => ({
       ...f,
-      // Vínculo real primeiro; texto legado de ghe_ges só como último recurso,
-      // para os grupos antigos que nunca foram ligados a um setor.
-      setor: contextoDoGes.setorNome || f.setor || clean(g?.setor) || "",
-      descricao_ambiente: contextoDoGes.ambienteTexto || f.descricao_ambiente
-        || clean(g?.descricao_ambiente) || clean(g?.ambiente) || "",
-      processo: contextoDoGes.processoTexto || f.processo || clean(g?.processo) || "",
-      funcoes_text: contextoDoGes.funcoesTexto || f.funcoes_text || "",
+      // Vínculo real primeiro: se houver setor vinculado no Núcleo Mestre, ele manda (mesmo se for vazio).
+      // Texto legado de ghe_ges só como último recurso, para os grupos antigos.
+      setor: contextoDoGes.setorNome ? contextoDoGes.setorNome : (f.setor || clean(g?.setor) || ""),
+      descricao_ambiente: contextoDoGes.setorNome ? contextoDoGes.ambienteTexto : (f.descricao_ambiente || clean(g?.descricao_ambiente) || clean(g?.ambiente) || ""),
+      processo: contextoDoGes.setorNome ? contextoDoGes.processoTexto : (f.processo || clean(g?.processo) || ""),
+      funcoes_text: contextoDoGes.setorNome ? contextoDoGes.funcoesTexto : (f.funcoes_text || ""),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.ghe_id, ghes, itemId, contextoDoGes.setorNome, contextoDoGes.ambienteTexto,
