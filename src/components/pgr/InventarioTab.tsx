@@ -684,7 +684,11 @@ export default function InventarioTab({
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
                       <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">EPI</div>
                     </th>
-                    {detalhes && <th className="p-1.5 text-center border border-amber-400 w-[80px]">Atenuação /<br/>fator de proteção</th>}
+                    {detalhes && (
+                      <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
+                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Atenuação / fator de proteção</div>
+                      </th>
+                    )}
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
                       <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Prob.</div>
                     </th>
@@ -694,7 +698,9 @@ export default function InventarioTab({
                     <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[24px]">
                       <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Total</div>
                     </th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[80px]">Classificação<br/>do risco</th>
+                    <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
+                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Classificação do risco</div>
+                    </th>
                     {/* Ações não precisa de texto para economizar espaço */}
                     <th className="p-1 border border-amber-400 bg-amber-200"></th>
                   </tr>
@@ -791,11 +797,11 @@ export default function InventarioTab({
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
                           <ExpandableText text={val(i.lesoes)} />
                         </td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{intensidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{tecnica}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{intensidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{tecnica}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">
                           <ExpandableText text={controles} />
                         </td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{val(i.epi)}</td>}
