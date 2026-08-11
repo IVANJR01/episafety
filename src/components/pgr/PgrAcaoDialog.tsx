@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Upload, Trash2, FileText, History } from "lucide-react";
+import { Upload, Trash2, FileText, History, X, Pencil } from "lucide-react";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import { uploadToDrive } from "@/lib/googleDriveStorage";
 import {
@@ -43,6 +43,8 @@ export default function PgrAcaoDialog({
 }: Props) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [isCustomWhere, setIsCustomWhere] = useState(false);
+  const [isCustomGes, setIsCustomGes] = useState(false);
   const [form, setForm] = useState<any>({
     descricao: "", tipo: "engenharia", responsavel_id: null, responsavel_nome: "",
     prazo: "", prioridade: 3, custo_estimado: "", inventario_item_id: null,
@@ -336,7 +338,31 @@ export default function PgrAcaoDialog({
             </div>
             <div>
               <Label className="text-xs">Where — Onde</Label>
-              <Input list="lista-ges-sugestoes" value={form.where_local || ""} onChange={(e) => setForm({ ...form, where_local: e.target.value })} disabled={!editavel} />
+              {isCustomWhere ? (
+                <div className="flex items-center gap-2">
+                  <Input value={form.where_local || ""} onChange={(e) => setForm({ ...form, where_local: e.target.value })} disabled={!editavel} autoFocus placeholder="Digite o local livremente..." />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setIsCustomWhere(false)} disabled={!editavel}><X className="h-4 w-4 text-slate-500" /></Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Select value={form.where_local ? (listaSetoresGes.includes(form.where_local) ? form.where_local : "outro") : ""} 
+                    onValueChange={(val) => {
+                      if (val === "outro") { setIsCustomWhere(true); }
+                      else setForm({ ...form, where_local: val });
+                    }}
+                    disabled={!editavel}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o setor/ambiente..." /></SelectTrigger>
+                    <SelectContent>
+                      {listaSetoresGes.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                      <SelectItem value="outro">— Outro local (texto livre) —</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {form.where_local && !listaSetoresGes.includes(form.where_local) && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setIsCustomWhere(true)} disabled={!editavel} title="Editar texto livre"><Pencil className="h-4 w-4 text-slate-500" /></Button>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-xs">How — Como será feito</Label>
@@ -352,9 +378,31 @@ export default function PgrAcaoDialog({
               </div>
               <div>
                 <Label className="text-xs">Where — Setor / GES</Label>
-                <Input list="lista-ges-sugestoes" value={form.responsavel_setor || ""}
-                  onChange={(e) => setForm({ ...form, responsavel_setor: e.target.value })}
-                  disabled={!editavel} />
+                {isCustomGes ? (
+                  <div className="flex items-center gap-2">
+                    <Input value={form.responsavel_setor || ""} onChange={(e) => setForm({ ...form, responsavel_setor: e.target.value })} disabled={!editavel} autoFocus placeholder="Digite o setor..." />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setIsCustomGes(false)} disabled={!editavel}><X className="h-4 w-4 text-slate-500" /></Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Select value={form.responsavel_setor ? (listaSetoresGes.includes(form.responsavel_setor) ? form.responsavel_setor : "outro") : ""} 
+                      onValueChange={(val) => {
+                        if (val === "outro") { setIsCustomGes(true); }
+                        else setForm({ ...form, responsavel_setor: val });
+                      }}
+                      disabled={!editavel}
+                    >
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o Setor/GES..." /></SelectTrigger>
+                      <SelectContent>
+                        {listaSetoresGes.map((i: string) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                        <SelectItem value="outro">— Outro setor (texto livre) —</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {form.responsavel_setor && !listaSetoresGes.includes(form.responsavel_setor) && (
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setIsCustomGes(true)} disabled={!editavel} title="Editar texto livre"><Pencil className="h-4 w-4 text-slate-500" /></Button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -399,10 +447,6 @@ export default function PgrAcaoDialog({
                 })}
               </div>
             </div>
-
-            <datalist id="lista-ges-sugestoes">
-              {listaSetoresGes.map((item) => <option key={item} value={item} />)}
-            </datalist>
           </div>
   );
 
