@@ -463,7 +463,7 @@ function Assistente() {
       {/* O teto de 1600px sobrava tela em monitor grande justo onde a planilha
           do inventario tem 2100px de largura e cada pixel economiza rolagem.
           Padding e respiro tambem cederam um pouco. */}
-      <div className="flex gap-5 px-3 sm:px-4 py-4 max-w-[1800px] mx-auto">
+      <div className="flex gap-5 px-3 sm:px-4 py-4 w-full mx-auto">
         <aside className="hidden lg:block w-64 shrink-0">
           <div className="sticky top-24">
             <ListaEtapas />
