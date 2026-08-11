@@ -47,12 +47,23 @@ interface Props {
 
 const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "psicossocial", "acidente", "outro"];
 
-/** Normaliza leitura: sentinelas legados ("N.A", "N/A") viram vazio. */
 const clean = (v: any) => {
   const s = (v ?? "").toString().trim();
   if (!s) return "";
   const up = s.toUpperCase();
   return up === "N.A" || up === "N.A." || up === "N/A" || up === "NA" ? "" : s;
+};
+
+/** Faz fallback de registros antigos de texto-livre para as opções engessadas do novo Select. */
+const parseTempoExposicao = (v: any) => {
+  const s = clean(v).toLowerCase();
+  if (!s) return "";
+  if (s.includes("contínua") || s.includes("continua")) return "Contínuo";
+  if (s.includes("habitual") || s.includes("permanente")) return "Habitual";
+  if (s.includes("intermitente")) return "Intermitente";
+  if (s.includes("ocasional") || s.includes("eventual")) return "Ocasional";
+  if (s.includes("raro") || s.includes("esporadico") || s.includes("esporádico")) return "Raro";
+  return ""; 
 };
 
 /**
@@ -214,7 +225,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
             lesoes: clean(data.lesoes),
             limite_tolerancia: clean(data.limite_tolerancia),
             intensidade: clean(data.intensidade) || (data.medicao_valor != null ? `${data.medicao_valor}${data.medicao_unidade ? " " + data.medicao_unidade : ""}` : ""),
-            tempo_exposicao: clean(data.tempo_exposicao) || clean(data.tipo_exposicao),
+            tempo_exposicao: parseTempoExposicao(data.tempo_exposicao || data.tipo_exposicao),
             tecnica_utilizada: clean(data.tecnica_utilizada),
             controles_text: Array.isArray(data.controles_existentes) ? data.controles_existentes.join("\n") : "",
             epi: clean(data.epi),
