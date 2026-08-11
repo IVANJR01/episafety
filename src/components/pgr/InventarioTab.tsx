@@ -655,15 +655,15 @@ export default function InventarioTab({
                     <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>
                       <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap">GES</div>
                     </th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[120px]">Função</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[130px]">Processo</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[150px]">Função</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[300px]">Processo</th>
                     {/* Estes dois rótulos estavam trocados entre si: a coluna
                         "Agente" imprimia o grupo ("Ergonômico") e a "Tipo de
                         Agente" imprimia o perigo ("Pressão por metas"). */}
                     <th className="p-1.5 text-center border border-amber-400 w-[70px]">Tipo de<br/>agente</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[110px]">Agente / perigo</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[110px]">Fonte de<br/>exposição</th>
-                    <th className="p-1.5 text-center border border-amber-400 w-[110px]">Possíveis lesões ou<br/>agravos à saúde</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[150px]">Agente / perigo</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[150px]">Fonte de<br/>exposição</th>
+                    <th className="p-1.5 text-center border border-amber-400 w-[150px]">Possíveis lesões ou<br/>agravos à saúde</th>
                     {detalhes && (
                       <th className="px-1 py-1.5 align-bottom border border-amber-400 w-[32px]">
                         <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap text-amber-950 font-bold">Limite de exposição</div>
@@ -747,21 +747,21 @@ export default function InventarioTab({
                     const groupSetores: string[] = cobertos.map((x: any) => x.setor || NA);
 
                     return (
-                      <tr key={i.id} className={`hover:bg-muted/40 align-top ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
+                      <tr key={i.id} className={`hover:bg-muted/40 align-middle ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
                         {/* Ambiente, Setor e Processo pertencem ao setor: saem uma
                             vez por setor, por mais GES que ele tenha. Antes o GES
                             entrava na chave e o parágrafo do ambiente era
                             reimpresso inteiro em cada grupo. */}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className={`p-1.5 pt-2 border border-amber-300 align-top font-medium leading-snug sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] break-words ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoSetor} className={`p-1.5 pt-2 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] break-words ${AMBAR_CHAPADO}`}>
                             <ExpandableText text={ambiente || NA} />
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-1.5 pt-2 border align-top sticky left-[200px] z-10 bg-white w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
+                          <td rowSpan={linhasDoSetor} className="p-1.5 pt-2 border align-middle sticky left-[200px] z-10 bg-white w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
                         )}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} className={`p-1.5 pt-2 border border-amber-300 align-top text-center font-bold text-sm sticky left-[288px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoGes} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words ${AMBAR_CHAPADO}`}>
                             {/* Sem grupo a linha sai N.A no PGR emitido. Marcar
                                 em âmbar é o que faz a falha aparecer antes da
                                 emissão, e não depois. */}
@@ -772,37 +772,37 @@ export default function InventarioTab({
                         )}
                         {/* As funções vêm do GES — uma vez por grupo. */}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} className="p-1.5 pt-2 border align-top max-w-[200px]">
+                          <td rowSpan={linhasDoGes} className="p-1.5 pt-2 border align-middle">
                             <ExpandableText text={funcoes} />
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-1.5 pt-2 border align-top max-w-[200px]">
+                          <td rowSpan={linhasDoSetor} className="p-1.5 pt-2 border align-middle">
                             <ExpandableText text={val(i.processo)} />
                           </td>
                         )}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top max-w-[200px] bg-amber-50/30">
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
                           <ExpandableText text={val(i.perigo_descricao)} />
                         </td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top max-w-[200px] bg-amber-50/30">
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
                           <ExpandableText text={val(i.fonte_geradora)} />
                         </td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top max-w-[200px] bg-amber-50/30">
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
                           <ExpandableText text={val(i.lesoes)} />
                         </td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top bg-amber-50/30">{intensidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top bg-amber-50/30">{tecnica}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-top max-w-[200px] bg-amber-50/30">
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{intensidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{tecnica}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
                           <ExpandableText text={controles} />
                         </td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top bg-amber-50/30">{val(i.epi)}</td>}
-                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top bg-amber-50/30">{atenuacao}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top bg-amber-50/30">{i.probabilidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top bg-amber-50/30">{i.severidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-top font-semibold bg-amber-50/30">{total}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{val(i.epi)}</td>}
+                        {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{atenuacao}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{i.probabilidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{i.severidade}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle font-semibold bg-amber-50/30">{total}</td>}
                         {isFirstOfRisk && (
                           <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30 text-center">
                             <Badge
