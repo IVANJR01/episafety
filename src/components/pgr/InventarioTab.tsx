@@ -798,7 +798,7 @@ export default function InventarioTab({
                         </td>}
                         {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{val(i.limite_tolerancia)}</td>}
                         {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{intensidade}</td>}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{val(i.tipo_exposicao)}</td>}
+                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{val(i.tempo_exposicao ?? i.tipo_exposicao)}</td>}
                         {detalhes && isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{tecnica}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">
                           <ExpandableText text={controles} />
