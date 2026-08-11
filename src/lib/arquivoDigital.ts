@@ -257,6 +257,38 @@ export async function urlTemporaria(caminho: string, segundos = 300): Promise<st
 }
 
 /**
+ * Abre um documento numa aba nova, sobrevivendo ao bloqueio de pop-up.
+ *
+ * O celular não abria nada ao tocar em "Ver". A causa não é permissão nem
+ * URL inválida: é o navegador. Ele só deixa abrir aba nova enquanto o
+ * toque do usuário ainda está sendo processado. Buscar a URL assinada leva
+ * uma ida ao servidor, e quando ela volta o toque já acabou — a chamada
+ * seguinte vira pop-up não solicitado e é engolida em silêncio. No
+ * computador quase nunca aparece; no celular, praticamente sempre.
+ *
+ * A saída é abrir a aba JÁ no toque, ainda em branco, e só depois apontá-la
+ * para o endereço. Se mesmo assim vier bloqueada, navega na própria aba:
+ * melhor sair da tela e voltar do que o botão não fazer nada.
+ *
+ * Uso: `const ir = prepararAbertura(); const url = await ...; ir(url);`
+ * Chamar `prepararAbertura()` FORA do toque não adianta — tem que ser a
+ * primeira coisa que o clique faz.
+ */
+export function prepararAbertura(): (url: string | null) => void {
+  const janela = typeof window !== "undefined" ? window.open("", "_blank") : null;
+  return (url: string | null) => {
+    if (!url) { try { janela?.close(); } catch { /* já fechada */ } return; }
+    if (janela && !janela.closed) {
+      try { janela.opener = null; } catch { /* navegador não permite */ }
+      janela.location.href = url;
+      return;
+    }
+    // Bloqueada apesar de tudo: abre na própria aba.
+    window.location.href = url;
+  };
+}
+
+/**
  * Registra que alguém abriu um documento — a outra metade da auditoria
  * (a versão já registra quem enviou; isto registra quem depois olhou).
  *

@@ -23,7 +23,7 @@ import SituacaoBadge from "@/components/arquivo-digital/SituacaoBadge";
 import ScannerDocumento from "@/components/ScannerDocumento";
 import {
   garantirDocumento, publicarVersao, urlTemporaria, registrarAcesso, registrarEvento,
-  historicoVersoes, arquivarDocumento, definirEmRenovacao,
+  historicoVersoes, arquivarDocumento, definirEmRenovacao, prepararAbertura,
   PESO_SITUACAO, type SituacaoDocumento,
 } from "@/lib/arquivoDigital";
 
@@ -212,9 +212,11 @@ export default function DossieColaborador() {
 
   const abrir = async (l: LinhaDossie) => {
     if (!l.doc?.caminho_arquivo) return;
+    // A aba tem que nascer aqui, dentro do toque — ver prepararAbertura.
+    const ir = prepararAbertura();
     const url = await urlTemporaria(l.doc.caminho_arquivo);
-    if (!url) { toast({ title: "Não foi possível abrir o documento", variant: "destructive" }); return; }
-    window.open(url, "_blank", "noopener");
+    if (!url) { ir(null); toast({ title: "Não foi possível abrir o documento", variant: "destructive" }); return; }
+    ir(url);
     void registrarAcesso({
       documentoId: l.doc.id, versaoId: l.doc.versao_id, empresaId: empresaDoc,
       colaboradorId: funcionario?.id, userId: user?.id, userEmail: user?.email,
@@ -660,9 +662,10 @@ export default function DossieColaborador() {
                 </div>
                 <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
                   onClick={async () => {
+                    const ir = prepararAbertura();
                     const url = await urlTemporaria(v.caminho_arquivo);
-                    if (!url) { toast({ title: "Não foi possível abrir", variant: "destructive" }); return; }
-                    window.open(url, "_blank", "noopener");
+                    if (!url) { ir(null); toast({ title: "Não foi possível abrir", variant: "destructive" }); return; }
+                    ir(url);
                     void registrarAcesso({
                       documentoId: v.documento_id, versaoId: v.id, empresaId: empresaDoc,
                       colaboradorId: funcionario?.id, userId: user?.id, userEmail: user?.email,
