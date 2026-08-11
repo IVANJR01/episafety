@@ -424,9 +424,10 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                     {ghes.map((g: any) => {
                       const semSetor = !setorDoGes(g.id);
                       const semFuncoes = funcoesDoGes(g.id).length === 0;
+                      const nomeSetor = setorDoGes(g.id)?.nome;
                       return (
                         <SelectItem key={g.id} value={g.id}>
-                          {g.codigo} — {g.nome}
+                          {nomeSetor ? `${nomeSetor} — ${g.nome}` : `${g.codigo} — ${g.nome}`}
                           {(semSetor || semFuncoes) && " (incompleto)"}
                         </SelectItem>
                       );
