@@ -51,7 +51,10 @@ interface Etapa {
 const ETAPAS: Etapa[] = [
   { id: "escopo", n: 1, titulo: "Escopo e identificação", ajuda: "Identificação da unidade, escopo, datas e prazo de revisão." },
   { id: "estrutura", n: 2, titulo: "Estrutura ocupacional", ajuda: "Estabelecimento, ambientes, setores e processos." },
-  { id: "ges_funcoes", n: 3, titulo: "GES e funções", ajuda: "Grupos de Exposição Similar e funções vinculadas." },
+  // O id da etapa continua "ges_funcoes": ele é gravado em etapa_atual e vai
+  // na URL (?etapa=), então renomear quebraria PGR salvo e link guardado. O
+  // rótulo é outra coisa — a tela só cadastra função, não mexe em GES.
+  { id: "ges_funcoes", n: 3, titulo: "Funções", ajuda: "Funções e cargos, com o setor de cada um." },
   { id: "atividades_perigos", n: 4, titulo: "Atividades e perigos", ajuda: "Atividades realizadas, perigos e grupos expostos." },
   { id: "avaliacao", n: 5, titulo: "Avaliação de riscos e controles", ajuda: "Matriz de risco, probabilidade, severidade e controles." },
   { id: "inventario", n: 6, titulo: "Inventário de riscos", ajuda: "Consolidação dos perigos, avaliações e classificações." },
@@ -283,10 +286,10 @@ function Assistente() {
       case "ges_funcoes":
         return (
           <div className="space-y-6">
+            {/* Saiu a linha "Os GES são configurados na Documentação
+                central": esta etapa não cria, não edita e não valida GES —
+                citá-los aqui só levantava um assunto que não é desta tela. */}
             <EstruturaOcupacionalTab key="funcoes" only="funcoes" />
-            <p className="text-sm text-muted-foreground">
-              Os GES são configurados e validados na aba de Documentação central.
-            </p>
           </div>
         );
       case "atividades_perigos":

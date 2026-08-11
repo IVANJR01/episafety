@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { unirPorId, unirPorIdENome } from "./unirCadastros";
 
 /**
- * O caso real: a tela "GES e funções" mostrava "Ajudante de Confecção" três
+ * O caso real: a etapa 3 do PGR (hoje "Funções") mostrava "Ajudante de Confecção" três
  * vezes — PCP, COMERCIAL e uma terceira com o setor em branco, que é a mesma
  * função vinda da tabela legada.
  */
