@@ -90,7 +90,7 @@ export default function InventarioTab({
     queryKey: ["pgr-inventario", pgrId, "v2-ambiente"],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("pgr_inventario_itens")
-        .select("*, ghe:ghe_id(id, codigo, nome, descricao_ambiente, ambiente, setor, processo)")
+        .select("*, ghe:ghe_id(id, codigo, nome, descricao_ambiente, ambiente, setor, processo, funcoes:ghe_funcoes(nome_funcao))")
         .eq("pgr_id", pgrId).order("created_at", { ascending: false });
       return data || [];
     },
@@ -739,8 +739,10 @@ export default function InventarioTab({
                     const total = i.nivel_risco ?? i.severidade * i.probabilidade;
                     const controles = Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
                       ? i.controles_existentes.join("; ") : NA;
-                    const funcoes = Array.isArray(i.funcoes_snapshot) && i.funcoes_snapshot.length > 0
-                      ? i.funcoes_snapshot.join(", ") : NA;
+                    const vivas = i.ghe?.funcoes?.map((f: any) => f.nome_funcao);
+                    const funcoes = Array.isArray(vivas) && vivas.length > 0
+                      ? vivas.join(", ")
+                      : (Array.isArray(i.funcoes_snapshot) && i.funcoes_snapshot.length > 0 ? i.funcoes_snapshot.join(", ") : NA);
                     const intensidade = i.medicao_valor != null
                       ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
                     const tecnica = val(i.metodologia_avaliacao ?? i.tecnica_utilizada ?? i.tipo_avaliacao);
