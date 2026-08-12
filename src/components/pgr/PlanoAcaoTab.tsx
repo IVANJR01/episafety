@@ -63,7 +63,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
   });
 
   const sugestoes = useMemo(() => {
-    const idsComAcao = new Set(acoes.map((a: any) => a.inventario_item_id).filter(Boolean));
+    const idsComAcao = new Set(acoes.filter((a: any) => a.status !== "cancelada").map((a: any) => a.inventario_item_id).filter(Boolean));
     return inventario
       .filter((i: any) => {
         const cls = (i.classificacao as PgrClasse | null)
@@ -88,7 +88,8 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
   }, [acoes, fStatus, fResp, fPrio, soAtrasadas]);
 
   const stats = useMemo(() => {
-    const s: any = { total: acoes.length, atrasadas: 0 };
+    const ativas = acoes.filter((a: any) => a.status !== "cancelada");
+    const s: any = { total: ativas.length, atrasadas: 0 };
     STATUS_COLS.forEach(c => s[c] = 0);
     acoes.forEach((a: any) => { s[a.status]++; if (isAtrasada(a)) s.atrasadas++; });
     return s;
