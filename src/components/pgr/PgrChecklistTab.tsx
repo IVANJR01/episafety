@@ -193,8 +193,8 @@ export default function PgrChecklistTab({ pgr }: Props) {
         || acaoRiscos.some((r) => r.acao_id === a.id && r.inventario_item_id === i.id))),
   );
 
-  const semGrupoExposto = inventario.filter((i) => !i.trabalhadores_expostos);
-  const semFonte = inventario.filter((i) => !(i.fonte_geradora || "").trim());
+  const semGrupoExposto = inventario.filter((i) => !i.trabalhadores_expostos && !i.ghe_id && !i.setor_id);
+  const semFonte = inventario.filter((i) => !(i.fonte_geradora || "").trim() && !(i.circunstancia || "").trim() && !(i.perigo_descricao || "").trim());
   const semJustificativa = inventario.filter(
     (i) => !(i.justificativa_severidade || "").trim() || !(i.justificativa_probabilidade || "").trim(),
   );
