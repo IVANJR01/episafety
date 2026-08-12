@@ -54,12 +54,8 @@ const portalRhItems: NavItem[] = [
 ];
 
 // Gestão Documental SST
-//
-// Ordens de Serviço não entra aqui: a Central Documentação SST já traz o
-// cartão que abre a mesma tela (CentralDocumentacaoTab, chave "os"), e a OS
-// é um documento entre os outros do rol legal. Ter os dois caminhos duplica
-// o menu sem acrescentar nada. A rota continua a mesma.
 const gestaoDocItems: NavItem[] = [
+  { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" },
   { path: "/arquivo-digital", label: "Dossiê do Colaborador", icon: FolderOpen, moduleKey: "arquivo_digital" },
 ];
 
@@ -67,10 +63,6 @@ const treinamentosItems: NavItem[] = [
   { path: "/dds", label: "Listas de Presença", icon: MessageSquare, moduleKey: "dds" },
   { path: "/video-treinamentos", label: "Vídeos / Conteúdos", icon: Video, moduleKey: "video_treinamentos" },
 ];
-
-// Documentação — Módulo Mestre Unificado (PGR, PCMSO, LTCAT, Laudos, OS, etc.)
-const documentacaoItem: NavItem = { path: "/documentacao-sst", label: "Documentação SST", icon: BookOpen, moduleKey: "pgr" };
-
 // Comercial — Orçamentos, Clientes, Catálogo
 const comercialItems: NavItem[] = [
   { path: "/comercial", label: "Dashboard Comercial", icon: LayoutDashboard, moduleKey: "comercial" },
@@ -197,14 +189,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleEsocialItems: NavItem[] = [];
   void esocialItems;
   const visibleInspecoesItems = inspecoesItems.filter((i) => canAccess(i.moduleKey));
-  const canAccessDocumentacao = canAccess(documentacaoItem.moduleKey);
   const visibleComercialItems = comercialItems.filter((i) => canAccess(i.moduleKey));
 
   const isEpiActive = visibleEpiItems.some((i) => location.pathname === i.path);
   const isCadastroActive = visibleCadastroItems.some((i) => location.pathname === i.path);
   const isAsoActive = visibleAsoItems.some((i) => location.pathname.startsWith(i.path));
   const isPortalRhActive = visiblePortalRhItems.some((i) => location.pathname.startsWith(i.path));
-  const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path) || location.pathname.startsWith("/arquivo-digital");
+  const isGestaoDocActive = visibleGestaoDocItems.some((i) => location.pathname === i.path) || location.pathname.startsWith("/arquivo-digital") || location.pathname.startsWith("/documentacao-sst") || location.pathname.startsWith("/programas") || location.pathname.startsWith("/pgr") || location.pathname.startsWith("/ltcat") || location.pathname.startsWith("/aso") || location.pathname.startsWith("/ppp") || location.pathname.startsWith("/central-ppp");
   const isTreinamentosActive = visibleTreinamentosItems.some((i) => location.pathname === i.path);
   const isEsocialActive = visibleEsocialItems.some((i) => location.pathname.startsWith(i.path));
   const isInspecoesActive = visibleInspecoesItems.some((i) => location.pathname === i.path);
@@ -374,6 +365,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
           })}
 
+          {visibleGestaoDocItems.length > 0 && (
+            <>
+              <button
+                onClick={() => setGestaoDocOpen(!gestaoDocOpen)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+                  isGestaoDocActive
+                    ? "bg-sidebar-accent text-primary"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                }`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1 text-left">Gestão Documental</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
+              </button>
+              {gestaoDocOpen && (
+                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
+                  {visibleGestaoDocItems.map((item) => {
+                    const active = location.pathname === item.path || (item.path === "/arquivo-digital" && location.pathname.startsWith("/arquivo-digital")) || (item.path === "/documentacao-sst" && isDocumentacaoActive);
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
           {visiblePortalRhItems.length > 0 && (
             <>
               <button
@@ -411,20 +441,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {canAccessDocumentacao && (
-            <Link
-              to={documentacaoItem.path}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isDocumentacaoActive
-                  ? "bg-sidebar-accent text-primary"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              }`}
-            >
-              <documentacaoItem.icon className="w-4 h-4 shrink-0" />
-              <span className="truncate flex-1 text-left">{documentacaoItem.label}</span>
-            </Link>
-          )}
+
 
           {visibleAsoItems.length > 0 && (
             <>
@@ -463,44 +480,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
 
-          {visibleGestaoDocItems.length > 0 && (
-            <>
-              <button
-                onClick={() => setGestaoDocOpen(!gestaoDocOpen)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
-                  isGestaoDocActive
-                    ? "bg-sidebar-accent text-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate flex-1 text-left">Gestão Documental</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${gestaoDocOpen ? "rotate-180" : ""}`} />
-              </button>
-              {gestaoDocOpen && (
-                <div className="ml-4 space-y-0.5 border-l border-sidebar-border pl-3">
-                  {visibleGestaoDocItems.map((item) => {
-                    const active = location.pathname === item.path || (item.path === "/arquivo-digital" && location.pathname.startsWith("/arquivo-digital"));
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          active
-                            ? "bg-sidebar-accent text-primary"
-                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
+
 
           {visibleEpiItems.length > 0 && (
             <>
