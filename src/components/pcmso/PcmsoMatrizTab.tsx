@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Activity, AlertTriangle, Loader2 } from "lucide-react";
-import { CLASSE_COLOR } from "@/lib/pgrMatriz";
+import { CLASSE_TEXT } from "@/lib/pgrMatriz";
 
 interface PcmsoMatrizTabProps {
   pcmso: any;
@@ -72,7 +72,7 @@ export default function PcmsoMatrizTab({ pcmso }: PcmsoMatrizTabProps) {
                         <TableCell className="text-muted-foreground">{r.fonte_geradora || "-"}</TableCell>
                         <TableCell>
                           {r.classificacao && (
-                            <Badge variant="outline" className={CLASSE_COLOR[r.classificacao] || ""}>
+                            <Badge variant="outline" className={CLASSE_TEXT[r.classificacao as keyof typeof CLASSE_TEXT] || ""}>
                               {r.classificacao.toUpperCase()}
                             </Badge>
                           )}
