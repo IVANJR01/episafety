@@ -81,16 +81,16 @@ export function calcularPendencias(e: EntradaPendencias): Pendencia[] {
         `Risco ${CLASSE_LABEL[classe as PgrClasse] || classe} sem plano de ação`,
         nome, "bloqueio", "acoes");
     }
-    if (!rotulo(i.fonte_geradora, "") && !rotulo(i.circunstancia, "")) {
-      add(`sem-fonte-${i.id}`, "Risco", "Perigo sem fonte geradora ou circunstância",
+    if (!rotulo(i.fonte_geradora, "") && !rotulo(i.circunstancia, "") && !rotulo(i.perigo_descricao, "")) {
+      add(`sem-fonte-${i.id}`, "Risco", "Risco sem fonte de exposição descrita",
         nome, "alerta", "perigos");
     }
     if (!rotulo(i.lesoes, "")) {
       add(`sem-lesao-${i.id}`, "Risco", "Risco sem possível lesão ou agravo descrito",
         nome, "alerta", "perigos");
     }
-    if (!i.trabalhadores_expostos) {
-      add(`sem-expostos-${i.id}`, "Risco", "Risco sem identificação dos expostos",
+    if (!i.trabalhadores_expostos && !i.ghe_id && !i.setor_id) {
+      add(`sem-expostos-${i.id}`, "Risco", "Risco sem identificação dos expostos (vincule a um setor ou GES)",
         nome, "alerta", "perigos");
     }
     // Risco residual é do ITEM (severidade_residual/probabilidade_residual), não
@@ -138,13 +138,8 @@ export function calcularPendencias(e: EntradaPendencias): Pendencia[] {
   });
 
   // ── LEVANTAMENTO ──────────────────────────────────────────────────────────
-  (e.levantamento || []).forEach((l) => {
-    if (!l.inventario_item_id && l.tratamento === "avaliacao_aprofundada") {
-      add(`lev-pendente-${l.id}`, "Levantamento",
-        "Perigo levantado aguardando avaliação de risco",
-        rotulo(l.perigo_descricao), "alerta", "inventario");
-    }
-  });
+  // A verificação de "Perigo levantado aguardando avaliação" foi desativada, pois a tela 
+  // e o fluxo de levantamento em campo não são mais usados pela configuração ativa.
 
   // ── DOCUMENTO ─────────────────────────────────────────────────────────────
   if ((e.responsaveis || []).length === 0 && !(e.respTecNome || "").trim()) {
