@@ -119,39 +119,57 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
           <Loader2 className="h-4 w-4 animate-spin mr-2" /> Carregando documentos…
         </CardContent></Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {DOCS.map((d) => {
             const Icone = d.icone;
             return (
-              <Card key={d.key} className="hover:border-primary/40 transition">
-                <CardContent className="p-4 flex items-center gap-3 sm:gap-4">
-                  <Icone className={`h-6 w-6 shrink-0 ${d.cor}`} />
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium">{d.nome}</span>
-                      <Badge variant="outline" className="text-[11px] font-mono">{d.norma}</Badge>
+              <Card 
+                key={d.key} 
+                className="group hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card overflow-hidden flex flex-col cursor-pointer"
+                onClick={d.abrir}
+              >
+                <CardContent className="p-0 flex flex-col h-full">
+                  
+                  {/* Cabeçalho do Cartão */}
+                  <div className="p-5 pb-4 flex justify-between items-start">
+                    <div className="p-3 rounded-2xl bg-muted/60 group-hover:bg-primary/5 transition-colors">
+                      <Icone className={`h-6 w-6 ${d.cor}`} />
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{d.descricao}</p>
+                    <Badge variant="secondary" className="text-[10px] font-mono tracking-widest font-semibold uppercase bg-secondary/40 text-secondary-foreground/70">
+                      {d.norma}
+                    </Badge>
                   </div>
 
-                  <div className="hidden sm:block text-right shrink-0 min-w-[104px]">
-                    {d.total == null ? (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    ) : (
-                      <>
-                        <div className="text-lg font-semibold leading-none">{d.total}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {d.rotulo || "documento(s)"}
-                          {d.vigentes ? ` · ${d.vigentes} vigente(s)` : ""}
-                        </div>
-                      </>
-                    )}
+                  {/* Corpo / Informações */}
+                  <div className="px-5 pb-6 flex-1">
+                    <h3 className="text-lg font-bold tracking-tight text-foreground/90 group-hover:text-primary transition-colors">
+                      {d.nome}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed line-clamp-2">
+                      {d.descricao}
+                    </p>
                   </div>
 
-                  <Button variant="ghost" size="sm" onClick={d.abrir} className="shrink-0 h-10">
-                    Abrir <ArrowRight className="h-4 w-4 ml-1" />
-                  </Button>
+                  {/* Rodapé com Contador e Ação */}
+                  <div className="px-5 py-4 bg-muted/20 border-t border-border/40 flex items-center justify-between mt-auto">
+                    <div className="flex flex-col">
+                      <span className="text-2xl font-black leading-none text-foreground/80">
+                        {d.total == null ? "0" : d.total}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mt-1.5">
+                        {d.rotulo || "documento(s)"} {d.vigentes ? `(${d.vigentes} em vigor)` : ""}
+                      </span>
+                    </div>
+                    
+                    <Button 
+                      size="sm" 
+                      className="rounded-full px-4 bg-background shadow-sm hover:bg-primary hover:text-primary-foreground transition-all group-hover:scale-105" 
+                      variant="outline"
+                    >
+                      Acessar <ArrowRight className="h-4 w-4 ml-1.5 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </div>
+
                 </CardContent>
               </Card>
             );
