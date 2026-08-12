@@ -68,7 +68,7 @@ export default function PlanoAcaoTab({ pgrId, empresaId, pgrVersao, status, canE
       .filter((i: any) => {
         const cls = (i.classificacao as PgrClasse | null)
           ?? classificarRisco(i.severidade, i.probabilidade);
-        return necessitaAcao(cls) && !idsComAcao.has(i.id);
+        return (i.necessita_acao === true || necessitaAcao(cls)) && !idsComAcao.has(i.id);
       })
       .map((i: any) => ({
         ...i,
