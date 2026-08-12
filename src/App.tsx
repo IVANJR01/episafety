@@ -68,6 +68,9 @@ import PgrWizard from "@/pages/pgr/PgrWizard";
 import PgrEstruturaTecnica from "@/pages/pgr/PgrEstruturaTecnica";
 import PgrComparar from "@/pages/pgr/PgrComparar";
 import LevantamentoCampo from "@/pages/campo/LevantamentoCampo";
+import PgrElaboracao from "@/pages/pgr/PgrElaboracao";
+import PcmsoDashboard from "@/pages/pcmso/PcmsoDashboard";
+import VistoriaDashboard from "@/pages/vistoria/VistoriaDashboard";
 import PgrValidar from "@/pages/pgr/PgrValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
 import MatrizRiscoAdmin from "@/pages/cadastro/MatrizRiscoAdmin";
@@ -329,6 +332,10 @@ function ProtectedRoute() {
         <Route path="/cat/esocial/config" element={<EsocialConfig />} />
         <Route path="/pgr" element={<PgrModule />} />
         <Route path="/pgr/dashboard" element={<PgrDashboard />} />
+        <Route path="/pgr/elaborar/:id" element={<PgrElaboracao />} />
+        
+        {/* --- PCMSO Documentos --- */}
+        <Route path="/pcmso/dashboard" element={<PcmsoDashboard />} />
         <Route path="/pgr/matriz" element={<MatrizRiscoAdmin />} />
         <Route path="/pgr/novo" element={<PgrNovo />} />
         {/* Três modos de uso do mesmo PGR: assistente guiado (padrão),

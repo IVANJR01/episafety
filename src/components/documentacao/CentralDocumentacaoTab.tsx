@@ -64,9 +64,9 @@ export function CentralDocumentacaoTab(_props: Props = {}) {
     {
       key: "pcmso", nome: "PCMSO", norma: "NR-07",
       descricao: "Controle Médico de Saúde Ocupacional",
-      icone: Stethoscope, cor: "text-blue-600",
+      icone: Stethoscope, cor: "text-blue-600 dark:text-blue-400",
       total: c?.aso, rotulo: "ASO(s)",
-      abrir: () => navigate("/aso"),
+      abrir: () => navigate("/pcmso/dashboard"),
     },
     {
       key: "ltcat", nome: "LTCAT", norma: "Lei 8.213",
