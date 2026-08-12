@@ -12,12 +12,12 @@ import {
 } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
 
-// Vamos criar subcomponentes mockados por enquanto para as abas
-const PcmsoCapaTab = ({ pcmso }: any) => <div className="p-6 text-center text-muted-foreground border-2 border-dashed rounded-lg">Aba de Configuração, Médico Coordenador e Vinculação ao PGR Base.</div>;
-const PcmsoCronogramaTab = ({ pcmso }: any) => <div className="p-6 text-center text-muted-foreground border-2 border-dashed rounded-lg">Aba de Cronograma Anual de Ações de Saúde.</div>;
-const PcmsoMatrizTab = ({ pcmso }: any) => <div className="p-6 text-center text-muted-foreground border-2 border-dashed rounded-lg">Aba de Matriz de Saúde (Importada do PGR). De/Para de Riscos e Exames Clínicos.</div>;
-const PcmsoRelatorioTab = ({ pcmso }: any) => <div className="p-6 text-center text-muted-foreground border-2 border-dashed rounded-lg">Aba do Relatório Analítico (Estatísticas de ASOs do período anterior - NR-07).</div>;
-const PcmsoEmissaoTab = ({ pcmso }: any) => <div className="p-6 text-center text-muted-foreground border-2 border-dashed rounded-lg">Aba de Validação Final, Checklist e Geração do PDF Oficial.</div>;
+import PcmsoCapaTab from "@/components/pcmso/PcmsoCapaTab";
+import PcmsoCronogramaTab from "@/components/pcmso/PcmsoCronogramaTab";
+import PcmsoMatrizTab from "@/components/pcmso/PcmsoMatrizTab";
+import PcmsoRelatorioTab from "@/components/pcmso/PcmsoRelatorioTab";
+import PcmsoEmissaoTab from "@/components/pcmso/PcmsoEmissaoTab";
+
 
 type EtapaId = "configuracao" | "cronograma" | "matriz" | "relatorio" | "emissao";
 
