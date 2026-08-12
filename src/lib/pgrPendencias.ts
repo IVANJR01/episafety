@@ -95,10 +95,10 @@ export function calcularPendencias(e: EntradaPendencias): Pendencia[] {
     }
     // Risco residual é do ITEM (severidade_residual/probabilidade_residual), não
     // da ação: é o que sobra depois de todas as medidas, não de uma delas.
-    if (necessitaAcao(classe) && i.severidade_residual == null) {
-      add(`sem-residual-${i.id}`, "Risco", "Risco relevante sem avaliação do risco residual",
-        nome, "alerta", "inventario");
-    }
+    // if (necessitaAcao(classe) && i.severidade_residual == null) {
+    //   add(`sem-residual-${i.id}`, "Risco", "Risco relevante sem avaliação do risco residual",
+    //     nome, "alerta", "inventario");
+    // }
   });
 
   // ── AÇÕES ─────────────────────────────────────────────────────────────────
