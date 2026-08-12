@@ -5,10 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
-  ArrowLeft, FileText, Loader2, Menu, Save, Activity, CalendarDays, CheckCircle, FileBarChart
+  ArrowLeft, ArrowRight, FileText, Loader2, Menu, Activity, CalendarDays, CheckCircle, FileBarChart
 } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
 
