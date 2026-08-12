@@ -70,6 +70,7 @@ import PgrComparar from "@/pages/pgr/PgrComparar";
 import LevantamentoCampo from "@/pages/campo/LevantamentoCampo";
 import PgrDocumento from "@/pages/pgr/PgrDocumento";
 import PcmsoDashboard from "@/pages/pcmso/PcmsoDashboard";
+import PcmsoElaboracao from "@/pages/pcmso/PcmsoElaboracao";
 import VistoriaDashboard from "@/pages/vistoria/VistoriaDashboard";
 import PgrValidar from "@/pages/pgr/PgrValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
@@ -336,6 +337,7 @@ function ProtectedRoute() {
         
         {/* --- PCMSO Documentos --- */}
         <Route path="/pcmso/dashboard" element={<PcmsoDashboard />} />
+        <Route path="/pcmso/elaborar/:id" element={<PcmsoElaboracao />} />
         <Route path="/pgr/matriz" element={<MatrizRiscoAdmin />} />
         <Route path="/pgr/novo" element={<PgrNovo />} />
         {/* Três modos de uso do mesmo PGR: assistente guiado (padrão),
