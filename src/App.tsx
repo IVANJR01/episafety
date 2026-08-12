@@ -358,7 +358,7 @@ function ProtectedRoute() {
         <Route path="/programas" element={<ProgramasHome />} />
         <Route path="/programas/gerar" element={<GerarDocumentos />} />
         <Route path="/programas/pgr" element={<Navigate to="/pgr" replace />} />
-        <Route path="/programas/pcmso" element={<Navigate to="/aso" replace />} />
+        <Route path="/programas/pcmso" element={<Navigate to="/pcmso/dashboard" replace />} />
         <Route path="/programas/ltcat" element={<Navigate to="/ltcat" replace />} />
         <Route path="/programas/ppp" element={<Navigate to="/central-ppp" replace />} />
         <Route path="/programas/ordem-servico" element={<OrdemServico />} />

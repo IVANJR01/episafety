@@ -34,9 +34,9 @@ const programas: ProgramaCard[] = [
   {
     key: "pcmso",
     nome: "PCMSO",
-    descricao: "Programa de Controle Médico de Saúde Ocupacional e controle de exames.",
+    descricao: "Programa de Controle Médico de Saúde Ocupacional.",
     icon: Stethoscope,
-    to: "/aso",
+    to: "/pcmso/dashboard",
     status: "ativo",
   },
   {
