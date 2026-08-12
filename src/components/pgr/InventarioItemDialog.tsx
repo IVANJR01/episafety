@@ -298,7 +298,13 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
       contextoDoGes.processoTexto, contextoDoGes.funcoesTexto]);
 
   const total = Number(form.severidade) * Number(form.probabilidade);
-  const classe = classificarRisco(Number(form.severidade), Number(form.probabilidade));
+  const classe = classificarRisco(form.severidade, form.probabilidade);
+  const totalResidual = form.severidade_residual && form.probabilidade_residual 
+    ? Number(form.severidade_residual) * Number(form.probabilidade_residual) 
+    : null;
+  const classeResidual = form.severidade_residual && form.probabilidade_residual 
+    ? classificarRisco(form.severidade_residual, form.probabilidade_residual)
+    : null;
 
   const salvar = async () => {
     if (!form.perigo_descricao || form.perigo_descricao.trim().length < 2) {
@@ -631,10 +637,68 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                 )}
               </div>
             </div>
+            
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-3">Avaliação do Risco Residual (opcional)</h4>
+              <p className="text-[11px] text-muted-foreground mb-4">
+                O risco residual é aquele que permanece após a implantação de todas as medidas de controle e planos de ação.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-[auto,1fr] gap-4">
+                <div>
+                  <Label className="text-xs mb-1 block">Matriz Residual — clique para selecionar</Label>
+                  <MatrizRisco
+                    severidade={form.severidade_residual || undefined}
+                    probabilidade={form.probabilidade_residual || undefined}
+                    onSelect={(s, p) => setForm({ ...form, severidade_residual: s, probabilidade_residual: p })}
+                  />
+                  {(form.severidade_residual || form.probabilidade_residual) && (
+                    <Button variant="ghost" size="sm" className="mt-2 text-xs w-full text-muted-foreground"
+                      onClick={() => setForm({ ...form, severidade_residual: null, probabilidade_residual: null })}>
+                      Limpar avaliação residual
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Prob. Residual</Label>
+                      <Input readOnly value={form.probabilidade_residual || ""} className="bg-muted text-center font-semibold" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Sev. Residual</Label>
+                      <Input readOnly value={form.severidade_residual || ""} className="bg-muted text-center font-semibold" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Total Residual</Label>
+                      <Input readOnly value={totalResidual || ""} className="bg-muted text-center font-bold text-lg" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Classe Residual</Label>
+                      <div className="mt-1">
+                        {classeResidual ? (
+                          <Badge
+                            variant="outline"
+                            className={`${CLASSE_TEXT[classeResidual]} text-sm px-3 py-1`}
+                          >
+                            {classeLabel(classeResidual)}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300 text-sm px-3 py-1">N.A</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {classeResidual && (
+                    <div className="text-xs border rounded p-2 bg-blue-50/60 text-blue-900">
+                      <b>Decisão Residual:</b> {CLASSE_DECISAO[classeResidual]}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
-
-
-            <div>
+            <div className="border-t pt-4">
               <Label className="text-xs">Estado da Avaliação</Label>
               <Select
                 value={form.avaliacao_estado}
