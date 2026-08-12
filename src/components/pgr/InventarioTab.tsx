@@ -539,60 +539,7 @@ export default function InventarioTab({
         </CardContent>
       </Card>
 
-      {/* Perigos da antiga etapa "Perigos e riscos", que virou este inventário.
-          O painel drena o que ficou lá — depois de vazio, não aparece mais. */}
-      {editavel && naoAproveitados.length > 0 && (
-        <Card className="border-sky-300 bg-sky-50/60">
-          <CardContent className="p-3 space-y-2">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-start gap-2">
-                <ArrowDownToLine className="h-4 w-4 mt-0.5 shrink-0 text-sky-700" />
-                <p className="text-sm text-sky-900">
-                  <b>{naoAproveitados.length}</b> {naoAproveitados.length === 1 ? "perigo levantado" : "perigos levantados"} antes
-                  {naoAproveitados.length === 1 ? " ainda não está" : " ainda não estão"} no inventário.
-                </p>
-              </div>
-              <Button size="sm" onClick={trazerTodos} disabled={busyTrazer} className="bg-sky-600 hover:bg-sky-700 text-white shrink-0">
-                {busyTrazer ? "Importando..." : "Importar todos automaticamente"}
-              </Button>
-            </div>
-            <ul className="space-y-1">
-              {naoAproveitados.map((l) => (
-                <li key={l.id} className="flex items-center gap-2 rounded border bg-background px-2 py-1.5">
-                  <Badge variant="outline" className="shrink-0 text-[11px]">
-                    {GRUPO_LABEL[l.grupo] || l.grupo}
-                  </Badge>
-                  <span className="text-sm min-w-0 flex-1 truncate" title={l.perigo_descricao}>
-                    {l.perigo_descricao}
-                  </span>
-                  {l.ges?.codigo && (
-                    <span className="text-xs text-muted-foreground shrink-0">{l.ges.codigo}</span>
-                  )}
-                  <Button
-                    size="sm" variant="outline" className="h-7 text-xs shrink-0"
-                    onClick={() => {
-                      setEditId(null);
-                      setTrazendoDe(l.id);
-                      setPreencher({
-                        grupo: l.grupo || "fisico",
-                        perigo_descricao: l.perigo_descricao || "",
-                        fonte_geradora: l.fonte_circunstancia || "",
-                        lesoes: l.possiveis_lesoes || "",
-                        funcoes_text: l.trabalhadores_expostos || "",
-                        controles_text: l.medidas_existentes || "",
-                        ghe_id: gesSugeridoPara(l),
-                      });
-                      setDialogOpen(true);
-                    }}
-                  >
-                    Trazer
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
+      {/* Bloco de perigos não aproveitados foi removido a pedido do usuário */}
 
       {/* O que o vínculo automático não conseguiu resolver sozinho. Não dá para
           escolher no lugar de quem responde tecnicamente pelo documento: ou
