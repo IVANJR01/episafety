@@ -519,9 +519,18 @@ export default function InventarioTab({
                 Não avaliado: {stats.naoAvaliado}
               </Badge>
             )}
-            <Badge className="bg-orange-100 text-orange-800 border-orange-300" variant="outline">
-              Requer ação: {stats.acao}
-            </Badge>
+              <button 
+                type="button"
+                onClick={() => {
+                  const btn = document.querySelector('button[role="tab"][value="acoes"]') as HTMLButtonElement;
+                  if (btn) btn.click();
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 transition-colors cursor-pointer"
+                title="Clique para ir ao Plano de Ação e cadastrar o que falta"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Requer ação: {stats.acao}
+              </button>
           </div>
           <div className="flex gap-2">
             {editavel && (
