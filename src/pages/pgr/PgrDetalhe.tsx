@@ -132,7 +132,7 @@ export default function PgrDetalhe() {
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
           <TabsTrigger value="revisoes">Revisões</TabsTrigger>
           <TabsTrigger value="textos">Textos</TabsTrigger>
-          <TabsTrigger value="levantamento">Levantamento</TabsTrigger>
+
           <TabsTrigger value="inventario">Inventário</TabsTrigger>
           <TabsTrigger value="epis">EPIs</TabsTrigger>
           <TabsTrigger value="acoes">Plano de Ação</TabsTrigger>
@@ -196,10 +196,7 @@ export default function PgrDetalhe() {
           <TextosTab pgrId={id!} empresaId={doc.empresa_id} canEdit={perms.canEdit && isEditavel(status)} />
         </TabsContent>
 
-        <TabsContent value="levantamento">
-          <LevantamentoPreliminarTab pgrId={id!} empresaId={doc.empresa_id}
-            canEdit={perms.canEdit && isEditavel(status)} />
-        </TabsContent>
+
 
         <TabsContent value="inventario">
           <InventarioTab pgrId={id!} empresaId={doc.empresa_id} status={status} canEdit={perms.canEdit} />

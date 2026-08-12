@@ -476,12 +476,7 @@ function Assistente() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate(`/pgr/${pgr.id}/estrutura`)}>
-                  <Network className="h-4 w-4 mr-2" /> Estrutura técnica
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate(`/campo?pgr=${pgr.id}`)}>
-                  <Smartphone className="h-4 w-4 mr-2" /> Levantamento em campo
-                </DropdownMenuItem>
+
                 <DropdownMenuItem onClick={() => navigate(`/pgr/${pgr.id}/comparar`)}>
                   <GitCompare className="h-4 w-4 mr-2" /> Comparar versões
                 </DropdownMenuItem>
