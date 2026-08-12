@@ -54,7 +54,7 @@ const val = (v: any) => (v === null || v === undefined || v === "" ? NA : v);
  * O fundo precisa ser opaco. Com cor translúcida (`bg-amber-50/60`) o conteúdo
  * que passa por baixo durante a rolagem aparece através da célula.
  */
-const CTX_TH = "p-1.5 text-left border border-amber-400 sticky top-0 z-20 bg-amber-200";
+const CTX_TH = "p-1.5 text-left border border-amber-400 sticky top-0 z-50 bg-amber-200";
 const AMBAR_CHAPADO = "bg-[#fffbeb]";
 
 export default function InventarioTab({
@@ -646,7 +646,7 @@ export default function InventarioTab({
           ) : (
             <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] -mx-3 px-3">
               <table className="w-full text-[11px] border-collapse">
-                <thead className="bg-amber-200 sticky top-0 z-10">
+                <thead className="bg-amber-200 sticky top-0 z-30">
                   <tr className="text-amber-950">
                     {/* As três primeiras ficam congeladas à esquerda: são o
                         contexto da linha, e sem elas rolar até a classificação
@@ -763,15 +763,15 @@ export default function InventarioTab({
                             entrava na chave e o parágrafo do ambiente era
                             reimpresso inteiro em cada grupo. */}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] break-words`}>
+                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-40 w-[200px] min-w-[200px] max-w-[200px] break-words`}>
                             <ExpandableText text={ambiente || NA} />
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#ffffff" }} className="p-1.5 pt-2 border align-middle sticky left-[200px] z-10 w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
+                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#ffffff" }} className="p-1.5 pt-2 border align-middle sticky left-[200px] z-40 w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
                         )}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words`}>
+                          <td rowSpan={linhasDoGes} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-40 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words`}>
                             {/* Sem grupo a linha sai N.A no PGR emitido. Marcar
                                 em âmbar é o que faz a falha aparecer antes da
                                 emissão, e não depois. */}
