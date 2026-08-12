@@ -68,7 +68,7 @@ import PgrWizard from "@/pages/pgr/PgrWizard";
 import PgrEstruturaTecnica from "@/pages/pgr/PgrEstruturaTecnica";
 import PgrComparar from "@/pages/pgr/PgrComparar";
 import LevantamentoCampo from "@/pages/campo/LevantamentoCampo";
-import PgrElaboracao from "@/pages/pgr/PgrElaboracao";
+import PgrDocumento from "@/pages/pgr/PgrDocumento";
 import PcmsoDashboard from "@/pages/pcmso/PcmsoDashboard";
 import VistoriaDashboard from "@/pages/vistoria/VistoriaDashboard";
 import PgrValidar from "@/pages/pgr/PgrValidar";
@@ -332,7 +332,7 @@ function ProtectedRoute() {
         <Route path="/cat/esocial/config" element={<EsocialConfig />} />
         <Route path="/pgr" element={<PgrModule />} />
         <Route path="/pgr/dashboard" element={<PgrDashboard />} />
-        <Route path="/pgr/elaborar/:id" element={<PgrElaboracao />} />
+        <Route path="/pgr/elaborar/:id" element={<PgrDocumento />} />
         
         {/* --- PCMSO Documentos --- */}
         <Route path="/pcmso/dashboard" element={<PcmsoDashboard />} />
