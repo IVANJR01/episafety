@@ -1547,7 +1547,7 @@ export default function InspecoesSE() {
   }
 
   function getFilteredItems(opts?: { start?: Date; end?: Date }) {
-    return items.filter(i => {
+    const result = items.filter(i => {
       if (filterStatus !== "all" && i.status !== filterStatus) return false;
       if (filterGravidade !== "all" && i.gravidade !== filterGravidade) return false;
       if (filterObra !== "all" && i.obra_id !== filterObra) return false;
@@ -1558,6 +1558,13 @@ export default function InspecoesSE() {
         if (opts.end && d > new Date(format(opts.end, "yyyy-MM-dd") + "T23:59:59")) return false;
       }
       return true;
+    });
+
+    // Ordenar por data mais recente primeiro para que inspeções do mesmo dia não fiquem "misturadas" com outras datas
+    return result.sort((a, b) => {
+      const dateA = a.data_inspecao ? new Date(a.data_inspecao + "T00:00:00").getTime() : 0;
+      const dateB = b.data_inspecao ? new Date(b.data_inspecao + "T00:00:00").getTime() : 0;
+      return dateB - dateA;
     });
   }
 
