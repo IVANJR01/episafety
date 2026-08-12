@@ -758,15 +758,15 @@ export default function InventarioTab({
                             entrava na chave e o parágrafo do ambiente era
                             reimpresso inteiro em cada grupo. */}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className={`p-1.5 pt-2 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] break-words ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-10 w-[200px] min-w-[200px] max-w-[200px] break-words`}>
                             <ExpandableText text={ambiente || NA} />
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} className="p-1.5 pt-2 border align-middle sticky left-[200px] z-10 bg-white w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
+                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#ffffff" }} className="p-1.5 pt-2 border align-middle sticky left-[200px] z-10 w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
                         )}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words ${AMBAR_CHAPADO}`}>
+                          <td rowSpan={linhasDoGes} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-10 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words`}>
                             {/* Sem grupo a linha sai N.A no PGR emitido. Marcar
                                 em âmbar é o que faz a falha aparecer antes da
                                 emissão, e não depois. */}
