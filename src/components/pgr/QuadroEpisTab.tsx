@@ -9,7 +9,6 @@ interface Linha {
   ghe_codigo: string;
   ghe_nome: string;
   funcao: string;
-  medida_controle: string;
   epis: string;
 }
 
@@ -17,19 +16,11 @@ export default function QuadroEpisTab({ pgrId, empresaId }: Props) {
   const { data: linhas = [], isLoading } = useQuery({
     queryKey: ["pgr-quadro-epis", pgrId],
     queryFn: async () => {
-      // Pega os GHEs vinculados ao inventário do PGR
       const { data: itens } = await (supabase.from as any)("pgr_inventario_itens")
-        .select("ghe_id, controles_existentes")
+        .select("ghe_id")
         .eq("pgr_id", pgrId).not("ghe_id", "is", null);
       const gheIds = Array.from(new Set((itens || []).map((i: any) => i.ghe_id)));
       if (gheIds.length === 0) return [] as Linha[];
-
-      const controleMap = new Map<string, string>();
-      (itens || []).forEach((i: any) => {
-        if (i.ghe_id && i.controles_existentes && !controleMap.has(i.ghe_id)) {
-          controleMap.set(i.ghe_id, i.controles_existentes);
-        }
-      });
 
       const [ghesRes, funcRes, riscosRes] = await Promise.all([
         (supabase.from as any)("ghe_ges").select("id, codigo, nome").in("id", gheIds),
@@ -62,7 +53,6 @@ export default function QuadroEpisTab({ pgrId, empresaId }: Props) {
           ghe_codigo: g.codigo || "—",
           ghe_nome: g.nome || "—",
           funcao: funcoesStr,
-          medida_controle: controleMap.get(g.id) || "—",
           epis: epis.length ? epis.join(", ") : "—",
         });
       });
@@ -91,7 +81,6 @@ export default function QuadroEpisTab({ pgrId, empresaId }: Props) {
                 <tr>
                   <th className="p-2 text-left border">GES</th>
                   <th className="p-2 text-left border">Função</th>
-                  <th className="p-2 text-left border">Medida de controle existente</th>
                   <th className="p-2 text-left border">EPIs indicados (CA)</th>
                 </tr>
               </thead>
@@ -102,9 +91,8 @@ export default function QuadroEpisTab({ pgrId, empresaId }: Props) {
                       <div className="font-semibold">{l.ghe_codigo}</div>
                       <div className="text-muted-foreground">{l.ghe_nome}</div>
                     </td>
-                    <td className="p-2 border align-top">{l.funcao}</td>
-                    <td className="p-2 border align-top whitespace-pre-wrap">{l.medida_controle}</td>
-                    <td className="p-2 border align-top">{l.epis}</td>
+                    <td className="p-2 border">{l.funcao}</td>
+                    <td className="p-2 border">{l.epis}</td>
                   </tr>
                 ))}
               </tbody>
