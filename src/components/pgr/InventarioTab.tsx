@@ -412,6 +412,7 @@ export default function InventarioTab({
   const chaveSetor = (i: any) =>
     [i.setor || "", ambienteDe(i), i.processo || ""].join("§");
   const chaveGes = (i: any) => [chaveSetor(i), i.ghe?.codigo || ""].join("§");
+  const chaveAgente = (i: any) => [chaveGes(i), i.grupo || ""].join("§");
 
   /**
    * Chave do risco. Estava escrita três vezes, com a mesma lista de 14 campos
@@ -454,6 +455,8 @@ export default function InventarioTab({
       if (aa !== ab) return aa.localeCompare(ab);
       const ga = a.ghe?.codigo || ""; const gb = b.ghe?.codigo || "";
       if (ga !== gb) return ga.localeCompare(gb);
+      const grA = a.grupo || ""; const grB = b.grupo || "";
+      if (grA !== grB) return grA.localeCompare(grB);
       return (a.perigo_descricao || "").localeCompare(b.perigo_descricao || "");
     });
   }, [itens, busca]);
@@ -726,6 +729,8 @@ export default function InventarioTab({
                     const linhasDoSetor = abreSetor ? alcance(chaveSetor) : 1;
                     const abreGes = primeiroDe(chaveGes);
                     const linhasDoGes = abreGes ? alcance(chaveGes) : 1;
+                    const abreAgente = primeiroDe(chaveAgente);
+                    const linhasDoAgente = abreAgente ? alcance(chaveAgente) : 1;
                     const isFirstOfRisk = primeiroDe(chaveRisco);
                     const riskRowSpan = isFirstOfRisk ? alcance(chaveRisco) : 1;
 
@@ -786,7 +791,7 @@ export default function InventarioTab({
                             <ExpandableText text={val(i.processo)} />
                           </td>
                         )}
-                        {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
+                        {abreAgente && <td rowSpan={linhasDoAgente} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
                           <ExpandableText text={val(i.tipo_agente)} />
                         </td>}
