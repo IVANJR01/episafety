@@ -1071,26 +1071,30 @@ export default function InspecoesSE() {
     const filtered = getFilteredItems(dateRange);
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
     const placeholderDataUrl = generatePlaceholderDataUrl();
-    // Resolve path do Storage → signed URL antes de baixar como dataURL
     const resolvePhotoSrc = async (path: string | null, legacy: string | null): Promise<string | null> => {
       if (path) return await getInspecaoPhotoSignedUrl(path, 900);
       return isValidPdfImageUrl(legacy) ? legacy : null;
     };
-    const photoPromises = filtered.map(async (item) => {
-      const [antesSrc, depoisSrc] = await Promise.all([
-        resolvePhotoSrc(item.foto_antes_path, item.foto_antes),
-        resolvePhotoSrc(item.foto_depois_path, item.foto_depois),
-      ]);
-      const [antes, depois] = await Promise.all([
-        antesSrc ? loadImageAsDataUrl(antesSrc) : Promise.resolve(null),
-        depoisSrc ? loadImageAsDataUrl(depoisSrc) : Promise.resolve(null),
-      ]);
-      photoCache[item.id] = {
-        antes: antesSrc ? (antes || placeholderDataUrl) : null,
-        depois: depoisSrc ? (depois || placeholderDataUrl) : null,
-      };
-    });
-    await Promise.allSettled(photoPromises);
+
+    // Processar em lotes de 3 itens (máx 6 imagens simultâneas) para não estourar o limite de conexões do navegador
+    for (let i = 0; i < filtered.length; i += 3) {
+      const batch = filtered.slice(i, i + 3);
+      const batchPromises = batch.map(async (item) => {
+        const [antesSrc, depoisSrc] = await Promise.all([
+          resolvePhotoSrc(item.foto_antes_path, item.foto_antes),
+          resolvePhotoSrc(item.foto_depois_path, item.foto_depois),
+        ]);
+        const [antes, depois] = await Promise.all([
+          antesSrc ? loadImageAsDataUrl(antesSrc) : Promise.resolve(null),
+          depoisSrc ? loadImageAsDataUrl(depoisSrc) : Promise.resolve(null),
+        ]);
+        photoCache[item.id] = {
+          antes: antesSrc ? (antes || placeholderDataUrl) : null,
+          depois: depoisSrc ? (depois || placeholderDataUrl) : null,
+        };
+      });
+      await Promise.allSettled(batchPromises);
+    }
 
     // ======================================================================
     // RELATÓRIO FOTOGRÁFICO DE INSPEÇÕES — formato laudo profissional
