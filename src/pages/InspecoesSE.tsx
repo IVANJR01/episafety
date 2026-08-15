@@ -32,6 +32,7 @@ import ImportarFotosDialog from "@/components/inspecoes/ImportarFotosDialog";
 import ObraCombobox from "@/components/inspecoes/ObraCombobox";
 import { criarObra } from "@/lib/obras";
 import jsPDF from "jspdf";
+import { getGDriveImageProxyUrl } from "@/lib/googleDrive";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
 const NR_SUGESTOES = [
@@ -1079,12 +1080,30 @@ export default function InspecoesSE() {
     const filtered = getFilteredItems(dateRange);
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
     const placeholderDataUrl = generatePlaceholderDataUrl();
+    /*
+     * Foto do Google Drive precisa passar pelo proxy.
+     *
+     * As inspeções antigas guardaram a foto como link do Drive
+     * (drive.google.com/uc?export=view&id=...) em vez de arquivo no storage.
+     * Esse endereço não devolve os bytes da imagem para o navegador: não manda
+     * cabeçalho de CORS e costuma responder uma página HTML de confirmação.
+     * O carregamento falha sempre, em toda geração de relatório.
+     *
+     * A função gdrive-proxy já existe e já resolve isso — busca o arquivo no
+     * servidor e devolve com CORS. Só não estava sendo usada aqui: o PDF
+     * mandava o link do Drive direto para o fetch.
+     */
     const resolvePhotoSrc = async (path: string | null, legacy: string | null): Promise<string | null> => {
       if (path) return await getInspecaoPhotoSignedUrl(path, 900);
-      return isValidPdfImageUrl(legacy) ? legacy : null;
+      if (!isValidPdfImageUrl(legacy)) return null;
+      return getGDriveImageProxyUrl(legacy) || legacy;
     };
 
-    // Processar em lotes de 2 itens (máx 4 imagens simultâneas) para não estourar o rate-limit da API do Supabase e do navegador
+    /** Quantas fotos existiam no cadastro e não entraram no PDF. */
+    let fotosQueFalharam = 0;
+
+    // Lotes de 2 itens (máx 4 imagens simultâneas), como veio do main: com
+    // lote maior o rate-limit da API entrava na conta junto com o resto.
     for (let i = 0; i < filtered.length; i += 2) {
       const batch = filtered.slice(i, i + 2);
       const batchPromises = batch.map(async (item) => {
@@ -1096,6 +1115,8 @@ export default function InspecoesSE() {
           antesSrc ? loadImageAsDataUrl(antesSrc) : Promise.resolve(null),
           depoisSrc ? loadImageAsDataUrl(depoisSrc) : Promise.resolve(null),
         ]);
+        if (antesSrc && !antes) fotosQueFalharam++;
+        if (depoisSrc && !depois) fotosQueFalharam++;
         photoCache[item.id] = {
           antes: antesSrc ? (antes || placeholderDataUrl) : null,
           depois: depoisSrc ? (depois || placeholderDataUrl) : null,
@@ -1571,7 +1592,24 @@ export default function InspecoesSE() {
     pdfImageCacheRef.current.clear();
     Object.keys(photoCache).forEach((k) => delete photoCache[k]);
 
-    toast({ title: "PDF gerado com sucesso!" });
+    /*
+     * Falha de foto não pode sair calada.
+     *
+     * Quando o carregamento falha, o quadro recebe um retângulo cinza
+     * "Imagem Indisponível" — e quem gerou o relatório não fica sabendo de
+     * nada. Foi assim que 11 fotos sumiram de um laudo de 28 não
+     * conformidades sem ninguém perceber na hora. Pior: o jsPDF reaproveita a
+     * mesma imagem repetida, então o arquivo nem fica maior para denunciar.
+     */
+    if (fotosQueFalharam > 0) {
+      toast({
+        title: `PDF gerado — ${fotosQueFalharam} ${fotosQueFalharam === 1 ? "foto não carregou" : "fotos não carregaram"}`,
+        description: "Os quadros dessas fotos saíram marcados como indisponíveis. Reenvie a foto pelo formulário da inspeção para corrigir.",
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: "PDF gerado com sucesso!" });
+    }
   }
 
   function getFilteredItems(opts?: { start?: Date; end?: Date }) {
