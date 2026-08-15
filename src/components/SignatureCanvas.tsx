@@ -2,6 +2,7 @@ import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallba
 import SignaturePad from "signature_pad";
 import { Button } from "@/components/ui/button";
 import { Eraser, RotateCcw } from "lucide-react";
+import { paraCanvas, paraNormalizado } from "@/lib/tracosAssinatura";
 
 export interface SignatureCanvasRef {
   getDataURL: () => string | null;
@@ -35,36 +36,12 @@ const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(
     const containerRef = useRef<HTMLDivElement>(null);
     const [isLandscape, setIsLandscape] = useState(false);
 
-    /** Os traços moram aqui: é o que sobrevive à recriação do canvas. */
-    const tracosRef = useRef<any[]>([]);
-    /** Tamanho em CSS px do último desenho, base para reescalar. */
-    const tamanhoRef = useRef({ largura: 0, altura: 0 });
-
     /**
-     * Reposiciona os traços quando a área muda de tamanho.
-     * Escala igual nos dois eixos e resultado centralizado — com um fator
-     * por eixo, girar de retrato para paisagem entregaria a assinatura
-     * esticada, e assinatura deformada não serve como assinatura.
+     * Os traços moram aqui, em coordenadas NORMALIZADAS — é o que sobrevive à
+     * recriação do canvas, e é o que faz girar o aparelho não encolher a
+     * assinatura. Ver tracosAssinatura.ts.
      */
-    const reescalar = useCallback(
-      (data: any[], deL: number, deA: number, paraL: number, paraA: number) => {
-        if (!Array.isArray(data) || deL <= 0 || deA <= 0 || paraL <= 0 || paraA <= 0) return data;
-        const escala = Math.min(paraL / deL, paraA / deA);
-        const dx = (paraL - deL * escala) / 2;
-        const dy = (paraA - deA * escala) / 2;
-        return data.map((grupo) => ({
-          ...grupo,
-          points: Array.isArray(grupo?.points)
-            ? grupo.points.map((p: any) => ({
-                ...p,
-                x: typeof p?.x === "number" ? p.x * escala + dx : p?.x,
-                y: typeof p?.y === "number" ? p.y * escala + dy : p?.y,
-              }))
-            : grupo?.points,
-        }));
-      },
-      [],
-    );
+    const tracosRef = useRef<any[]>([]);
 
     const initPad = useCallback(() => {
       const canvas = canvasRef.current;
@@ -91,8 +68,6 @@ const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(
        */
       if (padRef.current && canvas.width === novaLargura && canvas.height === novaAltura) return;
 
-      const anterior = tamanhoRef.current;
-
       canvas.width = novaLargura;
       canvas.height = novaAltura;
       const ctx = canvas.getContext("2d");
@@ -109,18 +84,16 @@ const SignatureCanvas = forwardRef<SignatureCanvasRef, Props>(
       });
       // Atualiza a cópia de fora ao fim de cada traço.
       pad.addEventListener("endStroke", () => {
-        tracosRef.current = pad.toData();
+        tracosRef.current = paraNormalizado(pad.toData() as never, largura, altura);
       });
       padRef.current = pad;
 
-      if (tracosRef.current.length > 0 && anterior.largura > 0 && anterior.altura > 0) {
-        const reescalados = reescalar(tracosRef.current, anterior.largura, anterior.altura, largura, altura);
-        pad.fromData(reescalados);
-        tracosRef.current = reescalados;
+      // Sempre a partir do original normalizado: nada é gravado por cima, e
+      // por isso nenhum erro de escala se acumula giro após giro.
+      if (tracosRef.current.length > 0) {
+        pad.fromData(paraCanvas(tracosRef.current, largura, altura) as never);
       }
-
-      tamanhoRef.current = { largura, altura };
-    }, [reescalar]);
+    }, []);
 
     useEffect(() => {
       // Small delay to ensure DOM is ready (especially inside dialogs)

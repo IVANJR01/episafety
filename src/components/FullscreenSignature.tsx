@@ -2,6 +2,7 @@ import { useRef, useLayoutEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import SignaturePad from "signature_pad";
 import { Loader2 } from "lucide-react";
+import { paraCanvas, paraNormalizado } from "@/lib/tracosAssinatura";
 
 /*
  * Assinatura em tela cheia.
@@ -27,9 +28,9 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   const canvasHostRef = useRef<HTMLDivElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  const canvasSizeRef = useRef({ width: 0, height: 0 });
   /*
-   * Os traços vivem AQUI, não dentro do SignaturePad.
+   * Os traços vivem AQUI, em coordenadas NORMALIZADAS — não dentro do
+   * SignaturePad e não em pixels.
    *
    * A cada redimensionamento o pad é recriado, e antes se lia `toData()` do
    * pad na hora de redesenhar. Bastava uma recriação intermediária para a
@@ -45,36 +46,6 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   const [indicativeName, setIndicativeName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
-
-  /**
-   * Reposiciona os traços quando a área de desenho muda de tamanho.
-   *
-   * A escala é a MESMA nos dois eixos, e o resultado fica centralizado. Com
-   * um fator para largura e outro para altura, girar o aparelho de retrato
-   * para paisagem esticava a assinatura na horizontal e achatava na
-   * vertical — ela sobrevivia, mas chegava irreconhecível, e assinatura
-   * deformada não serve como assinatura.
-   */
-  const reescalarTracos = useCallback(
-    (data: any[], deLargura: number, deAltura: number, paraLargura: number, paraAltura: number) => {
-      if (!Array.isArray(data) || deLargura <= 0 || deAltura <= 0 || paraLargura <= 0 || paraAltura <= 0) return data;
-      const escala = Math.min(paraLargura / deLargura, paraAltura / deAltura);
-      const deslocX = (paraLargura - deLargura * escala) / 2;
-      const deslocY = (paraAltura - deAltura * escala) / 2;
-
-      return data.map((grupo) => ({
-        ...grupo,
-        points: Array.isArray(grupo?.points)
-          ? grupo.points.map((p: any) => ({
-              ...p,
-              x: typeof p?.x === "number" ? p.x * escala + deslocX : p?.x,
-              y: typeof p?.y === "number" ? p.y * escala + deslocY : p?.y,
-            }))
-          : grupo?.points,
-      }));
-    },
-    [],
-  );
 
   // Primary resize logic using useLayoutEffect for immediate DOM sync
   useLayoutEffect(() => {
@@ -105,7 +76,6 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     document.addEventListener("touchmove", preventScroll, { passive: false });
 
     tracosRef.current = [];
-    canvasSizeRef.current = { width: 0, height: 0 };
     isSubmittingRef.current = false;
     setIsSubmitting(false);
     setShowNameInput(false);
@@ -125,7 +95,6 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       const height = Math.round(r.height);
       if (width < 2 || height < 2) return;
 
-      const tamanhoAnterior = canvasSizeRef.current;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       dprRef.current = dpr;
 
@@ -154,20 +123,24 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       // A cópia de fora é atualizada ao fim de cada traço. É ela que
       // sobrevive à recriação do pad no próximo giro de tela.
       pad.addEventListener("endStroke", () => {
-        tracosRef.current = pad.toData();
+        // `toData()` devolve TODOS os traços em pixels deste canvas — os
+        // restaurados e o que acabou de ser feito. Normalizar o conjunto
+        // inteiro mantém a cópia de fora sempre no mesmo sistema.
+        tracosRef.current = paraNormalizado(pad.toData() as never, width, height);
         setHasSignature(!pad.isEmpty());
       });
       padRef.current = pad;
 
-      const tracos = tracosRef.current;
-      if (tracos.length > 0 && tamanhoAnterior.width > 0 && tamanhoAnterior.height > 0) {
-        const reescalados = reescalarTracos(tracos, tamanhoAnterior.width, tamanhoAnterior.height, width, height);
-        pad.fromData(reescalados);
-        // Guarda já reescalado: o próximo giro parte deste tamanho.
-        tracosRef.current = reescalados;
+      /*
+       * Redesenha SEMPRE a partir do original normalizado, nunca do resultado
+       * do giro anterior. Era a gravação por cima ("tracosRef = reescalados")
+       * que fazia o encolhimento se acumular: cada giro partia do tamanho já
+       * reduzido, e três giros deixavam 17% do traço.
+       */
+      if (tracosRef.current.length > 0) {
+        pad.fromData(paraCanvas(tracosRef.current, width, height) as never);
       }
 
-      canvasSizeRef.current = { width, height };
     };
 
     // Initial resize with small delay for DOM readiness (dialog animations)
@@ -223,7 +196,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       body.style.touchAction = previousTouchAction;
       window.scrollTo(0, scrollY);
     };
-  }, [open, reescalarTracos]);
+  }, [open]);
 
   const handleCancel = () => {
     if (isSubmittingRef.current) return;
