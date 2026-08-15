@@ -6,9 +6,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData, addToSyncQueue, isOnline } from "@/lib/offlineStorage";
 import { isNetworkFailure } from "@/lib/offlineViewCache";
 import { QUERY_STALE_MS } from "@/lib/queryClient";
+import { assinarTabela } from "@/lib/realtimeTabelas";
 
 const QUERY_TIMEOUT_MS = 10000;
 const QUERY_GC_MS = 24 * 60 * 60 * 1000;
+/** Rede de segurança para quando o aviso do Realtime não chega. */
+const QUERY_POLL_MS = 60_000;
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs = QUERY_TIMEOUT_MS) => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -70,6 +73,7 @@ function chaveDeCache(table: string, columns?: string): string {
 
 export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascending?: boolean, columns?: string) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { empresaScopeIds } = useAuth();
   // Aplicamos filtro client-side: garante que o seletor de empresa funcione para todos.
   // Super Admin precisa disso pois a RLS deles libera tudo.
@@ -135,6 +139,19 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
     staleTime: QUERY_STALE_MS,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    /*
+     * Rede de segurança para quando o Realtime não chega.
+     *
+     * Websocket cai, proxy de empresa bloqueia, sinal de celular oscila — e aí
+     * o aviso de mudança simplesmente não vem. Uma busca por minuto conserta
+     * isso sozinha, sem ninguém apertar nada.
+     *
+     * `refetchIntervalInBackground: false` é o que impede a conta de bateria e
+     * de dados: com a tela apagada ou o aplicativo em segundo plano, não
+     * acontece nada. Quando a pessoa volta, o refetchOnWindowFocus já busca.
+     */
+    refetchInterval: QUERY_POLL_MS,
+    refetchIntervalInBackground: false,
     gcTime: QUERY_GC_MS,
     // Falha de rede sem cache local vira erro permanente sem isto: a linha
     // 100-104 só devolve `cached` quando existe um `cached` — na primeira
@@ -184,6 +201,24 @@ export function useSupabaseQuery<T = any>(table: string, orderBy?: string, ascen
   });
 
   const fetch = useCallback(async () => query.refetch(), [query]);
+
+  /*
+   * Mudou a tabela no banco? Recarrega, sem ninguém apertar nada.
+   *
+   * É esta a peça que faltava: o cadastro feito num aparelho chega ao outro em
+   * segundos. `invalidateQueries` em vez de `refetch` de propósito — se a mesma
+   * tabela estiver aberta em duas telas com ordenação diferente, todas as
+   * chaves daquela tabela precisam ser marcadas, não só a desta instância.
+   *
+   * O canal é compartilhado por tabela (ver realtimeTabelas.ts): oito telas
+   * lendo `funcionarios` continuam com um canal só.
+   */
+  useEffect(() => {
+    const cancelar = assinarTabela(table, () => {
+      queryClient.invalidateQueries({ queryKey: ["supabase", table] });
+    });
+    return cancelar;
+  }, [table, queryClient]);
 
   useEffect(() => {
     if (!cachedData || !isOnline() || backgroundRefreshStartedRef.current) return;

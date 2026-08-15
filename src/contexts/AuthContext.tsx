@@ -5,6 +5,7 @@ import { setCacheUserScope, setCacheEmpresaScope, clearAllCachedData } from "@/l
 import { clearCachedSession, loadCachedSession, saveCachedSession } from "@/lib/authSessionCache";
 import { resolveOfflineSession } from "@/lib/authState";
 import { purgeQueryCache } from "@/lib/queryClient";
+import { fecharTodosOsCanais } from "@/lib/realtimeTabelas";
 
 interface AuthContextType {
   user: User | null;
@@ -198,6 +199,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setEmpresaId(id);
     try { purgeQueryCache(); } catch {}
     try { clearAllCachedData(); } catch {}
+    // Os canais de Realtime são por tabela e não sabem de empresa. Trocando de
+    // empresa eles seriam reabertos pelas telas novas de qualquer jeito;
+    // fechá-los aqui evita o aviso da empresa antiga chegar no meio da troca.
+    try { fecharTodosOsCanais(); } catch {}
   }, [empresasIds, isSuperAdmin, isPrincipal, empresaId]);
 
   /*
@@ -523,6 +528,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveActiveEmpresaId(null);
     clearAllCachedData();
     purgeQueryCache();
+    try { fecharTodosOsCanais(); } catch {}
     setCacheUserScope(null);
     applySignedOutState();
 
