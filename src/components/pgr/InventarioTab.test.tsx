@@ -1,7 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import InventarioTab from "./InventarioTab";
+
+/*
+ * COBERTURA REMOVIDA em 15/08: o painel "perigos levantados antes ainda não
+ * estão no inventário" saiu da tela em cad3eb38 ("ocultar painel de importação
+ * de levantamentos antigos a pedido do cliente"). Os cinco testes que
+ * dirigiam aquele painel — importação em lote, fechamento da pendência do
+ * levantamento e as regras de quando cobrar — foram retirados junto: teste que
+ * aciona botão inexistente não protege nada, e teste que confere ausência numa
+ * tela que sumiu passa sozinho, o que é pior.
+ *
+ * A lógica continua no arquivo (trazerTodos, naoAproveitados, gesSugeridoPara,
+ * ligarAoLevantamento), agora sem caminho na interface e sem teste. Se o painel
+ * voltar, os testes estão no histórico deste arquivo.
+ */
 
 /**
  * O que este teste protege: a linha do inventário que ficou sem GES tem de
@@ -145,112 +159,6 @@ describe("InventarioTab — item sem GES", () => {
 
     expect(await screen.findByText(/nenhum grupo bate com o setor\/função/)).toBeInTheDocument();
     expect(updates).toHaveLength(0);
-  });
-
-  it("importa em lote gravando nas colunas que existem, já com o grupo e o contexto", async () => {
-    tabelas = {
-      ...estruturaPcp,
-      sst_setores: [{ id: "s-pcp", nome: "PCP", ambiente_id: "a-1" }],
-      sst_ambientes: [{ id: "a-1", nome: "Escritório PCP" }],
-      sst_processos: [{ id: "p-1", setor_id: "s-pcp", nome: "Planejamento" }],
-      pgr_inventario_itens: [],
-      pgr_levantamento_preliminar: [{
-        id: "l1", pgr_id: "pgr-1", grupo: "ergonomico", perigo_descricao: "Sobrecarga",
-        fonte_circunstancia: "Pressão por metas", possiveis_lesoes: "Estresse",
-        trabalhadores_expostos: "Ajudante de Confecção", medidas_existentes: "Pausas; Rodízio",
-        setor_id: "s-pcp", ges_id: null,
-      }],
-    };
-    montar();
-
-    fireEvent.click(await screen.findByRole("button", { name: /Importar todos automaticamente/ }));
-    await waitFor(() => expect(inserts).toHaveLength(1));
-
-    const linha = inserts[0].linhas[0];
-    // O defeito era gravar os nomes dos campos do formulário: a tabela tem
-    // funcoes_snapshot (text[]) e controles_existentes (text[]), e o insert
-    // inteiro era recusado por coluna inexistente.
-    expect(linha).not.toHaveProperty("funcoes_text");
-    expect(linha).not.toHaveProperty("controles_text");
-    expect(linha.funcoes_snapshot).toEqual(["Ajudante de Confecção"]);
-    expect(linha.controles_existentes).toEqual(["Pausas", "Rodízio"]);
-    // E nasce ligada ao grupo, com o "onde" que vem dele — não órfã.
-    expect(linha.ghe_id).toBe("g01");
-    expect(linha.ges_id).toBe("g01");
-    expect(linha.setor).toBe("PCP");
-    expect(linha.descricao_ambiente).toContain("Escritório PCP");
-    expect(linha.processo).toContain("Planejamento");
-  });
-
-  it("fecha a pendência do levantamento ao importar, para o aviso não voltar", async () => {
-    tabelas = {
-      ...estruturaPcp,
-      pgr_inventario_itens: [],
-      pgr_levantamento_preliminar: [{
-        id: "l1", pgr_id: "pgr-1", grupo: "ergonomico", perigo_descricao: "Sobrecarga",
-        setor_id: "s-pcp", tratamento: "avaliacao_aprofundada", inventario_item_id: null,
-      }],
-    };
-    montar();
-    fireEvent.click(await screen.findByRole("button", { name: /Importar todos automaticamente/ }));
-
-    // O update grava inventario_item_id no levantamento com o id devolvido
-    // pelo insert — é o que a etapa 5 lê como "No inventário".
-    await waitFor(() => expect(
-      updates.filter((u) => u.tabela === "pgr_levantamento_preliminar"),
-    ).toHaveLength(1));
-  });
-
-  it("não cobra perigo tratado na hora nem descartado com justificativa", async () => {
-    tabelas = {
-      ...estruturaPcp,
-      pgr_inventario_itens: [],
-      pgr_levantamento_preliminar: [
-        { id: "l1", perigo_descricao: "Piso molhado", tratamento: "tratado_diretamente" },
-        { id: "l2", perigo_descricao: "Radiação ionizante", tratamento: "nao_identificado",
-          justificativa: "Não há fonte radioativa na operação." },
-        { id: "l3", perigo_descricao: "Ruído de prensa", tratamento: "avaliacao_aprofundada" },
-      ],
-    };
-    montar();
-
-    // Só o terceiro é pendência de verdade.
-    expect(await screen.findByTitle("Ruído de prensa")).toBeInTheDocument();
-    expect(screen.queryByTitle("Piso molhado")).not.toBeInTheDocument();
-    expect(screen.queryByTitle("Radiação ionizante")).not.toBeInTheDocument();
-  });
-
-  it("não cobra perigo já trazido cuja descrição foi detalhada no item", async () => {
-    tabelas = {
-      ...estruturaPcp,
-      pgr_inventario_itens: [item({
-        ghe_id: "g01",
-        perigo_descricao: "Pressão por metas, prazos curtos, sobrecarga",
-      })],
-      pgr_levantamento_preliminar: [
-        { id: "l1", perigo_descricao: "Sobrecarga", tratamento: "avaliacao_aprofundada" },
-      ],
-    };
-    montar();
-
-    await screen.findByText("Pressão por metas, prazos curtos, sobrecarga");
-    expect(screen.queryByTitle("Sobrecarga")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Trazer" })).not.toBeInTheDocument();
-  });
-
-  it("continua cobrando quando o perigo curto só coincide por acaso", async () => {
-    tabelas = {
-      ...estruturaPcp,
-      // "Gás" tem 3 letras e aparece dentro de "Gases de solda" por acaso —
-      // curto demais para valer como "já está coberto".
-      pgr_inventario_itens: [item({ ghe_id: "g01", perigo_descricao: "Gases de solda" })],
-      pgr_levantamento_preliminar: [
-        { id: "l1", perigo_descricao: "Gás", tratamento: "avaliacao_aprofundada" },
-      ],
-    };
-    montar();
-
-    expect(await screen.findByTitle("Gás")).toBeInTheDocument();
   });
 
   it("não mexe em item que já tem grupo", async () => {
