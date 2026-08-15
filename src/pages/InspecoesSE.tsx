@@ -22,7 +22,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import InspecaoImage from "@/components/InspecaoImage";
-import { uploadInspecaoPhoto, getInspecaoPhotoSignedUrl, deleteInspecaoPhoto } from "@/lib/inspecoesStorage";
+import { uploadInspecaoPhoto, getInspecaoPhotoSignedUrl, getInspecaoPhotoSignedUrls, deleteInspecaoPhoto } from "@/lib/inspecoesStorage";
 import { saveOfflinePhoto, deleteOfflinePhoto } from "@/lib/inspecoesOfflinePhotos";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -33,6 +33,7 @@ import ObraCombobox from "@/components/inspecoes/ObraCombobox";
 import { criarObra } from "@/lib/obras";
 import jsPDF from "jspdf";
 import { getGDriveImageProxyUrl } from "@/lib/googleDrive";
+import { mapearComLimite } from "@/lib/limitarConcorrencia";
 
 const GRAVIDADE_OPTIONS = ["LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO"];
 const NR_SUGESTOES = [
@@ -865,16 +866,28 @@ export default function InspecoesSE() {
     }
   }
 
-  /** loadImageAsDataUrl com retry (até 3 tentativas, intervalo 500ms) */
+  /**
+   * Carrega a imagem, tentando de novo quando falha.
+   *
+   * Duas tentativas, não três: a terceira quase nunca salvava e o laço custava
+   * caro no agregado. Numa foto cuja origem simplesmente não devolve imagem —
+   * link do Drive antes da correção do proxy —, cada tentativa extra é espera
+   * pura, multiplicada por quantas fotos estiverem no mesmo estado.
+   *
+   * A espera entre tentativas dobra em vez de ser fixa: se a origem está
+   * congestionada, insistir no mesmo ritmo piora.
+   */
   async function loadImageAsDataUrl(url: string): Promise<string | null> {
-    const MAX_RETRIES = 3;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const TENTATIVAS = 2;
+    for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
       const result = await loadImageAsDataUrlOnce(url);
       if (result) return result;
-      // Limpa cache de falha para permitir nova tentativa
+      // Limpa o registro da falha para a próxima tentativa não devolver o
+      // resultado negativo guardado.
       pdfImageCacheRef.current.delete(url);
-      if (attempt < MAX_RETRIES) {
-        await new Promise((r) => setTimeout(r, 500));
+      // Sem espera depois da última: ela só atrasaria o retorno do erro.
+      if (tentativa < TENTATIVAS) {
+        await new Promise((r) => setTimeout(r, 400 * tentativa));
       }
     }
     return null;
@@ -1080,6 +1093,18 @@ export default function InspecoesSE() {
     const filtered = getFilteredItems(dateRange);
     const photoCache: Record<string, { antes: string | null; depois: string | null }> = {};
     const placeholderDataUrl = generatePlaceholderDataUrl();
+
+    /*
+     * Assinar TODAS as fotos do storage numa requisição só.
+     *
+     * Antes era uma chamada por foto, espremida dentro de lotes de dois itens:
+     * num relatório de 28 não conformidades, 17 idas ao servidor só para
+     * assinar, em série, antes de qualquer download começar.
+     */
+    const caminhos = filtered.flatMap((i) =>
+      [i.foto_antes_path, i.foto_depois_path].filter(Boolean) as string[]);
+    const assinadas = await getInspecaoPhotoSignedUrls(caminhos, 900);
+
     /*
      * Foto do Google Drive precisa passar pelo proxy.
      *
@@ -1087,14 +1112,12 @@ export default function InspecoesSE() {
      * (drive.google.com/uc?export=view&id=...) em vez de arquivo no storage.
      * Esse endereço não devolve os bytes da imagem para o navegador: não manda
      * cabeçalho de CORS e costuma responder uma página HTML de confirmação.
-     * O carregamento falha sempre, em toda geração de relatório.
      *
-     * A função gdrive-proxy já existe e já resolve isso — busca o arquivo no
-     * servidor e devolve com CORS. Só não estava sendo usada aqui: o PDF
-     * mandava o link do Drive direto para o fetch.
+     * A função gdrive-proxy já existe e resolve isso — busca no servidor e
+     * devolve com CORS. Só não estava sendo usada aqui.
      */
-    const resolvePhotoSrc = async (path: string | null, legacy: string | null): Promise<string | null> => {
-      if (path) return await getInspecaoPhotoSignedUrl(path, 900);
+    const resolvePhotoSrc = (path: string | null, legacy: string | null): string | null => {
+      if (path) return assinadas.get(path) || null;
       if (!isValidPdfImageUrl(legacy)) return null;
       return getGDriveImageProxyUrl(legacy) || legacy;
     };
@@ -1102,33 +1125,33 @@ export default function InspecoesSE() {
     /** Quantas fotos existiam no cadastro e não entraram no PDF. */
     let fotosQueFalharam = 0;
 
-    // Lotes de 2 itens (máx 4 imagens simultâneas), como veio do main: com
-    // lote maior o rate-limit da API entrava na conta junto com o resto.
-    for (let i = 0; i < filtered.length; i += 2) {
-      const batch = filtered.slice(i, i + 2);
-      const batchPromises = batch.map(async (item) => {
-        const [antesSrc, depoisSrc] = await Promise.all([
-          resolvePhotoSrc(item.foto_antes_path, item.foto_antes),
-          resolvePhotoSrc(item.foto_depois_path, item.foto_depois),
-        ]);
-        const [antes, depois] = await Promise.all([
-          antesSrc ? loadImageAsDataUrl(antesSrc) : Promise.resolve(null),
-          depoisSrc ? loadImageAsDataUrl(depoisSrc) : Promise.resolve(null),
-        ]);
-        if (antesSrc && !antes) fotosQueFalharam++;
-        if (depoisSrc && !depois) fotosQueFalharam++;
-        photoCache[item.id] = {
-          antes: antesSrc ? (antes || placeholderDataUrl) : null,
-          depois: depoisSrc ? (depois || placeholderDataUrl) : null,
-        };
-      });
-      await Promise.allSettled(batchPromises);
-      // Breve pausa a cada lote de fotos para esfriar o Rate Limit de download/storage do Supabase
-      if (i + 2 < filtered.length) {
-        await new Promise(r => setTimeout(r, 600));
-      }
-    }
-
+    /*
+     * Downloads com teto, sem lote travado.
+     *
+     * O formato anterior era: dois itens por rodada, esperar a foto mais lenta
+     * da rodada, dormir 600ms, repetir. Com 28 itens isso dava 14 esperas em
+     * série mais 7,8 segundos de pausa fixa — quase tudo tempo parado.
+     *
+     * A pausa fixa existia para segurar o rate-limit da API. Ela deixa de ser
+     * necessária porque o grosso das requisições era a assinatura uma a uma,
+     * que agora é uma só; o que sobra é download de arquivo, que não passa
+     * pelo mesmo limite. O teto de 6 continua respeitando o limite de conexões
+     * por domínio do navegador.
+     */
+    await mapearComLimite(filtered, 6, async (item) => {
+      const antesSrc = resolvePhotoSrc(item.foto_antes_path, item.foto_antes);
+      const depoisSrc = resolvePhotoSrc(item.foto_depois_path, item.foto_depois);
+      const [antes, depois] = await Promise.all([
+        antesSrc ? loadImageAsDataUrl(antesSrc) : Promise.resolve(null),
+        depoisSrc ? loadImageAsDataUrl(depoisSrc) : Promise.resolve(null),
+      ]);
+      if (antesSrc && !antes) fotosQueFalharam++;
+      if (depoisSrc && !depois) fotosQueFalharam++;
+      photoCache[item.id] = {
+        antes: antesSrc ? (antes || placeholderDataUrl) : null,
+        depois: depoisSrc ? (depois || placeholderDataUrl) : null,
+      };
+    });
     // ======================================================================
     // RELATÓRIO FOTOGRÁFICO DE INSPEÇÕES — formato laudo profissional
     // ======================================================================

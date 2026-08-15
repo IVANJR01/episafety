@@ -71,6 +71,43 @@ export async function getInspecaoPhotoSignedUrl(
   }
 }
 
+/**
+ * Assina VÁRIAS fotos numa requisição só.
+ *
+ * O relatório assinava uma a uma: 17 fotos, 17 idas ao servidor, e ainda
+ * espremidas dentro de lotes de dois itens — a espera de rede virava o custo
+ * principal antes de qualquer download começar. A API de storage já aceita a
+ * lista inteira de uma vez.
+ *
+ * Devolve um mapa caminho -> URL assinada. Caminho que falhar simplesmente não
+ * entra no mapa; quem chama trata como foto sem URL, do mesmo jeito que já
+ * tratava antes.
+ */
+export async function getInspecaoPhotoSignedUrls(
+  paths: string[],
+  ttlSec = 900,
+): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>();
+  const limpos = [...new Set(paths.filter(Boolean))];
+  if (limpos.length === 0) return mapa;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(INSPECOES_BUCKET)
+      .createSignedUrls(limpos, ttlSec);
+    if (error) {
+      console.warn("[inspecoesStorage] createSignedUrls falhou", error.message);
+      return mapa;
+    }
+    for (const item of data || []) {
+      if (item?.path && item?.signedUrl && !item.error) mapa.set(item.path, item.signedUrl);
+    }
+  } catch (e) {
+    console.warn("[inspecoesStorage] createSignedUrls exceção", e);
+  }
+  return mapa;
+}
+
 export async function deleteInspecaoPhoto(path: string): Promise<void> {
   if (!path) return;
   const { error } = await supabase.storage.from(INSPECOES_BUCKET).remove([path]);
