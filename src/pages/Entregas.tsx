@@ -1958,7 +1958,7 @@ export default function Entregas() {
               </Button>
             ) : (
               <Button onClick={handleSave} disabled={epiList.length === 0 || saving}>
-                {saving ? "Salvando..." : `Registrar (${epiList.length} EPI${epiList.length !== 1 ? "s" : ""})`}
+                {saving ? "Salvando..." : `Continuar p/ Assinatura (${epiList.length} EPI${epiList.length !== 1 ? "s" : ""})`}
               </Button>
             )}
           </DialogFooter>
@@ -2116,8 +2116,21 @@ export default function Entregas() {
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => void handleCancelSignatureFlow()} disabled={savingConfirmation}>
-              Cancelar
+              Cancelar Entrega
             </Button>
+            {signMode === "new" && (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={savingConfirmation}
+                onClick={() => {
+                  toast({ title: "Registrado como Pendente", description: "O EPI foi entregue, mas aguarda a assinatura. Envie o link!" });
+                  resetSignState();
+                }}
+              >
+                Pular (Assinar Depois)
+              </Button>
+            )}
             <Button
               onClick={handleSaveSignature}
               disabled={savingConfirmation || (signMode === "existing" && selectedUnsigned.length === 0)}
