@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { resolveCors } from "../_shared/cors.ts";
+import { resolverProvedorIa, SEM_PROVEDOR } from "../_shared/provedorIa.ts";
 
 // ============================================================================
 // BASE DE REGRAS INTERNAS (pré-IA) — palavras-chave -> normas prováveis
@@ -105,12 +106,16 @@ serve(async (req) => {
     // ---- 1) Base interna: se bater com regra, usa como sugestão principal ----
     const regra = matchRegras(situacao);
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      // Sem IA disponível: retorna direto a regra interna se houver. Isto
-      // não tem relação com Lovable — é a base de palavras-chave própria
-      // deste arquivo, que continua servindo de rede de segurança mesmo
-      // com Gemini como único provedor de IA.
+    /*
+     * O provedor agora é escolhido em tempo de execução: OpenAI quando a
+     * OPENAI_API_KEY existe, Gemini como reserva. O corpo da requisição é o
+     * mesmo nos dois — o Gemini sempre foi chamado pelo endpoint compatível
+     * com a OpenAI —, então só mudam URL, chave e nome do modelo.
+     */
+    const provedor = resolverProvedorIa();
+    if (!provedor) {
+      // Sem IA configurada, a base de palavras-chave deste arquivo continua
+      // valendo: é rede de segurança, não enfeite.
       if (regra) {
         return new Response(JSON.stringify({
           referencia_normativa: regra.referencias.join("\n"),
@@ -119,11 +124,11 @@ serve(async (req) => {
           trecho_norma: regra.referencias[0],
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      throw new Error("GEMINI_API_KEY não configurada");
+      throw new Error(SEM_PROVEDOR);
     }
-    const aiUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-    const aiKey = GEMINI_API_KEY;
-    const aiModel = "gemini-2.5-flash";
+    const aiUrl = provedor.url;
+    const aiKey = provedor.chave;
+    const aiModel = provedor.modelo;
 
     const dicaInterna = regra
       ? `\n\nDICA DE BASE INTERNA (use como principal, adaptando à situação; pode acrescentar itens complementares se fizer sentido):\n${regra.referencias.map(r => `- ${r}`).join("\n")}\nGravidade sugerida pela base: ${regra.gravidade}\nAção corretiva sugerida pela base: ${regra.acao}`
@@ -207,13 +212,29 @@ Incêndio (extintor, alarme, rota de fuga) -> focar nas IT do Corpo de Bombeiros
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (response.status === 401 || response.status === 403) {
+        // Erro mais provável logo depois de trocar de provedor: chave ausente,
+        // colada com espaço, ou de um projeto sem crédito.
+        console.error(`Chave de IA recusada pelo provedor ${provedor.nome}`);
+        if (regra) {
+          return new Response(JSON.stringify({
+            referencia_normativa: regra.referencias.join("\n"),
+            gravidade: regra.gravidade,
+            acao_corretiva: regra.acao,
+            trecho_norma: regra.referencias[0],
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ error: "Chave de IA inválida ou sem permissão. Confira a configuração." }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Créditos insuficientes para IA." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error(`AI (${provedor.nome}/${provedor.modelo}) error:`, response.status, t);
       // Fallback para regra interna se houver
       if (regra) {
         return new Response(JSON.stringify({
