@@ -782,7 +782,7 @@ export default function InspecoesSE() {
   }
 
   const MAX_IMG_WIDTH = 600;
-  const IMG_TIMEOUT_MS = 9000;
+  const IMG_TIMEOUT_MS = 15000;
 
   /** Gera um placeholder base64 "Imagem Indisponível" para fallback */
   function generatePlaceholderDataUrl(): string {
@@ -1084,9 +1084,9 @@ export default function InspecoesSE() {
       return isValidPdfImageUrl(legacy) ? legacy : null;
     };
 
-    // Processar em lotes de 3 itens (máx 6 imagens simultâneas) para não estourar o limite de conexões do navegador
-    for (let i = 0; i < filtered.length; i += 3) {
-      const batch = filtered.slice(i, i + 3);
+    // Processar em lotes de 2 itens (máx 4 imagens simultâneas) para não estourar o rate-limit da API do Supabase e do navegador
+    for (let i = 0; i < filtered.length; i += 2) {
+      const batch = filtered.slice(i, i + 2);
       const batchPromises = batch.map(async (item) => {
         const [antesSrc, depoisSrc] = await Promise.all([
           resolvePhotoSrc(item.foto_antes_path, item.foto_antes),
@@ -1102,6 +1102,10 @@ export default function InspecoesSE() {
         };
       });
       await Promise.allSettled(batchPromises);
+      // Breve pausa a cada lote de fotos para esfriar o Rate Limit de download/storage do Supabase
+      if (i + 2 < filtered.length) {
+        await new Promise(r => setTimeout(r, 600));
+      }
     }
 
     // ======================================================================
