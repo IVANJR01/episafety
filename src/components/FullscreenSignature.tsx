@@ -44,6 +44,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
   const [showNameInput, setShowNameInput] = useState(false);
   const [indicativeName, setIndicativeName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
 
   /**
    * Reposiciona os traços quando a área de desenho muda de tamanho.
@@ -109,6 +110,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     setIsSubmitting(false);
     setShowNameInput(false);
     setIndicativeName("");
+    setHasSignature(false);
 
     const orientation = (screen as any)?.orientation;
     if (typeof orientation?.lock === "function") {
@@ -153,6 +155,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
       // sobrevive à recriação do pad no próximo giro de tela.
       pad.addEventListener("endStroke", () => {
         tracosRef.current = pad.toData();
+        setHasSignature(!pad.isEmpty());
       });
       padRef.current = pad;
 
@@ -258,6 +261,7 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     padRef.current?.clear();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    setHasSignature(false);
   };
 
   /** Downscale canvas to max 800px wide and export as JPEG 0.7 */
@@ -356,6 +360,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         WebkitUserSelect: "none",
         userSelect: "none",
         overscrollBehavior: "none",
+        WebkitTextSizeAdjust: "none",
+        textSizeAdjust: "none",
       } as React.CSSProperties}
     >
       <div className="flex items-center gap-4 w-full px-3 bg-muted/50 border-b shrink-0 safe-area-top" style={{ minHeight: 52 }}>
@@ -378,8 +384,8 @@ export default function FullscreenSignature({ open, employeeName, employeeRole, 
         <button
           type="button"
           onClick={handleSave}
-          disabled={isSubmitting}
-          className="text-base font-bold text-muted-foreground uppercase tracking-wider px-3 min-h-[44px] min-w-[44px] flex items-center gap-1.5 ml-auto active:opacity-60 transition-opacity"
+          disabled={isSubmitting || !hasSignature}
+          className={`text-base font-bold uppercase tracking-wider px-3 min-h-[44px] min-w-[44px] flex items-center gap-1.5 ml-auto transition-opacity ${hasSignature ? "text-green-600 active:opacity-60" : "text-muted-foreground/40 cursor-not-allowed"}`}
         >
           {isSubmitting ? (
             <>
