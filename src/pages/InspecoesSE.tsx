@@ -102,6 +102,7 @@ interface Conformidade {
   empresa_id: string | null;
   created_at: string;
   referencia_normativa: string | null;
+  trecho_norma: string | null;
 }
 
 type ObraOption = {
@@ -124,6 +125,7 @@ const emptyForm = {
   data_realizado: "",
   status: "PENDENTE",
   referencia_normativa: "",
+  trecho_norma: "",
 };
 
 export default function InspecoesSE() {
@@ -332,11 +334,15 @@ export default function InspecoesSE() {
           referencia_normativa: data.referencia_normativa || p.referencia_normativa,
           gravidade: data.gravidade || p.gravidade,
           acao_corretiva: data.acao_corretiva || p.acao_corretiva,
+          // O trecho da norma ia só para o aviso de canto de tela, que some em
+          // segundos: a IA gerava e o sistema jogava fora. Num relatório de
+          // inspeção é justamente ele que sustenta a autuação.
+          trecho_norma: data.trecho_norma || p.trecho_norma,
         }));
-        const desc = data.trecho_norma
-          ? `NR: ${data.referencia_normativa}\n📖 ${data.trecho_norma}`
-          : `NR: ${data.referencia_normativa}`;
-        toast({ title: "Sugestão aplicada!", description: desc });
+        toast({
+          title: "Sugestão aplicada",
+          description: "Confira a referência, o trecho da norma e a ação antes de salvar.",
+        });
       }
     } catch (err: any) {
       toast({ title: "Erro ao consultar IA", description: err?.message || "Tente novamente", variant: "destructive" });
@@ -398,6 +404,7 @@ export default function InspecoesSE() {
       data_realizado: item.data_realizado || "",
       status: item.status,
       referencia_normativa: item.referencia_normativa || "",
+      trecho_norma: item.trecho_norma || "",
     });
     setExistingFotoAntes(item.foto_antes);
     setExistingFotoDepois(item.foto_depois);
@@ -494,6 +501,7 @@ export default function InspecoesSE() {
       foto_antes_path,
       foto_depois_path,
       referencia_normativa: form.referencia_normativa || null,
+      trecho_norma: form.trecho_norma || null,
       empresa_id: empresaId,
       created_by: user?.id,
     };
@@ -1421,6 +1429,18 @@ export default function InspecoesSE() {
         const nrLines = doc.splitTextToSize(item.referencia_normativa, contentW);
         doc.text(nrLines, MARGIN, cy);
         cy += nrLines.length * 4.5 + 2;
+
+        // O que a norma exige, logo abaixo da citação. Sem isto o relatório
+        // afirma "descumpre a NR-10 item 10.3.2" e deixa quem lê procurando o
+        // texto da norma para saber o que isso quer dizer.
+        if (item.trecho_norma) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8.5);
+          setText(GREY_TXT);
+          const trechoLines = doc.splitTextToSize(item.trecho_norma, contentW);
+          doc.text(trechoLines, MARGIN, cy);
+          cy += trechoLines.length * 4 + 2;
+        }
         setText([0, 0, 0]);
       }
 
@@ -1981,6 +2001,20 @@ export default function InspecoesSE() {
                     />
                     <p className="text-[11px] text-muted-foreground mt-1">
                       Formato: <strong>NR-XX — Item X.X.X — Descrição curta</strong>. Múltiplas referências: uma por linha (norma principal primeiro).
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="font-semibold">O que a norma exige</Label>
+                    <Textarea
+                      placeholder="Trecho resumido do requisito da norma citada acima."
+                      value={form.trecho_norma}
+                      onChange={e => setForm(p => ({ ...p, trecho_norma: e.target.value }))}
+                      className="min-h-[72px] w-full resize-y text-sm"
+                      rows={3}
+                      title={form.trecho_norma}
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Preenchido pela sugestão de IA. Confira antes de emitir — quem responde pelo laudo é o responsável técnico.
                     </p>
                   </div>
                 </div>

@@ -153,14 +153,17 @@ Exemplos válidos:
 
 REGRAS OBRIGATÓRIAS:
 1. SEMPRE inclua item/subitem/artigo exato. Nunca responda apenas "NR-XX" ou "CTB" sem especificar onde.
-2. Se a situação envolver mais de uma legislação (ex: uma NR e uma NBR), retorne MÚLTIPLAS linhas separadas por "\\n" (legislação principal primeiro).
-3. Anti-alucinação: só cite um item se tiver ALTA confiança. Se não tiver certeza do número exato, escreva:
+2. Quase nenhuma situação real é coberta por uma norma só. Retorne MÚLTIPLAS linhas separadas por "\\n", com a norma principal primeiro, SEMPRE que houver norma complementar. Responder uma linha só quando cabem duas é resposta incompleta.
+2.1. A NR diz O QUE é exigido; a NBR diz COMO se faz. Citada uma NR de instalação, equipamento ou sistema, procure a NBR correspondente e cite as duas. Exemplos de par: elétrica/aterramento -> NR-10 + NBR 5410 (baixa tensão) ou NBR 5419 (descargas atmosféricas); incêndio -> IT do Corpo de Bombeiros + NBR do sistema (extintor, hidrante, alarme); andaime -> NR-18 + NBR 6494; ergonomia de mobiliário -> NR-17 + NBR 13962.
+2.2. Se a descrição citar Corpo de Bombeiros, CBMCE, CBMRN, AVCB, projeto aprovado ou laudo do Corpo de Bombeiros, a Instrução Técnica correspondente é OBRIGATÓRIA na resposta.
+3. Anti-alucinação: só cite um NÚMERO DE ITEM se tiver ALTA confiança. Se não tiver certeza do número exato, escreva:
    "NORMA — Item a confirmar pelo responsável técnico — Descrição curta"
    NUNCA invente números de itens só para parecer preciso.
+3.1. A dúvida sobre o NÚMERO nunca é motivo para OMITIR a norma. Quem lê é técnico de segurança e sabe localizar o item; o que ele não consegue é adivinhar que a NBR existe. Entre citar "NBR 5419 — Item a confirmar pelo responsável técnico — ..." e não citar a NBR, cite.
 4. Descrição curta: 1 frase objetiva, com o requisito real da lei ou norma.
 5. "gravidade": uma de "LEVE", "MODERADO", "GRAVE", "RISCO CRÍTICO". Choque, risco de explosão, atropelamento, contaminação ambiental grave ou espaço confinado = "GRAVE" ou "RISCO CRÍTICO".
 6. "acao_corretiva": ação prática, imediata e específica (máx. 3 frases).
-7. "trecho_norma": trecho resumido real da(s) norma(s) citada(s) (máx. 2 frases). Não invente texto da lei.
+7. "trecho_norma": o que a(s) norma(s) citada(s) exigem, em texto corrido (2 a 4 frases). Cubra TODAS as normas citadas na referencia_normativa, não só a primeira. Este campo vai impresso no relatório de inspeção, abaixo da citação — é o que explica ao leitor o que a norma manda fazer. Não invente texto de lei: descreva o requisito.
 
 Palavras-chave elétricas em canteiro (quadro, disjuntor) -> priorizar NR-18 e NR-10.
 Trânsito (veículo, cinto, habilitação) -> focar em CTB/CONTRAN.

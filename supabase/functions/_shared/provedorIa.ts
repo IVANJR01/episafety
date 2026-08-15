@@ -38,10 +38,17 @@ export interface ProvedorIa {
 
 /**
  * O modelo pode ser trocado por variável de ambiente, sem publicar de novo.
- * O padrão é um modelo de custo baixo, que é o adequado para classificar uma
- * situação de inspeção em poucas linhas.
+ *
+ * O padrão saiu de `gpt-4o-mini` para `gpt-4o` depois do primeiro uso real: o
+ * modelo pequeno acertava a NR mas não trazia a NBR nem a Instrução Técnica do
+ * Corpo de Bombeiros. Lembrar o número de item de norma técnica é justamente o
+ * tipo de tarefa em que modelo pequeno falha.
+ *
+ * O custo pesa pouco aqui: é uma chamada por não conformidade, com cerca de
+ * 1.500 tokens. Quem preferir economizar põe OPENAI_MODEL=gpt-4o-mini e aceita
+ * a perda de recuperação.
  */
-const MODELO_OPENAI_PADRAO = "gpt-4o-mini";
+const MODELO_OPENAI_PADRAO = "gpt-4o";
 const MODELO_GEMINI_PADRAO = "gemini-2.5-flash";
 
 export function resolverProvedorIa(): ProvedorIa | null {
