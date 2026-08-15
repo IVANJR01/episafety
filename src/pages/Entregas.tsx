@@ -1428,20 +1428,25 @@ export default function Entregas() {
                         const func = funcionarioPorId.get(e.funcionario_id);
                         const epi = epiPorId.get(e.epi_id);
                         return (
-                          <div className="grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-0.5">
-                            <span className="font-mono text-sm text-muted-foreground tabular-nums">
-                              {func?.matricula || ""}
-                            </span>
-                            <span className="font-semibold text-sm leading-snug">{func?.nome || "—"}</span>
-                            <span className="font-mono text-sm text-muted-foreground tabular-nums">
-                              {epi?.ca || ""}
-                            </span>
-                            {/* Sem o EPI no cadastro carregado o card mostrava
-                                um "—" solto, idêntico a campo vazio. Dizer que
-                                não foi localizado evita ler como "sem EPI". */}
-                            <span className="text-sm leading-snug">
-                              {epi?.nome || <span className="text-muted-foreground italic">EPI não localizado no cadastro</span>}
-                            </span>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-sm leading-snug">{func?.nome || "—"}</span>
+                              {func?.matricula && (
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  Matrícula: {func.matricula}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[13px] font-medium leading-snug">
+                                {epi?.nome || <span className="text-muted-foreground italic">EPI não localizado no cadastro</span>}
+                              </span>
+                              {epi?.ca && (
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  CA: {epi.ca}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })()}
@@ -1544,7 +1549,7 @@ export default function Entregas() {
                     </TableCell></TableRow>
                   ) : filteredEntregas.map(e => (
                     <TableRow key={e.id}>
-                      <TableCell className="font-mono text-xs">{e.data}</TableCell>
+                      <TableCell className="font-mono text-[11.5px] whitespace-nowrap">{fmtData(e.data)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <StatusBadge tone={tipoTone[e.tipo] || "neutral"} size="sm">{tipoLabels[e.tipo] || e.tipo}</StatusBadge>
@@ -1553,21 +1558,27 @@ export default function Entregas() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {funcionarioPorId.get(e.funcionario_id)?.matricula && (
-                          <span className="font-mono text-xs text-muted-foreground mr-1.5">
-                            {funcionarioPorId.get(e.funcionario_id)?.matricula}
-                          </span>
-                        )}
-                        {funcionarioPorId.get(e.funcionario_id)?.nome || "—"}
+                      <TableCell className="leading-tight py-2.5">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">{funcionarioPorId.get(e.funcionario_id)?.nome || "—"}</span>
+                          {funcionarioPorId.get(e.funcionario_id)?.matricula && (
+                            <span className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                              Matrícula: {funcionarioPorId.get(e.funcionario_id)?.matricula}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell>
-                        {epiPorId.get(e.epi_id)?.ca && (
-                          <span className="font-mono text-xs text-muted-foreground mr-1.5">{epiPorId.get(e.epi_id)?.ca}</span>
-                        )}
-                        {epiPorId.get(e.epi_id)?.nome || (
-                          <span className="text-muted-foreground italic text-xs">EPI não localizado</span>
-                        )}
+                      <TableCell className="leading-tight py-2.5">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-[13px]">{epiPorId.get(e.epi_id)?.nome || (
+                            <span className="text-muted-foreground italic text-[11px]">EPI não localizado</span>
+                          )}</span>
+                          {epiPorId.get(e.epi_id)?.ca && (
+                            <span className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                              CA: {epiPorId.get(e.epi_id)?.ca}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">{e.quantidade}</TableCell>
                       <TableCell>
