@@ -1,9 +1,16 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { pedirInstalacao } from "@/lib/instalarPwa";
 
 const DISMISSED_KEY = "pwa-install-banner-dismissed";
 
-export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: boolean }) {
+/*
+ * A prop `autoTrigger` saiu junto com a chamada automática: ela existia só
+ * para ligar aquele comportamento, que o navegador nunca permitiu. Quem
+ * passava `autoTrigger` (a tela de login) agora recebe o mesmo convite das
+ * outras telas.
+ */
+export default function InstallBanner() {
   const [visible, setVisible] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [installEvent, setInstallEvent] = useState<any>(null);
@@ -24,19 +31,19 @@ export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: b
     const handler = (e: Event) => {
       e.preventDefault();
       setInstallEvent(e);
-      // Auto-trigger only if explicitly requested (login page)
-      if (autoTrigger) {
-        const promptEvent = e as any;
-        promptEvent.prompt();
-        promptEvent.userChoice.then((result: any) => {
-          if (result.outcome === "accepted") {
-            setVisible(false);
-          }
-        });
-      } else {
-        // Show install banner for ALL devices (Android, tablets, etc.)
-        setVisible(true);
-      }
+      /*
+       * Aqui NÃO se chama prompt().
+       *
+       * Este evento dispara ao carregar a página, sem gesto do usuário, e o
+       * navegador recusa a instalação nessa situação por regra — não é
+       * contornável. A chamada automática que existia aqui (autoTrigger)
+       * quebrava em toda abertura da tela de login e, sem tratamento, a recusa
+       * aparecia como erro de sistema em cima do formulário.
+       *
+       * O que dá para fazer é mostrar o convite. Instalar continua a um
+       * clique de distância — a diferença é que agora o clique existe.
+       */
+      setVisible(true);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
@@ -44,7 +51,7 @@ export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: b
     // iOS fallback: show banner with instructions (Safari doesn't fire beforeinstallprompt)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     let timeout: ReturnType<typeof setTimeout>;
-    if (isIOS && !autoTrigger) {
+    if (isIOS) {
       timeout = setTimeout(() => setVisible(true), 1500);
     }
 
@@ -52,7 +59,7 @@ export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: b
       window.removeEventListener("beforeinstallprompt", handler);
       if (timeout) clearTimeout(timeout);
     };
-  }, [autoTrigger]);
+  }, []);
 
   const handleDismiss = () => {
     setVisible(false);
@@ -62,15 +69,11 @@ export default function InstallBanner({ autoTrigger = false }: { autoTrigger?: b
   if (!visible || isStandalone) return null;
 
   const handleInstallClick = async () => {
-    if (installEvent) {
-      const promptEvent = installEvent as any;
-      promptEvent.prompt();
-      const { outcome } = await promptEvent.userChoice;
-      if (outcome === "accepted") {
-        setVisible(false);
-      }
-      setInstallEvent(null);
-    }
+    if (!installEvent) return;
+    const resultado = await pedirInstalacao(installEvent);
+    // O evento vale por uma chamada só: a segunda é recusada do mesmo jeito.
+    setInstallEvent(null);
+    if (resultado === "aceito") setVisible(false);
   };
 
   return (

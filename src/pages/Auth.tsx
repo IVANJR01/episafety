@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import InstallBanner from "@/components/InstallBanner";
+import { pedirInstalacao } from "@/lib/instalarPwa";
 
 /*
  * Não existe autocadastro.
@@ -50,16 +51,11 @@ export default function Auth() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  const handleInstallClick = () => {
-    if (installPrompt) {
-      const promptEvent = installPrompt as any;
-      promptEvent.prompt();
-      promptEvent.userChoice.then((result: any) => {
-        if (result.outcome === "accepted") {
-          setShowInstallButton(false);
-        }
-      });
-    }
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    const resultado = await pedirInstalacao(installPrompt);
+    setInstallPrompt(null);
+    if (resultado === "aceito") setShowInstallButton(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,7 +168,7 @@ export default function Auth() {
         </CardContent>
       </Card>
 
-      <InstallBanner autoTrigger={true} />
+      <InstallBanner />
     </div>);
 
 }

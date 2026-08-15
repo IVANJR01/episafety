@@ -9,6 +9,7 @@ import { APP_VERSION } from "@/lib/version";
 import { forceAppUpdate } from "@/lib/appUpdate";
 import SuporteButton from "@/components/SuporteButton";
 import TermsAcceptanceBanner from "@/components/TermsAcceptanceBanner";
+import { pedirInstalacao } from "@/lib/instalarPwa";
 
 interface NavItem {
   path: string;
@@ -240,16 +241,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const handleInstallClick = () => {
-    if (installPrompt) {
-      const promptEvent = installPrompt as any;
-      promptEvent.prompt();
-      promptEvent.userChoice.then((result: any) => {
-        if (result.outcome === "accepted") {
-          setShowInstallButton(false);
-        }
-      });
-    }
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    const resultado = await pedirInstalacao(installPrompt);
+    setInstallPrompt(null);
+    if (resultado === "aceito") setShowInstallButton(false);
   };
 
   const handleCheckUpdate = async () => {

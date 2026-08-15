@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Smartphone, Download, Share, ArrowLeft, CheckCircle2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { pedirInstalacao } from "@/lib/instalarPwa";
 
 export default function Install() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -33,19 +34,19 @@ export default function Install() {
     };
   }, []);
 
-  // Auto-trigger on Android/Chrome as soon as prompt is available
-  useEffect(() => {
-    if (deferredPrompt && !installed) {
-      handleInstall();
-    }
-  }, [deferredPrompt]);
-
+  /*
+   * A chamada automática saiu daqui também.
+   *
+   * Era um efeito disparando prompt() assim que o evento chegava — sem gesto
+   * do usuário, portanto recusado pelo navegador, e com a rejeição sem
+   * tratamento. O botão abaixo faz a mesma coisa, na hora certa.
+   */
   const handleInstall = async () => {
     if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") setInstalled(true);
+    const resultado = await pedirInstalacao(deferredPrompt);
+    // O evento serve para uma chamada só.
     setDeferredPrompt(null);
+    if (resultado === "aceito") setInstalled(true);
   };
 
   return (
