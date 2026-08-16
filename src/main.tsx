@@ -61,6 +61,17 @@ if (isNativeApp) {
     .catch(() => {});
 }
 
+/*
+ * Verificação de versão nova, a cada minuto e ao voltar para o aplicativo.
+ *
+ * No aplicativo nativo quem atualiza é a loja, então lá isto não roda.
+ */
+if (typeof window !== "undefined" && !isNativeApp) {
+  void import("@/lib/verificarAtualizacao").then(({ iniciarVerificacaoDeVersao }) => {
+    iniciarVerificacaoDeVersao({ intervaloMs: 60_000 });
+  }).catch(() => {});
+}
+
 async function bootstrap() {
   try {
     await Promise.race([
