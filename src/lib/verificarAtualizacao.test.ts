@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import {
-  decidirRecarga, lerEstadoDaTela, buscarVersaoPublicada, iniciarVerificacaoDeVersao,
+  decidirRecarga, lerEstadoDaTela, buscarVersaoPublicada, iniciarVerificacaoDeVersao, versaoParaMostrar,
 } from "./verificarAtualizacao";
 
 /**
@@ -31,6 +31,21 @@ describe("decidirRecarga", () => {
 
   it("tela aberta e ninguém digitando: recarrega", () => {
     expect(decidirRecarga({ oculta: false, digitando: false })).toBe("recarregar");
+  });
+});
+
+describe("versaoParaMostrar", () => {
+  it("mostra o commit, não o id inteiro com carimbo de tempo", () => {
+    expect(versaoParaMostrar("ac146198-msxkdweo")).toBe("ac146198");
+  });
+
+  it("id sem traço aparece como está, em vez de sumir", () => {
+    expect(versaoParaMostrar("desenvolvimento")).toBe("desenvolvimento");
+  });
+
+  it("nunca devolve vazio — rodapé sem versão nenhuma é pior que versão feia", () => {
+    expect(versaoParaMostrar("")).toBe("");
+    expect(versaoParaMostrar("-abc")).toBe("-abc");
   });
 });
 

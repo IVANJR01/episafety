@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessModule, MODULOS } from "@/lib/permissions";
-import { APP_VERSION } from "@/lib/version";
+import { versaoParaMostrar } from "@/lib/verificarAtualizacao";
 import { forceAppUpdate } from "@/lib/appUpdate";
 import SuporteButton from "@/components/SuporteButton";
 import TermsAcceptanceBanner from "@/components/TermsAcceptanceBanner";
@@ -757,7 +757,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             title="Verificar atualizações"
           >
             <RefreshCw className={`w-3 h-3 ${checking ? "animate-spin" : ""}`} />
-            <span>v{APP_VERSION}{checking ? " verificando..." : " · Atualizar"}</span>
+            <span>v{versaoParaMostrar()}{checking ? " verificando..." : " · Atualizar"}</span>
           </button>
           <SuporteButton variant="sidebar" />
           <div className="flex items-center gap-2 px-4 text-[10px] text-sidebar-foreground/40">

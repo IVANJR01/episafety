@@ -23,6 +23,20 @@ declare const __BUILD_ID__: string;
 export const ID_DESTA_VERSAO: string =
   typeof __BUILD_ID__ === "string" ? __BUILD_ID__ : "desenvolvimento";
 
+/**
+ * Versão para mostrar na tela.
+ *
+ * O rodapé do menu mostrava `APP_VERSION`, a constante escrita à mão que ficou
+ * em "2.4.6" por 290 commits. Quem clicava em "Atualizar" e via o mesmo número
+ * de sempre não tinha como saber se o aplicativo tinha trocado de versão ou
+ * não — que era exatamente a dúvida.
+ *
+ * O id do build é `<commit>-<carimbo>`; para a tela basta o commit.
+ */
+export function versaoParaMostrar(id: string = ID_DESTA_VERSAO): string {
+  return id.split("-")[0] || id;
+}
+
 export interface EstadoDaTela {
   /** A aba está em segundo plano? */
   oculta: boolean;

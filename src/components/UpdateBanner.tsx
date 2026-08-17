@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Download, X, Sparkles } from "lucide-react";
-import { APP_VERSION } from "@/lib/version";
+import { versaoParaMostrar } from "@/lib/verificarAtualizacao";
 import { forceAppUpdate } from "@/lib/appUpdate";
 
 export default function UpdateBanner() {
@@ -36,7 +36,7 @@ export default function UpdateBanner() {
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm">Nova versão disponível!</p>
           <p className="text-xs opacity-80 mt-0.5">
-            Versão atual: {APP_VERSION}. Clique para atualizar.
+            Versão atual: {versaoParaMostrar()}. Clique para atualizar.
           </p>
           <button
             onClick={handleUpdate}

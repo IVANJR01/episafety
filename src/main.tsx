@@ -43,12 +43,33 @@ if (typeof window !== "undefined" && "caches" in window) {
 }
 
 
+/*
+ * Cópia do aplicativo no aparelho, para ele ABRIR sem internet.
+ *
+ * Sem isto, recarregar sem sinal dava a tela "Sem internet" do navegador —
+ * medido. E, como a pessoa não conseguia nem chegar na tela, todo o trabalho
+ * offline que já existia no sistema (fila de sincronização, cache de tabelas,
+ * aviso de "Modo Offline") ficava inalcançável.
+ *
+ * No aplicativo nativo os arquivos já vêm dentro do pacote instalado, então lá
+ * não é preciso.
+ */
 if (!isNativeApp && "serviceWorker" in navigator) {
   let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloading) return;
     reloading = true;
     window.location.reload();
+  });
+
+  // Depois do `load` de propósito: instalar o service worker baixa o pacote
+  // inteiro do aplicativo, e fazer isso durante a abertura deixaria a primeira
+  // tela mais lenta justamente para quem está com internet ruim.
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((erro) => {
+      // Falhar aqui não impede o sistema de funcionar com internet.
+      console.warn("[offline] não foi possível preparar o modo sem internet:", erro);
+    });
   });
 }
 

@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { execSync } from "child_process";
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
 
 /*
  * Identidade da versão publicada, gerada pelo build.
@@ -40,6 +40,94 @@ function pluginVersao(id: string) {
   };
 }
 
+/*
+ * Lista dos arquivos do aplicativo que precisam existir no aparelho para ele
+ * abrir sem internet.
+ *
+ * É montada lendo o resultado do build, não escrita à mão: os nomes em
+ * /assets levam hash e mudam a cada publicação, então qualquer lista fixa
+ * nasceria errada.
+ */
+const LIMITE_ARQUIVO_BYTES = 600 * 1024;
+const FORA_DO_PACOTE = new Set([
+  "/version.json",      // é justamente o arquivo que diz se o cache está velho
+  "/sw.js",             // o próprio service worker
+  "/service-worker.js", // interruptor do service worker antigo
+  "/robots.txt",
+  "/pwa-base-logo.png", // arte de origem, 700 KB, não usada em tela
+]);
+/*
+ * Passa do limite de tamanho, mas entra assim mesmo: é o logo do topo, que
+ * aparece em toda tela. Sem ele o sistema abre sem internet com o cabeçalho
+ * vazio — funciona, mas parece quebrado.
+ *
+ * (O arquivo tem 860 KB para ser exibido a 48 px. Reduzi-lo é ganho para
+ * todo mundo, com ou sem internet, mas mexer na arte é outra conversa.)
+ */
+const SEMPRE_NO_PACOTE = new Set([
+  "/marca/8df588ff-740d-4376-9653-dc6f07556c80.png",
+]);
+const EXTENSOES_GUARDAVEIS = new Set([
+  ".html", ".js", ".css", ".json", ".png", ".jpg", ".jpeg", ".svg", ".webp",
+  ".ico", ".woff", ".woff2",
+]);
+
+function listarArquivosDoPacote(raiz: string): string[] {
+  const achados: string[] = [];
+
+  const percorrer = (dir: string, prefixo: string) => {
+    for (const nome of readdirSync(dir)) {
+      const caminho = path.join(dir, nome);
+      const url = `${prefixo}/${nome}`;
+      const info = statSync(caminho);
+      if (info.isDirectory()) {
+        percorrer(caminho, url);
+        continue;
+      }
+      if (FORA_DO_PACOTE.has(url)) continue;
+      const ext = path.extname(nome).toLowerCase();
+      if (!EXTENSOES_GUARDAVEIS.has(ext)) continue;
+      // O pacote do aplicativo (/assets) entra inteiro, custe o que custar —
+      // sem ele não há aplicativo. O resto é imagem solta, e imagem grande no
+      // cache offline atrapalha mais do que ajuda.
+      if (!url.startsWith("/assets/") && !SEMPRE_NO_PACOTE.has(url)
+        && info.size > LIMITE_ARQUIVO_BYTES) continue;
+      achados.push(url);
+    }
+  };
+
+  percorrer(raiz, "");
+  return achados.sort();
+}
+
+/**
+ * Escreve dist/sw.js a partir de src/sw/servicoOffline.js, injetando a lista de
+ * arquivos e o id da versão. O service worker fica sendo um arquivo comum do
+ * projeto — dá para ler e testar — e só o que ele não tem como saber sozinho
+ * vem do build.
+ */
+function pluginServiceWorker(id: string) {
+  return {
+    name: "episafety-service-worker",
+    closeBundle() {
+      try {
+        const corpo = readFileSync(path.resolve(__dirname, "src/sw/servicoOffline.js"), "utf-8");
+        const arquivos = listarArquivosDoPacote(path.resolve(__dirname, "dist"));
+        const cabecalho =
+          `// Gerado pelo build a partir de src/sw/servicoOffline.js. Não editar aqui.\n` +
+          `self.__VERSAO_BUILD__ = ${JSON.stringify(id)};\n` +
+          `self.__ARQUIVOS_PRECACHE__ = ${JSON.stringify(arquivos)};\n\n`;
+        writeFileSync(path.resolve(__dirname, "dist/sw.js"), cabecalho + corpo, "utf-8");
+        console.log(`[episafety] service worker gerado com ${arquivos.length} arquivos offline`);
+      } catch (erro) {
+        // Sem cópia offline o aplicativo ainda funciona com internet; falhar o
+        // build inteiro por causa disto seria pior.
+        console.warn("[episafety] não foi possível gerar o service worker:", erro);
+      }
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 const BUILD_ID = idDoBuild();
 
@@ -71,7 +159,7 @@ export default defineConfig(() => ({
       overlay: false,
     },
   },
-  plugins: [react(), pluginVersao(BUILD_ID)],
+  plugins: [react(), pluginVersao(BUILD_ID), pluginServiceWorker(BUILD_ID)],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
