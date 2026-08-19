@@ -35,12 +35,16 @@ function Contador({ valor, icone: Icone, cor, titulo }: {
 }) {
   if (!valor) return null;
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded border ${cor}`}
+    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${cor}`}
       title={titulo}>
-      <Icone className="w-3 h-3" aria-hidden="true" />{valor}
+      <Icone className="w-3.5 h-3.5" aria-hidden="true" />{valor}
     </span>
   );
 }
+
+const getInitials = (name: string) => {
+  return name.split(" ").filter(n => n.trim()).slice(0, 2).map(n => n[0]).join("").toUpperCase();
+};
 
 /**
  * Dossiê de Colaboradores — a porta de entrada do Arquivo Digital.
@@ -220,15 +224,15 @@ export default function DossieColaboradores() {
 
   /** Pendências do colaborador — mesma leitura no cartão e na tabela. */
   const Pendencias = ({ c }: { c: any }) => (
-    <div className="flex gap-1 flex-wrap">
+    <div className="flex gap-1.5 flex-wrap">
       <Contador valor={c.vencido || 0} icone={XCircle} titulo="Vencidos"
-        cor="bg-red-100 text-red-800 border-red-300" />
+        cor="bg-red-50 text-red-700 border-red-200" />
       <Contador valor={c.vence_em_breve || 0} icone={Clock} titulo="Vencendo"
-        cor="bg-orange-100 text-orange-800 border-orange-300" />
+        cor="bg-orange-50 text-orange-700 border-orange-200" />
       <Contador valor={c.nao_enviado || 0} icone={AlertCircle} titulo="Não enviados"
-        cor="bg-amber-100 text-amber-800 border-amber-300" />
+        cor="bg-amber-50 text-amber-700 border-amber-200" />
       {!(c.vencido || c.vence_em_breve || c.nao_enviado) && (
-        <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+        <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full whitespace-nowrap font-medium">
           <CheckCircle2 className="w-3.5 h-3.5" />Sem pendência
         </span>
       )}
@@ -249,21 +253,25 @@ export default function DossieColaboradores() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[220px]">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative flex-1 min-w-[280px]">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input value={busca} onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por nome, CPF, matrícula, função ou setor…" className="pl-8" />
+                placeholder="Buscar por nome, CPF, matrícula, função ou setor…" className="pl-8 bg-muted/20" />
             </div>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-              <Checkbox checked={soPendentes} onCheckedChange={(v) => setSoPendentes(!!v)} />
-              Só com pendência
-            </label>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-              <Checkbox checked={incluirDesligados} onCheckedChange={(v) => setIncluirDesligados(!!v)} />
-              Incluir desligados
-            </label>
-            <span className="text-sm text-muted-foreground whitespace-nowrap">{linhas.length} colaborador(es)</span>
+            <div className="flex items-center gap-4 bg-muted/40 px-3 py-1.5 rounded-md border border-muted">
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer hover:opacity-80 transition-opacity">
+                <Checkbox checked={soPendentes} onCheckedChange={(v) => setSoPendentes(!!v)} className="rounded-[4px]" />
+                Só com pendência
+              </label>
+              <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer hover:opacity-80 transition-opacity">
+                <Checkbox checked={incluirDesligados} onCheckedChange={(v) => setIncluirDesligados(!!v)} className="rounded-[4px]" />
+                Incluir desligados
+              </label>
+            </div>
+            <div className="ml-auto">
+               <Badge variant="secondary" className="font-normal">{linhas.length} colaborador(es)</Badge>
+            </div>
           </div>
 
           {/* Celular: cartões. Tabela de 5 colunas em tela estreita vira
@@ -327,16 +335,25 @@ export default function DossieColaboradores() {
                   </TableCell></TableRow>
                 )}
                 {itensPagina.map(({ f, c }) => (
-                  <TableRow key={f.id} className={f.data_demissao ? "opacity-60" : ""}>
+                  <TableRow key={f.id} className={`hover:bg-muted/30 transition-colors ${f.data_demissao ? "opacity-60" : ""}`}>
                     <TableCell>
-                      <div className="font-medium text-sm flex items-center gap-2">
-                        {f.nome}
-                        {f.data_demissao && (
-                          <Badge variant="outline" className="text-[10px] text-muted-foreground">Desligado</Badge>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {f.matricula ? `Mat. ${f.matricula}` : ""}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 select-none">
+                          {getInitials(f.nome)}
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="font-semibold text-[13px] flex items-center gap-2">
+                            {f.nome}
+                            {f.data_demissao && (
+                              <Badge variant="outline" className="text-[10px] text-muted-foreground font-normal">Desligado</Badge>
+                            )}
+                          </div>
+                          {f.matricula && (
+                            <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                              Matrícula: {f.matricula}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">{f.cargo || "—"}</TableCell>
