@@ -1,3 +1,4 @@
+import { criterioDoGrupo } from "@/lib/sstEstrutura";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -144,7 +145,12 @@ export default function PgrEstruturaTecnica() {
         trabalhadores: g?.qtd_trabalhadores ?? (somaFuncoes || null),
         setor: setorNome || null,
         jornada: g?.jornada || null,
-        criterio: g?.justificativa_similaridade || g?.criterio_agrupamento || null,
+        // Montado do setor e das funções agora. A "Descrição curta da
+        // exposição" saiu do cadastro: era uma cópia da composição, e ficava
+        // velha assim que uma função mudava de grupo.
+        criterio: g?.justificativa_similaridade
+          || criterioDoGrupo({ armazenado: g?.criterio_agrupamento, setorNome, funcoes: fns })
+          || null,
         lista: fns,
       };
     }

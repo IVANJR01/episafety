@@ -111,7 +111,13 @@ export function criterioAgrupamentoSugerido(
 ): string {
   const setor = limpo(setorNome);
   if (!setor) return "";
-  const nomes = (funcoes || []).map((f) => limpo(f?.nome)).filter(Boolean);
+  // Sem repetir nome. O cadastro tem funções duplicadas (mesma função criada
+  // mais de uma vez), e o grupo 01 desta base chega a ter "Ajudante de
+  // Confecção" duas vezes. Num documento legal, listar a mesma função duas
+  // vezes na mesma frase é erro visível.
+  const nomes = Array.from(new Set(
+    (funcoes || []).map((f) => limpo(f?.nome)).filter(Boolean),
+  ));
   if (nomes.length === 0) {
     return `Trabalhadores do setor ${setor}, sujeitos às mesmas condições de exposição.`;
   }
@@ -119,4 +125,41 @@ export function criterioAgrupamentoSugerido(
     ? nomes[0]
     : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
   return `Trabalhadores do setor ${setor} nas funções ${lista}, sujeitos às mesmas condições de exposição.`;
+}
+
+/**
+ * Este texto foi escrito pelo sistema ou por uma pessoa?
+ *
+ * Serve para poder regenerar o critério sem apagar texto humano. O sistema
+ * escreve em dois formatos: o de `criterioAgrupamentoSugerido` (grupo com
+ * setor e funções) e o que a tela de Setores grava ao criar o grupo
+ * automático do setor. Qualquer outra coisa foi alguém que digitou.
+ */
+export function ehCriterioEscritoPeloSistema(texto?: string | null): boolean {
+  const t = limpo(texto);
+  if (!t) return false;
+  return /^Trabalhadores do setor /i.test(t) || /^Agrupamento por setor:/i.test(t);
+}
+
+/**
+ * O critério de agrupamento que sai no documento.
+ *
+ * O campo "Descrição curta da exposição" saiu do cadastro de grupos: a
+ * composição do grupo (setor + funções) já está cadastrada, e repetir isso à
+ * mão só criava uma cópia que envelhecia. Ao mover uma função de grupo, o
+ * texto guardado continuava dizendo a composição antiga — e era esse texto que
+ * ia para o PGR.
+ *
+ * Agora o texto é montado na hora de usar, a partir do cadastro. O que estiver
+ * guardado só prevalece se tiver sido escrito por uma pessoa: quem já detalhou
+ * a exposição à mão não perde o que escreveu.
+ */
+export function criterioDoGrupo(args: {
+  armazenado?: string | null;
+  setorNome?: string | null;
+  funcoes?: { nome?: string | null }[];
+}): string {
+  const guardado = limpo(args.armazenado);
+  if (guardado && !ehCriterioEscritoPeloSistema(guardado)) return guardado;
+  return criterioAgrupamentoSugerido(args.setorNome, args.funcoes) || guardado;
 }
