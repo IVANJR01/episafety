@@ -1,14 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
-import { criterioAgrupamentoSugerido } from "@/lib/sstEstrutura";
+import { criterioDoGrupo } from "@/lib/sstEstrutura";
 import { Plus, Edit2, Trash2, AlertTriangle } from "lucide-react";
 
 /**
@@ -35,8 +34,6 @@ export function GruposDoSetorDialog({
   const [editando, setEditando] = useState<any | null>(null);
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
-  /** Depois da primeira digitação o texto é do usuário e nunca mais é trocado. */
-  const [criterioTocado, setCriterioTocado] = useState(false);
 
   const gruposDoSetor = useMemo(() => {
     if (!setor) return [];
@@ -89,35 +86,22 @@ export function GruposDoSetorDialog({
   }, [funcoes, setor]);
 
   /**
-   * O critério é o que o PDF do PGR imprime para distinguir o grupo de um setor
-   * renomeado; vazio, o documento sai com "pendente de justificativa técnica".
-   * Como o setor e as funções já são conhecidos, o campo chega preenchido.
+   * O texto do critério não é mais digitado nem guardado a partir do formulário:
+   * ele é montado a partir do setor e das funções na hora de exibir e de gerar
+   * o documento (ver `criterioDoGrupo`). Guardar uma cópia criava um texto que
+   * envelhecia — mover uma função de grupo deixava o texto antigo no PGR.
    */
-  const rascunhoCriterio = criterioAgrupamentoSugerido(
-    setor?.nome,
-    selecionadas.map((id) => funcoes.find((f: any) => f.id === id)).filter(Boolean) as any[],
-  );
-
-  useEffect(() => {
-    if (!editando || criterioTocado) return;
-    setEditando((e: any) => (e ? { ...e, criterio_agrupamento: rascunhoCriterio } : e));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rascunhoCriterio, criterioTocado, !!editando]);
-
   const abrirNovo = () => {
     const proximo = String(
       gesList.reduce((max: number, g: any) => Math.max(max, Number(g.codigo) || 0), 0) + 1,
     ).padStart(2, "0");
-    setEditando({ codigo: proximo, nome: "", criterio_agrupamento: rascunhoCriterio });
+    setEditando({ codigo: proximo, nome: "" });
     setSelecionadas([]);
-    setCriterioTocado(false);
   };
 
   const abrirEdicao = (ges: any) => {
     setEditando({ ...ges });
     setSelecionadas(funcoesDoGes(ges.id).map((f: any) => f.id));
-    // Grupo que já tem critério escrito não é sobrescrito pelo rascunho.
-    setCriterioTocado(!!(ges.criterio_agrupamento || "").trim());
   };
 
   const salvar = async (e: React.FormEvent) => {
@@ -183,8 +167,20 @@ export function GruposDoSetorDialog({
                       </Button>
                     </div>
                   </div>
-                  {g.criterio_agrupamento && (
-                    <p className="text-xs text-slate-500 mt-1">{g.criterio_agrupamento}</p>
+                  {/* Montado do setor e das funções agora — não é a cópia
+                      guardada, que ficava velha ao mover função de grupo. */}
+                  {criterioDoGrupo({
+                    armazenado: g.criterio_agrupamento,
+                    setorNome: setor?.nome,
+                    funcoes: funcoesDoGes(g.id),
+                  }) && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      {criterioDoGrupo({
+                        armazenado: g.criterio_agrupamento,
+                        setorNome: setor?.nome,
+                        funcoes: funcoesDoGes(g.id),
+                      })}
+                    </p>
                   )}
                   <div className="mt-2">
                     {fns.length === 0 ? (
@@ -245,24 +241,6 @@ export function GruposDoSetorDialog({
             <div>
               <Label>Setor</Label>
               <p className="text-sm text-slate-600 h-10 flex items-center">{setor?.nome}</p>
-            </div>
-
-            <div>
-              <Label>Descrição curta da exposição</Label>
-              <Textarea
-                rows={2}
-                value={editando.criterio_agrupamento || ""}
-                onChange={(e) => {
-                  setCriterioTocado(true);
-                  setEditando({ ...editando, criterio_agrupamento: e.target.value });
-                }}
-                placeholder="Ex.: atividades de planejamento, controle, registros administrativos e acompanhamento da produção."
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                {criterioTocado
-                  ? "Este texto sai no PGR, na seção dos grupos de exposição."
-                  : "Escrito a partir do setor e das funções marcadas — edite se quiser detalhar a exposição."}
-              </p>
             </div>
 
             <div>

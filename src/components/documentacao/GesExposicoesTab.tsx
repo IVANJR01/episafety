@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
-import { criterioAgrupamentoSugerido } from "@/lib/sstEstrutura";
+import { criterioDoGrupo } from "@/lib/sstEstrutura";
 import type { SstGes } from "@/types/sst";
 import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
@@ -47,6 +46,11 @@ export function GesExposicoesTab() {
     );
     return funcoes.filter((f: any) => ids.has(f.id));
   };
+  /** Nome do setor vinculado ao grupo — entra no texto do critério. */
+  const setorDoGes = (gesId: string) => {
+    const v = (gheSetores as any[]).find((x) => x.ghe_id === gesId);
+    return v ? setores.find((s: any) => s.id === v.setor_id)?.nome ?? null : null;
+  };
   /** Em que grupo cada função está hoje — para avisar de onde ela sairia. */
   const gesDaFuncao = (funcaoId: string) => {
     const v = (gheFuncoes as any[]).find((x) => x.funcao_id === funcaoId);
@@ -58,21 +62,13 @@ export function GesExposicoesTab() {
   const [funcoesSelecionadas, setFuncoesSelecionadas] = useState<string[]>([]);
   const [setorSelecionado, setSetorSelecionado] = useState<string>(SEM_SETOR);
   const [salvando, setSalvando] = useState(false);
-  /** Depois da primeira digitação o texto é do usuário e nunca mais é trocado. */
-  const [criterioTocado, setCriterioTocado] = useState(false);
-
-  /** Mesmo rascunho da tela de grupos do setor — os dois caminhos de criação
-   *  precisam produzir o mesmo texto, senão divergem de novo. */
-  const rascunhoCriterio = criterioAgrupamentoSugerido(
-    setores.find((s: any) => s.id === setorSelecionado)?.nome,
-    funcoesSelecionadas.map((id) => funcoes.find((f: any) => f.id === id)).filter(Boolean) as any[],
-  );
-
-  useEffect(() => {
-    if (!openGesModal || criterioTocado) return;
-    setGesFormData((g) => ({ ...g, criterio_agrupamento: rascunhoCriterio }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rascunhoCriterio, criterioTocado, openGesModal]);
+  /**
+   * O critério não é mais digitado aqui. A composição do grupo (setor +
+   * funções) já está logo abaixo neste mesmo formulário, e guardar uma frase
+   * repetindo isso criava um texto que envelhecia: ao mover uma função de
+   * grupo, o PGR continuava saindo com a composição antiga. Agora ele é
+   * montado na hora de exibir e de gerar o documento (`criterioDoGrupo`).
+   */
   const [confirmarExclusao, setConfirmarExclusao] = useState<{ id: string; nome: string } | null>(null);
 
   const abrirGes = (ges?: SstGes) => {
@@ -80,8 +76,6 @@ export function GesExposicoesTab() {
     setFuncoesSelecionadas(ges ? funcoesDoGes(ges.id).map((f: any) => f.id) : []);
     const vinculo = ges && (gheSetores as any[]).find((v) => v.ghe_id === ges.id);
     setSetorSelecionado(vinculo?.setor_id || SEM_SETOR);
-    // Grupo que já tem critério escrito não é sobrescrito pelo rascunho.
-    setCriterioTocado(!!(ges?.criterio_agrupamento || "").trim());
     setOpenGesModal(true);
   };
 
@@ -184,8 +178,18 @@ export function GesExposicoesTab() {
                 {/* O critério é o que separa um GES de um setor renomeado.
                     Quando falta, o card avisa e diz o que fazer, em vez de
                     estampar "Critério não especificado" e seguir. */}
-                {ges.criterio_agrupamento ? (
-                  <p className="text-slate-600">{ges.criterio_agrupamento}</p>
+                {criterioDoGrupo({
+                  armazenado: ges.criterio_agrupamento,
+                  setorNome: setorDoGes(ges.id),
+                  funcoes: funcoesDoGes(ges.id),
+                }) ? (
+                  <p className="text-slate-600">
+                    {criterioDoGrupo({
+                      armazenado: ges.criterio_agrupamento,
+                      setorNome: setorDoGes(ges.id),
+                      funcoes: funcoesDoGes(ges.id),
+                    })}
+                  </p>
                 ) : (
                   <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
                     Falta dizer <b>por que</b> estas pessoas têm a mesma exposição.
@@ -264,23 +268,6 @@ export function GesExposicoesTab() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label>Descrição curta da exposição</Label>
-              <Textarea
-                rows={2}
-                value={gesFormData.criterio_agrupamento || ""}
-                onChange={(e) => {
-                  setCriterioTocado(true);
-                  setGesFormData({ ...gesFormData, criterio_agrupamento: e.target.value });
-                }}
-                placeholder="Ex.: atividades de apoio operacional, organização e movimentação de peças, lotes e materiais."
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                {criterioTocado
-                  ? "Este texto sai no PGR, na seção dos grupos de exposição."
-                  : "Escrito a partir do setor e das funções marcadas — edite se quiser detalhar a exposição."}
-              </p>
             </div>
             <div>
               <Label>Funções neste grupo</Label>

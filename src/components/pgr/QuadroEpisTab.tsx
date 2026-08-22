@@ -24,7 +24,7 @@ export default function QuadroEpisTab({ pgrId, empresaId }: Props) {
 
       const [ghesRes, funcRes, riscosRes] = await Promise.all([
         (supabase.from as any)("ghe_ges").select("id, codigo, nome").in("id", gheIds),
-        (supabase.from as any)("ghe_funcoes").select("ghe_id, funcao_nome").in("ghe_id", gheIds),
+        (supabase.from as any)("ghe_funcoes").select("ghe_id, nome_funcao").in("ghe_id", gheIds),
         (supabase.from as any)("ghe_riscos").select("ghe_id, epis_recomendados").in("ghe_id", gheIds),
       ]);
       const ghes = ghesRes.data || [];
@@ -34,7 +34,7 @@ export default function QuadroEpisTab({ pgrId, empresaId }: Props) {
       const funcoesPorGhe = new Map<string, string[]>();
       funcs.forEach((f: any) => {
         if (!funcoesPorGhe.has(f.ghe_id)) funcoesPorGhe.set(f.ghe_id, []);
-        funcoesPorGhe.get(f.ghe_id)!.push(f.funcao_nome);
+        funcoesPorGhe.get(f.ghe_id)!.push(f.nome_funcao);
       });
 
       const episPorGhe = new Map<string, Set<string>>();

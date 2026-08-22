@@ -14,6 +14,7 @@ import MfaActionButton from "@/components/cat/MfaActionButton";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { generateAndUploadPgrPdf } from "@/lib/pgrPdf";
 import { resolveDocumentoUrl } from "@/lib/secureStorage";
+import { criterioDoGrupo } from "@/lib/sstEstrutura";
 
 async function abrirPdfVersao(v: any) {
   try {
@@ -96,7 +97,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     let quadroEpis: any[] = [];
     if (gheIdsInv.length > 0) {
       const [funcRes, riscosRes] = await Promise.all([
-        (supabase.from as any)("ghe_funcoes").select("ghe_id, funcao_nome").in("ghe_id", gheIdsInv),
+        (supabase.from as any)("ghe_funcoes").select("ghe_id, nome_funcao").in("ghe_id", gheIdsInv),
         (supabase.from as any)("ghe_riscos").select("ghe_id, epis_recomendados").in("ghe_id", gheIdsInv),
       ]);
       const controleMap = new Map<string, string>();
@@ -106,7 +107,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       const funcMap = new Map<string, string[]>();
       (funcRes.data || []).forEach((f: any) => {
         if (!funcMap.has(f.ghe_id)) funcMap.set(f.ghe_id, []);
-        funcMap.get(f.ghe_id)!.push(f.funcao_nome);
+        funcMap.get(f.ghe_id)!.push(f.nome_funcao);
       });
       const epiMap = new Map<string, Set<string>>();
       (riscosRes.data || []).forEach((r: any) => {
@@ -151,10 +152,47 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
         .select("*").eq("empresa_id", pgr.empresa_id).order(ordem);
       return error ? [] : (data || []);
     };
-    const [ambientes, processos, setores, gesDetalhes, funcoes, atividades] = await Promise.all([
+    const [ambientes, processos, setores, gesCru, funcoes, atividades] = await Promise.all([
       daEmpresa("sst_ambientes"), daEmpresa("sst_processos"), daEmpresa("sst_setores"),
       daEmpresa("sst_ges", "codigo"), daEmpresa("sst_funcoes"), daEmpresa("sst_atividades"),
     ]);
+
+    /*
+     * Critério de agrupamento de cada GES, montado aqui a partir do cadastro.
+     *
+     * Antes vinha de uma "Descrição curta da exposição" digitada no cadastro do
+     * grupo. Era uma cópia da composição que o sistema já conhece — e que
+     * envelhecia: mover uma função de um grupo para outro não mexia no texto
+     * guardado, então o PGR saía declarando funções que não estavam mais ali.
+     *
+     * Texto escrito por uma pessoa continua valendo; só o que o próprio sistema
+     * tinha escrito é remontado (ver `criterioDoGrupo`).
+     */
+    const [vincSetor, vincFuncao] = await Promise.all([
+      (supabase.from as any)("ghe_setores").select("ghe_id, setor_id, nome")
+        .eq("empresa_id", pgr.empresa_id),
+      (supabase.from as any)("ghe_funcoes").select("ghe_id, nome_funcao")
+        .eq("empresa_id", pgr.empresa_id),
+    ]);
+    const setorPorGes = new Map<string, string>();
+    ((vincSetor as any).data || []).forEach((v: any) => {
+      const nome = v.nome || (setores as any[]).find((s: any) => s.id === v.setor_id)?.nome;
+      if (nome && !setorPorGes.has(v.ghe_id)) setorPorGes.set(v.ghe_id, nome);
+    });
+    const funcoesPorGes = new Map<string, { nome: string }[]>();
+    ((vincFuncao as any).data || []).forEach((v: any) => {
+      if (!v.nome_funcao) return;
+      if (!funcoesPorGes.has(v.ghe_id)) funcoesPorGes.set(v.ghe_id, []);
+      funcoesPorGes.get(v.ghe_id)!.push({ nome: v.nome_funcao });
+    });
+    const gesDetalhes = (gesCru as any[]).map((g: any) => ({
+      ...g,
+      criterio_agrupamento: criterioDoGrupo({
+        armazenado: g.criterio_agrupamento,
+        setorNome: setorPorGes.get(g.id),
+        funcoes: funcoesPorGes.get(g.id),
+      }),
+    }));
 
     // Campos 5W2H que o PDF consome mas que NÃO são colunas de pgr_acoes.
     // "who" e "how much" moram em responsavel_nome/custo_estimado; a classe de risco
