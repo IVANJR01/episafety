@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
-import { criterioDoGrupo, setoresDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo } from "@/lib/sstEstrutura";
 import type { SstGes } from "@/types/sst";
 import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
@@ -61,6 +61,10 @@ export function GesExposicoesTab() {
     const reserva = v ? (setores.find((s: any) => s.id === v.setor_id)?.nome ?? v.nome ?? null) : null;
     return setoresDoGrupo(daFuncao, reserva);
   };
+
+  /** O nome exibido: do setor, quando ninguém deu nome próprio ao grupo. */
+  const nomeDoGes = (ges: any): string =>
+    nomeDoGrupo({ armazenado: ges?.nome, codigo: ges?.codigo, setores: setoresDoGes(ges?.id) });
   /** Em que grupo cada função está hoje — para avisar de onde ela sairia. */
   const gesDaFuncao = (funcaoId: string) => {
     const v = (gheFuncoes as any[]).find((x) => x.funcao_id === funcaoId);
@@ -89,10 +93,12 @@ export function GesExposicoesTab() {
   const handleSaveGes = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Bloquear duplicidades para manter o banco limpo
-    if (!gesFormData.id) {
-      const nomeNovo = (gesFormData.nome || "").trim().toLowerCase();
-      const existente = gesList.find((g: any) => g.nome.trim().toLowerCase() === nomeNovo);
+    // Bloquear duplicidades para manter o banco limpo. Só faz sentido para
+    // nome digitado: em branco o grupo se chama pelo setor, e dois grupos do
+    // mesmo setor são normais — é o caso de separar exposições dentro dele.
+    const nomeNovo = (gesFormData.nome || "").trim().toLowerCase();
+    if (!gesFormData.id && nomeNovo) {
+      const existente = gesList.find((g: any) => (g.nome || "").trim().toLowerCase() === nomeNovo);
       if (existente) {
         const confirmar = window.confirm(
           `Atenção! Já existe um Grupo de Exposição chamado "${gesFormData.nome?.trim()}".\n\n` +
@@ -107,9 +113,14 @@ export function GesExposicoesTab() {
       const proximoCodigo = String(
         gesList.reduce((max: number, g: any) => Math.max(max, Number(g.codigo) || 0), 0) + 1,
       ).padStart(2, "0");
+      const codigo = gesFormData.codigo || proximoCodigo;
       const salvo: any = await saveGes({
         ...gesFormData,
-        codigo: gesFormData.codigo || proximoCodigo,
+        codigo,
+        // `nome` é NOT NULL no banco. Em branco, grava o código — que é
+        // exatamente o que `nomeDoGrupo` reconhece como "sem nome próprio" e
+        // troca pelo setor na hora de exibir.
+        nome: (gesFormData.nome || "").trim() || codigo,
       } as any);
       await definirFuncoesDoGes({ ges_id: salvo.id, funcao_ids: funcoesSelecionadas });
       setOpenGesModal(false);
@@ -148,7 +159,7 @@ export function GesExposicoesTab() {
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0 flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-indigo-600 border-indigo-200">{ges.codigo}</Badge>
-                    <CardTitle className="text-base font-bold break-words">{ges.nome}</CardTitle>
+                    <CardTitle className="text-base font-bold break-words">{nomeDoGes(ges)}</CardTitle>
                     {funcoesDoGes(ges.id).length === 0 && (
                       <Badge variant="destructive" className="ml-1">Incompleto</Badge>
                     )}
@@ -169,7 +180,7 @@ export function GesExposicoesTab() {
                       <Edit2 className="w-4 h-4 text-slate-600" />
                     </Button>
                     <Button
-                      onClick={() => setConfirmarExclusao({ id: ges.id, nome: ges.nome })}
+                      onClick={() => setConfirmarExclusao({ id: ges.id, nome: nomeDoGes(ges) })}
                       variant="ghost" size="sm" title="Excluir grupo"
                     >
                       <Trash2 className="w-4 h-4 text-red-600" />
@@ -240,14 +251,30 @@ export function GesExposicoesTab() {
           </DialogHeader>
           <form onSubmit={handleSaveGes} className="space-y-4 text-sm">
             {/* Sem campo de Código: sequencial, gerado por baixo. */}
+            {/*
+              O nome deixou de ser obrigatório: sem ele o grupo se chama pelo
+              setor. Antes vinha preenchido com o próprio código — "01" —, o
+              mesmo número que o crachá roxo do cartão já mostra: repetia o
+              crachá e não dizia de quem era o grupo.
+
+              O campo fica para o grupo que merece nome próprio, que é o que
+              atravessa setores (ex.: "Equipe de manutenção móvel").
+            */}
             <div>
-              <Label>Nome do grupo *</Label>
+              <Label>Nome do grupo</Label>
               <Input
                 value={gesFormData.nome || ""}
                 onChange={(e) => setGesFormData({ ...gesFormData, nome: e.target.value })}
-                required
-                placeholder="Ex.: Administrativo do PCP"
+                placeholder={
+                  gesFormData.id
+                    ? setoresDoGes(gesFormData.id as string).join(", ") || "Nome do grupo"
+                    : "Deixe em branco para usar o nome do setor"
+                }
               />
+              <p className="text-xs text-slate-500 mt-1">
+                Em branco, o grupo se chama pelo setor das funções. Preencha só para
+                dar nome próprio a um grupo que reúne setores diferentes.
+              </p>
             </div>
             {/*
               O setor não é escolhido: ele SAI das funções marcadas logo abaixo.

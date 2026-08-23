@@ -14,7 +14,7 @@ import MfaActionButton from "@/components/cat/MfaActionButton";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { generateAndUploadPgrPdf } from "@/lib/pgrPdf";
 import { resolveDocumentoUrl } from "@/lib/secureStorage";
-import { criterioDoGrupo, setoresDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo } from "@/lib/sstEstrutura";
 
 async function abrirPdfVersao(v: any) {
   try {
@@ -202,6 +202,13 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     });
     const gesDetalhes = (gesCru as any[]).map((g: any) => ({
       ...g,
+      // O nome sai do setor quando o grupo não tem nome próprio. Sem isto o
+      // documento lista "01", "02", "03" — o mesmo número da coluna ao lado.
+      nome: nomeDoGrupo({
+        armazenado: g.nome,
+        codigo: g.codigo,
+        setores: setoresDoGrupo(setoresDaFuncaoPorGes.get(g.id), reservaPorGes.get(g.id)),
+      }),
       criterio_agrupamento: criterioDoGrupo({
         armazenado: g.criterio_agrupamento,
         setorNome: setoresDoGrupo(setoresDaFuncaoPorGes.get(g.id), reservaPorGes.get(g.id)),

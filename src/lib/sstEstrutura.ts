@@ -199,3 +199,39 @@ export function setoresDoGrupo(
   const lista = Array.isArray(reserva) ? reserva : [reserva];
   return Array.from(new Set(lista.map(limpo).filter(Boolean)));
 }
+
+/**
+ * O nome de um grupo de exposição.
+ *
+ * Os grupos nasciam chamados pelo próprio código — "01", "02", "03" —, e o
+ * cartão já mostra esse código num crachá ao lado. O nome repetia o crachá e
+ * não dizia nada sobre o grupo: para saber de quem se tratava era preciso ler
+ * a lista de funções abaixo.
+ *
+ * Como o grupo já sabe de que setor é (pelas funções que estão nele), o nome
+ * sai daí. Dois grupos do mesmo setor ficam com o mesmo nome e crachás
+ * diferentes — "COSTURA" 01 e "COSTURA" 02 —, que é justamente como se fala
+ * deles.
+ *
+ * Nome escrito por uma pessoa continua valendo: é o caso do grupo que
+ * atravessa setores e merece nome próprio ("Equipe de manutenção móvel").
+ * Nome igual ao código não conta como escrito por gente — era o padrão antigo.
+ */
+export function nomeDoGrupo(args: {
+  armazenado?: string | null;
+  codigo?: string | null;
+  setores?: string[];
+}): string {
+  const guardado = limpo(args.armazenado);
+  const codigo = limpo(args.codigo);
+  const soNumero = /^\d+$/.test(guardado);
+  const ehPadraoAntigo = !guardado
+    || guardado.toLowerCase() === codigo.toLowerCase()
+    || (soNumero && Number(guardado) === Number(codigo));
+  if (!ehPadraoAntigo) return guardado;
+
+  const setores = (args.setores || []).map(limpo).filter(Boolean);
+  if (setores.length === 0) return guardado || codigo;
+  if (setores.length === 1) return setores[0];
+  return `${setores.slice(0, -1).join(", ")} e ${setores[setores.length - 1]}`;
+}

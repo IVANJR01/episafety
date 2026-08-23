@@ -7,7 +7,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
-import { criterioDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, nomeDoGrupo } from "@/lib/sstEstrutura";
 import { Plus, Edit2, Trash2, AlertTriangle } from "lucide-react";
 
 /**
@@ -34,6 +34,10 @@ export function GruposDoSetorDialog({
   const [editando, setEditando] = useState<any | null>(null);
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
+
+  /** Aqui o setor é conhecido: é o dono do diálogo. */
+  const nomeDoGes = (g: any) =>
+    nomeDoGrupo({ armazenado: g?.nome, codigo: g?.codigo, setores: setor?.nome ? [setor.nome] : [] });
 
   const gruposDoSetor = useMemo(() => {
     if (!setor) return [];
@@ -123,7 +127,7 @@ export function GruposDoSetorDialog({
   };
 
   const excluir = async (ges: any) => {
-    if (!confirm(`Excluir o grupo "${ges.nome}"? As funções dele ficam sem grupo.`)) return;
+    if (!confirm(`Excluir o grupo "${nomeDoGes(ges)}"? As funções dele ficam sem grupo.`)) return;
     try {
       await deleteGes(ges.id);
     } catch (err) {
@@ -156,7 +160,7 @@ export function GruposDoSetorDialog({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <Badge variant="outline" className="text-indigo-600 border-indigo-200">{g.codigo}</Badge>
-                      <p className="font-medium mt-1 break-words">{g.nome}</p>
+                      <p className="font-medium mt-1 break-words">{nomeDoGes(g)}</p>
                     </div>
                     <div className="flex shrink-0">
                       <Button variant="ghost" size="sm" onClick={() => abrirEdicao(g)} aria-label="Editar grupo">
@@ -213,7 +217,7 @@ export function GruposDoSetorDialog({
                     <Button key={g.id} size="sm" variant="outline"
                       className="h-7 text-xs bg-background"
                       onClick={() => adotar(g)}>
-                      <Plus className="h-3 w-3 mr-1" />{g.codigo ? `${g.codigo} — ${g.nome}` : g.nome}
+                      <Plus className="h-3 w-3 mr-1" />{g.codigo ? `${g.codigo} — ${nomeDoGes(g)}` : nomeDoGes(g)}
                     </Button>
                   ))}
                 </div>

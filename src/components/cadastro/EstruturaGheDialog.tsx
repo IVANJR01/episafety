@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
-import { setoresDoGrupo } from "@/lib/sstEstrutura";
+import { setoresDoGrupo, nomeDoGrupo } from "@/lib/sstEstrutura";
 
 interface Props {
   ghe: any;
@@ -282,6 +282,14 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
   // (removidos: salvarSetores/colarSetoresBulk baseados no array antigo — agora usamos a tabela ghe_setores)
 
+  /** Setores do grupo (funções primeiro, vínculo antigo de reserva) e o nome. */
+  const setoresDoGes = setoresDoGrupo(
+    setoresDasFuncoes.map((n) => ({ setorNome: n })), setorDeReserva,
+  );
+  const nomeExibido = nomeDoGrupo({
+    armazenado: ghe.nome, codigo: ghe.codigo, setores: setoresDoGes,
+  });
+
   const bodyContent = (
     <div className={isPage ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden"}>
       {/*
@@ -298,9 +306,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{ghe.codigo || "—"}</b></div>
         <div className="border rounded p-2">
           <span className="text-muted-foreground">Setor(es):</span>{" "}
-          <b>{setoresDoGrupo(
-            setoresDasFuncoes.map((n) => ({ setorNome: n })), setorDeReserva,
-          ).join(", ") || "—"}</b>
+          <b>{setoresDoGes.join(", ") || "—"}</b>
         </div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Funções:</span> <b>{funcoes.length}</b></div>
       </div>
@@ -500,7 +506,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       <div className="flex flex-col min-h-[calc(100dvh-4rem)] w-full max-w-full overflow-x-hidden">
         <div className="border-b pb-3 mb-3">
           <h1 className="text-lg font-semibold break-words">
-            Estrutura do GES — {ghe.codigo} · {ghe.nome}
+            Estrutura do GES — {ghe.codigo} · {nomeExibido}
           </h1>
           <p className="text-xs text-muted-foreground">
             Ambiente → Setores → Funções. O PGR importa essa estrutura.
@@ -518,7 +524,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:!max-w-[min(1200px,95vw)] sm:w-[95vw] sm:h-[92vh] sm:max-h-[92vh] sm:p-0 sm:overflow-hidden overflow-x-hidden flex flex-col">
         <DialogHeader className="sm:px-6 sm:pt-6 sm:pb-3 sm:border-b">
-          <DialogTitle className="break-words">Estrutura do GES — {ghe.codigo} · {ghe.nome}</DialogTitle>
+          <DialogTitle className="break-words">Estrutura do GES — {ghe.codigo} · {nomeExibido}</DialogTitle>
           <p className="text-xs text-muted-foreground">
             Ambiente → Setores → Funções. O PGR importa essa estrutura.
           </p>
