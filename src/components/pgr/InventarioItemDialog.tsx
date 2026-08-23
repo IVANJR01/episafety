@@ -45,7 +45,27 @@ interface Props {
   onSaved: () => void;
 }
 
-const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "psicossocial", "acidente", "outro"];
+/*
+ * Agentes oferecidos ao cadastrar. "Psicossocial" e "Outros" saíram a pedido
+ * do cliente.
+ *
+ * Os rótulos dos dois continuam em GRUPO_LABEL, de propósito: item já gravado
+ * com um deles precisa seguir aparecendo certo na tabela, no PDF e no Excel.
+ * Tirar do rótulo transformaria o registro antigo em célula vazia.
+ */
+const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "acidente"];
+
+/**
+ * As opções do seletor, incluindo o valor que o item já tem.
+ *
+ * Sem isto, abrir um item antigo classificado como "Psicossocial" mostraria o
+ * campo Agente em branco — parecendo que a classificação se perdeu, e
+ * convidando a pessoa a escolher outra por engano.
+ */
+function opcoesDeAgente(atual?: string | null): string[] {
+  const valor = (atual || "").trim();
+  return valor && !GRUPOS.includes(valor) ? [...GRUPOS, valor] : GRUPOS;
+}
 
 const clean = (v: any) => {
   const s = (v ?? "").toString().trim();
@@ -519,7 +539,7 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                 <Label className="text-xs">Agente</Label>
                 <Select value={form.grupo} onValueChange={(v) => setForm({ ...form, grupo: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{GRUPOS.map(g => <SelectItem key={g} value={g}>{GRUPO_LABEL[g]}</SelectItem>)}</SelectContent>
+                  <SelectContent>{opcoesDeAgente(form.grupo).map(g => <SelectItem key={g} value={g}>{GRUPO_LABEL[g] || g}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
