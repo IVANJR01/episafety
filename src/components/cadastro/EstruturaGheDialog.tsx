@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
+import { descreverAmbiente } from "@/lib/sstEstrutura";
 
 interface Props {
   ghe: any;
@@ -33,7 +34,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     nome: ghe.nome || "",
     status: ghe.status || "ativo",
     ambiente: ghe.ambiente || "",
-    descricao_ambiente: ghe.descricao_ambiente || "",
     processo: ghe.processo || "",
     descricao: ghe.descricao || "",
     setores: ((ghe.setores && ghe.setores.length ? ghe.setores : ghe.setor ? [ghe.setor] : []) as string[]),
@@ -52,7 +52,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         nome: (amb.nome?.trim() || amb.codigo.trim()),
         status: amb.status,
         ambiente: amb.ambiente?.trim() || null,
-        descricao_ambiente: amb.descricao_ambiente?.trim() || null,
         processo: amb.processo?.trim() || null,
         descricao: amb.descricao?.trim() || null,
         setores: setoresArr,
@@ -63,7 +62,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     if (error) return toast.error(error.message);
     toast.success("Ambiente salvo");
     ghe.codigo = amb.codigo; ghe.nome = amb.nome; ghe.status = amb.status;
-    ghe.ambiente = amb.ambiente; ghe.descricao_ambiente = amb.descricao_ambiente;
+    ghe.ambiente = amb.ambiente;
     ghe.processo = amb.processo;
     ghe.descricao = amb.descricao; ghe.setores = setoresArr;
   };
@@ -166,7 +165,10 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const [funcoesEmpresa, setFuncoesEmpresa] = useState<
     { id: string; nome: string; cbo?: string | null; setor_nome?: string }[]
   >([]);
-  const [setoresEmpresa, setSetoresEmpresa] = useState<{ id: string; nome: string }[]>([]);
+  const [setoresEmpresa, setSetoresEmpresa] = useState<
+    { id: string; nome: string; ambiente_id?: string | null }[]
+  >([]);
+  const [ambientesEmpresa, setAmbientesEmpresa] = useState<any[]>([]);
   const [vinculando, setVinculando] = useState(false);
 
   useEffect(() => {
@@ -174,7 +176,10 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     (async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const de = (t: string) => (supabase.from as any)(t).select("*").eq("empresa_id", ghe.empresa_id);
-      const [fun, set] = await Promise.all([de("sst_funcoes"), de("sst_setores")]);
+      const [fun, set, ambs] = await Promise.all([
+        de("sst_funcoes"), de("sst_setores"), de("sst_ambientes"),
+      ]);
+      setAmbientesEmpresa((ambs.data || []) as any[]);
       const setorPorId = new Map<string, string>(
         (set.data || []).map((s: { id: string; nome: string }) => [s.id, s.nome]),
       );
@@ -182,9 +187,43 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         id: f.id, nome: f.nome, cbo: f.cbo,
         setor_nome: f.setor_id ? setorPorId.get(f.setor_id) : undefined,
       })));
-      setSetoresEmpresa((set.data || []).map((s: { id: string; nome: string }) => ({ id: s.id, nome: s.nome })));
+      setSetoresEmpresa((set.data || []).map(
+        (s: { id: string; nome: string; ambiente_id?: string | null }) =>
+          ({ id: s.id, nome: s.nome, ambiente_id: s.ambiente_id }),
+      ));
     })();
   }, [ghe.empresa_id]);
+
+  /*
+   * O ambiente deste GES vem do SETOR, não de um campo próprio.
+   *
+   * Havia aqui uma "Descrição do ambiente" para digitar à mão, com o aviso de
+   * que o texto iria para o PGR. Só que o setor já tem a caracterização do
+   * ambiente no cadastro dele, e é ela que o inventário do PGR usa sempre que o
+   * GES está ligado a um setor (ver `contextoDoGes`, em InventarioItemDialog).
+   * O campo daqui era um segundo lugar para a mesma informação, e servia de
+   * reserva para um caso que não acontecia: nos 13 GES desta base ele estava
+   * vazio, e todos os 13 têm setor.
+   *
+   * Pior que inútil, enganava: o cartão do topo dizia "Ambiente: não informado"
+   * mesmo com o ambiente cadastrado no setor. Agora mostra o que realmente vai
+   * para o documento.
+   */
+  const ambienteDoGes = useMemo(() => {
+    const textos = setoresRows
+      .map((linha) => {
+        const setor = setoresEmpresa.find(
+          (x) => x.id === linha.setor_id || x.nome === linha.nome,
+        );
+        const ambiente = setor?.ambiente_id
+          ? ambientesEmpresa.find((a: any) => a.id === setor.ambiente_id)
+          : undefined;
+        const texto = descreverAmbiente(ambiente);
+        return texto ? { setor: linha.nome || setor?.nome || "", texto } : null;
+      })
+      .filter(Boolean) as { setor: string; texto: string }[];
+    return textos;
+  }, [setoresRows, setoresEmpresa, ambientesEmpresa]);
 
   const funcoesEmpresaPorId = useMemo(
     () => new Map(funcoesEmpresa.map((f) => [f.id, f])),
@@ -371,7 +410,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
       <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{amb.codigo || "—"}</b></div>
-        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{(amb.ambiente?.trim() || amb.descricao_ambiente?.trim()) ? "informado" : "não informado"}</b></div>
+        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{ambienteDoGes.length > 0 ? "vem do setor" : "não informado"}</b></div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Setores:</span> <b>{setoresRows.length}</b></div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Funções:</span> <b>{funcoes.length}</b></div>
       </div>
@@ -385,14 +424,27 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
               <Input value={amb.codigo} onChange={(e) => setAmb({ ...amb, codigo: e.target.value, nome: e.target.value })} placeholder="GES 01" className="w-full sm:max-w-xs" />
             </div>
             <div>
-              <Label className="text-xs">Descrição do ambiente</Label>
-              <Textarea
-                rows={5}
-                value={amb.descricao_ambiente}
-                onChange={(e) => setAmb({ ...amb, descricao_ambiente: e.target.value })}
-                placeholder="Ex.: Ambiente de trabalho interno, pé direito em torno de 3m, piso do tipo cerâmico, ventilação artificial por condicionadores de ar, iluminação artificial por lâmpadas fluorescentes, teto de gesso com laje em concreto."
-              />
-              <p className="text-xs text-muted-foreground mt-1">Este texto será importado no PGR no campo "Descrição do ambiente".</p>
+              <Label className="text-xs">Ambiente de trabalho</Label>
+              {ambienteDoGes.length === 0 ? (
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mt-1">
+                  {setoresRows.length === 0
+                    ? "Este GES ainda não tem setor. Adicione na aba Setores — o ambiente vem de lá."
+                    : "O setor deste GES está sem a descrição do ambiente. Preencha em Base Técnica → Setores."}
+                </p>
+              ) : (
+                <div className="mt-1 space-y-2">
+                  {ambienteDoGes.map((a) => (
+                    <div key={a.setor} className="rounded border bg-muted/40 p-2">
+                      <p className="text-[11px] font-medium text-muted-foreground">{a.setor}</p>
+                      <p className="text-xs whitespace-pre-wrap">{a.texto}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Cadastrado uma vez no setor, em Base Técnica → Setores, e usado aqui e no PGR.
+                Não se digita de novo por GES.
+              </p>
             </div>
             <div>
               <Label className="text-xs">Ativo</Label>
