@@ -1,4 +1,4 @@
-import { criterioDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, setoresDoGrupo } from "@/lib/sstEstrutura";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -134,8 +134,14 @@ export default function PgrEstruturaTecnica() {
     if (sel.tipo === "ges" && sel.id) {
       const g: any = gesList.find((x: any) => x.id === sel.id);
       const fns = funcoesDoGes(sel.id);
-      const setorNome = setores.find((s: any) =>
+      // O setor sai das funções do grupo; o vínculo antigo fica de reserva
+      // para o grupo que ainda não tem função nenhuma.
+      const reserva = setores.find((s: any) =>
         (gheSetores as any[]).some((v) => v.ghe_id === sel.id && v.setor_id === s.id))?.nome;
+      const setorNome = setoresDoGrupo(
+        fns.map((f: any) => ({ setorNome: setores.find((s: any) => s.id === f.setor_id)?.nome ?? null })),
+        reserva,
+      ).join(", ") || undefined;
       // Soma das funções como estimativa quando o GES não declara o total.
       // Soma zero vira null: nenhuma função informou quantos são, e mostrar 0
       // afirmaria que o GES não tem trabalhador.

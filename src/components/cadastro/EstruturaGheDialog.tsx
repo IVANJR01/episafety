@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,47 +25,6 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Props) {
   const isPage = mode === "page";
-  const [tab, setTab] = useState("ambiente");
-
-  /* ---------- Ambiente (agora inclui Código, Nome e Ativo) ---------- */
-  const [amb, setAmb] = useState({
-    codigo: ghe.codigo || "",
-    nome: ghe.nome || "",
-    status: ghe.status || "ativo",
-    ambiente: ghe.ambiente || "",
-    processo: ghe.processo || "",
-    descricao: ghe.descricao || "",
-    setores: ((ghe.setores && ghe.setores.length ? ghe.setores : ghe.setor ? [ghe.setor] : []) as string[]),
-  });
-  const [savingAmb, setSavingAmb] = useState(false);
-
-  const salvarAmbiente = async () => {
-    if (!amb.codigo.trim()) return toast.error("Código do GES é obrigatório");
-    setSavingAmb(true);
-    const setoresArr = amb.setores.map((s) => s.trim()).filter(Boolean);
-
-    const { error } = await supabase
-      .from("ghe_ges")
-      .update({
-        codigo: amb.codigo.trim(),
-        nome: (amb.nome?.trim() || amb.codigo.trim()),
-        status: amb.status,
-        ambiente: amb.ambiente?.trim() || null,
-        processo: amb.processo?.trim() || null,
-        descricao: amb.descricao?.trim() || null,
-        setores: setoresArr,
-        setor: setoresArr[0] || null,
-      })
-      .eq("id", ghe.id);
-    setSavingAmb(false);
-    if (error) return toast.error(error.message);
-    toast.success("Ambiente salvo");
-    ghe.codigo = amb.codigo; ghe.nome = amb.nome; ghe.status = amb.status;
-    ghe.ambiente = amb.ambiente;
-    ghe.processo = amb.processo;
-    ghe.descricao = amb.descricao; ghe.setores = setoresArr;
-  };
-
   /* ---------- EPIs / Medidas ---------- */
   const [epis, setEpis] = useState({
     medidas_controle_existentes: ghe.medidas_controle_existentes || "",
@@ -99,55 +57,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   };
 
 
-  /* ---------- Setores (nova tabela ghe_setores) ---------- */
-  const [setoresRows, setSetoresRows] = useState<any[]>([]);
-  const [loadingS, setLoadingS] = useState(false);
-  const [editS, setEditS] = useState<any | null>(null);
-
-  const loadSetores = async () => {
-    setLoadingS(true);
-    const { data, error } = await (supabase as any)
-      .from("ghe_setores")
-      .select("id, nome, processo, observacoes, ativo, setor_id")
-      .eq("ghe_id", ghe.id)
-      .order("nome");
-    setLoadingS(false);
-    if (error) return toast.error(error.message);
-    setSetoresRows((data as any[]) || []);
-  };
-  useEffect(() => { loadSetores(); /* eslint-disable-next-line */ }, [ghe.id]);
-
-  const salvarSetorRow = async (s: any) => {
-    const nome = (s.nome || "").trim();
-    const processo = (s.processo || "").trim();
-    if (!nome) return toast.error("Selecione o setor");
-    if (!processo) return toast.error("Informe o processo do setor");
-    const dup = setoresRows.find((x) => x.id !== s.id && (x.nome || "").trim().toLowerCase() === nome.toLowerCase());
-    if (dup) return toast.error(`Setor "${nome}" já existe neste GES`);
-    const payload: any = {
-      ghe_id: ghe.id,
-      empresa_id: ghe.empresa_id,
-      nome, processo,
-      setor_id: s.setor_id || null,
-      observacoes: s.observacoes?.trim() || null,
-      ativo: s.ativo ?? true,
-    };
-    const { error } = s.id
-      ? await (supabase as any).from("ghe_setores").update(payload).eq("id", s.id)
-      : await (supabase as any).from("ghe_setores").insert(payload);
-    if (error) return toast.error(error.message);
-    toast.success("Setor salvo");
-    setEditS(null);
-    loadSetores();
-  };
-
-  const excluirSetor = async (id: string) => {
-    if (!confirm("Excluir este setor? As funções vinculadas mantêm o nome do setor.")) return;
-    const { error } = await (supabase as any).from("ghe_setores").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    loadSetores();
-  };
-
   /* ---------- Funções ---------- */
   const [funcoes, setFuncoes] = useState<any[]>([]);
   const [loadingF, setLoadingF] = useState(false);
@@ -168,7 +77,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   const [setoresEmpresa, setSetoresEmpresa] = useState<
     { id: string; nome: string; ambiente_id?: string | null }[]
   >([]);
-  const [ambientesEmpresa, setAmbientesEmpresa] = useState<any[]>([]);
   const [vinculando, setVinculando] = useState(false);
 
   useEffect(() => {
@@ -176,10 +84,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     (async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const de = (t: string) => (supabase.from as any)(t).select("*").eq("empresa_id", ghe.empresa_id);
-      const [fun, set, ambs] = await Promise.all([
-        de("sst_funcoes"), de("sst_setores"), de("sst_ambientes"),
-      ]);
-      setAmbientesEmpresa((ambs.data || []) as any[]);
+      const [fun, set] = await Promise.all([de("sst_funcoes"), de("sst_setores")]);
       const setorPorId = new Map<string, string>(
         (set.data || []).map((s: { id: string; nome: string }) => [s.id, s.nome]),
       );
@@ -193,37 +98,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       ));
     })();
   }, [ghe.empresa_id]);
-
-  /*
-   * O ambiente deste GES vem do SETOR, não de um campo próprio.
-   *
-   * Havia aqui uma "Descrição do ambiente" para digitar à mão, com o aviso de
-   * que o texto iria para o PGR. Só que o setor já tem a caracterização do
-   * ambiente no cadastro dele, e é ela que o inventário do PGR usa sempre que o
-   * GES está ligado a um setor (ver `contextoDoGes`, em InventarioItemDialog).
-   * O campo daqui era um segundo lugar para a mesma informação, e servia de
-   * reserva para um caso que não acontecia: nos 13 GES desta base ele estava
-   * vazio, e todos os 13 têm setor.
-   *
-   * Pior que inútil, enganava: o cartão do topo dizia "Ambiente: não informado"
-   * mesmo com o ambiente cadastrado no setor. Agora mostra o que realmente vai
-   * para o documento.
-   */
-  const ambienteDoGes = useMemo(() => {
-    const textos = setoresRows
-      .map((linha) => {
-        const setor = setoresEmpresa.find(
-          (x) => x.id === linha.setor_id || x.nome === linha.nome,
-        );
-        const ambiente = setor?.ambiente_id
-          ? ambientesEmpresa.find((a: any) => a.id === setor.ambiente_id)
-          : undefined;
-        const texto = descreverAmbiente(ambiente);
-        return texto ? { setor: linha.nome || setor?.nome || "", texto } : null;
-      })
-      .filter(Boolean) as { setor: string; texto: string }[];
-    return textos;
-  }, [setoresRows, setoresEmpresa, ambientesEmpresa]);
 
   const funcoesEmpresaPorId = useMemo(
     () => new Map(funcoesEmpresa.map((f) => [f.id, f])),
@@ -240,18 +114,6 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     const jaNoGrupo = new Set(funcoes.map((f) => norm(f.nome_funcao)));
     return funcoesEmpresa.filter((f) => !jaNoGrupo.has(norm(f.nome)));
   }, [funcoesEmpresa, funcoes]);
-
-  /** Setores da empresa (Estrutura Ocupacional) que ainda não fazem parte deste GES. */
-  const setoresDisponiveis = useMemo(() => {
-    const norm2 = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").trim();
-    const jaNoGrupo = new Set(setoresRows.map((s) => norm2(s.nome)));
-    return setoresEmpresa.filter((s) => !jaNoGrupo.has(norm2(s.nome)));
-  }, [setoresEmpresa, setoresRows]);
-
-  /** Abre o form de novo setor já com o setor real escolhido — só falta o Processo. */
-  const abrirNovoSetor = (s: { id: string; nome: string }) => {
-    setEditS({ nome: s.nome, setor_id: s.id, processo: "", observacoes: "", ativo: true });
-  };
 
   const vincularFuncaoExistente = async (f: { id: string; nome: string; cbo?: string | null; setor_nome?: string }) => {
     // `setor` e `descricao_atividade` são exigidos pelo salvamento manual desta
@@ -284,11 +146,18 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
   };
   useEffect(() => { loadFuncoes(); /* eslint-disable-next-line */ }, [ghe.id]);
 
-  const setoresAtivos: string[] = useMemo(() => {
-    const dos = setoresRows.map((s) => s.nome).filter(Boolean) as string[];
-    const dasFuncoes = Array.from(new Set(funcoes.map((f) => setorDaFuncao(f)).filter(Boolean))) as string[];
-    return Array.from(new Set([...dos, ...dasFuncoes]));
-  }, [setoresRows, funcoes, funcoesEmpresaPorId]);
+  /**
+   * Os setores deste grupo, tirados das funções que estão nele.
+   *
+   * Antes somava também os setores apontados à mão na aba Setores. O efeito
+   * era um acordeão de setor vazio na lista — "LOJA · 0 funç." —, um setor
+   * declarado no grupo sem ninguém dentro. Quem forma o grupo são as funções.
+   */
+  const setoresDasFuncoes: string[] = useMemo(
+    () => Array.from(new Set(funcoes.map((f) => setorDaFuncao(f)).filter(Boolean))) as string[],
+    [funcoes, funcoesEmpresaPorId],
+  );
+  const setoresAtivos = setoresDasFuncoes;
 
 
   const funcoesPorSetor = useMemo(() => {
@@ -397,206 +266,28 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
   // (removidos: salvarSetores/colarSetoresBulk baseados no array antigo — agora usamos a tabela ghe_setores)
 
-
   const bodyContent = (
-    <Tabs value={tab} onValueChange={setTab} className={isPage ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden"}>
-      <div className="w-full overflow-x-auto -mx-1 px-1">
-        <TabsList className="inline-flex w-max min-w-full sm:min-w-0 sm:w-auto self-start">
-          <TabsTrigger value="ambiente">Ambiente</TabsTrigger>
-          <TabsTrigger value="setores">Setores</TabsTrigger>
-          <TabsTrigger value="funcoes">Funções</TabsTrigger>
-        </TabsList>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-        <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{amb.codigo || "—"}</b></div>
-        <div className="border rounded p-2"><span className="text-muted-foreground">Ambiente:</span> <b>{ambienteDoGes.length > 0 ? "vem do setor" : "não informado"}</b></div>
-        <div className="border rounded p-2"><span className="text-muted-foreground">Setores:</span> <b>{setoresRows.length}</b></div>
+    <div className={isPage ? "flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col sm:px-6 sm:pb-6 overflow-hidden"}>
+      {/*
+        Esta tela tinha três abas: Ambiente, Setores e Funções.
+        
+        As duas primeiras saíram porque um GES é um Grupo de Exposição
+        Similar — quem forma o grupo são as FUNÇÕES. O setor não precisa ser
+        apontado aqui: cada função já pertence a um, e é de lá que ele sai
+        (ver `setoresDoGrupo`). O ambiente, por sua vez, é cadastrado no
+        setor. Apontar os dois de novo, por GES, criava um segundo lugar para
+        a mesma informação — livre para discordar do primeiro.
+      */}
+      <div className="mt-1 grid grid-cols-3 gap-2 text-xs">
+        <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{ghe.codigo || "—"}</b></div>
+        <div className="border rounded p-2">
+          <span className="text-muted-foreground">Setor(es):</span>{" "}
+          <b>{setoresDasFuncoes.length > 0 ? setoresDasFuncoes.join(", ") : "—"}</b>
+        </div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Funções:</span> <b>{funcoes.length}</b></div>
       </div>
 
-
-
-          {/* ---------- Aba Ambiente ---------- */}
-          <TabsContent value="ambiente" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
-            <div>
-              <Label className="text-xs">Código do GES *</Label>
-              <Input value={amb.codigo} onChange={(e) => setAmb({ ...amb, codigo: e.target.value, nome: e.target.value })} placeholder="GES 01" className="w-full sm:max-w-xs" />
-            </div>
-            <div>
-              <Label className="text-xs">Ambiente de trabalho</Label>
-              {ambienteDoGes.length === 0 ? (
-                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mt-1">
-                  {setoresRows.length === 0
-                    ? "Este GES ainda não tem setor. Adicione na aba Setores — o ambiente vem de lá."
-                    : "O setor deste GES está sem a descrição do ambiente. Preencha em Base Técnica → Setores."}
-                </p>
-              ) : (
-                <div className="mt-1 space-y-2">
-                  {ambienteDoGes.map((a) => (
-                    <div key={a.setor} className="rounded border bg-muted/40 p-2">
-                      <p className="text-[11px] font-medium text-muted-foreground">{a.setor}</p>
-                      <p className="text-xs whitespace-pre-wrap">{a.texto}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Cadastrado uma vez no setor, em Base Técnica → Setores, e usado aqui e no PGR.
-                Não se digita de novo por GES.
-              </p>
-            </div>
-            <div>
-              <Label className="text-xs">Ativo</Label>
-              <Select value={amb.status} onValueChange={(v) => setAmb({ ...amb, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ativo">Sim</SelectItem>
-                  <SelectItem value="inativo">Não</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex justify-end">
-              <Button onClick={salvarAmbiente} disabled={savingAmb}>
-                <Save className="h-4 w-4 mr-1" /> Salvar ambiente
-              </Button>
-            </div>
-          </TabsContent>
-
-          {/* ---------- Aba Setores ---------- */}
-          <TabsContent value="setores" className="mt-3 space-y-3 overflow-y-auto overflow-x-hidden sm:max-h-[65vh] sm:pr-1">
-            <p className="text-xs text-muted-foreground">
-              Escolha os <b>setores</b> (cadastrados na Estrutura Ocupacional) que fazem parte deste GES e informe
-              o <b>processo</b> de cada um nesta exposição. As funções serão vinculadas a esses setores.
-            </p>
-
-            {/* Setores já cadastrados na Estrutura Ocupacional (sst_setores) e
-                ainda fora deste grupo — mesma ponte usada em Funções, para não
-                deixar digitar de novo um nome de setor que já existe. */}
-            {setoresDisponiveis.length > 0 && (
-              <div className="border border-sky-300 bg-sky-50/60 rounded p-3 space-y-2">
-                <p className="text-xs text-sky-900">
-                  <b>{setoresDisponiveis.length}</b> {setoresDisponiveis.length === 1 ? "setor cadastrado" : "setores cadastrados"} na
-                  Estrutura Ocupacional ainda {setoresDisponiveis.length === 1 ? "não faz" : "não fazem"} parte deste grupo.
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {setoresDisponiveis.map((s) => (
-                    <Button
-                      key={s.id} size="sm" variant="outline"
-                      className="h-7 text-xs bg-background"
-                      onClick={() => abrirNovoSetor(s)}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />{s.nome}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {setoresEmpresa.length === 0 && (
-              <div className="border border-amber-300 bg-amber-50/60 rounded p-3 text-xs text-amber-900">
-                Nenhum setor cadastrado na Estrutura Ocupacional desta empresa ainda.
-                Cadastre lá primeiro — é de onde este GES busca os setores.
-              </div>
-            )}
-
-            {editS && (
-              <div className="border rounded p-3 bg-muted/30 space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Setor</Label>
-                    <p className="text-sm font-medium h-10 flex items-center">{editS.nome || "—"}</p>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <div className="flex items-center gap-2">
-                      <Checkbox id="setor-ativo" checked={editS.ativo ?? true} onCheckedChange={(v) => setEditS({ ...editS, ativo: !!v })} />
-                      <Label htmlFor="setor-ativo" className="text-xs">Ativo</Label>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs">Processo do setor *</Label>
-                  <Textarea rows={3} value={editS.processo || ""}
-                    onChange={(e) => setEditS({ ...editS, processo: e.target.value })}
-                    placeholder="Ex.: Apura e projeta saldo disponível, contas a pagar e receber." />
-                </div>
-                <div>
-                  <Label className="text-xs">Observações</Label>
-                  <Textarea rows={2} value={editS.observacoes || ""} onChange={(e) => setEditS({ ...editS, observacoes: e.target.value })} />
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="ghost" onClick={() => setEditS(null)}>Cancelar</Button>
-                  <Button size="sm" onClick={() => salvarSetorRow(editS)}><Save className="h-4 w-4 mr-1" />Salvar setor</Button>
-                </div>
-              </div>
-            )}
-
-            {loadingS && <p className="text-sm text-muted-foreground">Carregando…</p>}
-
-            {!loadingS && setoresRows.length === 0 && !editS && setoresEmpresa.length > 0 && (
-              <div className="border rounded p-6 text-center text-sm text-muted-foreground">
-                Nenhum setor neste grupo ainda. Clique em um dos setores acima para adicionar.
-              </div>
-            )}
-
-            {/* Mobile: cards */}
-            {!loadingS && setoresRows.length > 0 && (
-              <div className="sm:hidden space-y-2">
-                {setoresRows.map((s) => (
-                  <div key={s.id} className="border rounded p-3 space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-medium text-sm break-words">{s.nome}</div>
-                        {!s.ativo && <Badge variant="outline" className="text-[10px] mt-1">inativo</Badge>}
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button size="icon" variant="ghost" onClick={() => setEditS(s)}><Pencil className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => excluirSetor(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </div>
-                    </div>
-                    <p className="text-xs whitespace-pre-wrap"><span className="text-muted-foreground">Processo:</span> {s.processo || "—"}</p>
-                    {s.observacoes && <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">{s.observacoes}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Desktop: tabela */}
-            {!loadingS && setoresRows.length > 0 && (
-              <div className="hidden sm:block border rounded overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[180px]">Setor</TableHead>
-                      <TableHead>Processo do setor</TableHead>
-                      <TableHead className="w-[80px]">Ativo</TableHead>
-                      <TableHead className="w-[100px] text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {setoresRows.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="text-sm font-medium">{s.nome}</TableCell>
-                        <TableCell className="text-xs whitespace-pre-wrap">{s.processo || "—"}</TableCell>
-                        <TableCell className="text-sm">{s.ativo ? "Sim" : "Não"}</TableCell>
-                        <TableCell className="text-right">
-                          <Button size="icon" variant="ghost" onClick={() => setEditS(s)}><Pencil className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => excluirSetor(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
-
-
-
-
-          {/* ---------- Aba Setores e Funções ---------- */}
-          <TabsContent value="funcoes" className="mt-3 space-y-3 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
+      <div className="mt-3 space-y-3 overflow-y-auto sm:max-h-[65vh] sm:pr-1">
             <div className="flex flex-wrap gap-2 justify-between items-center">
               <div className="flex gap-2">
                 <Button size="sm" variant={modoTabela ? "outline" : "default"} onClick={() => setModoTabela(false)}>Accordion</Button>
@@ -666,7 +357,9 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                     placeholder="Ex.: Apura e projeta saldo disponível, contas a pagar e receber."
                   />
                   {(() => {
-                    const setorSel = setoresRows.find((s) => (s.nome || "").toLowerCase() === (editF.setor || "").toLowerCase());
+                    // Antes mostrava aqui o "processo do setor", digitado na aba
+                    // Setores. A aba saiu; o processo é o da própria função.
+                    const setorSel: { nome: string; processo?: string } | null = null;
                     return setorSel?.processo ? (
                       <p className="text-[11px] text-muted-foreground mt-1">
                         Processo do setor <b>{setorSel.nome}</b>: {setorSel.processo}
@@ -704,9 +397,10 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                     <AccordionContent className="space-y-2">
                       {fs.length === 0 && <p className="text-xs text-muted-foreground italic">Nenhuma função ainda.</p>}
                       {fs.map((f) => {
-                        const setorRow = setoresRows.find((s) => (s.nome || "").toLowerCase() === (f.setor || "").toLowerCase());
+                        // O processo vem da própria função. O "processo do setor"
+                        // era digitado na aba Setores, que saiu — manter a reserva
+                        // exibiria um texto que ninguém pode mais corrigir.
                         const processoFuncao = f.descricao_atividade || f.processo;
-                        const processoFallback = !processoFuncao && setorRow?.processo;
                         return (
                         <div key={f.id} className="border rounded p-2 flex items-start gap-2">
                           <div className="flex-1 min-w-0">
@@ -718,10 +412,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                             {processoFuncao && (
                               <p className="text-xs mt-1"><span className="text-muted-foreground">Processo:</span> <span className="whitespace-pre-wrap">{processoFuncao}</span></p>
                             )}
-                            {processoFallback && (
-                              <p className="text-xs mt-1 italic text-muted-foreground"><span>Processo (herdado do setor):</span> <span className="whitespace-pre-wrap">{setorRow.processo}</span></p>
-                            )}
-                            {!processoFuncao && !processoFallback && (
+                            {!processoFuncao && (
                               <p className="text-xs mt-1 italic text-destructive">Processo não informado — edite para preencher.</p>
                             )}
                             {f.observacoes && (
@@ -778,12 +469,10 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                 </Table>
               </div>
             )}
-          </TabsContent>
+      </div>
 
-          {/* Abas Riscos, EPIs/Medidas e Resumo removidas desta tela — serão tratadas em módulo próprio. */}
-
-
-    </Tabs>
+      {/* Abas Riscos, EPIs/Medidas e Resumo removidas desta tela — serão tratadas em módulo próprio. */}
+    </div>
   );
 
   if (isPage) {
@@ -791,7 +480,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
       <div className="flex flex-col min-h-[calc(100dvh-4rem)] w-full max-w-full overflow-x-hidden">
         <div className="border-b pb-3 mb-3">
           <h1 className="text-lg font-semibold break-words">
-            Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}
+            Estrutura do GES — {ghe.codigo} · {ghe.nome}
           </h1>
           <p className="text-xs text-muted-foreground">
             Ambiente → Setores → Funções. O PGR importa essa estrutura.
@@ -809,7 +498,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     <Dialog open={true} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:!max-w-[min(1200px,95vw)] sm:w-[95vw] sm:h-[92vh] sm:max-h-[92vh] sm:p-0 sm:overflow-hidden overflow-x-hidden flex flex-col">
         <DialogHeader className="sm:px-6 sm:pt-6 sm:pb-3 sm:border-b">
-          <DialogTitle className="break-words">Estrutura do GES — {amb.codigo || ghe.codigo} · {amb.nome || ghe.nome}</DialogTitle>
+          <DialogTitle className="break-words">Estrutura do GES — {ghe.codigo} · {ghe.nome}</DialogTitle>
           <p className="text-xs text-muted-foreground">
             Ambiente → Setores → Funções. O PGR importa essa estrutura.
           </p>

@@ -106,11 +106,21 @@ export function descreverProcesso(p?: ProcessoDescritivel | null): string {
  * É um rascunho para editar, não uma justificativa pronta.
  */
 export function criterioAgrupamentoSugerido(
-  setorNome?: string | null,
+  setorNome?: string | string[] | null,
   funcoes?: { nome?: string | null }[],
 ): string {
-  const setor = limpo(setorNome);
-  if (!setor) return "";
+  // Aceita mais de um setor porque o grupo pode reunir funções de setores
+  // diferentes — é justamente para isso que o GES existe, e o texto precisa
+  // dizer "dos setores X e Y" em vez de esconder um deles.
+  const lista = Array.isArray(setorNome)
+    ? Array.from(new Set(setorNome.map(limpo).filter(Boolean)))
+    : [limpo(setorNome)].filter(Boolean);
+  if (lista.length === 0) return "";
+  // A preposição entra aqui porque muda com o número: "do setor X" mas
+  // "dos setores X e Y".
+  const setor = lista.length === 1
+    ? `do setor ${lista[0]}`
+    : `dos setores ${lista.slice(0, -1).join(", ")} e ${lista[lista.length - 1]}`;
   // Sem repetir nome. O cadastro tem funções duplicadas (mesma função criada
   // mais de uma vez), e o grupo 01 desta base chega a ter "Ajudante de
   // Confecção" duas vezes. Num documento legal, listar a mesma função duas
@@ -119,12 +129,12 @@ export function criterioAgrupamentoSugerido(
     (funcoes || []).map((f) => limpo(f?.nome)).filter(Boolean),
   ));
   if (nomes.length === 0) {
-    return `Trabalhadores do setor ${setor}, sujeitos às mesmas condições de exposição.`;
+    return `Trabalhadores ${setor}, sujeitos às mesmas condições de exposição.`;
   }
-  const lista = nomes.length === 1
+  const nomeadas = nomes.length === 1
     ? nomes[0]
     : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
-  return `Trabalhadores do setor ${setor} nas funções ${lista}, sujeitos às mesmas condições de exposição.`;
+  return `Trabalhadores ${setor} nas funções ${nomeadas}, sujeitos às mesmas condições de exposição.`;
 }
 
 /**
@@ -138,7 +148,7 @@ export function criterioAgrupamentoSugerido(
 export function ehCriterioEscritoPeloSistema(texto?: string | null): boolean {
   const t = limpo(texto);
   if (!t) return false;
-  return /^Trabalhadores do setor /i.test(t) || /^Agrupamento por setor:/i.test(t);
+  return /^Trabalhadores dos? setor(es)? /i.test(t) || /^Agrupamento por setor:/i.test(t);
 }
 
 /**
@@ -156,10 +166,36 @@ export function ehCriterioEscritoPeloSistema(texto?: string | null): boolean {
  */
 export function criterioDoGrupo(args: {
   armazenado?: string | null;
-  setorNome?: string | null;
+  setorNome?: string | string[] | null;
   funcoes?: { nome?: string | null }[];
 }): string {
   const guardado = limpo(args.armazenado);
   if (guardado && !ehCriterioEscritoPeloSistema(guardado)) return guardado;
   return criterioAgrupamentoSugerido(args.setorNome, args.funcoes) || guardado;
+}
+
+
+/**
+ * Os setores de um grupo de exposição, tirados de QUEM está no grupo.
+ *
+ * Um GES é um Grupo de Exposição Similar: quem forma o grupo são as funções.
+ * O setor não precisa ser apontado à parte — cada função já pertence a um, e
+ * é daí que ele sai. Apontar de novo criava um segundo lugar para a mesma
+ * informação, livre para discordar do primeiro.
+ *
+ * O vínculo antigo (`ghe_setores`) fica como reserva para o grupo que ainda
+ * não tem nenhuma função. Nesta base são 10 dos 13 grupos: nasceram junto com
+ * o setor e ainda estão vazios. Sem a reserva, todos eles perderiam o setor de
+ * uma vez, e o PGR sairia com "não declarado" em cada um.
+ */
+export function setoresDoGrupo(
+  funcoes?: { setorNome?: string | null }[],
+  reserva?: string | string[] | null,
+): string[] {
+  const dasFuncoes = Array.from(new Set(
+    (funcoes || []).map((f) => limpo(f?.setorNome)).filter(Boolean),
+  ));
+  if (dasFuncoes.length > 0) return dasFuncoes;
+  const lista = Array.isArray(reserva) ? reserva : [reserva];
+  return Array.from(new Set(lista.map(limpo).filter(Boolean)));
 }

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
-import { criterioDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, setoresDoGrupo } from "@/lib/sstEstrutura";
 import type { SstGes } from "@/types/sst";
 import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
@@ -44,16 +44,22 @@ export function GesExposicoesTab() {
     return funcoes.filter((f: any) => ids.has(f.id));
   };
   /**
-   * Nome do setor vinculado ao grupo — entra no texto do critério.
+   * Os setores do grupo, tirados das funções que estão nele.
    *
-   * Resolve pelos dois caminhos porque `ghe_setores` guarda os dois: o id do
-   * setor e o nome. Depender só do id deixaria o critério sem setor em
-   * vínculos gravados sem ele.
+   * Um GES é definido por quem está exposto — as funções —, e cada função já
+   * pertence a um setor. O vínculo `ghe_setores` fica de reserva para o grupo
+   * que ainda não tem função nenhuma: nesta base são 10 dos 13 grupos, criados
+   * junto com o setor e ainda vazios. Sem a reserva, todos perderiam o setor
+   * de uma vez e o PGR sairia com "não declarado" em cada um.
    */
-  const setorDoGes = (gesId: string) => {
+  const setoresDoGes = (gesId: string): string[] => {
+    const daFuncao = funcoesDoGes(gesId).map((f: any) => ({
+      setorNome: setores.find((s: any) => s.id === f.setor_id)?.nome ?? null,
+    }));
     const v = (gheSetores as any[]).find((x) => x.ghe_id === gesId);
-    if (!v) return null;
-    return setores.find((s: any) => s.id === v.setor_id)?.nome ?? v.nome ?? null;
+    // Resolve a reserva pelos dois caminhos que ghe_setores guarda: id e nome.
+    const reserva = v ? (setores.find((s: any) => s.id === v.setor_id)?.nome ?? v.nome ?? null) : null;
+    return setoresDoGrupo(daFuncao, reserva);
   };
   /** Em que grupo cada função está hoje — para avisar de onde ela sairia. */
   const gesDaFuncao = (funcaoId: string) => {
@@ -177,13 +183,13 @@ export function GesExposicoesTab() {
                     estampar "Critério não especificado" e seguir. */}
                 {criterioDoGrupo({
                   armazenado: ges.criterio_agrupamento,
-                  setorNome: setorDoGes(ges.id),
+                  setorNome: setoresDoGes(ges.id),
                   funcoes: funcoesDoGes(ges.id),
                 }) ? (
                   <p className="text-slate-600">
                     {criterioDoGrupo({
                       armazenado: ges.criterio_agrupamento,
-                      setorNome: setorDoGes(ges.id),
+                      setorNome: setoresDoGes(ges.id),
                       funcoes: funcoesDoGes(ges.id),
                     })}
                   </p>
@@ -255,7 +261,7 @@ export function GesExposicoesTab() {
               {gesFormData.id ? (
                 <>
                   <span className="font-medium">Setor: </span>
-                  {setorDoGes(gesFormData.id as string) || "nenhum ainda"} — para mudar,
+                  {setoresDoGes(gesFormData.id as string).join(", ") || "nenhum ainda"} — para mudar,
                   use <b>Estrutura do GES → Setores</b> (ícone ao lado do lápis).
                 </>
               ) : (

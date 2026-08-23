@@ -182,17 +182,20 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
   };
 
   /**
-   * O setor do GES, pelo vínculo real — não pelo texto legado de ghe_ges.
+   * O setor do GES — pelas FUNÇÕES do grupo, que são quem o define.
    *
-   * Sem vínculo explícito, cai no setor das funções do grupo: grupos criados
-   * antes do vínculo automático existir não têm a linha em ghe_setores, e
-   * deixá-los "sem setor" obrigava a reimportar a estrutura à mão.
+   * A ordem já foi a inversa: primeiro o vínculo `ghe_setores`, depois as
+   * funções. Com o vínculo tendo virado reserva (a aba que o editava saiu),
+   * manter aquela ordem faria uma função movida de setor continuar puxando o
+   * ambiente e o processo do setor antigo para dentro do inventário.
+   *
+   * O vínculo continua valendo para o grupo que ainda não tem função nenhuma.
    */
   const setorDoGes = (gesId?: string) => {
-    const v = gheSetores.find((x) => x.ghe_id === gesId && x.setor_id);
-    if (v) return setores.find((s) => s.id === v.setor_id);
     const daFuncao = funcoesDoGes(gesId).find((f) => f.setor_id);
-    return daFuncao ? setores.find((s) => s.id === daFuncao.setor_id) : undefined;
+    if (daFuncao) return setores.find((s) => s.id === daFuncao.setor_id);
+    const v = gheSetores.find((x) => x.ghe_id === gesId && x.setor_id);
+    return v ? setores.find((s) => s.id === v.setor_id) : undefined;
   };
 
   /**
