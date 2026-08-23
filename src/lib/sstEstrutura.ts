@@ -237,19 +237,21 @@ export function nomeDoGrupo(args: {
 }
 
 /**
- * A ordem dos setores na tela: pelo número do GES.
+ * Ordena pelo número do GES — 01, 02, 03…
  *
- * A lista vinha por nome, e o nome não diz nada sobre a organização do
- * trabalho — pior, um espaço à toa no começo do cadastro ("␣SEPARAÇÃO") jogava
- * o setor para o topo sem que ninguém entendesse por quê.
+ * Serve para as duas listas que se organizam por esse número: os setores, na
+ * Base Técnica, e os próprios grupos, na aba GES. As duas vinham por nome, o
+ * que não diz nada sobre a organização do trabalho — pior, um espaço à toa no
+ * começo do cadastro ("␣SEPARAÇÃO") jogava o setor para o topo sem que ninguém
+ * entendesse por quê.
  *
- * Pelo número do GES a lista tem uma ordem estável e reconhecível, a mesma que
- * a pessoa usa para falar dos grupos ("o 01 é o PCP"). Setor ainda sem GES vai
- * para o fim: é onde ele precisa ser visto, não misturado no meio.
+ * Pelo número a ordem é estável e reconhecível, a mesma que a pessoa usa para
+ * falar dos grupos ("o 01 é o PCP"). Item ainda sem GES vai para o fim: é onde
+ * ele precisa ser visto, não misturado no meio.
  */
-export function ordenarSetoresPorGes<T extends { id: string; nome?: string | null }>(
-  setores: T[],
-  codigoDoSetor: (setorId: string) => string | null | undefined,
+export function ordenarPorCodigoGes<T extends { id: string; nome?: string | null }>(
+  itens: T[],
+  codigoDoItem: (id: string) => string | null | undefined,
 ): T[] {
   /**
    * Peso de cada setor na ordenação, do menor ao maior:
@@ -259,12 +261,12 @@ export function ordenarSetoresPorGes<T extends { id: string; nome?: string | nul
    * para isso, e ter um seria código que nenhum teste consegue distinguir.
    */
   const peso = (s: T) => {
-    const codigo = limpo(codigoDoSetor(s.id));
+    const codigo = limpo(codigoDoItem(s.id));
     if (!codigo) return Number.POSITIVE_INFINITY;
     const n = Number(codigo);
     return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
   };
-  return [...(setores || [])].sort((a, b) => {
+  return [...(itens || [])].sort((a, b) => {
     const pa = peso(a); const pb = peso(b);
     if (pa !== pb) return pa - pb;
     return limpo(a.nome).localeCompare(limpo(b.nome));

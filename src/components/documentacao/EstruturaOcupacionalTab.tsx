@@ -14,7 +14,7 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { useToast } from "@/hooks/use-toast";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { mensagemErro } from "@/lib/erroSupabase";
-import { caracteristicasAmbiente, ordenarSetoresPorGes } from "@/lib/sstEstrutura";
+import { caracteristicasAmbiente, ordenarPorCodigoGes } from "@/lib/sstEstrutura";
 import { exportarFuncoes } from "@/lib/exportarFuncoes";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
 import { GesExposicoesTab } from "./GesExposicoesTab";
@@ -310,7 +310,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
    * topo sem explicação nenhuma.
    */
   const setoresOrdenados = useMemo(
-    () => ordenarSetoresPorGes(setores as any[], codigoDoGesDoSetor),
+    () => ordenarPorCodigoGes(setores as any[], codigoDoGesDoSetor),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [setores, gheSetores, gesList],
   );
