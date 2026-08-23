@@ -14,7 +14,7 @@ import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { useToast } from "@/hooks/use-toast";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { mensagemErro } from "@/lib/erroSupabase";
-import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
+import { caracteristicasAmbiente, ordenarSetoresPorGes } from "@/lib/sstEstrutura";
 import { exportarFuncoes } from "@/lib/exportarFuncoes";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
 import { GesExposicoesTab } from "./GesExposicoesTab";
@@ -298,6 +298,27 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
   const [filtroFuncaoTexto, setFiltroFuncaoTexto] = useState("");
   const [filtroFuncaoSetor, setFiltroFuncaoSetor] = useState("todos");
+
+  /** O código do GES ligado a um setor — é por ele que a lista se ordena. */
+  const codigoDoGesDoSetor = (setorId: string) => {
+    const vinculo = (gheSetores as any[]).find((v) => v.setor_id === setorId);
+    if (!vinculo) return null;
+    const grupo = gesList.find((g: any) => g.id === vinculo.ghe_id);
+    return grupo?.codigo || grupo?.nome || null;
+  };
+
+  /**
+   * Setores em ordem de GES: 01, 02, 03…
+   *
+   * Vinham por nome, o que não diz nada sobre a organização do trabalho — e um
+   * espaço à toa no começo do cadastro ("␣SEPARAÇÃO") jogava o setor para o
+   * topo sem explicação nenhuma.
+   */
+  const setoresOrdenados = useMemo(
+    () => ordenarSetoresPorGes(setores as any[], codigoDoGesDoSetor),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setores, gheSetores, gesList],
+  );
 
   const funcoesFiltradas = useMemo(() => {
     let filtradas = funcoes;
@@ -877,7 +898,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                 </Button>
               </div>
               <ListaEstrutura
-                itens={setores}
+                itens={setoresOrdenados}
                 vazio="Nenhum setor cadastrado."
                 rotuloPrincipal="Nome do Setor"
                 principal={(set) => set.nome}
