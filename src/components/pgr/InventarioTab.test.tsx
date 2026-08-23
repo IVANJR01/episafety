@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import InventarioTab from "./InventarioTab";
 
@@ -170,72 +170,5 @@ describe("InventarioTab — item sem GES", () => {
 
     await screen.findByText("Sobrecarga");
     expect(updates).toHaveLength(0);
-  });
-});
-
-/**
- * A numeração dos itens — 01, 02, 03 — pedida pelo cliente.
- *
- * O teste monta a tabela de verdade porque o risco não está na conta do
- * número, que é trivial e já tem teste próprio em inventarioOrdem: está em
- * ligá-la à linha certa. Uma coluna a mais desloca as colunas congeladas à
- * esquerda, e errar aí sobrepõe células.
- */
-describe("InventarioTab — numeração dos itens", () => {
-  it("numera as linhas na ordem exibida, com dois dígitos", async () => {
-    tabelas = {
-      ...estruturaPcp,
-      pgr_inventario_itens: [
-        item({ id: "b", setor: "PCP", ghe_id: "g01", ges_id: "g01", perigo_descricao: "Ruído" }),
-        item({ id: "a", setor: "ALMOXARIFADO", ghe_id: "g01", ges_id: "g01", perigo_descricao: "Queda" }),
-      ],
-    };
-    montar();
-
-    // ALMOXARIFADO vem antes de PCP na ordem da tabela, então leva o 01
-    // mesmo tendo chegado depois do banco.
-    const linhas = await waitFor(() => {
-      const l = document.querySelectorAll("tbody tr");
-      expect(l.length).toBe(2);
-      return l;
-    });
-    const numeroDaLinha = (tr: Element) => tr.querySelector("td")?.textContent?.trim();
-    expect(numeroDaLinha(linhas[0])).toBe("01");
-    expect(numeroDaLinha(linhas[1])).toBe("02");
-    expect(linhas[0].textContent).toContain("ALMOXARIFADO");
-  });
-
-  it("o número NÃO muda com a busca — ele serve para apontar de fora", async () => {
-    // Numerar a lista filtrada faria o mesmo item trocar de número enquanto se
-    // digita, e um plano de ação que cita "item 02" passaria a apontar errado.
-    tabelas = {
-      ...estruturaPcp,
-      pgr_inventario_itens: [
-        item({ id: "b", setor: "PCP", ghe_id: "g01", ges_id: "g01", perigo_descricao: "Ruído" }),
-        item({ id: "a", setor: "ALMOXARIFADO", ghe_id: "g01", ges_id: "g01", perigo_descricao: "Queda" }),
-      ],
-    };
-    montar();
-    await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(2));
-
-    const busca = screen.getByPlaceholderText(/Buscar por perigo/i);
-    fireEvent.change(busca, { target: { value: "Ruído" } });
-
-    const restante = await waitFor(() => {
-      const l = document.querySelectorAll("tbody tr");
-      expect(l.length).toBe(1);
-      return l[0];
-    });
-    // Sozinho na tela, o item do PCP continua sendo o 02.
-    expect(restante.querySelector("td")?.textContent?.trim()).toBe("02");
-  });
-
-  it("a coluna Item aparece no cabeçalho", async () => {
-    tabelas = {
-      ...estruturaPcp,
-      pgr_inventario_itens: [item({ setor: "PCP", ghe_id: "g01", ges_id: "g01" })],
-    };
-    montar();
-    await waitFor(() => expect(screen.getByText("Item")).toBeTruthy());
   });
 });

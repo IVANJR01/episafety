@@ -20,7 +20,6 @@ import {
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { candidatosDeGes, indexarVinculos, type AlvoVinculo } from "@/lib/pgrGesVinculo";
 import { descreverAmbiente, descreverProcesso } from "@/lib/sstEstrutura";
-import { ordenarInventario, numerarInventario } from "@/lib/inventarioOrdem";
 
 /** Linha de pgr_levantamento_preliminar, na forma que esta tela consome. */
 interface Levantado {
@@ -46,7 +45,7 @@ const val = (v: any) => (v === null || v === undefined || v === "" ? NA : v);
 /**
  * Colunas de contexto — ambiente, setor e GES — congeladas à esquerda.
  *
- * São 18 colunas contra pouco mais de 1300px de tela: rolar de lado é
+ * São 17 colunas contra pouco mais de 1300px de tela: rolar de lado é
  * inevitável neste formato, que é o mesmo do documento emitido. O que dá para
  * evitar é rolar de ida **e volta** — sem o contexto preso, chegar na
  * classificação faz perder de vista de qual setor e GES é a linha, e obriga a
@@ -445,19 +444,22 @@ export default function InventarioTab({
       i.fonte_geradora?.toLowerCase().includes(q) ||
       i.ghe?.codigo?.toLowerCase().includes(q) ||
       i.ghe?.nome?.toLowerCase().includes(q));
-    // A ordenação mora em src/lib/inventarioOrdem.ts porque o número do item
-    // é a posição nela — e o Excel e o PDF precisam numerar igual, senão o
-    // "item 03" de um não é o do outro.
-    return ordenarInventario(base);
+    // Setor → ambiente → GES → perigo: a ordem espelha o aninhamento das
+    // células mescladas, e mesclar só funciona em linhas vizinhas. Antes
+    // ordenava por GES primeiro, o que espalhava os grupos de um mesmo setor
+    // assim que existisse mais de um setor.
+    return [...base].sort((a: any, b: any) => {
+      const sa = a.setor || ""; const sb = b.setor || "";
+      if (sa !== sb) return sa.localeCompare(sb);
+      const aa = ambienteDe(a); const ab = ambienteDe(b);
+      if (aa !== ab) return aa.localeCompare(ab);
+      const ga = a.ghe?.codigo || ""; const gb = b.ghe?.codigo || "";
+      if (ga !== gb) return ga.localeCompare(gb);
+      const grA = a.grupo || ""; const grB = b.grupo || "";
+      if (grA !== grB) return grA.localeCompare(grB);
+      return (a.perigo_descricao || "").localeCompare(b.perigo_descricao || "");
+    });
   }, [itens, busca]);
-
-  /**
-   * Número de cada item — 01, 02, 03 —, calculado sobre a lista INTEIRA.
-   *
-   * Numerar a lista filtrada faria o mesmo item mudar de número enquanto se
-   * digita na busca, e o número serve justamente para apontar de fora.
-   */
-  const numeroDoItem = useMemo(() => numerarInventario(itens || []), [itens]);
 
   const stats = useMemo(() => {
     const porClasse: Record<PgrClasse, number> = {
@@ -607,13 +609,9 @@ export default function InventarioTab({
                         obrigava a voltar para saber de qual setor/GES era. As
                         larguras aqui são fixas porque o `left` das seguintes é
                         a soma delas. */}
-                    {/* O número do item entra antes de tudo e acompanha as
-                        colunas congeladas: é ele que identifica a linha quando
-                        a rolagem lateral levou o resto para fora da tela. */}
-                    <th className={`${CTX_TH} w-[44px] min-w-[44px] max-w-[44px] left-0 text-center`}>Item</th>
-                    <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-[44px]`}>Descrição do ambiente</th>
-                    <th className={`${CTX_TH} w-[88px] min-w-[88px] max-w-[88px] left-[244px]`}>Setor</th>
-                    <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[332px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>
+                    <th className={`${CTX_TH} w-[200px] min-w-[200px] max-w-[200px] left-0`}>Descrição do ambiente</th>
+                    <th className={`${CTX_TH} w-[88px] min-w-[88px] max-w-[88px] left-[200px]`}>Setor</th>
+                    <th className={`${CTX_TH} w-[48px] min-w-[48px] max-w-[48px] left-[288px] text-center shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)]`}>
                       <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} className="mx-auto whitespace-nowrap">GES</div>
                     </th>
                     <th className="p-1.5 text-center border border-amber-400 w-[180px] min-w-[180px]">Função</th>
@@ -716,27 +714,20 @@ export default function InventarioTab({
 
                     return (
                       <tr key={i.id} className={`hover:bg-muted/40 align-middle ${abreSetor ? "border-t-2 border-t-amber-400" : "border-t border-t-amber-100"}`}>
-                        {/* O número não é mesclado: cada linha de risco é um
-                            item, e é por esse número que o plano de ação e a
-                            conversa do dia a dia apontam para ela. */}
-                        <td style={{ backgroundColor: "#fffbeb" }}
-                          className="p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-0 z-40 w-[44px] min-w-[44px] max-w-[44px] tabular-nums">
-                          {numeroDoItem.get(i.id) ?? "—"}
-                        </td>
                         {/* Ambiente, Setor e Processo pertencem ao setor: saem uma
                             vez por setor, por mais GES que ele tenha. Antes o GES
                             entrava na chave e o parágrafo do ambiente era
                             reimpresso inteiro em cada grupo. */}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle font-medium leading-snug sticky left-[44px] z-40 w-[200px] min-w-[200px] max-w-[200px] break-words`}>
+                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle font-medium leading-snug sticky left-0 z-40 w-[200px] min-w-[200px] max-w-[200px] break-words`}>
                             <ExpandableText text={ambiente || NA} />
                           </td>
                         )}
                         {abreSetor && (
-                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#ffffff" }} className="p-1.5 pt-2 border align-middle sticky left-[244px] z-40 w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
+                          <td rowSpan={linhasDoSetor} style={{ backgroundColor: "#ffffff" }} className="p-1.5 pt-2 border align-middle sticky left-[200px] z-40 w-[88px] min-w-[88px] max-w-[88px] break-words">{val(i.setor)}</td>
                         )}
                         {abreGes && (
-                          <td rowSpan={linhasDoGes} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[332px] z-40 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words`}>
+                          <td rowSpan={linhasDoGes} style={{ backgroundColor: "#fffbeb" }} className={`p-1.5 pt-2 border border-amber-300 align-middle text-center font-bold text-sm sticky left-[288px] z-40 shadow-[6px_0_6px_-6px_rgba(0,0,0,0.25)] w-[48px] min-w-[48px] max-w-[48px] break-words`}>
                             {/* Sem grupo a linha sai N.A no PGR emitido. Marcar
                                 em âmbar é o que faz a falha aparecer antes da
                                 emissão, e não depois. */}

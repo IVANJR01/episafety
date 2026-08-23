@@ -6,7 +6,6 @@ import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { PgrDocumento, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
-import { numerarInventario, ordenarInventario } from "@/lib/inventarioOrdem";
 import {
   CLASSE_LABEL as CLASSIF_LABEL,
   CLASSE_HEX,
@@ -642,9 +641,6 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
 
   // 4. Inventário por GHE
   title(b, "Inventário de Riscos Ocupacionais");
-  // Mesmo número que a tela e a planilha mostram (ordenação compartilhada em
-  // inventarioOrdem). É por ele que o plano de ação aponta para o risco.
-  const numeroDoItem = numerarInventario(ctx.inventario as any[]);
   const byGhe = new Map<string, PgrInventarioItem[]>();
   ctx.inventario.forEach((i) => {
     const k = i.ghe_id || "_";
@@ -657,12 +653,11 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
     pdf.text(`GES: ${ctx.ghes[gid] || "Sem GHE"}  (${items.length} riscos)`, 12, b.y + 3);
     pdf.setTextColor(0); b.y += 6;
-    ordenarInventario(items as any[]).forEach((i: any) => {
+    items.forEach((i) => {
       ensure(b, 14);
       pdf.setDrawColor(220); pdf.line(12, b.y, 198, b.y);
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-      const numero = numeroDoItem.get((i as any).id);
-      pdf.text(`${numero ? `${numero}. ` : "• "}${i.perigo_descricao} [${i.grupo}]`, 12, b.y + 4);
+      pdf.text(`• ${i.perigo_descricao} [${i.grupo}]`, 12, b.y + 4);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
       const cls = classeLabel(i.classificacao);
       // Item sem avaliação imprimia "Sev null × Prob null = 0", que num documento
