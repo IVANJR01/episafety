@@ -179,7 +179,9 @@ function ListaEstrutura<T extends { id: string }>({
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-11 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {/* Largura mínima para o nome não quebrar em duas linhas
+                    quando uma coluna de texto longo puxa o espaço. */}
+                <TableHead className="h-11 min-w-[190px] text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   {rotuloPrincipal}
                 </TableHead>
                 {colunas.map((c) => (
@@ -1025,10 +1027,19 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             colunas={[
               { rotulo: "Setor", celula: (func) => setores.find((s) => s.id === func.setor_id)?.nome || "—" },
               {
+                /*
+                 * A descrição sai INTEIRA, quebrando em várias linhas.
+                 *
+                 * Antes era `max-w-xs truncate`: teto de 320px e corte em uma
+                 * linha só, com reticências — numa tabela de quatro colunas,
+                 * onde sobrava metade da largura vazia à direita. O texto
+                 * completo só aparecia parando o mouse em cima, e é ele que
+                 * diz o que a função faz: é a informação da tela, não um
+                 * detalhe.
+                 */
                 rotulo: "Descrição das atividades",
                 longo: true,
-                classe: "text-sm text-slate-600 max-w-xs truncate",
-                dica: (func) => (func as any).descricao_atividades || "",
+                classe: "text-sm text-slate-600 whitespace-normal break-words align-top",
                 celula: (func) => (func as any).descricao_atividades || "—",
               },
             ]}
