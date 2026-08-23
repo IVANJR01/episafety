@@ -603,7 +603,18 @@ export default function InventarioTab({
           ) : (
             <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] -mx-3 px-3">
               <table className="w-full text-[11px] border-collapse">
-                <thead className="bg-amber-200 sticky top-0 z-30">
+                {/*
+                  z-50 aqui, e não z-30, por causa de uma armadilha de
+                  empilhamento: `z-30` no <thead> CRIA um contexto próprio, e
+                  dentro dele o `z-50` dos <th> só vale entre irmãos. Contra o
+                  resto da tabela o cabeçalho inteiro valia 30 — abaixo das
+                  células congeladas do corpo, que são z-40.
+
+                  O efeito: ao rolar a tabela para baixo, o texto do ambiente,
+                  o setor e o GES passavam POR CIMA do cabeçalho, que sumia nas
+                  três primeiras colunas.
+                */}
+                <thead className="bg-amber-200 sticky top-0 z-50">
                   <tr className="text-amber-950">
                     {/* As três primeiras ficam congeladas à esquerda: são o
                         contexto da linha, e sem elas rolar até a classificação
