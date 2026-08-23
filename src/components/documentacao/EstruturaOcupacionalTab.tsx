@@ -18,7 +18,7 @@ import { caracteristicasAmbiente, ordenarSetoresPorGes } from "@/lib/sstEstrutur
 import { exportarFuncoes } from "@/lib/exportarFuncoes";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
 import { GesExposicoesTab } from "./GesExposicoesTab";
-import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ChevronRight, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users, Download } from "lucide-react";
+import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users, Download } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -88,7 +88,7 @@ interface ColunaEstrutura<T> {
  * rótulo e o texto pode quebrar à vontade.
  */
 function ListaEstrutura<T extends { id: string }>({
-  itens, vazio, rotuloPrincipal, principal, colunas, onEditar, onExcluir, acoesExtras, aoAbrir,
+  itens, vazio, rotuloPrincipal, principal, colunas, onEditar, onExcluir, acoesExtras, rotuloEditar,
 }: {
   itens: T[];
   vazio: string;
@@ -100,39 +100,34 @@ function ListaEstrutura<T extends { id: string }>({
   /** Botão adicional antes de editar/excluir (ex.: grupos do setor). */
   acoesExtras?: (item: T) => React.ReactNode;
   /**
-   * Abre o detalhamento do item. Quando existe, é o PRÓPRIO NOME que abre.
-   *
-   * Antes isso era um botão sólido "Gerenciar" em cada linha, do lado do lápis
-   * e da lixeira. Três alvos de ação por linha, sendo um deles pintado de azul
-   * chapado, e ninguém distinguia "Gerenciar" de "Editar" — são coisas
-   * diferentes (um abre o detalhamento, o outro o formulário do cadastro), mas
-   * o rótulo não dizia isso. Nome clicável é o padrão que toda lista de sistema
-   * usa para "entrar no registro", e devolve a linha ao conteúdo.
+   * O que o lápis faz nesta lista. Em Setores ele abre o setor inteiro
+   * (ambiente, processos e a edição); nas outras, abre o formulário direto.
+   * Um ícone sem dica nenhuma obriga a clicar para descobrir.
    */
-  aoAbrir?: (item: T) => void;
+  rotuloEditar?: string;
 }) {
   const acoes = (item: T) => (
     <div className="flex justify-end gap-1 shrink-0">
       {acoesExtras?.(item)}
-      <Button onClick={() => onEditar(item)} variant="ghost" size="sm" aria-label="Editar">
+      <Button onClick={() => onEditar(item)} variant="ghost" size="sm"
+        aria-label={rotuloEditar ?? "Editar"} title={rotuloEditar ?? "Editar"}>
         <Edit2 className="w-4 h-4 text-slate-600" />
       </Button>
-      <Button onClick={() => onExcluir(item)} variant="ghost" size="sm" aria-label="Excluir">
+      <Button onClick={() => onExcluir(item)} variant="ghost" size="sm"
+        aria-label="Excluir" title="Excluir">
         <Trash2 className="w-4 h-4 text-red-600" />
       </Button>
     </div>
   );
 
-  /** O nome: texto simples, ou botão de abrir quando há detalhamento. */
-  const nome = (item: T) => (aoAbrir ? (
-    <button type="button" onClick={() => aoAbrir(item)}
-      className="text-left text-indigo-700 hover:underline focus-visible:underline
-        focus-visible:outline-none inline-flex items-center gap-1 group"
-      title="Abrir o detalhamento">
-      {principal(item)}
-      <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </button>
-  ) : principal(item));
+  /*
+   * O nome é texto, não ação.
+   *
+   * Ele já foi um botão "Gerenciar" e depois um link para o detalhamento —
+   * sempre duplicando o que o lápis da mesma linha faz. A linha tem os botões
+   * à direita; o nome identifica o registro.
+   */
+  const nome = (item: T) => principal(item);
 
   if (itens.length === 0) {
     return (
@@ -977,14 +972,24 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     },
                   },
                 ]}
-                aoAbrir={(set) => setSetorDetalheId(set.id)}
                 acoesExtras={(set) => (
                   <Button variant="ghost" size="sm" aria-label="Duplicar setor"
                     onClick={() => duplicarSetor(set.id)} disabled={duplicandoId === set.id}>
                     {duplicandoId === set.id ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <ClipboardPaste className="w-4 h-4 text-slate-600" />}
                   </Button>
                 )}
-                onEditar={(set) => handleOpenModal("setor", set)}
+                /*
+                  O lápis abre o setor — ambiente, processos e o botão de
+                  editar, tudo lá dentro.
+
+                  Antes havia duas portas para o mesmo lugar: o nome do setor
+                  era um link para o detalhamento, e o lápis ao lado abria o
+                  formulário. Como o detalhamento também tem "Editar", as duas
+                  terminavam no mesmo formulário por caminhos diferentes — e
+                  nada na tela dizia qual era qual.
+                */
+                rotuloEditar="Abrir o setor: ambiente, processos e edição"
+                onEditar={(set) => setSetorDetalheId(set.id)}
                 onExcluir={(set) => setDeleteConfirm({ open: true, type: "setor", id: set.id, nome: set.nome })}
               />
             </>
