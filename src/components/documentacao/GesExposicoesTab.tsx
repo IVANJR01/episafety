@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
 import { criterioDoGrupo } from "@/lib/sstEstrutura";
 import type { SstGes } from "@/types/sst";
@@ -30,12 +29,10 @@ import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
  * Sobrou o que só existe aqui e é usado de fato: o cadastro dos grupos.
  * Nenhuma tabela foi removida do banco; apenas a duplicidade saiu da tela.
  */
-const SEM_SETOR = "__sem_setor__";
-
 export function GesExposicoesTab() {
   const {
     gesList, saveGes, deleteGes, funcoes, setores, gheFuncoes, gheSetores,
-    definirFuncoesDoGes, vincularGesSetor,
+    definirFuncoesDoGes,
   } = useNucleoMestreSst();
   const navigate = useNavigate();
 
@@ -46,10 +43,17 @@ export function GesExposicoesTab() {
     );
     return funcoes.filter((f: any) => ids.has(f.id));
   };
-  /** Nome do setor vinculado ao grupo — entra no texto do critério. */
+  /**
+   * Nome do setor vinculado ao grupo — entra no texto do critério.
+   *
+   * Resolve pelos dois caminhos porque `ghe_setores` guarda os dois: o id do
+   * setor e o nome. Depender só do id deixaria o critério sem setor em
+   * vínculos gravados sem ele.
+   */
   const setorDoGes = (gesId: string) => {
     const v = (gheSetores as any[]).find((x) => x.ghe_id === gesId);
-    return v ? setores.find((s: any) => s.id === v.setor_id)?.nome ?? null : null;
+    if (!v) return null;
+    return setores.find((s: any) => s.id === v.setor_id)?.nome ?? v.nome ?? null;
   };
   /** Em que grupo cada função está hoje — para avisar de onde ela sairia. */
   const gesDaFuncao = (funcaoId: string) => {
@@ -60,7 +64,6 @@ export function GesExposicoesTab() {
   const [openGesModal, setOpenGesModal] = useState(false);
   const [gesFormData, setGesFormData] = useState<Partial<SstGes>>({});
   const [funcoesSelecionadas, setFuncoesSelecionadas] = useState<string[]>([]);
-  const [setorSelecionado, setSetorSelecionado] = useState<string>(SEM_SETOR);
   const [salvando, setSalvando] = useState(false);
   /**
    * O critério não é mais digitado aqui. A composição do grupo (setor +
@@ -74,8 +77,6 @@ export function GesExposicoesTab() {
   const abrirGes = (ges?: SstGes) => {
     setGesFormData(ges || {});
     setFuncoesSelecionadas(ges ? funcoesDoGes(ges.id).map((f: any) => f.id) : []);
-    const vinculo = ges && (gheSetores as any[]).find((v) => v.ghe_id === ges.id);
-    setSetorSelecionado(vinculo?.setor_id || SEM_SETOR);
     setOpenGesModal(true);
   };
 
@@ -104,10 +105,6 @@ export function GesExposicoesTab() {
         ...gesFormData,
         codigo: gesFormData.codigo || proximoCodigo,
       } as any);
-      if (setorSelecionado !== SEM_SETOR) {
-        const setor = setores.find((s: any) => s.id === setorSelecionado);
-        await vincularGesSetor({ ges_id: salvo.id, setor_id: setorSelecionado, nome: setor?.nome || "" });
-      }
       await definirFuncoesDoGes({ ges_id: salvo.id, funcao_ids: funcoesSelecionadas });
       setOpenGesModal(false);
     } catch (err) {
@@ -246,28 +243,25 @@ export function GesExposicoesTab() {
                 placeholder="Ex.: Administrativo do PCP"
               />
             </div>
-            <div>
-              <Label>Setor</Label>
-              <Select value={setorSelecionado || SEM_SETOR} onValueChange={(v) => {
-                setSetorSelecionado(v);
-                // Automação: se for grupo novo, auto-marcar as funções que pertencem ao setor escolhido
-                if (!gesFormData.id) {
-                  if (v === SEM_SETOR) {
-                    setFuncoesSelecionadas([]);
-                  } else {
-                    const funcIds = funcoes.filter((f: any) => f.setor_id === v).map((f: any) => f.id);
-                    setFuncoesSelecionadas(funcIds);
-                  }
-                }
-              }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={SEM_SETOR}>Sem setor (grupo entre setores)</SelectItem>
-                  {setores.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/*
+              O setor do grupo é definido na Estrutura do GES, aba Setores.
+              Havia aqui uma lista de um setor só, gravando a MESMA tabela
+              (ghe_setores) que aquela aba — dois lugares mexendo no mesmo
+              vínculo, livres para discordar. E um seletor de um item só
+              contradiz o motivo desta tela existir, que é justamente o grupo
+              que atravessa setores.
+            */}
+            <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+              {gesFormData.id ? (
+                <>
+                  <span className="font-medium">Setor: </span>
+                  {setorDoGes(gesFormData.id as string) || "nenhum ainda"} — para mudar,
+                  use <b>Estrutura do GES → Setores</b> (ícone ao lado do lápis).
+                </>
+              ) : (
+                <>O setor entra depois, em <b>Estrutura do GES → Setores</b>. Um grupo pode
+                reunir setores diferentes, e é para isso que esta tela serve.</>
+              )}
             </div>
             <div>
               <Label>Funções neste grupo</Label>
