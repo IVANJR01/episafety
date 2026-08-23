@@ -291,3 +291,67 @@ describe("InventarioTab — cor do agente", () => {
     expect(celulas[0].getAttribute("rowspan")).toBe("2");
   });
 });
+
+/**
+ * A cor da classificação preenchendo a célula.
+ *
+ * A regra tem teste próprio; aqui o que se prova é que a célula recebe fundo
+ * E letra, e que risco sem avaliação não sai pintado como se fosse aceito.
+ */
+describe("InventarioTab — cor da classificação", () => {
+  const celulaCom = (texto: string) =>
+    [...document.querySelectorAll("tbody td")]
+      .find((c) => c.textContent?.trim() === texto) as HTMLElement | undefined;
+
+  it("pinta a célula e a letra com a cor da classe", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [
+        // 5 × 5 = 25 → Intolerável
+        item({ id: "a", setor: "PCP", ghe_id: "g01", severidade: 5, probabilidade: 5,
+          perigo_descricao: "Queda", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+      ],
+    };
+    montar();
+    await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(1));
+
+    const celula = celulaCom("Intolerável");
+    expect(celula?.style.backgroundColor).toBe("rgb(220, 38, 38)");
+    expect(celula?.style.color).toBe("rgb(255, 255, 255)");
+  });
+
+  it("classe clara leva letra escura, não branca", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [
+        // 3 × 3 = 9 → Moderado (amarelo)
+        item({ id: "a", setor: "PCP", ghe_id: "g01", severidade: 3, probabilidade: 3,
+          perigo_descricao: "Postura", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+      ],
+    };
+    montar();
+    await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(1));
+
+    const celula = celulaCom("Moderado");
+    expect(celula?.style.backgroundColor).toBe("rgb(234, 179, 8)");
+    expect(celula?.style.color).toBe("rgb(31, 41, 55)");
+  });
+
+  it("risco SEM avaliação não sai pintado como aceito", async () => {
+    // Verde num item não avaliado leria como "risco baixo" — e não é: é
+    // "ninguém avaliou ainda".
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [
+        item({ id: "a", setor: "PCP", ghe_id: "g01", severidade: null, probabilidade: null,
+          perigo_descricao: "Ruído", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+      ],
+    };
+    montar();
+    await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(1));
+
+    const pintadas = [...document.querySelectorAll("tbody td")]
+      .map((c) => (c as HTMLElement).style.backgroundColor);
+    expect(pintadas).not.toContain("rgb(16, 185, 129)"); // verde do Trivial
+  });
+});
