@@ -158,7 +158,7 @@ export function GesExposicoesTab() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-800">
-            Grupos de Exposição (GES) e Riscos
+            Grupo de Exposição Similar
           </h3>
           <p className="text-sm text-slate-500 max-w-3xl mt-1">
             Cada setor cria seu grupo automaticamente. Apenas acesse esta aba para fundir funções de setores diferentes com exposições idênticas (ex.: equipe de manutenção móvel).

@@ -586,7 +586,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
       // Não clonamos mais o GES automaticamente, para evitar duplicações 
       // indevidas de "Nome (Cópia)" e grupos vazios. O GES agora é gerenciado 
-      // exclusivamente na aba de Exposições e Riscos.
+      // exclusivamente na aba GES.
 
       // 4. Clonar Processos
       const processosDoSetor = processos.filter(p => p.setor_id === setorId);
@@ -716,7 +716,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               <Briefcase className="w-4 h-4" /> Funções
             </TabsTrigger>
             <TabsTrigger value="riscos" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
-              <Users className="w-4 h-4" /> Exposições e Riscos
+              <Users className="w-4 h-4" /> GES
             </TabsTrigger>
           </TabsList>
         )}
