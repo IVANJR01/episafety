@@ -134,7 +134,11 @@ function ListaEstrutura<T extends { id: string }>({
   ) : principal(item));
 
   if (itens.length === 0) {
-    return <Card className="p-6 text-center text-sm text-slate-400">{vazio}</Card>;
+    return (
+      <Card className="border-dashed p-10 text-center">
+        <p className="text-sm text-slate-500">{vazio}</p>
+      </Card>
+    );
   }
 
   return (
@@ -163,29 +167,46 @@ function ListaEstrutura<T extends { id: string }>({
         ))}
       </div>
 
-      <Card className="hidden sm:block overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{rotuloPrincipal}</TableHead>
-              {colunas.map((c) => <TableHead key={c.rotulo} className={c.classe}>{c.rotulo}</TableHead>)}
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {itens.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium text-slate-900">{nome(item)}</TableCell>
+      {/*
+        A tabela saía sem cabeçalho destacado: a primeira linha de rótulos tinha
+        o mesmo peso das linhas de dados, e a tabela lida como uma lista solta.
+        Fundo no cabeçalho, rótulo em caixa alta miúda e linhas mais altas é o
+        que separa as duas coisas sem precisar de borda em tudo.
+      */}
+      <Card className="hidden sm:block overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-slate-50">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-11 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  {rotuloPrincipal}
+                </TableHead>
                 {colunas.map((c) => (
-                  <TableCell key={c.rotulo} className={c.classe} title={c.dica?.(item)}>
-                    {c.celula(item)}
-                  </TableCell>
+                  <TableHead key={c.rotulo}
+                    className={`h-11 text-[11px] font-semibold uppercase tracking-wide text-slate-500 ${c.classe ?? ""}`}>
+                    {c.rotulo}
+                  </TableHead>
                 ))}
-                <TableCell className="text-right">{acoes(item)}</TableCell>
+                <TableHead className="h-11 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Ações
+                </TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {itens.map((item) => (
+                <TableRow key={item.id} className="hover:bg-slate-50/70">
+                  <TableCell className="py-3 font-medium text-slate-900">{nome(item)}</TableCell>
+                  {colunas.map((c) => (
+                    <TableCell key={c.rotulo} className={`py-3 text-slate-600 ${c.classe ?? ""}`} title={c.dica?.(item)}>
+                      {c.celula(item)}
+                    </TableCell>
+                  ))}
+                  <TableCell className="py-3 text-right">{acoes(item)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </>
   );
@@ -623,27 +644,21 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           6 abas que nem navegam — a etapa já tem título próprio.
           É renderização condicional, não `hidden`: a classe perdia para o
           `grid` na cascata do Tailwind e a barra aparecia mesmo assim. */}
-      {!only && (
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-indigo-600" />
-              Repositório Técnico
-            </h2>
-            <p className="text-sm text-slate-500">
-              Cadastre a sua estrutura e riscos uma única vez. Estes dados alimentam automaticamente PGR, PCMSO, LTCAT, Laudos e PPP.
-            </p>
-          </div>
-        </div>
-      )}
+      {/*
+        Havia aqui um segundo cabeçalho — "Repositório Técnico", com ícone e
+        subtítulo — logo abaixo do título da página, dizendo a mesma coisa com
+        outras palavras. Dois títulos e dois subtítulos em sequência é o que
+        mais fazia a tela parecer improvisada. O título da página basta, e a
+        aba ativa já diz em que seção se está.
+      */}
 
       <Tabs value={secaoAtiva} onValueChange={(v) => setActiveSubTab(v as any)} className="w-full">
         {!only && !setorDetalheId && (
-          <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
-            <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center justify-center gap-1">
+          <TabsList className="grid grid-cols-2 sm:grid sm:grid-cols-4 lg:inline-flex lg:w-auto w-full bg-slate-100 p-1 rounded-lg h-auto gap-1">
+            <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
               <Building2 className="w-4 h-4" /> Estabelecimentos
             </TabsTrigger>
-            <TabsTrigger value="setores" className="text-xs font-medium flex items-center justify-center gap-1">
+            <TabsTrigger value="setores" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
               <LayoutGrid className="w-4 h-4" /> Setores
             </TabsTrigger>
             {/*
@@ -661,10 +676,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               É a MESMA tela do assistente (mesmo componente, mesmo conteúdo),
               agora com porta também aqui. Não é um segundo lugar de cadastro.
             */}
-            <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center justify-center gap-1">
+            <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
               <Briefcase className="w-4 h-4" /> Funções
             </TabsTrigger>
-            <TabsTrigger value="riscos" className="text-xs font-medium flex items-center justify-center gap-1">
+            <TabsTrigger value="riscos" className="text-xs font-medium flex items-center justify-center gap-1.5 px-3 py-2 text-slate-600 data-[state=active]:text-indigo-700">
               <Users className="w-4 h-4" /> Exposições e Riscos
             </TabsTrigger>
           </TabsList>
@@ -673,7 +688,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         {/* 1. ESTABELECIMENTOS */}
         <TabsContent value="estabelecimentos" className="mt-4 space-y-4">
           <div className="flex flex-wrap justify-between items-center gap-2">
-            <h3 className="font-semibold text-slate-800">Estabelecimentos</h3>
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              Estabelecimentos
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                {estabelecimentos.length} {estabelecimentos.length === 1 ? "estabelecimento" : "estabelecimentos"}
+              </span>
+            </h3>
             <Button onClick={() => handleOpenModal("estabelecimento")} size="sm">
               <Plus className="w-4 h-4 mr-1" /> Novo Estabelecimento
             </Button>
@@ -692,20 +712,20 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             )}
             colunas={[
               { rotulo: "Tipo", celula: (est) => <Badge variant="outline">{est.tipo}</Badge> },
-              { rotulo: "CNPJ / CNO", celula: (est) => est.cnpj || est.cno || "-" },
+              { rotulo: "CNPJ / CNO", celula: (est) => est.cnpj || est.cno || "—" },
               {
                 rotulo: "CNAE / Grau Risco",
                 celula: (est) => est.cnae_principal
                   ? `${est.cnae_principal}${est.grau_risco ? ` (Grau ${est.grau_risco})` : ""}`
-                  : "-",
+                  : "—",
               },
               {
                 rotulo: "Endereço",
                 longo: true,
                 classe: "text-xs text-slate-600 max-w-[220px]",
-                celula: (est) => formatarEndereco(est.endereco) || "-",
+                celula: (est) => formatarEndereco(est.endereco) || "—",
               },
-              { rotulo: "Trab.", classe: "text-right", celula: (est) => est.qtd_trabalhadores ?? "-" },
+              { rotulo: "Trab.", classe: "text-right", celula: (est) => est.qtd_trabalhadores ?? "—" },
             ]}
             onEditar={(est) => handleOpenModal("estabelecimento", est)}
             onExcluir={(est) => setDeleteConfirm({ open: true, type: "estabelecimento", id: est.id, nome: est.nome })}
@@ -826,7 +846,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           ) : (
             <>
               <div className="flex flex-wrap justify-between items-center gap-2">
-                <h3 className="font-semibold text-slate-800">Setores</h3>
+                <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              Setores
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                {setores.length} {setores.length === 1 ? "setor" : "setores"}
+              </span>
+            </h3>
                 <Button onClick={() => handleOpenModal("setor")} size="sm">
                   <Plus className="w-4 h-4 mr-1" /> Novo Setor
                 </Button>
@@ -927,7 +952,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
         {/* 5. FUNÇÕES */}
         <TabsContent value="funcoes" className="mt-4 space-y-4">
           <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-3">
-            <h3 className="font-semibold text-slate-800">Funções</h3>
+            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+              Funções
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                {funcoesFiltradas.length} {funcoesFiltradas.length === 1 ? "função" : "funções"}
+              </span>
+            </h3>
             <div className="flex flex-1 w-full sm:max-w-xl lg:ml-auto gap-2">
               <Input 
                 placeholder="Buscar função..." 
@@ -965,7 +995,7 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
             rotuloPrincipal="Nome da Função"
             principal={(func) => func.nome}
             colunas={[
-              { rotulo: "Setor", celula: (func) => setores.find((s) => s.id === func.setor_id)?.nome || "-" },
+              { rotulo: "Setor", celula: (func) => setores.find((s) => s.id === func.setor_id)?.nome || "—" },
               {
                 rotulo: "Descrição das atividades",
                 longo: true,
