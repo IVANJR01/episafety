@@ -25,8 +25,9 @@ export default function DocumentacaoSst() {
             <Database className="w-6 h-6 text-indigo-600" />
             Central de Documentação e Base Técnica
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Cadastre os dados da estrutura ocupacional uma única vez e elabore dezenas de documentos legais.
+          <p className="text-sm text-slate-500 mt-1 max-w-3xl">
+            Cadastre a estrutura ocupacional e os riscos uma única vez. Estes dados alimentam
+            automaticamente PGR, PCMSO, LTCAT, Laudos e PPP.
           </p>
         </div>
       </div>
@@ -34,18 +35,25 @@ export default function DocumentacaoSst() {
       {/* NAVEGAÇÃO PRINCIPAL (HUB eSST) */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="pb-4">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full bg-slate-100/80 p-1.5 rounded-xl gap-1.5 h-auto">
-            <TabsTrigger value="basetecnica" className="text-sm font-semibold px-4 py-3 flex items-center gap-2 data-[state=active]:shadow-sm data-[state=active]:bg-white">
-              <Database className="w-4 h-4 text-indigo-600" /> Base Técnica
+          {/*
+            `sm:grid` é obrigatório aqui. A base do TabsList traz
+            `sm:inline-flex sm:justify-center`, e classe com prefixo responsivo
+            vence a sem prefixo — o `grid` sozinho era ignorado no desktop e a
+            barra virava um bloco centralizado, com sobra dos dois lados. O
+            tailwind-merge não funde as duas porque estão em grupos diferentes.
+          */}
+          <TabsList className="grid grid-cols-2 sm:grid sm:grid-cols-4 w-full bg-slate-100/80 p-1.5 rounded-xl gap-1.5 h-auto">
+            <TabsTrigger value="basetecnica" className="w-full justify-center text-sm font-semibold px-3 py-2.5 flex items-center gap-2 text-slate-600 data-[state=active]:shadow-sm data-[state=active]:bg-white data-[state=active]:text-indigo-700">
+              <Database className="w-4 h-4" /> Base Técnica
             </TabsTrigger>
-            <TabsTrigger value="elaborar" className="text-sm font-semibold px-4 py-3 flex items-center gap-2 data-[state=active]:shadow-sm data-[state=active]:bg-white">
-              <FileText className="w-4 h-4 text-emerald-600" /> Elaborar Documentos
+            <TabsTrigger value="elaborar" className="w-full justify-center text-sm font-semibold px-3 py-2.5 flex items-center gap-2 text-slate-600 data-[state=active]:shadow-sm data-[state=active]:bg-white data-[state=active]:text-indigo-700">
+              <FileText className="w-4 h-4" /> Elaborar Documentos
             </TabsTrigger>
-            <TabsTrigger value="emitidos" className="text-sm font-semibold px-4 py-3 flex items-center gap-2 data-[state=active]:shadow-sm data-[state=active]:bg-white">
-              <CheckCircle2 className="w-4 h-4 text-blue-600" /> Documentos Emitidos
+            <TabsTrigger value="emitidos" className="w-full justify-center text-sm font-semibold px-3 py-2.5 flex items-center gap-2 text-slate-600 data-[state=active]:shadow-sm data-[state=active]:bg-white data-[state=active]:text-indigo-700">
+              <CheckCircle2 className="w-4 h-4" /> Documentos Emitidos
             </TabsTrigger>
-            <TabsTrigger value="vencimentos" className="text-sm font-semibold px-4 py-3 flex items-center gap-2 data-[state=active]:shadow-sm data-[state=active]:bg-white">
-              <Clock className="w-4 h-4 text-amber-600" /> Vencimentos
+            <TabsTrigger value="vencimentos" className="w-full justify-center text-sm font-semibold px-3 py-2.5 flex items-center gap-2 text-slate-600 data-[state=active]:shadow-sm data-[state=active]:bg-white data-[state=active]:text-indigo-700">
+              <Clock className="w-4 h-4" /> Vencimentos
             </TabsTrigger>
           </TabsList>
         </div>
