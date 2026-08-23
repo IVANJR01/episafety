@@ -134,7 +134,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     // tela; quando a função não traz setor, cai no primeiro setor do grupo.
     const setor = f.setor_nome || setoresAtivos[0] || "";
     if (!setor) return toast.error(
-      `"${f.nome}" ainda não está em nenhum setor. Abra Base Técnica → Setores, entre no setor e edite a função.`,
+      `"${f.nome}" ainda não está em nenhum setor. Informe o setor dela em Base Técnica → Funções.`,
     );
     setVinculando(true);
     const { error } = await supabase.from("ghe_funcoes").insert({
@@ -451,8 +451,7 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                   <div className="p-4 text-sm text-muted-foreground">
                     Nenhuma função neste grupo ainda. Marque acima quem tem a mesma exposição.
                     <br />
-                    Para <b>cadastrar</b> uma função nova, vá em <b>Base Técnica → Setores</b>,
-                    entre no setor e use <b>Nova função</b>.
+                    Para <b>cadastrar</b> uma função nova, vá em <b>Base Técnica → Funções</b>.
                   </div>
                 )}
               </Accordion>
