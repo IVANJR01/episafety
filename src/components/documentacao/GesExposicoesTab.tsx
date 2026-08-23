@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useNucleoMestreSst } from "@/hooks/useNucleoMestreSst";
-import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo, ordenarPorCodigoGes } from "@/lib/sstEstrutura";
 import type { SstGes } from "@/types/sst";
 import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Edit2, Trash2, ListTree } from "lucide-react";
@@ -83,6 +83,21 @@ export function GesExposicoesTab() {
     });
     return [...mapa.entries()];
   };
+
+  /**
+   * Os grupos em ordem de código: 01, 02, 03…
+   *
+   * Vinham na ordem em que o hook os entrega, que mistura o Núcleo Mestre com
+   * o cadastro legado — na tela saía 09, 01, 11, 06, 03… O número é como se
+   * fala dos grupos, e é a mesma ordem que a lista de Setores usa.
+   */
+  const gruposOrdenados = useMemo(
+    () => ordenarPorCodigoGes(
+      gesList as any[],
+      (id) => (gesList as any[]).find((g: any) => g.id === id)?.codigo,
+    ),
+    [gesList],
+  );
 
   /** O nome exibido: do setor, quando ninguém deu nome próprio ao grupo. */
   const nomeDoGes = (ges: any): string =>
@@ -175,7 +190,7 @@ export function GesExposicoesTab() {
             Nenhum GES cadastrado. Clique em “Novo grupo” para adicionar.
           </Card>
         ) : (
-          gesList.map((ges) => (
+          gruposOrdenados.map((ges: any) => (
             <Card key={ges.id} className="border border-slate-200 shadow-sm hover:border-indigo-500 transition-all">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start gap-2">

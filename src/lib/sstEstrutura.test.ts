@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   criterioAgrupamentoSugerido, criterioDoGrupo, ehCriterioEscritoPeloSistema, setoresDoGrupo, nomeDoGrupo,
-  ordenarSetoresPorGes,
+  ordenarPorCodigoGes,
 } from "./sstEstrutura";
 
 /**
@@ -213,50 +213,50 @@ describe("nomeDoGrupo", () => {
  * sem explicação — é o caso do "␣SEPARAÇÃO" desta base, que aparecia em
  * primeiro com o GES 09.
  */
-describe("ordenarSetoresPorGes", () => {
+describe("ordenarPorCodigoGes", () => {
   const setor = (id: string, nome: string) => ({ id, nome });
   const comCodigos = (mapa: Record<string, string>) => (id: string) => mapa[id];
 
   it("ordena pelo número do GES, não pelo nome", () => {
     const lista = [setor("a", "SEPARAÇÃO"), setor("b", "PCP"), setor("c", "ESCRITÓRIO")];
-    const r = ordenarSetoresPorGes(lista, comCodigos({ a: "09", b: "01", c: "02" }));
+    const r = ordenarPorCodigoGes(lista, comCodigos({ a: "09", b: "01", c: "02" }));
     expect(r.map((s) => s.nome)).toEqual(["PCP", "ESCRITÓRIO", "SEPARAÇÃO"]);
   });
 
   it("09 vem antes de 10 — comparação numérica, não de texto", () => {
     // Com três dígitos a comparação como texto colocaria "100" antes de "99".
     const lista = [setor("a", "Cem"), setor("b", "Noventa e nove")];
-    const r = ordenarSetoresPorGes(lista, comCodigos({ a: "100", b: "99" }));
+    const r = ordenarPorCodigoGes(lista, comCodigos({ a: "100", b: "99" }));
     expect(r.map((s) => s.nome)).toEqual(["Noventa e nove", "Cem"]);
   });
 
   it("espaço no começo do nome não decide mais a ordem — era o defeito visível", () => {
     const lista = [setor("a", " SEPARAÇÃO"), setor("b", "ALMOXARIFADO")];
-    const r = ordenarSetoresPorGes(lista, comCodigos({ a: "09", b: "11" }));
+    const r = ordenarPorCodigoGes(lista, comCodigos({ a: "09", b: "11" }));
     expect(r.map((s) => s.id)).toEqual(["a", "b"]);
   });
 
   it("setor sem GES vai para o FIM — é onde ele precisa ser visto", () => {
     const lista = [setor("a", "Sem grupo"), setor("b", "PCP")];
-    const r = ordenarSetoresPorGes(lista, comCodigos({ b: "01" }));
+    const r = ordenarPorCodigoGes(lista, comCodigos({ b: "01" }));
     expect(r.map((s) => s.nome)).toEqual(["PCP", "Sem grupo"]);
   });
 
   it("entre os sem GES, ordena por nome", () => {
     const lista = [setor("a", "ZELADORIA"), setor("b", "ALMOXARIFADO")];
-    const r = ordenarSetoresPorGes(lista, () => null);
+    const r = ordenarPorCodigoGes(lista, () => null);
     expect(r.map((s) => s.nome)).toEqual(["ALMOXARIFADO", "ZELADORIA"]);
   });
 
   it("grupo com nome próprio entra depois dos numerados, não junto dos sem GES", () => {
     const lista = [setor("a", "Manutenção"), setor("b", "PCP"), setor("c", "Sem grupo")];
-    const r = ordenarSetoresPorGes(lista, comCodigos({ a: "Móvel", b: "01" }));
+    const r = ordenarPorCodigoGes(lista, comCodigos({ a: "Móvel", b: "01" }));
     expect(r.map((s) => s.nome)).toEqual(["PCP", "Manutenção", "Sem grupo"]);
   });
 
   it("não altera a lista recebida", () => {
     const lista = [setor("a", "B"), setor("b", "A")];
-    ordenarSetoresPorGes(lista, comCodigos({ a: "02", b: "01" }));
+    ordenarPorCodigoGes(lista, comCodigos({ a: "02", b: "01" }));
     expect(lista[0].id).toBe("a");
   });
 });
