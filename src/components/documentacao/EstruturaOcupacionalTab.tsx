@@ -639,12 +639,30 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
 
       <Tabs value={secaoAtiva} onValueChange={(v) => setActiveSubTab(v as any)} className="w-full">
         {!only && !setorDetalheId && (
-          <TabsList className="grid grid-cols-3 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full lg:inline-flex lg:w-auto bg-slate-100 p-1 rounded-lg h-auto">
             <TabsTrigger value="estabelecimentos" className="text-xs font-medium flex items-center justify-center gap-1">
               <Building2 className="w-4 h-4" /> Estabelecimentos
             </TabsTrigger>
             <TabsTrigger value="setores" className="text-xs font-medium flex items-center justify-center gap-1">
               <LayoutGrid className="w-4 h-4" /> Setores
+            </TabsTrigger>
+            {/*
+              Esta aba existia, foi removida em 74bf9acd em favor de uma seção
+              dentro do setor, e a seção foi removida depois em 81a7edef. O
+              conteúdo `funcoes` continuou no arquivo o tempo todo — com busca,
+              filtro por setor e "Colar em lote" — mas a única porta que sobrou
+              para ele era o assistente do PGR, etapa 3.
+
+              Ou seja: para cadastrar uma função era preciso abrir um PGR. A
+              Base Técnica promete cadastrar a estrutura "uma única vez" para
+              alimentar PGR, PCMSO, LTCAT, Laudos e PPP — não dá para essa
+              estrutura só existir por dentro de um dos documentos.
+
+              É a MESMA tela do assistente (mesmo componente, mesmo conteúdo),
+              agora com porta também aqui. Não é um segundo lugar de cadastro.
+            */}
+            <TabsTrigger value="funcoes" className="text-xs font-medium flex items-center justify-center gap-1">
+              <Briefcase className="w-4 h-4" /> Funções
             </TabsTrigger>
             <TabsTrigger value="riscos" className="text-xs font-medium flex items-center justify-center gap-1">
               <Users className="w-4 h-4" /> Exposições e Riscos
@@ -802,67 +820,6 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     )}
                   </div>
 
-                  {/*
-                    Funções do setor.
-
-                    Elas ficaram sem nenhuma porta de entrada por um acidente em
-                    dois passos: 74bf9acd tirou a aba "Funções" do topo em favor
-                    desta seção aqui dentro do setor, e 81a7edef removeu a seção
-                    por "redundante" — cada mudança fazia sentido sozinha, mas
-                    juntas deixaram o cadastro de funções inalcançável. As 26
-                    funções existentes só continuavam ali porque foram criadas
-                    antes disso.
-
-                    O lugar é este, e não uma lista solta: a função pertence ao
-                    setor, e entrando por dentro dele o vínculo já vem pronto —
-                    sem seletor de setor para errar. Isso importa mais agora que
-                    é o setor da função que define o setor do GES.
-                  */}
-                  <div className="space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h4 className="font-semibold text-slate-800 text-lg">Funções</h4>
-                      <Button variant="outline" size="sm"
-                        onClick={() => handleOpenModal("funcao", { setor_id: setorAtual.id })}>
-                        <Plus className="w-4 h-4 mr-1" /> Nova função
-                      </Button>
-                    </div>
-                    {funcoesDoSetor.length === 0 ? (
-                      <p className="text-sm text-slate-500 italic">
-                        Nenhuma função cadastrada neste setor.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {funcoesDoSetor.map((fu: any) => (
-                          <Card key={fu.id} className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-medium text-slate-800 break-words">{fu.nome}</span>
-                                  {fu.cbo && <Badge variant="outline">CBO {fu.cbo}</Badge>}
-                                  {fu.qtd_trabalhadores != null && (
-                                    <Badge variant="secondary">{fu.qtd_trabalhadores} trab.</Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-slate-700 break-words">
-                                  {fu.descricao_atividades || "Sem descrição das atividades."}
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 gap-1">
-                                <Button variant="ghost" size="sm" aria-label="Editar função"
-                                  onClick={() => handleOpenModal("funcao", fu)}>
-                                  <Edit2 className="w-4 h-4 text-slate-600" />
-                                </Button>
-                                <Button variant="ghost" size="sm" aria-label="Excluir função"
-                                  onClick={() => setDeleteConfirm({ open: true, type: "funcao", id: fu.id, nome: fu.nome })}>
-                                  <Trash2 className="w-4 h-4 text-red-600" />
-                                </Button>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
               );
             })()
@@ -960,40 +917,12 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
           )}
         </TabsContent>
 
-        {/* 4. PROCESSOS */}
-        <TabsContent value="processos" className="mt-4 space-y-4">
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <h3 className="font-semibold text-slate-800">Processos de trabalho</h3>
-            <Button onClick={() => handleOpenModal("processo")} size="sm">
-              <Plus className="w-4 h-4 mr-1" /> Novo Processo
-            </Button>
-          </div>
-          {/* Sem a coluna "Nome do Processo": o nome é gerado a partir da
-              primeira frase das etapas, então ficava ao lado da própria
-              descrição, dizendo a mesma coisa cortada mais cedo. O nome segue
-              existindo — é o rótulo usado no PDF e nos seletores do PGR. */}
-          <ListaEstrutura
-            itens={processos}
-            vazio="Nenhum processo cadastrado."
-            rotuloPrincipal="Setor"
-            principal={(proc) => setores.find((s) => s.id === proc.setor_id)?.nome || "-"}
-            colunas={[
-              {
-                rotulo: "Característica",
-                celula: (proc) => <Badge variant="outline">{proc.caracteristica_atividade}</Badge>,
-              },
-              {
-                rotulo: "Descrição do processo",
-                longo: true,
-                classe: "text-sm text-slate-600 max-w-md truncate",
-                dica: (proc) => proc.descricao_etapas || "",
-                celula: (proc) => proc.descricao_etapas || "—",
-              },
-            ]}
-            onEditar={(proc) => handleOpenModal("processo", proc)}
-            onExcluir={(proc) => setDeleteConfirm({ open: true, type: "processo", id: proc.id, nome: proc.nome })}
-          />
-        </TabsContent>
+        {/*
+          A aba "Processos" saiu daqui: os processos passaram a ser cadastrados
+          por dentro do setor, onde o vínculo já vem pronto. O conteúdo ficou
+          para trás sem nenhum gatilho que o abrisse — mesmo acidente que deixou
+          as Funções sem porta. Removido de vez para não voltar a confundir.
+        */}
 
         {/* 5. FUNÇÕES */}
         <TabsContent value="funcoes" className="mt-4 space-y-4">
