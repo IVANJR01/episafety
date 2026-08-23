@@ -1,4 +1,4 @@
-import { criterioDoGrupo, setoresDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo } from "@/lib/sstEstrutura";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -106,6 +106,28 @@ export default function PgrEstruturaTecnica() {
       (gheFuncoes as any[]).filter((v) => v.ghe_id === gesId && v.funcao_id).map((v) => v.funcao_id));
     return funcoes.filter((f: any) => ids.has(f.id));
   };
+  /**
+   * Rótulo do grupo na árvore: código + nome.
+   *
+   * O nome sai do setor quando o grupo não tem nome próprio — antes a árvore
+   * mostrava "01 — 01", o mesmo número duas vezes.
+   */
+  const rotuloDoGes = (g: any) => {
+    const reserva = setores.find((s: any) =>
+      (gheSetores as any[]).some((v) => v.ghe_id === g.id && v.setor_id === s.id))?.nome;
+    const nome = nomeDoGrupo({
+      armazenado: g?.nome,
+      codigo: g?.codigo,
+      setores: setoresDoGrupo(
+        funcoesDoGes(g.id).map((f: any) => ({
+          setorNome: setores.find((s: any) => s.id === f.setor_id)?.nome ?? null,
+        })),
+        reserva,
+      ),
+    });
+    return g?.codigo ? `${g.codigo} — ${nome}` : nome;
+  };
+
   const gesDoSetor = (setorId: string) => {
     const ids = new Set(
       (gheSetores as any[]).filter((v) => v.setor_id === setorId).map((v) => v.ghe_id));
@@ -351,7 +373,7 @@ export default function PgrEstruturaTecnica() {
                                             const fns = funcoesDoGes(g.id);
                                             return (
                                               <No key={g.id} chave={`ges:${g.id}`} tipo="ges"
-                                                nome={g.codigo ? `${g.codigo} — ${g.nome}` : g.nome}
+                                                nome={rotuloDoGes(g)}
                                                 nivel={4} contagem={fns.length}
                                                 filhos={fns.length ? (
                                                   <>

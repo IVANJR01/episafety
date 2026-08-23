@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  criterioAgrupamentoSugerido, criterioDoGrupo, ehCriterioEscritoPeloSistema, setoresDoGrupo,
+  criterioAgrupamentoSugerido, criterioDoGrupo, ehCriterioEscritoPeloSistema, setoresDoGrupo, nomeDoGrupo,
 } from "./sstEstrutura";
 
 /**
@@ -154,5 +154,51 @@ describe("criterioAgrupamentoSugerido com vários setores", () => {
     // Senão ele nunca seria remontado e voltaria a envelhecer.
     const texto = criterioAgrupamentoSugerido(["PCP", "COMERCIAL"], [{ nome: "Ajudante" }]);
     expect(ehCriterioEscritoPeloSistema(texto)).toBe(true);
+  });
+});
+
+/**
+ * "Cada grupo já tem a numeração 01, 02, 03 — essa numeração de roxo. Não dá
+ * para adicionar o nome automático?"
+ *
+ * Os grupos se chamavam pelo próprio código, e o cartão já mostra esse código
+ * num crachá ao lado: o nome repetia o crachá e não dizia de quem era o grupo.
+ */
+describe("nomeDoGrupo", () => {
+  it("nome igual ao código vira o nome do setor", () => {
+    expect(nomeDoGrupo({ armazenado: "01", codigo: "01", setores: ["COSTURA"] })).toBe("COSTURA");
+  });
+
+  it("nome vazio também", () => {
+    expect(nomeDoGrupo({ armazenado: "", codigo: "07", setores: ["COSTURA"] })).toBe("COSTURA");
+    expect(nomeDoGrupo({ codigo: "07", setores: ["COSTURA"] })).toBe("COSTURA");
+  });
+
+  it("dois grupos do mesmo setor têm o mesmo nome e crachás diferentes", () => {
+    // É como se fala deles: "COSTURA 01" e "COSTURA 02".
+    expect(nomeDoGrupo({ armazenado: "01", codigo: "01", setores: ["COSTURA"] })).toBe("COSTURA");
+    expect(nomeDoGrupo({ armazenado: "02", codigo: "02", setores: ["COSTURA"] })).toBe("COSTURA");
+  });
+
+  it("grupo que atravessa setores junta os dois nomes", () => {
+    expect(nomeDoGrupo({ armazenado: "04", codigo: "04", setores: ["LOJA", "ESCRITÓRIO"] }))
+      .toBe("LOJA e ESCRITÓRIO");
+  });
+
+  it("PRESERVA nome escrito por gente — é o caso do grupo com nome próprio", () => {
+    // Este é o teste que impede a automação de apagar trabalho de alguém.
+    expect(nomeDoGrupo({
+      armazenado: "Equipe de manutenção móvel", codigo: "05", setores: ["PCP"],
+    })).toBe("Equipe de manutenção móvel");
+  });
+
+  it("sem setor, mantém o código em vez de ficar sem nome", () => {
+    expect(nomeDoGrupo({ armazenado: "09", codigo: "09", setores: [] })).toBe("09");
+    expect(nomeDoGrupo({ armazenado: "", codigo: "09" })).toBe("09");
+  });
+
+  it('"1" e "01" são o mesmo código escrito de dois jeitos', () => {
+    // O código é gravado com zero à esquerda; nomes antigos nem sempre.
+    expect(nomeDoGrupo({ armazenado: "1", codigo: "01", setores: ["PCP"] })).toBe("PCP");
   });
 });

@@ -16,7 +16,7 @@ import ItemControlesPanel from "./ItemControlesPanel";
 import {
   GRUPO_LABEL, CLASSE_TEXT, CLASSE_DECISAO, classeLabel, classificarRisco,
 } from "@/lib/pgrMatriz";
-import { descreverAmbiente, descreverProcesso } from "@/lib/sstEstrutura";
+import { descreverAmbiente, descreverProcesso, nomeDoGrupo } from "@/lib/sstEstrutura";
 
 interface Props {
   open: boolean;
@@ -447,7 +447,12 @@ export default function InventarioItemDialog({ open, onOpenChange, pgrId, empres
                       const nomeSetor = setorDoGes(g.id)?.nome;
                       return (
                         <SelectItem key={g.id} value={g.id}>
-                          {nomeSetor ? `${nomeSetor} — ${g.nome}` : `${g.codigo} — ${g.nome}`}
+                          {/* Sem nome próprio, o grupo se chama pelo setor —
+                              e aí "SETOR — SETOR" seria repetição. */}
+                          {`${g.codigo} — ${nomeDoGrupo({
+                            armazenado: g.nome, codigo: g.codigo,
+                            setores: nomeSetor ? [nomeSetor] : [],
+                          })}`}
                           {(semSetor || semFuncoes) && " (incompleto)"}
                         </SelectItem>
                       );
