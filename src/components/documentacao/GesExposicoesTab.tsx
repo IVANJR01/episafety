@@ -62,6 +62,28 @@ export function GesExposicoesTab() {
     return setoresDoGrupo(daFuncao, reserva);
   };
 
+  /**
+   * As funções do grupo, separadas pelo setor de cada uma.
+   *
+   * Um grupo com funções de dois setores passa a se chamar "LOJA e ESCRITÓRIO"
+   * — e o card não dizia QUAL função trazia cada setor, então o nome parecia
+   * ter saído do nada. Quase sempre é uma função marcada por engano: o cadastro
+   * tem nomes repetidos (três "Ajudante de Confecção", quatro "Assistente
+   * Administrativo"), e é fácil marcar a cópia que pertence a outro setor.
+   *
+   * Mostrar a separação é o que transforma "por que esses dois juntos?" numa
+   * resposta imediata.
+   */
+  const funcoesPorSetor = (gesId: string) => {
+    const mapa = new Map<string, { nome: string }[]>();
+    funcoesDoGes(gesId).forEach((f: any) => {
+      const setor = setores.find((s: any) => s.id === f.setor_id)?.nome ?? "Sem setor";
+      if (!mapa.has(setor)) mapa.set(setor, []);
+      mapa.get(setor)!.push(f);
+    });
+    return [...mapa.entries()];
+  };
+
   /** O nome exibido: do setor, quando ninguém deu nome próprio ao grupo. */
   const nomeDoGes = (ges: any): string =>
     nomeDoGrupo({ armazenado: ges?.nome, codigo: ges?.codigo, setores: setoresDoGes(ges?.id) });
@@ -222,12 +244,35 @@ export function GesExposicoesTab() {
                     <p className="text-amber-800">
                       Nenhuma função ainda — o grupo não entra no quadro de EPIs do PGR assim.
                     </p>
-                  ) : (
+                  ) : setoresDoGes(ges.id).length <= 1 ? (
                     <div className="flex flex-wrap gap-1">
                       {funcoesDoGes(ges.id).map((f: any) => (
                         <Badge key={f.id} variant="secondary" className="text-[11px] font-normal">
                           {f.nome}
                         </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    /* Mais de um setor: separar por setor responde na hora
+                       de onde veio cada um, em vez de deixar o nome do grupo
+                       parecer arbitrário. */
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+                        Este grupo reúne funções de <b>{setoresDoGes(ges.id).length} setores</b>.
+                        Se não for intencional, confira abaixo qual função está no setor errado —
+                        o cadastro tem funções com o mesmo nome em setores diferentes.
+                      </p>
+                      {funcoesPorSetor(ges.id).map(([setor, lista]) => (
+                        <div key={setor}>
+                          <p className="text-[11px] font-medium text-slate-500 mb-1">{setor}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {lista.map((f: any) => (
+                              <Badge key={f.id} variant="secondary" className="text-[11px] font-normal">
+                                {f.nome}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
