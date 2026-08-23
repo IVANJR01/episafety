@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   criterioAgrupamentoSugerido, criterioDoGrupo, ehCriterioEscritoPeloSistema, setoresDoGrupo, nomeDoGrupo,
-  ordenarPorCodigoGes,
+  ordenarPorCodigoGes, nomesUnicos,
 } from "./sstEstrutura";
 
 /**
@@ -258,5 +258,52 @@ describe("ordenarPorCodigoGes", () => {
     const lista = [setor("a", "B"), setor("b", "A")];
     ordenarPorCodigoGes(lista, comCodigos({ a: "02", b: "01" }));
     expect(lista[0].id).toBe("a");
+  });
+});
+
+/**
+ * "No inventário de risco, veja se tem funções duplicadas."
+ *
+ * Tinha: o GES 01 da base traz "Ajudante de Confecção" e "Analista de PCP"
+ * duas vezes cada, porque o cadastro tem a mesma função criada mais de uma
+ * vez e o vínculo com o grupo repete cada cópia. Isso saía na coluna Função do
+ * inventário e no quadro de EPIs — inclusive no PDF do PGR.
+ */
+describe("nomesUnicos", () => {
+  it("tira o nome repetido, mantendo a ordem", () => {
+    expect(nomesUnicos([
+      "Analista de PCP", "Assistente Administrativo", "Ajudante de Confecção",
+      "Ajudante de Confecção", "Analista de PCP",
+    ])).toEqual(["Analista de PCP", "Assistente Administrativo", "Ajudante de Confecção"]);
+  });
+
+  it("junta a mesma função grafada de dois jeitos", () => {
+    expect(nomesUnicos(["Ajudante de Confecção", "ajudante de confeccao"]))
+      .toEqual(["Ajudante de Confecção"]);
+  });
+
+  it("guarda a PRIMEIRA grafia — o sistema não sabe qual está certa", () => {
+    expect(nomesUnicos(["ajudante de confeccao", "Ajudante de Confecção"]))
+      .toEqual(["ajudante de confeccao"]);
+  });
+
+  it("NÃO junta funções diferentes que começam igual", () => {
+    // "Ajudante" e "Ajudante de Confecção" podem ser mesmo duas funções.
+    expect(nomesUnicos(["Ajudante", "Ajudante de Confecção"]))
+      .toEqual(["Ajudante", "Ajudante de Confecção"]);
+  });
+
+  it("singular e plural continuam separados", () => {
+    expect(nomesUnicos(["Ajudante de Confecção", "Ajudantes de confecção"]).length).toBe(2);
+  });
+
+  it("espaço a mais no meio ou nas pontas não cria duplicata", () => {
+    expect(nomesUnicos(["  Analista de PCP ", "Analista  de  PCP"]))
+      .toEqual(["Analista de PCP"]);
+  });
+
+  it("vazio, nulo e indefinido somem em vez de virar linha em branco", () => {
+    expect(nomesUnicos(["Gerente", "", null, undefined, "   "])).toEqual(["Gerente"]);
+    expect(nomesUnicos()).toEqual([]);
   });
 });
