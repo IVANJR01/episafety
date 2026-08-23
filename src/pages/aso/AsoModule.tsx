@@ -14,6 +14,7 @@ import AsoRelatorios from "./AsoRelatorios";
 import AsoLocaisEmissao from "./AsoLocaisEmissao";
 import AsoExames from "./AsoExames";
 import AsoDiagnostico from "@/components/aso/AsoDiagnostico";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 export default function AsoModule() {
   const [tab, setTab] = useState("dashboard");
@@ -26,6 +27,7 @@ export default function AsoModule() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-[1400px] mx-auto">
+      <VoltarParaCentral />
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">

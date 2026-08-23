@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { OrdemServicoSst, OS_STATUS_LABEL, OS_STATUS_COLOR, OS_ESCOPO_LABEL } from "@/lib/osTypes";
 import { toast } from "sonner";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 export default function OrdemServico() {
   const { empresaScopeIds } = useAuth();
@@ -44,6 +45,7 @@ export default function OrdemServico() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      <VoltarParaCentral />
       <PageHeader
         title="Ordem de Serviço"
         subtitle="Documentos de orientação de segurança por função/atividade. Base central: GES/GHE."

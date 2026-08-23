@@ -16,6 +16,7 @@ import {
   PPP_STATUS_LABEL, PPP_STATUS_COLOR, PPP_MOTIVO_LABEL,
   PppDocumento, PppStatus,
 } from "@/lib/pppTypes";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 export default function PppModule() {
   const navigate = useNavigate();
@@ -83,6 +84,7 @@ export default function PppModule() {
 
   return (
     <div className="space-y-4">
+      <VoltarParaCentral />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">

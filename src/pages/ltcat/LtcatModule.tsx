@@ -15,6 +15,7 @@ import {
   LTCAT_STATUS_LABEL, LTCAT_STATUS_COLOR, LTCAT_MOTIVO_LABEL,
   LtcatDocumento, LtcatStatus,
 } from "@/lib/ltcatTypes";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 export default function LtcatModule() {
   const navigate = useNavigate();
@@ -106,6 +107,7 @@ export default function LtcatModule() {
 
   return (
     <div className="space-y-4">
+      <VoltarParaCentral />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
