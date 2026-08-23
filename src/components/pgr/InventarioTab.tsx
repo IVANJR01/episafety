@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import InventarioItemDialog from "./InventarioItemDialog";
 import {
   classificarRisco, classeLabel, CLASSE_LABEL, CLASSE_TEXT,
-  CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse,
+  CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse, corDoGrupo,
 } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
 import {
@@ -752,7 +752,20 @@ export default function InventarioTab({
                             <ExpandableText text={val(i.processo)} />
                           </td>
                         )}
-                        {abreAgente && <td rowSpan={linhasDoAgente} className="p-1.5 pt-2 border align-middle bg-amber-50/30">{GRUPO_LABEL[i.grupo] || NA}</td>}
+                        {/* Cor do mapa de riscos: verde físico, vermelho
+                            químico, marrom biológico, amarelo ergonômico, azul
+                            acidente. Numa tabela de dezoito colunas, a cor diz
+                            o grupo antes de a palavra ser lida. */}
+                        {abreAgente && (
+                          <td rowSpan={linhasDoAgente}
+                            className="p-1.5 pt-2 border align-middle text-center font-semibold"
+                            style={{
+                              backgroundColor: corDoGrupo(i.grupo).fundo,
+                              color: corDoGrupo(i.grupo).texto,
+                            }}>
+                            {GRUPO_LABEL[i.grupo] || NA}
+                          </td>
+                        )}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border align-middle bg-amber-50/30">
                           <ExpandableText text={val(i.tipo_agente)} />
                         </td>}

@@ -119,6 +119,37 @@ export const GRUPO_LABEL: Record<string, string> = {
   psicossocial: "Psicossocial", outro: "Outros",
 };
 
+/**
+ * As cores do mapa de riscos, por grupo de agente.
+ *
+ * É a convenção que a NR-09 consagrou e que todo técnico reconhece de olho:
+ * verde para físico, vermelho para químico, marrom para biológico, amarelo
+ * para ergonômico e azul para acidente. Numa tabela de dezoito colunas, a cor
+ * diz o grupo antes de a pessoa chegar a ler a palavra.
+ *
+ * O amarelo pede texto escuro; os outros, claro. Sem isso o rótulo some no
+ * fundo — e "some no fundo" num documento legal é o mesmo que não estar lá.
+ */
+export const GRUPO_COR: Record<string, { fundo: string; texto: string }> = {
+  fisico: { fundo: "#16A34A", texto: "#FFFFFF" },
+  quimico: { fundo: "#DC2626", texto: "#FFFFFF" },
+  biologico: { fundo: "#92400E", texto: "#FFFFFF" },
+  ergonomico: { fundo: "#FACC15", texto: "#1F2937" },
+  acidente: { fundo: "#2563EB", texto: "#FFFFFF" },
+};
+
+/**
+ * A cor de um grupo. Grupo desconhecido — ou item antigo classificado como
+ * psicossocial/outros, que saíram do seletor — fica cinza: melhor uma cor
+ * neutra e honesta do que emprestar a de outro grupo e induzir a leitura.
+ */
+export const COR_NEUTRA = { fundo: "#E2E8F0", texto: "#334155" };
+
+export function corDoGrupo(grupo?: string | null): { fundo: string; texto: string } {
+  const chave = (grupo || "").trim().toLowerCase();
+  return GRUPO_COR[chave] ?? COR_NEUTRA;
+}
+
 export const EXPOSICAO_LABEL: Record<string, string> = {
   continua: "Contínua", intermitente: "Intermitente",
   eventual: "Eventual", nao_aplicavel: "N/A",
