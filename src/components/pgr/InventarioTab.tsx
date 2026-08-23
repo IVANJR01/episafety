@@ -20,6 +20,7 @@ import {
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { candidatosDeGes, indexarVinculos, type AlvoVinculo } from "@/lib/pgrGesVinculo";
 import { descreverAmbiente, descreverProcesso, nomesUnicos } from "@/lib/sstEstrutura";
+import { ordenarInventario } from "@/lib/inventarioOrdem";
 
 /** Linha de pgr_levantamento_preliminar, na forma que esta tela consome. */
 interface Levantado {
@@ -444,20 +445,20 @@ export default function InventarioTab({
       i.fonte_geradora?.toLowerCase().includes(q) ||
       i.ghe?.codigo?.toLowerCase().includes(q) ||
       i.ghe?.nome?.toLowerCase().includes(q));
-    // Setor → ambiente → GES → perigo: a ordem espelha o aninhamento das
-    // células mescladas, e mesclar só funciona em linhas vizinhas. Antes
-    // ordenava por GES primeiro, o que espalhava os grupos de um mesmo setor
-    // assim que existisse mais de um setor.
-    return [...base].sort((a: any, b: any) => {
-      const sa = a.setor || ""; const sb = b.setor || "";
-      if (sa !== sb) return sa.localeCompare(sb);
-      const aa = ambienteDe(a); const ab = ambienteDe(b);
-      if (aa !== ab) return aa.localeCompare(ab);
-      const ga = a.ghe?.codigo || ""; const gb = b.ghe?.codigo || "";
-      if (ga !== gb) return ga.localeCompare(gb);
-      const grA = a.grupo || ""; const grB = b.grupo || "";
-      if (grA !== grB) return grA.localeCompare(grB);
-      return (a.perigo_descricao || "").localeCompare(b.perigo_descricao || "");
+    /*
+     * GES 01 primeiro, depois 02 — mas por SETOR, não linha a linha.
+     *
+     * A tabela mescla Ambiente, Setor e Processo ao longo das linhas de um
+     * mesmo setor, e mesclar só funciona em linhas vizinhas. Ordenar direto
+     * pelo código do GES separaria as linhas de um setor com mais de um grupo
+     * e o parágrafo do ambiente voltaria a ser reimpresso em cada um.
+     *
+     * A regra está em `ordenarInventario`, com teste para essa parte.
+     */
+    return ordenarInventario(base as any[], {
+      chaveSetor: (i: any) => chaveSetor(i),
+      codigoGes: (i: any) => i.ghe?.codigo,
+      desempate: (i: any) => `${i.grupo || ""}§${i.perigo_descricao || ""}§${i.id}`,
     });
   }, [itens, busca]);
 

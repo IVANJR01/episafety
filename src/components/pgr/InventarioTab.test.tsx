@@ -172,3 +172,68 @@ describe("InventarioTab — item sem GES", () => {
     expect(updates).toHaveLength(0);
   });
 });
+
+/**
+ * A ordem das linhas: GES 01 antes do 02.
+ *
+ * O teste monta a tabela de verdade porque a regra em si já tem teste próprio
+ * em inventarioOrdem — o que falta provar aqui é que a tela usa essa regra, e
+ * não a ordenação por nome de setor que existia antes.
+ */
+describe("InventarioTab — ordem das linhas", () => {
+  it("o GES 01 vem antes do 02, mesmo com o setor do 02 antes no alfabeto", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [
+        item({ id: "esc", setor: "ESCRITÓRIO", ghe_id: "g02", ges_id: "g02",
+          perigo_descricao: "Postura", ghe: { id: "g02", codigo: "02", nome: "02" } }),
+        item({ id: "pcp", setor: "PCP", ghe_id: "g01", ges_id: "g01",
+          perigo_descricao: "Ruído", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+      ],
+    };
+    montar();
+
+    const linhas = await waitFor(() => {
+      const l = document.querySelectorAll("tbody tr");
+      expect(l.length).toBe(2);
+      return l;
+    });
+    expect(linhas[0].textContent).toContain("PCP");
+    expect(linhas[1].textContent).toContain("ESCRITÓRIO");
+  });
+
+  it("setor com dois grupos não se parte ao meio — é o que preserva a mesclagem", async () => {
+    // COSTURA (01 e 03) e ESCRITÓRIO (02). Ordenar só pelo GES daria
+    // COSTURA, ESCRITÓRIO, COSTURA — e o ambiente da COSTURA sairia duas vezes.
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [
+        item({ id: "esc", setor: "ESCRITÓRIO", ghe_id: "g02",
+          perigo_descricao: "Postura", ghe: { id: "g02", codigo: "02", nome: "02" } }),
+        item({ id: "cos3", setor: "COSTURA", ghe_id: "g03",
+          perigo_descricao: "Ruído", ghe: { id: "g03", codigo: "03", nome: "03" } }),
+        item({ id: "cos1", setor: "COSTURA", ghe_id: "g01",
+          perigo_descricao: "Calor", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+      ],
+    };
+    montar();
+
+    await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(3));
+
+    /*
+     * A prova é o rowSpan, não o texto das linhas: quando a mesclagem
+     * funciona, a célula do setor aparece UMA vez cobrindo as duas linhas —
+     * a segunda linha nem tem essa célula. Foi essa a primeira versão errada
+     * deste teste, que lia o texto de cada linha e via "COSTURA" só na
+     * primeira.
+     */
+    const celulas = [...document.querySelectorAll("tbody td")];
+    const daCostura = celulas.filter((td) => td.textContent?.trim() === "COSTURA");
+    expect(daCostura).toHaveLength(1);
+    expect(daCostura[0].getAttribute("rowspan")).toBe("2");
+
+    const doEscritorio = celulas.filter((td) => td.textContent?.trim() === "ESCRITÓRIO");
+    expect(doEscritorio).toHaveLength(1);
+    expect(doEscritorio[0].getAttribute("rowspan")).toBe("1");
+  });
+});
