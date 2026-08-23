@@ -25,6 +25,7 @@ import {
   LaudoStatus,
 } from "@/lib/laudoPericulosidadeTypes";
 import { gerarLaudoPericulosidadePdf } from "@/lib/laudoPericulosidadePdf";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 const ATIVIDADE_VAZIA: AtividadePericulosa = {
   categoria: "energia_eletrica",
@@ -230,6 +231,7 @@ export default function LaudoPericulosidade() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      <VoltarParaCentral />
       <PageHeader
         title="Laudo de Periculosidade"
         subtitle="Avaliação técnica para caracterização ou descaracterização de adicional de periculosidade (NR-16)."

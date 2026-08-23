@@ -28,6 +28,7 @@ import {
   grauMaisSevero,
 } from "@/lib/laudoInsalubridadeTypes";
 import { gerarLaudoInsalubridadePdf } from "@/lib/laudoInsalubridadePdf";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 const AGENTE_VAZIO: AgenteInsalubridade = {
   agente: "",
@@ -236,6 +237,7 @@ export default function LaudoInsalubridade() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      <VoltarParaCentral />
       <PageHeader
         title="Laudo de Insalubridade"
         subtitle="Avaliação técnica para caracterização ou descaracterização de adicional de insalubridade (NR-15)."

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +77,7 @@ export default function PgrModule() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
+      <VoltarParaCentral />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-800 tracking-tight">

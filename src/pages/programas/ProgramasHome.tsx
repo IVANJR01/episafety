@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 interface ProgramaCard {
   key: string;
@@ -76,6 +77,7 @@ const programas: ProgramaCard[] = [
 export default function ProgramasHome() {
   return (
     <div className="space-y-4 sm:space-y-6">
+      <VoltarParaCentral />
       <PageHeader
         title="Programas"
         subtitle="Gestão de programas, laudos e documentos técnicos de Segurança e Saúde do Trabalho."

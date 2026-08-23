@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, FileText, Activity } from "lucide-react";
 import { PGR_STATUS_LABEL, PGR_STATUS_COLOR, PgrStatus } from "@/lib/pgrTypes";
+import VoltarParaCentral from "@/components/documentacao/VoltarParaCentral";
 
 // Definindo a interface base (parecida com a do PGR)
 interface PcmsoDocumento {
@@ -78,6 +79,7 @@ export default function PcmsoDashboard() {
 
   return (
     <div className="space-y-6">
+      <VoltarParaCentral />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
