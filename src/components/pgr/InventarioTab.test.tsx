@@ -237,3 +237,57 @@ describe("InventarioTab — ordem das linhas", () => {
     expect(doEscritorio[0].getAttribute("rowspan")).toBe("1");
   });
 });
+
+/**
+ * A cor do mapa de riscos na coluna Agente.
+ *
+ * A regra de cores tem teste próprio; o que falta provar aqui é que a célula
+ * da tabela realmente recebe a cor — e que ela acompanha a mesclagem, saindo
+ * uma vez por bloco de agente e não uma por linha.
+ */
+describe("InventarioTab — cor do agente", () => {
+  const corDaCelula = (texto: string) => {
+    const td = [...document.querySelectorAll("tbody td")]
+      .find((c) => c.textContent?.trim() === texto) as HTMLElement | undefined;
+    return td?.style.backgroundColor;
+  };
+
+  it("pinta cada agente com a cor da convenção", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [
+        item({ id: "a", setor: "PCP", ghe_id: "g01", grupo: "fisico",
+          perigo_descricao: "Ruído", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+        item({ id: "b", setor: "PCP", ghe_id: "g01", grupo: "quimico",
+          perigo_descricao: "Poeira", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+        item({ id: "c", setor: "PCP", ghe_id: "g01", grupo: "ergonomico",
+          perigo_descricao: "Postura", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+      ],
+    };
+    montar();
+    await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(3));
+
+    expect(corDaCelula("Físico")).toBe("rgb(22, 163, 74)");      // verde
+    expect(corDaCelula("Químico")).toBe("rgb(220, 38, 38)");     // vermelho
+    expect(corDaCelula("Ergonômico")).toBe("rgb(250, 204, 21)"); // amarelo
+  });
+
+  it("a cor sai uma vez por bloco, acompanhando a mesclagem", async () => {
+    tabelas = {
+      ...estruturaPcp,
+      pgr_inventario_itens: [
+        item({ id: "a", setor: "PCP", ghe_id: "g01", grupo: "fisico",
+          perigo_descricao: "Calor", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+        item({ id: "b", setor: "PCP", ghe_id: "g01", grupo: "fisico",
+          perigo_descricao: "Ruído", ghe: { id: "g01", codigo: "01", nome: "01" } }),
+      ],
+    };
+    montar();
+    await waitFor(() => expect(document.querySelectorAll("tbody tr").length).toBe(2));
+
+    const celulas = [...document.querySelectorAll("tbody td")]
+      .filter((c) => c.textContent?.trim() === "Físico");
+    expect(celulas).toHaveLength(1);
+    expect(celulas[0].getAttribute("rowspan")).toBe("2");
+  });
+});
