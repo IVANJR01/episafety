@@ -15,9 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 import { EnderecoEstruturado, formatarEndereco } from "@/types/sst";
 import { mensagemErro } from "@/lib/erroSupabase";
 import { caracteristicasAmbiente } from "@/lib/sstEstrutura";
+import { exportarFuncoes } from "@/lib/exportarFuncoes";
 import { GruposDoSetorDialog } from "./GruposDoSetorDialog";
 import { GesExposicoesTab } from "./GesExposicoesTab";
-import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ChevronRight, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users } from "lucide-react";
+import { Building2, LayoutGrid, Workflow, Briefcase, Layers, ChevronRight, ClipboardPaste, Plus, Edit2, Loader2, Trash2, AlertTriangle, Users, Download } from "lucide-react";
 
 /** Rótulo do modal por tipo. O título usava a chave crua: "Cadastrar funcao". */
 const ROTULO_MODAL: Record<string, string> = {
@@ -307,6 +308,23 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
     }
     return filtradas;
   }, [funcoes, filtroFuncaoTexto, filtroFuncaoSetor]);
+
+  /**
+   * Baixa a lista de funções para o gestor revisar as descrições.
+   *
+   * Vai o que está na tela — com a busca e o filtro de setor aplicados —,
+   * porque é o recorte que a pessoa acabou de montar para pedir a revisão.
+   */
+  const exportarListaDeFuncoes = () => {
+    const setorFiltrado = filtroFuncaoSetor !== "todos"
+      ? setores.find((s: any) => s.id === filtroFuncaoSetor)?.nome
+      : null;
+    exportarFuncoes(
+      funcoesFiltradas as any[],
+      (id) => setores.find((s: any) => s.id === id)?.nome,
+      { empresa: estabelecimentos[0]?.nome, setor: setorFiltrado },
+    );
+  };
 
   /** Uma função por linha; "Nome | Descrição" quando quiser já descrever. */
   const loteLinhas = useMemo(() => {
@@ -978,6 +996,16 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
               </Select>
             </div>
             <div className="flex gap-2 shrink-0">
+              {/*
+                Exporta o que está NA TELA, respeitando a busca e o filtro de
+                setor. Mandar sempre a lista inteira surpreenderia quem acabou
+                de filtrar por um setor para pedir a revisão só daquele.
+              */}
+              <Button onClick={exportarListaDeFuncoes} size="sm" variant="outline"
+                disabled={funcoesFiltradas.length === 0}
+                title="Baixar planilha com função, setor e descrição das atividades">
+                <Download className="w-4 h-4 mr-1" /> Exportar
+              </Button>
               <Button onClick={() => setLoteAberto(true)} size="sm" variant="outline">
                 <ClipboardPaste className="w-4 h-4 mr-1" /> Colar em lote
               </Button>
