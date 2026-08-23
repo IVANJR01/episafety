@@ -235,3 +235,38 @@ export function nomeDoGrupo(args: {
   if (setores.length === 1) return setores[0];
   return `${setores.slice(0, -1).join(", ")} e ${setores[setores.length - 1]}`;
 }
+
+/**
+ * A ordem dos setores na tela: pelo número do GES.
+ *
+ * A lista vinha por nome, e o nome não diz nada sobre a organização do
+ * trabalho — pior, um espaço à toa no começo do cadastro ("␣SEPARAÇÃO") jogava
+ * o setor para o topo sem que ninguém entendesse por quê.
+ *
+ * Pelo número do GES a lista tem uma ordem estável e reconhecível, a mesma que
+ * a pessoa usa para falar dos grupos ("o 01 é o PCP"). Setor ainda sem GES vai
+ * para o fim: é onde ele precisa ser visto, não misturado no meio.
+ */
+export function ordenarSetoresPorGes<T extends { id: string; nome?: string | null }>(
+  setores: T[],
+  codigoDoSetor: (setorId: string) => string | null | undefined,
+): T[] {
+  /**
+   * Peso de cada setor na ordenação, do menor ao maior:
+   * número do GES → grupo com nome próprio → setor sem GES.
+   *
+   * Infinity já leva o sem-GES para o fim; não é preciso um ramo separado
+   * para isso, e ter um seria código que nenhum teste consegue distinguir.
+   */
+  const peso = (s: T) => {
+    const codigo = limpo(codigoDoSetor(s.id));
+    if (!codigo) return Number.POSITIVE_INFINITY;
+    const n = Number(codigo);
+    return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+  };
+  return [...(setores || [])].sort((a, b) => {
+    const pa = peso(a); const pb = peso(b);
+    if (pa !== pb) return pa - pb;
+    return limpo(a.nome).localeCompare(limpo(b.nome));
+  });
+}
