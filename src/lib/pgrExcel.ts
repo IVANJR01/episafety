@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { CLASSE_LABEL, GRUPO_LABEL, classificarRisco } from "@/lib/pgrMatriz";
 import { calcularPendencias, Pendencia } from "@/lib/pgrPendencias";
+import { numerarInventario, ordenarInventario } from "@/lib/inventarioOrdem";
 
 /**
  * Exportação do PGR para Excel.
@@ -96,17 +97,23 @@ export function montarWorkbookPgr(ctx: ContextoExcel): XLSX.WorkBook {
   ]);
 
   // ── Inventário ────────────────────────────────────────────────────────────
+  // O número do item é o MESMO da tela (mesma ordenação, em inventarioOrdem).
+  // Se cada um numerasse do seu jeito, o "item 03" da planilha seria outro
+  // item — e o plano de ação apontaria para o risco errado.
+  const numeros = numerarInventario((ctx.inventario || []) as any[]);
   aba(wb, "Inventário de riscos", [
+    "Item",
     "Ambiente", "Setor", "GES", "Função", "Atividade",
     "Grupo", "Perigo", "Fonte geradora", "Circunstância", "Possíveis lesões",
     "Tipo de exposição", "Expostos", "Controles existentes", "EPI",
     "Severidade", "Probabilidade", "Nível", "Classificação",
     "Sev. residual", "Prob. residual", "Nível residual", "Classificação residual",
     "Necessita ação", "Justificativa",
-  ], (ctx.inventario || []).map((i) => {
+  ], ordenarInventario((ctx.inventario || []) as any[]).map((i: any) => {
     const classe = i.classificacao || classificarRisco(i.severidade, i.probabilidade);
     const classeRes = classificarRisco(i.severidade_residual, i.probabilidade_residual);
     return [
+      numeros.get(i.id) ?? "",
       de(n.ambientes, i.ambiente_id) || i.descricao_ambiente || "",
       de(n.setores, i.setor_id) || i.setor || "",
       de(n.ges, i.ges_id || i.ghe_id),
