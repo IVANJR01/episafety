@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { corDoGrupo, GRUPO_COR, COR_NEUTRA, GRUPO_LABEL } from "./pgrMatriz";
+import {
+  corDoGrupo, GRUPO_COR, COR_NEUTRA, GRUPO_LABEL,
+  corDaClasse, CLASSE_COR, CLASSES_ORDENADAS,
+} from "./pgrMatriz";
 
 /**
  * As cores do mapa de riscos na coluna Agente do inventário.
@@ -53,6 +56,50 @@ describe("corDoGrupo", () => {
   it("todo grupo com cor tem rótulo — senão a célula sai colorida e muda", () => {
     for (const chave of Object.keys(GRUPO_COR)) {
       expect(GRUPO_LABEL[chave], `sem rótulo: ${chave}`).toBeTruthy();
+    }
+  });
+});
+
+/**
+ * A cor da classificação do risco, na coluna do inventário.
+ *
+ * A escala da NR-01 vai de Trivial a Intolerável, e a cor é o que faz a linha
+ * crítica saltar numa tabela de dezoito colunas.
+ */
+describe("corDaClasse", () => {
+  it("segue a escala, do verde ao vermelho", () => {
+    expect(corDaClasse("trivial").fundo).toBe("#10B981");
+    expect(corDaClasse("toleravel").fundo).toBe("#84CC16");
+    expect(corDaClasse("moderado").fundo).toBe("#EAB308");
+    expect(corDaClasse("substancial").fundo).toBe("#F97316");
+    expect(corDaClasse("intoleravel").fundo).toBe("#DC2626");
+  });
+
+  it("cada classe tem cor própria — duas iguais apagariam a escala", () => {
+    const fundos = Object.values(CLASSE_COR).map((c) => c.fundo);
+    expect(new Set(fundos).size).toBe(fundos.length);
+  });
+
+  it("só o Intolerável leva letra branca; os outros são claros demais", () => {
+    // Branco sobre amarelo ou verde-limão desaparece, e rótulo ilegível num
+    // documento legal é o mesmo que rótulo ausente.
+    expect(corDaClasse("intoleravel").texto).toBe("#FFFFFF");
+    for (const c of ["trivial", "toleravel", "moderado", "substancial"]) {
+      expect(corDaClasse(c).texto, `${c} deveria ter letra escura`).toBe("#1F2937");
+    }
+  });
+
+  it("sem avaliação fica CINZA, nunca a cor da menor classe", () => {
+    // Pintar de verde um risco não avaliado o faria parecer risco aceito.
+    expect(corDaClasse(null)).toEqual(COR_NEUTRA);
+    expect(corDaClasse("")).toEqual(COR_NEUTRA);
+    expect(corDaClasse("nao_avaliado")).toEqual(COR_NEUTRA);
+    expect(corDaClasse(null).fundo).not.toBe(CLASSE_COR.trivial.fundo);
+  });
+
+  it("todas as classes da escala têm cor — nenhuma sai sem pintura", () => {
+    for (const c of CLASSES_ORDENADAS) {
+      expect(CLASSE_COR[c], `sem cor: ${c}`).toBeTruthy();
     }
   });
 });

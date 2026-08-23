@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import InventarioItemDialog from "./InventarioItemDialog";
 import {
   classificarRisco, classeLabel, CLASSE_LABEL, CLASSE_TEXT,
-  CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse, corDoGrupo,
+  CLASSES_ORDENADAS, GRUPO_LABEL, PgrClasse, corDoGrupo, corDaClasse,
 } from "@/lib/pgrMatriz";
 import { isEditavel, PgrStatus } from "@/lib/pgrTypes";
 import {
@@ -787,14 +787,18 @@ export default function InventarioTab({
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{i.probabilidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle bg-amber-50/30">{i.severidade}</td>}
                         {isFirstOfRisk && <td rowSpan={riskRowSpan} className="p-1.5 pt-2 border text-center align-middle font-semibold bg-amber-50/30">{total}</td>}
+                        {/* Célula pintada com a cor da classe, como a coluna
+                            Agente. Era uma etiqueta pequena de fundo claro no
+                            meio de uma célula clara: a linha crítica não
+                            saltava numa tabela de dezoito colunas. */}
                         {isFirstOfRisk && (
-                          <td rowSpan={riskRowSpan} className="p-1.5 border align-middle bg-amber-50/30 text-center">
-                            <Badge
-                              className={clsPgr ? CLASSE_TEXT[clsPgr] : "bg-slate-100 text-slate-700 border-slate-300"}
-                              variant="outline"
-                            >
-                              {classeLabel(clsPgr)}
-                            </Badge>
+                          <td rowSpan={riskRowSpan}
+                            className="p-1.5 border align-middle text-center font-semibold"
+                            style={{
+                              backgroundColor: corDaClasse(clsPgr).fundo,
+                              color: corDaClasse(clsPgr).texto,
+                            }}>
+                            {classeLabel(clsPgr)}
                           </td>
                         )}
 

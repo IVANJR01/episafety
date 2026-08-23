@@ -49,6 +49,36 @@ export const CLASSE_TEXT: Record<PgrClasse, string> = {
   intoleravel: "bg-red-100 text-red-800 border-red-300",
 };
 
+/**
+ * Célula pintada da classificação, no inventário.
+ *
+ * Mesmo tratamento da coluna Agente: a cor preenche a célula e a letra sai na
+ * cor que se lê em cima dela. É a escala de decisão da NR-01 — quanto mais
+ * quente, mais urgente —, e pintar a célula inteira faz a linha crítica saltar
+ * numa tabela de dezoito colunas.
+ *
+ * Só o Intolerável leva letra branca: nos outros o fundo é claro demais, e
+ * branco sobre amarelo ou verde-limão desaparece. A escolha é por contraste
+ * medido, não por gosto — rótulo ilegível num documento legal é o mesmo que
+ * rótulo ausente.
+ */
+export const CLASSE_COR: Record<PgrClasse, { fundo: string; texto: string }> = {
+  trivial: { fundo: "#10B981", texto: "#1F2937" },
+  toleravel: { fundo: "#84CC16", texto: "#1F2937" },
+  moderado: { fundo: "#EAB308", texto: "#1F2937" },
+  substancial: { fundo: "#F97316", texto: "#1F2937" },
+  intoleravel: { fundo: "#DC2626", texto: "#FFFFFF" },
+};
+
+/**
+ * A cor de uma classificação. Sem avaliação fica cinza — nunca a cor da menor
+ * classe, que faria risco NÃO AVALIADO parecer risco aceito.
+ */
+export function corDaClasse(classe?: string | null): { fundo: string; texto: string } {
+  const chave = (classe || "").trim().toLowerCase() as PgrClasse;
+  return CLASSE_COR[chave] ?? COR_NEUTRA;
+}
+
 /** Cor hexadecimal para o PDF (jsPDF não entende classes Tailwind). */
 export const CLASSE_HEX: Record<PgrClasse, [number, number, number]> = {
   trivial: [16, 185, 129],
