@@ -36,7 +36,10 @@ const TRATAMENTO_COR: Record<PgrTratamentoPerigo, string> = {
   nao_identificado: "bg-slate-100 text-slate-700 border-slate-300",
 };
 
-const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "acidente", "psicossocial", "outro"];
+// Mesma lista do inventário: "Psicossocial" e "Outros" saíram a pedido do
+// cliente. Deixar aqui criaria um perigo que o inventário não sabe mais
+// oferecer, e a classificação teria de ser refeita ao chegar lá.
+const GRUPOS = ["fisico", "quimico", "biologico", "ergonomico", "acidente"];
 
 const vazio = {
   perigo_descricao: "",
