@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldCheck } from "lucide-react";
+import { nomesUnicos } from "@/lib/sstEstrutura";
 
 interface Props { pgrId: string; empresaId: string; }
 
@@ -46,7 +47,9 @@ export default function QuadroEpisTab({ pgrId, empresaId }: Props) {
 
       const result: Linha[] = [];
       ghes.forEach((g: any) => {
-        const funcoes = funcoesPorGhe.get(g.id) || [];
+        // Sem repetir nome: o vínculo do grupo traz uma linha por cópia da
+        // função no cadastro (ver `nomesUnicos`).
+        const funcoes = nomesUnicos(funcoesPorGhe.get(g.id));
         const epis = Array.from(episPorGhe.get(g.id) || []);
         const funcoesStr = funcoes.length ? funcoes.join(", ") : "—";
         result.push({

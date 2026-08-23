@@ -121,13 +121,9 @@ export function criterioAgrupamentoSugerido(
   const setor = lista.length === 1
     ? `do setor ${lista[0]}`
     : `dos setores ${lista.slice(0, -1).join(", ")} e ${lista[lista.length - 1]}`;
-  // Sem repetir nome. O cadastro tem funções duplicadas (mesma função criada
-  // mais de uma vez), e o grupo 01 desta base chega a ter "Ajudante de
-  // Confecção" duas vezes. Num documento legal, listar a mesma função duas
-  // vezes na mesma frase é erro visível.
-  const nomes = Array.from(new Set(
-    (funcoes || []).map((f) => limpo(f?.nome)).filter(Boolean),
-  ));
+  // Sem repetir nome — ver `nomesUnicos`. Num documento legal, listar a mesma
+  // função duas vezes na mesma frase é erro visível.
+  const nomes = nomesUnicos((funcoes || []).map((f) => f?.nome));
   if (nomes.length === 0) {
     return `Trabalhadores ${setor}, sujeitos às mesmas condições de exposição.`;
   }
@@ -271,4 +267,39 @@ export function ordenarPorCodigoGes<T extends { id: string; nome?: string | null
     if (pa !== pb) return pa - pb;
     return limpo(a.nome).localeCompare(limpo(b.nome));
   });
+}
+
+/**
+ * Nomes de função sem repetição, preservando a ordem e a grafia originais.
+ *
+ * O cadastro tem a mesma função criada mais de uma vez, e o vínculo com o
+ * grupo repete cada cópia: o GES 01 desta base traz "Ajudante de Confecção"
+ * duas vezes e "Analista de PCP" duas vezes. Isso vazava para a coluna Função
+ * do inventário de riscos e para o quadro de EPIs — inclusive no PDF do PGR,
+ * onde listar a mesma função duas vezes na mesma linha é erro visível num
+ * documento legal.
+ *
+ * A comparação ignora caixa e acento para pegar a mesma função grafada de dois
+ * jeitos ("Ajudante de Confecção" e "Ajudante de confecção"). Não junta nomes
+ * diferentes: "Ajudante" e "Ajudante de Confecção" continuam sendo duas
+ * funções, porque podem ser mesmo.
+ *
+ * Guarda a PRIMEIRA grafia encontrada em vez de escolher uma "melhor": o
+ * sistema não tem como saber qual está certa, e inventar um critério aqui
+ * esconderia o problema do cadastro em vez de mostrá-lo.
+ */
+export function nomesUnicos(nomes?: (string | null | undefined)[]): string[] {
+  const chave = (s: string) =>
+    s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  const vistos = new Set<string>();
+  const saida: string[] = [];
+  for (const bruto of nomes || []) {
+    const nome = limpo(bruto);
+    if (!nome) continue;
+    const k = chave(nome);
+    if (vistos.has(k)) continue;
+    vistos.add(k);
+    saida.push(nome);
+  }
+  return saida;
 }

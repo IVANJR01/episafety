@@ -14,7 +14,7 @@ import MfaActionButton from "@/components/cat/MfaActionButton";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { generateAndUploadPgrPdf } from "@/lib/pgrPdf";
 import { resolveDocumentoUrl } from "@/lib/secureStorage";
-import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo, nomesUnicos } from "@/lib/sstEstrutura";
 
 async function abrirPdfVersao(v: any) {
   try {
@@ -118,7 +118,8 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       quadroEpis = gheIdsInv.map((gid) => ({
         ghe_codigo: ghesInfo[gid]?.codigo || "—",
         ghe_nome: ghesInfo[gid]?.nome || "—",
-        funcao: (funcMap.get(gid) || []).join(", ") || "—",
+        // Mesma duplicidade da coluna Função: uma linha por cópia da função.
+        funcao: nomesUnicos(funcMap.get(gid)).join(", ") || "—",
         medida_controle: controleMap.get(gid) || "—",
         epis: Array.from(epiMap.get(gid) || []).join(", ") || "—",
       }));

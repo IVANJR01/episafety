@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ExpandableText } from "@/components/ui/ExpandableText";
 import { candidatosDeGes, indexarVinculos, type AlvoVinculo } from "@/lib/pgrGesVinculo";
-import { descreverAmbiente, descreverProcesso } from "@/lib/sstEstrutura";
+import { descreverAmbiente, descreverProcesso, nomesUnicos } from "@/lib/sstEstrutura";
 
 /** Linha de pgr_levantamento_preliminar, na forma que esta tela consome. */
 interface Levantado {
@@ -366,7 +366,7 @@ export default function InventarioTab({
           // funcoes_snapshot e controles_existentes são text[]; os nomes
           // funcoes_text/controles_text são campos do formulário e não existem
           // na tabela — gravá-los fazia a importação inteira ser recusada.
-          funcoes_snapshot: expostos.length ? expostos : null,
+          funcoes_snapshot: nomesUnicos(expostos).length ? nomesUnicos(expostos) : null,
           controles_existentes: controles.length ? controles : null,
           setor: ctx.setor || null,
           descricao_ambiente: ctx.ambiente || null,
@@ -697,10 +697,14 @@ export default function InventarioTab({
                     const total = i.nivel_risco ?? i.severidade * i.probabilidade;
                     const controles = Array.isArray(i.controles_existentes) && i.controles_existentes.length > 0
                       ? i.controles_existentes.join("; ") : NA;
-                    const vivas = i.ghe?.funcoes?.map((f: any) => f.nome_funcao);
-                    const funcoes = Array.isArray(vivas) && vivas.length > 0
+                    // Sem repetir nome: o vínculo do grupo traz uma linha por
+                    // cópia da função no cadastro, e o GES 01 desta base tem
+                    // "Ajudante de Confecção" e "Analista de PCP" duas vezes.
+                    const vivas = nomesUnicos(i.ghe?.funcoes?.map((f: any) => f.nome_funcao));
+                    const doSnapshot = nomesUnicos(i.funcoes_snapshot);
+                    const funcoes = vivas.length > 0
                       ? vivas.join(", ")
-                      : (Array.isArray(i.funcoes_snapshot) && i.funcoes_snapshot.length > 0 ? i.funcoes_snapshot.join(", ") : NA);
+                      : (doSnapshot.length > 0 ? doSnapshot.join(", ") : NA);
                     const intensidade = i.medicao_valor != null
                       ? `${i.medicao_valor}${i.medicao_unidade ? " " + i.medicao_unidade : ""}` : NA;
                     const tecnica = val(i.metodologia_avaliacao ?? i.tecnica_utilizada ?? i.tipo_avaliacao);
