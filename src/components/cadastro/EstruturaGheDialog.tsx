@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Trash2, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
-import { descreverAmbiente } from "@/lib/sstEstrutura";
+import { setoresDoGrupo } from "@/lib/sstEstrutura";
 
 interface Props {
   ghe: any;
@@ -58,6 +58,20 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
 
 
   /* ---------- Funções ---------- */
+  /*
+   * Setor de reserva: o vínculo antigo (`ghe_setores`), usado só quando o
+   * grupo ainda não tem função. Sem lê-lo, o cabeçalho mostrava "Setor(es): —"
+   * num grupo que o PGR imprime com setor — a tela contradizendo o documento.
+   */
+  const [setorDeReserva, setSetorDeReserva] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any).from("ghe_setores")
+        .select("nome").eq("ghe_id", ghe.id).limit(1).maybeSingle();
+      setSetorDeReserva((data as any)?.nome ?? null);
+    })();
+  }, [ghe.id]);
+
   const [funcoes, setFuncoes] = useState<any[]>([]);
   const [loadingF, setLoadingF] = useState(false);
   const [editF, setEditF] = useState<any | null>(null);
@@ -119,7 +133,9 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
     // `setor` e `descricao_atividade` são exigidos pelo salvamento manual desta
     // tela; quando a função não traz setor, cai no primeiro setor do grupo.
     const setor = f.setor_nome || setoresAtivos[0] || "";
-    if (!setor) return toast.error("Cadastre ao menos um setor na aba Setores antes de vincular funções.");
+    if (!setor) return toast.error(
+      `"${f.nome}" ainda não está em nenhum setor. Abra Base Técnica → Setores, entre no setor e edite a função.`,
+    );
     setVinculando(true);
     const { error } = await supabase.from("ghe_funcoes").insert({
       ghe_id: ghe.id, empresa_id: ghe.empresa_id,
@@ -282,7 +298,9 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
         <div className="border rounded p-2"><span className="text-muted-foreground">GES:</span> <b>{ghe.codigo || "—"}</b></div>
         <div className="border rounded p-2">
           <span className="text-muted-foreground">Setor(es):</span>{" "}
-          <b>{setoresDasFuncoes.length > 0 ? setoresDasFuncoes.join(", ") : "—"}</b>
+          <b>{setoresDoGrupo(
+            setoresDasFuncoes.map((n) => ({ setorNome: n })), setorDeReserva,
+          ).join(", ") || "—"}</b>
         </div>
         <div className="border rounded p-2"><span className="text-muted-foreground">Funções:</span> <b>{funcoes.length}</b></div>
       </div>
@@ -430,8 +448,11 @@ export default function EstruturaGheDialog({ ghe, onClose, mode = "dialog" }: Pr
                   </AccordionItem>
                 ))}
                 {funcoesPorSetor.size === 0 && (
-                  <div className="p-4 text-sm text-muted-foreground italic">
-                    Cadastre setores na aba <b>Setores</b> e vincule funções acima.
+                  <div className="p-4 text-sm text-muted-foreground">
+                    Nenhuma função neste grupo ainda. Marque acima quem tem a mesma exposição.
+                    <br />
+                    Para <b>cadastrar</b> uma função nova, vá em <b>Base Técnica → Setores</b>,
+                    entre no setor e use <b>Nova função</b>.
                   </div>
                 )}
               </Accordion>
