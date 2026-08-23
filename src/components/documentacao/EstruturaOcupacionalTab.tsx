@@ -801,6 +801,68 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                       </div>
                     )}
                   </div>
+
+                  {/*
+                    Funções do setor.
+
+                    Elas ficaram sem nenhuma porta de entrada por um acidente em
+                    dois passos: 74bf9acd tirou a aba "Funções" do topo em favor
+                    desta seção aqui dentro do setor, e 81a7edef removeu a seção
+                    por "redundante" — cada mudança fazia sentido sozinha, mas
+                    juntas deixaram o cadastro de funções inalcançável. As 26
+                    funções existentes só continuavam ali porque foram criadas
+                    antes disso.
+
+                    O lugar é este, e não uma lista solta: a função pertence ao
+                    setor, e entrando por dentro dele o vínculo já vem pronto —
+                    sem seletor de setor para errar. Isso importa mais agora que
+                    é o setor da função que define o setor do GES.
+                  */}
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="font-semibold text-slate-800 text-lg">Funções</h4>
+                      <Button variant="outline" size="sm"
+                        onClick={() => handleOpenModal("funcao", { setor_id: setorAtual.id })}>
+                        <Plus className="w-4 h-4 mr-1" /> Nova função
+                      </Button>
+                    </div>
+                    {funcoesDoSetor.length === 0 ? (
+                      <p className="text-sm text-slate-500 italic">
+                        Nenhuma função cadastrada neste setor.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {funcoesDoSetor.map((fu: any) => (
+                          <Card key={fu.id} className="p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-medium text-slate-800 break-words">{fu.nome}</span>
+                                  {fu.cbo && <Badge variant="outline">CBO {fu.cbo}</Badge>}
+                                  {fu.qtd_trabalhadores != null && (
+                                    <Badge variant="secondary">{fu.qtd_trabalhadores} trab.</Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-slate-700 break-words">
+                                  {fu.descricao_atividades || "Sem descrição das atividades."}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 gap-1">
+                                <Button variant="ghost" size="sm" aria-label="Editar função"
+                                  onClick={() => handleOpenModal("funcao", fu)}>
+                                  <Edit2 className="w-4 h-4 text-slate-600" />
+                                </Button>
+                                <Button variant="ghost" size="sm" aria-label="Excluir função"
+                                  onClick={() => setDeleteConfirm({ open: true, type: "funcao", id: fu.id, nome: fu.nome })}>
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })()

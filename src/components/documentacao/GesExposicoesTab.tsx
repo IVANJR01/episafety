@@ -250,23 +250,22 @@ export function GesExposicoesTab() {
               />
             </div>
             {/*
-              O setor do grupo é definido na Estrutura do GES, aba Setores.
-              Havia aqui uma lista de um setor só, gravando a MESMA tabela
-              (ghe_setores) que aquela aba — dois lugares mexendo no mesmo
-              vínculo, livres para discordar. E um seletor de um item só
-              contradiz o motivo desta tela existir, que é justamente o grupo
-              que atravessa setores.
+              O setor não é escolhido: ele SAI das funções marcadas logo abaixo.
+              Havia aqui uma lista de um setor só, gravando a mesma tabela que a
+              antiga aba Setores — dois lugares para o mesmo vínculo. E um
+              seletor de um item só contradiz o motivo desta tela existir, que é
+              o grupo atravessando setores.
             */}
             <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
               {gesFormData.id ? (
                 <>
                   <span className="font-medium">Setor: </span>
-                  {setoresDoGes(gesFormData.id as string).join(", ") || "nenhum ainda"} — para mudar,
-                  use <b>Estrutura do GES → Setores</b> (ícone ao lado do lápis).
+                  {setoresDoGes(gesFormData.id as string).join(", ") || "nenhum ainda"} — sai das
+                  funções marcadas abaixo.
                 </>
               ) : (
-                <>O setor entra depois, em <b>Estrutura do GES → Setores</b>. Um grupo pode
-                reunir setores diferentes, e é para isso que esta tela serve.</>
+                <>O setor sai das funções marcadas abaixo: um grupo pode reunir funções de
+                setores diferentes, e é para isso que esta tela serve.</>
               )}
             </div>
             <div>
