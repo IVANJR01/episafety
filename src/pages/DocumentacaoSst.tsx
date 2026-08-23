@@ -17,7 +17,18 @@ export default function DocumentacaoSst() {
   );
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto pb-10">
+    /*
+      `tela-larga` solta o teto de 1280px que o AppLayout impõe a todas as
+      telas (ver index.css). Esta é planilha, não formulário: são quatro
+      colunas de texto longo — caracterização do ambiente e descrição do
+      processo — espremidas em 230px cada, enquanto sobravam faixas brancas
+      dos dois lados numa tela de 1900px.
+
+      O `max-w-[1600px]` que estava aqui nunca teve efeito: o teto do
+      AppLayout é menor, e o menor sempre vence. Quem manda agora é o 1800px
+      do `tela-larga`, o mesmo que Funcionários e Inspeções já usam.
+    */
+    <div className="tela-larga p-4 md:p-6 space-y-6 pb-10">
       {/* HEADER PRINCIPAL */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
