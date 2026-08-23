@@ -885,8 +885,10 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   {
                     rotulo: "Ambiente de trabalho",
                     longo: true,
-                    classe: "text-sm text-slate-600 max-w-xs truncate",
-                    dica: (set) => caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)),
+                    /* Sai inteiro. Era `max-w-xs truncate` — uma linha com
+                       reticências — e a caracterização do ambiente é o que a
+                       NR-01 cobra: escondê-la atrás do mouse não serve. */
+                    classe: "text-sm text-slate-600 whitespace-normal break-words align-top",
                     celula: (set) =>
                       caracteristicasAmbiente(ambientes.find((a) => a.id === set.ambiente_id)) || "—",
                   },
@@ -902,15 +904,14 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                   {
                     rotulo: "Descrição do processo",
                     longo: true,
-                    classe: "text-sm text-slate-600 max-w-md",
-                    dica: (set) => processosDoSetor(set.id).map((p) => p.descricao_etapas).join("\n\n"),
+                    classe: "text-sm text-slate-600 whitespace-normal break-words align-top",
                     celula: (set) => {
                       const ps = processosDoSetor(set.id);
                       if (!ps.length) return "—";
                       return (
                         <div className="space-y-1">
                           {ps.map((pr) => (
-                            <p key={pr.id} className="truncate">{pr.descricao_etapas || "—"}</p>
+                            <p key={pr.id}>{pr.descricao_etapas || "—"}</p>
                           ))}
                         </div>
                       );
@@ -933,18 +934,25 @@ export function EstruturaOcupacionalTab({ only }: EstruturaProps = {}) {
                     },
                   },
                   {
-                    rotulo: "Grupos de exposição",
+                    /*
+                     * "Grupos de exposição" era o rótulo mais largo da tabela e
+                     * empurrava as duas últimas colunas para fora da tela — o
+                     * cabeçalho aparecia cortado como "GRUPOS D EXPOSIÇÃ".
+                     *
+                     * A célula também mostrava `nome`, que nestes grupos é o
+                     * próprio código ("09"). Mostrar o código por escrito diz a
+                     * mesma coisa em três letras de cabeçalho.
+                     */
+                    rotulo: "GES",
+                    classe: "whitespace-nowrap align-top",
                     celula: (set) => {
                       const ids = new Set((gheSetores as any[])
                         .filter((v) => v.setor_id === set.id).map((v) => v.ghe_id));
                       const grupos = gesList.filter((g: any) => ids.has(g.id));
-                      return (
-                        <div className="flex items-center gap-2 w-fit">
-                          <span className={!grupos.length ? "text-slate-400 italic" : ""}>
-                            {grupos.length ? grupos.map((g: any) => g.nome).join(" · ") : "Sem GES definido"}
-                          </span>
-                        </div>
-                      );
+                      if (!grupos.length) {
+                        return <span className="text-slate-400 italic">Sem GES</span>;
+                      }
+                      return <span>{grupos.map((g: any) => g.codigo || g.nome).join(" · ")}</span>;
                     },
                   },
                 ]}
