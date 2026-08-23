@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  criterioAgrupamentoSugerido, criterioDoGrupo, ehCriterioEscritoPeloSistema,
+  criterioAgrupamentoSugerido, criterioDoGrupo, ehCriterioEscritoPeloSistema, setoresDoGrupo,
 } from "./sstEstrutura";
 
 /**
@@ -92,5 +92,67 @@ describe("criterioAgrupamentoSugerido: função repetida", () => {
       "Trabalhadores do setor PCP nas funções Ajudante de Confecção e Analista de PCP, " +
       "sujeitos às mesmas condições de exposição.",
     );
+  });
+});
+
+/**
+ * "O GES é Grupo de Exposição Similar; quem são o grupo são as funções."
+ *
+ * Por isso o setor deixou de ser apontado à parte, numa aba própria: cada
+ * função já pertence a um setor, e é de lá que ele sai. Havia dois lugares
+ * guardando a mesma coisa — e eles podiam discordar.
+ *
+ * A armadilha: 10 dos 13 grupos desta base não têm nenhuma função ainda
+ * (nasceram junto com o setor). Derivar sem reserva tiraria o setor de todos
+ * eles de uma vez, e o PGR sairia com "não declarado" em cada um.
+ */
+describe("setoresDoGrupo", () => {
+  it("tira o setor de quem está no grupo", () => {
+    expect(setoresDoGrupo([
+      { setorNome: "PCP" }, { setorNome: "PCP" }, { setorNome: "PCP" },
+    ])).toEqual(["PCP"]);
+  });
+
+  it("grupo que atravessa setores devolve todos — é o motivo do GES existir", () => {
+    expect(setoresDoGrupo([{ setorNome: "PCP" }, { setorNome: "COMERCIAL" }]))
+      .toEqual(["PCP", "COMERCIAL"]);
+  });
+
+  it("grupo AINDA SEM função cai no vínculo antigo — sem isso, 10 grupos perdiam o setor", () => {
+    expect(setoresDoGrupo([], "LOJA")).toEqual(["LOJA"]);
+    expect(setoresDoGrupo(undefined, "COZINHA")).toEqual(["COZINHA"]);
+  });
+
+  it("tendo função, a função manda — o vínculo antigo não sobrepõe", () => {
+    // Se a função foi movida de setor, quem vale é o setor de hoje.
+    expect(setoresDoGrupo([{ setorNome: "COSTURA" }], "LOJA")).toEqual(["COSTURA"]);
+  });
+
+  it("sem função e sem reserva, devolve vazio em vez de inventar", () => {
+    expect(setoresDoGrupo([], null)).toEqual([]);
+    expect(setoresDoGrupo()).toEqual([]);
+  });
+
+  it("função sem setor não vira setor em branco", () => {
+    expect(setoresDoGrupo([{ setorNome: null }, { setorNome: "  " }], "LOJA")).toEqual(["LOJA"]);
+  });
+});
+
+describe("criterioAgrupamentoSugerido com vários setores", () => {
+  it("diz 'dos setores' no plural, sem esconder nenhum", () => {
+    expect(criterioAgrupamentoSugerido(["PCP", "COMERCIAL"], [{ nome: "Ajudante" }]))
+      .toBe("Trabalhadores dos setores PCP e COMERCIAL nas funções Ajudante, " +
+            "sujeitos às mesmas condições de exposição.");
+  });
+
+  it("um setor só continua no singular", () => {
+    expect(criterioAgrupamentoSugerido(["PCP"], [{ nome: "Ajudante" }]))
+      .toBe("Trabalhadores do setor PCP nas funções Ajudante, sujeitos às mesmas condições de exposição.");
+  });
+
+  it("o texto no plural continua sendo reconhecido como escrito pelo sistema", () => {
+    // Senão ele nunca seria remontado e voltaria a envelhecer.
+    const texto = criterioAgrupamentoSugerido(["PCP", "COMERCIAL"], [{ nome: "Ajudante" }]);
+    expect(ehCriterioEscritoPeloSistema(texto)).toBe(true);
   });
 });

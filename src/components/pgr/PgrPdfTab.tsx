@@ -14,7 +14,7 @@ import MfaActionButton from "@/components/cat/MfaActionButton";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
 import { generateAndUploadPgrPdf } from "@/lib/pgrPdf";
 import { resolveDocumentoUrl } from "@/lib/secureStorage";
-import { criterioDoGrupo } from "@/lib/sstEstrutura";
+import { criterioDoGrupo, setoresDoGrupo } from "@/lib/sstEstrutura";
 
 async function abrirPdfVersao(v: any) {
   try {
@@ -171,13 +171,28 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     const [vincSetor, vincFuncao] = await Promise.all([
       (supabase.from as any)("ghe_setores").select("ghe_id, setor_id, nome")
         .eq("empresa_id", pgr.empresa_id),
-      (supabase.from as any)("ghe_funcoes").select("ghe_id, nome_funcao")
+      (supabase.from as any)("ghe_funcoes").select("ghe_id, nome_funcao, funcao_id")
         .eq("empresa_id", pgr.empresa_id),
     ]);
-    const setorPorGes = new Map<string, string>();
+    // O setor de um grupo sai das funções que estão nele — é o que define um
+    // GES. O vínculo ghe_setores fica de reserva para o grupo ainda sem
+    // nenhuma função.
+    const setorDaFuncaoId = new Map<string, string>();
+    (funcoes as any[]).forEach((f: any) => {
+      const nome = (setores as any[]).find((s: any) => s.id === f.setor_id)?.nome;
+      if (nome) setorDaFuncaoId.set(f.id, nome);
+    });
+    const reservaPorGes = new Map<string, string>();
     ((vincSetor as any).data || []).forEach((v: any) => {
       const nome = v.nome || (setores as any[]).find((s: any) => s.id === v.setor_id)?.nome;
-      if (nome && !setorPorGes.has(v.ghe_id)) setorPorGes.set(v.ghe_id, nome);
+      if (nome && !reservaPorGes.has(v.ghe_id)) reservaPorGes.set(v.ghe_id, nome);
+    });
+    const setoresDaFuncaoPorGes = new Map<string, { setorNome: string | null }[]>();
+    ((vincFuncao as any).data || []).forEach((v: any) => {
+      if (!setoresDaFuncaoPorGes.has(v.ghe_id)) setoresDaFuncaoPorGes.set(v.ghe_id, []);
+      setoresDaFuncaoPorGes.get(v.ghe_id)!.push({
+        setorNome: v.funcao_id ? setorDaFuncaoId.get(v.funcao_id) ?? null : null,
+      });
     });
     const funcoesPorGes = new Map<string, { nome: string }[]>();
     ((vincFuncao as any).data || []).forEach((v: any) => {
@@ -189,7 +204,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       ...g,
       criterio_agrupamento: criterioDoGrupo({
         armazenado: g.criterio_agrupamento,
-        setorNome: setorPorGes.get(g.id),
+        setorNome: setoresDoGrupo(setoresDaFuncaoPorGes.get(g.id), reservaPorGes.get(g.id)),
         funcoes: funcoesPorGes.get(g.id),
       }),
     }));
