@@ -70,7 +70,6 @@ import PgrComparar from "@/pages/pgr/PgrComparar";
 import LevantamentoCampo from "@/pages/campo/LevantamentoCampo";
 import PcmsoDashboard from "@/pages/pcmso/PcmsoDashboard";
 import PcmsoElaboracao from "@/pages/pcmso/PcmsoElaboracao";
-import VistoriaDashboard from "@/pages/vistoria/VistoriaDashboard";
 import PgrValidar from "@/pages/pgr/PgrValidar";
 import PgrDashboard from "@/pages/pgr/PgrDashboard";
 import MatrizRiscoAdmin from "@/pages/cadastro/MatrizRiscoAdmin";

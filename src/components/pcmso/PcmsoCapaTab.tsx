@@ -39,7 +39,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
         .from("pgr_documentos")
         .select("id, versao, status, data_vigencia_inicio, data_vigencia_fim")
         .eq("empresa_id", empresaId)
-        .neq("status", "inativo")
+        .neq("status", "arquivado")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -52,7 +52,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("aso_medicos")
-        .select("id, nome, crm, uf")
+        .select("id, nome, crm, uf_crm")
         .eq("empresa_id", empresaId)
         .eq("ativo", true);
       if (error) throw error;
@@ -87,7 +87,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
       if (med) {
         obj.medico_nome = med.nome;
         obj.medico_crm = med.crm;
-        obj.medico_uf = med.uf;
+        obj.medico_uf = med.uf_crm;
       } else {
         obj.medico_nome = null;
         obj.medico_crm = null;
@@ -170,7 +170,7 @@ export default function PcmsoCapaTab({ pcmso }: PcmsoCapaTabProps) {
                     <SelectItem value="none" className="text-muted-foreground italic">Selecione...</SelectItem>
                     {medicos.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
-                        Dr(a). {m.nome} (CRM: {m.crm}-{m.uf})
+                        Dr(a). {m.nome} (CRM: {m.crm}-{m.uf_crm})
                       </SelectItem>
                     ))}
                   </SelectContent>

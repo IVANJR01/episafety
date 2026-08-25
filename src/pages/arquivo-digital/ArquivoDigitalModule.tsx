@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
-import { FolderOpen, Users, Clock, History, Settings, HardDriveDownload } from "lucide-react";
+import { Users, Clock, History, Settings, HardDriveDownload } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ArquivoDigitalModule() {
@@ -12,10 +12,9 @@ export default function ArquivoDigitalModule() {
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Dossiê do Colaborador" 
-        description="Gestão centralizada do dossiê dos colaboradores, vencimentos e histórico de arquivos."
-        icon={FolderOpen}
+      <PageHeader
+        title="Dossiê do Colaborador"
+        subtitle="Gestão centralizada do dossiê dos colaboradores, vencimentos e histórico de arquivos."
       />
 
       <Tabs value={currentTab} className="w-full">

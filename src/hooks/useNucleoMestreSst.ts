@@ -191,40 +191,40 @@ export function useNucleoMestreSst() {
   const activeEmpresaId = searchEmpresaAutorizada ? searchEmpresaId : authEmpresaId;
 
   // READ QUERIES
-  const { data: estabelecimentos = [], isLoading: loadingEstabelecimentos, error: erroEstabelecimentos } =
+  const { data: estabelecimentos = [], loading: loadingEstabelecimentos, error: erroEstabelecimentos } =
     useSupabaseQuery<SstEstabelecimento>("sst_estabelecimentos", "nome", true);
 
-  const { data: ambientes = [], isLoading: loadingAmbientes, error: erroAmbientes } =
+  const { data: ambientes = [], loading: loadingAmbientes, error: erroAmbientes } =
     useSupabaseQuery<SstAmbiente>("sst_ambientes", "nome", true);
 
-  const { data: setores = [], isLoading: loadingSetores, error: erroSetores } =
+  const { data: setores = [], loading: loadingSetores, error: erroSetores } =
     useSupabaseQuery<SstSetor>("sst_setores", "nome", true);
 
-  const { data: processos = [], isLoading: loadingProcessos, error: erroProcessos } =
+  const { data: processos = [], loading: loadingProcessos, error: erroProcessos } =
     useSupabaseQuery<SstProcesso>("sst_processos", "nome", true);
 
-  const { data: funcoes = [], isLoading: loadingFuncoes, error: erroFuncoes } =
+  const { data: funcoes = [], loading: loadingFuncoes, error: erroFuncoes } =
     useSupabaseQuery<SstFuncao>("sst_funcoes", "nome", true);
 
-  const { data: gesList = [], isLoading: loadingGes, error: erroGes } =
+  const { data: gesList = [], loading: loadingGes, error: erroGes } =
     useSupabaseQuery<SstGes>("sst_ges", "nome", true);
 
   // Vínculo real de GES com Setor/Função — vive nas tabelas da tela "Estrutura
   // do GES" (ghe_setores/ghe_funcoes), não em sst_ges_vinculos: essa nunca
   // chegou a ter uma tela que a escrevesse, então ficava sempre vazia.
-  const { data: gheSetores = [], isLoading: loadingGheSetores } =
+  const { data: gheSetores = [], loading: loadingGheSetores } =
     useSupabaseQuery<any>("ghe_setores");
 
-  const { data: gheFuncoes = [], isLoading: loadingGheFuncoes } =
+  const { data: gheFuncoes = [], loading: loadingGheFuncoes } =
     useSupabaseQuery<any>("ghe_funcoes");
 
-  const { data: perigosCatalogo = [], isLoading: loadingPerigos } =
+  const { data: perigosCatalogo = [], loading: loadingPerigos } =
     useSupabaseQuery<SstPerigoCatalogo>("sst_perigos_catalogo", "nome_agente", true);
 
-  const { data: exposicoes = [], isLoading: loadingExposicoes } =
+  const { data: exposicoes = [], loading: loadingExposicoes } =
     useSupabaseQuery<SstExposicao>("sst_exposicoes");
 
-  const { data: atividades = [], isLoading: loadingAtividades } =
+  const { data: atividades = [], loading: loadingAtividades } =
     useSupabaseQuery<SstAtividade>("sst_atividades", "nome", true);
 
   // LEGACY FALLBACK QUERIES (Sincronização Automática de Unidades, CNO/CNPJ e GHEs Existentes)
