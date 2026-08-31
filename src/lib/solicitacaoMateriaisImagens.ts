@@ -240,3 +240,41 @@ export async function loadImageAsDataUrl(path: string): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Acha a imagem dentro de uma colagem (Ctrl+V) ou de um arrastar-e-soltar.
+ *
+ * Serve para os dois porque o navegador entrega os dois do mesmo jeito: um
+ * `DataTransfer` com uma lista de itens. Print de tela colado chega como item
+ * do tipo "file" com `type: "image/png"` e SEM nome de arquivo de verdade —
+ * por isso o nome é gerado aqui, senão a linha embaixo da foto ficaria vazia
+ * ou com "image.png" repetido em todos os itens.
+ *
+ * Devolve `null` quando não há imagem nenhuma (colar texto, por exemplo), e é
+ * quem chama que decide se avisa ou fica quieto.
+ */
+export function imagemDeTransferencia(dt: DataTransfer | null | undefined): File | null {
+  if (!dt) return null;
+
+  const candidatos: File[] = [];
+  // `items` é o caminho da colagem; `files` é o do arrastar. Os dois podem
+  // existir ao mesmo tempo, e um navegador pode trazer só um deles.
+  for (const item of Array.from(dt.items || [])) {
+    if (item.kind !== "file") continue;
+    const arquivo = item.getAsFile();
+    if (arquivo) candidatos.push(arquivo);
+  }
+  for (const arquivo of Array.from(dt.files || [])) candidatos.push(arquivo);
+
+  const imagem = candidatos.find((f) => f.type.startsWith("image/"));
+  if (!imagem) return null;
+
+  // Nome vazio ou genérico vira um nome próprio, com hora, para dar de
+  // distinguir uma colagem da outra na lista de itens.
+  const generico = !imagem.name || /^(image|imagem)\.\w+$/i.test(imagem.name);
+  if (!generico) return imagem;
+
+  const ext = (imagem.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "").toLowerCase();
+  const hora = new Date().toISOString().slice(11, 19).replace(/:/g, "");
+  return new File([imagem], `colado-${hora}.${ext}`, { type: imagem.type });
+}

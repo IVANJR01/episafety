@@ -9,12 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X } from "lucide-react";
+import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X, ClipboardPaste } from "lucide-react";
 import { toast } from "sonner";
 import {
   ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
   compressImage, prepararImagemItem, buildItemImagePath, uploadItemImage,
-  getSignedImageUrl, removeItemImage, descartarPreview,
+  getSignedImageUrl, removeItemImage, descartarPreview, imagemDeTransferencia,
 } from "@/lib/solicitacaoMateriaisImagens";
 import { enviarEmailSolicitacao } from "@/lib/solicitacaoMateriaisEmail";
 
@@ -500,6 +500,66 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
   const readOnly = !["rascunho", "enviada"].includes(status);
 
+  /*
+   * A lista de itens vista de dentro da escuta de colagem, logo abaixo. Sem
+   * isto a escuta precisaria ser refeita a cada item adicionado ou removido, e
+   * uma escuta refeita no meio de um Ctrl+V perde a colagem.
+   */
+  const itensRef = useRef(itens);
+  useEffect(() => { itensRef.current = itens; }, [itens]);
+
+  /*
+   * Colar (Ctrl+V) a imagem em qualquer lugar do formulario.
+   *
+   * O caminho de sempre era: salvar o print num arquivo, clicar em Galeria,
+   * achar o arquivo na pasta. Com o print ja na area de transferencia, isso e
+   * trabalho a toa — quem pediu o material geralmente acabou de copiar a foto
+   * do fornecedor ou um print do catalogo.
+   *
+   * A escuta fica no documento, e nao so na caixa da foto, porque o Ctrl+V da
+   * pessoa acontece onde o cursor estiver: dentro do nome do item, num campo
+   * de quantidade, ou sem foco nenhum. Como `imagemDeTransferencia` devolve
+   * null quando a colagem e texto, colar texto num campo continua funcionando
+   * normalmente — este trecho so age quando ha imagem de verdade.
+   */
+  const [itemAtivo, setItemAtivo] = useState(0);
+  useEffect(() => {
+    if (!open || readOnly) return;
+    const aoColar = (evento: ClipboardEvent) => {
+      const imagem = imagemDeTransferencia(evento.clipboardData);
+      if (!imagem) return; // colagem de texto: nao e assunto nosso
+      evento.preventDefault();
+      // Com um item so nao ha duvida de destino. Com varios, vale o ultimo em
+      // que a pessoa mexeu — que e onde ela esta olhando.
+      const destino = Math.min(itemAtivo, itensRef.current.length - 1);
+      void handlePickImage(Math.max(0, destino), imagem);
+      toast.success(`Imagem colada no item ${Math.max(0, destino) + 1}`);
+    };
+    document.addEventListener("paste", aoColar);
+    return () => document.removeEventListener("paste", aoColar);
+  }, [open, readOnly, itemAtivo]);
+
+  /** Botao "Colar": para celular e navegador onde nao ha Ctrl+V a mao. */
+  async function colarDaAreaDeTransferencia(idx: number) {
+    try {
+      const pedacos = await navigator.clipboard.read();
+      for (const pedaco of pedacos) {
+        const tipo = pedaco.types.find((t) => t.startsWith("image/"));
+        if (!tipo) continue;
+        const blob = await pedaco.getType(tipo);
+        const ext = (tipo.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "");
+        await handlePickImage(idx, new File([blob], `colado.${ext}`, { type: tipo }));
+        return;
+      }
+      toast.error("Nao ha imagem copiada. Copie a imagem e tente de novo.");
+    } catch {
+      // Navegador que nao deixa ler a area de transferencia sem permissao
+      // explicita. O Ctrl+V continua valendo, entao e isso que se diz.
+      toast.error("Seu navegador nao deixou ler a area de transferencia. Use Ctrl+V.");
+    }
+  }
+
+
   /**
    * Cutuca o navegador a redesenhar quando a janela volta ao foco.
    *
@@ -742,7 +802,15 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                * `contain-intrinsic-size` reserva a altura aproximada para a
                * barra de rolagem nao pular.
                */
-              <Card key={idx} className="[content-visibility:auto] [contain-intrinsic-size:auto_420px]">
+              /* `onFocusCapture` e `onPointerDown` marcam em qual item a
+                 pessoa esta mexendo: e para la que vai a imagem colada quando
+                 a solicitacao tem mais de um item. */
+              <Card
+                key={idx}
+                onFocusCapture={() => setItemAtivo(idx)}
+                onPointerDown={() => setItemAtivo(idx)}
+                className="[content-visibility:auto] [contain-intrinsic-size:auto_420px]"
+              >
                 <CardContent className="p-3 space-y-3">
                   {/* Cabecalho do item primeiro: antes a caixa da foto vinha
                       acima de tudo, ocupando a largura inteira, e o "Item #1"
@@ -822,7 +890,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     </div>
 
                     <div className="order-first lg:order-last min-w-0">
-                      <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
+                      <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} onColar={colarDaAreaDeTransferencia} />
                     </div>
                   </div>
                 </CardContent>
@@ -850,12 +918,13 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   );
 }
 
-function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
+function ItemImageField({ item, idx, readOnly, onPick, onClear, onColar }: {
   item: ItemForm;
   idx: number;
   readOnly: boolean;
   onPick: (idx: number, file: File | null) => void;
   onClear: (idx: number) => void;
+  onColar: (idx: number) => void;
 }) {
   const hasImage = !!((item.imagem_preview_url || item.imagem_path) && !item.imagem_remove);
   const inputId = `img-file-${item._key}`;
@@ -876,6 +945,7 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
    */
   const caixaRef = useRef<HTMLDivElement | null>(null);
   const [porPerto, setPorPerto] = useState(true);
+  const [arrastando, setArrastando] = useState(false);
   useEffect(() => {
     const alvo = caixaRef.current;
     if (!alvo || typeof IntersectionObserver === "undefined") return;
@@ -888,8 +958,42 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   }, []);
 
 
+  /*
+   * Arrastar a imagem de outra janela e soltar aqui.
+   *
+   * `dropEffect = "copy"` troca o cursor para o de copia enquanto a imagem
+   * esta sobre a caixa — sem isso o navegador mostra o de "proibido" e a
+   * pessoa solta em outro lugar achando que nao da. `preventDefault` no
+   * arrastar e obrigatorio: sem ele o navegador ABRE o arquivo solto numa aba
+   * nova e o formulario preenchido some.
+   */
+  const aoArrastar = (e: React.DragEvent) => {
+    if (readOnly) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setArrastando(true);
+  };
+  const aoSoltar = (e: React.DragEvent) => {
+    if (readOnly) return;
+    e.preventDefault();
+    setArrastando(false);
+    const imagem = imagemDeTransferencia(e.dataTransfer);
+    if (!imagem) { toast.error("Arraste um arquivo de imagem."); return; }
+    onPick(idx, imagem);
+  };
+
   return (
-    <div ref={caixaRef} className="rounded-md border bg-muted/30 p-3 space-y-2" data-solmat-image-block="true">
+    <div
+      ref={caixaRef}
+      onDragOver={aoArrastar}
+      onDragEnter={aoArrastar}
+      onDragLeave={() => setArrastando(false)}
+      onDrop={aoSoltar}
+      className={`rounded-md border bg-muted/30 p-3 space-y-2 transition-colors ${
+        arrastando ? "border-primary border-2 bg-primary/5" : ""
+      }`}
+      data-solmat-image-block="true"
+    >
       <input id={inputId} type="file" accept="image/*" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
       <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
@@ -934,9 +1038,20 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
           )}
         </div>
       ) : (
-        <div className="rounded-md border border-dashed bg-background py-4 text-center text-muted-foreground">
+        <div className="rounded-md border border-dashed bg-background px-2 py-4 text-center text-muted-foreground">
           <ImageIcon className="mx-auto h-6 w-6" />
-          <div className="mt-1 text-xs">Sem foto</div>
+          {/* A caixa vazia dizia so "Sem foto" — nao contava que da para colar
+              nem arrastar, e essas duas sao justamente as formas rapidas. */}
+          <div className="mt-1 text-xs font-medium">Sem foto</div>
+          {!readOnly && (
+            /* So a partir de tela de computador: no celular nao ha Ctrl+V nem
+               arrastar, e a dica viraria instrucao para algo impossivel. La os
+               tres botoes abaixo ja cobrem. */
+            <div className="mt-1 hidden text-[11px] leading-tight sm:block">
+              Cole com <kbd className="rounded border bg-muted px-1 font-sans">Ctrl</kbd>+
+              <kbd className="rounded border bg-muted px-1 font-sans">V</kbd> ou arraste a imagem aqui
+            </div>
+          )}
         </div>
       )}
 
@@ -954,6 +1069,15 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
           >
             <ImageIcon className="w-4 h-4" /> Galeria
           </Label>
+          {/* O Ctrl+V resolve no computador; este botao e para o celular e para
+              o navegador em que a janela nao esta com o foco do teclado. */}
+          <button
+            type="button"
+            onClick={() => onColar(idx)}
+            className="col-span-2 inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground lg:col-span-1"
+          >
+            <ClipboardPaste className="w-4 h-4" /> Colar imagem
+          </button>
         </div>
       )}
 
