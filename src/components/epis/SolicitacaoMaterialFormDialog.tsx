@@ -285,7 +285,36 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     if (!epi) return;
     updateItem(idx, { epi_id: epi.id, nome_item: epi.nome, ca: epi.ca || "" });
   }
-  function addItem() { setItens((p) => [...p, emptyItem()]); }
+  /*
+   * O item novo entra no fim da lista — e a tela vai atras dele.
+   *
+   * Sem isso, "Adicionar item" numa solicitacao que ja tem dois itens punha o
+   * cartao novo abaixo da dobra: medido, ele nascia a 1533 px numa janela de
+   * 1100. Da onde a pessoa estava olhando nada mudava, e a impressao era de
+   * que o item nao tinha sido criado, ou de que a tela tinha voltado para o
+   * primeiro.
+   */
+  const [itemParaMostrar, setItemParaMostrar] = useState<number | null>(null);
+  function addItem() {
+    setItens((p) => {
+      setItemParaMostrar(p.length);
+      return [...p, emptyItem()];
+    });
+  }
+  useEffect(() => {
+    if (itemParaMostrar === null) return;
+    // Depois do desenho do cartao novo, senao nao ha o que rolar ate.
+    const id = requestAnimationFrame(() => {
+      const cartao = document.querySelector<HTMLElement>(`[data-item-indice="${itemParaMostrar}"]`);
+      cartao?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // O cursor ja no nome: e o unico campo obrigatorio do item, e e onde a
+      // pessoa ia clicar em seguida de qualquer jeito.
+      cartao?.querySelector<HTMLInputElement>('[data-campo="nome-item"]')?.focus({ preventScroll: true });
+      setItemParaMostrar(null);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [itemParaMostrar]);
+
   function removeItem(idx: number) {
     const it = itens[idx];
     descartarPreview(it?.imagem_preview_url);
@@ -838,6 +867,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                  a solicitacao tem mais de um item. */
               <Card
                 key={idx}
+                data-item-indice={idx}
                 onFocusCapture={() => setItemAtivo(idx)}
                 onPointerDown={() => setItemAtivo(idx)}
                 className="[content-visibility:auto] [contain-intrinsic-size:auto_420px]"
@@ -890,7 +920,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     )}
                     <div className="sm:col-span-4">
                       <Label className="text-xs">Nome do item *</Label>
-                      <Input value={it.nome_item} onChange={(e) => updateItem(idx, { nome_item: e.target.value })} disabled={readOnly} />
+                      <Input data-campo="nome-item" value={it.nome_item} onChange={(e) => updateItem(idx, { nome_item: e.target.value })} disabled={readOnly} />
                     </div>
                     <div>
                       <Label className="text-xs">Referência</Label>
