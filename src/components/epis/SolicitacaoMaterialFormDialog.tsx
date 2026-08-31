@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X, ClipboardPaste } from "lucide-react";
+import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
@@ -22,7 +22,12 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   solicitacaoId: string | null;
-  onSaved: () => void;
+  /**
+   * `fechar` diz se a janela deve sair de cena. "Enviar solicitação" encerra o
+   * trabalho e fecha; "Salvar rascunho" e um ponto de gravacao no meio do
+   * caminho — a lista atualiza atras, mas o formulario continua aberto.
+   */
+  onSaved: (fechar: boolean) => void;
 }
 
 type ItemForm = {
@@ -95,6 +100,19 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string>("rascunho");
   const [rascunhoRecuperado, setRascunhoRecuperado] = useState(false);
+  /*
+   * O que ja foi gravado nesta abertura da janela.
+   *
+   * Sem isto, salvar rascunho duas vezes com a janela aberta criaria DUAS
+   * solicitacoes: a segunda gravacao nao teria como saber que a primeira ja
+   * existe — o id dela so chegaria ao componente por `solicitacaoId`, que e a
+   * propriedade de quem abriu a janela e nao muda sozinha.
+   *
+   * O numero vem junto porque quem o gera e o banco, na criacao. Pedi-lo de
+   * novo devolve o PROXIMO da sequencia, nao o desta solicitacao.
+   */
+  const [idSalvo, setIdSalvo] = useState<string | null>(null);
+  const [numeroSalvo, setNumeroSalvo] = useState<string | null>(null);
 
   /**
    * Rascunho automático de solicitação NOVA.
@@ -119,12 +137,15 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
   // Grava o rascunho a cada mudanca, so em solicitacao nova.
   useEffect(() => {
-    if (!open || solicitacaoId || !empresaId) return;
+    // `idSalvo`: depois de "Salvar rascunho" a copia boa esta no banco.
+    // Continuar gravando aqui faria a proxima "Nova Solicitacao" reaparecer
+    // preenchida com o que ja virou solicitacao — parecendo duplicada.
+    if (!open || solicitacaoId || idSalvo || !empresaId) return;
     try {
       const semArquivos = itens.map(({ imagem_file: _f, imagem_preview_url: _p, imagem_blob: _b, ...resto }) => resto);
       localStorage.setItem(chaveRascunho, JSON.stringify({ head, itens: semArquivos }));
     } catch { /* cota cheia ou modo restrito: rascunho e conveniencia, nao pode quebrar o formulario */ }
-  }, [head, itens, open, solicitacaoId, empresaId, chaveRascunho]);
+  }, [head, itens, open, solicitacaoId, idSalvo, empresaId, chaveRascunho]);
 
   useEffect(() => {
     if (!open) return;
@@ -148,6 +169,10 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
   useEffect(() => {
     if (!open) return;
+    // Janela nova, gravacao nova: sem isto, abrir "Nova Solicitacao" logo depois
+    // de salvar um rascunho escreveria por cima da solicitacao anterior.
+    setIdSalvo(null);
+    setNumeroSalvo(null);
     if (!solicitacaoId) {
       const base = { ...emptyHead(), solicitante_nome: userEmail.split("@")[0] || "" };
       let recuperado = false;
@@ -319,7 +344,9 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
 
     setSaving(true);
     try {
-      let solicId = solicitacaoId;
+      // Vale o id de quem abriu a janela; na falta dele, o da gravacao
+      // anterior feita aqui mesmo (salvar rascunho sem fechar).
+      let solicId = solicitacaoId || idSalvo;
 
       if (!solicId) {
         const { data: numData, error: numErr } = await supabase.rpc("proximo_numero_solicitacao_material", { _empresa_id: empresaId });
@@ -341,9 +368,11 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           observacoes: head.observacoes || null,
           status: nextStatus,
           created_by: user?.id || null,
-        }).select("id").single();
+        }).select("id, numero_solicitacao").single();
         if (createErr) throw createErr;
         solicId = created.id;
+        setIdSalvo(created.id);
+        setNumeroSalvo((created as { numero_solicitacao?: string }).numero_solicitacao || null);
       } else {
         const { error: updErr } = await supabase.from("solicitacoes_materiais").update({
           titulo: head.titulo.trim(),
@@ -452,13 +481,25 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
             .eq("id", empresaId)
             .maybeSingle();
 
-          const numero = (solicitacaoId
-            ? head.numero_solicitacao
-            : (await supabase.rpc("proximo_numero_solicitacao_material", { _empresa_id: empresaId })).data) as string || "—";
+          /*
+           * O numero desta solicitacao, lido de onde ele realmente esta.
+           *
+           * Antes: em solicitacao ja existente lia `head.numero_solicitacao`,
+           * campo que nao existe em `head` — o e-mail para compras saia com o
+           * numero "—". Em solicitacao nova pedia OUTRO numero ao banco, que
+           * devolve o proximo da sequencia: o e-mail anunciava um numero que
+           * nao era o da solicitacao gravada.
+           */
+          let numero = numeroSalvo;
+          if (!numero) {
+            const { data: linha } = await supabase
+              .from("solicitacoes_materiais").select("numero_solicitacao").eq("id", solicId!).maybeSingle();
+            numero = (linha as { numero_solicitacao?: string } | null)?.numero_solicitacao || null;
+          }
 
           const resultado = await enviarEmailSolicitacao(
             solicId!,
-            numero,
+            numero || "—",
             head.titulo,
             empresaId,
             (empData as any)?.nome,
@@ -490,7 +531,17 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       // Gravado no banco: o rascunho local cumpriu o papel e sai de cena.
       try { localStorage.removeItem(chaveRascunho); } catch { /* nada a fazer */ }
       setRascunhoRecuperado(false);
-      onSaved();
+      setStatus(nextStatus);
+      /*
+       * "Salvar rascunho" nao fecha a janela.
+       *
+       * Fechava — e rascunho e justamente o botao de quem NAO terminou: a
+       * pessoa gravava para nao perder o que ja tinha digitado e era posta
+       * para fora, tendo de achar a solicitacao na lista e reabrir para
+       * continuar de onde parou. Quem termina usa "Enviar solicitacao", e esse
+       * continua fechando.
+       */
+      onSaved(nextStatus === "enviada");
     } catch (e: any) {
       toast.error("Erro ao salvar", { description: e.message });
     } finally {
@@ -538,26 +589,6 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     document.addEventListener("paste", aoColar);
     return () => document.removeEventListener("paste", aoColar);
   }, [open, readOnly, itemAtivo]);
-
-  /** Botao "Colar": para celular e navegador onde nao ha Ctrl+V a mao. */
-  async function colarDaAreaDeTransferencia(idx: number) {
-    try {
-      const pedacos = await navigator.clipboard.read();
-      for (const pedaco of pedacos) {
-        const tipo = pedaco.types.find((t) => t.startsWith("image/"));
-        if (!tipo) continue;
-        const blob = await pedaco.getType(tipo);
-        const ext = (tipo.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "");
-        await handlePickImage(idx, new File([blob], `colado.${ext}`, { type: tipo }));
-        return;
-      }
-      toast.error("Nao ha imagem copiada. Copie a imagem e tente de novo.");
-    } catch {
-      // Navegador que nao deixa ler a area de transferencia sem permissao
-      // explicita. O Ctrl+V continua valendo, entao e isso que se diz.
-      toast.error("Seu navegador nao deixou ler a area de transferencia. Use Ctrl+V.");
-    }
-  }
 
 
   /**
@@ -890,7 +921,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     </div>
 
                     <div className="order-first lg:order-last min-w-0">
-                      <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} onColar={colarDaAreaDeTransferencia} />
+                      <ItemImageField item={it} idx={idx} readOnly={readOnly} onPick={handlePickImage} onClear={handleClearImage} />
                     </div>
                   </div>
                 </CardContent>
@@ -918,13 +949,12 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   );
 }
 
-function ItemImageField({ item, idx, readOnly, onPick, onClear, onColar }: {
+function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
   item: ItemForm;
   idx: number;
   readOnly: boolean;
   onPick: (idx: number, file: File | null) => void;
   onClear: (idx: number) => void;
-  onColar: (idx: number) => void;
 }) {
   const hasImage = !!((item.imagem_preview_url || item.imagem_path) && !item.imagem_remove);
   const inputId = `img-file-${item._key}`;
@@ -1069,15 +1099,6 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear, onColar }: {
           >
             <ImageIcon className="w-4 h-4" /> Galeria
           </Label>
-          {/* O Ctrl+V resolve no computador; este botao e para o celular e para
-              o navegador em que a janela nao esta com o foco do teclado. */}
-          <button
-            type="button"
-            onClick={() => onColar(idx)}
-            className="col-span-2 inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground lg:col-span-1"
-          >
-            <ClipboardPaste className="w-4 h-4" /> Colar imagem
-          </button>
         </div>
       )}
 

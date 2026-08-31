@@ -595,7 +595,7 @@ export default function SolicitacoesMateriais() {
         open={formOpen}
         onOpenChange={setFormOpen}
         solicitacaoId={editingId}
-        onSaved={() => { setFormOpen(false); load(); }}
+        onSaved={(fechar) => { if (fechar) setFormOpen(false); load(); }}
       />
       <SolicitacaoAprovacaoDialog
         open={!!aprovOpen}
