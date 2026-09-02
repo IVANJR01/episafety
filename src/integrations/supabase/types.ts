@@ -2272,6 +2272,8 @@ export type Database = {
           cpf_representante_legal: string | null
           created_at: string
           email: string | null
+          email_compras: string | null
+          email_sst: string | null
           empresa_pai_id: string | null
           endereco: string | null
           id: string
@@ -2288,6 +2290,8 @@ export type Database = {
           cpf_representante_legal?: string | null
           created_at?: string
           email?: string | null
+          email_compras?: string | null
+          email_sst?: string | null
           empresa_pai_id?: string | null
           endereco?: string | null
           id?: string
@@ -2304,6 +2308,8 @@ export type Database = {
           cpf_representante_legal?: string | null
           created_at?: string
           email?: string | null
+          email_compras?: string | null
+          email_sst?: string | null
           empresa_pai_id?: string | null
           endereco?: string | null
           id?: string
@@ -6327,6 +6333,217 @@ export type Database = {
           },
         ]
       }
+      pcmso_cronograma_acoes: {
+        Row: {
+          acao: string
+          created_at: string
+          data_planejada: string | null
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          pcmso_id: string
+          responsavel: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          data_planejada?: string | null
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          pcmso_id: string
+          responsavel?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          data_planejada?: string | null
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          pcmso_id?: string
+          responsavel?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pcmso_cronograma_acoes_pcmso_id_fkey"
+            columns: ["pcmso_id"]
+            isOneToOne: false
+            referencedRelation: "pcmso_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pcmso_documentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_emissao: string | null
+          data_vigencia_fim: string | null
+          data_vigencia_inicio: string | null
+          documento_origem_id: string | null
+          empresa_id: string
+          id: string
+          medico_coordenador_id: string | null
+          medico_crm: string | null
+          medico_nome: string | null
+          medico_uf: string | null
+          observacoes: string | null
+          pdf_drive_file_id: string | null
+          pdf_drive_view_link: string | null
+          pdf_gerado_em: string | null
+          pdf_hash: string | null
+          pgr_base_id: string | null
+          relatorio_analitico: string | null
+          status: Database["public"]["Enums"]["pgr_status"]
+          unidade_id: string | null
+          updated_at: string
+          updated_by: string | null
+          versao: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          data_vigencia_fim?: string | null
+          data_vigencia_inicio?: string | null
+          documento_origem_id?: string | null
+          empresa_id: string
+          id?: string
+          medico_coordenador_id?: string | null
+          medico_crm?: string | null
+          medico_nome?: string | null
+          medico_uf?: string | null
+          observacoes?: string | null
+          pdf_drive_file_id?: string | null
+          pdf_drive_view_link?: string | null
+          pdf_gerado_em?: string | null
+          pdf_hash?: string | null
+          pgr_base_id?: string | null
+          relatorio_analitico?: string | null
+          status?: Database["public"]["Enums"]["pgr_status"]
+          unidade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          data_vigencia_fim?: string | null
+          data_vigencia_inicio?: string | null
+          documento_origem_id?: string | null
+          empresa_id?: string
+          id?: string
+          medico_coordenador_id?: string | null
+          medico_crm?: string | null
+          medico_nome?: string | null
+          medico_uf?: string | null
+          observacoes?: string | null
+          pdf_drive_file_id?: string | null
+          pdf_drive_view_link?: string | null
+          pdf_gerado_em?: string | null
+          pdf_hash?: string | null
+          pgr_base_id?: string | null
+          relatorio_analitico?: string | null
+          status?: Database["public"]["Enums"]["pgr_status"]
+          unidade_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pcmso_documentos_documento_origem_id_fkey"
+            columns: ["documento_origem_id"]
+            isOneToOne: false
+            referencedRelation: "pcmso_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pcmso_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pcmso_documentos_medico_coordenador_id_fkey"
+            columns: ["medico_coordenador_id"]
+            isOneToOne: false
+            referencedRelation: "aso_medicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pcmso_documentos_pgr_base_id_fkey"
+            columns: ["pgr_base_id"]
+            isOneToOne: false
+            referencedRelation: "pgr_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pcmso_documentos_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "empresa_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pcmso_revisoes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          motivo_revisao: string | null
+          pcmso_id: string
+          status_anterior: Database["public"]["Enums"]["pgr_status"] | null
+          status_novo: Database["public"]["Enums"]["pgr_status"] | null
+          versao_anterior: number | null
+          versao_nova: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          motivo_revisao?: string | null
+          pcmso_id: string
+          status_anterior?: Database["public"]["Enums"]["pgr_status"] | null
+          status_novo?: Database["public"]["Enums"]["pgr_status"] | null
+          versao_anterior?: number | null
+          versao_nova?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          motivo_revisao?: string | null
+          pcmso_id?: string
+          status_anterior?: Database["public"]["Enums"]["pgr_status"] | null
+          status_novo?: Database["public"]["Enums"]["pgr_status"] | null
+          versao_anterior?: number | null
+          versao_nova?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pcmso_revisoes_pcmso_id_fkey"
+            columns: ["pcmso_id"]
+            isOneToOne: false
+            referencedRelation: "pcmso_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pgr_acao_evidencias: {
         Row: {
           acao_id: string
@@ -9344,6 +9561,9 @@ export type Database = {
       pgr_risco_classe: "baixo" | "moderado" | "alto" | "critico"
       pgr_status:
         | "rascunho"
+        | "em_revisao_tecnica"
+        | "aguardando_aprovacao"
+        | "aguardando_assinatura"
         | "em_revisao"
         | "vigente"
         | "substituido"
@@ -9676,6 +9896,9 @@ export const Constants = {
       pgr_risco_classe: ["baixo", "moderado", "alto", "critico"],
       pgr_status: [
         "rascunho",
+        "em_revisao_tecnica",
+        "aguardando_aprovacao",
+        "aguardando_assinatura",
         "em_revisao",
         "vigente",
         "substituido",

@@ -111,7 +111,7 @@ export function FormExposicaoDialog({
                       <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione o Estabelecimento" /></SelectTrigger>
                       <SelectContent>
                         {estabelecimentos.map(e => (
-                          <SelectItem key={e.id} value={e.id}>{e.nome} {e.numero_inscricao ? `(${e.numero_inscricao})` : ''}</SelectItem>
+                          <SelectItem key={e.id} value={e.id}>{e.nome} {(e.cnpj || e.cno) ? `(${e.cnpj || e.cno})` : ''}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

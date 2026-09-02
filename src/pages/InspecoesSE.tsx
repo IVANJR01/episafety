@@ -82,7 +82,7 @@ const withTimeout = <T,>(promise: Promise<T>, timeoutMs = LOAD_TIMEOUT_MS) => {
   }) as Promise<T>;
 };
 
-interface Conformidade {
+export interface Conformidade {
   id: string;
   numero: number;
   data_inspecao: string;

@@ -472,7 +472,7 @@ export default function ContratoStockPanel() {
       // Get current user profile name
       const { data: profile } = await supabase
         .from("profiles")
-        .select("nome")
+        .select("nome, email")
         .eq("user_id", (await supabase.auth.getUser()).data.user?.id || "")
         .single();
 
