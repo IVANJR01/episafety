@@ -175,6 +175,9 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
 }
 const fmtDate = (s?: string | null) => s ? new Date(s.length <= 10 ? s + "T00:00:00" : s).toLocaleDateString("pt-BR") : "—";
 const fmtDT = (s?: string | null) => s ? new Date(s).toLocaleString("pt-BR") : "—";
+/** Dinheiro no formato daqui: R$ 18.000,00. */
+const fmtMoeda = (v: number) =>
+  Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 interface ItemSumario { titulo: string; pagina: number; }
 interface B { doc: jsPDF; y: number; toc: ItemSumario[]; }
@@ -264,23 +267,50 @@ function drawMatriz(b: B) {
   b.doc.setTextColor(0); b.doc.setFontSize(7);
   for (let p = 1; p <= 5; p++) b.doc.text(String(p), x0 + (p - 1) * cs + cs / 2, y0 + 5 * cs + 4, { align: "center" });
   for (let s = 5; s >= 1; s--) b.doc.text(String(s), x0 - 3, y0 + (5 - s) * cs + cs / 2 + 1, { align: "right" });
-  b.doc.text("Probabilidade →", x0 + 35, y0 + 5 * cs + 9, { align: "center" });
+  /*
+   * Sem a seta "→": a fonte padrao do jsPDF e WinAnsi, que nao tem esse
+   * caractere. Ele nao saia como seta — saia como lixo ("!'"), e ainda
+   * embaralhava o espacamento do resto da frase. O mesmo valia para o "≤" da
+   * legenda abaixo. Os numeros 1 a 5 ja estao desenhados no eixo.
+   */
+  b.doc.text("Probabilidade", x0 + 35, y0 + 5 * cs + 9, { align: "center" });
   b.doc.text("Sev.", x0 - 8, y0 + 35, { align: "center" });
 
-  // legend
+  /*
+   * A legenda sai da MESMA regra que pinta as celulas e que classifica os
+   * itens do inventario (classificarRisco, que replica a funcao do banco).
+   *
+   * Antes era uma lista escrita a mao com quatro classes inventadas — "Baixo
+   * (<=4)", "Moderado (<=9)", "Alto (<=16)", "Critico (>16)" — que nao existem
+   * em lugar nenhum do sistema. As classes de verdade sao cinco (Trivial,
+   * Toleravel, Moderado, Substancial, Intoleravel) e as faixas sao outras. O
+   * resultado: na mesma pagina, a legenda dizia "Alto" para a celula 15 e o
+   * quadro logo abaixo contava esse mesmo item como "Substancial", com cor que
+   * nao correspondia a nenhuma linha da legenda. Num documento tecnico isso e
+   * a escala descrevendo errado o proprio desenho.
+   *
+   * Escrita assim, mexer na regra de classificacao nao deixa a legenda para
+   * tras — ela e derivada, nao copiada.
+   */
+  const faixas = new Map<PgrClasse, number[]>();
+  for (let sev = 1; sev <= 5; sev++) {
+    for (let prob = 1; prob <= 5; prob++) {
+      const c = classificarMatriz(sev, prob);
+      if (!c) continue;
+      if (!faixas.has(c)) faixas.set(c, []);
+      faixas.get(c)!.push(sev * prob);
+    }
+  }
   const legX = x0 + 5 * cs + 8;
-  const legend: Array<["baixo" | "moderado" | "alto" | "critico", string]> = [
-    ["baixo", "Baixo (≤4)"], ["moderado", "Moderado (≤9)"], ["alto", "Alto (≤16)"], ["critico", "Crítico (>16)"],
-  ];
-  legend.forEach(([c, lbl], i) => {
-    const rgb: Record<string, [number, number, number]> = {
-      baixo: [34, 197, 94], moderado: [234, 179, 8], alto: [249, 115, 22], critico: [220, 38, 38],
-    };
-    const [r, g, bl] = rgb[c];
+  const ordem: PgrClasse[] = ["trivial", "toleravel", "moderado", "substancial", "intoleravel"];
+  ordem.filter((c) => faixas.has(c)).forEach((c, i) => {
+    const valores = faixas.get(c)!;
+    const menor = Math.min(...valores), maior = Math.max(...valores);
+    const [r, g, bl] = CLASSE_HEX[c];
     b.doc.setFillColor(r, g, bl);
     b.doc.rect(legX, y0 + i * 8, 5, 5, "F");
     b.doc.setTextColor(0); b.doc.setFontSize(8);
-    b.doc.text(lbl, legX + 7, y0 + i * 8 + 4);
+    b.doc.text(`${CLASSIF_LABEL[c]} (${menor === maior ? menor : `${menor} a ${maior}`})`, legX + 7, y0 + i * 8 + 4);
   });
   b.y = y0 + 5 * cs + 14;
 }
@@ -324,7 +354,12 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   if (ctx.unidadeNome) { pdf.text(`Unidade: ${ctx.unidadeNome}`, 12, b.y); b.y += 5; }
   if (ctx.codigoDocumento) { pdf.text(`Código do documento: ${ctx.codigoDocumento}`, 12, b.y); b.y += 5; }
   b.y += 4;
-  pdf.text(`Emitido em: ${fmtDate(pgr.data_emissao) || fmtDate(new Date().toISOString())}`, 12, b.y); b.y += 5;
+  /*
+   * O `||` de antes nunca entrava em acao: sem data de emissao, `fmtDate`
+   * devolve "—", que e texto valido — o lado direito era codigo morto e a capa
+   * saia com "Emitido em: —". A alternativa e testar o dado, nao o texto dele.
+   */
+  pdf.text(`Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`, 12, b.y); b.y += 5;
   pdf.text(`Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`, 12, b.y); b.y += 5;
   pdf.text(`Responsável Técnico: ${pgr.resp_tec_nome || "—"}`, 12, b.y); b.y += 5;
   pdf.text(`Registro Profissional: ${pgr.resp_tec_registro || "—"}`, 12, b.y); b.y += 8;
@@ -717,7 +752,10 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
       a.where_local && `Where: ${a.where_local}`,
       a.prazo && `When: até ${fmtDate(a.prazo)}`,
       a.how && `How: ${a.how}`,
-      a.how_much != null && `How much: R$ ${Number(a.how_much).toFixed(2)}`,
+      // `toFixed` escreve no formato americano: "R$ 18000.00". Num documento em
+      // português, com valores que chegam à casa dos milhares, isso se lê
+      // errado — o ponto vira separador de milhar aos olhos de quem assina.
+      a.how_much != null && `How much: ${fmtMoeda(a.how_much)}`,
     ].filter(Boolean) as string[];
     b.y += 11;
     linhas.forEach((l) => {
@@ -865,7 +903,8 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     ensure(b, 6);
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
     const linha = `${fmtDT(r.created_at)} · ${r.acao}` +
-      (r.versao_anterior != null && r.versao_nova != null ? ` · v${r.versao_anterior}→v${r.versao_nova}` : "") +
+      // "de v1 para v2" e nao "v1→v2": a fonte padrao nao desenha a seta.
+      (r.versao_anterior != null && r.versao_nova != null ? ` · de v${r.versao_anterior} para v${r.versao_nova}` : "") +
       (r.user_email ? ` · ${r.user_email}` : "") + (r.motivo ? ` — ${r.motivo}` : "");
     const ll = pdf.splitTextToSize(linha, 186);
     pdf.text(ll, 12, b.y + 3); b.y += 3 + ll.length * 3.2;
@@ -932,6 +971,41 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   }
 
   return pdf;
+}
+
+/**
+ * Abre o PDF numa aba, sem gravar nada.
+ *
+ * O caminho de sempre (`generateAndUploadPgrPdf`) faz muito mais do que
+ * desenhar: sobe o arquivo para o Drive, consome um numero de versao de PDF e
+ * registra a versao no banco. Para quem so quer CONFERIR como o rascunho vai
+ * sair antes de publicar, isso e caro e deixa rastro — cada olhada viraria uma
+ * versao a mais na lista, com pedido de MFA no meio.
+ *
+ * Aqui o documento e o MESMO: mesma funcao de desenho, mesma marca d'agua de
+ * rascunho. So nao existe depois de fechada a aba.
+ */
+export async function previsualizarPgrPdf(ctx: PgrPdfContext): Promise<void> {
+  const { doc: pgr } = ctx;
+  const comMarca = pgr.status === "rascunho" || pgr.status === "em_revisao";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  // A proxima versao ainda NAO existe: e so o que sairia impresso se a pessoa
+  // gerasse agora. Nada e reservado no banco por causa desta conferida.
+  const { data: ultimaV } = await (supabase.from as any)("pgr_pdf_versoes")
+    .select("pdf_versao").eq("pgr_id", pgr.id).order("pdf_versao", { ascending: false }).limit(1).maybeSingle();
+  const proxVersao = ((ultimaV?.pdf_versao as number | undefined) ?? 0) + 1;
+
+  const pdf = await render(ctx, {
+    qrUrl: `${origin}/pgr/validar/${pgr.id}?v=${proxVersao}`,
+    pdfVersao: proxVersao,
+    comMarca,
+  });
+  const url = URL.createObjectURL(pdf.output("blob"));
+  window.open(url, "_blank", "noopener,noreferrer");
+  // Solta o endereco depois de o navegador ter tido tempo de abrir a aba; sem
+  // isso o binario do PDF fica preso na memoria ate a aba principal fechar.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export interface GeneratePgrPdfResult {

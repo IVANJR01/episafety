@@ -12,7 +12,7 @@ import { FileText, Download, RefreshCw, PenLine, ExternalLink, AlertTriangle, Sh
 import { toast } from "sonner";
 import MfaActionButton from "@/components/cat/MfaActionButton";
 import { PgrDocumento, PgrStatus } from "@/lib/pgrTypes";
-import { generateAndUploadPgrPdf } from "@/lib/pgrPdf";
+import { generateAndUploadPgrPdf, previsualizarPgrPdf } from "@/lib/pgrPdf";
 import { resolveDocumentoUrl } from "@/lib/secureStorage";
 import { criterioDoGrupo, setoresDoGrupo, nomeDoGrupo, nomesUnicos } from "@/lib/sstEstrutura";
 
@@ -259,6 +259,24 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     };
   }
 
+  /*
+   * Conferir como o documento vai sair, sem gravar.
+   *
+   * "Gerar PDF" nao serve para isso: ele sobe o arquivo, consome um numero de
+   * versao e registra a versao no banco — cada olhada deixaria um PDF a mais
+   * na lista, e com pedido de MFA no meio. Quem esta com o PGR em rascunho
+   * quer ver antes de publicar, e ver nao deveria custar uma versao.
+   */
+  async function handlePrevisualizar() {
+    setBusy(true);
+    try {
+      const ctx = await carregarContexto();
+      await previsualizarPgrPdf(ctx as any);
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao montar a pré-visualização");
+    } finally { setBusy(false); }
+  }
+
   async function handleGerar() {
     if (bloqueado) { toast.error(`PGR ${status} — não é permitido gerar nova versão de PDF.`); return; }
     setBusy(true);
@@ -307,9 +325,14 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
               <FileText className="h-4 w-4" /> PDF técnico interno
             </CardTitle>
             <div className="flex flex-wrap gap-2">
+              {!bloqueado && (
+                <Button size="sm" variant="outline" onClick={handlePrevisualizar} disabled={busy}>
+                  <Eye className="h-4 w-4 mr-1" /> Ver como vai sair
+                </Button>
+              )}
               {ultima && (
                 <Button size="sm" variant="outline" onClick={() => abrirPdfVersao(ultima)}>
-                  <Eye className="h-4 w-4 mr-1" /> Visualizar PDF
+                  <FileText className="h-4 w-4 mr-1" /> Abrir PDF salvo
                 </Button>
               )}
               {!bloqueado && canExport && (
@@ -330,6 +353,15 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
           <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs">
             <b>Documento técnico interno.</b> Assinatura ICP-Brasil não implementada nesta fase.
             Hash SHA-256 + QR Code de validação interna.
+          </div>
+          {/* Sem esta linha os dois botões parecem o mesmo botão repetido, e a
+              pessoa usa "Gerar PDF" só para olhar — gastando uma versão. */}
+          <div className="rounded-md p-3 bg-slate-50 border border-slate-200 text-slate-700 text-xs">
+            <b>Ver como vai sair</b> abre o documento numa aba para conferência e não grava nada.
+            {" "}<b>Gerar PDF</b> cria uma versão numerada, guardada e rastreável — é a que vale como documento.
+            {status === "rascunho" || status === "em_revisao"
+              ? " Enquanto o PGR não for publicado, os dois saem com a marca d'água de rascunho."
+              : ""}
           </div>
           {desatualizado && (
             <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center gap-2">
