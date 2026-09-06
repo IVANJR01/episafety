@@ -1152,7 +1152,14 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
       onDragEnter={aoArrastar}
       onDragLeave={() => setArrastando(false)}
       onDrop={aoSoltar}
-      className={`rounded-md border bg-muted/30 p-3 space-y-2 transition-colors ${
+      /*
+        `h-full flex flex-col`: a caixa passa a OCUPAR a altura da celula em vez
+        de IMPOR a dela. Medido antes: em todos os itens era a foto que mandava
+        na altura do cartao (179 px contra 134 dos campos), e sobravam de 20 a
+        58 px abaixo dos campos — alturas fixas em px escolhidas no codigo, que
+        nunca coincidem com o conteudo real.
+      */
+      className={`flex h-full flex-col gap-2 rounded-md border bg-muted/30 p-3 transition-colors ${
         arrastando ? "border-primary border-2 bg-primary/5" : hasImage ? "" : "border-dashed"
       }`}
       data-solmat-image-block="true"
@@ -1162,12 +1169,22 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
       <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
 
-      {/* So o rotulo aqui. O botao "Remover foto" que ficava ao lado dizia a
-          mesma coisa que o X vermelho sobre a miniatura, e nesta coluna
-          estreita empurrava o rotulo para tres linhas. */}
-      <Label className="block text-xs font-semibold">
-        Foto do material <span className="font-normal text-muted-foreground">(opcional)</span>
-      </Label>
+      {/* Rotulo e nome do arquivo na MESMA linha: separados, gastavam duas
+          linhas da caixa sem nenhuma delas estar cheia. O botao "Remover foto"
+          que ficava aqui saiu porque dizia o mesmo que o X sobre a miniatura. */}
+      <div className="flex items-baseline justify-between gap-2">
+        <Label className="shrink-0 text-xs font-semibold">
+          Foto do material <span className="font-normal text-muted-foreground">(opcional)</span>
+        </Label>
+        {/* Nesta coluna estreita o nome do arquivo saia cortado ("6686-C…") e
+            nao dizia nada. Com foto vale o tamanho, que e curto e cabe; sem
+            foto, o limite, que e a informacao util antes de escolher. */}
+        <span className="shrink-0 text-[10px] text-muted-foreground" title={item.imagem_nome || undefined}>
+          {hasImage
+            ? (item.imagem_tamanho ? `${(item.imagem_tamanho / 1024).toFixed(0)} KB` : "")
+            : "Até 20 MB."}
+        </span>
+      </div>
 
       {/*
           Com foto, a miniatura fica AO LADO dos botoes, nao acima deles.
@@ -1176,9 +1193,12 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
           23 itens isso e rolagem pura. Lado a lado, a coluna da foto passa a
           ter a altura dos campos.
       */}
-      <div className={hasImage ? "flex items-start gap-2" : ""}>
+      {/* `flex-1` e `items-stretch`: com foto, a miniatura ocupa o que sobrar
+          da altura em vez de ficar num tamanho fixo — quando o item tem texto
+          longo, ela cresce junto no lugar de deixar branco. */}
+      <div className={`min-h-0 flex-1 ${hasImage ? "flex items-stretch gap-2" : "flex flex-col gap-2"}`}>
       {hasImage ? (
-        <div className="relative w-[104px] shrink-0 overflow-hidden rounded-md border bg-background">
+        <div className="relative min-h-[64px] w-[104px] shrink-0 overflow-hidden rounded-md border bg-background">
           {item.imagem_preview_url && porPerto ? (
             <img
               src={item.imagem_preview_url}
@@ -1188,10 +1208,18 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
                  formulario no momento em que a foto entra. */
               loading="lazy"
               decoding="async"
-              className="h-[92px] w-full object-contain"
+              /*
+                Posicionada em cima da moldura, e nao dentro do fluxo dela.
+                Com `h-full` num pai de altura automatica, `100%` resolve para
+                "automatico" e a IMAGEM passa a ditar a altura pela propria
+                proporcao: uma placa 3x4 em 104 px de largura exigia 138 px de
+                altura e voltava a esticar a caixa. Fora do fluxo, quem decide a
+                altura e a linha — e a imagem se ajusta ao que sobrar.
+              */
+              className="absolute inset-0 h-full w-full object-contain"
             />
           ) : (
-            <div className="flex h-[92px] w-full items-center justify-center px-1 text-center text-[11px] text-muted-foreground">
+            <div className="flex h-full w-full items-center justify-center px-1 text-center text-[11px] text-muted-foreground">
               {item.imagem_preview_url ? "" : "Imagem anexada"}
             </div>
           )}
@@ -1235,23 +1263,19 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
         <div className={`grid gap-2 ${hasImage ? "flex-1 content-start" : "grid-cols-2"}`}>
           <Label
             htmlFor={cameraId}
-            className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground sm:min-h-[36px] sm:py-1"
           >
             <Camera className="w-4 h-4" /> Câmera
           </Label>
           <Label
             htmlFor={inputId}
-            className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground sm:min-h-[36px] sm:py-1"
           >
             <ImageIcon className="w-4 h-4" /> Galeria
           </Label>
         </div>
       )}
 
-      </div>
-
-      <div className="text-[11px] text-muted-foreground">
-        {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "Até 20 MB."}
       </div>
     </div>
   );
