@@ -928,7 +928,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       Os dois campos de texto passam a ter a metade da largura
                       cada, em vez de um pela metade e o outro sozinho.
                   */}
-                  <div className="grid grid-cols-6 md:grid-cols-12 gap-2 [&>div]:flex [&>div]:flex-col [&>div]:justify-end">
+                  <div className="grid grid-cols-6 md:grid-cols-12 gap-2 items-start">
                     {it.tipo_item === "EPI" && (
                       <div className="col-span-6 md:col-span-12">
                         <Label className="text-xs">Buscar do cadastro de EPIs</Label>
@@ -972,7 +972,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       </Select>
                     </div>
                     <div className="col-span-2 md:col-span-2">
-                      <Label className="text-xs">Qtd solicitada *</Label>
+                      <Label className="text-xs whitespace-nowrap">Qtd *</Label>
                       <Input type="number" min={0} step={1} value={it.quantidade_solicitada} onChange={(e) => updateItem(idx, { quantidade_solicitada: Number(e.target.value) })} disabled={readOnly} />
                     </div>
                     {/*
@@ -985,11 +985,11 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     */}
                     <div className="col-span-6 md:col-span-6">
                       <Label className="text-xs">Justificativa do item</Label>
-                      <Textarea rows={3} className="resize-y" value={it.justificativa_item} onChange={(e) => updateItem(idx, { justificativa_item: e.target.value })} disabled={readOnly} />
+                      <TextoQueCresce value={it.justificativa_item} onChange={(v) => updateItem(idx, { justificativa_item: v })} disabled={readOnly} />
                     </div>
                     <div className="col-span-6 md:col-span-6">
                       <Label className="text-xs">Observações</Label>
-                      <Textarea rows={3} className="resize-y" value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
+                      <TextoQueCresce value={it.observacoes} onChange={(v) => updateItem(idx, { observacoes: v })} disabled={readOnly} />
                     </div>
                   </div>
                     </div>
@@ -1025,6 +1025,60 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Caixa de texto que tem a altura do proprio conteudo.
+ *
+ * Com altura fixa de tres linhas sobrava branco em quase todo item — a maioria
+ * das observacoes cabe em uma linha — e mesmo assim um texto longo continuava
+ * escondido atras da barra de rolagem interna. As duas coisas saem da mesma
+ * causa: uma altura escolhida no codigo nunca serve para o que a pessoa
+ * escreveu.
+ *
+ * `content-visibility: auto` no cartao do item faz o navegador NAO desenhar o
+ * que esta fora da tela, e ali `scrollHeight` volta 0. Aplicar esse 0 achataria
+ * o campo; por isso a medida so vale quando ha altura de verdade, e e refeita
+ * quando o item aparece.
+ */
+function TextoQueCresce({ value, onChange, disabled, id }: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  id?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+
+  const ajustar = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(ajustar, [value]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver((e) => { if (e.some((x) => x.isIntersecting)) ajustar(); });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <Textarea
+      id={id}
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      // `overflow-hidden`: quem cresce e o campo, entao barra de rolagem
+      // interna so esconderia texto. `min-h` deixa o campo vazio do tamanho de
+      // um campo comum, para a linha nao ficar irregular.
+      className="min-h-[38px] resize-y overflow-hidden"
+    />
   );
 }
 
