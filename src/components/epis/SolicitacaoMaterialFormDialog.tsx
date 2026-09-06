@@ -668,7 +668,10 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         // substituto de `sm:max-w-lg`. Foi o que aconteceu: a janela ficou nos
         // 512px do padrao, mais estreita do que a gaveta que ela substituiu.
         "sm:flex sm:flex-col sm:p-0 sm:gap-0",
-        "sm:w-[calc(100vw-4rem)] sm:max-w-[1400px]",
+        // O teto era 1400px: numa tela de 1920 sobravam 260px de fundo escuro
+        // de cada lado, com o formulario espremido no meio. Uma solicitacao de
+        // 23 itens e justamente onde essa largura faz falta.
+        "sm:w-[calc(100vw-4rem)] sm:max-w-[1800px]",
         "sm:h-[92vh] sm:max-h-[92vh]",
         // A base traz `overflow-y-auto` (e `sm:overflow-y-auto`). Com o corpo
         // tambem rolando (flex-1 overflow-y-auto), ficavam DUAS areas de
@@ -721,7 +724,12 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* Dados gerais */}
             <Card>
-              <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 [&>*]:min-w-0">
+              {/* Quatro colunas no computador, e nao tres: com tres, a
+                  "Prioridade" sobrava sozinha na ultima linha ocupando um
+                  terco dela — quanto mais larga a janela, maior o vazio ao
+                  lado. Com quatro, e com o titulo esticando conforme exista ou
+                  nao a "Obra / Local", as linhas fecham nos dois casos. */}
+              <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 [&>*]:min-w-0">
                 {rascunhoRecuperado && (
                   <div className="sm:col-span-3 flex flex-wrap items-center gap-2 rounded border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
                     <span>
@@ -742,7 +750,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                   </div>
                 )}
 
-                <div className="sm:col-span-2">
+                <div className={`sm:col-span-2 ${obras.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}`}>
                   <Label>Título *</Label>
                   <Input value={head.titulo} onChange={(e) => setHead({ ...head, titulo: e.target.value })} disabled={readOnly} placeholder="Ex: Reposição EPIs frente de serviço" />
                 </div>
@@ -809,7 +817,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     2/3 da largura, deixando uma coluna vazia ao lado. Ficam
                     recolhidos ate serem pedidos. O resumo diz o que ja tem
                     conteudo, para nada ficar escondido sem aviso. */}
-                <details className="sm:col-span-3 rounded-lg border bg-muted/30 px-3 py-2" open={temDetalhes}>
+                <details className="sm:col-span-2 lg:col-span-4 rounded-lg border bg-muted/30 px-3 py-2" open={temDetalhes}>
                   <summary className="cursor-pointer select-none text-xs font-medium text-slate-700">
                     Detalhes {temDetalhes ? "— preenchidos" : "(opcional)"}
                   </summary>
@@ -892,8 +900,41 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       camera na mao. */}
                   <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
                     <div className="order-last lg:order-first min-w-0 space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
-                    <div className="sm:col-span-2">
+                  {/*
+                      Grade de 12 colunas com linhas que FECHAM sempre.
+
+                      Antes eram 6 colunas num fluxo unico, e a conta nao
+                      fechava: Qtd(1) + Justificativa(3) + Observacoes(3) da 7,
+                      entao "Observacoes" caia sozinha na linha seguinte
+                      ocupando metade dela. Medido numa tela de 1920: 538 px
+                      mortos ao lado do campo, enquanto o proprio campo era
+                      pequeno demais para o texto que recebe ("Tamanho: 60x40cm
+                      / Material: ACM 3mm..." saia cortado).
+
+                      Agora sao tres linhas fixas, e cada uma soma 12:
+                      · busca de EPI (so quando o tipo e EPI) ocupa a linha
+                        inteira — e um atalho de preenchimento, nao um campo do
+                        item;
+                      · Tipo 2 + Nome 6 + Referencia 2 + Unidade 1 + Qtd 1;
+                      · Justificativa 6 + Observacoes 6.
+
+                      Os dois campos de texto passam a ter a metade da largura
+                      cada, em vez de um pela metade e o outro sozinho.
+                  */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                    {it.tipo_item === "EPI" && (
+                      <div className="md:col-span-12">
+                        <Label className="text-xs">Buscar do cadastro de EPIs</Label>
+                        <Select value={it.epi_id || "__manual"} onValueChange={(v) => v === "__manual" ? updateItem(idx, { epi_id: null }) : pickEpi(idx, v)} disabled={readOnly}>
+                          <SelectTrigger><SelectValue placeholder="Selecione um EPI..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__manual">— Digitar manualmente —</SelectItem>
+                            {epis.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome}{e.ca ? ` — CA ${e.ca}` : ""}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="md:col-span-2">
                       <Label className="text-xs">Tipo</Label>
                       <Select value={it.tipo_item} onValueChange={(v) => updateItem(idx, { tipo_item: v, epi_id: v === "EPI" ? it.epi_id : null })} disabled={readOnly}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -906,27 +947,15 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         </SelectContent>
                       </Select>
                     </div>
-                    {it.tipo_item === "EPI" && (
-                      <div className="sm:col-span-4">
-                        <Label className="text-xs">Buscar do cadastro de EPIs</Label>
-                        <Select value={it.epi_id || "__manual"} onValueChange={(v) => v === "__manual" ? updateItem(idx, { epi_id: null }) : pickEpi(idx, v)} disabled={readOnly}>
-                          <SelectTrigger><SelectValue placeholder="Selecione um EPI..." /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__manual">— Digitar manualmente —</SelectItem>
-                            {epis.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome}{e.ca ? ` — CA ${e.ca}` : ""}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    <div className="sm:col-span-4">
+                    <div className="md:col-span-6">
                       <Label className="text-xs">Nome do item *</Label>
                       <Input data-campo="nome-item" value={it.nome_item} onChange={(e) => updateItem(idx, { nome_item: e.target.value })} disabled={readOnly} />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <Label className="text-xs">Referência</Label>
                       <Input value={it.ca} onChange={(e) => updateItem(idx, { ca: e.target.value })} disabled={readOnly} />
                     </div>
-                    <div>
+                    <div className="md:col-span-1">
                       <Label className="text-xs">Unidade</Label>
                       <Select value={it.unidade_medida} onValueChange={(v) => updateItem(idx, { unidade_medida: v })} disabled={readOnly}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -935,15 +964,15 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="md:col-span-1">
                       <Label className="text-xs">Qtd solicitada *</Label>
                       <Input type="number" min={0} step={1} value={it.quantidade_solicitada} onChange={(e) => updateItem(idx, { quantidade_solicitada: Number(e.target.value) })} disabled={readOnly} />
                     </div>
-                    <div className="sm:col-span-3">
+                    <div className="md:col-span-6">
                       <Label className="text-xs">Justificativa do item</Label>
                       <Input value={it.justificativa_item} onChange={(e) => updateItem(idx, { justificativa_item: e.target.value })} disabled={readOnly} />
                     </div>
-                    <div className="sm:col-span-3">
+                    <div className="md:col-span-6">
                       <Label className="text-xs">Observações</Label>
                       <Input value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
                     </div>
@@ -1050,7 +1079,7 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
       onDragLeave={() => setArrastando(false)}
       onDrop={aoSoltar}
       className={`rounded-md border bg-muted/30 p-3 space-y-2 transition-colors ${
-        arrastando ? "border-primary border-2 bg-primary/5" : ""
+        arrastando ? "border-primary border-2 bg-primary/5" : hasImage ? "" : "border-dashed"
       }`}
       data-solmat-image-block="true"
     >
@@ -1059,14 +1088,12 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
       <input id={cameraId} type="file" accept="image/*" capture="environment" className="sr-only"
         onChange={(e) => { onPick(idx, e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
 
-      <div className="flex items-center justify-between gap-2">
-        <Label className="text-xs font-semibold">Foto do material <span className="font-normal text-muted-foreground">(opcional)</span></Label>
-        {hasImage && !readOnly && (
-          <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={() => onClear(idx)}>
-            <X className="w-4 h-4 mr-1" /> Remover foto
-          </Button>
-        )}
-      </div>
+      {/* So o rotulo aqui. O botao "Remover foto" que ficava ao lado dizia a
+          mesma coisa que o X vermelho sobre a miniatura, e nesta coluna
+          estreita empurrava o rotulo para tres linhas. */}
+      <Label className="block text-xs font-semibold">
+        Foto do material <span className="font-normal text-muted-foreground">(opcional)</span>
+      </Label>
 
       {hasImage ? (
         <div className="relative overflow-hidden rounded-md border bg-background">
@@ -1098,25 +1125,30 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
           )}
         </div>
       ) : (
-        <div className="rounded-md border border-dashed bg-background px-2 py-4 text-center text-muted-foreground">
-          <ImageIcon className="mx-auto h-6 w-6" />
-          {/* A caixa vazia dizia so "Sem foto" — nao contava que da para colar
-              nem arrastar, e essas duas sao justamente as formas rapidas. */}
-          <div className="mt-1 text-xs font-medium">Sem foto</div>
-          {!readOnly && (
-            /* So a partir de tela de computador: no celular nao ha Ctrl+V nem
-               arrastar, e a dica viraria instrucao para algo impossivel. La os
-               tres botoes abaixo ja cobrem. */
-            <div className="mt-1 hidden text-[11px] leading-tight sm:block">
+        /*
+          Sem foto a caixa fica RASA de proposito.
+          Antes havia uma moldura tracejada alta (icone grande + "Sem foto" +
+          dica) dentro da caixa que ja e tracejada — e ela sozinha deixava a
+          coluna da foto com 296 px contra 136 px dos campos: 173 px vazios
+          embaixo de cada item. Numa solicitacao de 23 itens isso e mais de
+          4.000 px de rolagem sem nada dentro.
+
+          A area de soltar nao se perdeu: quem recebe o arrastar sempre foi a
+          caixa inteira, nao aquela moldura.
+        */
+        <div className="hidden text-[11px] leading-tight text-muted-foreground sm:block">
+          {readOnly ? "Sem foto." : (
+            <>
               Cole com <kbd className="rounded border bg-muted px-1 font-sans">Ctrl</kbd>+
-              <kbd className="rounded border bg-muted px-1 font-sans">V</kbd> ou arraste a imagem aqui
-            </div>
+              <kbd className="rounded border bg-muted px-1 font-sans">V</kbd>, arraste a imagem aqui
+              ou use os botões abaixo.
+            </>
           )}
         </div>
       )}
 
       {!readOnly && (
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+        <div className="grid grid-cols-2 gap-2">
           <Label
             htmlFor={cameraId}
             className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
