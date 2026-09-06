@@ -729,7 +729,14 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                   terco dela — quanto mais larga a janela, maior o vazio ao
                   lado. Com quatro, e com o titulo esticando conforme exista ou
                   nao a "Obra / Local", as linhas fecham nos dois casos. */}
-              <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 [&>*]:min-w-0">
+              {/* Duas colunas ja no celular: as duas datas cabem lado a lado e
+                  poupam uma linha inteira de rolagem. Os campos de nome longo
+                  (unidade, obra, solicitante) continuam ocupando a largura. */}
+              {/* `justify-end` nos filhos alinha os CAMPOS pela base.
+                  Sem isso, um rotulo que quebra em duas linhas ("Data de
+                  Necessidade" numa coluna estreita de celular) empurra o campo
+                  dele para baixo e ele fica desencontrado do vizinho. */}
+              <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 [&>*]:min-w-0 [&>div]:flex [&>div]:flex-col [&>div]:justify-end">
                 {rascunhoRecuperado && (
                   <div className="sm:col-span-3 flex flex-wrap items-center gap-2 rounded border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
                     <span>
@@ -750,7 +757,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                   </div>
                 )}
 
-                <div className={`sm:col-span-2 ${obras.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}`}>
+                <div className={`col-span-2 ${obras.length > 0 ? "lg:col-span-2" : "lg:col-span-3"}`}>
                   <Label>Título *</Label>
                   <Input value={head.titulo} onChange={(e) => setHead({ ...head, titulo: e.target.value })} disabled={readOnly} placeholder="Ex: Reposição EPIs frente de serviço" />
                 </div>
@@ -758,7 +765,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     seletor era o de `obras`, tabela vazia nesta empresa — a
                     lista so oferecia "— Nenhuma —" com tres filiais
                     cadastradas ao lado. */}
-                <div>
+                <div className="col-span-2 lg:col-span-1">
                   <Label>Unidade / Filial</Label>
                   <Select value={head.unidade_id || "__none"}
                     onValueChange={(v) => setHead({ ...head, unidade_id: v === "__none" ? "" : v })}
@@ -776,7 +783,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                 {/* Obras so aparece quando ha obra cadastrada: seletor com uma
                     opcao unica "— Nenhuma —" e campo que nunca pode ser usado. */}
                 {obras.length > 0 && (
-                  <div>
+                  <div className="col-span-2 lg:col-span-1">
                     <Label>Obra / Local (cadastrado)</Label>
                     <Select value={head.obra_id || "__none"} onValueChange={(v) => setHead({ ...head, obra_id: v === "__none" ? "" : v })} disabled={readOnly}>
                       <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -787,7 +794,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     </Select>
                   </div>
                 )}
-                <div>
+                <div className="col-span-2 lg:col-span-1">
                   <Label>Solicitante</Label>
                   <Input value={head.solicitante_nome} onChange={(e) => setHead({ ...head, solicitante_nome: e.target.value })} disabled={readOnly} />
                 </div>
@@ -799,7 +806,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                   <Label>Data de Necessidade</Label>
                   <Input type="date" value={head.data_necessidade} onChange={(e) => setHead({ ...head, data_necessidade: e.target.value })} disabled={readOnly} />
                 </div>
-                <div>
+                <div className="col-span-2 lg:col-span-1">
                   <Label>Prioridade</Label>
                   <Select value={head.prioridade} onValueChange={(v: any) => setHead({ ...head, prioridade: v })} disabled={readOnly}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -817,7 +824,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                     2/3 da largura, deixando uma coluna vazia ao lado. Ficam
                     recolhidos ate serem pedidos. O resumo diz o que ja tem
                     conteudo, para nada ficar escondido sem aviso. */}
-                <details className="sm:col-span-2 lg:col-span-4 rounded-lg border bg-muted/30 px-3 py-2" open={temDetalhes}>
+                <details className="col-span-2 lg:col-span-4 rounded-lg border bg-muted/30 px-3 py-2" open={temDetalhes}>
                   <summary className="cursor-pointer select-none text-xs font-medium text-slate-700">
                     Detalhes {temDetalhes ? "— preenchidos" : "(opcional)"}
                   </summary>
@@ -921,9 +928,9 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       Os dois campos de texto passam a ter a metade da largura
                       cada, em vez de um pela metade e o outro sozinho.
                   */}
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                  <div className="grid grid-cols-6 md:grid-cols-12 gap-2 [&>div]:flex [&>div]:flex-col [&>div]:justify-end">
                     {it.tipo_item === "EPI" && (
-                      <div className="md:col-span-12">
+                      <div className="col-span-6 md:col-span-12">
                         <Label className="text-xs">Buscar do cadastro de EPIs</Label>
                         <Select value={it.epi_id || "__manual"} onValueChange={(v) => v === "__manual" ? updateItem(idx, { epi_id: null }) : pickEpi(idx, v)} disabled={readOnly}>
                           <SelectTrigger><SelectValue placeholder="Selecione um EPI..." /></SelectTrigger>
@@ -934,7 +941,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         </Select>
                       </div>
                     )}
-                    <div className="md:col-span-2">
+                    <div className="col-span-6 md:col-span-2">
                       <Label className="text-xs">Tipo</Label>
                       <Select value={it.tipo_item} onValueChange={(v) => updateItem(idx, { tipo_item: v, epi_id: v === "EPI" ? it.epi_id : null })} disabled={readOnly}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -947,15 +954,15 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="md:col-span-5">
+                    <div className="col-span-6 md:col-span-5">
                       <Label className="text-xs">Nome do item *</Label>
                       <Input data-campo="nome-item" value={it.nome_item} onChange={(e) => updateItem(idx, { nome_item: e.target.value })} disabled={readOnly} />
                     </div>
-                    <div className="md:col-span-2">
+                    <div className="col-span-2 md:col-span-2">
                       <Label className="text-xs">Referência</Label>
                       <Input value={it.ca} onChange={(e) => updateItem(idx, { ca: e.target.value })} disabled={readOnly} />
                     </div>
-                    <div className="md:col-span-1">
+                    <div className="col-span-2 md:col-span-1">
                       <Label className="text-xs">Unidade</Label>
                       <Select value={it.unidade_medida} onValueChange={(v) => updateItem(idx, { unidade_medida: v })} disabled={readOnly}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -964,7 +971,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="md:col-span-2">
+                    <div className="col-span-2 md:col-span-2">
                       <Label className="text-xs">Qtd solicitada *</Label>
                       <Input type="number" min={0} step={1} value={it.quantidade_solicitada} onChange={(e) => updateItem(idx, { quantidade_solicitada: Number(e.target.value) })} disabled={readOnly} />
                     </div>
@@ -976,11 +983,11 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         sumia para fora do campo. De quebra, a altura que sobrava
                         embaixo dos campos passa a ser usada por eles.
                     */}
-                    <div className="md:col-span-6">
+                    <div className="col-span-6 md:col-span-6">
                       <Label className="text-xs">Justificativa do item</Label>
                       <Textarea rows={3} className="resize-y" value={it.justificativa_item} onChange={(e) => updateItem(idx, { justificativa_item: e.target.value })} disabled={readOnly} />
                     </div>
-                    <div className="md:col-span-6">
+                    <div className="col-span-6 md:col-span-6">
                       <Label className="text-xs">Observações</Label>
                       <Textarea rows={3} className="resize-y" value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
                     </div>
@@ -998,14 +1005,19 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         )}
         </NetworkErrorBoundary>
 
-        <div className="border-t p-3 flex flex-col sm:flex-row gap-2 sm:justify-end bg-background">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+        {/* No celular os tres botoes ficavam empilhados e comiam ~230 px fixos
+            da tela — quase um quarto da altura util, o tempo todo. Em duas
+            colunas viram duas linhas, com o botao principal ocupando a de
+            baixo inteira. No computador continuam em fila a direita. */}
+        <div className="border-t p-3 grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:justify-end bg-background">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}
+            className={readOnly ? "col-span-2 sm:col-auto" : ""}>Cancelar</Button>
           {!readOnly && (
             <>
               <Button variant="secondary" onClick={() => save("rascunho")} disabled={saving} className="gap-2">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar rascunho
               </Button>
-              <Button onClick={() => save("enviada")} disabled={saving} className="gap-2">
+              <Button onClick={() => save("enviada")} disabled={saving} className="col-span-2 gap-2 sm:col-auto">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Enviar solicitação
               </Button>
             </>
