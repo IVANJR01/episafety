@@ -947,7 +947,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="md:col-span-6">
+                    <div className="md:col-span-5">
                       <Label className="text-xs">Nome do item *</Label>
                       <Input data-campo="nome-item" value={it.nome_item} onChange={(e) => updateItem(idx, { nome_item: e.target.value })} disabled={readOnly} />
                     </div>
@@ -964,17 +964,25 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="md:col-span-1">
+                    <div className="md:col-span-2">
                       <Label className="text-xs">Qtd solicitada *</Label>
                       <Input type="number" min={0} step={1} value={it.quantidade_solicitada} onChange={(e) => updateItem(idx, { quantidade_solicitada: Number(e.target.value) })} disabled={readOnly} />
                     </div>
+                    {/*
+                        Caixas de tres linhas, e nao campos de uma linha so.
+                        "Observacoes" recebe descricao de material inteira
+                        ("Tamanho: 60x40cm / Material: ACM 3mm (ABNT NBR 16179),
+                        com pelicula refletiva...") e numa linha unica o texto
+                        sumia para fora do campo. De quebra, a altura que sobrava
+                        embaixo dos campos passa a ser usada por eles.
+                    */}
                     <div className="md:col-span-6">
                       <Label className="text-xs">Justificativa do item</Label>
-                      <Input value={it.justificativa_item} onChange={(e) => updateItem(idx, { justificativa_item: e.target.value })} disabled={readOnly} />
+                      <Textarea rows={3} className="resize-y" value={it.justificativa_item} onChange={(e) => updateItem(idx, { justificativa_item: e.target.value })} disabled={readOnly} />
                     </div>
                     <div className="md:col-span-6">
                       <Label className="text-xs">Observações</Label>
-                      <Input value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
+                      <Textarea rows={3} className="resize-y" value={it.observacoes} onChange={(e) => updateItem(idx, { observacoes: e.target.value })} disabled={readOnly} />
                     </div>
                   </div>
                     </div>
@@ -1095,8 +1103,16 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
         Foto do material <span className="font-normal text-muted-foreground">(opcional)</span>
       </Label>
 
+      {/*
+          Com foto, a miniatura fica AO LADO dos botoes, nao acima deles.
+          Empilhada ela deixava a caixa com 265 px contra 176 px dos campos —
+          142 px vazios embaixo de cada item que tem foto, e numa solicitacao de
+          23 itens isso e rolagem pura. Lado a lado, a coluna da foto passa a
+          ter a altura dos campos.
+      */}
+      <div className={hasImage ? "flex items-start gap-2" : ""}>
       {hasImage ? (
-        <div className="relative overflow-hidden rounded-md border bg-background">
+        <div className="relative w-[104px] shrink-0 overflow-hidden rounded-md border bg-background">
           {item.imagem_preview_url && porPerto ? (
             <img
               src={item.imagem_preview_url}
@@ -1106,10 +1122,10 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
                  formulario no momento em que a foto entra. */
               loading="lazy"
               decoding="async"
-              className="h-32 w-full object-contain"
+              className="h-[92px] w-full object-contain"
             />
           ) : (
-            <div className="flex h-32 w-full items-center justify-center text-sm text-muted-foreground">
+            <div className="flex h-[92px] w-full items-center justify-center px-1 text-center text-[11px] text-muted-foreground">
               {item.imagem_preview_url ? "" : "Imagem anexada"}
             </div>
           )}
@@ -1117,10 +1133,10 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
             <button
               type="button"
               aria-label="Remover imagem do material"
-              className="absolute right-2 top-2 rounded-full bg-destructive p-1 text-destructive-foreground"
+              className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground"
               onClick={() => onClear(idx)}
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
@@ -1148,7 +1164,9 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
       )}
 
       {!readOnly && (
-        <div className="grid grid-cols-2 gap-2">
+        // Com foto os botoes ficam empilhados na coluna estreita ao lado dela;
+        // sem foto, lado a lado ocupando a caixa inteira.
+        <div className={`grid gap-2 ${hasImage ? "flex-1 content-start" : "grid-cols-2"}`}>
           <Label
             htmlFor={cameraId}
             className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
@@ -1163,6 +1181,8 @@ function ItemImageField({ item, idx, readOnly, onPick, onClear }: {
           </Label>
         </div>
       )}
+
+      </div>
 
       <div className="text-[11px] text-muted-foreground">
         {item.imagem_nome ? `${item.imagem_nome}${item.imagem_tamanho ? ` • ${(item.imagem_tamanho / 1024).toFixed(0)} KB` : ""}` : "Até 20 MB."}
