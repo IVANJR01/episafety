@@ -210,6 +210,9 @@ h1 .thin{color:var(--muted);font-weight:500}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btn.play{background:var(--accent);border-color:var(--accent);color:#14100C;min-width:96px}
 .btn.on{background:var(--blue);border-color:var(--blue);color:#0B121A}
+.vozmsg{font-size:12.5px;color:var(--muted);flex-basis:100%;line-height:1.4}
+.vozmsg.bad{color:#E9B4B6}
+.vozmsg.ok{color:#9FD1AE}
 .tc{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted)}
 .tc b{color:var(--txt);font-weight:500}
 .spd{display:flex;gap:1px;margin-left:auto}
@@ -250,12 +253,19 @@ h1 .thin{color:var(--muted);font-weight:500}
 .shot.on .c{color:var(--accent)}
 .shot.on .x{color:var(--txt)}
 .narr{max-height:250px;overflow-y:auto}
-.nl{padding:7px 13px;border-bottom:1px solid #22272E}
+.nl{padding:7px 13px;border-bottom:1px solid #22272E;cursor:pointer;
+  display:flex;gap:8px;align-items:flex-start;background:none;border-left:0;
+  border-right:0;border-top:0;width:100%;text-align:left;font:inherit}
+.nl:hover{background:#1B2129}
+.nl:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.nl .spk{flex:none;color:var(--dim);font-size:12px;line-height:1.5}
+.nl:hover .spk{color:var(--blue)}
+.nl .bx{min-width:0}
 .nl:last-child{border-bottom:none}
 .nl .w{font-family:var(--cond);text-transform:uppercase;letter-spacing:.13em;font-size:9.5px;
   color:var(--dim);display:block;margin-bottom:2px}
 .nl .x{font-size:12.5px;color:#8E96A2;line-height:1.4}
-.nl.on{background:#0F1B26;border-left:3px solid var(--blue);padding-left:10px}
+.nl.on{background:#0F1B26;box-shadow:inset 3px 0 0 var(--blue)}
 .nl.on .w{color:var(--blue)}
 .nl.on .x{color:var(--txt)}
 .notes li{font-size:12.5px;color:#9AA2AD;line-height:1.45;margin-bottom:5px}
@@ -322,6 +332,9 @@ footer code{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
         <button class="btn" id="bVoz">🔊 Narração</button>
         <span class="tc"><b id="tNow">00:00</b> / <span id="tTot">36:00</span></span>
         <span class="spd" id="spd"></span>
+        <span class="vozmsg" id="vozMsg">A narração usa a voz do próprio navegador. Se não sair som,
+        clique numa fala no painel “Narração da cena”, à direita — e note que a legenda embaixo do
+        quadro sempre mostra o que está sendo dito, com ou sem áudio.</span>
       </div>
     </div>
 
@@ -360,9 +373,10 @@ footer code{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
 
 <footer>
   Gerado a partir de <code>modulo-01-roteiro.md</code>, <code>modulo-01-prompts-video-ia.md</code>
-  e <code>modulo-01-narracao-tts.md</code>. A narração usa a voz do próprio navegador (pt-BR) e é
-  só uma referência de ritmo — a locução final é gravada à parte. Acima de 2×, a voz é desligada
-  automaticamente.
+  e <code>modulo-01-narracao-tts.md</code>. A narração aqui é só uma referência de ritmo, lida pela
+  voz do próprio navegador — a locução final é gravada à parte, com voz humana ou serviço de TTS.
+  Nem toda janela libera áudio para uma página incorporada; se ficar mudo, abra este arquivo
+  direto no Chrome ou no Edge. Acima de 2×, a voz é desligada automaticamente.
 </footer>
 </div>
 
@@ -779,7 +793,8 @@ $("track").setAttribute("aria-valuemax", TOTAL);
 
 /* ============ narração (voz do navegador) ============ */
 const synth = window.speechSynthesis;
-let ptVoice = null;
+let ptVoice = null, primed = false, probing = false;
+
 function pickVoice(){
   if(!synth) return;
   const vs = synth.getVoices();
@@ -787,28 +802,84 @@ function pickVoice(){
 }
 if(synth){ pickVoice(); synth.onvoiceschanged = pickVoice; }
 
+function msg(txt, cls){
+  const m = $("vozMsg");
+  m.textContent = txt;
+  m.className = "vozmsg" + (cls ? " " + cls : "");
+}
+
+function utter(txt){
+  const u = new SpeechSynthesisUtterance(txt);
+  u.lang = "pt-BR";
+  if(ptVoice) u.voice = ptVoice;
+  u.rate = Math.min(1.6, 0.92 * speed);
+  u.pitch = .95;
+  return u;
+}
+
+/* fala imediata, sempre dentro do gesto do usuário — é isso que libera o áudio */
+function speakNow(txt, onFail){
+  if(!synth){ if(onFail) onFail("Este navegador não tem voz sintética."); return; }
+  try{
+    synth.cancel(); synth.resume();
+    const u = utter(txt);
+    let started = false;
+    u.onstart = () => { started = true; primed = true; };
+    u.onerror = e => { if(onFail) onFail("O navegador bloqueou a voz (" + (e.error || "erro") + ")."); };
+    synth.speak(u);
+    setTimeout(() => { if(!started && onFail) onFail("O navegador não deixou a voz tocar aqui."); }, 1600);
+  }catch(err){ if(onFail) onFail("Não foi possível iniciar a voz."); }
+}
+
 function setVoz(on){
   voz = on;
   $("bVoz").classList.toggle("on", voz);
   $("bVoz").textContent = voz ? "🔊 Narração ligada" : "🔇 Narração";
   if(!voz && synth) synth.cancel();
 }
+
 $("bVoz").addEventListener("click", () => {
-  if(!synth){ $("bVoz").textContent = "Voz indisponível"; $("bVoz").disabled = true; return; }
-  if(!voz && speed > 2){ speed = 2;
-    [...$("spd").children].forEach(c => c.classList.toggle("on", +c.dataset.s === speed)); }
-  setVoz(!voz);
+  if(!synth){
+    msg("Este navegador não tem voz sintética. Acompanhe pela legenda na tela — o texto de cada fala aparece embaixo do quadro.", "bad");
+    $("bVoz").disabled = true;
+    return;
+  }
+  if(voz){ setVoz(false); msg("Narração desligada."); return; }
+  if(speed > 2){
+    speed = 2;
+    [...$("spd").children].forEach(c => c.classList.toggle("on", +c.dataset.s === speed));
+  }
+  setVoz(true);
+  probing = true;
+  msg("Testando a voz…");
+  speakNow("Narração ligada.", why => {
+    probing = false;
+    msg(why + " Tente clicar numa fala no painel à direita (em alguns navegadores só toca com clique direto). Se continuar mudo, abra o arquivo modulo-01-animatic.html no Chrome ou Edge — é o mesmo player e lá a voz funciona. A legenda embaixo do quadro traz todo o texto falado.", "bad");
+  });
+  setTimeout(() => {
+    if(probing && primed){
+      probing = false;
+      const s0 = S[sceneAt(t)], nx = s0.nar.find(n => n.t > t - s0.start);
+      msg("Voz ok" + (ptVoice ? " (" + ptVoice.name + ")" : "") + "."
+        + (nx ? " Próxima fala em " + mmss(s0.start + nx.t) + "." : ""), "ok");
+    }
+  }, 1700);
 });
 setVoz(false);
 
+/* fala automática durante a reprodução */
 function speak(txt){
   if(!voz || !synth) return;
-  synth.cancel();
-  const u = new SpeechSynthesisUtterance(txt);
-  u.lang = "pt-BR"; if(ptVoice) u.voice = ptVoice;
-  u.rate = Math.min(1.6, 0.92 * speed); u.pitch = .95;
-  synth.speak(u);
+  try{ synth.cancel(); synth.resume(); synth.speak(utter(txt)); }catch(err){}
 }
+
+/* clicar numa fala salta para ela e toca na hora (gesto direto do usuário) */
+$("narr").addEventListener("click", e => {
+  const b = e.target.closest(".nl"); if(!b) return;
+  const s0 = S[sceneAt(t)], i = +b.dataset.i;
+  seek(s0.start + s0.nar[i].t);
+  speakNow(s0.nar[i].x, why => msg(why + " Esta janela não libera áudio. Abra o arquivo modulo-01-animatic.html no Chrome ou no Edge, ou acompanhe pela legenda embaixo do quadro — ela traz todo o texto falado.", "bad"));
+});
 
 /* ============ render ============ */
 function render(){
@@ -844,8 +915,10 @@ function render(){
     $("shots").innerHTML = s.p.map(p =>
       `<div class="shot"><span class="c">${p.c}</span><span class="x">${p.d}</span></div>`).join("");
     [...$("shots").children].forEach((c,i) => c.classList.toggle("on", i === pi));
-    $("narr").innerHTML = s.nar.map(n =>
-      `<div class="nl"><span class="w">${n.w}</span><span class="x">${n.x}</span></div>`).join("");
+    $("narr").innerHTML = s.nar.map((n,i) =>
+      `<button class="nl" data-i="${i}" title="Ouvir esta fala e saltar para ela">
+         <span class="spk">▶</span><span class="bx">
+         <span class="w">${n.w}</span><span class="x">${n.x}</span></span></button>`).join("");
     $("notes").innerHTML = s.no.map(x => `<li>${x}</li>`).join("");
     [...$("chapters").children].forEach((c,i) => c.classList.toggle("on", i === si));
     [...$("bed").children].forEach((c,i) => {
