@@ -659,20 +659,35 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
           barra de rolagem da direita. Formulario longo de desktop pede janela
           centralizada — margem igual dos dois lados e largura aproveitada.
           Em telas pequenas continua ocupando tudo. */}
-      <DialogContent ref={conteudoRef} className={[
-        // Celular: ocupa a tela toda.
-        "p-0 gap-0 flex flex-col w-[calc(100vw-1rem)] h-[calc(100dvh-1rem)]",
+      <DialogContent
+        ref={conteudoRef}
+        /*
+         * Clicar fora NAO fecha, e Esc tambem nao.
+         *
+         * Uma solicitacao aqui tem 23 itens preenchidos a mao. O padrao do
+         * dialogo e fechar ao primeiro clique fora dele, e era o que
+         * acontecia: um clique na faixa escura ao lado jogava a pessoa de
+         * volta para a lista no meio da edicao. Sair daqui passa a ser sempre
+         * uma decisao — "Cancelar" ou o X do canto —, nunca um escorregao de
+         * ponteiro.
+         */
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        className={[
+        // Ocupa a tela inteira, sem faixa escura em volta: mesmo com a janela em
+        // 1800px sobrava borda escura nos dois lados, e ela era justamente a
+        // area que fechava o formulario sem querer.
+        "p-0 gap-0 flex flex-col w-screen h-[100dvh] max-w-none rounded-none border-0",
         // Desktop: TODAS as sobreposicoes precisam do prefixo `sm:`. O
         // DialogContent base traz sm:max-w-lg, sm:grid, sm:p-6, sm:max-h-[90vh]
         // — e o tailwind-merge nao considera `max-w-[1400px]` sem prefixo como
         // substituto de `sm:max-w-lg`. Foi o que aconteceu: a janela ficou nos
         // 512px do padrao, mais estreita do que a gaveta que ela substituiu.
-        "sm:flex sm:flex-col sm:p-0 sm:gap-0",
-        // O teto era 1400px: numa tela de 1920 sobravam 260px de fundo escuro
-        // de cada lado, com o formulario espremido no meio. Uma solicitacao de
-        // 23 itens e justamente onde essa largura faz falta.
-        "sm:w-[calc(100vw-4rem)] sm:max-w-[1800px]",
-        "sm:h-[92vh] sm:max-h-[92vh]",
+        "sm:flex sm:flex-col sm:p-0 sm:gap-0 sm:rounded-none sm:border-0",
+        // Tela inteira tambem no computador. O teto de 1800px ainda deixava
+        // faixa escura nas laterais numa tela de 1920 — e clicar ali fechava.
+        "sm:w-screen sm:max-w-none",
+        "sm:h-[100dvh] sm:max-h-[100dvh]",
         // A base traz `overflow-y-auto` (e `sm:overflow-y-auto`). Com o corpo
         // tambem rolando (flex-1 overflow-y-auto), ficavam DUAS areas de
         // rolagem aninhadas: o rodape era empurrado para o meio e sobrava um
@@ -693,7 +708,8 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         // `inset-0 m-auto` com largura e altura definidas centraliza igual, sem
         // camada transformada.
         "sm:inset-0 sm:m-auto sm:translate-x-0 sm:translate-y-0",
-      ].join(" ")}>
+        ].join(" ")}
+      >
         <DialogHeader className="p-4 border-b shrink-0">
           <DialogTitle>{solicitacaoId ? "Editar Solicitação" : "Nova Solicitação de Materiais"}</DialogTitle>
         </DialogHeader>
