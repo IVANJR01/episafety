@@ -90,7 +90,9 @@ h1 .thin{color:var(--muted);font-weight:500}
 .ovAlerta .b{font-family:var(--cond);font-weight:700;text-transform:uppercase;
   font-size:clamp(24px,5vw,58px);letter-spacing:.02em;text-align:center;line-height:1.05}
 .ovAlerta .b em{font-style:normal;color:var(--accent)}
-.ovAlerta .bar{width:clamp(120px,26vw,320px);height:5px;background:var(--red);margin:0 auto 18px}
+.ovAlerta .atn{display:inline-block;background:var(--red);color:#fff;font-family:var(--cond);
+  font-weight:700;text-transform:uppercase;letter-spacing:.22em;padding:4px 16px;margin-bottom:16px;
+  font-size:clamp(11px,1.6vw,17px)}
 
 .ovCota{position:absolute;right:5%;top:8%;bottom:16%;width:min(40%,320px);
   display:flex;flex-direction:column;justify-content:space-between;
@@ -114,14 +116,12 @@ h1 .thin{color:var(--muted);font-weight:500}
 .ovCartela .l{font-family:var(--cond);font-weight:600;font-size:clamp(18px,3.4vw,40px);line-height:1.14}
 .ovCartela .l b{color:var(--accent);font-weight:700}
 .ovCartela.ok{background:rgba(6,20,11,.86)}
-.ovCartela.ok .l{color:#CFEBD8}
-.ovCartela.ok .l::before{content:"✅  "}
+.ovCartela.ok .l{color:#CFEBD8;border-left:4px solid var(--green);padding-left:16px;text-align:left}
 
 .ovErros{position:absolute;inset:0;background:rgba(6,8,10,.8);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,1.7vh,18px)}
 .ovErros .e{font-family:var(--cond);font-weight:600;font-size:clamp(16px,3.1vw,36px);
-  color:#E9C2C3;letter-spacing:.01em}
-.ovErros .e::before{content:"❌";margin-right:.45em}
+  color:#E9C2C3;letter-spacing:.01em;border-left:4px solid var(--red);padding-left:15px}
 
 .ovMark{position:absolute;inset:0}
 .ovMark .m{position:absolute;display:flex;align-items:center;gap:9px}
@@ -177,7 +177,9 @@ h1 .thin{color:var(--muted);font-weight:500}
 .ovResumo .r{background:rgba(8,10,13,.86);border-left:4px solid var(--green);padding:7px 12px}
 .ovResumo .r .h{font-family:var(--cond);font-weight:700;text-transform:uppercase;letter-spacing:.07em;
   font-size:clamp(11px,1.7vw,19px)}
-.ovResumo .r .h::before{content:"✔ ";color:var(--green)}
+.ovResumo .r .h b{font-family:var(--mono);font-weight:400;color:var(--green);
+  font-size:.72em;margin-right:.6em;letter-spacing:0}
+
 .ovResumo .r .d{font-size:clamp(9.5px,1.25vw,13px);color:#A8B0BB;line-height:1.35;margin-top:1px}
 
 .ovFim{position:absolute;inset:0;background:rgba(6,8,10,.86);
@@ -364,8 +366,9 @@ footer code{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
           <span><i style="background:#F26522"></i>Texto na tela</span>
         </div>
         <p class="hint" style="margin:10px 0 0">A silhueta cinza marca o enquadramento do
-        personagem — capacete branco é o instrutor, amarelo o trabalhador, branco com colete
-        laranja a supervisora.</p>
+        personagem. Capacete branco é o <b>Marcelo</b>, técnico de segurança; amarelo é o
+        <b>Rogério</b>, da manutenção; branco com colete laranja é a <b>Cláudia</b>, supervisora.
+        O desgaste de cada uniforme está descrito em <code>modulo-01-direcao-de-arte.md</code>.</p>
       </div>
     </div>
   </aside>
@@ -392,20 +395,20 @@ const CEN = {
   "ESCADA":"Escada fixa com gaiola",
   "COBERT":"Cobertura metálica",
   "MANUT":"Área de manutenção",
-  "SALA":"Sala de treinamento"
+  "SALA":"Sala de treinamento (quadro branco)"
 };
 
 const S = [
  {n:1,t:"Abertura",dur:60,
   p:[{t:0,c:"1.1",cen:"AMB-IND",d:"Aéreo lento descendo sobre o pátio; estruturas, plataformas e trabalhadores ao fundo"},
-     {t:20,c:"1.2",cen:"AMB-IND",d:"Instrutor em plano médio, fala para a câmera",f:["I"]},
-     {t:42,c:"1.3",cen:"AMB-IND",d:"Dolly in do plano médio ao primeiro plano do instrutor",f:["I"]}],
-  nar:[{t:12,w:"Instrutor",x:"Bem-vindo ao curso de NR-35 — Trabalho em Altura. Neste treinamento, vamos compreender os principais riscos relacionados às atividades realizadas em altura e, principalmente, como prevenir acidentes."}],
+     {t:20,c:"1.2",cen:"AMB-IND",d:"Marcelo em plano médio, fala para a câmera",f:["I"]},
+     {t:42,c:"1.3",cen:"AMB-IND",d:"Dolly in do plano médio ao primeiro plano do Marcelo",f:["I"]}],
+  nar:[{t:12,w:"Marcelo",x:"Bem-vindo. Meu nome é Marcelo Tavares, sou técnico de segurança do trabalho, e este é o curso de NR-35 — trabalho em altura. Nos próximos minutos a gente vai ver quais são os riscos de trabalhar em altura. E, principalmente, o que dá para fazer antes — enquanto ainda dá tempo de mudar alguma coisa."}],
   ov:[{t:0,d:26,k:"titulo",v:{t:"NR-35 — Trabalho em Altura",s:"Prevenção • Planejamento • Proteção"}}],
   no:["<b>Título</b> entra em fade + leve escala aos 00:03","<b>Subtítulo</b> aos 00:06"]},
 
  {n:2,t:"Por que falar sobre trabalho em altura?",dur:120,
-  p:[{t:0,c:"2.1",cen:"OBRA",d:"Trabalhador caminha ao lado de uma estrutura elevada; travelling lateral",f:["T"]},
+  p:[{t:0,c:"2.1",cen:"OBRA",d:"Rogério caminha ao lado de uma estrutura elevada; travelling lateral",f:["T"]},
      {t:15,c:"2.2",cen:"ESTR-MET",d:"Atividade sobre estrutura metálica, conectado à linha de vida",f:["T"],alt:1},
      {t:28,c:"2.3",cen:"MANUT",d:"Manutenção em painel industrial sobre plataforma",f:["T"],alt:1},
      {t:40,c:"2.4",cen:"ESCADA",d:"Subida em escada fixa com gaiola, três pontos de apoio",f:["T"],alt:1},
@@ -413,20 +416,20 @@ const S = [
      {t:64,c:"2.6",cen:"COBERT",d:"Cobertura metálica inclinada, linha de vida na cumeeira",f:["T"],alt:1},
      {t:78,c:"2.7",cen:"ESTR-MET",d:"Close do mosquetão conectado ao ponto de ancoragem"},
      {t:92,c:"2.8",cen:"AMB-IND",d:"Plano aberto estático, centro limpo para a placa de texto"}],
-  nar:[{t:3,w:"Narração",x:"Atividades realizadas em altura podem estar presentes em diversos setores profissionais. Construção civil, manutenção industrial, instalações elétricas, telecomunicações, manutenção de estruturas e diversas outras atividades podem envolver riscos relacionados à queda."},
-       {t:70,w:"Narração",x:"Uma queda pode resultar em lesões graves, incapacidade temporária ou permanente e até mesmo morte. Por isso, o trabalho em altura exige planejamento, organização e medidas de prevenção."}],
-  ov:[{t:96,d:24,k:"alerta",v:{a:"⚠ ",b:"QUEDA",c:" = RISCO GRAVE"}}],
-  no:["<b>Placa</b> ⚠ QUEDA = RISCO GRAVE sobre fundo escurecido","Palavra <b>QUEDA</b> em laranja de segurança"]},
+  nar:[{t:3,w:"Marcelo",x:"Talvez você esteja pensando que trabalho em altura é coisa de obra. Não é. Tem trabalho em altura na manutenção industrial. Na instalação elétrica. Na telecomunicação. Na manutenção de estrutura. E na construção civil também, claro. Muita gente trabalha em altura todo dia sem se dar conta de que está fazendo exatamente isso."},
+       {t:70,w:"Marcelo",x:"E quando a queda acontece, a conta é sempre alta. Pode ser uma lesão grave. Pode ser uma incapacidade que dura uns meses. Pode ser uma incapacidade que não passa mais. E pode ser a morte. É por isso que trabalho em altura não se improvisa. Se planeja, se organiza, e se protege."}],
+  ov:[{t:96,d:24,k:"alerta",v:{b:"QUEDA",c:" = RISCO GRAVE"}}],
+  no:["<b>Placa</b>: selo ATENÇÃO em tarja vermelha, e abaixo QUEDA = RISCO GRAVE","Palavra <b>QUEDA</b> em laranja de segurança, sem emoji"]},
 
  {n:3,t:"Conceito de trabalho em altura",dur:240,
-  p:[{t:0,c:"3.1",cen:"SALA",d:"Instrutor ao lado do painel de LED apagado — painel vazio para o gráfico",f:["I"]},
+  p:[{t:0,c:"3.1",cen:"SALA",d:"Marcelo ao lado do quadro branco vazio — quadro livre para o gráfico",f:["I"]},
      {t:45,c:"3.2",cen:"AMB-IND",d:"Plano lateral: plataforma a 2 m do piso inferior, câmera perpendicular",f:["T"],alt:1},
      {t:110,c:"3.3",cen:"ESTR-MET",d:"Situação A — trabalhador sobre viga, junto à borda desprotegida, sem conexão",f:["T"],alt:1,r:1},
      {t:160,c:"3.4",cen:"PLATAF",d:"Situação B — plataforma fechada por guarda-corpo, travessão e rodapé",f:["T"],alt:1,ok:1},
-     {t:205,c:"3.5",cen:"SALA",d:"Primeiro plano do instrutor concluindo a explicação",f:["I"]}],
-  nar:[{t:6,w:"Narração",x:"De acordo com a NR-35, considera-se trabalho em altura toda atividade realizada acima de 2 metros do nível inferior, onde haja risco de queda."},
-       {t:70,w:"Instrutor",x:"Observe que não basta simplesmente estar acima de dois metros. O conceito também envolve a existência de risco de queda."},
-       {t:210,w:"Instrutor",x:"Por isso, a análise da situação real é fundamental."}],
+     {t:205,c:"3.5",cen:"SALA",d:"Primeiro plano do Marcelo concluindo a explicação",f:["I"]}],
+  nar:[{t:6,w:"Marcelo",x:"A NR-35 define assim: trabalho em altura é toda atividade executada acima de dois metros do nível inferior, onde exista risco de queda. Decorar essa frase é fácil. Aplicar é onde a maioria erra."},
+       {t:70,w:"Marcelo",x:"Repare que são duas condições, não uma. Dois metros — e risco de queda. Se falta uma das duas, não é trabalho em altura. Se as duas estão ali, é."},
+       {t:210,w:"Marcelo",x:"Por isso ninguém responde isso de longe, olhando papel. Tem que olhar a situação real. Naquele lugar. Naquele dia."}],
   ov:[{t:20,d:88,k:"cota"},
       {t:110,d:46,k:"tarja",v:"Situação A — com risco de queda"},
       {t:160,d:42,k:"tarja",v:"Situação B — sem exposição ao risco"}],
@@ -441,8 +444,8 @@ const S = [
      {t:115,c:"4.4",cen:"PLATAF",d:"Atividade em plataforma com guarda-corpo e rodapé",f:["T"],alt:1,ok:1},
      {t:150,c:"4.5",cen:"ESTR-MET",d:"Manutenção em estrutura metálica com talabarte duplo em Y",f:["T"],alt:1,ok:1},
      {t:195,c:"4.6",cen:"AMB-IND",d:"Plano aberto estático para a cartela final da cena"}],
-  nar:[{t:8,w:"Narração",x:"O trabalho em altura pode aparecer em atividades muito diferentes. Por isso, não devemos associar a NR-35 somente a uma profissão específica."},
-       {t:202,w:"Narração",x:"A atividade muda. O princípio de prevenção permanece."}],
+  nar:[{t:8,w:"Marcelo",x:"Você acabou de ver cinco situações bem diferentes. Uma estrutura elevada. Uma cobertura. Uma escada. Uma plataforma. Uma estrutura metálica. Cinco serviços, cinco profissões. Então não caia nessa de que NR-35 é assunto de uma categoria só."},
+       {t:202,w:"Marcelo",x:"O que muda é o serviço. O jeito de se proteger não muda."}],
   ov:[{t:0,d:38,k:"tarja",v:"Exemplo 1 — manutenção em estrutura elevada"},
       {t:40,d:38,k:"tarja",v:"Exemplo 2 — manutenção em cobertura"},
       {t:80,d:33,k:"tarja",v:"Exemplo 3 — acesso por escada"},
@@ -452,104 +455,104 @@ const S = [
   no:["<b>Tarja inferior</b> identificando cada exemplo","<b>Cartela final</b> com PREVENÇÃO em destaque"]},
 
  {n:5,t:"Identificando o perigo",dur:240,
-  p:[{t:0,c:"5.1",cen:"MANUT",d:"Trabalhador chega com a caixa de ferramentas e olha para o piso elevado",f:["T"]},
+  p:[{t:0,c:"5.1",cen:"MANUT",d:"Rogério chega com a caixa de ferramentas e olha para o piso elevado",f:["T"]},
      {t:35,c:"5.2",cen:"MANUT",d:"Plano subjetivo: borda sem guarda-corpo, escada mal apoiada, ferramentas soltas"},
      {t:65,c:"5.3",cen:"MANUT",d:"Detalhe: ferramentas a centímetros da borda, vazio desfocado abaixo"},
-     {t:95,c:"5.4",cen:"MANUT",d:"Primeiro plano do trabalhador subestimando a tarefa, um passo à frente",f:["T"],r:1},
-     {t:125,c:"5.5",cen:"MANUT",d:"Instrutor entra em quadro com a mão erguida em gesto de pare",f:["T","I"]},
+     {t:95,c:"5.4",cen:"MANUT",d:"Primeiro plano do Rogério subestimando a tarefa, um passo à frente",f:["T"],r:1},
+     {t:125,c:"5.5",cen:"MANUT",d:"Marcelo entra em quadro com a mão erguida em gesto de pare",f:["T","I"]},
      {t:165,c:"5.6",cen:"MANUT",d:"Plano aberto estático do conjunto — quadro congelado na edição",f:["T","I"],frz:1}],
-  nar:[{t:96,w:"Trabalhador",x:"Parece simples. Vou subir e fazer rapidamente."},
-       {t:128,w:"Instrutor",x:"Pare. Antes de iniciar uma atividade em altura, precisamos avaliar os perigos e os riscos envolvidos."},
-       {t:172,w:"Instrutor",x:"Risco de queda."},
-       {t:189,w:"Instrutor",x:"Queda de objetos."},
-       {t:206,w:"Instrutor",x:"Acesso inadequado."},
-       {t:222,w:"Instrutor",x:"Condições do ambiente."}],
+  nar:[{t:96,w:"Rogério",x:"Ah, é rapidinho. Subo, aperto e desço."},
+       {t:128,w:"Marcelo",x:"Espera, Rogério. Antes de subir, a gente precisa olhar o que tem aí. Que perigo existe nesse serviço, e qual o risco de cada um deles."},
+       {t:172,w:"Marcelo",x:"Risco de queda. Esse é o mais óbvio."},
+       {t:189,w:"Marcelo",x:"Queda de objeto. A ferramenta que escorrega da borda e acerta quem está embaixo."},
+       {t:206,w:"Marcelo",x:"Acesso. Olha a posição dessa escada."},
+       {t:222,w:"Marcelo",x:"E as condições do ambiente: o piso, o tempo, a luz, o que estiver acontecendo em volta."}],
   ov:[{t:165,d:75,k:"marcadores"}],
   no:["A partir de 02:45 o quadro <b>congela</b> e dessatura 40 %",
       "Quatro <b>marcadores vermelhos</b> pulsantes entram um a um, com linha de chamada",
       "Sinal sonoro discreto na entrada de cada marcador"]},
 
  {n:6,t:"O erro de “é só um serviço rápido”",dur:180,
-  p:[{t:0,c:"6.1",cen:"MANUT",d:"Primeiro plano do trabalhador, gesto de “é rápido”",f:["T"]},
-     {t:20,c:"6.2",cen:"MANUT",d:"Primeiro plano do instrutor respondendo com firmeza",f:["I"]},
+  p:[{t:0,c:"6.1",cen:"MANUT",d:"Primeiro plano do Rogério, gesto de “é rápido”",f:["T"]},
+     {t:20,c:"6.2",cen:"MANUT",d:"Primeiro plano do Marcelo respondendo com firmeza",f:["I"]},
      {t:45,c:"6.3",cen:"MANUT",d:"Escada de mão mal apoiada desliza levemente; ação interrompida",f:["T"],r:1},
      {t:75,c:"6.4",cen:"MANUT",d:"Detalhe da base da escada sem sapata antiderrapante e sem amarração",r:1},
      {t:100,c:"6.5",cen:"AMB-IND",d:"Fundo neutro escuro e desfocado — base para as cartelas"}],
-  nar:[{t:4,w:"Trabalhador",x:"É só um serviço de cinco minutos."},
-       {t:20,w:"Instrutor",x:"O tempo necessário para realizar uma atividade não elimina o risco."},
-       {t:100,w:"Narração",x:"Um dos erros mais comuns em atividades de risco é acreditar que uma tarefa rápida não precisa de planejamento."},
-       {t:150,w:"Narração",x:"Toda atividade deve ser avaliada antes de sua execução."}],
+  nar:[{t:4,w:"Rogério",x:"Chefe, é cinco minutos."},
+       {t:20,w:"Marcelo",x:"Pode ser cinco minutos. O risco não olha no relógio."},
+       {t:100,w:"Marcelo",x:"Essa é uma das frases mais perigosas que existem num canteiro: é rapidinho. E ela quase nunca vem sozinha. Vem junto com sempre fiz assim. E com nunca aconteceu nada."},
+       {t:150,w:"Marcelo",x:"Nunca aconteceu nada não prova que é seguro. Prova só que até hoje deu certo. Toda atividade se avalia antes de começar. Toda."}],
   ov:[{t:112,d:34,k:"erros"},
       {t:148,d:32,k:"cartela-ok",v:"Toda atividade deve ser avaliada antes de sua execução."}],
-  no:["Três frases <b>❌</b> entram uma a uma e saem juntas",
-      "Tela seguinte, fundo verde-escuro, com a frase <b>✅</b>",
+  no:["Três frases com barra vermelha entram uma a uma e saem juntas",
+      "Tela seguinte, fundo verde-escuro, frase com barra verde",
       "Nenhuma queda é mostrada — a ação para antes da consequência"]},
 
  {n:7,t:"Planejamento",dur:240,
-  p:[{t:0,c:"7.1",cen:"OBRA",d:"Equipe reunida em semicírculo diante da supervisora, antes do trabalho",f:["S","T","T"]},
-     {t:30,c:"7.2",cen:"OBRA",d:"Supervisora fala para a equipe com a prancheta na mão",f:["S"]},
+  p:[{t:0,c:"7.1",cen:"OBRA",d:"Equipe reunida em semicírculo diante da Cláudia, antes do trabalho",f:["S","T","T"]},
+     {t:30,c:"7.2",cen:"OBRA",d:"Cláudia fala para a equipe com a prancheta na mão",f:["S"]},
      {t:60,c:"7.3",cen:"OBRA",d:"Plano de reação: rostos atentos, assentindo",f:["T","T"]},
      {t:85,c:"7.4",cen:"OBRA",d:"Detalhe da prancheta sendo preenchida, mão com luva"},
      {t:110,c:"7.5",cen:"OBRA",d:"Plano aberto estático, lado direito limpo para o checklist"},
      {t:210,c:"7.6",cen:"OBRA",d:"Equipe se dispersa organizada rumo à área de trabalho",f:["S","T","T"]}],
-  nar:[{t:32,w:"Supervisora",x:"Antes de começar, vamos avaliar o local, os riscos e as medidas de controle."},
-       {t:118,w:"Instrutor",x:"Local de trabalho. Acesso. Risco de queda. Equipamentos. Condições ambientais. Medidas de proteção. Emergência e resgate."},
-       {t:178,w:"Narração",x:"O planejamento permite antecipar problemas e definir medidas de prevenção antes que o trabalhador esteja exposto ao perigo."}],
+  nar:[{t:32,w:"Cláudia",x:"Pessoal, antes de subir a gente passa o serviço. Onde é, como se chega, o que pode dar errado e o que vamos usar."},
+       {t:118,w:"Marcelo",x:"Onde é o trabalho. Como se chega até lá. Onde está o risco de queda. Que equipamento vai ser usado. Como está o ambiente e o tempo. Que proteção vai ser montada. E o que a gente faz se alguma coisa acontecer: emergência e resgate."},
+       {t:178,w:"Marcelo",x:"Planejar é isso. É resolver o problema aqui embaixo, na conversa, com todo mundo inteiro. Não lá em cima, improvisando."}],
   ov:[{t:112,d:98,k:"checklist"}],
   no:["<b>Checklist</b> de 7 itens, um por vez, com “tique” verde sincronizado à narração"]},
 
  {n:8,t:"Hierarquia da prevenção",dur:240,
-  p:[{t:0,c:"8.1",cen:"SALA",d:"Instrutor apresenta ao lado do painel de LED vazio",f:["I"]},
+  p:[{t:0,c:"8.1",cen:"SALA",d:"Marcelo apresenta ao lado do quadro branco vazio",f:["I"]},
      {t:40,c:"8.2",cen:"MANUT",d:"Nível 1 — atividade executada a partir do piso, sem subir na estrutura",f:["T"],ok:1},
      {t:95,c:"8.3",cen:"PLATAF",d:"Nível 2 — plataforma com guarda-corpo, travessão e rodapé; detalhe do rodapé",f:["T"],alt:1,ok:1},
      {t:145,c:"8.4",cen:"ESTR-MET",d:"Nível 3 — cinturão paraquedista e talabarte com absorvedor ancorado à viga",f:["T"],alt:1,ok:1},
-     {t:200,c:"8.5",cen:"SALA",d:"Primeiro plano do instrutor concluindo",f:["I"]}],
-  nar:[{t:38,w:"Narração",x:"Primeiro nível: evitar a exposição. Quando possível, realizar a atividade sem expor o trabalhador ao risco de queda."},
-       {t:95,w:"Narração",x:"Segundo nível: prevenir a queda. Utilizar medidas que impeçam que a queda aconteça."},
-       {t:145,w:"Narração",x:"Terceiro nível: minimizar as consequências. Quando houver possibilidade de queda, utilizar sistemas adequados para reduzir suas consequências."},
-       {t:200,w:"Instrutor",x:"A melhor proteção é aquela que evita que o trabalhador seja exposto ao risco. Quando isso não for possível, devem ser adotadas medidas de prevenção e proteção adequadas."}],
+     {t:200,c:"8.5",cen:"SALA",d:"Primeiro plano do Marcelo concluindo",f:["I"]}],
+  nar:[{t:38,w:"Marcelo",x:"São três níveis. E a ordem importa. Primeiro: evitar a exposição. Se dá para fazer o serviço sem ninguém subir, é assim que se faz. Parece óbvio. Mas quase ninguém faz essa pergunta primeiro."},
+       {t:95,w:"Marcelo",x:"Segundo: prevenir a queda. Se tem que subir, então a gente usa medida que impeça a queda de acontecer."},
+       {t:145,w:"Marcelo",x:"Terceiro: minimizar as consequências. Quando ainda sobra possibilidade de cair, entra sistema adequado para reduzir a consequência dessa queda."},
+       {t:200,w:"Marcelo",x:"Guarda essa ordem. A melhor proteção é a que tira você da exposição. Quando não dá para tirar, aí sim entram as medidas de prevenção e de proteção."}],
   ov:[{t:30,d:210,k:"piramide"}],
   no:["<b>Pirâmide de três degraus</b>, montada de cima para baixo",
       "Cada nível acende junto com a narração correspondente"]},
 
  {n:9,t:"Situação prática",dur:240,
-  p:[{t:0,c:"9.1",cen:"ESTR-MET",d:"Trabalhador de costas diante da estrutura elevada, espaço à direita para o painel",f:["T"]},
+  p:[{t:0,c:"9.1",cen:"ESTR-MET",d:"Rogério de costas diante da estrutura elevada, espaço à direita para o painel",f:["T"]},
      {t:60,c:"9.2",cen:"ESTR-MET",d:"Plano médio de perfil, expressão de dúvida — congelado durante a pausa",f:["T"]},
-     {t:130,c:"9.3",cen:"SALA",d:"Instrutor dá a resposta para a câmera",f:["I"]},
-     {t:195,c:"9.4",cen:"PLATAF",d:"Trabalhador executa a atividade corretamente, plataforma protegida",f:["T"],alt:1,ok:1}],
-  nar:[{t:10,w:"Narração",x:"Desafio. O trabalhador deve iniciar a atividade?"},
-       {t:24,w:"Narração",x:"Alternativa A: sim, porque o serviço é rápido. Alternativa B: sim, desde que tenha capacete. Alternativa C: não. Primeiro deve avaliar a atividade e as medidas de prevenção necessárias. Alternativa D: sim, se estiver acompanhado."},
-       {t:113,w:"Narração",x:"Pense por alguns segundos."},
-       {t:132,w:"Instrutor",x:"A resposta correta é a alternativa C. A atividade deve ser previamente avaliada e planejada, considerando os riscos e as medidas de prevenção aplicáveis."}],
+     {t:130,c:"9.3",cen:"SALA",d:"Marcelo dá a resposta para a câmera",f:["I"]},
+     {t:195,c:"9.4",cen:"PLATAF",d:"Rogério executa a atividade corretamente, plataforma protegida",f:["T"],alt:1,ok:1}],
+  nar:[{t:10,w:"Marcelo",x:"Agora é com você. Olha a situação e responde. O trabalhador deve iniciar a atividade?"},
+       {t:24,w:"Marcelo",x:"Letra A: sim, porque o serviço é rápido. Letra B: sim, desde que tenha capacete. Letra C: não. Primeiro deve avaliar a atividade e as medidas de prevenção necessárias. Letra D: sim, se estiver acompanhado."},
+       {t:113,w:"Marcelo",x:"Cinco segundos."},
+       {t:132,w:"Marcelo",x:"Letra C. E não é preciosismo. É que só depois de avaliar é que você sabe qual proteção usar. A atividade tem que ser avaliada e planejada antes, considerando os riscos e as medidas de prevenção que se aplicam ali."}],
   ov:[{t:8,d:190,k:"quiz"}],
   no:["<b>Painel do desafio</b> com as quatro alternativas",
       "<b>Contagem regressiva de 5 s</b> antes da resposta",
       "A alternativa <b>C</b> acende em verde; as demais esmaecem"]},
 
  {n:10,t:"Responsabilidade de todos",dur:180,
-  p:[{t:0,c:"10.1",cen:"SALA",d:"Instrutor explica ao lado do painel vazio",f:["I"]},
+  p:[{t:0,c:"10.1",cen:"SALA",d:"Marcelo explica ao lado do quadro branco",f:["I"]},
      {t:30,c:"10.2",cen:"AMB-IND",d:"Pátio organizado, sem pessoas em primeiro plano — base para o organograma"},
-     {t:95,c:"10.3",cen:"OBRA",d:"Supervisora confere o checklist com um trabalhador",f:["S","T"]},
-     {t:125,c:"10.4",cen:"ESTR-MET",d:"Equipe coordenada: um executa conectado, um observa na base, supervisora acompanha",f:["S","T","T"],ok:1},
+     {t:95,c:"10.3",cen:"OBRA",d:"Cláudia confere o checklist com o Rogério",f:["S","T"]},
+     {t:125,c:"10.4",cen:"ESTR-MET",d:"Equipe coordenada: um executa conectado, um observa na base, Cláudia acompanha",f:["S","T","T"],ok:1},
      {t:160,c:"10.5",cen:"ESTR-MET",d:"Detalhe: dupla checagem do mosquetão antes de iniciar"}],
-  nar:[{t:34,w:"Narração",x:"Empregador. Supervisão. Trabalhador."},
-       {t:60,w:"Instrutor",x:"A prevenção não depende exclusivamente do trabalhador. A segurança envolve planejamento, organização, fornecimento de condições adequadas, procedimentos e participação dos profissionais envolvidos."}],
+  nar:[{t:34,w:"Marcelo",x:"Tem uma coisa que eu preciso deixar bem clara. Segurança em altura não é responsabilidade de uma pessoa só."},
+       {t:60,w:"Marcelo",x:"O empregador entra com o planejamento, a organização, a condição de trabalho e o procedimento. A supervisão entra acompanhando. E você entra usando o que foi fornecido, e falando quando alguma coisa não está certa. Cada um dentro das suas atribuições."}],
   ov:[{t:32,d:62,k:"organograma"}],
   no:["<b>Organograma</b> em três blocos, ligados por seta animada, de cima para baixo"]},
 
  {n:11,t:"Resumo do módulo",dur:180,
-  p:[{t:0,c:"11.1",cen:"SALA",d:"Instrutor inicia a revisão",f:["I"]},
-     {t:20,c:"11.2",cen:"SALA",d:"Instrutor à esquerda; metade direita limpa para os tópicos",f:["I"]},
+  p:[{t:0,c:"11.1",cen:"SALA",d:"Marcelo inicia a revisão",f:["I"]},
+     {t:20,c:"11.2",cen:"SALA",d:"Marcelo à esquerda; metade direita limpa para os tópicos",f:["I"]},
      {t:130,c:"11.3",cen:"AMB-IND",d:"Colagem de encerramento: reprise de 2 s dos planos 3.2, 5.6, 7.1, 8.3 e 10.4"},
      {t:155,c:"11.4",cen:"AMB-IND",d:"Plano final subindo sobre o pátio, luz de fim de tarde"}],
-  nar:[{t:4,w:"Narração",x:"Vamos revisar os principais pontos deste módulo."},
-       {t:22,w:"Narração",x:"Trabalho em altura. Atividade acima de dois metros do nível inferior, quando houver risco de queda."},
-       {t:47,w:"Narração",x:"Risco. Deve ser identificado antes da execução."},
-       {t:70,w:"Narração",x:"Planejamento. A atividade deve ser organizada previamente."},
-       {t:95,w:"Narração",x:"Prevenção. Devem ser adotadas medidas adequadas para controlar os riscos."},
-       {t:120,w:"Narração",x:"Segurança. Todos os envolvidos possuem responsabilidades dentro de suas atribuições."}],
+  nar:[{t:4,w:"Marcelo",x:"Vamos fechar. Cinco coisas para levar daqui."},
+       {t:22,w:"Marcelo",x:"Trabalho em altura: acima de dois metros do nível inferior, quando houver risco de queda. As duas condições juntas."},
+       {t:47,w:"Marcelo",x:"Risco: se identifica antes de subir. Não durante."},
+       {t:70,w:"Marcelo",x:"Planejamento: a atividade se organiza previamente."},
+       {t:95,w:"Marcelo",x:"Prevenção: adotar as medidas adequadas para controlar os riscos que você encontrou."},
+       {t:120,w:"Marcelo",x:"Segurança: todo mundo tem a sua parte, dentro das suas atribuições. E se você levar só uma frase daqui, leve esta: a hora de decidir se o serviço é seguro é antes de subir."}],
   ov:[{t:20,d:110,k:"resumo"},{t:155,d:25,k:"fim"}],
-  no:["Cinco tópicos <b>✔</b> entram um por vez, sincronizados com a narração",
+  no:["Cinco tópicos numerados entram um por vez, sincronizados com a narração",
       "<b>Cartela final</b>: MÓDULO 01 CONCLUÍDO"]}
 ];
 
@@ -646,9 +649,14 @@ const P = {
    <rect x="1220" y="470" width="280" height="150" fill="#151A21"/>
    <path d="M700 350 620 620" stroke="#2E3742" stroke-width="10"/>
    <path d="M740 350 660 620" stroke="#2E3742" stroke-width="10"/>`,
- "SALA":`<rect x="120" y="110" width="1360" height="420" rx="4" fill="#0E1319" stroke="#232B35" stroke-width="4"/>
-   <rect x="150" y="140" width="1300" height="360" fill="#111720"/>
-   <rect x="0" y="600" width="1600" height="300" fill="#141920"/>`
+ "SALA":`<rect x="200" y="130" width="1080" height="400" rx="3" fill="#1C232B" stroke="#39434F" stroke-width="5"/>
+   <rect x="228" y="158" width="1024" height="344" fill="#222A33"/>
+   <rect x="1330" y="180" width="160" height="120" rx="6" fill="#161C23"/>
+   <rect x="1348" y="206" width="124" height="10" fill="#1E252E"/>
+   <rect x="1348" y="230" width="124" height="10" fill="#1E252E"/>
+   <rect x="0" y="600" width="1600" height="300" fill="#141920"/>
+   <rect x="120" y="612" width="150" height="90" rx="4" fill="#1A2028"/>
+   <rect x="300" y="612" width="150" height="90" rx="4" fill="#1A2028"/>`
 };
 const HELM = {I:"#EDEFF2", T:"#F2C025", S:"#EDEFF2"};
 
@@ -694,8 +702,8 @@ function renderOv(o, lt){
      return `<div class="ovTitulo an"><div class="t">${o.v.t}</div>
        ${(el > 3 || t === 0) ? `<div class="s af">${o.v.s}</div>` : ""}</div>`;
    case "alerta":
-     return `<div class="ovAlerta af"><div><div class="bar"></div>
-       <div class="b">${o.v.a}<em>${o.v.b}</em>${o.v.c}</div></div></div>`;
+     return `<div class="ovAlerta af"><div style="text-align:center"><div class="atn">Atenção</div>
+       <div class="b"><em>${o.v.b}</em>${o.v.c}</div></div></div>`;
    case "cota":
      return `<div class="ovCota an">
        <div class="lbl" style="color:#fff">Trabalho em altura</div>
@@ -720,7 +728,7 @@ function renderOv(o, lt){
         <span class="cap">${m[0]}</span></div>`).join("")}</div>`;
    case "checklist":
      return `<div class="ovCheck an"><h4>Antes de iniciar</h4>${CHECK.filter((_,i) => el > 3 + i*7)
-       .map(c => `<div class="it an"><i>☑</i><span>${c}</span></div>`).join("")}</div>`;
+       .map(c => `<div class="it an"><i>✓</i><span>${c}</span></div>`).join("")}</div>`;
    case "piramide": {
      const on = lt >= 145 ? 2 : lt >= 95 ? 1 : lt >= 38 ? 0 : -1;
      return `<div class="ovPir">${PIR.map((p,i) => `<div class="lv ${i === on ? "on" : ""}">
@@ -743,8 +751,9 @@ function renderOv(o, lt){
        .filter((_,i) => el > i*7).map((b,i) => (i ? `<div class="a af">▼</div>` : "") +
        `<div class="b an">${b}</div>`).join("")}</div>`;
    case "resumo":
-     return `<div class="ovResumo">${RESUMO.filter((_,i) => el > 2 + i*25).map(r =>
-       `<div class="r an"><div class="h">${r[0]}</div><div class="d">${r[1]}</div></div>`).join("")}</div>`;
+     return `<div class="ovResumo">${RESUMO.map((r,i) => ({r,i})).filter(o => el > 2 + o.i*25)
+       .map(o => `<div class="r an"><div class="h"><b>${String(o.i+1).padStart(2,"0")}</b>${o.r[0]}</div>
+       <div class="d">${o.r[1]}</div></div>`).join("")}</div>`;
    case "fim":
      return `<div class="ovFim af"><div class="a">Módulo 01 concluído</div>
        <div class="b">NR-35 — Trabalho em Altura</div></div>`;
@@ -894,8 +903,8 @@ function render(){
     $("plate").innerHTML = plate(pl);
     $("slate").innerHTML = `<span class="cod">${pl.c}</span>
       <span class="cen">${pl.cen}</span><span class="des">${pl.d}</span>`;
-    $("flag").innerHTML = pl.r ? `<div class="frameflag risco"></div><div class="selo risco">❌ Situação incorreta — exemplo educativo</div>`
-      : pl.ok ? `<div class="frameflag correto"></div><div class="selo correto">✅ Conduta correta</div>` : "";
+    $("flag").innerHTML = pl.r ? `<div class="frameflag risco"></div><div class="selo risco">Situação incorreta · exemplo educativo</div>`
+      : pl.ok ? `<div class="frameflag correto"></div><div class="selo correto">Conduta correta</div>` : "";
     $("grade").innerHTML = pl.r ? `<div class="grade risco"></div>` : (pl.frz ? `<div class="freeze"></div>` : "");
     [...$("shots").children].forEach((c,i) => c.classList.toggle("on", i === pi));
   }
