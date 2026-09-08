@@ -1290,8 +1290,71 @@ export default function Entregas() {
       codigosAssinatura,
     });
 
-    doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);
-    toast({ title: "Ficha gerada com sucesso!", description: "O PDF foi baixado." });
+    const nomeArquivo = `Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`;
+
+    /*
+     * Assinatura digital ICP-Brasil, quando o certificado A1 estiver
+     * configurado no projeto.
+     *
+     * Sem isto a ficha era recusada pelo validador oficial do governo
+     * (validar.iti.gov.br) — "documento sem assinatura reconhecível" —, porque
+     * o PDF não tinha objeto de assinatura nenhum: só a IMAGEM da assinatura
+     * do trabalhador desenhada dentro dele.
+     *
+     * Falhar aqui NÃO pode impedir a ficha de sair: sem certificado
+     * configurado, ou com o serviço fora do ar, o documento continua valendo
+     * entre as partes (MP 2.200-2, Art. 10, §2), que é como sempre valeu.
+     */
+    let blobFinal: Blob = doc.output("blob");
+    let assinadoIcp = false;
+    let motivoSemAssinatura = "";
+    if (isOnline()) {
+      try {
+        const b64 = await new Promise<string>((resolve, reject) => {
+          const leitor = new FileReader();
+          leitor.onload = () => resolve(String(leitor.result).split(",")[1]);
+          leitor.onerror = reject;
+          leitor.readAsDataURL(blobFinal);
+        });
+        const { data: resp } = await supabase.functions.invoke("assinar-pdf", {
+          body: {
+            pdfBase64: b64,
+            motivo: `Ficha de EPI - ${func.nome}`,
+            nome: emp.nome || "SafetySoluções",
+            local: emp.endereco || "Brasil",
+          },
+        });
+        if (resp?.success && resp.pdfBase64) {
+          const bin = atob(resp.pdfBase64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          blobFinal = new Blob([bytes], { type: "application/pdf" });
+          assinadoIcp = true;
+        } else {
+          motivoSemAssinatura = resp?.configuracaoAusente
+            ? "Certificado A1 ainda não cadastrado nos segredos do projeto."
+            : String(resp?.error || "");
+        }
+      } catch (e: any) {
+        motivoSemAssinatura = e?.message || "";
+      }
+    }
+
+    const url = URL.createObjectURL(blobFinal);
+    const link = document.createElement("a");
+    link.href = url; link.download = nomeArquivo;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+
+    if (assinadoIcp) {
+      toast({ title: "Ficha gerada e assinada digitalmente",
+              description: "Assinatura ICP-Brasil — pode ser conferida em validar.iti.gov.br." });
+    } else {
+      toast({ title: "Ficha gerada com sucesso!",
+              description: motivoSemAssinatura
+                ? `Sem assinatura ICP-Brasil: ${motivoSemAssinatura}`
+                : "O PDF foi baixado." });
+    }
 
     // Arquiva a mesma ficha no Arquivo Digital, best-effort: o download já
     // aconteceu, então uma falha aqui (migration não aplicada, offline etc.)
@@ -1302,10 +1365,11 @@ export default function Entregas() {
           empresaId, colaboradorId: fichaFuncId, tipoDocumentoId: fichaEpiTipoId,
           origemTabela: "ficha_epi", origemId: fichaFuncId, userId: user?.id,
         });
+        // `blobFinal`, e não `doc`: é a versão que a pessoa baixou. Guardar a
+        // sem assinatura deixaria o Arquivo Digital com uma cópia diferente da
+        // que circula — e sem valor de prova, justamente onde ele mais serve.
         const arquivo = new File(
-          [doc.output("blob")],
-          `Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`,
-          { type: "application/pdf" },
+          [blobFinal], nomeArquivo, { type: "application/pdf" },
         );
         await publicarVersao({
           empresaId, documentoId, colaboradorId: fichaFuncId, file: arquivo,
