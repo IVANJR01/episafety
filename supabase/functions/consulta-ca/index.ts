@@ -1,5 +1,38 @@
 import { resolveCors } from "../_shared/cors.ts";
 import { checkRateLimit, clientKey } from "../_shared/rateLimit.ts";
+import { extrairImagemDoCa } from "./extrairImagem.ts";
+
+/** Teto da foto trazida junto. Acima disso o item fica sem foto e a consulta segue. */
+const LIMITE_FOTO_BYTES = 3 * 1024 * 1024;
+
+/**
+ * Baixa a foto do EPI e devolve como endereço embutido.
+ *
+ * Precisa ser aqui, e não no navegador: consultaca.com não libera leitura de
+ * outra origem (CORS), então o navegador conseguiria no máximo exibir a imagem
+ * numa tag — nunca lê-la para anexar ao item. Aqui não há essa barreira.
+ *
+ * Qualquer problema devolve null: foto é acessório, e a consulta do CA — que é
+ * o que a pessoa pediu — não pode cair por causa dela.
+ */
+async function baixarFoto(url: string): Promise<{ dataUrl: string; tipo: string; bytes: number } | null> {
+  try {
+    const r = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0", Referer: "https://consultaca.com/" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!r.ok) return null;
+    const tipo = (r.headers.get("content-type") || "").split(";")[0].trim();
+    if (!tipo.startsWith("image/")) return null;
+    const buf = new Uint8Array(await r.arrayBuffer());
+    if (buf.byteLength === 0 || buf.byteLength > LIMITE_FOTO_BYTES) return null;
+    let bin = "";
+    for (const b of buf) bin += String.fromCharCode(b);
+    return { dataUrl: `data:${tipo};base64,${btoa(bin)}`, tipo, bytes: buf.byteLength };
+  } catch {
+    return null;
+  }
+}
 function extractText(html: string, pattern: RegExp): string | null {
   const match = html.match(pattern);
   return match ? match[1].trim() : null;
@@ -58,6 +91,7 @@ function parseConsultaCA(html: string, ca: string) {
 
   return {
     ca,
+    imagem_url: extrairImagemDoCa(html, `https://consultaca.com/${ca}`),
     nome: nome || null,
     categoria: categoria || null,
     situacao: situacao || null,
@@ -84,7 +118,7 @@ Deno.serve(async (req) => {
 
 
   try {
-    const { ca } = await req.json();
+    const { ca, comFoto } = await req.json() as { ca?: string; comFoto?: boolean };
 
     if (!ca || typeof ca !== 'string') {
       return new Response(
@@ -128,10 +162,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('CA data found:', JSON.stringify(data));
+    // A foto só é buscada quando quem chamou pediu — quem só quer o nome e a
+    // validade não paga o download nem a espera.
+    let foto: { dataUrl: string; tipo: string; bytes: number } | null = null;
+    if (comFoto && data.imagem_url) foto = await baixarFoto(data.imagem_url);
+
+    console.log('CA data found:', JSON.stringify({ ...data, imagem_url: data.imagem_url }));
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, data: { ...data, foto } }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X } from "lucide-react";
+import { Plus, Trash2, Save, Send, Loader2, Camera, Image as ImageIcon, X, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
@@ -320,6 +320,75 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
     descartarPreview(it?.imagem_preview_url);
     if (it?.imagem_path) removeItemImage(it.imagem_path).catch(() => {});
     setItens((p) => p.filter((_, i) => i !== idx));
+  }
+
+  /*
+   * Consulta do CA no consultaca.com, ao sair do campo.
+   *
+   * A ligacao com o site ja existia no sistema (a funcao de borda `consulta-ca`
+   * atende o Cadastro de EPIs e as Entregas); o que faltava era chegar aqui, e
+   * a foto, que a funcao passou a trazer.
+   *
+   * Preenche so o que esta VAZIO. Quem digitou um nome proprio para o item
+   * ("Protetor Auditivo Tipo Plug 3M Pomp Plus") nao quer ver isso trocado pelo
+   * nome seco do certificado; e quem ja anexou a foto do fornecedor nao quer
+   * ela substituida. O CA acrescenta o que falta, nao manda no que ja existe.
+   */
+  const [consultandoCa, setConsultandoCa] = useState<Record<number, boolean>>({});
+
+  async function consultarCa(idx: number) {
+    const item = itensRef.current[idx];
+    if (!item) return;
+    const numero = (item.ca || "").replace(/\D/g, "");
+    // CA tem 4 a 6 digitos. Menos que isso e a pessoa ainda esta digitando.
+    if (numero.length < 4) return;
+
+    const jaTemFoto = !!(item.imagem_preview_url || item.imagem_path) && !item.imagem_remove;
+    setConsultandoCa((p) => ({ ...p, [idx]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke("consulta-ca", {
+        body: { ca: numero, comFoto: !jaTemFoto },
+      });
+      if (error) throw error;
+      if (!data?.success || !data.data) {
+        // A funcao de borda devolve justamente "CA X nao encontrado"; repetir a
+        // mesma frase como descricao so faz o aviso dizer tudo duas vezes.
+        const motivo = String(data?.error || "");
+        const repetido = motivo.replace(/\s+/g, " ").toLowerCase().includes(`ca ${numero} não encontrado`);
+        toast.error(`CA ${numero} não encontrado`, {
+          description: repetido || !motivo ? "Confira o número no certificado." : motivo,
+        });
+        return;
+      }
+      const d = data.data as {
+        nome?: string; situacao?: string; validade?: string; descricao?: string;
+        foto?: { dataUrl: string; tipo: string } | null;
+      };
+
+      const atual = itensRef.current[idx];
+      const remendo: Partial<ItemForm> = {};
+      if (!atual?.nome_item?.trim() && d.nome) remendo.nome_item = d.nome;
+      if (!atual?.observacoes?.trim() && d.descricao) remendo.observacoes = d.descricao;
+      if (Object.keys(remendo).length) updateItem(idx, remendo);
+
+      if (!jaTemFoto && d.foto?.dataUrl) {
+        const resposta = await fetch(d.foto.dataUrl);
+        const blob = await resposta.blob();
+        const ext = (d.foto.tipo.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "");
+        await handlePickImage(idx, new File([blob], `ca-${numero}.${ext}`, { type: d.foto.tipo }));
+      }
+
+      // A situacao do certificado e o que muda a decisao de comprar: um CA
+      // vencido no pedido vira EPI que nao pode ser entregue.
+      const vencido = /vencid|inv[áa]lid/i.test(d.situacao || "");
+      const aviso = d.validade ? ` · validade ${d.validade.split("-").reverse().join("/")}` : "";
+      if (vencido) toast.warning(`CA ${numero} está ${d.situacao}${aviso}`, { duration: 9000 });
+      else toast.success(`CA ${numero}: ${d.nome || "encontrado"}${aviso}`);
+    } catch (e: any) {
+      toast.error("Não foi possível consultar o CA", { description: e?.message || "Tente de novo." });
+    } finally {
+      setConsultandoCa((p) => ({ ...p, [idx]: false }));
+    }
   }
 
   async function handlePickImage(idx: number, file: File | null) {
@@ -975,8 +1044,33 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Input data-campo="nome-item" value={it.nome_item} onChange={(e) => updateItem(idx, { nome_item: e.target.value })} disabled={readOnly} />
                     </div>
                     <div className="col-span-2 md:col-span-2">
-                      <Label className="text-xs">Referência</Label>
-                      <Input value={it.ca} onChange={(e) => updateItem(idx, { ca: e.target.value })} disabled={readOnly} />
+                      {/* O rotulo diz CA porque e o que se digita ali — e o
+                          numero do certificado que a consulta usa. */}
+                      <Label className="text-xs">Referência / CA</Label>
+                      <div className="relative">
+                        <Input
+                          value={it.ca}
+                          onChange={(e) => updateItem(idx, { ca: e.target.value })}
+                          onBlur={() => !readOnly && consultarCa(idx)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); consultarCa(idx); } }}
+                          disabled={readOnly}
+                          placeholder="Ex: 19578"
+                          className="pr-8"
+                        />
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            aria-label="Consultar CA"
+                            title="Consultar o CA e trazer nome, descrição e foto"
+                            onClick={() => consultarCa(idx)}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                          >
+                            {consultandoCa[idx]
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Search className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <Label className="text-xs">Unidade</Label>
