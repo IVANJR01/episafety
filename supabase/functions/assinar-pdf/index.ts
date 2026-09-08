@@ -21,7 +21,9 @@ import { PDFDocument } from "npm:pdf-lib@1.17.1";
 import { pdflibAddPlaceholder } from "npm:@signpdf/placeholder-pdf-lib@3.3.0";
 import { SignPdf } from "npm:@signpdf/signpdf@3.3.0";
 import { P12Signer } from "npm:@signpdf/signer-p12@3.3.0";
+import forge from "npm:node-forge@1.3.1";
 import { Buffer } from "node:buffer";
+import { escolherFolha, titularDe, type CertificadoLike } from "./escolherCertificado.ts";
 
 /** Teto do arquivo aceito. Ficha de EPI tem ~40 KB; isto é folga larga. */
 const LIMITE_PDF_BYTES = 15 * 1024 * 1024;
@@ -40,6 +42,35 @@ function bytesParaBase64(bytes: Uint8Array): string {
     bin += String.fromCharCode(...bytes.subarray(i, i + passo));
   }
   return btoa(bin);
+}
+
+/**
+ * Titular e vencimento do certificado, para o front avisar antes de expirar.
+ *
+ * Um A1 vale um ano. Sem esse aviso, no dia seguinte ao vencimento as fichas
+ * simplesmente voltariam a sair sem assinatura ICP-Brasil e ninguém
+ * perceberia — o PDF continua sendo gerado normalmente.
+ *
+ * Falha aqui não pode derrubar a assinatura: se não der para ler a validade,
+ * a ficha sai assinada do mesmo jeito e o front só não mostra o aviso.
+ */
+function lerDadosDoCertificado(pfx: Uint8Array, senha: string): { titular: string; validoAte: string } | null {
+  try {
+    let bin = "";
+    for (let i = 0; i < pfx.length; i++) bin += String.fromCharCode(pfx[i]);
+    const asn1 = forge.asn1.fromDer(forge.util.createBuffer(bin));
+    const p12 = forge.pkcs12.pkcs12FromAsn1(asn1, senha);
+    const bags = p12.getBags({ bagType: forge.pki.oids.certBag });
+    const certs = (bags[forge.pki.oids.certBag] ?? [])
+      .map((b: { cert?: CertificadoLike }) => b.cert)
+      .filter((c): c is CertificadoLike => !!c?.validity?.notAfter);
+    const folha = escolherFolha(certs);
+    if (!folha) return null;
+    return { titular: titularDe(folha), validoAte: folha.validity.notAfter.toISOString() };
+  } catch (e) {
+    console.error("[assinar-pdf] nao consegui ler a validade do certificado:", e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -97,10 +128,15 @@ Deno.serve(async (req) => {
      */
     const comPlaceholder = await pdfDoc.save({ useObjectStreams: false });
 
-    const signer = new P12Signer(Buffer.from(base64ParaBytes(pfxB64)), { passphrase: senha });
+    const pfxBytes = base64ParaBytes(pfxB64);
+    const signer = new P12Signer(Buffer.from(pfxBytes), { passphrase: senha });
     const assinado = await new SignPdf().sign(Buffer.from(comPlaceholder), signer);
 
-    return new Response(JSON.stringify({ success: true, pdfBase64: bytesParaBase64(new Uint8Array(assinado)) }), {
+    return new Response(JSON.stringify({
+      success: true,
+      pdfBase64: bytesParaBase64(new Uint8Array(assinado)),
+      certificado: lerDadosDoCertificado(pfxBytes, senha),
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

@@ -85,6 +85,34 @@ CN = 51.489.453 JOSE IVAN HOLANDA DE MELO JUNIOR:51489453000164
 > AES-256/PBKDF2 — que é o padrão do OpenSSL 3. Com o padrão do OpenSSL o
 > arquivo é gerado normalmente, mas a função não consegue abrir.
 
+## Aviso de vencimento
+
+Um A1 vale um ano, e no dia em que ele expira nada aparenta ter mudado: a
+ficha continua sendo gerada e baixada, só volta a sair sem assinatura
+reconhecida pelo validador do ITI.
+
+Por isso a função `assinar-pdf` devolve, junto com o PDF, o titular e o
+vencimento do certificado:
+
+```json
+{ "success": true, "pdfBase64": "...", "certificado": { "titular": "...", "validoAte": "2027-09-08T19:44:37.000Z" } }
+```
+
+O front avalia isso em `src/lib/validadeCertificado.ts` e mostra um toast a
+partir de **30 dias** antes (`DIAS_DE_AVISO`), e um toast vermelho depois de
+vencido.
+
+Dois cuidados que o código toma:
+
+- **O certificado lido é o do titular, não o da AC.** Um `.pfx` da ICP-Brasil
+  traz a cadeia inteira dentro dele; pegar o primeiro certificado do arquivo
+  mostraria a validade da AC Soluti, que vence em 2029, e o aviso nunca
+  dispararia. `escolherCertificado.ts` acha a folha pela regra "não é emissor
+  de nenhum outro".
+- **Sem certeza, sem aviso.** Se não der para abrir o `.pfx` ou identificar a
+  folha, a resposta vem com `certificado: null` e o front não diz nada. Um
+  "está tudo em dia" falso seria pior do que silêncio.
+
 ## Trocar de certificado depois
 
 Basta substituir os dois secrets. As fichas já emitidas continuam válidas

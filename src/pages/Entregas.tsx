@@ -26,6 +26,7 @@ import SignatureCanvas, { type SignatureCanvasRef } from "@/components/Signature
 import FullscreenSignature from "@/components/FullscreenSignature";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { gerarFichaEPI, preloadFotosReconhecimento } from "@/lib/gerarFichaEPI";
+import { avaliarValidade } from "@/lib/validadeCertificado";
 import { garantirDocumento, publicarVersao } from "@/lib/arquivoDigital";
 import CameraCapture from "@/components/CameraCapture";
 
@@ -1308,6 +1309,7 @@ export default function Entregas() {
     let blobFinal: Blob = doc.output("blob");
     let assinadoIcp = false;
     let motivoSemAssinatura = "";
+    let avisoCertificado: ReturnType<typeof avaliarValidade> = null;
     if (isOnline()) {
       try {
         const b64 = await new Promise<string>((resolve, reject) => {
@@ -1330,6 +1332,7 @@ export default function Entregas() {
           for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
           blobFinal = new Blob([bytes], { type: "application/pdf" });
           assinadoIcp = true;
+          avisoCertificado = avaliarValidade(resp?.certificado?.validoAte);
         } else {
           motivoSemAssinatura = resp?.configuracaoAusente
             ? "Certificado A1 ainda não cadastrado nos segredos do projeto."
@@ -1349,6 +1352,18 @@ export default function Entregas() {
     if (assinadoIcp) {
       toast({ title: "Ficha gerada e assinada digitalmente",
               description: "Assinatura ICP-Brasil — pode ser conferida em validar.iti.gov.br." });
+      /*
+       * O aviso vem depois do toast de sucesso, e não no lugar dele: a ficha
+       * saiu assinada e quem pediu precisa saber disso. O vencimento é um
+       * recado para quem administra o sistema, não uma falha da geração.
+       */
+      if (avisoCertificado) {
+        toast({
+          title: avisoCertificado.titulo,
+          description: avisoCertificado.mensagem,
+          variant: avisoCertificado.nivel === "vencido" ? "destructive" : "default",
+        });
+      }
     } else {
       toast({ title: "Ficha gerada com sucesso!",
               description: motivoSemAssinatura
