@@ -1,33 +1,34 @@
 /*
- * Acha a foto do EPI na página do CA.
+ * Acha a foto do EPI na página do CA no consultaca.com.
  *
  * Fica em arquivo próprio, sem nada do Deno dentro, por um motivo prático: a
  * função de borda roda no Deno e os testes do projeto rodam no Node. Separado
  * assim, o MESMO código que vai para o servidor é o que os testes exercitam.
  *
- * A ordem das tentativas não é arbitrária. `og:image` é a que o site declara
- * para redes sociais: é a foto do produto, é absoluta e é a que menos muda de
- * lugar quando o layout do site é mexido. As outras existem porque o site pode
- * simplesmente não ter `og:image`, e aí uma foto errada é pior do que nenhuma —
- * por isso a última tentativa exige que o nome do arquivo pareça de produto.
+ * A REGRA VEIO DA PÁGINA REAL, não de suposição. Buscando o HTML de CAs de
+ * verdade (34474, 5745, 19578), o padrão é este:
+ *
+ *   https://consultaca.com/files/fotos_ca/<número do CA>-<id>.jpg
+ *
+ * O nome do arquivo começa com o próprio número do CA, o que permite conferir
+ * que a foto é daquele certificado e não de outro.
+ *
+ * A primeira versão disto usava `og:image` como melhor candidata, por ser o que
+ * a maioria dos sites declara como imagem do conteúdo. Aqui isso estava ERRADO:
+ * a og:image do consultaca é `/images/og-image.jpg`, a arte genérica do site,
+ * igual em toda página. A regra teria anexado o cartão do site como se fosse o
+ * equipamento — em todos os itens.
+ *
+ * A página também traz muita imagem que não é o EPI do certificado: logo do
+ * fabricante, publicidade, selos, e um catálogo de produtos de lojas parceiras
+ * em outros domínios (buscaepi.com, cloudfront, epizeus). Nada disso entra.
  */
 
-/** Domínios de onde vale a pena aceitar uma foto. */
+/** A pasta onde o site guarda a foto de cada CA. */
+const PASTA_DA_FOTO = "/files/fotos_ca/";
+
+/** Anfitriões de onde a foto pode vir. Loja parceira não é fonte do CA. */
 const DOMINIOS_ACEITOS = ["consultaca.com", "consultaca.com.br"];
-
-/**
- * Nada de ícone, logo, selo, bandeira — não são a foto do equipamento — e nada
- * de pixel de rastreio, que foi o que um teste pegou: um `pixel.gif` de 1x1
- * passava por todos os filtros e virava a "foto do EPI" do item.
- */
-const NOMES_RECUSADOS =
-  /logo|icon|favicon|sprite|banner|selo|bandeira|avatar|placeholder|sem-?imagem|no-?image|pixel|spacer|blank|1x1|track/i;
-
-/** Pastas de enfeite do site; foto de produto não mora nelas. */
-const PASTAS_RECUSADAS = /\/(estatico|static|assets|css|js|tema|theme|ui)\//i;
-
-/* Sem `gif`: foto de produto não é gif — gif ali é animação ou rastreio. */
-const EXTENSOES = /\.(jpe?g|png|webp|avif)(\?|#|$)/i;
 
 function absoluta(url: string, base: string): string | null {
   try {
@@ -39,49 +40,40 @@ function absoluta(url: string, base: string): string | null {
   }
 }
 
-function aceitavel(url: string): boolean {
-  let u: URL;
-  try { u = new URL(url); } catch { return false; }
-  // Aceita o próprio site e seus subdomínios (imagens costumam ficar em outro).
-  const doDominio = DOMINIOS_ACEITOS.some((d) => u.hostname === d || u.hostname.endsWith(`.${d}`));
-  if (!doDominio) return false;
-  if (NOMES_RECUSADOS.test(u.pathname)) return false;
-  if (PASTAS_RECUSADAS.test(u.pathname)) return false;
-  return true;
+function doSite(u: URL): boolean {
+  return DOMINIOS_ACEITOS.some((d) => u.hostname === d || u.hostname.endsWith(`.${d}`));
 }
 
 /**
  * @param html   página do CA
  * @param base   endereço de onde o html veio, para resolver caminho relativo
- * @returns endereço absoluto da foto, ou null quando não há uma confiável
+ * @param ca     número do certificado, para conferir que a foto é dele
+ * @returns endereço absoluto da foto, ou null quando a página não tem uma
  */
-export function extrairImagemDoCa(html: string, base = "https://consultaca.com/"): string | null {
+export function extrairImagemDoCa(html: string, base = "https://consultaca.com/", ca?: string): string | null {
   if (!html) return null;
 
-  const tentativas: Array<RegExp> = [
-    // 1. og:image / twitter:image — nas duas ordens de atributo.
-    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
-    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
-    /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i,
-    // 2. Imagem marcada como a do EPI pelo próprio site.
-    /<img[^>]+(?:class|id)=["'][^"']*(?:epi|produto|equipamento|foto-ca)[^"']*["'][^>]+src=["']([^"']+)["']/i,
-    /<img[^>]+src=["']([^"']+)["'][^>]+(?:class|id)=["'][^"']*(?:epi|produto|equipamento|foto-ca)[^"']*["']/i,
-  ];
-
-  for (const padrao of tentativas) {
-    const achado = html.match(padrao)?.[1];
-    if (!achado) continue;
-    const url = absoluta(achado.trim(), base);
-    if (url && aceitavel(url)) return url;
-  }
-
-  // 3. Último recurso: alguma <img> do próprio site cujo arquivo pareça foto.
-  //    Exige extensão de imagem para não pegar pixel de rastreio nem SVG de UI.
-  const todas = html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi);
-  for (const m of todas) {
+  const candidatas: URL[] = [];
+  for (const m of html.matchAll(/(?:src|href)=["']([^"']+)["']/gi)) {
     const url = absoluta(m[1].trim(), base);
-    if (url && aceitavel(url) && EXTENSOES.test(url)) return url;
+    if (!url) continue;
+    let u: URL;
+    try { u = new URL(url); } catch { continue; }
+    if (!doSite(u)) continue;
+    if (!u.pathname.startsWith(PASTA_DA_FOTO)) continue;
+    candidatas.push(u);
+  }
+  if (candidatas.length === 0) return null;
+
+  // Quando se sabe o número do CA, vale a foto cujo arquivo começa com ele:
+  // é a prova de que a imagem é deste certificado, e não de um relacionado.
+  const numero = (ca || "").replace(/\D/g, "");
+  if (numero) {
+    const daquele = candidatas.find((u) =>
+      u.pathname.slice(PASTA_DA_FOTO.length).startsWith(`${numero}-`)
+      || u.pathname.slice(PASTA_DA_FOTO.length).startsWith(`${numero}.`));
+    if (daquele) return daquele.toString();
   }
 
-  return null;
+  return candidatas[0].toString();
 }

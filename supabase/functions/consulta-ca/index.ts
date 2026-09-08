@@ -91,7 +91,9 @@ function parseConsultaCA(html: string, ca: string) {
 
   return {
     ca,
-    imagem_url: extrairImagemDoCa(html, `https://consultaca.com/${ca}`),
+    // O número do CA vai junto: a foto do site tem o número no nome do
+    // arquivo, e é assim que se confere que ela é deste certificado.
+    imagem_url: extrairImagemDoCa(html, `https://consultaca.com/${ca}`, ca),
     nome: nome || null,
     categoria: categoria || null,
     situacao: situacao || null,
@@ -118,7 +120,7 @@ Deno.serve(async (req) => {
 
 
   try {
-    const { ca, comFoto } = await req.json() as { ca?: string; comFoto?: boolean };
+    const { ca, comFoto, diagnostico } = await req.json() as { ca?: string; comFoto?: boolean; diagnostico?: boolean };
 
     if (!ca || typeof ca !== 'string') {
       return new Response(
@@ -160,6 +162,29 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: false, error: `CA ${caNumber} não encontrado` }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    /*
+     * Modo de diagnóstico: devolve o que a página REALMENTE tem de imagem.
+     *
+     * Existe porque a extração da foto foi escrita sem poder abrir o site — o
+     * ambiente de desenvolvimento não alcança o consultaca.com. Sem isto, achar
+     * por que uma foto não veio vira adivinhação; com isto, é uma chamada.
+     * Não expõe nada que já não esteja na página pública do CA.
+     */
+    if (diagnostico) {
+      const ogs = [...html.matchAll(/<meta[^>]+(?:property|name)=["'](og:image|twitter:image)[^>]*>/gi)]
+        .map((m) => m[0]).slice(0, 5);
+      const imgs = [...html.matchAll(/<img[^>]*>/gi)].map((m) => m[0].slice(0, 220)).slice(0, 25);
+      return new Response(JSON.stringify({
+        success: true,
+        diagnostico: {
+          tamanho_html: html.length,
+          escolhida: data.imagem_url,
+          metas_de_imagem: ogs,
+          tags_img: imgs,
+        },
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // A foto só é buscada quando quem chamou pediu — quem só quer o nome e a
