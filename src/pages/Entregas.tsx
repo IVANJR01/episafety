@@ -1252,6 +1252,9 @@ export default function Entregas() {
       }
       const epiObj = epis.find(ep => ep.id === e.epi_id);
       return {
+        // O id entra no código de verificação da assinatura: sem ele, duas
+        // entregas assinadas igual no mesmo instante teriam o mesmo código.
+        id: e.id,
         data: e.data, created_at: e.created_at, quantidade: e.quantidade,
         epi_nome: epiObj?.nome || "—",
         epi_ca: epiCa,
@@ -1274,11 +1277,17 @@ export default function Entregas() {
       if (logoB64) fotosBase64.set(emp.logo_url, logoB64);
     }
 
+    // Códigos de verificação das assinaturas. Calculados aqui porque usam
+    // `crypto.subtle`, que é assíncrono, e montar o PDF é síncrono.
+    const { calcularCodigosDaFicha } = await import("@/lib/codigoAssinatura");
+    const codigosAssinatura = await calcularCodigosDaFicha(entregasData);
+
     const doc = gerarFichaEPI({
       empresa: { nome: emp.nome || "", cnpj: emp.cnpj || "", endereco: emp.endereco || "", logo_url: emp.logo_url || null },
       funcionario: { nome: func.nome, cargo: func.cargo, setor: func.setor, cpf: func.cpf, matricula: func.matricula, data_admissao: func.data_admissao },
       entregas: entregasData,
       fotosBase64,
+      codigosAssinatura,
     });
 
     doc.save(`Ficha_EPI_${func.nome.replace(/\s+/g, "_")}_${now.toISOString().split("T")[0]}.pdf`);

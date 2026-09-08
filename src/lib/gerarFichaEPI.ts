@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { dataHoraComSegundos } from "./codigoAssinatura";
 
 interface EmpresaData {
   nome: string;
@@ -17,6 +18,8 @@ interface FuncionarioData {
 }
 
 interface EntregaItem {
+  /** Id da entrega — entra no código de verificação da assinatura. */
+  id?: string | null;
   data: string;
   created_at: string;
   quantidade: number;
@@ -37,6 +40,12 @@ interface FichaData {
   funcionario: FuncionarioData;
   entregas: EntregaItem[];
   fotosBase64?: Map<string, string>;
+  /**
+   * Código de verificação de cada assinatura, na ordem das entregas.
+   * Vem pronto de fora porque é calculado com `crypto.subtle`, que é
+   * assíncrono, e montar o PDF é síncrono.
+   */
+  codigosAssinatura?: (string | null)[];
 }
 
 const MARGIN = 15;
@@ -278,7 +287,7 @@ export function gerarFichaEPI(data: FichaData) {
 
   const tipoLabels: Record<string, string> = { entrega: "Entrega", substituicao: "Substituição", perda: "Perda", dano: "Dano", troca: "Troca", devolucao: "Devolução" };
 
-  data.entregas.forEach((entrega) => {
+  data.entregas.forEach((entrega, idx) => {
     if (y + ROW_H > MAX_Y) {
       drawFooter(doc, pendentes);
       doc.addPage();
@@ -434,12 +443,35 @@ export function gerarFichaEPI(data: FichaData) {
       doc.setTextColor(0);
     }
 
-    // Data/hora do registro. Só sai onde há assinatura: embaixo de uma caixa
-    // vazia ela era lida como a hora em que o trabalhador teria assinado.
+    /*
+     * Código de verificação e data/hora, embaixo da assinatura.
+     *
+     * A ficha trazia só a data e a hora (sem segundos), e nada ligava aquele
+     * desenho àquele registro: duas linhas com assinaturas parecidas eram
+     * indistinguíveis no papel. O código é derivado do próprio registro, então
+     * a mesma entrega dá sempre o mesmo código e trocar a assinatura muda o
+     * código.
+     *
+     * Só sai onde há assinatura: embaixo de uma caixa vazia, código e hora
+     * seriam lidos como registro de uma assinatura que não existe.
+     */
     if (entrega.assinatura_colaborador) {
-      doc.setFontSize(4.5);
+      const cx = sigX + sigW / 2;
+      const codigo = data.codigosAssinatura?.[idx] || null;
+      doc.setTextColor(120);
+      if (codigo) {
+        // 4,5 pt em Courier: o código de 40 caracteres ocupa 38 mm dos 60 mm da
+        // coluna — medido com getTextWidth, não estimado. Courier porque em
+        // fonte proporcional "l", "1" e "I" ficam parecidos demais para quem
+        // vai conferir caractere a caractere.
+        doc.setFontSize(4.5);
+        doc.setFont("courier", "normal");
+        doc.text(codigo, cx, y + ROW_H - 4.6, { align: "center" });
+        doc.setFont("helvetica", "normal");
+      }
+      doc.setFontSize(5);
       doc.setTextColor(100);
-      doc.text(formatDateTime(entrega.created_at), sigX + sigW / 2, y + ROW_H - 2, { align: "center" });
+      doc.text(dataHoraComSegundos(entrega.created_at), cx, y + ROW_H - 1.6, { align: "center" });
       doc.setTextColor(0);
     }
 
