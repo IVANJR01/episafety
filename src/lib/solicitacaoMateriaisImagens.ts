@@ -278,3 +278,78 @@ export function imagemDeTransferencia(dt: DataTransfer | null | undefined): File
   const hora = new Date().toISOString().slice(11, 19).replace(/:/g, "");
   return new File([imagem], `colado-${hora}.${ext}`, { type: imagem.type });
 }
+
+/** Uma foto já anexada antes, candidata a ser reaproveitada. */
+export type FotoDoAcervo = {
+  imagem_path: string | null;
+  imagem_nome: string | null;
+  imagem_tipo: string | null;
+  created_at?: string | null;
+};
+
+/**
+ * Escolhe, entre fotos já anexadas para o MESMO CA, qual reaproveitar.
+ *
+ * Existe porque o consultaca.com não tem foto de todo CA — o 37729, por
+ * exemplo, não tem. Mas a empresa já fotografou aquele equipamento numa
+ * solicitação anterior, e essa foto é melhor do que nenhuma: é do produto que
+ * ela mesma compra, escolhida por ela, e não depende de site de terceiro.
+ *
+ * Fica a mais recente: é a que reflete o que se compra hoje, quando o mesmo CA
+ * já foi pedido várias vezes.
+ */
+export function escolherFotoDoAcervo(candidatas: FotoDoAcervo[]): FotoDoAcervo | null {
+  const validas = (candidatas || []).filter((c) => !!c?.imagem_path);
+  if (validas.length === 0) return null;
+  return [...validas].sort((a, b) => {
+    const da = Date.parse(a.created_at || "") || 0;
+    const db = Date.parse(b.created_at || "") || 0;
+    return db - da;
+  })[0];
+}
+
+/**
+ * Traz do acervo da empresa a foto já usada para este CA.
+ *
+ * A busca é filtrada por empresa porque o acervo é dela: a política de acesso
+ * do banco já garante isso, e passar o `empresa_id` deixa a intenção explícita
+ * em vez de depender só da política.
+ */
+export async function buscarFotoDoAcervoPorCa(
+  empresaId: string, ca: string,
+): Promise<{ path: string; nome: string; tipo: string } | null> {
+  const numero = (ca || "").replace(/\D/g, "");
+  if (!empresaId || !numero) return null;
+  try {
+    const { data } = await (supabase.from as never as (t: string) => {
+      select: (c: string) => {
+        eq: (a: string, b: string) => {
+          eq: (a: string, b: string) => {
+            not: (a: string, b: string, c: null) => {
+              order: (a: string, o: { ascending: boolean }) => {
+                limit: (n: number) => Promise<{ data: FotoDoAcervo[] | null }>;
+              };
+            };
+          };
+        };
+      };
+    })("solicitacoes_materiais_itens")
+      .select("imagem_path, imagem_nome, imagem_tipo, created_at")
+      .eq("empresa_id", empresaId)
+      .eq("ca", numero)
+      .not("imagem_path", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    const escolhida = escolherFotoDoAcervo(data || []);
+    if (!escolhida?.imagem_path) return null;
+    return {
+      path: escolhida.imagem_path,
+      nome: escolhida.imagem_nome || `ca-${numero}.jpg`,
+      tipo: escolhida.imagem_tipo || "image/jpeg",
+    };
+  } catch {
+    // Acervo é plano B: falhar aqui deixa o item sem foto, não derruba nada.
+    return null;
+  }
+}

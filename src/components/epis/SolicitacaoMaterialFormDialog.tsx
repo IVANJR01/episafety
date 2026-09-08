@@ -15,6 +15,7 @@ import {
   ACCEPTED_IMG_TYPES, MAX_IMG_BYTES,
   compressImage, prepararImagemItem, buildItemImagePath, uploadItemImage,
   getSignedImageUrl, removeItemImage, descartarPreview, imagemDeTransferencia,
+  buscarFotoDoAcervoPorCa,
 } from "@/lib/solicitacaoMateriaisImagens";
 import { enviarEmailSolicitacao } from "@/lib/solicitacaoMateriaisEmail";
 
@@ -376,11 +377,48 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
       if (!atual?.observacoes?.trim() && d.descricao) remendo.observacoes = d.descricao;
       if (Object.keys(remendo).length) updateItem(idx, remendo);
 
+      /*
+       * A foto tem duas fontes, nesta ordem.
+       *
+       * 1. A página do CA no consultaca.com. É a fonte natural, mas ela não tem
+       *    foto de todo certificado — o CA 37729, por exemplo, não tem: das 37
+       *    imagens daquela página, nenhuma é do equipamento.
+       *
+       * 2. O acervo da própria empresa: a foto que alguém já anexou para o
+       *    MESMO CA numa solicitação anterior. É melhor do que nenhuma e melhor
+       *    do que uma foto achada por aí — é do produto que a empresa compra,
+       *    escolhida por ela, e não depende de site de terceiro. No banco desta
+       *    empresa há 15 CAs nessa situação, o 37729 entre eles.
+       *
+       * De onde a foto veio é dito em voz alta: foto que aparece sozinha sem
+       * explicação faz duvidar se é do item certo.
+       */
+      let anexou: "consultaca" | "acervo" | null = null;
       if (!jaTemFoto && d.foto?.dataUrl) {
         const resposta = await fetch(d.foto.dataUrl);
         const blob = await resposta.blob();
         const ext = (d.foto.tipo.split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "");
         await handlePickImage(idx, new File([blob], `ca-${numero}.${ext}`, { type: d.foto.tipo }));
+        anexou = "consultaca";
+      } else if (!jaTemFoto && empresaId) {
+        const doAcervo = await buscarFotoDoAcervoPorCa(empresaId, numero);
+        if (doAcervo) {
+          const url = await getSignedImageUrl(doAcervo.path, 300);
+          if (url) {
+            try {
+              const blob = await (await fetch(url)).blob();
+              if (blob.size > 0) {
+                await handlePickImage(idx, new File([blob], doAcervo.nome, { type: blob.type || doAcervo.tipo }));
+                anexou = "acervo";
+              }
+            } catch { /* plano B falhou: item fica sem foto, e só */ }
+          }
+        }
+      }
+      if (anexou === "acervo") {
+        toast.info("Foto reaproveitada de uma solicitação anterior com o mesmo CA", {
+          description: "O consultaca.com não tem foto deste CA.", duration: 7000,
+        });
       }
 
       // A situacao do certificado e o que muda a decisao de comprar: um CA

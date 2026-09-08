@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { imagemDeTransferencia } from "./solicitacaoMateriaisImagens";
+import { imagemDeTransferencia, escolherFotoDoAcervo, type FotoDoAcervo } from "./solicitacaoMateriaisImagens";
 
 /**
  * Monta um `DataTransfer` de mentira igual ao que o navegador entrega numa
@@ -80,5 +80,37 @@ describe("imagemDeTransferencia", () => {
     expect(imagemDeTransferencia(null)).toBeNull();
     expect(imagemDeTransferencia(undefined)).toBeNull();
     expect(imagemDeTransferencia({} as DataTransfer)).toBeNull();
+  });
+});
+
+describe("escolherFotoDoAcervo", () => {
+  const foto = (path: string | null, created_at?: string) =>
+    ({ imagem_path: path, imagem_nome: "x.jpg", imagem_tipo: "image/jpeg", created_at }) as FotoDoAcervo;
+
+  it("fica com a mais recente — é a que reflete o que se compra hoje", () => {
+    const escolhida = escolherFotoDoAcervo([
+      foto("emp/antiga.jpg", "2026-01-10T00:00:00Z"),
+      foto("emp/nova.jpg", "2026-08-30T00:00:00Z"),
+      foto("emp/meio.jpg", "2026-05-01T00:00:00Z"),
+    ]);
+    expect(escolhida?.imagem_path).toBe("emp/nova.jpg");
+  });
+
+  it("ignora item sem foto — ter o mesmo CA não basta", () => {
+    const escolhida = escolherFotoDoAcervo([
+      foto(null, "2026-09-01T00:00:00Z"),
+      foto("emp/tem.jpg", "2026-01-01T00:00:00Z"),
+    ]);
+    expect(escolhida?.imagem_path).toBe("emp/tem.jpg");
+  });
+
+  it("sem candidata devolve nada, em vez de inventar", () => {
+    expect(escolherFotoDoAcervo([])).toBeNull();
+    expect(escolherFotoDoAcervo([foto(null), foto(null)])).toBeNull();
+  });
+
+  it("data ausente não atrapalha a escolha", () => {
+    const escolhida = escolherFotoDoAcervo([foto("emp/sem-data.jpg"), foto("emp/com-data.jpg", "2026-03-01T00:00:00Z")]);
+    expect(escolhida?.imagem_path).toBe("emp/com-data.jpg");
   });
 });
