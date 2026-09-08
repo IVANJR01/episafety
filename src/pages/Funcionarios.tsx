@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
+import { acharCpfJaCadastrado, avisoDeCpfRepetido } from "@/lib/cpfDuplicado";
 
 interface Funcionario {
   id: string; nome: string; matricula: string | null; setor: string | null;
@@ -173,7 +174,19 @@ export default function Funcionarios() {
     setOpen(true);
   };
 
+  /*
+   * Trava enquanto grava.
+   *
+   * O botão "Cadastrar" não desabilitava e `handleSave` demora o tempo de ida
+   * e volta ao banco. Um segundo clique nesse intervalo gravava de novo: foi o
+   * que aconteceu com o LUANDSON — dois registros nascidos com 1,16 segundo de
+   * diferença (17:06:22,836 e 17:06:23,999). A trava é do estado, não só do
+   * atributo do botão, porque um clique já em curso não pode nem entrar aqui.
+   */
+  const [salvando, setSalvando] = useState(false);
+
   const handleSave = async () => {
+    if (salvando) return;
     if (!form.nome.trim()) {
       toast({ title: "Nome obrigatório", variant: "destructive" });
       return;
@@ -205,6 +218,25 @@ export default function Funcionarios() {
       return;
     }
     */
+    /*
+     * CPF que já existe na empresa.
+     *
+     * A trava acima impede o clique duplo, mas não o outro caminho: o mesmo CPF
+     * digitado de novo meses depois. Era o caso do terceiro LUANDSON, cadastrado
+     * em março e repetido em setembro sem nenhum aviso. Aqui o cadastro para e
+     * diz QUEM já está lá, para dar o que fazer — editar aquele, em vez de
+     * criar outro.
+     */
+    const repetido = acharCpfJaCadastrado(form.cpf, items || [], editing?.id);
+    if (repetido) {
+      toast({
+        title: "Este CPF já está cadastrado",
+        description: `${avisoDeCpfRepetido(repetido)}. Edite o cadastro existente em vez de criar outro.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Cargo/Função opcional agora
     const setorAuto = selectedGhe?.setor || form.setor || null;
     const data = { nome: form.nome, matricula: form.matricula || null, setor: setorAuto, cargo: form.cargo || null, data_admissao: form.data_admissao || null, cpf: form.cpf || null, data_demissao: form.data_demissao || null, unidade_id: form.unidade_id || null, contrato_id: form.contrato_id || null, ghe_id: form.ghe_id || null };
@@ -217,10 +249,15 @@ export default function Funcionarios() {
      * funcionário simplesmente não estava lá depois. Dando errado, o que foi
      * digitado continua na tela para tentar de novo.
      */
-    const gravou = editing ? await update(editing.id, data) : await add(data);
-    if (!gravou) return;
-    resetForm();
-    setOpen(false);
+    setSalvando(true);
+    try {
+      const gravou = editing ? await update(editing.id, data) : await add(data);
+      if (!gravou) return;
+      resetForm();
+      setOpen(false);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   // Demissão dialog
@@ -869,7 +906,12 @@ export default function Funcionarios() {
               </div>
             )}
           </div>
-          <DialogFooter><Button onClick={handleSave}>{editing ? "Salvar" : "Cadastrar"}</Button></DialogFooter>
+          <DialogFooter>
+            <Button onClick={handleSave} disabled={salvando} className="gap-2">
+              {salvando && <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+              {salvando ? "Gravando..." : editing ? "Salvar" : "Cadastrar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
