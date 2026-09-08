@@ -19,13 +19,20 @@
 #
 # Uso:
 #   ./scripts/gerar-certificado-autoassinado.sh
+#       -> ja usa o CNPJ do MEI da 3M Cursos e Treinamentos, so pede a senha
+#
 #   ./scripts/gerar-certificado-autoassinado.sh --cnpj 12.345.678/0001-95 \
-#       --razao-social "MINHA EMPRESA MEI" --email contato@empresa.com
+#       --razao-social "OUTRA EMPRESA" --nome-fantasia "OUTRA" \
+#       --email contato@empresa.com
 #
 set -euo pipefail
 
-CNPJ=""
-RAZAO=""
+# Padroes do MEI da 3M Cursos e Treinamentos, conferidos no CCMEI emitido pela
+# Receita em 19/07/2023. Sao dados publicos; a chave privada nunca fica aqui.
+# Passe --cnpj / --razao-social para gerar para outra empresa.
+CNPJ="51.489.453/0001-64"
+RAZAO="51.489.453 JOSE IVAN HOLANDA DE MELO JUNIOR"
+FANTASIA="3M CURSOS E TREINAMENTOS"
 EMAIL=""
 SENHA=""
 ANOS=3
@@ -35,6 +42,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --cnpj)          CNPJ="${2:-}"; shift 2 ;;
     --razao-social)  RAZAO="${2:-}"; shift 2 ;;
+    --nome-fantasia) FANTASIA="${2:-}"; shift 2 ;;
     --email)         EMAIL="${2:-}"; shift 2 ;;
     --senha)         SENHA="${2:-}"; shift 2 ;;
     --anos)          ANOS="${2:-}"; shift 2 ;;
@@ -91,6 +99,9 @@ if [ -z "$RAZAO" ]; then
 fi
 [ -n "$RAZAO" ] || { echo "ERRO: razao social e obrigatoria." >&2; exit 1; }
 
+# Sem nome fantasia o campo O do certificado repete a razao social.
+[ -n "$FANTASIA" ] || FANTASIA="$RAZAO"
+
 if [ -z "$EMAIL" ]; then
   read -r -p "E-mail (opcional, Enter para pular): " EMAIL || true
 fi
@@ -118,7 +129,7 @@ chmod 700 "$TMP"
   echo
   echo '[dn]'
   echo 'C = BR'
-  echo "O = ${RAZAO}"
+  echo "O = ${FANTASIA}"
   echo "CN = ${RAZAO}:${CNPJ_DIGITOS}"
   echo
   echo '[v3]'
@@ -148,7 +159,7 @@ openssl req -x509 -newkey rsa:2048 -sha256 -nodes \
 openssl pkcs12 -export \
   -inkey "$TMP/chave.pem" \
   -in "$TMP/cert.pem" \
-  -name "$RAZAO" \
+  -name "$FANTASIA" \
   -certpbe PBE-SHA1-3DES \
   -keypbe PBE-SHA1-3DES \
   -macalg sha1 \
@@ -168,6 +179,7 @@ Certificado gerado.
   arquivo .pfx : ${SAIDA}
   base64       : ${SAIDA}.base64
   titular      : ${RAZAO}:${CNPJ_DIGITOS}
+  organizacao  : ${FANTASIA}
   valido ate   : ${VALIDADE}
 
 Proximos passos, no painel do Supabase

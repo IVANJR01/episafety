@@ -58,13 +58,27 @@ O que ele **não** dá: o `validar.iti.gov.br` rejeita e o Adobe mostra
 raiz da ICP-Brasil.
 
 ```bash
+# usa o MEI da 3M Cursos e Treinamentos, só pede a senha
+./scripts/gerar-certificado-autoassinado.sh
+
+# ou para outra empresa
 ./scripts/gerar-certificado-autoassinado.sh \
   --cnpj 12.345.678/0001-95 \
-  --razao-social "MINHA EMPRESA MEI"
+  --razao-social "OUTRA EMPRESA" \
+  --nome-fantasia "OUTRA"
 ```
 
-O script valida os dígitos do CNPJ, grava o CNPJ no OID `2.16.76.1.3.3`
-(o mesmo que a ICP-Brasil usa) e já cospe o `.pfx` e o `.base64` prontos.
+O script já vem com o CNPJ `51.489.453/0001-64` como padrão, conferido no
+CCMEI. Ele valida os dígitos verificadores, grava o CNPJ no OID
+`2.16.76.1.3.3` (o mesmo que a ICP-Brasil usa) e cospe o `.pfx` e o
+`.base64` prontos.
+
+O signatário sai assim no Adobe Reader:
+
+```
+O  = 3M CURSOS E TREINAMENTOS
+CN = 51.489.453 JOSE IVAN HOLANDA DE MELO JUNIOR:51489453000164
+```
 
 > O `.pfx` é exportado com PBE-SHA1-3DES de propósito. O `node-forge`, que
 > o `@signpdf/signer-p12` usa por baixo, não lê PKCS#12 cifrado com
