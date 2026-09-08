@@ -93,6 +93,7 @@ export async function carregarDadosPdfSolicitacao(
       nome_item: i.nome_item,
       descricao: i.descricao,
       ca: i.ca,
+      referencia: i.referencia,
       unidade_medida: i.unidade_medida,
       quantidade_solicitada: Number(i.quantidade_solicitada || 0),
       quantidade_aprovada: i.quantidade_aprovada != null ? Number(i.quantidade_aprovada) : null,

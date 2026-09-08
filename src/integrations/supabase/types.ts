@@ -8320,6 +8320,7 @@ export type Database = {
           observacoes: string | null
           ordem: number
           prioridade_item: string | null
+          referencia: string | null
           quantidade_aprovada: number | null
           quantidade_comprada: number | null
           quantidade_recebida: number | null
@@ -8346,6 +8347,7 @@ export type Database = {
           observacoes?: string | null
           ordem?: number
           prioridade_item?: string | null
+          referencia?: string | null
           quantidade_aprovada?: number | null
           quantidade_comprada?: number | null
           quantidade_recebida?: number | null
@@ -8372,6 +8374,7 @@ export type Database = {
           observacoes?: string | null
           ordem?: number
           prioridade_item?: string | null
+          referencia?: string | null
           quantidade_aprovada?: number | null
           quantidade_comprada?: number | null
           quantidade_recebida?: number | null

@@ -92,7 +92,11 @@ export default function SolicitacaoAprovacaoDialog({ open, onOpenChange, solicit
                   <div className="sm:col-span-3">
                     <div className="text-xs text-muted-foreground">#{idx + 1} — {it.tipo_item}</div>
                     <div className="font-medium text-sm">{it.nome_item}</div>
-                    {it.ca && <div className="text-xs text-muted-foreground">CA {it.ca}</div>}
+                    {(it.ca || it.referencia) && (
+                      <div className="text-xs text-muted-foreground">
+                        {[it.ca ? `CA ${it.ca}` : null, it.referencia || null].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Label className="text-xs">Solicitada</Label>

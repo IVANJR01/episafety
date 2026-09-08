@@ -6,6 +6,7 @@ export interface SolicitacaoPdfItem {
   nome_item: string;
   descricao?: string | null;
   ca?: string | null;
+  referencia?: string | null;
   unidade_medida: string;
   quantidade_solicitada: number;
   quantidade_aprovada?: number | null;
@@ -268,7 +269,9 @@ function construirSolicitacaoPdfDoc(s: SolicitacaoPdfInput): jsPDF {
         "", // preenchida em didDrawCell — a celula guarda a imagem, nao texto
         it.tipo_item,
         nome,
-        it.ca || "-",
+        // CA e referência são coisas diferentes e agora vivem em campos
+        // diferentes; a coluna mostra as duas, uma por linha.
+        [it.ca ? `CA ${it.ca}` : null, it.referencia || null].filter(Boolean).join("\n") || "-",
         it.unidade_medida,
         String(it.quantidade_solicitada),
         it.quantidade_aprovada != null ? String(it.quantidade_aprovada) : "Pendente",

@@ -37,7 +37,10 @@ type ItemForm = {
   epi_id: string | null;
   nome_item: string;
   descricao: string;
+  /** Certificado de Aprovação do EPI — só dígitos, é o que a consulta usa. */
   ca: string;
+  /** Referência/modelo do material: código do fornecedor, modelo, placa. */
+  referencia: string;
   unidade_medida: string;
   quantidade_solicitada: number;
   justificativa_item: string;
@@ -63,6 +66,7 @@ const emptyItem = (): ItemForm => ({
   nome_item: "",
   descricao: "",
   ca: "",
+  referencia: "",
   unidade_medida: "un",
   quantidade_solicitada: 1,
   justificativa_item: "",
@@ -227,6 +231,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         nome_item: i.nome_item,
         descricao: i.descricao || "",
         ca: i.ca || "",
+        referencia: i.referencia || "",
         unidade_medida: i.unidade_medida,
         quantidade_solicitada: Number(i.quantidade_solicitada || 0),
         justificativa_item: i.justificativa_item || "",
@@ -283,7 +288,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
   function pickEpi(idx: number, epiId: string) {
     const epi = epis.find((e) => e.id === epiId);
     if (!epi) return;
-    updateItem(idx, { epi_id: epi.id, nome_item: epi.nome, ca: epi.ca || "" });
+    updateItem(idx, { epi_id: epi.id, nome_item: epi.nome, ca: (epi.ca || "").replace(/\D/g, "") });
   }
   /*
    * O item novo entra no fim da lista — e a tela vai atras dele.
@@ -543,6 +548,7 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
         nome_item: i.nome_item.trim(),
         descricao: i.descricao || null,
         ca: i.ca || null,
+        referencia: i.referencia || null,
         unidade_medida: i.unidade_medida,
         quantidade_solicitada: i.quantidade_solicitada,
         justificativa_item: i.justificativa_item || null,
@@ -1014,8 +1020,14 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       cada, em vez de um pela metade e o outro sozinho.
                   */}
                   <div className="grid grid-cols-6 md:grid-cols-12 gap-2 items-start">
+                    {/* Linha de identificação do EPI: onde se procura no
+                        cadastro e onde se digita o CA. O CA estava junto com a
+                        "Referência", e são coisas diferentes — só o CA se
+                        consulta no consultaca.com, e só EPI tem CA. A linha
+                        aparece para EPI e, fora disso, apenas se já houver um
+                        CA gravado, para o valor nunca sumir de vista. */}
                     {it.tipo_item === "EPI" && (
-                      <div className="col-span-6 md:col-span-12">
+                      <div className="col-span-6 md:col-span-8">
                         <Label className="text-xs">Buscar do cadastro de EPIs</Label>
                         <Select value={it.epi_id || "__manual"} onValueChange={(v) => v === "__manual" ? updateItem(idx, { epi_id: null }) : pickEpi(idx, v)} disabled={readOnly}>
                           <SelectTrigger><SelectValue placeholder="Selecione um EPI..." /></SelectTrigger>
@@ -1024,6 +1036,39 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                             {epis.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome}{e.ca ? ` — CA ${e.ca}` : ""}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+                    {(it.tipo_item === "EPI" || it.ca) && (
+                      <div className={`col-span-6 ${it.tipo_item === "EPI" ? "md:col-span-4" : "md:col-span-12"}`}>
+                        <Label className="text-xs">CA (Certificado de Aprovação)</Label>
+                        <div className="relative">
+                          <Input
+                            value={it.ca}
+                            // Só dígitos: é o que o certificado é, e é o que a
+                            // consulta usa. Antes vinha "CA: 5745", "C.A 38753",
+                            // "CA nº 12.598" — cada um de um jeito.
+                            onChange={(e) => updateItem(idx, { ca: e.target.value.replace(/\D/g, "").slice(0, 7) })}
+                            onBlur={() => !readOnly && consultarCa(idx)}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); consultarCa(idx); } }}
+                            disabled={readOnly}
+                            inputMode="numeric"
+                            placeholder="Ex: 19578 — traz nome, descrição e foto"
+                            className="pr-8"
+                          />
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              aria-label="Consultar CA"
+                              title="Consultar o CA e trazer nome, descrição e foto"
+                              onClick={() => consultarCa(idx)}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            >
+                              {consultandoCa[idx]
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <Search className="h-4 w-4" />}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                     <div className="col-span-6 md:col-span-2">
@@ -1044,33 +1089,13 @@ export default function SolicitacaoMaterialFormDialog({ open, onOpenChange, soli
                       <Input data-campo="nome-item" value={it.nome_item} onChange={(e) => updateItem(idx, { nome_item: e.target.value })} disabled={readOnly} />
                     </div>
                     <div className="col-span-2 md:col-span-2">
-                      {/* O rotulo diz CA porque e o que se digita ali — e o
-                          numero do certificado que a consulta usa. */}
-                      <Label className="text-xs">Referência / CA</Label>
-                      <div className="relative">
-                        <Input
-                          value={it.ca}
-                          onChange={(e) => updateItem(idx, { ca: e.target.value })}
-                          onBlur={() => !readOnly && consultarCa(idx)}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); consultarCa(idx); } }}
-                          disabled={readOnly}
-                          placeholder="Ex: 19578"
-                          className="pr-8"
-                        />
-                        {!readOnly && (
-                          <button
-                            type="button"
-                            aria-label="Consultar CA"
-                            title="Consultar o CA e trazer nome, descrição e foto"
-                            onClick={() => consultarCa(idx)}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                          >
-                            {consultandoCa[idx]
-                              ? <Loader2 className="h-4 w-4 animate-spin" />
-                              : <Search className="h-4 w-4" />}
-                          </button>
-                        )}
-                      </div>
+                      <Label className="text-xs">Referência</Label>
+                      <Input
+                        value={it.referencia}
+                        onChange={(e) => updateItem(idx, { referencia: e.target.value })}
+                        disabled={readOnly}
+                        placeholder="Modelo / código"
+                      />
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <Label className="text-xs">Unidade</Label>
