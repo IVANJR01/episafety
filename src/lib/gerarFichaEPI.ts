@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { dataHoraComSegundos } from "./codigoAssinatura";
+import { linhaDoAssinante } from "./assinanteDigital";
 
 interface EmpresaData {
   nome: string;
@@ -205,21 +206,30 @@ function pendenteDeAssinatura(e: EntregaItem): boolean {
  * havendo pendência, o rodapé diz quantas são.
  */
 function drawFooter(doc: jsPDF, pendentes: number) {
-  const footerY = PAGE_H - 15;
+  // Quatro linhas de 3,6 mm a partir daqui terminam a 3 mm da borda inferior.
+  const footerY = PAGE_H - 17;
+  const LINHA = 3.6;
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
   doc.text("Gerado no sistema SafetySoluções", PAGE_W / 2, footerY, { align: "center" });
 
+  // O cabeçalho traz a empresa do funcionário; esta linha diz quem assinou.
+  const emissor = linhaDoAssinante();
+  if (emissor) {
+    doc.text(emissor, PAGE_W / 2, footerY + LINHA, { align: "center" });
+  }
+  const yBase = footerY + (emissor ? LINHA * 2 : LINHA);
+
   if (pendentes === 0) {
-    doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, footerY + 4, { align: "center" });
+    doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, yBase, { align: "center" });
     doc.setTextColor(0);
     return;
   }
 
   doc.text(
     "Entregas com assinatura registrada valem como assinadas eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.",
-    PAGE_W / 2, footerY + 4, { align: "center" },
+    PAGE_W / 2, yBase, { align: "center" },
   );
   doc.setFont("helvetica", "bold");
   doc.setTextColor(180, 0, 0);
@@ -227,7 +237,7 @@ function drawFooter(doc: jsPDF, pendentes: number) {
     pendentes === 1
       ? "ATENÇÃO: 1 entrega desta ficha está SEM ASSINATURA."
       : `ATENÇÃO: ${pendentes} entregas desta ficha estão SEM ASSINATURA.`,
-    PAGE_W / 2, footerY + 8, { align: "center" },
+    PAGE_W / 2, yBase + LINHA, { align: "center" },
   );
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0);
