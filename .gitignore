@@ -42,3 +42,10 @@ supabase/.temp/
 .vercel
 .env*
 .pnpm-store/
+
+# Certificados digitais — a chave privada NUNCA vai para o repositorio
+*.pfx
+*.p12
+*.pfx.base64
+*.p12.base64
+*.key
