@@ -201,6 +201,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const [cantos, setCantos] = useState<Ponto[]>([]);
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [endireitando, setEndireitando] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const pararCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -241,6 +242,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
       setPaginas([]);
       setAjuste(null);
       setGerando(false);
+      setPreviewIndex(null);
       void iniciarCamera();
     } else {
       pararCamera();
@@ -544,7 +546,13 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {paginas.map((p, i) => (
                     <div key={i} className="relative shrink-0">
-                      <img src={p.final} alt={`Página ${i + 1}`} className="h-24 w-auto rounded border bg-white" />
+                      <img 
+                        src={p.final} 
+                        alt={`Página ${i + 1}`} 
+                        className="h-24 w-auto rounded border bg-white cursor-pointer hover:ring-2 ring-primary/50 transition-all" 
+                        onClick={() => setPreviewIndex(i)}
+                        title="Clique para ampliar"
+                      />
                       <span className="absolute bottom-1 left-1 text-[10px] bg-black/70 text-white px-1 rounded">{i + 1}</span>
                       <button type="button" onClick={() => setPaginas((ps) => ps.filter((_, j) => j !== i))}
                         className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-1"
@@ -581,6 +589,29 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
           )}
         </DialogFooter>
       </DialogContent>
+      
+      {/* Modal de Pré-visualização Ampliada */}
+      {previewIndex !== null && (
+        <Dialog open={true} onOpenChange={(v) => { if (!v) setPreviewIndex(null); }}>
+          <DialogContent className="max-w-3xl p-2 sm:p-4 border-none bg-black/95">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Pré-visualização da Página {previewIndex + 1}</DialogTitle>
+            </DialogHeader>
+            <div className="relative flex flex-col items-center justify-center w-full h-[80vh]">
+              <img 
+                src={paginas[previewIndex]?.final} 
+                alt={`Página ampliada ${previewIndex + 1}`} 
+                className="w-auto h-full object-contain rounded-md" 
+              />
+            </div>
+            <DialogFooter className="px-2">
+              <Button variant="secondary" onClick={() => setPreviewIndex(null)} className="w-full sm:w-auto">
+                Voltar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 }
