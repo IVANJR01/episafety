@@ -71,62 +71,73 @@ function tratarPagina(
   altura: number,
   modo: ModoCor,
 ) {
-  const imgDataOriginal = ctx.getImageData(0, 0, largura, altura);
-  const orig = imgDataOriginal.data;
+  const imagem = ctx.getImageData(0, 0, largura, altura);
+  const d = imagem.data;
+  const total = largura * altura;
 
-  // Passo 1: Estimar a iluminação (sombras do papel) usando um blur avançado via GPU
-  // Isso recria a técnica "Magic Color" do ClearScanner para matar sombras uniformemente.
-  const blurCanvas = document.createElement("canvas");
-  blurCanvas.width = largura;
-  blurCanvas.height = altura;
-  const bCtx = blurCanvas.getContext("2d", { willReadFrequently: true })!;
-
-  const tempCanvas = document.createElement("canvas");
-  tempCanvas.width = largura;
-  tempCanvas.height = altura;
-  tempCanvas.getContext("2d")!.putImageData(imgDataOriginal, 0, 0);
-
-  // Raio do blur: grande o suficiente para não focar no texto, focando no gradiente da luz da foto
-  const blurRadius = Math.max(10, Math.floor(largura * 0.035));
-  bCtx.filter = `blur(${blurRadius}px)`;
-  bCtx.drawImage(tempCanvas, 0, 0);
-
-  const blurData = bCtx.getImageData(0, 0, largura, altura).data;
-  const result = new Uint8ClampedArray(orig.length);
-
-  // Passo 2: Remoção de sombras e balanceamento de brancos por pixel
-  for (let i = 0; i < orig.length; i += 4) {
-    let r = orig[i], g = orig[i + 1], b = orig[i + 2];
-    let br = Math.max(1, blurData[i]), bg = Math.max(1, blurData[i + 1]), bb = Math.max(1, blurData[i + 2]);
-
-    // O truque da divisão de fundo: anula o fundo gradiente da sombra
-    let dr = (r / br) * 255;
-    let dg = (g / bg) * 255;
-    let db = (b / bb) * 255;
-
-    // Aumenta agressivamente o contraste para o papel ficar branco e os textos/carimbos vivos
-    const constrasteCortePreto = 30; // Pontos mais escuros descem pro zero
-    const fator = 1.35; // Aceleração do contraste para não ficar lavado
-
-    dr = Math.max(0, Math.min(255, (dr - constrasteCortePreto) * fator));
-    dg = Math.max(0, Math.min(255, (dg - constrasteCortePreto) * fator));
-    db = Math.max(0, Math.min(255, (db - constrasteCortePreto) * fator));
-
-    if (modo === "pb" || modo === "cinza") {
-      let luma = dr * 0.299 + dg * 0.587 + db * 0.114;
-      if (modo === "pb") {
-        luma = luma > 175 ? 255 : 0; // Texto vira preto puro, fundo vira branco puro (fotocópia dura)
-      }
-      result[i] = result[i + 1] = result[i + 2] = luma;
-    } else {
-      result[i] = dr;
-      result[i + 1] = dg;
-      result[i + 2] = db;
-    }
-    result[i + 3] = 255; // Alpha total
+  // Usa apenas o canal verde (ou luma) para achar a tinta e o papel
+  const histograma = new Uint32Array(256);
+  for (let i = 0; i < d.length; i += 4) {
+    histograma[(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0]++;
   }
 
-  ctx.putImageData(new ImageData(result, largura, altura), 0, 0);
+  let acumulado = 0;
+  let tinta = 0;
+  // Acha o pico das partes escuras (textos/caneta)
+  for (let v = 0; v < 256; v++) {
+    acumulado += histograma[v];
+    if (acumulado >= total * 0.03) { tinta = v; break; }
+  }
+  acumulado = 0;
+  let papel = 255;
+  // Acha o pico do claro (fundo da folha)
+  for (let v = 255; v >= 0; v--) {
+    acumulado += histograma[v];
+    if (acumulado >= total * 0.35) { papel = v; break; }
+  }
+
+  // Se a foto tiver sombra de lateral muito forte, o 'papel' pode ser 150 e a 'tinta' 40.
+  // Vamos esticar a distância entre tinta e papel para gerar o efeito "Clear Scanner" puro!
+  const tabela = new Uint8ClampedArray(256);
+
+  // Efeito Magic Color (Escaneamento de Alta Definição)
+  // Limiarizamos os fundos mais escuros para preto, e o fundo do papel para puramente branco.
+  let pontoPreto = Math.max(0, tinta - 20); // Tudo abaixo disso vira 0 (Preto puro)
+  let pontoBranco = Math.min(255, papel + 15); // Tudo acima disso vira 255 (Branco folha)
+
+  if (modo === "pb") {
+    // Para modo de fotocópia (P&B), o contraste é extremamente agressivo e cortante
+    pontoPreto = tinta + 20; 
+    pontoBranco = papel - 30;
+  }
+
+  const escala = pontoBranco - pontoPreto > 10 ? 255 / (pontoBranco - pontoPreto) : 1;
+
+  for (let v = 0; v < 256; v++) {
+    tabela[v] = Math.max(0, Math.min(255, Math.round((v - pontoPreto) * escala)));
+  }
+
+  if (modo === "cor") {
+    for (let i = 0; i < d.length; i += 4) {
+      // Aplica a tabela em cada canal preservando cores
+      d[i] = tabela[d[i]];
+      d[i + 1] = tabela[d[i + 1]];
+      d[i + 2] = tabela[d[i + 2]];
+    }
+  } else {
+    // Modo cinza ou PB
+    for (let i = 0; i < d.length; i += 4) {
+      const v = tabela[(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0];
+      // Se for pb "duro", binariza o resultado esticado para sumir de vez com sombras no meio do documento
+      if (modo === "pb") {
+        const binario = v > 150 ? 255 : 0;
+        d[i] = d[i + 1] = d[i + 2] = binario;
+      } else {
+        d[i] = d[i + 1] = d[i + 2] = v;
+      }
+    }
+  }
+  ctx.putImageData(imagem, 0, 0);
 }
 
 /** Reaplica o acabamento sobre a página endireitada original. */
