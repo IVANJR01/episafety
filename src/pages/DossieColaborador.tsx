@@ -608,8 +608,38 @@ export default function DossieColaborador() {
             {envio?.tipo.validade_meses ? (
               <div>
                 <Label>Validade personalizada</Label>
-                <Input type="date" value={envioValidade} onChange={(e) => setEnvioValidade(e.target.value)} className="mt-1" />
-                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                <div className="flex flex-col gap-2 mt-1">
+                  <Input type="date" value={envioValidade} onChange={(e) => setEnvioValidade(e.target.value)} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { l: "+30d", d: 30 }, { l: "+60d", d: 60 }, { l: "+90d", d: 90 }, { l: "+135d", d: 135 },
+                      { l: "+1 ano", m: 12 }, { l: "+2 anos", m: 24 }
+                    ].map(a => (
+                      <button key={a.l} type="button" 
+                        className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-muted focus:outline-none"
+                        onClick={() => {
+                           if (!envioData) return;
+                           // Cria a data usando o timezone local para evitar fuso bugando o dia
+                           const [ano, mes, dia] = envioData.split("-").map(Number);
+                           const d = new Date(ano, mes - 1, dia);
+                           if (a.d) d.setDate(d.getDate() + a.d);
+                           if (a.m) d.setMonth(d.getMonth() + a.m);
+                           const outAno = d.getFullYear();
+                           const outMes = String(d.getMonth() + 1).padStart(2, '0');
+                           const outDia = String(d.getDate()).padStart(2, '0');
+                           setEnvioValidade(`${outAno}-${outMes}-${outDia}`);
+                        }}>
+                        {a.l}
+                      </button>
+                    ))}
+                    {envioValidade && (
+                      <button type="button" 
+                        className="inline-flex items-center rounded-full border border-destructive/30 px-2 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/10"
+                        onClick={() => setEnvioValidade("")}>Limpar</button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
                   Deixe vazio para o sistema usar o padrão <strong>({envio.tipo.validade_meses} meses)</strong>, ou defina uma data manualmente se houver exceções (ex: 90 dias em ASO).
                 </p>
               </div>
