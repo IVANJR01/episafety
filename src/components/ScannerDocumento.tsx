@@ -337,16 +337,24 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
   };
 
   const lumaMinimaPapel = 100; // Limiar tolerante para papel, mesmo com sombra
-  const cx = largura / 2;
-  const cy = altura / 2;
+  let cx = largura / 2;
+  let cy = altura / 2;
 
-  // Se o centro da imagem não for claro (papel), o algoritmo não tem como ancorar
-  if (luma(cx, cy) < lumaMinimaPapel) return null;
+  // Se o centro exato da imagem cair em cima de uma letra preta, tenta achar um espaço em branco próximo
+  let achouCentro = false;
+  for (let r = 0; r < 60; r += 15) {
+    if (luma(cx + r, cy) >= lumaMinimaPapel) { cx += r; achouCentro = true; break; }
+    if (luma(cx - r, cy) >= lumaMinimaPapel) { cx -= r; achouCentro = true; break; }
+    if (luma(cx, cy + r) >= lumaMinimaPapel) { cy += r; achouCentro = true; break; }
+    if (luma(cx, cy - r) >= lumaMinimaPapel) { cy -= r; achouCentro = true; break; }
+  }
+  if (!achouCentro) return null;
 
-  // 1. Center-Out Raycasting: Dispara 72 raios (de 5 em 5 graus) do centro para as bordas.
-  // O raio avança até encontrar um pixel escuro (a mesa) ou o fim da tela.
+  // 1. Center-Out Raycasting com Tolerância a Ruído (Textos/Linhas)
+  // O raio avança e só para quando achar uma área escura consistente (vários passos escuros),
+  // pulando assim por cima do texto e das tabelas impressas no ASO.
   const pontosBorda: Ponto[] = [];
-  const raioPasso = Math.max(2, Math.round(largura / 100));
+  const raioPasso = Math.max(3, Math.round(largura / 80));
 
   for (let angulo = 0; angulo < 360; angulo += 5) {
     const rad = angulo * (Math.PI / 180);
@@ -357,14 +365,22 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     let y = cy;
     let bordaX = x;
     let bordaY = y;
+    let escuridaoConsecutiva = 0;
 
     // Avança até sair da tela ou cair numa área escura (mesa)
     while (x >= 0 && x < largura && y >= 0 && y < altura) {
       if (luma(x, y) < lumaMinimaPapel) {
-        break; // Achou o fim do papel!
+        escuridaoConsecutiva++;
+        if (escuridaoConsecutiva > 4) { 
+          // Achou o fim do papel de verdade (mesa)!
+          break; 
+        }
+      } else {
+        // Era só uma linha de texto ou tabela, reseta a contagem
+        escuridaoConsecutiva = 0;
+        bordaX = x;
+        bordaY = y;
       }
-      bordaX = x;
-      bordaY = y;
       x += dx * raioPasso;
       y += dy * raioPasso;
     }
