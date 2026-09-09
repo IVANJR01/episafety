@@ -338,11 +338,13 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     return dados[i] * 0.299 + dados[i + 1] * 0.587 + dados[i + 2] * 0.114;
   };
 
-  // Amostragem: varre por linha/coluna procurando onde o brilho salta (borda do papel)
+  // Amostragem: varre por linha/coluna procurando onde o brilho salta positivamente 
+  // (saindo da mesa escura para a folha branca). 
+  // Exigimos que o salto seja > 25 E que a luminosidade final seja > 130 (cor de papel).
   const passo = Math.max(1, Math.round(largura / 80));
-  const limiar = 30; // diferença de luminosidade que indica borda
+  const saltoMinimo = 25;
+  const lumaMinimaPapel = 130;
 
-  // Acha a borda esquerda: percorre cada linha, da esq pra dir
   const bordaEsq: number[] = [];
   const bordaDir: number[] = [];
   const bordaTopo: number[] = [];
@@ -350,18 +352,27 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
 
   for (let y = 0; y < altura; y += passo) {
     for (let x = 1; x < largura; x++) {
-      if (Math.abs(luma(x, y) - luma(x - 1, y)) > limiar) { bordaEsq.push(x); break; }
+      const atual = luma(x, y);
+      if (atual > lumaMinimaPapel && (atual - luma(x - 1, y)) > saltoMinimo) { bordaEsq.push(x); break; }
+      // Se já começar claro na beirada da câmera, assume que a folha vazou
+      if (x === 1 && atual > lumaMinimaPapel) { bordaEsq.push(0); break; }
     }
     for (let x = largura - 2; x >= 0; x--) {
-      if (Math.abs(luma(x, y) - luma(x + 1, y)) > limiar) { bordaDir.push(x); break; }
+      const atual = luma(x, y);
+      if (atual > lumaMinimaPapel && (atual - luma(x + 1, y)) > saltoMinimo) { bordaDir.push(x); break; }
+      if (x === largura - 2 && atual > lumaMinimaPapel) { bordaDir.push(largura); break; }
     }
   }
   for (let x = 0; x < largura; x += passo) {
     for (let y = 1; y < altura; y++) {
-      if (Math.abs(luma(x, y) - luma(x, y - 1)) > limiar) { bordaTopo.push(y); break; }
+      const atual = luma(x, y);
+      if (atual > lumaMinimaPapel && (atual - luma(x, y - 1)) > saltoMinimo) { bordaTopo.push(y); break; }
+      if (y === 1 && atual > lumaMinimaPapel) { bordaTopo.push(0); break; }
     }
     for (let y = altura - 2; y >= 0; y--) {
-      if (Math.abs(luma(x, y) - luma(x, y + 1)) > limiar) { bordaBase.push(y); break; }
+      const atual = luma(x, y);
+      if (atual > lumaMinimaPapel && (atual - luma(x, y + 1)) > saltoMinimo) { bordaBase.push(y); break; }
+      if (y === altura - 2 && atual > lumaMinimaPapel) { bordaBase.push(altura); break; }
     }
   }
 
@@ -416,12 +427,17 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
       const url = canvas.toDataURL("image/jpeg", 0.92);
       
-      const rx = largura * RECUO_INICIAL;
-      const ry = altura * RECUO_INICIAL;
-      const cantosAuto = [
-        { x: rx, y: ry }, { x: largura - rx, y: ry },
-        { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
-      ];
+      // Tenta achar a folha A4 automaticamente com o algoritmo aprimorado
+      let cantosAuto = detectarCantos(canvas, largura, altura);
+      if (!cantosAuto) {
+        // Fallback: recuo fixo se o algoritmo não achar a borda clara da folha
+        const rx = largura * RECUO_INICIAL;
+        const ry = altura * RECUO_INICIAL;
+        cantosAuto = [
+          { x: rx, y: ry }, { x: largura - rx, y: ry },
+          { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
+        ];
+      }
       
       if (modoCaptura === "lote") {
         // No modo Lote, acumula a foto crua como pendente. 
