@@ -85,6 +85,7 @@ cnpj_valido() {
 }
 
 if [ -z "$CNPJ" ]; then
+  [ -t 0 ] || { echo "ERRO: sem terminal para perguntar. Use --cnpj." >&2; exit 1; }
   read -r -p "CNPJ do MEI/empresa: " CNPJ
 fi
 CNPJ_DIGITOS="$(echo "$CNPJ" | tr -cd '0-9')"
@@ -95,6 +96,7 @@ if ! cnpj_valido "$CNPJ_DIGITOS"; then
 fi
 
 if [ -z "$RAZAO" ]; then
+  [ -t 0 ] || { echo "ERRO: sem terminal para perguntar. Use --razao-social." >&2; exit 1; }
   read -r -p "Razao social (como deve aparecer na assinatura): " RAZAO
 fi
 [ -n "$RAZAO" ] || { echo "ERRO: razao social e obrigatoria." >&2; exit 1; }
@@ -102,11 +104,15 @@ fi
 # Sem nome fantasia o campo O do certificado repete a razao social.
 [ -n "$FANTASIA" ] || FANTASIA="$RAZAO"
 
-if [ -z "$EMAIL" ]; then
+# So pergunta o que e opcional quando ha alguem para responder. Rodando sem
+# terminal (CI, script chamando script) a pergunta ficaria esperando para
+# sempre, e o e-mail nao e obrigatorio para gerar o certificado.
+if [ -z "$EMAIL" ] && [ -t 0 ]; then
   read -r -p "E-mail (opcional, Enter para pular): " EMAIL || true
 fi
 
 if [ -z "$SENHA" ]; then
+  [ -t 0 ] || { echo "ERRO: sem terminal para perguntar. Use --senha." >&2; exit 1; }
   read -r -s -p "Senha para proteger o .pfx: " SENHA; echo
   read -r -s -p "Repita a senha: " SENHA2; echo
   [ "$SENHA" = "$SENHA2" ] || { echo "ERRO: as senhas nao conferem." >&2; exit 1; }
