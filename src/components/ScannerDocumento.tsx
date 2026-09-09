@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Camera, Check, Trash2, Loader2, Image as ImageIcon, VideoOff, Plus, Maximize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
-  corrigirPerspectiva, tamanhoDestino, ordenarCantos, quadrilateroUtil,
+  corrigirPerspectiva, tamanhoDestino, ordenarCantos, quadrilateroUtil, cantosIniciais,
   type Ponto, type Quadrilatero,
 } from "@/lib/perspectiva";
 
@@ -27,9 +27,6 @@ interface Props {
  * poucos megabytes em vez de dezenas.
  */
 const LADO_MAXIMO = 1600;
-
-/** Quanto os cantos começam para dentro da borda da foto. */
-const RECUO_INICIAL = 0.06;
 
 /**
  * Como a página é acabada depois de endireitada.
@@ -292,15 +289,10 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     });
   }, [ajuste]);
 
-  /** Abre o passo de ajuste com os cantos recuados da borda. */
+  /** Abre o passo de ajuste com a foto inteira selecionada. */
   const irParaAjuste = (url: string, largura: number, altura: number) => {
     setAjuste({ url, largura, altura });
-    const rx = largura * RECUO_INICIAL;
-    const ry = altura * RECUO_INICIAL;
-    setCantos([
-      { x: rx, y: ry }, { x: largura - rx, y: ry },
-      { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
-    ]);
+    setCantos(cantosIniciais(largura, altura));
   };
 
   const capturar = () => {
@@ -479,7 +471,12 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
           <div className="space-y-3">
             <div
               ref={areaAjusteRef}
-              className="relative select-none touch-none mx-auto bg-black rounded-lg overflow-hidden w-full shrink-0"
+              /*
+               * Sem `overflow-hidden`: as alças ficam centradas nos cantos,
+               * então metade de cada uma cai fora da caixa. Recortando, essa
+               * metade some da tela e some do alcance do dedo junto.
+               */
+              className="relative select-none touch-none mx-auto bg-black rounded-lg w-full shrink-0"
               style={{ aspectRatio: `${ajuste!.largura} / ${ajuste!.altura}`, maxHeight: "55dvh" }}
               onPointerMove={moverCanto}
               onPointerUp={() => setArrastando(null)}
@@ -615,10 +612,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
               <div className="flex gap-2">
                 <Button type="button" variant="outline" className="flex-1 sm:flex-none" disabled={endireitando}
-                  onClick={() => setCantos([
-                    { x: 0, y: 0 }, { x: ajuste!.largura, y: 0 },
-                    { x: ajuste!.largura, y: ajuste!.altura }, { x: 0, y: ajuste!.altura },
-                  ])}>
+                  onClick={() => setCantos(cantosIniciais(ajuste!.largura, ajuste!.altura))}>
                   <Maximize className="w-4 h-4 mr-2" />
                   Usar a foto inteira
                 </Button>

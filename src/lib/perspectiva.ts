@@ -190,3 +190,25 @@ export function corrigirPerspectiva(
   }
   return saida;
 }
+
+/**
+ * Os quatro cantos com que o passo de ajuste começa: a foto inteira.
+ *
+ * Começava 6% para dentro de cada borda, o que parecia inofensivo e não era:
+ * quem enquadrava a folha ocupando a largura toda e tocava direto em
+ * "Endireitar e usar" — o caminho mais natural — perdia 6% de cada lado do
+ * documento sem nenhum aviso. Num ASO isso come a coluna da esquerda:
+ * "OBSERVAÇÕES" vira "ERVAÇÕES", "LOCAL E DATA" vira "AL E DATA".
+ *
+ * Sobrar mesa em volta é feio; faltar pedaço do documento invalida a prova.
+ * Por isso o padrão não recorta nada, e recortar passa a ser um gesto
+ * deliberado de arrastar os cantos.
+ */
+export function cantosIniciais(largura: number, altura: number): Ponto[] {
+  return [
+    { x: 0, y: 0 },
+    { x: largura, y: 0 },
+    { x: largura, y: altura },
+    { x: 0, y: altura },
+  ];
+}
