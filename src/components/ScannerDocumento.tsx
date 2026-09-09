@@ -29,13 +29,14 @@ interface Props {
 const LADO_MAXIMO = 1600;
 
 /**
- * Recuo inicial dos cantos de ajuste em relação às bordas da foto (6%).
+ * Recuo inicial dos cantos de ajuste em relação às bordas da foto (12%).
  *
  * Formulários como ASO têm linhas impressas de alto contraste próximas
- * às bordas — detecção automática cortaria dentro do documento. Com 6%
- * de recuo os pontos ficam sobre o papel e o usuário arrasta só o necessário.
+ * às bordas — detecção automática cortaria dentro do documento. Com 12%
+ * de recuo os pontos começam bem para dentro (fugindo da mesa) e o usuário 
+ * arrasta para fora o necessário.
  */
-const RECUO_INICIAL = 0.06;
+const RECUO_INICIAL = 0.12;
 
 
 /**
@@ -415,17 +416,12 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
       const url = canvas.toDataURL("image/jpeg", 0.92);
       
-      // Tenta achar a folha A4 automaticamente na imagem reduzida
-      let cantosAuto = detectarCantos(canvas, largura, altura);
-      if (!cantosAuto) {
-        // Fallback: recuo fixo se o algoritmo não achar uma borda clara
-        const rx = largura * RECUO_INICIAL;
-        const ry = altura * RECUO_INICIAL;
-        cantosAuto = [
-          { x: rx, y: ry }, { x: largura - rx, y: ry },
-          { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
-        ];
-      }
+      const rx = largura * RECUO_INICIAL;
+      const ry = altura * RECUO_INICIAL;
+      const cantosAuto = [
+        { x: rx, y: ry }, { x: largura - rx, y: ry },
+        { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
+      ];
       
       if (modoCaptura === "lote") {
         // No modo Lote, acumula a foto crua como pendente. 
