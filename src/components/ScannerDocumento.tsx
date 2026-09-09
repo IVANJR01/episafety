@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { precisaReatarStream, podeCapturar, temQuadro } from "@/lib/scannerCamera";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Camera, Check, Trash2, Loader2, Image as ImageIcon, VideoOff, Plus, Maximize } from "lucide-react";
+import { Camera, Check, Trash2, Loader2, Image as ImageIcon, VideoOff, Plus, Maximize, Zap, ZapOff, X, ChevronLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   corrigirPerspectiva, tamanhoDestino, ordenarCantos, quadrilateroUtil, cantosIniciais,
@@ -197,6 +197,9 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const [reprocessando, setReprocessando] = useState(false);
   // Posição do ponteiro em coordenadas da imagem (para a lupa)
   const [pointerImg, setPointerImg] = useState<Ponto | null>(null);
+  // Lanterna
+  const [torchAtivo, setTorchAtivo] = useState(false);
+  const [torchSuportado, setTorchSuportado] = useState(false);
 
   // Passo de ajuste: a foto recém-tirada, com os quatro cantos da folha.
   const [ajuste, setAjuste] = useState<Captura | null>(null);
@@ -241,6 +244,10 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
         anotarFormato();
       }
       setCamera(true);
+      // Verifica suporte à lanterna
+      const track = stream.getVideoTracks()[0];
+      const caps = track.getCapabilities?.() as any;
+      setTorchSuportado(!!(caps?.torch));
     } catch (e: any) {
       const negada = e?.name === "NotAllowedError";
       setErroCamera(
@@ -250,6 +257,16 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
       );
     }
   }, [anotarFormato]);
+
+  const alternarTocha = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const novoEstado = !torchAtivo;
+    try {
+      await (track as any).applyConstraints({ advanced: [{ torch: novoEstado }] });
+      setTorchAtivo(novoEstado);
+    } catch { /* lanterna não disponível */ }
+  }, [torchAtivo]);
 
   useEffect(() => {
     if (open) {
@@ -564,40 +581,53 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !gerando && !endireitando) onCancel(); }}>
-      <DialogContent className="max-w-lg max-h-[95vh] overflow-y-auto flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{emAjuste ? "Marque os cantos da folha" : "Digitalizar documento"}</DialogTitle>
-          <DialogDescription>
-            {emAjuste
-              ? "Arraste os quatro pontos até os cantos do papel. O que estiver dentro vira uma página reta, sem a mesa em volta e sem a inclinação da foto."
-              : "Enquadre a folha e toque em Capturar."}
-          </DialogDescription>
-        </DialogHeader>
-
+      {/* Tela cheia no mobile, modal centrado em telas grandes */}
+      <DialogContent className="p-0 border-0 bg-black max-w-none w-screen h-[100dvh] sm:max-w-lg sm:h-auto sm:rounded-xl sm:max-h-[95vh] flex flex-col overflow-hidden">
+        {/* ── TELA DE AJUSTE DE CANTOS ── */}
         {emAjuste ? (
-          <div className="space-y-3">
+          <div className="flex flex-col h-full">
+            {/* Barra superior de ajuste */}
+            <div className="flex items-center justify-between px-4 py-3 bg-black/80">
+              <button type="button" onClick={() => setAjuste(null)} disabled={endireitando}
+                className="flex items-center gap-1.5 text-white text-sm font-medium">
+                <ChevronLeft className="w-5 h-5" /> Descartar
+              </button>
+              <span className="text-white text-sm font-semibold">Ajuste os cantos</span>
+              <button type="button"
+                onClick={() => setCantos(cantosIniciais(ajuste!.largura, ajuste!.altura))}
+                disabled={endireitando}
+                className="text-orange-400 text-sm font-medium">
+                Toda a foto
+              </button>
+            </div>
+
+            {/* Área da imagem com handles */}
             <div
               ref={areaAjusteRef}
-              /*
-               * Sem `overflow-hidden`: as alças ficam centradas nos cantos,
-               * então metade de cada uma cai fora da caixa. Recortando, essa
-               * metade some da tela e some do alcance do dedo junto.
-               */
-              className="relative select-none touch-none mx-auto bg-black rounded-lg w-full shrink-0"
-              style={{ aspectRatio: `${ajuste!.largura} / ${ajuste!.altura}`, maxHeight: "55dvh" }}
+              className="relative flex-1 select-none touch-none bg-black"
               onPointerMove={moverCanto}
               onPointerUp={() => setArrastando(null)}
               onPointerCancel={() => setArrastando(null)}
             >
               <img src={ajuste!.url} alt="Página capturada" className="absolute inset-0 w-full h-full object-contain" />
-              {/* Contorno do recorte, para enxergar o que vai virar página */}
+              {/* Escurecimento fora do recorte */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none"
                 viewBox={`0 0 ${ajuste!.largura} ${ajuste!.altura}`} preserveAspectRatio="none">
+                <defs>
+                  <mask id="mask-recorte">
+                    <rect width="100%" height="100%" fill="white" />
+                    <polygon points={ordenarCantos(cantos).map((p) => `${p.x},${p.y}`).join(" ")} fill="black" />
+                  </mask>
+                </defs>
+                {/* Sombra fora */}
+                <rect width="100%" height="100%" fill="rgba(0,0,0,0.55)" mask="url(#mask-recorte)" />
+                {/* Borda laranja */}
                 <polygon
                   points={ordenarCantos(cantos).map((p) => `${p.x},${p.y}`).join(" ")}
-                  fill="rgba(255,255,255,0.18)" stroke="#f97316"
-                  strokeWidth={Math.max(2, ajuste!.largura / 250)} />
+                  fill="none" stroke="#f97316"
+                  strokeWidth={Math.max(2, ajuste!.largura / 200)} />
               </svg>
+              {/* Handles em L */}
               {cantos.map((p, i) => (
                 <button
                   key={i}
@@ -606,197 +636,170 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
                   onPointerUp={() => { setArrastando(null); setPointerImg(null); }}
                   onPointerCancel={() => { setArrastando(null); setPointerImg(null); }}
                   className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center touch-none"
-                  style={{ left: pct(p.x, ajuste!.largura), top: pct(p.y, ajuste!.altura), width: 52, height: 52 }}
+                  style={{ left: pct(p.x, ajuste!.largura), top: pct(p.y, ajuste!.altura), width: 56, height: 56 }}
                   aria-label={`Canto ${i + 1}`}
                 >
-                  {/* Cantos estilo "L" como no Clear Scan — visíveis sobre qualquer fundo */}
-                  <svg width="28" height="28" viewBox="0 0 28 28">
-                    {/* Sombra de contraste */}
-                    <path d="M2 14 L2 2 L14 2" stroke="rgba(0,0,0,0.5)" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round"
-                      transform={`rotate(${i === 0 ? 0 : i === 1 ? 90 : i === 2 ? 180 : 270} 14 14)`} />
-                    {/* Linha branca principal */}
-                    <path d="M2 14 L2 2 L14 2" stroke="white" strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round"
-                      transform={`rotate(${i === 0 ? 0 : i === 1 ? 90 : i === 2 ? 180 : 270} 14 14)`} />
+                  <svg width="32" height="32" viewBox="0 0 32 32">
+                    <path d="M2 18 L2 2 L18 2" stroke="rgba(0,0,0,0.6)" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"
+                      transform={`rotate(${i === 0 ? 0 : i === 1 ? 90 : i === 2 ? 180 : 270} 16 16)`} />
+                    <path d="M2 18 L2 2 L18 2" stroke="white" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round"
+                      transform={`rotate(${i === 0 ? 0 : i === 1 ? 90 : i === 2 ? 180 : 270} 16 16)`} />
                   </svg>
                 </button>
               ))}
-              {/* Lupa de precisão — aparece apenas ao arrastar, no canto oposto ao dedo */}
+              {/* Lupa de precisão no canto oposto */}
               {arrastando !== null && (
                 <canvas
                   ref={lupaRef}
-                  className="absolute pointer-events-none rounded-full shadow-xl border-2 border-white"
+                  className="absolute pointer-events-none rounded-full shadow-2xl border-[3px] border-white"
                   style={{
-                    width: 90, height: 90,
-                    // Posiciona no canto oposto ao que está sendo arrastado
-                    ...(arrastando === 0 ? { bottom: 8, right: 8 } :
-                       arrastando === 1 ? { bottom: 8, left: 8 } :
-                       arrastando === 2 ? { top: 8, left: 8 } :
-                       { top: 8, right: 8 }),
+                    width: 100, height: 100,
+                    ...(arrastando === 0 ? { bottom: 12, right: 12 } :
+                       arrastando === 1 ? { bottom: 12, left: 12 } :
+                       arrastando === 2 ? { top: 12, left: 12 } :
+                       { top: 12, right: 12 }),
                   }}
                 />
               )}
             </div>
+
+            {/* Barra inferior de ajuste */}
+            <div className="px-4 pb-6 pt-3 bg-black flex gap-3">
+              <Button type="button" variant="outline" className="flex-1 border-white/20 text-white hover:bg-white/10" onClick={() => setAjuste(null)} disabled={endireitando}>
+                Cancelar
+              </Button>
+              <Button onClick={confirmarPagina} disabled={endireitando} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">
+                {endireitando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                Usar página
+              </Button>
+            </div>
           </div>
+
         ) : (
-          <div className="space-y-3 overflow-y-auto px-1 pb-1">
-            <div className="relative rounded-lg overflow-hidden bg-black mx-auto w-full shrink-0"
-              /*
-               * Antes da primeira captura a prévia é visor e precisa ser
-               * grande. Depois ela é conferência, e quem manda no espaço
-               * passa a ser a tira de páginas capturadas — que ficava fora
-               * da tela justamente na hora em que a pessoa quer ver o que
-               * acabou de tirar.
-               */
-              style={{ aspectRatio: aspecto, maxHeight: paginas.length > 0 ? "35dvh" : "55dvh" }}>
+          /* ── TELA DA CÂMERA ── */
+          <div className="flex flex-col h-full">
+            {/* Câmera ocupando toda a tela */}
+            <div className="relative flex-1 bg-black overflow-hidden">
               <video ref={videoRef} playsInline muted onLoadedMetadata={anotarFormato} onResize={anotarFormato}
-                className="w-full h-full object-contain" />
+                className="absolute inset-0 w-full h-full object-cover" />
+
+              {/* Estado de erro / carregando sobre a câmera */}
               {(!camera || !previaPronta) && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4 bg-muted">
-                  <VideoOff className="w-8 h-8 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">{erroCamera || "Abrindo a câmera…"}</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4">
+                  <VideoOff className="w-10 h-10 text-white/70" />
+                  <p className="text-sm text-white/70">{erroCamera || "Abrindo a câmera…"}</p>
                   {erroCamera && (
-                    <Button size="sm" variant="outline" onClick={() => void iniciarCamera()}>Tentar de novo</Button>
+                    <Button size="sm" variant="outline" className="border-white/30 text-white hover:bg-white/10"
+                      onClick={() => void iniciarCamera()}>Tentar de novo</Button>
                   )}
                 </div>
               )}
+
+              {/* Barra superior: Cancelar + título + Lanterna */}
+              <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
+                <button type="button" onClick={onCancel}
+                  className="flex items-center gap-1 text-white text-sm font-medium">
+                  <X className="w-5 h-5" /> Cancelar
+                </button>
+                <span className="text-white text-sm font-semibold opacity-80">Digitalizar</span>
+                <button
+                  type="button"
+                  onClick={() => void alternarTocha()}
+                  disabled={!torchSuportado}
+                  className="p-2 rounded-full bg-black/30 text-white disabled:opacity-30"
+                  aria-label={torchAtivo ? "Apagar lanterna" : "Acender lanterna"}
+                >
+                  {torchAtivo ? <Zap className="w-5 h-5 text-yellow-300 fill-yellow-300" /> : <ZapOff className="w-5 h-5" />}
+                </button>
+              </div>
+
+              {/* Miniaturas flutuantes das páginas capturadas */}
+              {paginas.length > 0 && (
+                <div className="absolute left-0 right-0 bottom-36 px-4">
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {paginas.map((pg, i) => (
+                      <div key={i} className="relative shrink-0">
+                        <button type="button" onClick={() => setPreviewIndex(i)}>
+                          <img src={pg.final} alt={`Pág ${i + 1}`}
+                            className="h-16 w-auto rounded-md border-2 border-white/40 object-contain bg-black shadow-lg" />
+                          <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] rounded px-1">{i + 1}</span>
+                        </button>
+                        <button type="button"
+                          onClick={() => setPaginas((p) => p.filter((_, j) => j !== i))}
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow"
+                          aria-label={`Remover página ${i + 1}`}>
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Barra inferior: seletor de cor + galeria + botão capturar + usar */}
+            <div className="bg-black px-4 pb-8 pt-3 flex flex-col gap-3">
+              {/* Filtro de cor — só após a primeira captura */}
+              {paginas.length > 0 && (
+                <div className="flex gap-1.5">
+                  {(["cor", "cinza", "pb"] as ModoCor[]).map((m) => (
+                    <button key={m} type="button"
+                      onClick={() => void trocarModo(m)}
+                      disabled={gerando || reprocessando}
+                      className={`flex-1 text-xs py-1.5 rounded-full border transition-colors ${
+                        modo === m
+                          ? "bg-orange-500 border-orange-500 text-white font-semibold"
+                          : "border-white/30 text-white/70 hover:border-white/60"
+                      }`}>
+                      {ROTULO_MODO[m]}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Linha: galeria | capturar | usar */}
+              <div className="flex items-center justify-between">
+                {/* Galeria */}
+                <button type="button" onClick={() => galeriaRef.current?.click()} disabled={gerando}
+                  className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                  <ImageIcon className="w-5 h-5" />
+                </button>
+
+                {/* Botão circular grande de captura */}
+                <button
+                  type="button"
+                  onClick={capturar}
+                  disabled={!podeCapturar(camera, previaPronta, gerando)}
+                  className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl disabled:opacity-40 active:scale-95 transition-transform"
+                  aria-label="Capturar"
+                >
+                  <div className="w-16 h-16 rounded-full border-[3px] border-black/20 bg-white flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-black/80" />
+                  </div>
+                </button>
+
+                {/* Usar / contador de páginas */}
+                {paginas.length > 0 ? (
+                  <button type="button" onClick={() => void gerarPdf()} disabled={gerando}
+                    className="w-12 h-12 rounded-full bg-orange-500 flex flex-col items-center justify-center text-white shadow-lg disabled:opacity-50">
+                    {gerando
+                      ? <Loader2 className="w-5 h-5 animate-spin" />
+                      : <>
+                          <Check className="w-4 h-4" />
+                          <span className="text-[10px] font-bold leading-none">{paginas.length}</span>
+                        </>}
+                  </button>
+                ) : (
+                  <div className="w-12" />
+                )}
+              </div>
             </div>
 
             <input ref={galeriaRef} type="file" accept="image/*" className="hidden" onChange={daGaleria} />
-
-            {/*
-              * A cor só aparece depois da primeira página.
-              *
-              * Com a câmera vazia ela não tem sobre o que agir — o efeito é
-              * aplicado ao que já foi capturado — e ocupava um terço da
-              * tela de abertura com rótulo, três botões e um parágrafo. O
-              * parágrafo saiu: o efeito de cada modo se vê na miniatura ao
-              * lado, que explica melhor do que a frase.
-              */}
-            {paginas.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                {(["cor", "cinza", "pb"] as ModoCor[]).map((m) => (
-                  <Button
-                    key={m}
-                    type="button"
-                    size="sm"
-                    variant={modo === m ? "default" : "outline"}
-                    aria-pressed={modo === m}
-                    disabled={gerando || reprocessando}
-                    onClick={() => void trocarModo(m)}
-                    className="flex-1 text-xs"
-                  >
-                    {ROTULO_MODO[m]}
-                  </Button>
-                ))}
-                {reprocessando && <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" />}
-              </div>
-            )}
-
-            {paginas.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">
-                  {paginas.length} {paginas.length === 1 ? "página pronta" : "páginas prontas"}
-                </p>
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {paginas.map((p, i) => (
-                    <div key={i} className="relative shrink-0">
-                      <img 
-                        src={p.final} 
-                        alt={`Página ${i + 1}`} 
-                        className="h-24 w-auto rounded border bg-white cursor-pointer hover:ring-2 ring-primary/50 transition-all" 
-                        onClick={() => setPreviewIndex(i)}
-                        title="Clique para ampliar"
-                      />
-                      <span className="absolute bottom-1 left-1 text-[10px] bg-black/70 text-white px-1 rounded">{i + 1}</span>
-                      <button type="button" onClick={() => setPaginas((ps) => ps.filter((_, j) => j !== i))}
-                        className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-1"
-                        aria-label={`Remover página ${i + 1}`}>
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={capturar} disabled={!podeCapturar(camera, previaPronta, gerando)}
-                    className="shrink-0 h-24 w-20 rounded border border-dashed flex items-center justify-center text-muted-foreground disabled:opacity-40"
-                    aria-label="Capturar mais uma página">
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        <DialogFooter>
-          {emAjuste ? (
-            /*
-             * As três ações moram no rodapé, e não no corpo do diálogo.
-             *
-             * "Usar a foto inteira" e "Descartar" ficavam logo abaixo da
-             * imagem, dentro da área que rola, e o rodapé fixo cobria a fila
-             * pela metade no celular. Bastavam alguns pixels de sobra: o
-             * teto da imagem estava em `vh`, que no iOS mede a tela cheia,
-             * enquanto o diálogo se limita a `dvh`, que desconta as barras
-             * do navegador. O teto virou `dvh` também, mas isso sozinho só
-             * afasta o problema — no rodapé os botões não têm como sumir.
-             */
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1 sm:flex-none" disabled={endireitando}
-                  onClick={() => setCantos(cantosIniciais(ajuste!.largura, ajuste!.altura))}>
-                  <Maximize className="w-4 h-4 mr-2" />
-                  Usar a foto inteira
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setAjuste(null)} disabled={endireitando}>
-                  Descartar
-                </Button>
-              </div>
-              <Button onClick={confirmarPagina} disabled={endireitando} className="w-full sm:w-auto">
-                {endireitando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                Endireitar e usar
-              </Button>
-            </div>
-          ) : (
-            /*
-             * Capturar mora no rodapé porque é a única saída desta etapa.
-             *
-             * Ficava logo abaixo da prévia, no corpo que rola, e a prévia
-             * sozinha já enchia a altura disponível: sobrava na tela a
-             * câmera, um "Usar esta página" desabilitado (não há página
-             * ainda) e Cancelar. Quem chegava aqui não tinha como capturar
-             * sem descobrir que a área rolava.
-             */
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-              <div className="flex gap-2">
-                {/*
-                  * Capturar é a ação principal até existir a primeira
-                  * página; a partir daí quem manda é "Usar", e dois botões
-                  * cheios lado a lado só disputariam a atenção.
-                  */}
-                <Button type="button" variant={paginas.length === 0 ? "default" : "outline"}
-                  className="flex-1 sm:flex-none" onClick={capturar} disabled={!podeCapturar(camera, previaPronta, gerando)}>
-                  <Camera className="w-4 h-4 mr-2" />
-                  {paginas.length === 0 ? "Capturar" : "Capturar mais uma"}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => galeriaRef.current?.click()} disabled={gerando}>
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Foto salva
-                </Button>
-              </div>
-              {/*
-                * "Usar" só existe quando há o que usar, e "Cancelar" saiu:
-                * o X do cabeçalho já fecha o diálogo pelo mesmo caminho.
-                * Um botão desabilitado parado na tela de abertura era só
-                * peso — não dizia o que fazer para habilitá-lo.
-                */}
-              {paginas.length > 0 && (
-                <Button className="w-full sm:w-auto" onClick={gerarPdf} disabled={gerando}>
-                  {gerando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                  Usar {paginas.length > 1 ? `${paginas.length} páginas` : "esta página"}
-                </Button>
-              )}
-            </div>
-          )}
-        </DialogFooter>
+
       </DialogContent>
       
       {/* Modal de Pré-visualização Ampliada */}
