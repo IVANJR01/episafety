@@ -74,6 +74,24 @@ function formatDate(dateStr: string): string {
  * da coluna Entrega não divergir da que aparece no código de conferência da
  * assinatura quando a entrega cai perto da virada do dia.
  */
+/**
+ * Alturas do rodapé da célula de assinatura, medidas para cima a partir do
+ * fim da linha da tabela.
+ *
+ * Ficam nomeadas e exportadas porque o risco aqui é geométrico: o separador
+ * precisa passar no vão entre o código e a data, e um ajuste distraído em
+ * qualquer um dos três números faz a linha cortar texto — coisa que só
+ * apareceria imprimindo. O teste guarda a ordem e a folga entre eles.
+ */
+export const RODAPE_ASSINATURA = {
+  /** Linha de base do código de conferência (4,5 pt). */
+  codigo: 4.6,
+  /** Traço separador. */
+  separador: 3.6,
+  /** Linha de base da data e hora (5 pt). */
+  data: 1.6,
+} as const;
+
 export function formatDataDeIso(isoStr: string): string {
   if (!isoStr) return "—";
   try {
@@ -487,12 +505,28 @@ export function gerarFichaEPI(data: FichaData) {
         // vai conferir caractere a caractere.
         doc.setFontSize(4.5);
         doc.setFont("courier", "normal");
-        doc.text(codigo, cx, y + ROW_H - 4.6, { align: "center" });
+        doc.text(codigo, cx, y + ROW_H - RODAPE_ASSINATURA.codigo, { align: "center" });
         doc.setFont("helvetica", "normal");
       }
+
+      /*
+       * Traço separando o registro da assinatura da data em que ela foi
+       * colhida. Sem ele, código e hora encostam num bloco só de texto
+       * cinza e quem lê não distingue o que é identificador do que é
+       * carimbo de tempo.
+       *
+       * Mais fino e mais claro do que a borda da célula, de propósito: é
+       * divisão interna, não fim de campo.
+       */
+      doc.setDrawColor(150);
+      doc.setLineWidth(0.15);
+      doc.line(sigX, y + ROW_H - RODAPE_ASSINATURA.separador, sigX + sigW, y + ROW_H - RODAPE_ASSINATURA.separador);
+      doc.setDrawColor(0);
+      doc.setLineWidth(0.3);
+
       doc.setFontSize(5);
       doc.setTextColor(100);
-      doc.text(dataHoraComSegundos(entrega.created_at), cx, y + ROW_H - 1.6, { align: "center" });
+      doc.text(dataHoraComSegundos(entrega.created_at), cx, y + ROW_H - RODAPE_ASSINATURA.data, { align: "center" });
       doc.setTextColor(0);
     }
 
