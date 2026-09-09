@@ -198,6 +198,7 @@ interface Pagina {
   pendente?: boolean;
   larguraOriginal?: number;
   alturaOriginal?: number;
+  cantosSugeridos?: Ponto[];
 }
 
 export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido }: Props) {
@@ -389,20 +390,19 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
   ];
 }
 
-  /** Abre o passo de ajuste com recuo seguro nas bordas. */
-  const irParaAjuste = (url: string, largura: number, altura: number) => {
+  /** Abre o passo de ajuste com recuo seguro nas bordas, ou com bordas detectadas automaticamente. */
+  const irParaAjuste = (url: string, largura: number, altura: number, cantosIniciais?: Ponto[]) => {
     setAjuste({ url, largura, altura });
-    // Não usamos detecção automática de bordas aqui: formulários como ASO
-    // têm linhas impressas internas com alto contraste que confundem o
-    // algoritmo, fazendo ele cortar dentro do documento em vez de na borda
-    // do papel. O recuo manual de 6% posiciona os pontos com segurança e
-    // o usuário arrasta apenas o necessário.
-    const rx = largura * RECUO_INICIAL;
-    const ry = altura * RECUO_INICIAL;
-    setCantos([
-      { x: rx, y: ry }, { x: largura - rx, y: ry },
-      { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
-    ]);
+    if (cantosIniciais && cantosIniciais.length === 4) {
+      setCantos(cantosIniciais);
+    } else {
+      const rx = largura * RECUO_INICIAL;
+      const ry = altura * RECUO_INICIAL;
+      setCantos([
+        { x: rx, y: ry }, { x: largura - rx, y: ry },
+        { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
+      ]);
+    }
   };
 
   const capturar = async () => {
@@ -415,12 +415,24 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
       const url = canvas.toDataURL("image/jpeg", 0.92);
       
+      // Tenta achar a folha A4 automaticamente na imagem reduzida
+      let cantosAuto = detectarCantos(canvas, largura, altura);
+      if (!cantosAuto) {
+        // Fallback: recuo fixo se o algoritmo não achar uma borda clara
+        const rx = largura * RECUO_INICIAL;
+        const ry = altura * RECUO_INICIAL;
+        cantosAuto = [
+          { x: rx, y: ry }, { x: largura - rx, y: ry },
+          { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
+        ];
+      }
+      
       if (modoCaptura === "lote") {
         // No modo Lote, acumula a foto crua como pendente. 
         // O ajuste acontecerá só quando o usuário pedir para gerar o documento.
-        setPaginas(p => [...p, { base: url, final: url, pendente: true, larguraOriginal: largura, alturaOriginal: altura }]);
+        setPaginas(p => [...p, { base: url, final: url, pendente: true, larguraOriginal: largura, alturaOriginal: altura, cantosSugeridos: cantosAuto }]);
       } else {
-        irParaAjuste(url, largura, altura);
+        irParaAjuste(url, largura, altura, cantosAuto);
       }
     } catch (e: any) {
       toast({ title: "Não foi possível capturar", description: e?.message, variant: "destructive" });
@@ -495,7 +507,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     if (index !== -1) {
       setAjustandoLote(index);
       const p = paginas[index];
-      irParaAjuste(p.base, p.larguraOriginal!, p.alturaOriginal!);
+      irParaAjuste(p.base, p.larguraOriginal!, p.alturaOriginal!, p.cantosSugeridos);
     } else {
       void gerarPdf(); // Se por acaso não tiver pendentes, gera direto
     }
@@ -522,7 +534,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
         setAjustandoLote(nextIndex);
         const nextP = novasPaginas[nextIndex];
         // Um pequeno tempo para a UI respirar e renderizar a próxima aba
-        setTimeout(() => irParaAjuste(nextP.base, nextP.larguraOriginal!, nextP.alturaOriginal!), 50);
+        setTimeout(() => irParaAjuste(nextP.base, nextP.larguraOriginal!, nextP.alturaOriginal!, nextP.cantosSugeridos), 50);
       } else {
         setAjustandoLote(null);
         void gerarPdfDe(novasPaginas);
