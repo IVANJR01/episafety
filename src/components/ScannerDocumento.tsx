@@ -71,58 +71,62 @@ function tratarPagina(
   altura: number,
   modo: ModoCor,
 ) {
-  const imagem = ctx.getImageData(0, 0, largura, altura);
-  const d = imagem.data;
-  const total = largura * altura;
+  const imgDataOriginal = ctx.getImageData(0, 0, largura, altura);
+  const orig = imgDataOriginal.data;
 
-  const histograma = new Uint32Array(256);
-  for (let i = 0; i < d.length; i += 4) {
-    histograma[(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0]++;
-  }
+  // Passo 1: Estimar a iluminação (sombras do papel) usando um blur avançado via GPU
+  // Isso recria a técnica "Magic Color" do ClearScanner para matar sombras uniformemente.
+  const blurCanvas = document.createElement("canvas");
+  blurCanvas.width = largura;
+  blurCanvas.height = altura;
+  const bCtx = blurCanvas.getContext("2d", { willReadFrequently: true })!;
 
-  let acumulado = 0;
-  let tinta = 0;
-  for (let v = 0; v < 256; v++) {
-    acumulado += histograma[v];
-    if (acumulado >= total * 0.05) { tinta = v; break; }
-  }
-  acumulado = 0;
-  let papel = 255;
-  for (let v = 255; v >= 0; v--) {
-    acumulado += histograma[v];
-    if (acumulado >= total * 0.25) { papel = v; break; }
-  }
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = largura;
+  tempCanvas.height = altura;
+  tempCanvas.getContext("2d")!.putImageData(imgDataOriginal, 0, 0);
 
-  const tabela = new Uint8ClampedArray(256);
-  // Papel e tinta colados significam folha em branco ou foto sem contraste:
-  // esticar aí só amplificaria ruído, então o pb cai no mesmo clareamento
-  // dos outros modos em vez de inventar contraste que não existe.
-  if (modo === "pb" && papel - tinta >= 30) {
-    const escala = 255 / (papel - tinta);
-    for (let v = 0; v < 256; v++) {
-      tabela[v] = Math.max(0, Math.min(255, Math.round((v - tinta) * escala)));
+  // Raio do blur: grande o suficiente para não focar no texto, focando no gradiente da luz da foto
+  const blurRadius = Math.max(10, Math.floor(largura * 0.035));
+  bCtx.filter = `blur(${blurRadius}px)`;
+  bCtx.drawImage(tempCanvas, 0, 0);
+
+  const blurData = bCtx.getImageData(0, 0, largura, altura).data;
+  const result = new Uint8ClampedArray(orig.length);
+
+  // Passo 2: Remoção de sombras e balanceamento de brancos por pixel
+  for (let i = 0; i < orig.length; i += 4) {
+    let r = orig[i], g = orig[i + 1], b = orig[i + 2];
+    let br = Math.max(1, blurData[i]), bg = Math.max(1, blurData[i + 1]), bb = Math.max(1, blurData[i + 2]);
+
+    // O truque da divisão de fundo: anula o fundo gradiente da sombra
+    let dr = (r / br) * 255;
+    let dg = (g / bg) * 255;
+    let db = (b / bb) * 255;
+
+    // Aumenta agressivamente o contraste para o papel ficar branco e os textos/carimbos vivos
+    const constrasteCortePreto = 30; // Pontos mais escuros descem pro zero
+    const fator = 1.35; // Aceleração do contraste para não ficar lavado
+
+    dr = Math.max(0, Math.min(255, (dr - constrasteCortePreto) * fator));
+    dg = Math.max(0, Math.min(255, (dg - constrasteCortePreto) * fator));
+    db = Math.max(0, Math.min(255, (db - constrasteCortePreto) * fator));
+
+    if (modo === "pb" || modo === "cinza") {
+      let luma = dr * 0.299 + dg * 0.587 + db * 0.114;
+      if (modo === "pb") {
+        luma = luma > 175 ? 255 : 0; // Texto vira preto puro, fundo vira branco puro (fotocópia dura)
+      }
+      result[i] = result[i + 1] = result[i + 2] = luma;
+    } else {
+      result[i] = dr;
+      result[i + 1] = dg;
+      result[i + 2] = db;
     }
-  } else {
-    const ganho = Math.min(1.8, papel > 0 ? 255 / papel : 1);
-    for (let v = 0; v < 256; v++) tabela[v] = Math.min(255, Math.round(v * ganho));
+    result[i + 3] = 255; // Alpha total
   }
 
-  if (modo === "cor") {
-    for (let i = 0; i < d.length; i += 4) {
-      d[i] = tabela[d[i]];
-      d[i + 1] = tabela[d[i + 1]];
-      d[i + 2] = tabela[d[i + 2]];
-    }
-  } else {
-    // O cinza é gravado de qualquer jeito, mesmo quando a tabela é neutra:
-    // a conversão acontece numa cópia, e cópia que não volta pro canvas não
-    // vale nada — foi assim que as miniaturas saíram esverdeadas uma vez.
-    for (let i = 0; i < d.length; i += 4) {
-      const v = tabela[(d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0];
-      d[i] = d[i + 1] = d[i + 2] = v;
-    }
-  }
-  ctx.putImageData(imagem, 0, 0);
+  ctx.putImageData(new ImageData(result, largura, altura), 0, 0);
 }
 
 /** Reaplica o acabamento sobre a página endireitada original. */
