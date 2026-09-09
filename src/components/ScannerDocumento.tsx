@@ -901,7 +901,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
 
                 {/* Usar / contador de páginas (só no modo Lote) */}
                 {(modoCaptura === "lote" && paginas.length > 0) ? (
-                  <button type="button" onClick={() => void gerarPdf()} disabled={gerando}
+                  <button type="button" onClick={() => iniciarAjusteLote()} disabled={gerando}
                     className="w-12 h-12 rounded-full bg-orange-500 flex flex-col items-center justify-center text-white shadow-lg disabled:opacity-50">
                     {gerando
                       ? <Loader2 className="w-5 h-5 animate-spin" />
