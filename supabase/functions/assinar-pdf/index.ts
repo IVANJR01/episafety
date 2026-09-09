@@ -35,6 +35,33 @@ function base64ParaBytes(b64: string): Uint8Array {
   return out;
 }
 
+/**
+ * Decodifica base64 dizendo O QUE falhou.
+ *
+ * O `atob` solta sempre a mesma frase — "Failed to decode base64" — e nesta
+ * função há duas entradas em base64: o PDF que chegou na requisição e o
+ * certificado guardado no segredo. Sem dizer qual das duas quebrou, quem
+ * está configurando fica adivinhando entre um problema no front e um erro de
+ * colagem no painel do Supabase.
+ *
+ * O tamanho entra na mensagem porque distingue os dois enganos mais comuns
+ * no segredo: colar vazio (0) e colar o caminho do arquivo em vez do
+ * conteúdo (algumas dezenas de caracteres, quando um .pfx dá milhares).
+ * O conteúdo em si nunca é registrado — é a chave privada.
+ */
+function decodificarBase64(b64: string, oQueE: string): Uint8Array {
+  // Quebra de linha e espaço entram fácil ao colar num campo de textarea, e
+  // não fazem parte do dado. Tirar antes é mais útil do que recusar.
+  const limpo = b64.replace(/\s+/g, "");
+  try {
+    return base64ParaBytes(limpo);
+  } catch {
+    throw new Error(
+      `${oQueE} não está em base64 válido (${limpo.length} caracteres úteis recebidos).`,
+    );
+  }
+}
+
 function bytesParaBase64(bytes: Uint8Array): string {
   let bin = "";
   const passo = 0x8000; // em blocos: String.fromCharCode estoura com array grande
@@ -106,7 +133,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const bytes = base64ParaBytes(pdfBase64);
+    const bytes = decodificarBase64(pdfBase64, "O PDF enviado");
     if (bytes.byteLength > LIMITE_PDF_BYTES) {
       return new Response(JSON.stringify({ success: false, error: "PDF acima do limite de 15 MB" }), {
         status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -128,7 +155,10 @@ Deno.serve(async (req) => {
      */
     const comPlaceholder = await pdfDoc.save({ useObjectStreams: false });
 
-    const pfxBytes = base64ParaBytes(pfxB64);
+    const pfxBytes = decodificarBase64(
+      pfxB64,
+      "O segredo CERT_A1_PFX_BASE64 (cole o conteúdo do arquivo .base64, não o caminho dele)",
+    );
     const signer = new P12Signer(Buffer.from(pfxBytes), { passphrase: senha });
     const assinado = await new SignPdf().sign(Buffer.from(comPlaceholder), signer);
 
