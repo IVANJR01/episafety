@@ -1,6 +1,5 @@
 import jsPDF from "jspdf";
 import { dataHoraComSegundos } from "./codigoAssinatura";
-import { linhaDoAssinante } from "./assinanteDigital";
 
 interface EmpresaData {
   nome: string;
@@ -246,8 +245,8 @@ function pendenteDeAssinatura(e: EntregaItem): boolean {
  * havendo pendência, o rodapé diz quantas são.
  */
 function drawFooter(doc: jsPDF, pendentes: number) {
-  // Quatro linhas de 3,6 mm a partir daqui terminam a 3 mm da borda inferior.
-  const footerY = PAGE_H - 17;
+  // Três linhas de 3,6 mm a partir daqui terminam a 3 mm da borda inferior.
+  const footerY = PAGE_H - 13.4;
   const LINHA = 3.6;
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
@@ -257,12 +256,7 @@ function drawFooter(doc: jsPDF, pendentes: number) {
     PAGE_W / 2, footerY, { align: "center" },
   );
 
-  // O cabeçalho traz a empresa do funcionário; esta linha diz quem assinou.
-  const emissor = linhaDoAssinante();
-  if (emissor) {
-    doc.text(emissor, PAGE_W / 2, footerY + LINHA, { align: "center" });
-  }
-  const yBase = footerY + (emissor ? LINHA * 2 : LINHA);
+  const yBase = footerY + LINHA;
 
   if (pendentes === 0) {
     doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, yBase, { align: "center" });

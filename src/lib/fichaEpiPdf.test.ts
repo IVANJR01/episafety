@@ -66,6 +66,22 @@ describe("ficha de EPI — coluna Entrega", () => {
 });
 
 describe("ficha de EPI — rodapé", () => {
+  it("não afirma que alguém assinou digitalmente o documento", () => {
+    /*
+     * O rodapé trazia "Emitido e assinado digitalmente por <empresa> — CNPJ
+     * <n>" em toda ficha. A frase saía do mesmo jeito quando o certificado
+     * não estava configurado e o PDF descia sem assinatura nenhuma: a
+     * própria geração do arquivo acontece antes da etapa de assinar, então
+     * o papel afirmava um fato que o arquivo não sustentava.
+     *
+     * A assinatura, quando existe, se prova sozinha — está dentro do PDF e
+     * qualquer validador a lê. Escrever que ela existe não a cria.
+     */
+    for (const t of trechosDoPdf(pdf("BIOMETRIA_DIGITAL"))) {
+      expect(t).not.toMatch(/assinado digitalmente por/i);
+    }
+  });
+
   it("diz onde conferir o código impresso", () => {
     // Sem o endereço no papel, o código de 40 caracteres é enfeite: quem
     // recebe a ficha não tem como adivinhar que existe onde digitá-lo.
