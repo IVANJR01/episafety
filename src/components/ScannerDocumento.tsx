@@ -250,15 +250,91 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     return () => pararCamera();
   }, [open, iniciarCamera, pararCamera]);
 
-  /** Abre o passo de ajuste com os cantos recuados da borda. */
-  const irParaAjuste = (url: string, largura: number, altura: number) => {
+/**
+ * Detecta automaticamente os 4 cantos do documento na imagem.
+ * Analisa linhas/colunas de pixels procurando onde a cor muda abruptamente
+ * (borda do papel sobre a mesa escura). Retorna os cantos detectados ou null
+ * se a confiança for baixa e o chamador deve usar o recuo padrão.
+ */
+function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: number): Ponto[] | null {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  const dados = ctx.getImageData(0, 0, largura, altura).data;
+
+  // Calcula luminosidade de um pixel
+  const luma = (x: number, y: number) => {
+    const i = (y * largura + x) * 4;
+    return dados[i] * 0.299 + dados[i + 1] * 0.587 + dados[i + 2] * 0.114;
+  };
+
+  // Amostragem: varre por linha/coluna procurando onde o brilho salta (borda do papel)
+  const passo = Math.max(1, Math.round(largura / 80));
+  const limiar = 30; // diferença de luminosidade que indica borda
+
+  // Acha a borda esquerda: percorre cada linha, da esq pra dir
+  const bordaEsq: number[] = [];
+  const bordaDir: number[] = [];
+  const bordaTopo: number[] = [];
+  const bordaBase: number[] = [];
+
+  for (let y = 0; y < altura; y += passo) {
+    for (let x = 1; x < largura; x++) {
+      if (Math.abs(luma(x, y) - luma(x - 1, y)) > limiar) { bordaEsq.push(x); break; }
+    }
+    for (let x = largura - 2; x >= 0; x--) {
+      if (Math.abs(luma(x, y) - luma(x + 1, y)) > limiar) { bordaDir.push(x); break; }
+    }
+  }
+  for (let x = 0; x < largura; x += passo) {
+    for (let y = 1; y < altura; y++) {
+      if (Math.abs(luma(x, y) - luma(x, y - 1)) > limiar) { bordaTopo.push(y); break; }
+    }
+    for (let y = altura - 2; y >= 0; y--) {
+      if (Math.abs(luma(x, y) - luma(x, y + 1)) > limiar) { bordaBase.push(y); break; }
+    }
+  }
+
+  if (bordaEsq.length < 5 || bordaDir.length < 5 || bordaTopo.length < 5 || bordaBase.length < 5) return null;
+
+  // Percentil 10/90 para ignorar outliers nas bordas ruidosas
+  const p = (arr: number[], pct: number) => {
+    const s = [...arr].sort((a, b) => a - b);
+    return s[Math.floor(s.length * pct)];
+  };
+
+  const esq = p(bordaEsq, 0.10);
+  const dir = p(bordaDir, 0.90);
+  const topo = p(bordaTopo, 0.10);
+  const base = p(bordaBase, 0.90);
+
+  // Confiança: se o recorte for menor que 30% de qualquer dimensão, provavelmente errou
+  const largDoc = dir - esq;
+  const altDoc = base - topo;
+  if (largDoc < largura * 0.30 || altDoc < altura * 0.30) return null;
+
+  return [
+    { x: esq, y: topo },
+    { x: dir, y: topo },
+    { x: dir, y: base },
+    { x: esq, y: base },
+  ];
+}
+
+  /** Abre o passo de ajuste tentando detectar cantos automaticamente. */
+  const irParaAjuste = (url: string, largura: number, altura: number, canvasOrigem?: HTMLCanvasElement) => {
     setAjuste({ url, largura, altura });
-    const rx = largura * RECUO_INICIAL;
-    const ry = altura * RECUO_INICIAL;
-    setCantos([
-      { x: rx, y: ry }, { x: largura - rx, y: ry },
-      { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
-    ]);
+    // Tenta detecção automática; se falhar usa o recuo seguro padrão
+    const detectados = canvasOrigem ? detectarCantos(canvasOrigem, largura, altura) : null;
+    if (detectados) {
+      setCantos(detectados);
+    } else {
+      const rx = largura * RECUO_INICIAL;
+      const ry = altura * RECUO_INICIAL;
+      setCantos([
+        { x: rx, y: ry }, { x: largura - rx, y: ry },
+        { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
+      ]);
+    }
   };
 
   const capturar = () => {
@@ -266,7 +342,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     if (!video || !video.videoWidth) return;
     try {
       const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
-      irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura);
+      irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura, canvas);
     } catch (e: any) {
       toast({ title: "Não foi possível capturar", description: e?.message, variant: "destructive" });
     }
@@ -280,7 +356,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     img.onload = () => {
       try {
         const { canvas, largura, altura } = reduzir(img, img.naturalWidth, img.naturalHeight);
-        irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura);
+        irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura, canvas);
       } catch { /* imagem ilegível */ }
       URL.revokeObjectURL(img.src);
     };
@@ -452,13 +528,16 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                   key={i}
                   type="button"
                   onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); setArrastando(i); }}
-                  // Alvo de 44px, bem maior que o ponto desenhado: no celular
-                  // o dedo cobre o canto que está tentando mirar.
-                  className="absolute w-11 h-11 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"
-                  style={{ left: pct(p.x, ajuste!.largura), top: pct(p.y, ajuste!.altura) }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+                  style={{ left: pct(p.x, ajuste!.largura), top: pct(p.y, ajuste!.altura), width: 52, height: 52 }}
                   aria-label={`Canto ${i + 1}`}
                 >
-                  <span className="w-5 h-5 rounded-full bg-primary border-2 border-white shadow" />
+                  {/* Ponto visual grande com borda branca e sombra forte para ser visível sobre qualquer fundo */}
+                  <span className="w-8 h-8 rounded-full bg-primary border-[3px] border-white shadow-[0_0_0_2px_rgba(0,0,0,0.4)] flex items-center justify-center">
+                    <svg width="12" height="12" viewBox="0 0 12 12" className="opacity-80">
+                      <path d="M6 1v10M1 6h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </span>
                 </button>
               ))}
             </div>
