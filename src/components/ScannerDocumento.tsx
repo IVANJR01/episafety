@@ -1,10 +1,11 @@
 import { useRef, useState, useCallback, useEffect } from "react";
+import { precisaReatarStream, podeCapturar, temQuadro } from "@/lib/scannerCamera";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, Check, Trash2, Loader2, Image as ImageIcon, VideoOff, Plus, Maximize } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
-  corrigirPerspectiva, tamanhoDestino, ordenarCantos, quadrilateroUtil,
+  corrigirPerspectiva, tamanhoDestino, ordenarCantos, quadrilateroUtil, cantosIniciais,
   type Ponto, type Quadrilatero,
 } from "@/lib/perspectiva";
 
@@ -26,9 +27,6 @@ interface Props {
  * poucos megabytes em vez de dezenas.
  */
 const LADO_MAXIMO = 1600;
-
-/** Quanto os cantos começam para dentro da borda da foto. */
-const RECUO_INICIAL = 0.06;
 
 /**
  * Como a página é acabada depois de endireitada.
@@ -190,6 +188,12 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
 
   const [paginas, setPaginas] = useState<Pagina[]>([]);
   const [camera, setCamera] = useState(false);
+  /*
+   * "Câmera ligada" e "prévia pronta" são coisas diferentes: entre atribuir
+   * o stream e o navegador ler os metadados do vídeo há uma janela em que o
+   * elemento mede 0x0, e capturar ali não copia quadro nenhum.
+   */
+  const [previaPronta, setPreviaPronta] = useState(false);
   const [aspecto, setAspecto] = useState("4 / 3");
   const [erroCamera, setErroCamera] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
@@ -209,6 +213,19 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     setCamera(false);
   }, []);
 
+  /**
+   * Registra o formato real da câmera e libera a captura.
+   *
+   * A moldura acompanha o formato da câmera porque fixar 4:3 com o celular
+   * em pé deixava duas tarjas pretas comendo metade da tela.
+   */
+  const anotarFormato = useCallback(() => {
+    const v = videoRef.current;
+    if (!temQuadro(v)) return;
+    setAspecto(`${v!.videoWidth} / ${v!.videoHeight}`);
+    setPreviaPronta(true);
+  }, []);
+
   const iniciarCamera = useCallback(async () => {
     setErroCamera(null);
     try {
@@ -221,10 +238,9 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
-        // A moldura acompanha o formato real da câmera. Fixar 4:3 com o
-        // celular em pé deixava duas tarjas pretas comendo metade da tela.
-        const v = videoRef.current;
-        if (v.videoWidth && v.videoHeight) setAspecto(`${v.videoWidth} / ${v.videoHeight}`);
+        // `play()` resolver não garante metadados lidos; quando eles já
+        // estiverem, aproveita, senão quem avisa é o onLoadedMetadata.
+        anotarFormato();
       }
       setCamera(true);
     } catch (e: any) {
@@ -235,7 +251,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
           : "Não foi possível abrir a câmera. Você ainda pode escolher fotos já tiradas.",
       );
     }
-  }, []);
+  }, [anotarFormato]);
 
   useEffect(() => {
     if (open) {
@@ -339,7 +355,12 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
 
   const capturar = () => {
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
+    if (!temQuadro(video)) {
+      // Antes isto era um `return` mudo: o botão parecia simplesmente não
+      // funcionar, que é o pior jeito de falhar.
+      toast({ title: "A câmera ainda está abrindo", description: "Aguarde o vídeo aparecer e toque de novo." });
+      return;
+    }
     try {
       const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
       irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura, canvas);
@@ -500,7 +521,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
           <DialogDescription>
             {emAjuste
               ? "Arraste os quatro pontos até os cantos do papel. O que estiver dentro vira uma página reta, sem a mesa em volta e sem a inclinação da foto."
-              : "Enquadre a folha e toque em Capturar. Pode capturar várias páginas — todas entram no mesmo PDF."}
+              : "Enquadre a folha e toque em Capturar."}
           </DialogDescription>
         </DialogHeader>
 
@@ -508,8 +529,13 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
           <div className="space-y-3">
             <div
               ref={areaAjusteRef}
-              className="relative select-none touch-none mx-auto bg-black rounded-lg overflow-hidden w-full shrink-0"
-              style={{ aspectRatio: `${ajuste!.largura} / ${ajuste!.altura}`, maxHeight: "55vh" }}
+              /*
+               * Sem `overflow-hidden`: as alças ficam centradas nos cantos,
+               * então metade de cada uma cai fora da caixa. Recortando, essa
+               * metade some da tela e some do alcance do dedo junto.
+               */
+              className="relative select-none touch-none mx-auto bg-black rounded-lg w-full shrink-0"
+              style={{ aspectRatio: `${ajuste!.largura} / ${ajuste!.altura}`, maxHeight: "55dvh" }}
               onPointerMove={moverCanto}
               onPointerUp={() => setArrastando(null)}
               onPointerCancel={() => setArrastando(null)}
@@ -541,26 +567,21 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
                 </button>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" className="flex-1" disabled={endireitando}
-                onClick={() => setCantos([
-                  { x: 0, y: 0 }, { x: ajuste!.largura, y: 0 },
-                  { x: ajuste!.largura, y: ajuste!.altura }, { x: 0, y: ajuste!.altura },
-                ])}>
-                <Maximize className="w-4 h-4 mr-2" />
-                Usar a foto inteira
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setAjuste(null)} disabled={endireitando}>
-                Descartar
-              </Button>
-            </div>
           </div>
         ) : (
           <div className="space-y-3 overflow-y-auto px-1 pb-1">
             <div className="relative rounded-lg overflow-hidden bg-black mx-auto w-full shrink-0"
-              style={{ aspectRatio: aspecto, maxHeight: "55vh" }}>
-              <video ref={videoRef} playsInline muted className="w-full h-full object-contain" />
-              {!camera && (
+              /*
+               * Antes da primeira captura a prévia é visor e precisa ser
+               * grande. Depois ela é conferência, e quem manda no espaço
+               * passa a ser a tira de páginas capturadas — que ficava fora
+               * da tela justamente na hora em que a pessoa quer ver o que
+               * acabou de tirar.
+               */
+              style={{ aspectRatio: aspecto, maxHeight: paginas.length > 0 ? "35dvh" : "55dvh" }}>
+              <video ref={videoRef} playsInline muted onLoadedMetadata={anotarFormato} onResize={anotarFormato}
+                className="w-full h-full object-contain" />
+              {(!camera || !previaPronta) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4 bg-muted">
                   <VideoOff className="w-8 h-8 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{erroCamera || "Abrindo a câmera…"}</p>
@@ -571,28 +592,19 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
               )}
             </div>
 
-            <div className="flex gap-2">
-              <Button type="button" className="flex-1" onClick={capturar} disabled={!camera || gerando}>
-                <Camera className="w-4 h-4 mr-2" />
-                {paginas.length === 0 ? "Capturar" : "Capturar mais uma"}
-              </Button>
-              <input ref={galeriaRef} type="file" accept="image/*" className="hidden" onChange={daGaleria} />
-              <Button type="button" variant="outline" onClick={() => galeriaRef.current?.click()} disabled={gerando}>
-                <ImageIcon className="w-4 h-4 mr-2" />
-                Foto salva
-              </Button>
-            </div>
+            <input ref={galeriaRef} type="file" accept="image/*" className="hidden" onChange={daGaleria} />
 
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <p className="text-xs font-medium">Cor do documento</p>
-                {reprocessando && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Loader2 className="w-3 h-3 animate-spin" /> aplicando…
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
+            {/*
+              * A cor só aparece depois da primeira página.
+              *
+              * Com a câmera vazia ela não tem sobre o que agir — o efeito é
+              * aplicado ao que já foi capturado — e ocupava um terço da
+              * tela de abertura com rótulo, três botões e um parágrafo. O
+              * parágrafo saiu: o efeito de cada modo se vê na miniatura ao
+              * lado, que explica melhor do que a frase.
+              */}
+            {paginas.length > 0 && (
+              <div className="flex items-center gap-1.5">
                 {(["cor", "cinza", "pb"] as ModoCor[]).map((m) => (
                   <Button
                     key={m}
@@ -602,20 +614,14 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
                     aria-pressed={modo === m}
                     disabled={gerando || reprocessando}
                     onClick={() => void trocarModo(m)}
-                    className="text-xs"
+                    className="flex-1 text-xs"
                   >
                     {ROTULO_MODO[m]}
                   </Button>
                 ))}
+                {reprocessando && <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" />}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                {modo === "cor"
-                  ? "Mantém carimbos, assinaturas em azul e foto do documento."
-                  : modo === "cinza"
-                    ? "Sem cor, com os tons preservados. Arquivo menor."
-                    : "Efeito de copiadora: bom para texto impresso, apaga o que é colorido."}
-              </p>
-            </div>
+            )}
 
             {paginas.length > 0 && (
               <div>
@@ -640,7 +646,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
                       </button>
                     </div>
                   ))}
-                  <button type="button" onClick={capturar} disabled={!camera}
+                  <button type="button" onClick={capturar} disabled={!podeCapturar(camera, previaPronta, gerando)}
                     className="shrink-0 h-24 w-20 rounded border border-dashed flex items-center justify-center text-muted-foreground disabled:opacity-40"
                     aria-label="Capturar mais uma página">
                     <Plus className="w-5 h-5" />
@@ -653,18 +659,73 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
 
         <DialogFooter>
           {emAjuste ? (
-            <Button onClick={confirmarPagina} disabled={endireitando} className="w-full sm:w-auto">
-              {endireitando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-              Endireitar e usar
-            </Button>
-          ) : (
-            <>
-              <Button variant="outline" onClick={onCancel} disabled={gerando}>Cancelar</Button>
-              <Button onClick={gerarPdf} disabled={paginas.length === 0 || gerando}>
-                {gerando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                Usar {paginas.length > 1 ? `${paginas.length} páginas` : "esta página"}
+            /*
+             * As três ações moram no rodapé, e não no corpo do diálogo.
+             *
+             * "Usar a foto inteira" e "Descartar" ficavam logo abaixo da
+             * imagem, dentro da área que rola, e o rodapé fixo cobria a fila
+             * pela metade no celular. Bastavam alguns pixels de sobra: o
+             * teto da imagem estava em `vh`, que no iOS mede a tela cheia,
+             * enquanto o diálogo se limita a `dvh`, que desconta as barras
+             * do navegador. O teto virou `dvh` também, mas isso sozinho só
+             * afasta o problema — no rodapé os botões não têm como sumir.
+             */
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1 sm:flex-none" disabled={endireitando}
+                  onClick={() => setCantos(cantosIniciais(ajuste!.largura, ajuste!.altura))}>
+                  <Maximize className="w-4 h-4 mr-2" />
+                  Usar a foto inteira
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setAjuste(null)} disabled={endireitando}>
+                  Descartar
+                </Button>
+              </div>
+              <Button onClick={confirmarPagina} disabled={endireitando} className="w-full sm:w-auto">
+                {endireitando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                Endireitar e usar
               </Button>
-            </>
+            </div>
+          ) : (
+            /*
+             * Capturar mora no rodapé porque é a única saída desta etapa.
+             *
+             * Ficava logo abaixo da prévia, no corpo que rola, e a prévia
+             * sozinha já enchia a altura disponível: sobrava na tela a
+             * câmera, um "Usar esta página" desabilitado (não há página
+             * ainda) e Cancelar. Quem chegava aqui não tinha como capturar
+             * sem descobrir que a área rolava.
+             */
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <div className="flex gap-2">
+                {/*
+                  * Capturar é a ação principal até existir a primeira
+                  * página; a partir daí quem manda é "Usar", e dois botões
+                  * cheios lado a lado só disputariam a atenção.
+                  */}
+                <Button type="button" variant={paginas.length === 0 ? "default" : "outline"}
+                  className="flex-1 sm:flex-none" onClick={capturar} disabled={!podeCapturar(camera, previaPronta, gerando)}>
+                  <Camera className="w-4 h-4 mr-2" />
+                  {paginas.length === 0 ? "Capturar" : "Capturar mais uma"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => galeriaRef.current?.click()} disabled={gerando}>
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Foto salva
+                </Button>
+              </div>
+              {/*
+                * "Usar" só existe quando há o que usar, e "Cancelar" saiu:
+                * o X do cabeçalho já fecha o diálogo pelo mesmo caminho.
+                * Um botão desabilitado parado na tela de abertura era só
+                * peso — não dizia o que fazer para habilitá-lo.
+                */}
+              {paginas.length > 0 && (
+                <Button className="w-full sm:w-auto" onClick={gerarPdf} disabled={gerando}>
+                  {gerando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                  Usar {paginas.length > 1 ? `${paginas.length} páginas` : "esta página"}
+                </Button>
+              )}
+            </div>
           )}
         </DialogFooter>
       </DialogContent>

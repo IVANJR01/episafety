@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gerarFichaEPI, RODAPE_ASSINATURA } from "./gerarFichaEPI";
+import { gerarFichaEPI, RODAPE_ASSINATURA, ENDERECO_VERIFICACAO } from "./gerarFichaEPI";
 
 const CODIGO = "fa7f39bb97c459cd63e78345e116191e75f60b8a";
 const MM_EM_PONTOS = 72 / 25.4;
@@ -62,6 +62,16 @@ describe("ficha de EPI — coluna Entrega", () => {
     const t = trechosDoPdf(pdf("BIOMETRIA_DIGITAL"));
     expect(t).toContain(CODIGO);
     expect(t.some((s) => /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(s))).toBe(true);
+  });
+});
+
+describe("ficha de EPI — rodapé", () => {
+  it("diz onde conferir o código impresso", () => {
+    // Sem o endereço no papel, o código de 40 caracteres é enfeite: quem
+    // recebe a ficha não tem como adivinhar que existe onde digitá-lo.
+    const linha = trechosDoPdf(pdf("BIOMETRIA_DIGITAL")).find((t) => t.includes("SafetySoluções"));
+    expect(linha).toBeDefined();
+    expect(linha).toContain(ENDERECO_VERIFICACAO);
   });
 });
 
