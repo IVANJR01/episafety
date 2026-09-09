@@ -341,14 +341,14 @@ export default function DossieColaborador() {
             <ExternalLink className="w-3.5 h-3.5 mr-1" />Ver
           </Button>
         )}
-        {canEdit && !arquivado && (
+        {canEdit && (
           <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => abrirEnvio(l)}>
             <Upload className="w-3.5 h-3.5 mr-1" />
             {/* "Renovar" só quando existe versão para renovar. A linha do
                 documento pode existir com zero versões — foi o que sobrou das
                 tentativas de anexo barradas pela permissão do bucket —, e aí
                 oferecer "Renovar" num item "Não enviado" não faz sentido. */}
-            {(l.doc?.total_versoes || 0) > 0 ? "Renovar" : "Anexar"}
+            {(l.doc?.total_versoes || 0) > 0 ? (arquivado ? "Anexar novo" : "Renovar") : "Anexar"}
           </Button>
         )}
         {canEdit && l.doc && !arquivado && (
