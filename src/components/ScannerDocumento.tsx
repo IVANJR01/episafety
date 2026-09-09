@@ -336,47 +336,54 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     return dados[i] * 0.299 + dados[i + 1] * 0.587 + dados[i + 2] * 0.114;
   };
 
-  const lumaMinimaPapel = 100; // Limiar tolerante para papel, mesmo com sombra
+  // 1. Calibração Dinâmica de Iluminação
+  // Amostra uma área no centro da imagem para descobrir o luma médio real do papel
   let cx = largura / 2;
   let cy = altura / 2;
-
-  // Se o centro exato da imagem cair em cima de uma letra preta, tenta achar um espaço em branco próximo
-  let achouCentro = false;
-  for (let r = 0; r < 60; r += 15) {
-    if (luma(cx + r, cy) >= lumaMinimaPapel) { cx += r; achouCentro = true; break; }
-    if (luma(cx - r, cy) >= lumaMinimaPapel) { cx -= r; achouCentro = true; break; }
-    if (luma(cx, cy + r) >= lumaMinimaPapel) { cy += r; achouCentro = true; break; }
-    if (luma(cx, cy - r) >= lumaMinimaPapel) { cy -= r; achouCentro = true; break; }
+  
+  let somaCentro = 0;
+  let qtdCentro = 0;
+  for(let dy = -40; dy <= 40; dy += 20) {
+    for(let dx = -40; dx <= 40; dx += 20) {
+      somaCentro += luma(cx + dx, cy + dy);
+      qtdCentro++;
+    }
   }
-  if (!achouCentro) return null;
+  const lumaMediaPapel = somaCentro / qtdCentro;
+  
+  // O limite para considerar "mesa" é ser razoavelmente mais escuro que o centro do papel
+  // Tolera grandes sombras sem quebrar o algoritmo
+  const lumaMinimaPapel = Math.min(lumaMediaPapel - 35, 150); 
+  
+  if (lumaMediaPapel < 50) return null; // Foto muito escura, falha segura
 
-  // 1. Center-Out Raycasting com Tolerância a Ruído (Textos/Linhas)
-  // O raio avança e só para quando achar uma área escura consistente (vários passos escuros),
-  // pulando assim por cima do texto e das tabelas impressas no ASO.
+  // 2. Raycasting de Alta Definição com Tolerância a Textos
+  // Dispara 360 raios (1 por grau) para desenhar uma silhueta milimétrica da folha.
   const pontosBorda: Ponto[] = [];
-  const raioPasso = Math.max(3, Math.round(largura / 80));
+  const raioPasso = Math.max(2, Math.round(largura / 150)); // Passos curtos para precisão
+  const limiteEscuridao = Math.max(6, Math.round(largura / 40)); // Exige ~25px de escuridão para confirmar mesa
 
-  for (let angulo = 0; angulo < 360; angulo += 5) {
+  for (let angulo = 0; angulo < 360; angulo += 1) { // 360 raios!
     const rad = angulo * (Math.PI / 180);
     const dx = Math.cos(rad);
     const dy = Math.sin(rad);
     
     let x = cx;
     let y = cy;
-    let bordaX = x;
-    let bordaY = y;
+    let bordaX = cx;
+    let bordaY = cy;
     let escuridaoConsecutiva = 0;
 
-    // Avança até sair da tela ou cair numa área escura (mesa)
+    // Avança do centro para fora
     while (x >= 0 && x < largura && y >= 0 && y < altura) {
       if (luma(x, y) < lumaMinimaPapel) {
         escuridaoConsecutiva++;
-        if (escuridaoConsecutiva > 4) { 
-          // Achou o fim do papel de verdade (mesa)!
+        if (escuridaoConsecutiva > limiteEscuridao) { 
+          // Realmente acabou o papel e começou a mesa
           break; 
         }
       } else {
-        // Era só uma linha de texto ou tabela, reseta a contagem
+        // Ainda é papel (ou era só um texto escuro e voltamos pro branco)
         escuridaoConsecutiva = 0;
         bordaX = x;
         bordaY = y;
