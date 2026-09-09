@@ -28,6 +28,7 @@ import Relatorios from "@/pages/Relatorios";
 import Empresas from "@/pages/Empresas";
 import UsuariosLiberados from "@/pages/UsuariosLiberados";
 import Auth from "@/pages/Auth";
+import VerificarFicha from "@/pages/VerificarFicha";
 import ResetPassword from "@/pages/ResetPassword";
 import AdminEmpresas from "@/pages/AdminEmpresas";
 import Install from "@/pages/Install";
@@ -436,6 +437,10 @@ const App = () => (
             <Route path="/termos" element={<Termos />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verificar-aso/:hash" element={<VerificarAso />} />
+            {/* Conferência da Ficha de EPI pelo código impresso: pública de
+                propósito, porque quem consulta é o fiscal com o papel na mão. */}
+            <Route path="/verificar" element={<VerificarFicha />} />
+            <Route path="/verificar/:codigo" element={<VerificarFicha />} />
             <Route path="/aprovacao-publica" element={<AprovacaoPublica />} />
             <Route path="/assinar/:id" element={<AssinaturaRemota />} />
             <Route path="/setup-mfa" element={<SetupMfaGuarded />} />

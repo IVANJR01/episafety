@@ -83,6 +83,16 @@ function formatDate(dateStr: string): string {
  * qualquer um dos três números faz a linha cortar texto — coisa que só
  * apareceria imprimindo. O teste guarda a ordem e a folga entre eles.
  */
+/**
+ * Onde conferir o código impresso na ficha.
+ *
+ * Sem esta linha o código de 40 caracteres é enfeite: quem recebe o papel
+ * não tem como adivinhar que existe uma página para digitá-lo. A prova só
+ * vale se o caminho até ela estiver no próprio documento.
+ */
+export const ENDERECO_VERIFICACAO: string =
+  import.meta.env?.VITE_URL_VERIFICACAO || "safetysolucoes.com/verificar";
+
 export const RODAPE_ASSINATURA = {
   /** Linha de base do código de conferência (4,5 pt). */
   codigo: 4.6,
@@ -242,7 +252,10 @@ function drawFooter(doc: jsPDF, pendentes: number) {
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text("Gerado no sistema SafetySoluções", PAGE_W / 2, footerY, { align: "center" });
+  doc.text(
+    `Gerado no sistema SafetySoluções — confira o código de cada assinatura em ${ENDERECO_VERIFICACAO}`,
+    PAGE_W / 2, footerY, { align: "center" },
+  );
 
   // O cabeçalho traz a empresa do funcionário; esta linha diz quem assinou.
   const emissor = linhaDoAssinante();
