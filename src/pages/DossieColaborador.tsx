@@ -89,7 +89,8 @@ export default function DossieColaborador() {
 
   // Diálogos
   const [envio, setEnvio] = useState<LinhaDossie | null>(null);
-  const [envioData, setEnvioData] = useState(hoje());
+  const [envioData, setEnvioData] = useState("");
+  const [envioValidade, setEnvioValidade] = useState("");
   const [envioObs, setEnvioObs] = useState("");
   const [enviando, setEnviando] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
@@ -224,7 +225,7 @@ export default function DossieColaborador() {
   };
 
   const abrirEnvio = (l: LinhaDossie) => {
-    setEnvio(l); setEnvioData(hoje()); setEnvioObs(""); setArquivoSel(null);
+    setEnvio(l); setEnvioData(hoje()); setEnvioValidade(""); setEnvioObs(""); setArquivoSel(null);
   };
 
   const confirmarEnvio = async () => {
@@ -246,6 +247,7 @@ export default function DossieColaborador() {
       const versao = await publicarVersao({
         empresaId: empresaDoc, documentoId, colaboradorId: funcionario.id, file: arquivoSel,
         dataEmissao: envioData || hoje(), validadeMeses: envio.tipo.validade_meses,
+        dataValidade: envioValidade || null,
         observacao: envioObs || null, userId: user?.id,
         origemTabela: "dossie", origemId: funcionario.id,
       });
@@ -602,14 +604,20 @@ export default function DossieColaborador() {
             <div>
               <Label>Data de emissão *</Label>
               <Input type="date" value={envioData} onChange={(e) => setEnvioData(e.target.value)} />
-              {envio?.tipo.validade_meses ? (
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  A validade sai desta data + {envio.tipo.validade_meses} meses.
-                </p>
-              ) : (
-                <p className="text-[11px] text-muted-foreground mt-1">Este tipo é permanente (sem vencimento).</p>
-              )}
             </div>
+            {envio?.tipo.validade_meses ? (
+              <div>
+                <Label>Validade personalizada</Label>
+                <Input type="date" value={envioValidade} onChange={(e) => setEnvioValidade(e.target.value)} className="mt-1" />
+                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                  Deixe vazio para o sistema usar o padrão <strong>({envio.tipo.validade_meses} meses)</strong>, ou defina uma data manualmente se houver exceções (ex: 90 dias em ASO).
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-[11px] text-muted-foreground mt-1">Este tipo é permanente (sem vencimento).</p>
+              </div>
+            )}
             <div>
               <Label>Observação</Label>
               <Textarea rows={2} value={envioObs} onChange={(e) => setEnvioObs(e.target.value)}
