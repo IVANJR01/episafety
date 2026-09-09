@@ -445,7 +445,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
           <DialogDescription>
             {emAjuste
               ? "Arraste os quatro pontos até os cantos do papel. O que estiver dentro vira uma página reta, sem a mesa em volta e sem a inclinação da foto."
-              : "Enquadre a folha e toque em Capturar. Pode capturar várias páginas — todas entram no mesmo PDF."}
+              : "Enquadre a folha e toque em Capturar."}
           </DialogDescription>
         </DialogHeader>
 
@@ -487,7 +487,14 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
         ) : (
           <div className="space-y-3 overflow-y-auto px-1 pb-1">
             <div className="relative rounded-lg overflow-hidden bg-black mx-auto w-full shrink-0"
-              style={{ aspectRatio: aspecto, maxHeight: "45dvh" }}>
+              /*
+               * Antes da primeira captura a prévia é visor e precisa ser
+               * grande. Depois ela é conferência, e quem manda no espaço
+               * passa a ser a tira de páginas capturadas — que ficava fora
+               * da tela justamente na hora em que a pessoa quer ver o que
+               * acabou de tirar.
+               */
+              style={{ aspectRatio: aspecto, maxHeight: paginas.length > 0 ? "35dvh" : "55dvh" }}>
               <video ref={videoRef} playsInline muted className="w-full h-full object-contain" />
               {!camera && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4 bg-muted">
@@ -502,16 +509,17 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
 
             <input ref={galeriaRef} type="file" accept="image/*" className="hidden" onChange={daGaleria} />
 
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <p className="text-xs font-medium">Cor do documento</p>
-                {reprocessando && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Loader2 className="w-3 h-3 animate-spin" /> aplicando…
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
+            {/*
+              * A cor só aparece depois da primeira página.
+              *
+              * Com a câmera vazia ela não tem sobre o que agir — o efeito é
+              * aplicado ao que já foi capturado — e ocupava um terço da
+              * tela de abertura com rótulo, três botões e um parágrafo. O
+              * parágrafo saiu: o efeito de cada modo se vê na miniatura ao
+              * lado, que explica melhor do que a frase.
+              */}
+            {paginas.length > 0 && (
+              <div className="flex items-center gap-1.5">
                 {(["cor", "cinza", "pb"] as ModoCor[]).map((m) => (
                   <Button
                     key={m}
@@ -521,20 +529,14 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                     aria-pressed={modo === m}
                     disabled={gerando || reprocessando}
                     onClick={() => void trocarModo(m)}
-                    className="text-xs"
+                    className="flex-1 text-xs"
                   >
                     {ROTULO_MODO[m]}
                   </Button>
                 ))}
+                {reprocessando && <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" />}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                {modo === "cor"
-                  ? "Mantém carimbos, assinaturas em azul e foto do documento."
-                  : modo === "cinza"
-                    ? "Sem cor, com os tons preservados. Arquivo menor."
-                    : "Efeito de copiadora: bom para texto impresso, apaga o que é colorido."}
-              </p>
-            </div>
+            )}
 
             {paginas.length > 0 && (
               <div>
@@ -614,7 +616,13 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
              */
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
               <div className="flex gap-2">
-                <Button type="button" className="flex-1 sm:flex-none" onClick={capturar} disabled={!camera || gerando}>
+                {/*
+                  * Capturar é a ação principal até existir a primeira
+                  * página; a partir daí quem manda é "Usar", e dois botões
+                  * cheios lado a lado só disputariam a atenção.
+                  */}
+                <Button type="button" variant={paginas.length === 0 ? "default" : "outline"}
+                  className="flex-1 sm:flex-none" onClick={capturar} disabled={!camera || gerando}>
                   <Camera className="w-4 h-4 mr-2" />
                   {paginas.length === 0 ? "Capturar" : "Capturar mais uma"}
                 </Button>
@@ -623,13 +631,18 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                   Foto salva
                 </Button>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCancel} disabled={gerando}>Cancelar</Button>
-                <Button className="flex-1 sm:flex-none" onClick={gerarPdf} disabled={paginas.length === 0 || gerando}>
+              {/*
+                * "Usar" só existe quando há o que usar, e "Cancelar" saiu:
+                * o X do cabeçalho já fecha o diálogo pelo mesmo caminho.
+                * Um botão desabilitado parado na tela de abertura era só
+                * peso — não dizia o que fazer para habilitá-lo.
+                */}
+              {paginas.length > 0 && (
+                <Button className="w-full sm:w-auto" onClick={gerarPdf} disabled={gerando}>
                   {gerando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
                   Usar {paginas.length > 1 ? `${paginas.length} páginas` : "esta página"}
                 </Button>
-              </div>
+              )}
             </div>
           )}
         </DialogFooter>
