@@ -184,21 +184,19 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const streamRef = useRef<MediaStream | null>(null);
   const galeriaRef = useRef<HTMLInputElement>(null);
   const areaAjusteRef = useRef<HTMLDivElement>(null);
+  const lupaRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
   const [paginas, setPaginas] = useState<Pagina[]>([]);
   const [camera, setCamera] = useState(false);
-  /*
-   * "Câmera ligada" e "prévia pronta" são coisas diferentes: entre atribuir
-   * o stream e o navegador ler os metadados do vídeo há uma janela em que o
-   * elemento mede 0x0, e capturar ali não copia quadro nenhum.
-   */
   const [previaPronta, setPreviaPronta] = useState(false);
   const [aspecto, setAspecto] = useState("4 / 3");
   const [erroCamera, setErroCamera] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
   const [modo, setModo] = useState<ModoCor>("cor");
   const [reprocessando, setReprocessando] = useState(false);
+  // Posição do ponteiro em coordenadas da imagem (para a lupa)
+  const [pointerImg, setPointerImg] = useState<Ponto | null>(null);
 
   // Passo de ajuste: a foto recém-tirada, com os quatro cantos da folha.
   const [ajuste, setAjuste] = useState<Captura | null>(null);
@@ -456,7 +454,48 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     if (arrastando === null) return;
     const p = posicaoNaImagem(e);
     if (!p) return;
+    setPointerImg(p);
     setCantos((c) => c.map((v, i) => (i === arrastando ? p : v)));
+    // Renderiza a lupa em tempo real
+    if (ajuste && lupaRef.current) {
+      const area = areaAjusteRef.current;
+      if (!area) return;
+      const r = area.getBoundingClientRect();
+      const escX = ajuste.largura / r.width;
+      const escY = ajuste.altura / r.height;
+      const ZOOM = 2.5;
+      const RAIO_IMG = 60; // raio em pixels da imagem original que a lupa mostra
+      const RAIO_CANVAS = 90; // raio do canvas da lupa em pixels de tela
+      const c = lupaRef.current;
+      c.width = RAIO_CANVAS * 2;
+      c.height = RAIO_CANVAS * 2;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      const img = area.querySelector("img") as HTMLImageElement | null;
+      if (!img || !img.complete) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(RAIO_CANVAS, RAIO_CANVAS, RAIO_CANVAS, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(
+        img,
+        p.x / escX / escX - RAIO_IMG, p.y / escY / escY - RAIO_IMG,
+        RAIO_IMG * 2, RAIO_IMG * 2,
+        0, 0, RAIO_CANVAS * 2, RAIO_CANVAS * 2,
+      );
+      // Crosshair no centro
+      ctx.strokeStyle = "#f97316";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(RAIO_CANVAS - 12, RAIO_CANVAS); ctx.lineTo(RAIO_CANVAS + 12, RAIO_CANVAS); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(RAIO_CANVAS, RAIO_CANVAS - 12); ctx.lineTo(RAIO_CANVAS, RAIO_CANVAS + 12); ctx.stroke();
+      ctx.restore();
+      // Borda da lupa
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(RAIO_CANVAS, RAIO_CANVAS, RAIO_CANVAS - 1.5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   };
 
   /**
@@ -563,19 +602,39 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
                 <button
                   key={i}
                   type="button"
-                  onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); setArrastando(i); }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+                  onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); setArrastando(i); setPointerImg(cantos[i]); }}
+                  onPointerUp={() => { setArrastando(null); setPointerImg(null); }}
+                  onPointerCancel={() => { setArrastando(null); setPointerImg(null); }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center touch-none"
                   style={{ left: pct(p.x, ajuste!.largura), top: pct(p.y, ajuste!.altura), width: 52, height: 52 }}
                   aria-label={`Canto ${i + 1}`}
                 >
-                  {/* Ponto visual grande com borda branca e sombra forte para ser visível sobre qualquer fundo */}
-                  <span className="w-8 h-8 rounded-full bg-primary border-[3px] border-white shadow-[0_0_0_2px_rgba(0,0,0,0.4)] flex items-center justify-center">
-                    <svg width="12" height="12" viewBox="0 0 12 12" className="opacity-80">
-                      <path d="M6 1v10M1 6h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                  </span>
+                  {/* Cantos estilo "L" como no Clear Scan — visíveis sobre qualquer fundo */}
+                  <svg width="28" height="28" viewBox="0 0 28 28">
+                    {/* Sombra de contraste */}
+                    <path d="M2 14 L2 2 L14 2" stroke="rgba(0,0,0,0.5)" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round"
+                      transform={`rotate(${i === 0 ? 0 : i === 1 ? 90 : i === 2 ? 180 : 270} 14 14)`} />
+                    {/* Linha branca principal */}
+                    <path d="M2 14 L2 2 L14 2" stroke="white" strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round"
+                      transform={`rotate(${i === 0 ? 0 : i === 1 ? 90 : i === 2 ? 180 : 270} 14 14)`} />
+                  </svg>
                 </button>
               ))}
+              {/* Lupa de precisão — aparece apenas ao arrastar, no canto oposto ao dedo */}
+              {arrastando !== null && (
+                <canvas
+                  ref={lupaRef}
+                  className="absolute pointer-events-none rounded-full shadow-xl border-2 border-white"
+                  style={{
+                    width: 90, height: 90,
+                    // Posiciona no canto oposto ao que está sendo arrastado
+                    ...(arrastando === 0 ? { bottom: 8, right: 8 } :
+                       arrastando === 1 ? { bottom: 8, left: 8 } :
+                       arrastando === 2 ? { top: 8, left: 8 } :
+                       { top: 8, right: 8 }),
+                  }}
+                />
+              )}
             </div>
           </div>
         ) : (
