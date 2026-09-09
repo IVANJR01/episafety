@@ -29,6 +29,16 @@ interface Props {
 const LADO_MAXIMO = 1600;
 
 /**
+ * Recuo inicial dos cantos de ajuste em relação às bordas da foto (6%).
+ *
+ * Formulários como ASO têm linhas impressas de alto contraste próximas
+ * às bordas — detecção automática cortaria dentro do documento. Com 6%
+ * de recuo os pontos ficam sobre o papel e o usuário arrasta só o necessário.
+ */
+const RECUO_INICIAL = 0.06;
+
+
+/**
  * Como a página é acabada depois de endireitada.
  *
  * Antes só existia o modo "pb", aplicado sem perguntar — e documento de
