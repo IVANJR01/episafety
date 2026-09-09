@@ -114,7 +114,11 @@ export default function DossieColaboradores() {
       m.set(s.colaborador_id, atual);
 
       const tipos = mapTipos.get(s.colaborador_id) || new Set();
-      tipos.add(s.tipo_documento_id);
+      // Se a única situação do documento for "arquivado", ele não cumpre o requisito.
+      // Fingimos que ele não tem o documento para que o loop de requisitos o marque como "Não enviado".
+      if (s.situacao !== "arquivado") {
+        tipos.add(s.tipo_documento_id);
+      }
       mapTipos.set(s.colaborador_id, tipos);
     });
 
