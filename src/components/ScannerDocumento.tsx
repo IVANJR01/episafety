@@ -331,42 +331,64 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
   const dados = ctx.getImageData(0, 0, largura, altura).data;
 
   const luma = (x: number, y: number) => {
-    const i = (y * largura + x) * 4;
+    if (x < 0 || x >= largura || y < 0 || y >= altura) return 0;
+    const i = (Math.floor(y) * largura + Math.floor(x)) * 4;
     return dados[i] * 0.299 + dados[i + 1] * 0.587 + dados[i + 2] * 0.114;
   };
 
-  // Amostragem
-  const passo = Math.max(1, Math.round(largura / 80));
-  const lumaMinimaPapel = 120; // Seguro para folha branca mesmo com sombra
+  const lumaMinimaPapel = 100; // Limiar tolerante para papel, mesmo com sombra
+  const cx = largura / 2;
+  const cy = altura / 2;
 
-  // Extremos para achar as 4 quinas exatas de um papel possivelmente torto
+  // Se o centro da imagem não for claro (papel), o algoritmo não tem como ancorar
+  if (luma(cx, cy) < lumaMinimaPapel) return null;
+
+  // 1. Center-Out Raycasting: Dispara 72 raios (de 5 em 5 graus) do centro para as bordas.
+  // O raio avança até encontrar um pixel escuro (a mesa) ou o fim da tela.
+  const pontosBorda: Ponto[] = [];
+  const raioPasso = Math.max(2, Math.round(largura / 100));
+
+  for (let angulo = 0; angulo < 360; angulo += 5) {
+    const rad = angulo * (Math.PI / 180);
+    const dx = Math.cos(rad);
+    const dy = Math.sin(rad);
+    
+    let x = cx;
+    let y = cy;
+    let bordaX = x;
+    let bordaY = y;
+
+    // Avança até sair da tela ou cair numa área escura (mesa)
+    while (x >= 0 && x < largura && y >= 0 && y < altura) {
+      if (luma(x, y) < lumaMinimaPapel) {
+        break; // Achou o fim do papel!
+      }
+      bordaX = x;
+      bordaY = y;
+      x += dx * raioPasso;
+      y += dy * raioPasso;
+    }
+    pontosBorda.push({ x: bordaX, y: bordaY });
+  }
+
+  // 2. Busca de Extremos (Quinas): Aplica a matemática de vértices OBLÍQUOS 
+  // APENAS no contorno da folha que acabamos de descobrir. 
+  // Isso ignora teclados, mouses brancos ou reflexos soltos na mesa!
   let tl = { x: largura, y: altura, val: Infinity };
   let tr = { x: 0, y: altura, val: -Infinity };
   let br = { x: 0, y: 0, val: -Infinity };
   let bl = { x: largura, y: 0, val: -Infinity };
 
-  let achou = false;
-
-  for (let y = 0; y < altura; y += passo) {
-    for (let x = 0; x < largura; x += passo) {
-      if (luma(x, y) > lumaMinimaPapel) {
-        achou = true;
-        // Top-Left (Superior Esquerdo): minimiza x + y
-        if (x + y < tl.val) tl = { x, y, val: x + y };
-        // Top-Right (Superior Direito): maximiza x - y
-        if (x - y > tr.val) tr = { x, y, val: x - y };
-        // Bottom-Right (Inferior Direito): maximiza x + y
-        if (x + y > br.val) br = { x, y, val: x + y };
-        // Bottom-Left (Inferior Esquerdo): maximiza y - x
-        if (y - x > bl.val) bl = { x, y, val: y - x };
-      }
-    }
+  for (const pt of pontosBorda) {
+    const { x, y } = pt;
+    if (x + y < tl.val) tl = { x, y, val: x + y };
+    if (x - y > tr.val) tr = { x, y, val: x - y };
+    if (x + y > br.val) br = { x, y, val: x + y };
+    if (y - x > bl.val) bl = { x, y, val: y - x };
   }
 
-  if (!achou) return null;
-
-  // Sanity check: se os pontos formam um polígono muito pequeno, é ruído
-  const dist = (p1: {x: number, y: number}, p2: {x: number, y: number}) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+  // Sanity check: se as quinas formam um polígono muito pequeno, falhou
+  const dist = (p1: Ponto, p2: Ponto) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
   if (dist(tl, tr) < largura * 0.3 || dist(tl, bl) < altura * 0.3) {
     return null;
   }
