@@ -192,12 +192,13 @@ function reduzir(origem: CanvasImageSource, larguraOrig: number, alturaOrig: num
 
 interface Captura { url: string; largura: number; altura: number }
 
-/**
- * `base` é a página já endireitada, ainda colorida e sem acabamento; `final`
- * é o que vai pro PDF. Guardar as duas é o que permite trocar de modo depois
- * de capturar — sem a base, virar para colorido exigiria fotografar de novo.
- */
-interface Pagina { base: string; final: string }
+interface Pagina { 
+  base: string; 
+  final: string;
+  pendente?: boolean;
+  larguraOriginal?: number;
+  alturaOriginal?: number;
+}
 
 export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -227,6 +228,8 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [endireitando, setEndireitando] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  /** Controle de ajuste sequencial do modo lote. */
+  const [ajustandoLote, setAjustandoLote] = useState<number | null>(null);
   /** Modo de digitalização ativo. */
   const [modoCaptura, setModoCaptura] = useState<ModoCaptura>("simples");
 
@@ -413,15 +416,9 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       const url = canvas.toDataURL("image/jpeg", 0.92);
       
       if (modoCaptura === "lote") {
-        // No modo Lote, processa automaticamente para não interromper o fluxo rápido
-        const rx = largura * RECUO_INICIAL;
-        const ry = altura * RECUO_INICIAL;
-        const cantosAuto = [
-          { x: rx, y: ry }, { x: largura - rx, y: ry },
-          { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
-        ];
-        const pg = await processarRecorte({ url, largura, altura }, cantosAuto);
-        if (pg) setPaginas(p => [...p, pg]);
+        // No modo Lote, acumula a foto crua como pendente. 
+        // O ajuste acontecerá só quando o usuário pedir para gerar o documento.
+        setPaginas(p => [...p, { base: url, final: url, pendente: true, larguraOriginal: largura, alturaOriginal: altura }]);
       } else {
         irParaAjuste(url, largura, altura);
       }
@@ -492,24 +489,55 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     }
   };
 
+  /** Inicia a cadeia de ajustes para o modo lote. */
+  const iniciarAjusteLote = () => {
+    const index = paginas.findIndex(p => p.pendente);
+    if (index !== -1) {
+      setAjustandoLote(index);
+      const p = paginas[index];
+      irParaAjuste(p.base, p.larguraOriginal!, p.alturaOriginal!);
+    } else {
+      void gerarPdf(); // Se por acaso não tiver pendentes, gera direto
+    }
+  };
+
   /**
    * Confirma a página ajustada manualmente.
-   * Dispara PDF auto se for Simples/Identidade/Passaporte.
+   * Se estiver na fila de lote, avança para a próxima.
+   * Dispara PDF auto se for Simples/Identidade/Passaporte, ou se terminou a fila de Lote.
    */
   const confirmarPagina = async () => {
     if (!ajuste || cantos.length !== 4) return;
     const pg = await processarRecorte(ajuste, cantos);
     if (!pg) return;
 
-    const novasPaginas = [...paginas, pg];
-    setPaginas(novasPaginas);
-    setAjuste(null);
+    if (ajustandoLote !== null) {
+      const novasPaginas = [...paginas];
+      novasPaginas[ajustandoLote] = pg;
+      setPaginas(novasPaginas);
+      setAjuste(null);
 
-    // Disparo automático por modo de captura
-    if (modoCaptura === "simples" || modoCaptura === "passaporte") {
-      void gerarPdfDe(novasPaginas);
-    } else if (modoCaptura === "identidade" && novasPaginas.length >= 2) {
-      void gerarPdfDe(novasPaginas);
+      const nextIndex = novasPaginas.findIndex((p, i) => i > ajustandoLote && p.pendente);
+      if (nextIndex !== -1) {
+        setAjustandoLote(nextIndex);
+        const nextP = novasPaginas[nextIndex];
+        // Um pequeno tempo para a UI respirar e renderizar a próxima aba
+        setTimeout(() => irParaAjuste(nextP.base, nextP.larguraOriginal!, nextP.alturaOriginal!), 50);
+      } else {
+        setAjustandoLote(null);
+        void gerarPdfDe(novasPaginas);
+      }
+    } else {
+      const novasPaginas = [...paginas, pg];
+      setPaginas(novasPaginas);
+      setAjuste(null);
+
+      // Disparo automático por modo de captura (exceto Lote que usa a fila acima)
+      if (modoCaptura === "simples" || modoCaptura === "passaporte") {
+        void gerarPdfDe(novasPaginas);
+      } else if (modoCaptura === "identidade" && novasPaginas.length >= 2) {
+        void gerarPdfDe(novasPaginas);
+      }
     }
   };
 
