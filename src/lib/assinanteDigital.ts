@@ -21,8 +21,11 @@ export interface AssinanteDigital {
 
 /** Consultoria responsável pela emissão. Sobrescrevível por ambiente. */
 export const ASSINANTE_DIGITAL: AssinanteDigital = {
-  nome: import.meta.env.VITE_ASSINANTE_NOME || "3M CURSOS E TREINAMENTOS",
-  cnpj: import.meta.env.VITE_ASSINANTE_CNPJ || "51.489.453/0001-64",
+  // `import.meta.env?` e não `import.meta.env.`: fora do Vite (um script
+  // Node gerando a ficha, por exemplo) esse objeto não existe, e o acesso
+  // direto derruba o módulo inteiro na importação, antes de qualquer uso.
+  nome: import.meta.env?.VITE_ASSINANTE_NOME || "3M CURSOS E TREINAMENTOS",
+  cnpj: import.meta.env?.VITE_ASSINANTE_CNPJ || "51.489.453/0001-64",
 };
 
 /**

@@ -63,11 +63,23 @@ function formatDate(dateStr: string): string {
   return dateStr;
 }
 
-function formatDateTime(isoStr: string): string {
+/**
+ * Só a data de uma marcação ISO, no fuso de quem lê.
+ *
+ * `formatDate` não serve para isto: ela divide a string em "-", e num ISO
+ * completo a hora vem grudada no terceiro pedaço — "2026-09-08T14:07:27Z"
+ * sairia como "08T14:07:27.000Z/09/2026".
+ *
+ * A conversão passa por `new Date`, e não por corte de string, para a data
+ * da coluna Entrega não divergir da que aparece no código de conferência da
+ * assinatura quando a entrega cai perto da virada do dia.
+ */
+export function formatDataDeIso(isoStr: string): string {
   if (!isoStr) return "—";
   try {
     const d = new Date(isoStr);
-    return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    if (Number.isNaN(d.getTime())) return formatDate(isoStr);
+    return d.toLocaleDateString("pt-BR");
   } catch {
     return formatDate(isoStr);
   }
@@ -321,10 +333,9 @@ export function gerarFichaEPI(data: FichaData) {
 
     x = MARGIN;
 
-    // Entrega date+time
-    const entregaDateTime = formatDateTime(entrega.created_at);
-    const entregaLines = doc.splitTextToSize(entregaDateTime, colWidths[0] - 4);
-    doc.text(entregaLines, x + colWidths[0] / 2, y + ROW_H / 2 - (entregaLines.length > 1 ? 2 : 0), { align: "center" });
+    // Entrega: só a data. A hora continua no bloco de conferência da
+    // assinatura, com segundos, que é onde ela tem valor de prova.
+    doc.text(formatDataDeIso(entrega.created_at), x + colWidths[0] / 2, y + ROW_H / 2, { align: "center" });
     x += colWidths[0];
 
     // Devolução date
