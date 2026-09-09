@@ -91,7 +91,6 @@ export default function DossieColaborador() {
   const [envio, setEnvio] = useState<LinhaDossie | null>(null);
   const [envioData, setEnvioData] = useState("");
   const [envioValidade, setEnvioValidade] = useState("");
-  const [envioObs, setEnvioObs] = useState("");
   const [enviando, setEnviando] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
   const [arquivoSel, setArquivoSel] = useState<File | null>(null);
@@ -225,7 +224,7 @@ export default function DossieColaborador() {
   };
 
   const abrirEnvio = (l: LinhaDossie) => {
-    setEnvio(l); setEnvioData(hoje()); setEnvioValidade(""); setEnvioObs(""); setArquivoSel(null);
+    setEnvio(l); setEnvioData(hoje()); setEnvioValidade(""); setArquivoSel(null);
   };
 
   const confirmarEnvio = async () => {
@@ -248,7 +247,7 @@ export default function DossieColaborador() {
         empresaId: empresaDoc, documentoId, colaboradorId: funcionario.id, file: arquivoSel,
         dataEmissao: envioData || hoje(), validadeMeses: envio.tipo.validade_meses,
         dataValidade: envioValidade || null,
-        observacao: envioObs || null, userId: user?.id,
+        observacao: null, userId: user?.id,
         origemTabela: "dossie", origemId: funcionario.id,
       });
       await registrarEvento({
@@ -648,11 +647,6 @@ export default function DossieColaborador() {
                 <p className="text-[11px] text-muted-foreground mt-1">Este tipo é permanente (sem vencimento).</p>
               </div>
             )}
-            <div>
-              <Label>Observação</Label>
-              <Textarea rows={2} value={envioObs} onChange={(e) => setEnvioObs(e.target.value)}
-                placeholder="Opcional — ex.: emitido pela clínica X" />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEnvio(null)} disabled={enviando}>Cancelar</Button>
