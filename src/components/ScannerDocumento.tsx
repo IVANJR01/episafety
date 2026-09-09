@@ -418,7 +418,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !gerando && !endireitando) onCancel(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[95vh] overflow-y-auto flex flex-col">
         <DialogHeader>
           <DialogTitle>{emAjuste ? "Marque os cantos da folha" : "Digitalizar documento"}</DialogTitle>
           <DialogDescription>
@@ -432,8 +432,8 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
           <div className="space-y-3">
             <div
               ref={areaAjusteRef}
-              className="relative select-none touch-none mx-auto bg-black"
-              style={{ aspectRatio: `${ajuste!.largura} / ${ajuste!.altura}`, maxHeight: "55vh" }}
+              className="relative select-none touch-none mx-auto bg-black rounded-lg overflow-hidden w-full flex-shrink-0"
+              style={{ aspectRatio: `${ajuste!.largura} / ${ajuste!.altura}`, maxHeight: "70vh" }}
               onPointerMove={moverCanto}
               onPointerUp={() => setArrastando(null)}
               onPointerCancel={() => setArrastando(null)}
@@ -477,9 +477,9 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="relative rounded-lg overflow-hidden bg-black mx-auto w-full"
-              style={{ aspectRatio: aspecto, maxHeight: "50vh" }}>
+          <div className="space-y-3 flex-1 flex flex-col">
+            <div className="relative rounded-lg overflow-hidden bg-black mx-auto w-full flex-shrink-0"
+              style={{ aspectRatio: aspecto, maxHeight: "70vh" }}>
               <video ref={videoRef} playsInline muted className="w-full h-full object-contain" />
               {!camera && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4 bg-muted">
