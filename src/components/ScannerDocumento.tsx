@@ -46,6 +46,16 @@ const ROTULO_MODO: Record<ModoCor, string> = {
   pb: "Preto e branco",
 };
 
+/** Modo de digitalização, igual ao Clear Scan. */
+export type ModoCaptura = "simples" | "lote" | "identidade" | "passaporte";
+
+const MODOS_CAPTURA: { id: ModoCaptura; label: string }[] = [
+  { id: "simples",     label: "Simples" },
+  { id: "lote",        label: "Lote" },
+  { id: "identidade",  label: "Cartão de identidade" },
+  { id: "passaporte",  label: "Passaporte" },
+];
+
 /**
  * Ajusta a página capturada conforme o modo escolhido.
  *
@@ -207,6 +217,8 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [endireitando, setEndireitando] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  /** Modo de digitalização ativo. */
+  const [modoCaptura, setModoCaptura] = useState<ModoCaptura>("simples");
 
   const pararCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -410,6 +422,12 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
   };
 
   /** Endireita pelos cantos escolhidos, trata, e guarda como página. */
+  /**
+   * Confirma a página ajustada, aplicando perspectiva e filtro de cor.
+   * Nos modos Simples e Passaporte, dispara o PDF imediatamente após 1 página.
+   * No modo Identidade, dispara após 2 páginas (frente + verso).
+   * No modo Lote, apenas empilha e aguarda ação do usuário.
+   */
   const confirmarPagina = async () => {
     if (!ajuste || cantos.length !== 4) return;
     const quad = ordenarCantos(cantos);
@@ -445,8 +463,16 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       const base = saida.toDataURL("image/jpeg", 0.92);
       tratarPagina(sctx, largura, altura, modo);
 
-      setPaginas((p) => [...p, { base, final: saida.toDataURL("image/jpeg", modo === "cor" ? 0.85 : 0.82) }]);
+      const urlFinal = saida.toDataURL("image/jpeg", modo === "cor" ? 0.85 : 0.82);
+      const novasPaginas = [...paginas, { base, final: urlFinal }];
+      setPaginas(novasPaginas);
       setAjuste(null);
+      // Disparo automático por modo de captura
+      if (modoCaptura === "simples" || modoCaptura === "passaporte") {
+        void gerarPdfDe(novasPaginas);
+      } else if (modoCaptura === "identidade" && novasPaginas.length >= 2) {
+        void gerarPdfDe(novasPaginas);
+      }
     } catch (e: any) {
       toast({ title: "Não foi possível preparar a página", description: e?.message, variant: "destructive" });
     } finally {
@@ -539,8 +565,9 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     }
   };
 
-  const gerarPdf = async () => {
-    if (paginas.length === 0) return;
+  /** Gera o PDF a partir de uma lista de páginas específica (usado pela confirmação automática). */
+  const gerarPdfDe = async (lista: Pagina[]) => {
+    if (lista.length === 0) return;
     setGerando(true);
     try {
       const { default: jsPDF } = await import("jspdf");
@@ -548,23 +575,18 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       const larguraPagina = pdf.internal.pageSize.getWidth();
       const alturaPagina = pdf.internal.pageSize.getHeight();
       const margem = 8;
-
-      for (let i = 0; i < paginas.length; i++) {
+      for (let i = 0; i < lista.length; i++) {
         if (i > 0) pdf.addPage();
-        const pagina = paginas[i].final;
+        const pagina = lista[i].final;
         const dim = await new Promise<{ w: number; h: number }>((resolve) => {
           const img = new Image();
           img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
           img.src = pagina;
         });
         const escala = Math.min((larguraPagina - margem * 2) / dim.w, (alturaPagina - margem * 2) / dim.h);
-        const larg = dim.w * escala;
-        const alt = dim.h * escala;
-        pdf.addImage(pagina, "JPEG", (larguraPagina - larg) / 2, (alturaPagina - alt) / 2, larg, alt);
+        pdf.addImage(pagina, "JPEG", (larguraPagina - larg(dim.w, escala)) / 2, (alturaPagina - alt(dim.h, escala)) / 2, larg(dim.w, escala), alt(dim.h, escala));
       }
-
       const blob = pdf.output("blob");
-      // "ASO - Atestado…" viraria "aso---atestado…" sem juntar os hífens.
       const base = (nomeSugerido || "documento")
         .toLowerCase().normalize("NFD").replace(/[^\w\s-]/g, "").trim()
         .replace(/[\s-]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
@@ -575,6 +597,11 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       setGerando(false);
     }
   };
+
+  const larg = (w: number, esc: number) => w * esc;
+  const alt  = (h: number, esc: number) => h * esc;
+
+  const gerarPdf = async () => gerarPdfDe(paginas);
 
   const emAjuste = !!ajuste;
   const pct = (v: number, total: number) => `${(v / total) * 100}%`;
@@ -715,14 +742,17 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
 
               {/* Miniaturas flutuantes das páginas capturadas */}
               {paginas.length > 0 && (
-                <div className="absolute left-0 right-0 bottom-36 px-4">
+                <div className="absolute left-0 right-0 bottom-44 px-4">
                   <div className="flex gap-2 overflow-x-auto pb-1">
                     {paginas.map((pg, i) => (
                       <div key={i} className="relative shrink-0">
                         <button type="button" onClick={() => setPreviewIndex(i)}>
                           <img src={pg.final} alt={`Pág ${i + 1}`}
                             className="h-16 w-auto rounded-md border-2 border-white/40 object-contain bg-black shadow-lg" />
-                          <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] rounded px-1">{i + 1}</span>
+                          {/* Label Frente/Verso no modo identidade */}
+                          <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] rounded px-1">
+                            {modoCaptura === "identidade" ? (i === 0 ? "Frente" : "Verso") : i + 1}
+                          </span>
                         </button>
                         <button type="button"
                           onClick={() => setPaginas((p) => p.filter((_, j) => j !== i))}
@@ -737,8 +767,35 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
               )}
             </div>
 
-            {/* Barra inferior: seletor de cor + galeria + botão capturar + usar */}
-            <div className="bg-black px-4 pb-8 pt-3 flex flex-col gap-3">
+            {/* Barra inferior: tabs de modo + filtro de cor + controles */}
+            <div className="bg-black px-4 pb-8 pt-2 flex flex-col gap-2">
+
+              {/* Tabs de modo — estilo Clear Scan */}
+              <div className="flex gap-0 overflow-x-auto border-b border-white/10 pb-1">
+                {MODOS_CAPTURA.map((m) => (
+                  <button key={m.id} type="button"
+                    onClick={() => { setModoCaptura(m.id); setPaginas([]); }}
+                    className={`whitespace-nowrap text-xs px-3 py-1.5 transition-colors relative ${
+                      modoCaptura === m.id
+                        ? "text-white font-semibold"
+                        : "text-white/40 hover:text-white/70"
+                    }`}>
+                    {m.label}
+                    {modoCaptura === m.id && (
+                      <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-orange-500 rounded-full" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Hint contextual para Identidade */}
+              {modoCaptura === "identidade" && paginas.length === 0 && (
+                <p className="text-center text-white/50 text-[11px]">Capture a <strong className="text-white/70">frente</strong> do cartão primeiro</p>
+              )}
+              {modoCaptura === "identidade" && paginas.length === 1 && (
+                <p className="text-center text-orange-400 text-[11px] font-medium">Agora capture o <strong>verso</strong> do cartão</p>
+              )}
+
               {/* Filtro de cor — só após a primeira captura */}
               {paginas.length > 0 && (
                 <div className="flex gap-1.5">
@@ -758,7 +815,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
               )}
 
               {/* Linha: galeria | capturar | usar */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-1">
                 {/* Galeria */}
                 <button type="button" onClick={() => galeriaRef.current?.click()} disabled={gerando}
                   className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white">
@@ -769,7 +826,10 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
                 <button
                   type="button"
                   onClick={capturar}
-                  disabled={!podeCapturar(camera, previaPronta, gerando)}
+                  disabled={!podeCapturar(camera, previaPronta, gerando) ||
+                    (modoCaptura === "identidade" && paginas.length >= 2) ||
+                    (modoCaptura === "simples" && paginas.length >= 1) ||
+                    (modoCaptura === "passaporte" && paginas.length >= 1)}
                   className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-xl disabled:opacity-40 active:scale-95 transition-transform"
                   aria-label="Capturar"
                 >
@@ -778,8 +838,8 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
                   </div>
                 </button>
 
-                {/* Usar / contador de páginas */}
-                {paginas.length > 0 ? (
+                {/* Usar / contador de páginas (só no modo Lote) */}
+                {(modoCaptura === "lote" && paginas.length > 0) ? (
                   <button type="button" onClick={() => void gerarPdf()} disabled={gerando}
                     className="w-12 h-12 rounded-full bg-orange-500 flex flex-col items-center justify-center text-white shadow-lg disabled:opacity-50">
                     {gerando
