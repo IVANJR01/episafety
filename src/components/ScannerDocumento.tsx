@@ -29,14 +29,12 @@ interface Props {
 const LADO_MAXIMO = 1600;
 
 /**
- * Recuo inicial dos cantos de ajuste em relação às bordas da foto (12%).
+ * Recuo inicial dos cantos de ajuste em relação às bordas da foto (6%).
  *
- * Formulários como ASO têm linhas impressas de alto contraste próximas
- * às bordas — detecção automática cortaria dentro do documento. Com 12%
- * de recuo os pontos começam bem para dentro (fugindo da mesa) e o usuário 
- * arrasta para fora o necessário.
+ * Fallback caso a detecção automática falhe em encontrar a folha. Com 6%
+ * de recuo os pontos ficam sobre o papel e o usuário arrasta só o necessário.
  */
-const RECUO_INICIAL = 0.12;
+const RECUO_INICIAL = 0.06;
 
 
 /**
@@ -332,73 +330,52 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
   if (!ctx) return null;
   const dados = ctx.getImageData(0, 0, largura, altura).data;
 
-  // Calcula luminosidade de um pixel
   const luma = (x: number, y: number) => {
     const i = (y * largura + x) * 4;
     return dados[i] * 0.299 + dados[i + 1] * 0.587 + dados[i + 2] * 0.114;
   };
 
-  // Amostragem: varre por linha/coluna procurando onde o brilho salta positivamente 
-  // (saindo da mesa escura para a folha branca). 
-  // Exigimos que o salto seja > 25 E que a luminosidade final seja > 130 (cor de papel).
+  // Amostragem
   const passo = Math.max(1, Math.round(largura / 80));
-  const saltoMinimo = 25;
-  const lumaMinimaPapel = 130;
+  const lumaMinimaPapel = 120; // Seguro para folha branca mesmo com sombra
 
-  const bordaEsq: number[] = [];
-  const bordaDir: number[] = [];
-  const bordaTopo: number[] = [];
-  const bordaBase: number[] = [];
+  // Extremos para achar as 4 quinas exatas de um papel possivelmente torto
+  let tl = { x: largura, y: altura, val: Infinity };
+  let tr = { x: 0, y: altura, val: -Infinity };
+  let br = { x: 0, y: 0, val: -Infinity };
+  let bl = { x: largura, y: 0, val: -Infinity };
+
+  let achou = false;
 
   for (let y = 0; y < altura; y += passo) {
-    for (let x = 1; x < largura; x++) {
-      const atual = luma(x, y);
-      if (atual > lumaMinimaPapel && (atual - luma(x - 1, y)) > saltoMinimo) { bordaEsq.push(x); break; }
-      // Se já começar claro na beirada da câmera, assume que a folha vazou
-      if (x === 1 && atual > lumaMinimaPapel) { bordaEsq.push(0); break; }
-    }
-    for (let x = largura - 2; x >= 0; x--) {
-      const atual = luma(x, y);
-      if (atual > lumaMinimaPapel && (atual - luma(x + 1, y)) > saltoMinimo) { bordaDir.push(x); break; }
-      if (x === largura - 2 && atual > lumaMinimaPapel) { bordaDir.push(largura); break; }
-    }
-  }
-  for (let x = 0; x < largura; x += passo) {
-    for (let y = 1; y < altura; y++) {
-      const atual = luma(x, y);
-      if (atual > lumaMinimaPapel && (atual - luma(x, y - 1)) > saltoMinimo) { bordaTopo.push(y); break; }
-      if (y === 1 && atual > lumaMinimaPapel) { bordaTopo.push(0); break; }
-    }
-    for (let y = altura - 2; y >= 0; y--) {
-      const atual = luma(x, y);
-      if (atual > lumaMinimaPapel && (atual - luma(x, y + 1)) > saltoMinimo) { bordaBase.push(y); break; }
-      if (y === altura - 2 && atual > lumaMinimaPapel) { bordaBase.push(altura); break; }
+    for (let x = 0; x < largura; x += passo) {
+      if (luma(x, y) > lumaMinimaPapel) {
+        achou = true;
+        // Top-Left (Superior Esquerdo): minimiza x + y
+        if (x + y < tl.val) tl = { x, y, val: x + y };
+        // Top-Right (Superior Direito): maximiza x - y
+        if (x - y > tr.val) tr = { x, y, val: x - y };
+        // Bottom-Right (Inferior Direito): maximiza x + y
+        if (x + y > br.val) br = { x, y, val: x + y };
+        // Bottom-Left (Inferior Esquerdo): maximiza y - x
+        if (y - x > bl.val) bl = { x, y, val: y - x };
+      }
     }
   }
 
-  if (bordaEsq.length < 5 || bordaDir.length < 5 || bordaTopo.length < 5 || bordaBase.length < 5) return null;
+  if (!achou) return null;
 
-  // Percentil 10/90 para ignorar outliers nas bordas ruidosas
-  const p = (arr: number[], pct: number) => {
-    const s = [...arr].sort((a, b) => a - b);
-    return s[Math.floor(s.length * pct)];
-  };
-
-  const esq = p(bordaEsq, 0.10);
-  const dir = p(bordaDir, 0.90);
-  const topo = p(bordaTopo, 0.10);
-  const base = p(bordaBase, 0.90);
-
-  // Confiança: se o recorte for menor que 30% de qualquer dimensão, provavelmente errou
-  const largDoc = dir - esq;
-  const altDoc = base - topo;
-  if (largDoc < largura * 0.30 || altDoc < altura * 0.30) return null;
+  // Sanity check: se os pontos formam um polígono muito pequeno, é ruído
+  const dist = (p1: {x: number, y: number}, p2: {x: number, y: number}) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+  if (dist(tl, tr) < largura * 0.3 || dist(tl, bl) < altura * 0.3) {
+    return null;
+  }
 
   return [
-    { x: esq, y: topo },
-    { x: dir, y: topo },
-    { x: dir, y: base },
-    { x: esq, y: base },
+    { x: tl.x, y: tl.y },
+    { x: tr.x, y: tr.y },
+    { x: br.x, y: br.y },
+    { x: bl.x, y: bl.y },
   ];
 }
 
