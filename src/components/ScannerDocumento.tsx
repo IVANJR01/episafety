@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
+import { precisaReatarStream } from "@/lib/scannerCamera";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, Check, Trash2, Loader2, Image as ImageIcon, VideoOff, Plus, Maximize } from "lucide-react";
@@ -233,6 +234,26 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     return () => pararCamera();
   }, [open, iniciarCamera, pararCamera]);
 
+  /*
+   * Reata o stream ao <video> toda vez que ele volta à tela.
+   *
+   * O elemento vive dentro do ramo "não estou ajustando" do JSX, então
+   * entrar no passo de marcar os cantos o desmonta e sair de lá monta um
+   * elemento novo — sem `srcObject`. A câmera continuava ligada e o estado
+   * `camera` continuava true, de modo que nada avisava: a prévia ficava
+   * preta e o botão Capturar seguia habilitado, pronto para gravar um
+   * quadro em branco.
+   */
+  useEffect(() => {
+    const v = videoRef.current;
+    const stream = streamRef.current;
+    if (!precisaReatarStream(v, stream, !!ajuste)) return;
+    v!.srcObject = stream;
+    void v!.play().catch(() => {
+      // Autoplay recusado só atrapalha a prévia; o resto do fluxo segue.
+    });
+  }, [ajuste]);
+
   /** Abre o passo de ajuste com os cantos recuados da borda. */
   const irParaAjuste = (url: string, largura: number, altura: number) => {
     setAjuste({ url, largura, altura });
@@ -416,7 +437,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
             <div
               ref={areaAjusteRef}
               className="relative select-none touch-none mx-auto bg-black"
-              style={{ aspectRatio: `${ajuste!.largura} / ${ajuste!.altura}`, maxHeight: "55vh" }}
+              style={{ aspectRatio: `${ajuste!.largura} / ${ajuste!.altura}`, maxHeight: "55dvh" }}
               onPointerMove={moverCanto}
               onPointerUp={() => setArrastando(null)}
               onPointerCancel={() => setArrastando(null)}
@@ -445,24 +466,11 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                 </button>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" className="flex-1" disabled={endireitando}
-                onClick={() => setCantos([
-                  { x: 0, y: 0 }, { x: ajuste!.largura, y: 0 },
-                  { x: ajuste!.largura, y: ajuste!.altura }, { x: 0, y: ajuste!.altura },
-                ])}>
-                <Maximize className="w-4 h-4 mr-2" />
-                Usar a foto inteira
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setAjuste(null)} disabled={endireitando}>
-                Descartar
-              </Button>
-            </div>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="relative rounded-lg overflow-hidden bg-black mx-auto w-full"
-              style={{ aspectRatio: aspecto, maxHeight: "50vh" }}>
+              style={{ aspectRatio: aspecto, maxHeight: "50dvh" }}>
               <video ref={videoRef} playsInline muted className="w-full h-full object-contain" />
               {!camera && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4 bg-muted">
@@ -551,10 +559,36 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
 
         <DialogFooter>
           {emAjuste ? (
-            <Button onClick={confirmarPagina} disabled={endireitando} className="w-full sm:w-auto">
-              {endireitando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-              Endireitar e usar
-            </Button>
+            /*
+             * As três ações moram no rodapé, e não no corpo do diálogo.
+             *
+             * "Usar a foto inteira" e "Descartar" ficavam logo abaixo da
+             * imagem, dentro da área que rola, e o rodapé fixo cobria a fila
+             * pela metade no celular. Bastavam alguns pixels de sobra: o
+             * teto da imagem estava em `vh`, que no iOS mede a tela cheia,
+             * enquanto o diálogo se limita a `dvh`, que desconta as barras
+             * do navegador. O teto virou `dvh` também, mas isso sozinho só
+             * afasta o problema — no rodapé os botões não têm como sumir.
+             */
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1 sm:flex-none" disabled={endireitando}
+                  onClick={() => setCantos([
+                    { x: 0, y: 0 }, { x: ajuste!.largura, y: 0 },
+                    { x: ajuste!.largura, y: ajuste!.altura }, { x: 0, y: ajuste!.altura },
+                  ])}>
+                  <Maximize className="w-4 h-4 mr-2" />
+                  Usar a foto inteira
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setAjuste(null)} disabled={endireitando}>
+                  Descartar
+                </Button>
+              </div>
+              <Button onClick={confirmarPagina} disabled={endireitando} className="w-full sm:w-auto">
+                {endireitando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                Endireitar e usar
+              </Button>
+            </div>
           ) : (
             <>
               <Button variant="outline" onClick={onCancel} disabled={gerando}>Cancelar</Button>
