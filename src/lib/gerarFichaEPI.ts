@@ -1,6 +1,5 @@
 import jsPDF from "jspdf";
 import { dataHoraComSegundos } from "./codigoAssinatura";
-import { linhaDoAssinante } from "./assinanteDigital";
 
 interface EmpresaData {
   nome: string;
@@ -90,8 +89,24 @@ function formatDate(dateStr: string): string {
  * não tem como adivinhar que existe uma página para digitá-lo. A prova só
  * vale se o caminho até ela estiver no próprio documento.
  */
-export const ENDERECO_VERIFICACAO: string =
-  import.meta.env?.VITE_URL_VERIFICACAO || "safetysolucoes.com/verificar";
+const ENDERECO_CONFIGURADO: string =
+  import.meta.env?.VITE_URL_VERIFICACAO || "https://safetysolucoes.com/verificar";
+
+/**
+ * Garante o `https://` no endereço impresso.
+ *
+ * Sem o esquema, "safetysolucoes.com/verificar" não é um endereço para o
+ * navegador: é um caminho relativo. Clicando no PDF ou colando na barra, o
+ * Edge procurou o arquivo dentro da pasta de downloads e devolveu
+ * ERR_FILE_NOT_FOUND. Quem for conferir a ficha bate nisso e desiste.
+ */
+export function enderecoComEsquema(bruto: string): string {
+  const limpo = (bruto || "").trim();
+  if (!limpo) return "";
+  return /^https?:\/\//i.test(limpo) ? limpo : `https://${limpo}`;
+}
+
+export const ENDERECO_VERIFICACAO: string = enderecoComEsquema(ENDERECO_CONFIGURADO);
 
 export const RODAPE_ASSINATURA = {
   /** Linha de base do código de conferência (4,5 pt). */
@@ -246,23 +261,26 @@ function pendenteDeAssinatura(e: EntregaItem): boolean {
  * havendo pendência, o rodapé diz quantas são.
  */
 function drawFooter(doc: jsPDF, pendentes: number) {
-  // Quatro linhas de 3,6 mm a partir daqui terminam a 3 mm da borda inferior.
-  const footerY = PAGE_H - 17;
+  // Três linhas de 3,6 mm a partir daqui terminam a 3 mm da borda inferior.
+  const footerY = PAGE_H - 13.4;
   const LINHA = 3.6;
   doc.setFontSize(6);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
-  doc.text(
-    `Gerado no sistema SafetySoluções — confira o código de cada assinatura em ${ENDERECO_VERIFICACAO}`,
-    PAGE_W / 2, footerY, { align: "center" },
-  );
+  /*
+   * O endereço sai como link de verdade, e não só como texto: o leitor de
+   * PDF passa a abrir no clique, sem depender de a pessoa selecionar e
+   * colar certo. Por isso as duas partes são desenhadas separadas — o
+   * `textWithLink` não aceita alinhamento centralizado, então a largura é
+   * medida e a centralização, feita na mão.
+   */
+  const chamada = "Gerado no sistema SafetySoluções — confira o código de cada assinatura em ";
+  const larguraChamada = doc.getTextWidth(chamada);
+  const inicio = PAGE_W / 2 - (larguraChamada + doc.getTextWidth(ENDERECO_VERIFICACAO)) / 2;
+  doc.text(chamada, inicio, footerY);
+  doc.textWithLink(ENDERECO_VERIFICACAO, inicio + larguraChamada, footerY, { url: ENDERECO_VERIFICACAO });
 
-  // O cabeçalho traz a empresa do funcionário; esta linha diz quem assinou.
-  const emissor = linhaDoAssinante();
-  if (emissor) {
-    doc.text(emissor, PAGE_W / 2, footerY + LINHA, { align: "center" });
-  }
-  const yBase = footerY + (emissor ? LINHA * 2 : LINHA);
+  const yBase = footerY + LINHA;
 
   if (pendentes === 0) {
     doc.text("Documento assinado eletronicamente, conforme MP 2.200-2/01, Art. 10º, §2.", PAGE_W / 2, yBase, { align: "center" });
