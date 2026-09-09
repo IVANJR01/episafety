@@ -487,7 +487,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
         ) : (
           <div className="space-y-3 overflow-y-auto px-1 pb-1">
             <div className="relative rounded-lg overflow-hidden bg-black mx-auto w-full shrink-0"
-              style={{ aspectRatio: aspecto, maxHeight: "55dvh" }}>
+              style={{ aspectRatio: aspecto, maxHeight: "45dvh" }}>
               <video ref={videoRef} playsInline muted className="w-full h-full object-contain" />
               {!camera && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4 bg-muted">
@@ -500,17 +500,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
               )}
             </div>
 
-            <div className="flex gap-2">
-              <Button type="button" className="flex-1" onClick={capturar} disabled={!camera || gerando}>
-                <Camera className="w-4 h-4 mr-2" />
-                {paginas.length === 0 ? "Capturar" : "Capturar mais uma"}
-              </Button>
-              <input ref={galeriaRef} type="file" accept="image/*" className="hidden" onChange={daGaleria} />
-              <Button type="button" variant="outline" onClick={() => galeriaRef.current?.click()} disabled={gerando}>
-                <ImageIcon className="w-4 h-4 mr-2" />
-                Foto salva
-              </Button>
-            </div>
+            <input ref={galeriaRef} type="file" accept="image/*" className="hidden" onChange={daGaleria} />
 
             <div>
               <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -613,13 +603,34 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
               </Button>
             </div>
           ) : (
-            <>
-              <Button variant="outline" onClick={onCancel} disabled={gerando}>Cancelar</Button>
-              <Button onClick={gerarPdf} disabled={paginas.length === 0 || gerando}>
-                {gerando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                Usar {paginas.length > 1 ? `${paginas.length} páginas` : "esta página"}
-              </Button>
-            </>
+            /*
+             * Capturar mora no rodapé porque é a única saída desta etapa.
+             *
+             * Ficava logo abaixo da prévia, no corpo que rola, e a prévia
+             * sozinha já enchia a altura disponível: sobrava na tela a
+             * câmera, um "Usar esta página" desabilitado (não há página
+             * ainda) e Cancelar. Quem chegava aqui não tinha como capturar
+             * sem descobrir que a área rolava.
+             */
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <div className="flex gap-2">
+                <Button type="button" className="flex-1 sm:flex-none" onClick={capturar} disabled={!camera || gerando}>
+                  <Camera className="w-4 h-4 mr-2" />
+                  {paginas.length === 0 ? "Capturar" : "Capturar mais uma"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => galeriaRef.current?.click()} disabled={gerando}>
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Foto salva
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCancel} disabled={gerando}>Cancelar</Button>
+                <Button className="flex-1 sm:flex-none" onClick={gerarPdf} disabled={paginas.length === 0 || gerando}>
+                  {gerando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                  Usar {paginas.length > 1 ? `${paginas.length} páginas` : "esta página"}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogFooter>
       </DialogContent>
