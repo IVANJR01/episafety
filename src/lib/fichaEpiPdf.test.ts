@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gerarFichaEPI, RODAPE_ASSINATURA, ENDERECO_VERIFICACAO } from "./gerarFichaEPI";
+import { gerarFichaEPI, RODAPE_ASSINATURA, ENDERECO_VERIFICACAO, enderecoComEsquema } from "./gerarFichaEPI";
 
 const CODIGO = "fa7f39bb97c459cd63e78345e116191e75f60b8a";
 const MM_EM_PONTOS = 72 / 25.4;
@@ -85,9 +85,25 @@ describe("ficha de EPI — rodapé", () => {
   it("diz onde conferir o código impresso", () => {
     // Sem o endereço no papel, o código de 40 caracteres é enfeite: quem
     // recebe a ficha não tem como adivinhar que existe onde digitá-lo.
-    const linha = trechosDoPdf(pdf("BIOMETRIA_DIGITAL")).find((t) => t.includes("SafetySoluções"));
-    expect(linha).toBeDefined();
-    expect(linha).toContain(ENDERECO_VERIFICACAO);
+    const trechos = trechosDoPdf(pdf("BIOMETRIA_DIGITAL"));
+    expect(trechos.some((t) => t.includes("SafetySoluções"))).toBe(true);
+    expect(trechos).toContain(ENDERECO_VERIFICACAO);
+  });
+
+  it("imprime o endereço com https://, não como caminho solto", () => {
+    // Sem o esquema o navegador trata "safetysolucoes.com/verificar" como
+    // caminho relativo: o Edge foi procurar o arquivo dentro da pasta de
+    // downloads e devolveu ERR_FILE_NOT_FOUND.
+    expect(ENDERECO_VERIFICACAO).toMatch(/^https:\/\//);
+    expect(trechosDoPdf(pdf("BIOMETRIA_DIGITAL"))).toContain(ENDERECO_VERIFICACAO);
+  });
+
+  it("deixa o endereço clicável no PDF", () => {
+    // Anotação de link, não só texto: assim o leitor de PDF abre no clique
+    // e ninguém precisa selecionar e colar corretamente.
+    const bruto = new TextDecoder("latin1").decode(pdf("BIOMETRIA_DIGITAL"));
+    expect(bruto).toContain("/URI");
+    expect(bruto).toContain(ENDERECO_VERIFICACAO);
   });
 });
 
@@ -108,6 +124,26 @@ describe("ficha de EPI — separador da assinatura", () => {
     const fim = 282 * MM_EM_PONTOS;
     const [traco] = tracos(pdf("BIOMETRIA_DIGITAL"));
     expect(Number(traco.split(" ")[0])).toBeCloseTo(fim, 1);
+  });
+});
+
+describe("enderecoComEsquema", () => {
+  it("acrescenta https:// quando falta", () => {
+    expect(enderecoComEsquema("safetysolucoes.com/verificar")).toBe("https://safetysolucoes.com/verificar");
+  });
+
+  it("respeita o que já tem esquema", () => {
+    expect(enderecoComEsquema("https://outro.com/v")).toBe("https://outro.com/v");
+    expect(enderecoComEsquema("http://interno.local/v")).toBe("http://interno.local/v");
+  });
+
+  it("ignora espaços em volta", () => {
+    expect(enderecoComEsquema("  safetysolucoes.com/verificar  ")).toBe("https://safetysolucoes.com/verificar");
+  });
+
+  it("não inventa endereço a partir de vazio", () => {
+    expect(enderecoComEsquema("")).toBe("");
+    expect(enderecoComEsquema("   ")).toBe("");
   });
 });
 
