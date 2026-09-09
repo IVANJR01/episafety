@@ -402,7 +402,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     ]);
   };
 
-  const capturar = () => {
+  const capturar = async () => {
     const video = videoRef.current;
     if (!temQuadro(video)) {
       toast({ title: "A câmera ainda está abrindo", description: "Aguarde o vídeo aparecer e toque de novo." });
@@ -410,7 +410,21 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     }
     try {
       const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
-      irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura);
+      const url = canvas.toDataURL("image/jpeg", 0.92);
+      
+      if (modoCaptura === "lote") {
+        // No modo Lote, processa automaticamente para não interromper o fluxo rápido
+        const rx = largura * RECUO_INICIAL;
+        const ry = altura * RECUO_INICIAL;
+        const cantosAuto = [
+          { x: rx, y: ry }, { x: largura - rx, y: ry },
+          { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
+        ];
+        const pg = await processarRecorte({ url, largura, altura }, cantosAuto);
+        if (pg) setPaginas(p => [...p, pg]);
+      } else {
+        irParaAjuste(url, largura, altura);
+      }
     } catch (e: any) {
       toast({ title: "Não foi possível capturar", description: e?.message, variant: "destructive" });
     }
@@ -431,19 +445,15 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     img.src = URL.createObjectURL(arquivo);
   };
 
-  /** Endireita pelos cantos escolhidos, trata, e guarda como página. */
   /**
-   * Confirma a página ajustada, aplicando perspectiva e filtro de cor.
-   * Nos modos Simples e Passaporte, dispara o PDF imediatamente após 1 página.
-   * No modo Identidade, dispara após 2 páginas (frente + verso).
-   * No modo Lote, apenas empilha e aguarda ação do usuário.
+   * Processa a imagem aplicando a perspectiva e cor.
+   * Usado tanto pela confirmação manual quanto pelo processamento rápido em lote.
    */
-  const confirmarPagina = async () => {
-    if (!ajuste || cantos.length !== 4) return;
-    const quad = ordenarCantos(cantos);
+  const processarRecorte = async (ajusteLocal: Captura, cantosLocal: Ponto[]) => {
+    const quad = ordenarCantos(cantosLocal);
     if (!quadrilateroUtil(quad)) {
       toast({ title: "Ajuste os cantos", description: "A área marcada está achatada demais para endireitar.", variant: "destructive" });
-      return;
+      return null;
     }
     setEndireitando(true);
     try {
@@ -451,16 +461,16 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
         const i = new Image();
         i.onload = () => resolve(i);
         i.onerror = reject;
-        i.src = ajuste.url;
+        i.src = ajusteLocal.url;
       });
       const orig = document.createElement("canvas");
-      orig.width = ajuste.largura;
-      orig.height = ajuste.altura;
+      orig.width = ajusteLocal.largura;
+      orig.height = ajusteLocal.altura;
       const octx = orig.getContext("2d", { willReadFrequently: true })!;
       octx.drawImage(img, 0, 0);
 
       const { largura, altura } = tamanhoDestino(quad);
-      const reto = corrigirPerspectiva(octx.getImageData(0, 0, ajuste.largura, ajuste.altura), quad, largura, altura);
+      const reto = corrigirPerspectiva(octx.getImageData(0, 0, ajusteLocal.largura, ajusteLocal.altura), quad, largura, altura);
       if (!reto) throw new Error("Não foi possível endireitar a área marcada.");
 
       const saida = document.createElement("canvas");
@@ -468,25 +478,38 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
       saida.height = altura;
       const sctx = saida.getContext("2d", { willReadFrequently: true })!;
       sctx.putImageData(reto, 0, 0);
-      // A base sai antes do acabamento e em qualidade mais alta: é dela que
-      // qualquer troca de modo depois vai partir.
+      
       const base = saida.toDataURL("image/jpeg", 0.92);
       tratarPagina(sctx, largura, altura, modo);
-
       const urlFinal = saida.toDataURL("image/jpeg", modo === "cor" ? 0.85 : 0.82);
-      const novasPaginas = [...paginas, { base, final: urlFinal }];
-      setPaginas(novasPaginas);
-      setAjuste(null);
-      // Disparo automático por modo de captura
-      if (modoCaptura === "simples" || modoCaptura === "passaporte") {
-        void gerarPdfDe(novasPaginas);
-      } else if (modoCaptura === "identidade" && novasPaginas.length >= 2) {
-        void gerarPdfDe(novasPaginas);
-      }
+      
+      return { base, final: urlFinal };
     } catch (e: any) {
       toast({ title: "Não foi possível preparar a página", description: e?.message, variant: "destructive" });
+      return null;
     } finally {
       setEndireitando(false);
+    }
+  };
+
+  /**
+   * Confirma a página ajustada manualmente.
+   * Dispara PDF auto se for Simples/Identidade/Passaporte.
+   */
+  const confirmarPagina = async () => {
+    if (!ajuste || cantos.length !== 4) return;
+    const pg = await processarRecorte(ajuste, cantos);
+    if (!pg) return;
+
+    const novasPaginas = [...paginas, pg];
+    setPaginas(novasPaginas);
+    setAjuste(null);
+
+    // Disparo automático por modo de captura
+    if (modoCaptura === "simples" || modoCaptura === "passaporte") {
+      void gerarPdfDe(novasPaginas);
+    } else if (modoCaptura === "identidade" && novasPaginas.length >= 2) {
+      void gerarPdfDe(novasPaginas);
     }
   };
 
