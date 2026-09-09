@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import { precisaReatarStream } from "@/lib/scannerCamera";
+import { precisaReatarStream, podeCapturar, temQuadro } from "@/lib/scannerCamera";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, Check, Trash2, Loader2, Image as ImageIcon, VideoOff, Plus, Maximize } from "lucide-react";
@@ -191,6 +191,12 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
 
   const [paginas, setPaginas] = useState<Pagina[]>([]);
   const [camera, setCamera] = useState(false);
+  /*
+   * "Câmera ligada" e "prévia pronta" são coisas diferentes: entre atribuir
+   * o stream e o navegador ler os metadados do vídeo há uma janela em que o
+   * elemento mede 0x0, e capturar ali não copia quadro nenhum.
+   */
+  const [previaPronta, setPreviaPronta] = useState(false);
   const [aspecto, setAspecto] = useState("4 / 3");
   const [erroCamera, setErroCamera] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
@@ -210,6 +216,19 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     setCamera(false);
   }, []);
 
+  /**
+   * Registra o formato real da câmera e libera a captura.
+   *
+   * A moldura acompanha o formato da câmera porque fixar 4:3 com o celular
+   * em pé deixava duas tarjas pretas comendo metade da tela.
+   */
+  const anotarFormato = useCallback(() => {
+    const v = videoRef.current;
+    if (!temQuadro(v)) return;
+    setAspecto(`${v!.videoWidth} / ${v!.videoHeight}`);
+    setPreviaPronta(true);
+  }, []);
+
   const iniciarCamera = useCallback(async () => {
     setErroCamera(null);
     try {
@@ -222,10 +241,9 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
-        // A moldura acompanha o formato real da câmera. Fixar 4:3 com o
-        // celular em pé deixava duas tarjas pretas comendo metade da tela.
-        const v = videoRef.current;
-        if (v.videoWidth && v.videoHeight) setAspecto(`${v.videoWidth} / ${v.videoHeight}`);
+        // `play()` resolver não garante metadados lidos; quando eles já
+        // estiverem, aproveita, senão quem avisa é o onLoadedMetadata.
+        anotarFormato();
       }
       setCamera(true);
     } catch (e: any) {
@@ -236,7 +254,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
           : "Não foi possível abrir a câmera. Você ainda pode escolher fotos já tiradas.",
       );
     }
-  }, []);
+  }, [anotarFormato]);
 
   useEffect(() => {
     if (open) {
@@ -262,9 +280,12 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
    * quadro em branco.
    */
   useEffect(() => {
+    // Entrando no ajuste o <video> some; ao voltar, o elemento é outro e
+    // recomeça sem dimensão.
+    if (ajuste) { setPreviaPronta(false); return; }
     const v = videoRef.current;
     const stream = streamRef.current;
-    if (!precisaReatarStream(v, stream, !!ajuste)) return;
+    if (!precisaReatarStream(v, stream, false)) return;
     v!.srcObject = stream;
     void v!.play().catch(() => {
       // Autoplay recusado só atrapalha a prévia; o resto do fluxo segue.
@@ -284,9 +305,14 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
 
   const capturar = () => {
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
+    if (!temQuadro(video)) {
+      // Antes isto era um `return` mudo: o botão parecia simplesmente não
+      // funcionar, que é o pior jeito de falhar.
+      toast({ title: "A câmera ainda está abrindo", description: "Aguarde o vídeo aparecer e toque de novo." });
+      return;
+    }
     try {
-      const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
+      const { canvas, largura, altura } = reduzir(video!, video!.videoWidth, video!.videoHeight);
       irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura);
     } catch (e: any) {
       toast({ title: "Não foi possível capturar", description: e?.message, variant: "destructive" });
@@ -495,8 +521,9 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                * acabou de tirar.
                */
               style={{ aspectRatio: aspecto, maxHeight: paginas.length > 0 ? "35dvh" : "55dvh" }}>
-              <video ref={videoRef} playsInline muted className="w-full h-full object-contain" />
-              {!camera && (
+              <video ref={videoRef} playsInline muted onLoadedMetadata={anotarFormato} onResize={anotarFormato}
+                className="w-full h-full object-contain" />
+              {(!camera || !previaPronta) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4 bg-muted">
                   <VideoOff className="w-8 h-8 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">{erroCamera || "Abrindo a câmera…"}</p>
@@ -561,7 +588,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                       </button>
                     </div>
                   ))}
-                  <button type="button" onClick={capturar} disabled={!camera}
+                  <button type="button" onClick={capturar} disabled={!podeCapturar(camera, previaPronta, gerando)}
                     className="shrink-0 h-24 w-20 rounded border border-dashed flex items-center justify-center text-muted-foreground disabled:opacity-40"
                     aria-label="Capturar mais uma página">
                     <Plus className="w-5 h-5" />
@@ -622,7 +649,7 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
                   * cheios lado a lado só disputariam a atenção.
                   */}
                 <Button type="button" variant={paginas.length === 0 ? "default" : "outline"}
-                  className="flex-1 sm:flex-none" onClick={capturar} disabled={!camera || gerando}>
+                  className="flex-1 sm:flex-none" onClick={capturar} disabled={!podeCapturar(camera, previaPronta, gerando)}>
                   <Camera className="w-4 h-4 mr-2" />
                   {paginas.length === 0 ? "Capturar" : "Capturar mais uma"}
                 </Button>

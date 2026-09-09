@@ -30,3 +30,25 @@ export function precisaReatarStream(
   if (!video || !stream) return false;
   return video.srcObject !== stream;
 }
+
+/**
+ * Se dá para capturar um quadro agora.
+ *
+ * `previaPronta` não é o mesmo que "câmera ligada": entre atribuir o stream
+ * e o navegador ler os metadados do vídeo existe uma janela em que o
+ * elemento ainda mede 0x0. Capturar ali devolvia uma imagem vazia, e o
+ * código preferia não fazer nada — sem aviso nenhum, de modo que o botão
+ * parecia quebrado.
+ */
+export function podeCapturar(
+  cameraLigada: boolean,
+  previaPronta: boolean,
+  ocupado: boolean,
+): boolean {
+  return cameraLigada && previaPronta && !ocupado;
+}
+
+/** Se o elemento de vídeo já tem dimensão, isto é, um quadro para copiar. */
+export function temQuadro(video: { videoWidth?: number; videoHeight?: number } | null | undefined): boolean {
+  return !!video && !!video.videoWidth && !!video.videoHeight;
+}
