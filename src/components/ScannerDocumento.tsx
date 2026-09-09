@@ -266,6 +266,19 @@ export default function ScannerDocumento({ open, onCancel, onReady, nomeSugerido
     return () => pararCamera();
   }, [open, iniciarCamera, pararCamera]);
 
+  /**
+   * Reatribui o stream ao <video> toda vez que o usuário volta da tela de
+   * ajuste. O elemento é desmontado/remontado pelo condicional {emAjuste ? …}
+   * e volta sem srcObject, deixando a prévia preta mesmo com a câmera ativa.
+   */
+  useEffect(() => {
+    if (precisaReatarStream(videoRef.current, streamRef.current, !!ajuste)) {
+      const v = videoRef.current!;
+      v.srcObject = streamRef.current;
+      void v.play().catch(() => {});
+    }
+  }, [ajuste]);
+
 /**
  * Detecta automaticamente os 4 cantos do documento na imagem.
  * Analisa linhas/colunas de pixels procurando onde a cor muda abruptamente
@@ -336,34 +349,31 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
   ];
 }
 
-  /** Abre o passo de ajuste tentando detectar cantos automaticamente. */
-  const irParaAjuste = (url: string, largura: number, altura: number, canvasOrigem?: HTMLCanvasElement) => {
+  /** Abre o passo de ajuste com recuo seguro nas bordas. */
+  const irParaAjuste = (url: string, largura: number, altura: number) => {
     setAjuste({ url, largura, altura });
-    // Tenta detecção automática; se falhar usa o recuo seguro padrão
-    const detectados = canvasOrigem ? detectarCantos(canvasOrigem, largura, altura) : null;
-    if (detectados) {
-      setCantos(detectados);
-    } else {
-      const rx = largura * RECUO_INICIAL;
-      const ry = altura * RECUO_INICIAL;
-      setCantos([
-        { x: rx, y: ry }, { x: largura - rx, y: ry },
-        { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
-      ]);
-    }
+    // Não usamos detecção automática de bordas aqui: formulários como ASO
+    // têm linhas impressas internas com alto contraste que confundem o
+    // algoritmo, fazendo ele cortar dentro do documento em vez de na borda
+    // do papel. O recuo manual de 6% posiciona os pontos com segurança e
+    // o usuário arrasta apenas o necessário.
+    const rx = largura * RECUO_INICIAL;
+    const ry = altura * RECUO_INICIAL;
+    setCantos([
+      { x: rx, y: ry }, { x: largura - rx, y: ry },
+      { x: largura - rx, y: altura - ry }, { x: rx, y: altura - ry },
+    ]);
   };
 
   const capturar = () => {
     const video = videoRef.current;
     if (!temQuadro(video)) {
-      // Antes isto era um `return` mudo: o botão parecia simplesmente não
-      // funcionar, que é o pior jeito de falhar.
       toast({ title: "A câmera ainda está abrindo", description: "Aguarde o vídeo aparecer e toque de novo." });
       return;
     }
     try {
       const { canvas, largura, altura } = reduzir(video, video.videoWidth, video.videoHeight);
-      irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura, canvas);
+      irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura);
     } catch (e: any) {
       toast({ title: "Não foi possível capturar", description: e?.message, variant: "destructive" });
     }
@@ -377,7 +387,7 @@ function detectarCantos(canvas: HTMLCanvasElement, largura: number, altura: numb
     img.onload = () => {
       try {
         const { canvas, largura, altura } = reduzir(img, img.naturalWidth, img.naturalHeight);
-        irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura, canvas);
+        irParaAjuste(canvas.toDataURL("image/jpeg", 0.92), largura, altura);
       } catch { /* imagem ilegível */ }
       URL.revokeObjectURL(img.src);
     };
