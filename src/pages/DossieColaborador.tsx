@@ -645,8 +645,12 @@ export default function DossieColaborador() {
                   <Input type="date" value={envioValidade} onChange={(e) => setEnvioValidade(e.target.value)} />
                   <div className="flex flex-wrap gap-1.5">
                     {[
-                      { l: "+30d", d: 30 }, { l: "+60d", d: 60 }, { l: "+90d", d: 90 }, { l: "+135d", d: 135 },
-                      { l: "+1 ano", m: 12 }, { l: "+2 anos", m: 24 }
+                      // 90 e 120 dias são os prazos de ASO que mais aparecem
+                      // fora do anual — dependem do risco e do tipo de exame,
+                      // e não de "N meses após a emissão".
+                      { l: "+30d", d: 30 }, { l: "+60d", d: 60 }, { l: "+90d", d: 90 },
+                      { l: "+120d", d: 120 }, { l: "+135d", d: 135 },
+                      { l: "+6 meses", m: 6 }, { l: "+1 ano", m: 12 }, { l: "+2 anos", m: 24 }
                     ].map(a => (
                       <button key={a.l} type="button" 
                         className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-muted focus:outline-none"
