@@ -82,7 +82,15 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   <div
     className={cn(
       // No mobile: footer sticky no rodapé, botões visíveis mesmo com teclado.
-      "sticky bottom-0 z-10 -mx-4 mt-auto flex flex-col-reverse gap-2 border-t bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+      //
+      // O deslocamento negativo é o par do `-mt-4` do cabeçalho, e faltava.
+      //
+      // `position: sticky` ancora na caixa de PADDING do contêiner, então com
+      // `bottom-0` o rodapé parava acima do fundo pela altura do padding do
+      // diálogo, e o conteúdo desfilava por essa fresta — aparecia recortado
+      // embaixo dos botões. Margem negativa não resolve: ela move a posição
+      // estática, não o ponto onde o `bottom` ancora.
+      "sticky bottom-[calc((1rem+env(safe-area-inset-bottom))*-1)] z-10 -mx-4 mt-auto flex flex-col-reverse gap-2 border-t bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
       "sm:static sm:mx-0 sm:flex-row sm:justify-end sm:gap-0 sm:space-x-2 sm:border-0 sm:p-0",
       className,
     )}

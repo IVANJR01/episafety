@@ -36,12 +36,14 @@ interface Empresa {
   empresa_pai_id: string | null;
 }
 
-const ACAO_ICONS: Record<string, string> = {
-  view: "👁️",
-  create: "➕",
-  edit: "✏️",
-  delete: "🗑️",
-};
+/*
+ * Rótulo curto para o cabeçalho da tabela.
+ *
+ * "Criar / Adicionar" numa coluna de 80 px quebra em três linhas e encosta
+ * na coluna vizinha. O nome inteiro continua aparecendo no celular, onde
+ * cada caixa carrega o próprio rótulo ao lado.
+ */
+const ROTULO_COLUNA: Record<string, string> = { create: "Criar" };
 
 export default function UsuariosLiberados() {
   const { toast } = useToast();
@@ -777,7 +779,13 @@ export default function UsuariosLiberados() {
 
       {/* Edit User Dialog with Tabs */}
       <Dialog open={!!permsUserId} onOpenChange={(open) => { if (!open) setPermsUserId(null); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        {/*
+          * Sem `max-h-[85vh]`: no celular o DialogContent já é `h-[100dvh]`,
+          * e as duas regras juntas deixavam a caixa com 85% da tela grande
+          * ancorada no topo — o cabeçalho fixo saía do lugar e o conteúdo
+          * passava por cima dele e da barra de status.
+          */}
+        <DialogContent className="max-w-2xl">
           {permsUser && (
             <>
               <DialogHeader>
@@ -997,12 +1005,23 @@ export default function UsuariosLiberados() {
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-1">
+                  {/*
+                    * Duas formas para a mesma informação.
+                    *
+                    * A tabela de quatro colunas é boa no desktop, onde dá
+                    * para varrer trinta módulos de relance. No celular ela
+                    * não cabe: sobravam 150 px para o nome do módulo, o
+                    * cabeçalho quebrava em três linhas e as caixas viravam
+                    * círculos soltos, sem rótulo, embaixo de palavras
+                    * empilhadas. Ali cada permissão passa a carregar o
+                    * próprio nome ao lado, e o módulo vira um cartão.
+                    */}
+                  <div className="space-y-2 sm:space-y-1">
+                    <div className="hidden sm:grid grid-cols-[1fr_repeat(4,_80px)] gap-1 items-end border-b px-2 pb-1.5">
                       <span className="text-xs font-semibold text-muted-foreground">Módulo</span>
                       {ACOES.map(a => (
                         <span key={a.key} className="text-xs font-semibold text-muted-foreground text-center">
-                          {ACAO_ICONS[a.key]} {a.label}
+                          {ROTULO_COLUNA[a.key] ?? a.label}
                         </span>
                       ))}
                     </div>
@@ -1011,36 +1030,63 @@ export default function UsuariosLiberados() {
                       const perms = permsUser.modulos_permitidos || [];
                       const modulePermCount = getModulePermCount(perms, mod.key);
                       const hasAllModule = modulePermCount === ACOES.length;
+                      const especiais = ACOES_ESPECIAIS[mod.key];
 
                       return (
                         <div
                           key={mod.key}
-                          className={`grid grid-cols-[1fr_repeat(4,_50px)] sm:grid-cols-[1fr_repeat(4,_80px)] gap-1 items-center px-2 py-2 rounded-md transition-colors ${
-                            modulePermCount > 0 ? "bg-primary/5" : "hover:bg-muted/50"
+                          className={`rounded-lg border p-3 transition-colors sm:grid sm:grid-cols-[1fr_repeat(4,_80px)] sm:items-center sm:gap-1 sm:rounded-md sm:border-0 sm:px-2 sm:py-2 ${
+                            modulePermCount > 0 ? "border-primary/30 bg-primary/5" : "hover:bg-muted/50"
                           }`}
                         >
-                          <label className="flex items-center gap-2 cursor-pointer" onClick={() => toggleModuleAll(permsUser.id, mod.key)}>
-                            <Checkbox checked={hasAllModule} className="pointer-events-none" />
-                            <span className="text-sm font-medium">{mod.label}</span>
+                          <label
+                            className="flex cursor-pointer items-center gap-2"
+                            onClick={() => toggleModuleAll(permsUser.id, mod.key)}
+                          >
+                            <Checkbox checked={hasAllModule} className="pointer-events-none shrink-0" />
+                            <span className="text-sm font-medium leading-snug">{mod.label}</span>
                           </label>
+
+                          {/* Celular: caixa com rótulo, duas por linha. */}
+                          <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2.5 pl-6 sm:hidden">
+                            {ACOES.map(acao => (
+                              <label key={acao.key} className="flex cursor-pointer items-center gap-2">
+                                <Checkbox
+                                  checked={hasModulePerm(perms, mod.key, acao.key)}
+                                  onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
+                                  className="shrink-0"
+                                />
+                                <span className="text-xs text-muted-foreground">{acao.label}</span>
+                              </label>
+                            ))}
+                          </div>
+
+                          {/* Desktop: só a caixa, sob a coluna que a nomeia. */}
                           {ACOES.map(acao => (
-                            <div key={acao.key} className="flex justify-center">
+                            <div key={acao.key} className="hidden justify-center sm:flex">
                               <Checkbox
                                 checked={hasModulePerm(perms, mod.key, acao.key)}
                                 onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
                               />
                             </div>
                           ))}
-                          {/* Special per-module actions */}
-                          {ACOES_ESPECIAIS[mod.key] && (
-                            <div className="col-span-full flex items-center gap-2 pl-6 pt-1">
-                              {ACOES_ESPECIAIS[mod.key].map(acao => (
-                                <label key={acao.key} className="flex items-center gap-1.5 cursor-pointer">
+
+                          {/*
+                            * Permissões específicas do módulo. Eram uma fila
+                            * `flex` sem quebra: com cinco itens de texto
+                            * longo, como os do eSocial, a fila estourava a
+                            * largura e os últimos saíam cortados na borda.
+                            */}
+                          {especiais && (
+                            <div className="mt-2.5 flex flex-col gap-2 border-t pt-2.5 pl-6 sm:col-span-full sm:mt-0 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1.5 sm:border-t-0 sm:pt-1">
+                              {especiais.map(acao => (
+                                <label key={acao.key} className="flex cursor-pointer items-start gap-2">
                                   <Checkbox
                                     checked={perms.includes(`${mod.key}:${acao.key}`)}
                                     onCheckedChange={() => togglePerm(permsUser.id, `${mod.key}:${acao.key}`)}
+                                    className="mt-0.5 shrink-0"
                                   />
-                                  <span className="text-xs text-muted-foreground">{acao.label}</span>
+                                  <span className="text-xs leading-snug text-muted-foreground">{acao.label}</span>
                                 </label>
                               ))}
                             </div>
