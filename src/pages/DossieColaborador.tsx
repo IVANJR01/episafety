@@ -382,31 +382,53 @@ export default function DossieColaborador() {
         <ArrowLeft className="w-4 h-4 mr-2" />Voltar para a lista
       </Button>
 
-      {/* ── Identificação do colaborador ── */}
+      {/* ── Identificação do colaborador ──
+        *
+        * O nome e o da empresa vinham com `truncate`. Num celular isso
+        * cortava justamente o que identifica a pessoa: "ADRIANA ALVES DO
+        * NASCI…", "Empresa: G91 NORDE…". Numa tela de dossiê, deixar o nome
+        * quebrar em duas linhas custa alguns pixels; cortá-lo custa a
+        * identificação.
+        *
+        * O retrato e o texto ficam lado a lado também no celular — empilhados,
+        * o círculo sozinho comia uma faixa inteira antes de qualquer dado.
+        */}
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <User className="w-6 h-6 text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold truncate">{funcionario.nome}</h1>
-              <Badge className={desligado
-                ? "bg-slate-100 text-slate-600 border-slate-300 border"
-                : "bg-green-100 text-green-800 border-green-300 border"}>
-                {desligado ? "Desligado" : "Ativo"}
-              </Badge>
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              {funcionario.cargo || "Sem função"} • {funcionario.setor || "Sem setor"}
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
-              <span>CPF: {maskCpf(funcionario.cpf)}</span>
-              <span>Matrícula: {funcionario.matricula || "—"}</span>
-              <span className="truncate">Empresa: {empresaNome || "—"}</span>
-              <span className="truncate">Unidade: {unidadeNome || "—"}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-2 flex-wrap">
+                <h1 className="text-lg sm:text-xl font-bold leading-tight break-words">{funcionario.nome}</h1>
+                <Badge className={desligado
+                  ? "bg-slate-100 text-slate-600 border-slate-300 border shrink-0"
+                  : "bg-green-100 text-green-800 border-green-300 border shrink-0"}>
+                  {desligado ? "Desligado" : "Ativo"}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {funcionario.cargo || "Sem função"} • {funcionario.setor || "Sem setor"}
+              </p>
             </div>
           </div>
+
+          {/* Rótulo em cima do valor: o valor ganha a largura inteira da
+              célula e para de brigar com o nome do campo pelo espaço. */}
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t pt-3 text-xs sm:grid-cols-4">
+            {([
+              ["CPF", maskCpf(funcionario.cpf)],
+              ["Matrícula", funcionario.matricula || "—"],
+              ["Empresa", empresaNome || "—"],
+              ["Unidade", unidadeNome || "—"],
+            ] as [string, string][]).map(([rotulo, valor]) => (
+              <div key={rotulo} className="min-w-0">
+                <dt className="text-muted-foreground">{rotulo}</dt>
+                <dd className="font-medium break-words">{valor}</dd>
+              </div>
+            ))}
+          </dl>
         </CardContent>
       </Card>
 
@@ -419,12 +441,17 @@ export default function DossieColaborador() {
         </Card>
       )}
 
-      {/* ── Resumo por situação ── */}
-      <div className="flex flex-wrap gap-2">
+      {/* ── Resumo por situação ──
+        *
+        * A contagem vem antes do rótulo porque é assim que se lê: "1 não
+        * enviado". Depois da etiqueta, o número ficava solto ao lado dela,
+        * sem dizer do que era.
+        */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {(Object.keys(resumo) as SituacaoDocumento[]).map((s) => (
-          <span key={s} className="inline-flex items-center gap-1.5 text-xs">
+          <span key={s} className="inline-flex items-center gap-1.5">
+            <span className="text-sm font-semibold tabular-nums">{resumo[s]}</span>
             <SituacaoBadge situacao={s} />
-            <span className="text-muted-foreground">{resumo[s]}</span>
           </span>
         ))}
       </div>
