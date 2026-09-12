@@ -484,7 +484,11 @@ export default function DossieColaborador() {
               const arquivado = l.situacao === "arquivado";
               const fatos: [string, React.ReactNode][] = [];
               if (l.doc?.data_emissao) fatos.push(["Emissão", dataBr(l.doc.data_emissao)]);
-              fatos.push(["Validade", l.doc?.data_validade ? dataBr(l.doc.data_validade) : (l.doc ? "Permanente" : "—")]);
+              // "Vencimento", e não "Validade": no mesmo cartão, logo acima,
+              // "Validade 12 meses" já diz o prazo do tipo de documento.
+              // Dois campos com o mesmo nome e sentidos diferentes deixavam
+              // quem lê sem saber qual era qual.
+              fatos.push(["Vencimento", l.doc?.data_validade ? dataBr(l.doc.data_validade) : (l.doc ? "Permanente" : "—")]);
               if (l.doc?.dias_para_vencer !== null && l.doc?.dias_para_vencer !== undefined) {
                 fatos.push(["Dias", (
                   <span className={l.doc.dias_para_vencer < 0 ? "text-destructive font-medium" : ""}>
@@ -502,7 +506,7 @@ export default function DossieColaborador() {
                     <div className="min-w-0">
                       <p className="font-medium text-sm">{l.tipo.nome}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {l.tipo.validade_meses ? `Renova a cada ${l.tipo.validade_meses} meses` : "Permanente"}
+                        {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
                         {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
                       </p>
                     </div>
@@ -534,7 +538,7 @@ export default function DossieColaborador() {
                   <TableHead className="min-w-[200px]">Documento</TableHead>
                   <TableHead>Situação</TableHead>
                   <TableHead className="whitespace-nowrap">Emissão</TableHead>
-                  <TableHead className="whitespace-nowrap">Validade</TableHead>
+                  <TableHead className="whitespace-nowrap">Vencimento</TableHead>
                   <TableHead className="whitespace-nowrap">Dias</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead className="whitespace-nowrap">Versões</TableHead>
@@ -561,7 +565,7 @@ export default function DossieColaborador() {
                       <TableCell>
                         <div className="font-medium text-sm">{l.tipo.nome}</div>
                         <div className="text-[11px] text-muted-foreground">
-                          {l.tipo.validade_meses ? `Renova a cada ${l.tipo.validade_meses} meses` : "Permanente"}
+                          {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
                           {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
                         </div>
                       </TableCell>
