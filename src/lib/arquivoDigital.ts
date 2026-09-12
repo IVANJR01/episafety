@@ -138,10 +138,30 @@ export function caminhoDocumento(p: {
  * perigosa — o documento apareceria vigente por três dias a mais do que
  * vale. Quando o dia não existe no mês de destino, cai no último dia dele.
  */
-export function calcularValidade(dataEmissao: string, validadeMeses?: number | null): string | null {
-  if (!validadeMeses) return null;
+export function calcularValidade(
+  dataEmissao: string,
+  validadeMeses?: number | null,
+  validadeDias?: number | null,
+): string | null {
   const base = new Date(`${dataEmissao}T12:00:00`);
   if (Number.isNaN(base.getTime())) return null;
+
+  /*
+   * Dias tem precedência sobre meses.
+   *
+   * Prazo de ASO fora do anual é contado em dias — 90, 120 —, e converter
+   * para mês não dá no mesmo: 90 dias de 01/12 cai em 01/03 em ano comum e
+   * 29/02 em bissexto, enquanto "3 meses" cai sempre em 01/03. Num controle
+   * de vencimento essa diferença aparece como um dia de documento vencido
+   * circulando como vigente.
+   */
+  if (validadeDias) {
+    const alvo = new Date(base);
+    alvo.setDate(alvo.getDate() + validadeDias);
+    return comoIso(alvo);
+  }
+
+  if (!validadeMeses) return null;
 
   const dia = base.getDate();
   const alvo = new Date(base);
@@ -151,9 +171,57 @@ export function calcularValidade(dataEmissao: string, validadeMeses?: number | n
   const ultimoDiaDoMes = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
   alvo.setDate(Math.min(dia, ultimoDiaDoMes));
 
-  const mm = String(alvo.getMonth() + 1).padStart(2, "0");
-  const dd = String(alvo.getDate()).padStart(2, "0");
-  return `${alvo.getFullYear()}-${mm}-${dd}`;
+  return comoIso(alvo);
+}
+
+function comoIso(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+/** Dias inteiros entre duas datas no formato ISO. */
+export function diasEntre(de: string, ate: string): number | null {
+  const a = new Date(`${de}T12:00:00`);
+  const b = new Date(`${ate}T12:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+}
+
+export interface RegraDeValidade {
+  validade_meses?: number | null;
+  validade_dias?: number | null;
+}
+
+/**
+ * A frase que descreve a validade embaixo do nome do documento.
+ *
+ * Ela fala do TIPO, e por isso mentia quando aquele documento tinha prazo
+ * proprio: um ASO salvo com 90 dias aparecia sob "Validade 12 meses". A data
+ * certa estava logo abaixo, no Vencimento, mas de relance a linha de cima
+ * dizia outra coisa.
+ *
+ * Quando o documento segue a regra do tipo, a frase e so a regra. Quando
+ * foge, a frase diz as duas, para ninguem precisar conferir de cabeca.
+ */
+export function descricaoDaValidade(
+  tipo: RegraDeValidade,
+  doc?: { data_emissao?: string | null; data_validade?: string | null } | null,
+): string {
+  const regra = tipo.validade_dias
+    ? `Validade ${tipo.validade_dias} dias`
+    : tipo.validade_meses
+      ? `Validade ${tipo.validade_meses} meses`
+      : "Permanente";
+
+  if (!doc?.data_emissao || !doc?.data_validade) return regra;
+
+  const esperado = calcularValidade(doc.data_emissao, tipo.validade_meses, tipo.validade_dias);
+  if (esperado === doc.data_validade) return regra;
+
+  const dias = diasEntre(doc.data_emissao, doc.data_validade);
+  if (dias === null || dias <= 0) return regra;
+  return `${regra} · este: ${dias} ${dias === 1 ? "dia" : "dias"}`;
 }
 
 export interface EnvioDocumento {
@@ -163,6 +231,8 @@ export interface EnvioDocumento {
   file: File;
   dataEmissao: string;
   validadeMeses?: number | null;
+  /** Prazo em dias. Tem precedência sobre `validadeMeses`. */
+  validadeDias?: number | null;
   /**
    * Validade já pronta, quando quem chama já sabe o vencimento exato (ex.:
    * ASO, cujo prazo depende do tipo de exame/risco, não de "N meses após a
@@ -219,7 +289,7 @@ export async function publicarVersao(p: EnvioDocumento) {
       tamanho_bytes: p.file.size,
       hash_sha256: hash,
       data_emissao: p.dataEmissao,
-      data_validade: p.dataValidade !== undefined ? p.dataValidade : calcularValidade(p.dataEmissao, p.validadeMeses),
+      data_validade: p.dataValidade !== undefined ? p.dataValidade : calcularValidade(p.dataEmissao, p.validadeMeses, p.validadeDias),
       observacao: p.observacao || null,
       created_by: p.userId || null,
       origem_tabela: p.origemTabela || null,
