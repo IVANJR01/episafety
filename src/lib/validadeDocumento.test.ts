@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { calcularValidade, diasEntre, descricaoDaValidade } from "./arquivoDigital";
+import {
+  calcularValidade, diasEntre, descricaoDaValidade, separarValidade, unirValidade,
+} from "./arquivoDigital";
 
 describe("calcularValidade — prazo em dias", () => {
   it("conta dias corridos a partir da emissão", () => {
@@ -106,5 +108,59 @@ describe("descricaoDaValidade", () => {
       { validade_meses: 12 },
       { data_emissao: "2026-06-13", data_validade: "2026-03-15" },
     )).toBe("Validade 12 meses");
+  });
+});
+
+describe("separarValidade — formulário para banco", () => {
+  it("manda o número para a coluna da unidade escolhida", () => {
+    expect(separarValidade("90", "dias")).toEqual({ meses: null, dias: 90 });
+    expect(separarValidade("12", "meses")).toEqual({ meses: 12, dias: null });
+  });
+
+  it("nunca preenche as duas colunas", () => {
+    // O banco recusa por restrição; a tela não pode nem tentar.
+    for (const unidade of ["meses", "dias"] as const) {
+      for (const valor of ["", "0", "-5", "12", "abc", "  90  "]) {
+        const r = separarValidade(valor, unidade);
+        expect(r.meses === null || r.dias === null).toBe(true);
+      }
+    }
+  });
+
+  it("trata vazio, zero e negativo como permanente", () => {
+    expect(separarValidade("", "dias")).toEqual({ meses: null, dias: null });
+    expect(separarValidade("0", "dias")).toEqual({ meses: null, dias: null });
+    expect(separarValidade("-5", "meses")).toEqual({ meses: null, dias: null });
+    expect(separarValidade("abc", "meses")).toEqual({ meses: null, dias: null });
+  });
+
+  it("ignora espaços em volta", () => {
+    expect(separarValidade("  90  ", "dias")).toEqual({ meses: null, dias: 90 });
+  });
+});
+
+describe("unirValidade — banco para formulário", () => {
+  it("reconhece o prazo em dias", () => {
+    expect(unirValidade({ validade_dias: 90 })).toEqual({ valor: "90", unidade: "dias" });
+  });
+
+  it("reconhece o prazo em meses", () => {
+    expect(unirValidade({ validade_meses: 12 })).toEqual({ valor: "12", unidade: "meses" });
+  });
+
+  it("abre vazio no tipo permanente", () => {
+    expect(unirValidade({})).toEqual({ valor: "", unidade: "meses" });
+  });
+
+  it("volta ao mesmo lugar depois de ida e volta", () => {
+    // Abrir a edição e salvar sem tocar em nada não pode mudar o prazo.
+    for (const tipo of [{ validade_dias: 90 }, { validade_meses: 12 }, {}]) {
+      const { valor, unidade } = unirValidade(tipo);
+      const salvo = separarValidade(valor, unidade);
+      expect(salvo).toEqual({
+        meses: tipo.validade_meses ?? null,
+        dias: tipo.validade_dias ?? null,
+      });
+    }
   });
 });
