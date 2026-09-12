@@ -11,8 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Search, Settings2, Loader2, Info, Globe, Building2, Trash2 } from "lucide-react";
+import { Plus, Search, Settings2, Loader2, Info, Globe, Building2, Trash2, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { separarValidade, unirValidade, type UnidadeDeValidade } from "@/lib/arquivoDigital";
 
 const TABELA_AUSENTE = new Set(["42P01", "PGRST205", "PGRST202"]);
 const ehTabelaAusente = (e: any) =>
@@ -55,6 +56,48 @@ export default function ConfiguracaoTiposDocumento() {
   const [novoAberto, setNovoAberto] = useState(false);
   const [novo, setNovo] = useState({ nome: "", categoria: "capacitacao", validade: "", unidade: "meses" as "meses" | "dias" });
   const [salvando, setSalvando] = useState(false);
+
+  /*
+   * Só os tipos da própria empresa entram em edição. Os do catálogo
+   * compartilhado valem para todo mundo, e alterar a validade de um deles
+   * mudaria o vencimento dos documentos de outras empresas — é a mesma razão
+   * pela qual eles já não podiam ser excluídos.
+   */
+  const [edicao, setEdicao] = useState<
+    { id: string; nome: string; categoria: string; validade: string; unidade: UnidadeDeValidade } | null
+  >(null);
+
+  const abrirEdicao = (t: Tipo) => {
+    const { valor, unidade } = unirValidade(t);
+    setEdicao({ id: t.id, nome: t.nome, categoria: t.categoria, validade: valor, unidade });
+  };
+
+  const salvarEdicao = async () => {
+    if (!edicao) return;
+    if (!edicao.nome.trim()) { toast({ title: "Informe o nome", variant: "destructive" }); return; }
+    setSalvando(true);
+    try {
+      const { meses, dias } = separarValidade(edicao.validade, edicao.unidade);
+      const { error } = await (supabase.from as any)("internal_document_types")
+        .update({ nome: edicao.nome.trim(), categoria: edicao.categoria, validade_meses: meses, validade_dias: dias })
+        .eq("id", edicao.id);
+      if (error) throw error;
+      /*
+       * O prazo novo vale das próximas versões em diante. Os documentos já
+       * enviados guardam a data que foi calculada na hora do envio, e é assim
+       * que tem que ser: mudar o tipo hoje não pode reescrever o vencimento
+       * de um ASO que já circulou com outra data impressa.
+       */
+      toast({
+        title: "Tipo atualizado",
+        description: "O prazo novo vale para os próximos envios. Documentos já enviados mantêm o vencimento que receberam.",
+      });
+      setEdicao(null);
+      await carregar();
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e?.message, variant: "destructive" });
+    } finally { setSalvando(false); }
+  };
 
   const [editando, setEditando] = useState<Tipo | null>(null);
   const [exigeTodos, setExigeTodos] = useState(false);
@@ -105,12 +148,7 @@ export default function ConfiguracaoTiposDocumento() {
     if (!empresaId) return;
     setSalvando(true);
     try {
-      const prazo = novo.validade.trim() ? parseInt(novo.validade, 10) : null;
-      const valido = prazo && prazo > 0 ? prazo : null;
-      // Um campo ou o outro, nunca os dois: com ambos preenchidos não haveria
-      // como saber qual manda, e o banco recusa por restrição.
-      const meses = novo.unidade === "meses" ? valido : null;
-      const dias = novo.unidade === "dias" ? valido : null;
+      const { meses, dias } = separarValidade(novo.validade, novo.unidade);
       const { error } = await (supabase.from as any)("internal_document_types").insert({
         empresa_id: empresaId, nome: novo.nome.trim(), categoria: novo.categoria,
         validade_meses: meses, validade_dias: dias, created_by: user?.id,
@@ -265,6 +303,12 @@ export default function ConfiguracaoTiposDocumento() {
                             <Settings2 className="w-3.5 h-3.5 mr-1" />Requisitos
                           </Button>
                           {t.empresa_id && (
+                            <Button size="sm" variant="outline" className="h-8 text-xs"
+                              onClick={() => abrirEdicao(t)}>
+                              <Pencil className="w-3.5 h-3.5 mr-1" />Editar
+                            </Button>
+                          )}
+                          {t.empresa_id && (
                             <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
                               onClick={() => excluirTipo(t.id)}>
                               <Trash2 className="w-4 h-4" />
@@ -328,6 +372,60 @@ export default function ConfiguracaoTiposDocumento() {
             <Button variant="outline" onClick={() => setNovoAberto(false)} disabled={salvando}>Cancelar</Button>
             <Button onClick={criarTipo} disabled={salvando}>
               {salvando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Criar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Editar tipo ── */}
+      <Dialog open={!!edicao} onOpenChange={(v) => { if (!v) setEdicao(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar tipo de documento</DialogTitle>
+            <DialogDescription>
+              O prazo novo vale para os próximos envios. Documentos já enviados mantêm o
+              vencimento que receberam quando foram anexados.
+            </DialogDescription>
+          </DialogHeader>
+          {edicao && (
+            <div className="space-y-3 py-2">
+              <div>
+                <Label>Nome *</Label>
+                <Input value={edicao.nome} className="mt-1"
+                  onChange={(e) => setEdicao({ ...edicao, nome: e.target.value })} />
+              </div>
+              <div>
+                <Label>Categoria</Label>
+                <Select value={edicao.categoria}
+                  onValueChange={(v) => setEdicao({ ...edicao, categoria: v })}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIAS.map((c) => <SelectItem key={c.valor} value={c.valor}>{c.rotulo}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Validade</Label>
+                <div className="mt-1 flex gap-2">
+                  <Input type="number" min={0} value={edicao.validade} className="flex-1"
+                    onChange={(e) => setEdicao({ ...edicao, validade: e.target.value })}
+                    placeholder="Vazio = permanente" />
+                  <Select value={edicao.unidade}
+                    onValueChange={(v) => setEdicao({ ...edicao, unidade: v as UnidadeDeValidade })}>
+                    <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="meses">meses</SelectItem>
+                      <SelectItem value="dias">dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEdicao(null)} disabled={salvando}>Cancelar</Button>
+            <Button onClick={salvarEdicao} disabled={salvando}>
+              {salvando && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

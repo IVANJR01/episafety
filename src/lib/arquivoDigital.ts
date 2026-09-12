@@ -193,6 +193,34 @@ export interface RegraDeValidade {
   validade_dias?: number | null;
 }
 
+export type UnidadeDeValidade = "meses" | "dias";
+
+/**
+ * Traduz o par (número, unidade) do formulário para as duas colunas.
+ *
+ * Exatamente uma delas sai preenchida. O banco recusa as duas — com ambas,
+ * qual manda dependeria da ordem em que o código lesse os campos —, e é aqui
+ * que a tela garante isso antes de tentar gravar.
+ */
+export function separarValidade(
+  valor: string,
+  unidade: UnidadeDeValidade,
+): { meses: number | null; dias: number | null } {
+  const n = parseInt((valor || "").trim(), 10);
+  const valido = Number.isFinite(n) && n > 0 ? n : null;
+  return {
+    meses: unidade === "meses" ? valido : null,
+    dias: unidade === "dias" ? valido : null,
+  };
+}
+
+/** O caminho de volta: das colunas para o par que o formulário edita. */
+export function unirValidade(t: RegraDeValidade): { valor: string; unidade: UnidadeDeValidade } {
+  if (t.validade_dias) return { valor: String(t.validade_dias), unidade: "dias" };
+  if (t.validade_meses) return { valor: String(t.validade_meses), unidade: "meses" };
+  return { valor: "", unidade: "meses" };
+}
+
 /**
  * A frase que descreve a validade embaixo do nome do documento.
  *
