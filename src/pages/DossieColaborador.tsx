@@ -502,18 +502,21 @@ export default function DossieColaborador() {
                     <div className="min-w-0">
                       <p className="font-medium text-sm">{l.tipo.nome}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
+                        {l.tipo.validade_meses ? `Renova a cada ${l.tipo.validade_meses} meses` : "Permanente"}
                         {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
                       </p>
                     </div>
                     <div className="shrink-0"><SituacaoBadge situacao={l.situacao} /></div>
                   </div>
 
-                  <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  {/* Rótulo em cima do valor, como no cartão de cima: o
+                      nome do responsável é o campo mais longo daqui e vinha
+                      cortado por não caber ao lado do próprio rótulo. */}
+                  <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                     {fatos.map(([rotulo, valor]) => (
-                      <div key={rotulo} className="flex gap-1.5 min-w-0">
-                        <dt className="text-muted-foreground shrink-0">{rotulo}:</dt>
-                        <dd className="truncate">{valor}</dd>
+                      <div key={rotulo} className="min-w-0">
+                        <dt className="text-muted-foreground">{rotulo}</dt>
+                        <dd className="font-medium break-words">{valor}</dd>
                       </div>
                     ))}
                   </dl>
@@ -558,7 +561,7 @@ export default function DossieColaborador() {
                       <TableCell>
                         <div className="font-medium text-sm">{l.tipo.nome}</div>
                         <div className="text-[11px] text-muted-foreground">
-                          {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
+                          {l.tipo.validade_meses ? `Renova a cada ${l.tipo.validade_meses} meses` : "Permanente"}
                           {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
                         </div>
                       </TableCell>
