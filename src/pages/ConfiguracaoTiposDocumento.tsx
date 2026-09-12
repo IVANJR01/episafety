@@ -28,7 +28,7 @@ const CATEGORIAS = [
 ];
 
 interface Tipo {
-  id: string; nome: string; categoria: string; validade_meses: number | null;
+  id: string; nome: string; categoria: string; validade_meses: number | null; validade_dias: number | null;
   empresa_id: string | null; ativo: boolean;
 }
 interface Requisito { id: string; tipo_documento_id: string; cargo: string | null; obrigatorio: boolean }
@@ -53,7 +53,7 @@ export default function ConfiguracaoTiposDocumento() {
   const [carregando, setCarregando] = useState(true);
 
   const [novoAberto, setNovoAberto] = useState(false);
-  const [novo, setNovo] = useState({ nome: "", categoria: "capacitacao", validade_meses: "" });
+  const [novo, setNovo] = useState({ nome: "", categoria: "capacitacao", validade: "", unidade: "meses" as "meses" | "dias" });
   const [salvando, setSalvando] = useState(false);
 
   const [editando, setEditando] = useState<Tipo | null>(null);
@@ -63,7 +63,7 @@ export default function ConfiguracaoTiposDocumento() {
   const carregar = async () => {
     setCarregando(true);
     const { data, error } = await (supabase.from as any)("internal_document_types")
-      .select("id, nome, categoria, validade_meses, empresa_id, ativo")
+      .select("id, nome, categoria, validade_meses, validade_dias, empresa_id, ativo")
       .eq("ativo", true).order("nome");
     if (error) { if (ehTabelaAusente(error)) setIndisponivel(true); setCarregando(false); return; }
     setTipos((data || []) as Tipo[]);
@@ -105,15 +105,20 @@ export default function ConfiguracaoTiposDocumento() {
     if (!empresaId) return;
     setSalvando(true);
     try {
-      const meses = novo.validade_meses.trim() ? parseInt(novo.validade_meses, 10) : null;
+      const prazo = novo.validade.trim() ? parseInt(novo.validade, 10) : null;
+      const valido = prazo && prazo > 0 ? prazo : null;
+      // Um campo ou o outro, nunca os dois: com ambos preenchidos não haveria
+      // como saber qual manda, e o banco recusa por restrição.
+      const meses = novo.unidade === "meses" ? valido : null;
+      const dias = novo.unidade === "dias" ? valido : null;
       const { error } = await (supabase.from as any)("internal_document_types").insert({
         empresa_id: empresaId, nome: novo.nome.trim(), categoria: novo.categoria,
-        validade_meses: meses && meses > 0 ? meses : null, created_by: user?.id,
+        validade_meses: meses, validade_dias: dias, created_by: user?.id,
       });
       if (error) throw error;
       toast({ title: "Tipo criado" });
       setNovoAberto(false);
-      setNovo({ nome: "", categoria: "capacitacao", validade_meses: "" });
+      setNovo({ nome: "", categoria: "capacitacao", validade: "", unidade: "meses" });
       await carregar();
     } catch (e: any) {
       toast({ title: "Erro ao criar tipo", description: e?.message, variant: "destructive" });
@@ -245,7 +250,9 @@ export default function ConfiguracaoTiposDocumento() {
                       {CATEGORIAS.find((c) => c.valor === t.categoria)?.rotulo || t.categoria}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {t.validade_meses ? `${t.validade_meses} meses` : "Permanente"}
+                      {t.validade_dias
+                        ? `${t.validade_dias} dias`
+                        : t.validade_meses ? `${t.validade_meses} meses` : "Permanente"}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs font-normal">{descreverExigencia(t)}</Badge>
@@ -294,10 +301,27 @@ export default function ConfiguracaoTiposDocumento() {
               </Select>
             </div>
             <div>
-              <Label>Validade (meses)</Label>
-              <Input type="number" min={0} value={novo.validade_meses}
-                onChange={(e) => setNovo({ ...novo, validade_meses: e.target.value })}
-                placeholder="Vazio = permanente" />
+              <Label>Validade</Label>
+              {/*
+                * Meses ou dias, à escolha. Só meses não representava prazo de
+                * ASO fora do anual — 90 ou 120 dias, conforme o risco e o
+                * tipo de exame —, e quem precisava deles tinha que corrigir a
+                * data em cada anexo. Quem esquecesse gravava um vencimento
+                * errado, e nada avisava.
+                */}
+              <div className="mt-1 flex gap-2">
+                <Input type="number" min={0} value={novo.validade} className="flex-1"
+                  onChange={(e) => setNovo({ ...novo, validade: e.target.value })}
+                  placeholder="Vazio = permanente" />
+                <Select value={novo.unidade}
+                  onValueChange={(v) => setNovo({ ...novo, unidade: v as "meses" | "dias" })}>
+                  <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="meses">meses</SelectItem>
+                    <SelectItem value="dias">dias</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>

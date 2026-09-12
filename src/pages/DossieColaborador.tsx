@@ -24,7 +24,7 @@ import ScannerDocumento from "@/components/ScannerDocumento";
 import {
   garantirDocumento, publicarVersao, urlTemporaria, registrarAcesso, registrarEvento,
   historicoVersoes, arquivarDocumento, definirEmRenovacao, prepararAbertura,
-  PESO_SITUACAO, type SituacaoDocumento,
+  PESO_SITUACAO, descricaoDaValidade, type SituacaoDocumento,
 } from "@/lib/arquivoDigital";
 
 const TABELA_AUSENTE = new Set(["42P01", "PGRST205", "PGRST202"]);
@@ -50,7 +50,7 @@ interface Funcionario {
   data_admissao: string | null; data_demissao: string | null;
 }
 interface TipoDocumento {
-  id: string; nome: string; categoria: string; validade_meses: number | null;
+  id: string; nome: string; categoria: string; validade_meses: number | null; validade_dias: number | null;
   empresa_id: string | null; dias_aviso: number[] | null;
 }
 interface Requisito { tipo_documento_id: string; cargo: string | null; obrigatorio: boolean }
@@ -145,7 +145,7 @@ export default function DossieColaborador() {
   useEffect(() => {
     void (async () => {
       const { data, error } = await (supabase.from as any)("internal_document_types")
-        .select("id, nome, categoria, validade_meses, empresa_id, dias_aviso")
+        .select("id, nome, categoria, validade_meses, validade_dias, empresa_id, dias_aviso")
         .eq("ativo", true).order("nome");
       if (error) { if (ehTabelaAusente(error)) setIndisponivel(true); return; }
       setTipos((data || []) as TipoDocumento[]);
@@ -246,6 +246,7 @@ export default function DossieColaborador() {
       const versao = await publicarVersao({
         empresaId: empresaDoc, documentoId, colaboradorId: funcionario.id, file: arquivoSel,
         dataEmissao: envioData || hoje(), validadeMeses: envio.tipo.validade_meses,
+        validadeDias: envio.tipo.validade_dias,
         dataValidade: envioValidade || null,
         observacao: null, userId: user?.id,
         origemTabela: "dossie", origemId: funcionario.id,
@@ -506,7 +507,7 @@ export default function DossieColaborador() {
                     <div className="min-w-0">
                       <p className="font-medium text-sm">{l.tipo.nome}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
+                        {descricaoDaValidade(l.tipo, l.doc)}
                         {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
                       </p>
                     </div>
@@ -565,7 +566,7 @@ export default function DossieColaborador() {
                       <TableCell>
                         <div className="font-medium text-sm">{l.tipo.nome}</div>
                         <div className="text-[11px] text-muted-foreground">
-                          {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
+                          {descricaoDaValidade(l.tipo, l.doc)}
                           {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
                         </div>
                       </TableCell>
@@ -638,7 +639,7 @@ export default function DossieColaborador() {
               <Label>Data de emissão *</Label>
               <Input type="date" value={envioData} onChange={(e) => setEnvioData(e.target.value)} />
             </div>
-            {envio?.tipo.validade_meses ? (
+            {(envio?.tipo.validade_meses || envio?.tipo.validade_dias) ? (
               <div>
                 <Label>Validade personalizada</Label>
                 <div className="flex flex-col gap-2 mt-1">
@@ -677,7 +678,12 @@ export default function DossieColaborador() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Deixe vazio para o sistema usar o padrão <strong>({envio.tipo.validade_meses} meses)</strong>, ou defina uma data manualmente se houver exceções (ex: 90 dias em ASO).
+                  Deixe vazio para o sistema usar o padrão do tipo{" "}
+                  <strong>
+                    ({envio.tipo.validade_dias
+                      ? `${envio.tipo.validade_dias} dias`
+                      : `${envio.tipo.validade_meses} meses`})
+                  </strong>, ou defina uma data manualmente se este documento for exceção.
                 </p>
               </div>
             ) : (
