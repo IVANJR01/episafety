@@ -96,8 +96,8 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     const textosMap: Record<string, string> = {};
     (textos.data || []).forEach((t: any) => { textosMap[t.secao] = t.conteudo || ""; });
 
-    // Identificação completa (matriz + filiais), responsáveis e cenários de
-    // emergência — dados das Fases 1, 5 e 6 que o PDF passou a exigir.
+    // Identificação completa (matriz + filiais) e responsáveis técnicos —
+    // o que a NR-01 pede para identificar o estabelecimento e assinar.
     // Tolerantes a falha: se uma tabela ainda não existir no ambiente, o PDF
     // cai no comportamento antigo em vez de não ser gerado.
     const [unidadesRes, respRes] = await Promise.all([
@@ -301,7 +301,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" /> PDF técnico interno
+              <FileText className="h-4 w-4" /> Documento do PGR
             </CardTitle>
             <div className="flex flex-wrap gap-2">
               {!bloqueado && (
@@ -329,18 +329,22 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
           </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-            <b>Documento técnico interno.</b> Assinatura ICP-Brasil não implementada nesta fase.
-            Hash SHA-256 + QR Code de validação interna.
-          </div>
-          {/* Sem esta linha os dois botões parecem o mesmo botão repetido, e a
-              pessoa usa "Gerar PDF" só para olhar — gastando uma versão. */}
-          <div className="rounded-md p-3 bg-slate-50 border border-slate-200 text-slate-700 text-xs">
-            <b>Ver como vai sair</b> abre o documento numa aba para conferência e não grava nada.
-            {" "}<b>Gerar PDF</b> cria uma versão numerada, guardada e rastreável — é a que vale como documento.
+          {/*
+            Antes eram duas tarjas coloridas empilhadas, uma delas só explicando
+            a diferença entre os botões. Instrução de botão é legenda, não
+            alerta: em cor de aviso, ela disputava atenção com a ressalva legal
+            e o documento ficava com cara de tutorial.
+          */}
+          <p className="text-xs text-muted-foreground">
+            <b>Ver como vai sair</b> abre o documento para conferência e não grava nada.
+            {" "}<b>Gerar PDF</b> cria a versão numerada e rastreável — é a que vale como documento.
             {status === "rascunho" || status === "em_revisao"
-              ? " Enquanto o PGR não for publicado, os dois saem com a marca d'água de rascunho."
+              ? " Enquanto o PGR não for publicado, os dois saem com marca d'água de rascunho."
               : ""}
+          </p>
+          <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+            <b>Documento técnico interno.</b> Assinatura ICP-Brasil não implementada nesta fase:
+            a validação é por hash SHA-256 e QR Code internos.
           </div>
           {desatualizado && (
             <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center gap-2">
