@@ -96,52 +96,17 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     const textosMap: Record<string, string> = {};
     (textos.data || []).forEach((t: any) => { textosMap[t.secao] = t.conteudo || ""; });
 
-    // Quadro sinóptico de EPIs
-    const gheIdsInv = Array.from(new Set((inv.data || []).map((i: any) => i.ghe_id).filter(Boolean))) as string[];
-    let quadroEpis: any[] = [];
-    if (gheIdsInv.length > 0) {
-      const [funcRes, riscosRes] = await Promise.all([
-        (supabase.from as any)("ghe_funcoes").select("ghe_id, nome_funcao").in("ghe_id", gheIdsInv),
-        (supabase.from as any)("ghe_riscos").select("ghe_id, epis_recomendados").in("ghe_id", gheIdsInv),
-      ]);
-      const controleMap = new Map<string, string>();
-      (inv.data || []).forEach((i: any) => {
-        if (i.ghe_id && i.controles_existentes && !controleMap.has(i.ghe_id)) controleMap.set(i.ghe_id, i.controles_existentes);
-      });
-      const funcMap = new Map<string, string[]>();
-      (funcRes.data || []).forEach((f: any) => {
-        if (!funcMap.has(f.ghe_id)) funcMap.set(f.ghe_id, []);
-        funcMap.get(f.ghe_id)!.push(f.nome_funcao);
-      });
-      const epiMap = new Map<string, Set<string>>();
-      (riscosRes.data || []).forEach((r: any) => {
-        const lst: string[] = Array.isArray(r.epis_recomendados) ? r.epis_recomendados : [];
-        if (!epiMap.has(r.ghe_id)) epiMap.set(r.ghe_id, new Set());
-        lst.forEach((e) => epiMap.get(r.ghe_id)!.add(String(e)));
-      });
-      quadroEpis = gheIdsInv.map((gid) => ({
-        ghe_codigo: ghesInfo[gid]?.codigo || "—",
-        ghe_nome: ghesInfo[gid]?.nome || "—",
-        // Mesma duplicidade da coluna Função: uma linha por cópia da função.
-        funcao: nomesUnicos(funcMap.get(gid)).join(", ") || "—",
-        medida_controle: controleMap.get(gid) || "—",
-        epis: Array.from(epiMap.get(gid) || []).join(", ") || "—",
-      }));
-    }
-
     // Identificação completa (matriz + filiais), responsáveis e cenários de
     // emergência — dados das Fases 1, 5 e 6 que o PDF passou a exigir.
     // Tolerantes a falha: se uma tabela ainda não existir no ambiente, o PDF
     // cai no comportamento antigo em vez de não ser gerado.
-    const [unidadesRes, respRes, cenariosRes] = await Promise.all([
+    const [unidadesRes, respRes] = await Promise.all([
       (supabase.from as any)("empresa_config")
         .select("id,nome,nome_fantasia,cnpj,cnae_principal,grau_risco,telefone,email,logradouro,numero,complemento,bairro,cidade,uf,cep,endereco,empresa_pai_id")
         .or(`id.eq.${pgr.empresa_id},empresa_pai_id.eq.${pgr.empresa_id}`),
       (supabase.from as any)("pgr_responsaveis")
         .select("papel,nome,cpf,profissao,registro_profissional,uf_registro,numero_art,ordem")
         .eq("pgr_id", pgr.id).order("ordem"),
-      (supabase.from as any)("pgr_cenarios_emergencia")
-        .select("*").eq("pgr_id", pgr.id).order("nome"),
     ]);
 
     // Matriz primeiro, filiais depois — a ordem do documento oficial.
@@ -264,10 +229,8 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       assinaturas: assinaturas as any[],
       ghes: ghesMap,
       textos: textosMap,
-      quadroEpis,
       unidades,
       responsaveis: respRes.data || [],
-      cenarios: cenariosRes.data || [],
       ambientes, processos, setores, gesDetalhes, funcoes, atividades,
       // Código do documento: identificador estável e legível para arquivo físico.
       codigoDocumento: `PGR-${(pgr.data_vigencia_inicio || pgr.data_emissao || "")
