@@ -63,7 +63,7 @@ const ETAPAS: Etapa[] = [
   { id: "avaliacao", n: 4, titulo: "Avaliação de riscos e controles", ajuda: "Matriz de risco, probabilidade, severidade e controles." },
   { id: "inventario", n: 5, titulo: "Inventário de riscos", ajuda: "Consolidação dos perigos, avaliações e classificações." },
   { id: "acoes", n: 6, titulo: "Plano de ação", ajuda: "Medidas que serão implementadas." },
-  { id: "emissao", n: 7, titulo: "Revisão e emissão", ajuda: "Complementares, pendências e geração do documento." },
+  { id: "emissao", n: 7, titulo: "Revisão e emissão", ajuda: "Pendências, assinaturas e geração do documento." },
 ];
 
 export default function PgrWizard() {
@@ -344,28 +344,51 @@ function Assistente() {
       case "emissao":
         return (
           <div className="space-y-10">
-            <Secao titulo="O que falta para emitir">
+            <Secao titulo="O que falta para emitir"
+              descricao="Pendências que impedem a publicação da versão.">
               <PgrPendenciasPainel pgrId={pgr.id} respTecNome={pgr.resp_tec_nome}
                 onIrParaEtapa={(e) => irPara(e as EtapaId)} />
             </Secao>
-            <Secao titulo="Responsáveis e assinaturas">
+            <Secao titulo="Responsáveis e assinaturas"
+              descricao="A NR-01, no item 1.5.7.2, exige o documento datado e assinado.">
               <PgrResponsaveisStep pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
             </Secao>
-            <Secao titulo="Quadro de EPIs">
-              <QuadroEpisTab pgrId={pgr.id} empresaId={pgr.empresa_id} />
-            </Secao>
-            <Secao titulo="Emergências">
-              <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
-            </Secao>
-            <Secao titulo="Conferência normativa">
+            <Secao titulo="Conferência normativa"
+              descricao="Confere o documento item a item contra a NR-01.">
               <PgrChecklistTab pgr={pgr} />
             </Secao>
-            <Secao titulo="Gatilhos e aprovações">
+            <Secao titulo="Gatilhos e aprovações"
+              descricao="Prazo de revisão e trâmite de aprovação interna.">
               <GovernancaTab pgr={pgr} canEdit={editavel} />
             </Secao>
-            <Secao titulo="Documento">
+            <Secao titulo="Documento"
+              descricao="Inventário de riscos e plano de ação — o conteúdo que a NR-01 exige do PGR.">
               <PgrPdfTab pgr={pgr} canEdit={perms.canEdit} canExport={perms.canEdit} canAssinar={perms.canEdit} />
             </Secao>
+
+            {/*
+              O quadro de EPIs e os cenários de emergência saíram do PDF do PGR:
+              a norma não pede o primeiro, e o FAQ GRO/PGR do MTE (pergunta 59)
+              diz que os procedimentos de emergência ficam na empresa "sem
+              integrar o PGR". Os dados continuam aqui, mas separados — deixá-los
+              no meio das seções do PGR sugeria que saem no documento.
+            */}
+            <div className="space-y-6 border-t pt-8">
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold tracking-tight">Registros de apoio</h2>
+                <p className="text-sm text-muted-foreground">
+                  Ficam guardados na empresa e não saem no PDF do PGR.
+                </p>
+              </div>
+              <Secao titulo="Quadro de EPIs"
+                descricao="Apoio à gestão de EPI (NR-06); o PGR já traz o EPI como medida de controle no inventário.">
+                <QuadroEpisTab pgrId={pgr.id} empresaId={pgr.empresa_id} />
+              </Secao>
+              <Secao titulo="Preparação para emergências"
+                descricao="Exigida pelo item 1.5.6 da NR-01 como documento próprio, não como capítulo do PGR.">
+                <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+              </Secao>
+            </div>
           </div>
         );
     }
@@ -550,10 +573,22 @@ function Assistente() {
   );
 }
 
-function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+/**
+ * Título de seção da etapa.
+ *
+ * A descrição não é enfeite: em documento normativo, quem assina precisa saber
+ * por que cada bloco está ali. Uma linha citando o item da NR-01 responde isso
+ * sem abrir manual.
+ */
+function Secao({ titulo, descricao, children }: {
+  titulo: string; descricao?: string; children: React.ReactNode;
+}) {
   return (
     <section className="space-y-3">
-      <h2 className="font-semibold text-lg">{titulo}</h2>
+      <div className="space-y-1">
+        <h2 className="text-base font-semibold tracking-tight">{titulo}</h2>
+        {descricao && <p className="text-sm text-muted-foreground">{descricao}</p>}
+      </div>
       {children}
     </section>
   );

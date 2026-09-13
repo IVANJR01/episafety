@@ -73,14 +73,6 @@ export interface PgrAssinaturaItem {
   mfa_verificado: boolean;
 }
 
-export interface PgrQuadroEpiLinha {
-  ghe_codigo: string;
-  ghe_nome: string;
-  funcao: string;
-  medida_controle: string;
-  epis: string;
-}
-
 /** Unidade (matriz ou filial) com os campos de identificação exigidos na Etapa 1. */
 export interface PgrUnidadeItem {
   id: string;
@@ -114,20 +106,6 @@ export interface PgrResponsavelItem {
   ordem: number;
 }
 
-export interface PgrCenarioItem {
-  nome: string;
-  tipo: string;
-  descricao?: string | null;
-  grande_magnitude: boolean;
-  procedimento_resposta?: string | null;
-  primeiros_socorros?: string | null;
-  meios_recursos?: string | null;
-  responsaveis?: string | null;
-  abandono_ponto_encontro?: string | null;
-  periodicidade_simulado?: string | null;
-  ultimo_simulado?: string | null;
-}
-
 /**
  * O número de revisão impresso na capa.
  *
@@ -151,11 +129,9 @@ export interface PgrPdfContext {
   assinaturas: PgrAssinaturaItem[];
   ghes: Record<string, string>;
   textos?: Record<string, string>;
-  quadroEpis?: PgrQuadroEpiLinha[];
   /** Matriz + filiais, para a seção de identificação. */
   unidades?: PgrUnidadeItem[];
   responsaveis?: PgrResponsavelItem[];
-  cenarios?: PgrCenarioItem[];
   /** Caracterização da estrutura, vinda do Núcleo Mestre. */
   ambientes?: any[];
   processos?: any[];
@@ -507,29 +483,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
         .filter(Boolean).join("  ·  ") || "Sim", true);
   }
 
-  // Elaboração e habilidade técnica — quem elaborou, revisou e aprovou.
-  title(b, "Elaboração e Habilidade Técnica");
   const T = ctx.textos || {};
-  const textoHab = (T["elaboracao_habilidade"] || "").trim();
-  if (textoHab) para(b, textoHab, 9, [40, 40, 40]);
-  const resps = ctx.responsaveis || [];
-  if (resps.length === 0) {
-    kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");
-    kv(b, "Registro Profissional", pgr.resp_tec_registro || "—");
-  } else {
-    resps.forEach((r) => {
-      ensure(b, 10);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-      pdf.text(`${PAPEL_PDF_LABEL[r.papel] || r.papel}: ${r.nome}`, 12, b.y + 4);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      const det = [
-        r.profissao,
-        r.registro_profissional ? `Registro ${r.registro_profissional}${r.uf_registro ? `/${r.uf_registro}` : ""}` : null,
-        r.numero_art ? `ART ${r.numero_art}` : null,
-      ].filter(Boolean).join("  ·  ");
-      if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
-    });
-  }
 
   // Textos institucionais editáveis, na ordem do documento oficial.
   // "registro_divulgacao" saiu daqui e foi para o fim: divulgar é o que se faz
@@ -552,47 +506,6 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     if (!conteudo) return;
     title(b, tit);
     para(b, conteudo, 9, [40, 40, 40]);
-  });
-
-  title(b, "Abrangência");
-  kv(b, "Escopo do PGR", pgr.escopo || "—", true);
-  if ((T["area_abrangencia"] || "").trim()) para(b, T["area_abrangencia"], 9, [40, 40, 40]);
-
-  // Referências normativas. Lista fixa das normas que regem o documento — não é
-  // dado da empresa, é o arcabouço legal, igual em qualquer PGR.
-  title(b, "Referências");
-  [
-    "NR-01 — Disposições Gerais e Gerenciamento de Riscos Ocupacionais",
-    "NR-04 — Serviços Especializados em Segurança e em Medicina do Trabalho",
-    "NR-05 — Comissão Interna de Prevenção de Acidentes e de Assédio",
-    "NR-06 — Equipamento de Proteção Individual",
-    "NR-07 — Programa de Controle Médico de Saúde Ocupacional",
-    "NR-09 — Avaliação e Controle das Exposições Ocupacionais a Agentes Físicos, Químicos e Biológicos",
-    "NR-15 — Atividades e Operações Insalubres",
-    "NR-16 — Atividades e Operações Perigosas",
-    "NR-17 — Ergonomia",
-    "Lei nº 8.213/1991 e Decreto nº 3.048/1999 — legislação previdenciária",
-  ].forEach((r) => { ensure(b, 5); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    pdf.text(`• ${r}`, 12, b.y + 3); b.y += 4.4; });
-  b.y += 2;
-
-  title(b, "Definições");
-  ([
-    ["Perigo", "Fonte com potencial de causar lesão ou agravo à saúde."],
-    ["Risco ocupacional", "Combinação da probabilidade de ocorrer um evento perigoso com a severidade da lesão ou agravo que ele pode causar."],
-    ["Fonte geradora", "Elemento, equipamento ou condição de onde o perigo se origina."],
-    ["Circunstância", "Situação em que o perigo se manifesta, ainda que a fonte esteja controlada."],
-    ["GES / GHE", "Grupo de trabalhadores que experimentam exposição semelhante, de modo que o resultado da avaliação de um representa a exposição de todos. Não é sinônimo de setor."],
-    ["Risco residual", "Risco que permanece após a implantação das medidas de prevenção."],
-    ["Medida de prevenção", "Ação adotada para eliminar o perigo ou reduzir o risco, seguindo a hierarquia da NR-01."],
-    ["Inventário de riscos", "Relação consolidada dos riscos identificados, avaliados e classificados."],
-  ] as [string, string][]).forEach(([termo, def]) => {
-    ensure(b, 9);
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.text(`${termo}:`, 12, b.y + 3);
-    pdf.setFont("helvetica", "normal"); pdf.setTextColor(60);
-    const ll = pdf.splitTextToSize(def, 186 - 2);
-    pdf.text(ll, 14, b.y + 7); pdf.setTextColor(0);
-    b.y += 7 + ll.length * 3.3 + 1;
   });
 
   // ── Caracterização da estrutura ────────────────────────────────────────────
@@ -712,26 +625,7 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   title(b, "Critérios da Matriz");
   drawMatriz(b);
 
-  // 3. Resumo quantitativo
-  title(b, "Resumo quantitativo dos riscos");
-  const counts: Record<string, number> = {};
-  let semAvaliacao = 0;
-  ctx.inventario.forEach((i) => {
-    if (i.classificacao) counts[i.classificacao] = (counts[i.classificacao] || 0) + 1;
-    else semAvaliacao++;
-  });
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
-  CLASSES_ORDENADAS.forEach((c, i) => {
-    pdf.text(`${CLASSIF_LABEL[c]}: ${counts[c] || 0}`, 12 + i * 37, b.y + 4);
-  });
-  b.y += 9;
-  if (semAvaliacao > 0) {
-    pdf.setFontSize(8); pdf.setTextColor(100);
-    pdf.text(`Itens sem avaliação de severidade/probabilidade: ${semAvaliacao}`, 12, b.y + 2);
-    pdf.setTextColor(0); b.y += 6;
-  }
-
-  // 4. Inventário por GHE
+  // Inventário de riscos — 1.5.7.1 "a" da NR-01.
   title(b, "Inventário de Riscos Ocupacionais");
   const byGhe = new Map<string, PgrInventarioItem[]>();
   ctx.inventario.forEach((i) => {
@@ -771,28 +665,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     b.y += 2;
   }
 
-  // Quadro Sinóptico de EPIs
-  if (ctx.quadroEpis && ctx.quadroEpis.length > 0) {
-    pdf.addPage(); b.y = 15;
-    title(b, "Quadro Sinóptico de Utilização de EPIs");
-    // Cabeçalho repetido a cada quebra: o quadro costuma passar de uma página,
-    // e sem repetir ninguém sabe qual coluna é "medida" e qual é "EPI".
-    const linha = tabela(b, [
-      { rotulo: "GES", x: 12, w: 41 },
-      { rotulo: "Função", x: 55, w: 43 },
-      { rotulo: "Medida de controle existente", x: 100, w: 53 },
-      { rotulo: "EPIs indicados", x: 155, w: 43 },
-    ]);
-    ctx.quadroEpis.forEach((l) => linha([
-      `${l.ghe_codigo}\n${l.ghe_nome}`, l.funcao, l.medida_controle, l.epis,
-    ]));
-  }
-
-  // 5. Plano de ação 5W2H
+  // Plano de ação — 1.5.7.1 "b" da NR-01.
   pdf.addPage(); b.y = 15;
   title(b, "Plano de Ação (5W2H)");
-  const hoje = new Date().toISOString().slice(0, 10);
-  const atrasadas = ctx.acoes.filter((a) => a.prazo && a.prazo < hoje && a.status !== "concluida" && a.status !== "cancelada");
   if (ctx.acoes.length === 0) para(b, "Nenhuma ação registrada.");
   ctx.acoes.forEach((a) => {
     ensure(b, 22);
@@ -858,56 +733,6 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     b.y += 3;
   });
 
-  // Seções finais (textos padrão editáveis)
-  // Preparação e resposta a emergências (Etapa 7), antes das seções de fecho.
-  if (ctx.cenarios && ctx.cenarios.length > 0) {
-    title(b, "Preparação e Resposta a Emergências");
-    ctx.cenarios.forEach((c) => {
-      ensure(b, 16);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-      pdf.text(`• ${c.nome}${c.grande_magnitude ? "  (grande magnitude)" : ""}`, 12, b.y + 4);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      b.y += 6;
-      const campos: Array<[string, string | null | undefined]> = [
-        ["Procedimento de resposta", c.procedimento_resposta],
-        ["Primeiros socorros", c.primeiros_socorros],
-        ["Meios e recursos", c.meios_recursos],
-        ["Responsáveis", c.responsaveis],
-        ["Abandono / ponto de encontro", c.abandono_ponto_encontro],
-        ["Simulados", [c.periodicidade_simulado,
-          c.ultimo_simulado ? `último em ${fmtDate(c.ultimo_simulado)}` : null]
-          .filter(Boolean).join("  ·  ") || null],
-      ];
-      campos.forEach(([rot, val]) => {
-        if (!val) return;
-        const ll = pdf.splitTextToSize(`${rot}: ${val}`, 184);
-        ensure(b, ll.length * 3.5 + 2);
-        pdf.text(ll, 14, b.y); b.y += ll.length * 3.3 + 1;
-      });
-      b.y += 2;
-    });
-  }
-
-  // Monitoramento e revisão: quando o programa precisa ser reavaliado. Sai dos
-  // campos reais do documento — periodicidade legal e gatilhos registrados.
-  title(b, "Monitoramento e Revisão");
-  kv(b, "Próxima revisão prevista", fmtDate(pgr.proxima_revisao));
-  kv(b, "Periodicidade máxima", pgr.sgsst_certificado
-    ? "3 anos — organização certificada em sistema de gestão de SST"
-    : "2 anos — NR-01 item 1.5.4.4.5");
-  if (pgr.sgsst_certificado) {
-    kv(b, "Certificação", [pgr.sgsst_norma, pgr.sgsst_certificadora,
-      pgr.sgsst_validade ? `válida até ${fmtDate(pgr.sgsst_validade)}` : null]
-      .filter(Boolean).join("  ·  ") || "—", true);
-  }
-  para(b,
-    "O programa é revisado antes do prazo sempre que ocorrer: alteração de processo, ambiente, "
-    + "máquina, produto, função ou atividade; acidente ou doença relacionada ao trabalho; "
-    + "constatação de ineficácia das medidas adotadas; alteração de requisito legal; resultado "
-    + "de avaliação ambiental que modifique a classificação de risco; mudança significativa na "
-    + "organização do trabalho; identificação de novos fatores psicossociais; ou por determinação "
-    + "da fiscalização ou do responsável técnico.", 8);
-
   const secoesFim: Array<[string, string]> = [
     // Divulgar é o que se faz DEPOIS de o programa existir: esta seção estava
     // no início do documento, antes mesmo da apresentação.
@@ -925,8 +750,29 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
 
   // Assinaturas fecham o documento, depois do encerramento — assinar é o
   // último ato, não algo que acontece no meio do texto.
-  // 8. Assinaturas visuais
   title(b, "Assinaturas");
+  // 1.5.7.2 da NR-01: os documentos do PGR são elaborados sob responsabilidade
+  // da organização, datados e assinados. Quem responde tecnicamente aparece
+  // aqui, junto das assinaturas — antes tinha seção própria, que repetia o
+  // mesmo dado da capa sem exigência que a justificasse.
+  const resps = ctx.responsaveis || [];
+  if (resps.length === 0) {
+    kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");
+    kv(b, "Registro Profissional", pgr.resp_tec_registro || "—");
+  } else {
+    resps.forEach((r) => {
+      ensure(b, 10);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+      pdf.text(`${PAPEL_PDF_LABEL[r.papel] || r.papel}: ${r.nome}`, 12, b.y + 4);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+      const det = [
+        r.profissao,
+        r.registro_profissional ? `Registro ${r.registro_profissional}${r.uf_registro ? `/${r.uf_registro}` : ""}` : null,
+        r.numero_art ? `ART ${r.numero_art}` : null,
+      ].filter(Boolean).join("  ·  ");
+      if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
+    });
+  }
   para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
   if (ctx.assinaturas.length === 0) para(b, "Nenhuma assinatura visual registrada até a geração deste PDF.");
   ctx.assinaturas.forEach((a) => {
@@ -938,33 +784,6 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     pdf.text(`${a.responsavel_registro || "—"}  ·  ${fmtDT(a.assinado_em)}  ·  MFA ${a.mfa_verificado ? "OK" : "—"}  ·  PDF v${a.pdf_versao}`, 12, b.y + 19);
     pdf.text(`Hash assinado: ${a.pdf_hash}`, 12, b.y + 22);
     b.y += 26;
-  });
-
-
-  // ANEXOS. Conteúdo de auditoria interna, separado do corpo do documento.
-  pdf.addPage(); b.y = 15;
-  // 6. Ações atrasadas
-  title(b, "Apêndice A — Ações atrasadas");
-  if (atrasadas.length === 0) para(b, "Nenhuma ação atrasada.");
-  else atrasadas.forEach((a) => {
-    ensure(b, 6);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    pdf.text(`• ${a.descricao} — prazo ${fmtDate(a.prazo)} — ${a.status}`, 12, b.y + 3);
-    b.y += 5;
-  });
-
-  // 7. Revisões
-  title(b, "Apêndice B — Histórico de revisões");
-  if (ctx.revisoes.length === 0) para(b, "Sem revisões.");
-  ctx.revisoes.forEach((r) => {
-    ensure(b, 6);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    const linha = `${fmtDT(r.created_at)} · ${r.acao}` +
-      // "de v1 para v2" e nao "v1→v2": a fonte padrao nao desenha a seta.
-      (r.versao_anterior != null && r.versao_nova != null ? ` · de v${r.versao_anterior} para v${r.versao_nova}` : "") +
-      (r.user_email ? ` · ${r.user_email}` : "") + (r.motivo ? ` — ${r.motivo}` : "");
-    const ll = pdf.splitTextToSize(linha, 186);
-    pdf.text(ll, 12, b.y + 3); b.y += 3 + ll.length * 3.2;
   });
 
 

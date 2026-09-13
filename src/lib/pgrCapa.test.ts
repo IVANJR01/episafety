@@ -37,7 +37,7 @@ function contexto(extra: Partial<PgrPdfContext> = {}): PgrPdfContext {
     unidadeNome: null,
     codigoDocumento: "PGR-2026-D2840596",
     inventario: [], acoes: [], evidencias: [], revisoes: [], assinaturas: [],
-    ghes: {}, textos: {}, quadroEpis: [], unidades: [], responsaveis: [], cenarios: [],
+    ghes: {}, textos: {}, unidades: [], responsaveis: [],
     ambientes: [], processos: [], setores: [], gesDetalhes: [], funcoes: [], atividades: [],
     logoDataUrl: null,
     ...extra,
