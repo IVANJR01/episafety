@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { carregarLogoDataUrl, enderecoEmUmaLinha, linhaDeContato } from "@/lib/logoParaPdf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +75,9 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
 
   async function carregarContexto() {
     const [emp, uni, inv, acoes, evid, rev, ghes, textos] = await Promise.all([
-      (supabase.from as any)("empresa_config").select("nome, cnpj").eq("id", pgr.empresa_id).maybeSingle(),
+      (supabase.from as any)("empresa_config")
+        .select("nome, cnpj, logo_url, telefone, email, endereco, logradouro, numero, bairro, cidade, uf, cep")
+        .eq("id", pgr.empresa_id).maybeSingle(),
       pgr.unidade_id ? (supabase.from as any)("empresa_config").select("nome").eq("id", pgr.unidade_id).maybeSingle() : Promise.resolve({ data: null }),
       (supabase.from as any)("pgr_inventario_itens").select("*").eq("pgr_id", pgr.id).order("classificacao"),
       (supabase.from as any)("pgr_acoes").select("*").eq("pgr_id", pgr.id).order("prazo"),
@@ -232,10 +235,17 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
         : null,
     }));
 
+    // A capa é papel timbrado da empresa coberta pelo documento: logo no alto
+    // e no rodapé, endereço e contato embaixo do nome.
+    const logoDataUrl = await carregarLogoDataUrl(emp.data?.logo_url ?? null);
+
     return {
       doc: pgr,
       empresaNome: emp.data?.nome ?? null,
       empresaCnpj: emp.data?.cnpj ?? null,
+      logoDataUrl,
+      empresaEndereco: enderecoEmUmaLinha(emp.data ?? {}) || null,
+      empresaContato: linhaDeContato([emp.data?.telefone, emp.data?.email]) || null,
       unidadeNome: uni?.data?.nome ?? null,
       inventario: inv.data || [],
       acoes: acoesEnriquecidas,

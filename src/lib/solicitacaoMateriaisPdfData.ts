@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { carregarLogoDataUrl } from "./logoParaPdf";
 import { loadImageAsDataUrl } from "@/lib/solicitacaoMateriaisImagens";
 import type { SolicitacaoPdfInput } from "@/lib/solicitacaoMateriaisPdf";
 
@@ -8,31 +9,6 @@ const STATUS_LABEL: Record<string, string> = {
   recebida_parcial: "Recebida parcial", cancelada: "Cancelada",
 };
 
-async function loadLogoDataUrl(url?: string | null): Promise<string | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url, { mode: "cors" });
-    const blob = await res.blob();
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const im = new Image();
-      im.crossOrigin = "anonymous";
-      im.onload = () => resolve(im);
-      im.onerror = reject;
-      im.src = URL.createObjectURL(blob);
-    });
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth || 300;
-    canvas.height = img.naturalHeight || 300;
-    const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
-    return canvas.toDataURL("image/png");
-  } catch (e) {
-    console.warn("[logo] falha ao carregar logo para PDF", e);
-    return null;
-  }
-}
 
 /**
  * Monta o input completo do PDF de uma solicitação a partir do banco,
@@ -59,7 +35,7 @@ export async function carregarDadosPdfSolicitacao(
     unidadeId ? (supabase.from as any)("empresa_config").select("nome").eq("id", unidadeId).maybeSingle() : Promise.resolve({ data: null }),
     contratoId ? (supabase.from as any)("contratos").select("nome").eq("id", contratoId).maybeSingle() : Promise.resolve({ data: null }),
     obraId ? (supabase.from as any)("obras").select("nome").eq("id", obraId).maybeSingle() : Promise.resolve({ data: null }),
-    loadLogoDataUrl((emp as any)?.logo_url),
+    carregarLogoDataUrl((emp as any)?.logo_url),
   ]);
 
   return {
