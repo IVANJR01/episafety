@@ -386,7 +386,7 @@ function Assistente() {
               </Secao>
               <Secao titulo="Preparação para emergências"
                 descricao="Exigida pelo item 1.5.6 da NR-01 como documento próprio, não como capítulo do PGR.">
-                <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} />
+                <EmergenciasTab pgrId={pgr.id} empresaId={pgr.empresa_id} canEdit={editavel} pgr={pgr} />
               </Secao>
             </div>
           </div>
