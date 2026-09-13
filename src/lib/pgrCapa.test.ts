@@ -24,8 +24,13 @@ function contexto(extra: Partial<PgrPdfContext> = {}): PgrPdfContext {
     },
     empresaNome: "LEONARDO A. DE ARAUJO LTDA",
     empresaCnpj: "51.213.683/0001-04",
-    empresaEndereco: "Rua Gilberto Gomes de Menezes, 145 - Centro - Alto Santo/CE",
-    empresaContato: "(88) 99999-0000  |  contato@empresa.com.br",
+    emissorNome: "3M CURSOS E TREINAMENTOS",
+    emissorLinhas: [
+      "Segurança e Saúde Ocupacional",
+      "Rua Gilberto Gomes de Menezes, 145 - Centro - Potiretama/CE",
+      "CNPJ 51.489.453/0001-64  |  contato@3m.com.br",
+    ],
+    emissorLogoDataUrl: null,
     unidadeNome: null,
     codigoDocumento: "PGR-2026-D2840596",
     inventario: [], acoes: [], evidencias: [], revisoes: [], assinaturas: [],
@@ -80,10 +85,18 @@ describe("capa do PGR", () => {
     expect(t).toContain("CNPJ: 51.213.683/0001-04");
   });
 
-  it("imprime endereço e contato no rodapé timbrado", async () => {
+  it("credita quem elaborou o documento no rodapé", async () => {
     const t = await capa();
-    expect(t.some((s) => s.includes("Alto Santo/CE"))).toBe(true);
-    expect(t.some((s) => s.includes("contato@empresa.com.br"))).toBe(true);
+    expect(t).toContain("3M CURSOS E TREINAMENTOS");
+    expect(t.some((s) => s.includes("Potiretama/CE"))).toBe(true);
+    expect(t.some((s) => s.includes("CNPJ 51.489.453/0001-64"))).toBe(true);
+  });
+
+  it("não credita a empresa coberta como quem elaborou", async () => {
+    // Repetir a empresa no rodapé faria o documento parecer emitido por ela
+    // mesma, que é o oposto do que a capa diz.
+    const t = await capa({ emissorNome: null, emissorLinhas: [] });
+    expect(t.filter((s) => s.trim() === "LEONARDO A. DE ARAUJO LTDA")).toHaveLength(1);
   });
 
   it("mantém o aviso legal, agora como nota e não como tarja", async () => {
@@ -94,25 +107,23 @@ describe("capa do PGR", () => {
     expect(t).not.toContain("AVISO LEGAL");
   });
 
-  it("não quebra sem endereço nem contato cadastrados", async () => {
-    // Filial costuma ter só nome e CNPJ.
-    const t = await capa({ empresaEndereco: null, empresaContato: null });
+  it("sai inteira sem emissor cadastrado", async () => {
+    // Enquanto ninguém preencher a identificação de quem elabora, a capa
+    // perde só o rodapé — o documento continua saindo.
+    const t = await capa({ emissorNome: null, emissorLinhas: [], emissorLogoDataUrl: null });
     expect(t).toContain("LEONARDO A. DE ARAUJO LTDA");
     expect(t).toContain("REV. 00");
+    expect(t.some((s) => s.includes("3M CURSOS"))).toBe(false);
   });
 
   it("não estoura com nome de empresa muito longo", async () => {
     const nome = "COMPANHIA BRASILEIRA DE SERVICOS INTEGRADOS DE ENGENHARIA E MANUTENCAO INDUSTRIAL LTDA";
     const t = await capa({ empresaNome: nome });
 
-    // O nome aparece duas vezes na capa, e com papéis diferentes: inteiro no
-    // rodapé timbrado, quebrado em linhas no título. Somar os dois daria o
-    // nome em dobro, então são separados aqui — e é o título que precisa ser
-    // conferido, porque é lá que a quebra pode perder pedaço.
-    const inteiro = t.filter((s) => s.trim() === nome);
-    const linhasDoTitulo = t.filter((s) => s.trim() !== nome && nome.includes(s.trim()) && s.trim().length > 3);
+    // Quebrado em linhas no título, o nome sai em pedaços. O que não pode é
+    // sumir pedaço: as linhas emendadas têm que dar o nome inteiro de volta.
+    const linhasDoTitulo = t.filter((s) => nome.includes(s.trim()) && s.trim().length > 3);
 
-    expect(inteiro.length).toBeGreaterThan(0);
     expect(linhasDoTitulo.length).toBeGreaterThan(1);
     expect(linhasDoTitulo.join(" ").replace(/\s+/g, " ").trim()).toBe(nome);
     expect(t).toContain("Emitido em: 01/07/2026");

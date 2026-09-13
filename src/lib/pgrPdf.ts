@@ -167,10 +167,16 @@ export interface PgrPdfContext {
   logoDataUrl?: string | null;
   /** Código interno do documento, impresso na capa e no rodapé. */
   codigoDocumento?: string | null;
-  /** Endereço da empresa, em uma linha, para o rodapé da capa. */
-  empresaEndereco?: string | null;
-  /** Telefone e e-mail já unidos, para o rodapé da capa. */
-  empresaContato?: string | null;
+  /**
+   * Rodapé da capa: quem elaborou o documento.
+   *
+   * A capa leva a marca da empresa COBERTA no alto e o crédito de quem
+   * ELABOROU embaixo — são pessoas jurídicas diferentes, e misturar as duas
+   * faz o documento parecer emitido por quem não o emitiu.
+   */
+  emissorNome?: string | null;
+  emissorLinhas?: string[] | null;
+  emissorLogoDataUrl?: string | null;
 }
 
 /** Rótulos dos papéis de responsável, para o PDF (jsPDF não importa a UI). */
@@ -429,22 +435,30 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     MARGEM, 248,
   );
 
-  // Rodapé timbrado
-  pdf.setDrawColor(200); pdf.setLineWidth(0.4);
-  pdf.line(MARGEM, 254, LARGURA - MARGEM, 254);
+  /*
+   * Rodapé: quem elaborou.
+   *
+   * Sem emissor cadastrado o rodapé inteiro não sai. Imprimir de novo a
+   * empresa coberta aqui embaixo faria o documento parecer emitido por ela
+   * mesma, que é o oposto do que a capa está dizendo.
+   */
+  const linhasEmissor = ctx.emissorLinhas || [];
+  if (ctx.emissorNome) {
+    pdf.setDrawColor(200); pdf.setLineWidth(0.4);
+    pdf.line(MARGEM, 254, LARGURA - MARGEM, 254);
 
-  let xTexto = MARGEM;
-  if (ctx.logoDataUrl) {
-    try { pdf.addImage(ctx.logoDataUrl, "PNG", MARGEM, 258, 16, 16); xTexto = MARGEM + 21; }
-    catch { /* sem logo, o texto ocupa a margem inteira */ }
+    let xTexto = MARGEM;
+    if (ctx.emissorLogoDataUrl) {
+      try { pdf.addImage(ctx.emissorLogoDataUrl, "PNG", MARGEM, 258, 16, 16); xTexto = MARGEM + 21; }
+      catch { /* sem logo, o texto ocupa a margem inteira */ }
+    }
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
+    pdf.text(ctx.emissorNome, xTexto, 262);
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(110);
+    linhasEmissor.forEach((linha, i) => {
+      pdf.text(pdf.splitTextToSize(linha, LARGURA - xTexto - MARGEM)[0] as string, xTexto, 267 + i * 4);
+    });
   }
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
-  pdf.text(ctx.empresaNome || "Empresa", xTexto, 263);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(110);
-  const rodape = [ctx.empresaEndereco, ctx.empresaContato].filter(Boolean) as string[];
-  rodape.forEach((linha, i) => {
-    pdf.text(pdf.splitTextToSize(linha, LARGURA - xTexto - MARGEM)[0] as string, xTexto, 268 + i * 4.5);
-  });
 
   pdf.setTextColor(0);
   pdf.addPage(); b.y = 15;

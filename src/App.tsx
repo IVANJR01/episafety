@@ -29,6 +29,7 @@ import Empresas from "@/pages/Empresas";
 import UsuariosLiberados from "@/pages/UsuariosLiberados";
 import Auth from "@/pages/Auth";
 import VerificarFicha from "@/pages/VerificarFicha";
+import AdminEmissor from "@/pages/admin/AdminEmissor";
 import ResetPassword from "@/pages/ResetPassword";
 import AdminEmpresas from "@/pages/AdminEmpresas";
 import Install from "@/pages/Install";
@@ -452,6 +453,7 @@ const App = () => (
             <Route path="/admin/usuarios" element={<AdminLayout><UsuariosLiberados /></AdminLayout>} />
             <Route path="/admin/faturas" element={<AdminLayout><Faturas /></AdminLayout>} />
             <Route path="/admin/backups" element={<AdminLayout><Backups /></AdminLayout>} />
+            <Route path="/admin/emissor" element={<AdminLayout><AdminEmissor /></AdminLayout>} />
             <Route path="/admin/cloud" element={<AdminLayout><AdminCloud /></AdminLayout>} />
             <Route path="/*" element={<ProtectedRoute />} />
           </Routes>

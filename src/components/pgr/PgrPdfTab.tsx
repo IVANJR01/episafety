@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { carregarLogoDataUrl, enderecoEmUmaLinha, linhaDeContato } from "@/lib/logoParaPdf";
+import { carregarLogoDataUrl } from "@/lib/logoParaPdf";
+import { carregarEmissor, linhasDoEmissor } from "@/lib/emissorDocumentos";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -238,14 +239,19 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     // A capa é papel timbrado da empresa coberta pelo documento: logo no alto
     // e no rodapé, endereço e contato embaixo do nome.
     const logoDataUrl = await carregarLogoDataUrl(emp.data?.logo_url ?? null);
+    // Quem elaborou o documento vai no rodapé da capa, separado da empresa
+    // coberta — são pessoas jurídicas diferentes.
+    const emissor = await carregarEmissor();
+    const emissorLogoDataUrl = await carregarLogoDataUrl(emissor?.logo_url ?? null);
 
     return {
       doc: pgr,
       empresaNome: emp.data?.nome ?? null,
       empresaCnpj: emp.data?.cnpj ?? null,
       logoDataUrl,
-      empresaEndereco: enderecoEmUmaLinha(emp.data ?? {}) || null,
-      empresaContato: linhaDeContato([emp.data?.telefone, emp.data?.email]) || null,
+      emissorNome: emissor?.nome?.trim() || null,
+      emissorLinhas: linhasDoEmissor(emissor),
+      emissorLogoDataUrl,
       unidadeNome: uni?.data?.nome ?? null,
       inventario: inv.data || [],
       acoes: acoesEnriquecidas,
