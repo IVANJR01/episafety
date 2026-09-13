@@ -395,13 +395,19 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   pdf.setFontSize(9);
   pdf.text("Documento técnico — NR-01", MARGEM, 121);
 
-  // Empresa coberta pelo documento
+  /*
+   * Identificação da empresa no pé da capa.
+   *
+   * Ela ficava logo abaixo do título, e o resto da página descia vazio até a
+   * borda. Aqui embaixo ela fecha a capa e o título fica com o espaço que
+   * pedia — é a proporção do modelo de referência.
+   */
   pdf.setDrawColor(225); pdf.setLineWidth(0.3);
-  pdf.line(MARGEM, 134, LARGURA - MARGEM, 134);
+  pdf.line(MARGEM, 228, LARGURA - MARGEM, 228);
   pdf.setFont("helvetica", "bold"); pdf.setFontSize(15); pdf.setTextColor(15, 23, 42);
   const nomeEmpresa = pdf.splitTextToSize(ctx.empresaNome || "Empresa", LARGURA - MARGEM * 2) as string[];
-  pdf.text(nomeEmpresa, MARGEM, 144);
-  let yDados = 144 + nomeEmpresa.length * 7;
+  pdf.text(nomeEmpresa, MARGEM, 238);
+  let yDados = 238 + nomeEmpresa.length * 7;
 
   pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.setTextColor(60);
   const identificacao: string[] = [];
@@ -422,43 +428,6 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     `Responsável Técnico: ${pgr.resp_tec_nome || "—"}`,
     `Registro Profissional: ${pgr.resp_tec_registro || "—"}`,
   ].forEach((linha) => { pdf.text(linha, MARGEM, yDados); yDados += 5.5; });
-
-  /*
-   * O aviso saiu da caixa amarela e virou uma linha discreta acima do rodapé.
-   * Ele continua sendo verdade e precisa estar escrito, mas ocupava o meio da
-   * capa gritando em laranja o que é, no fundo, uma nota de rodapé.
-   */
-  pdf.setFontSize(7.5); pdf.setTextColor(130);
-  pdf.text(
-    "Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase. "
-    + "Validação por hash SHA-256 e QR Code de uso restrito à empresa.",
-    MARGEM, 248,
-  );
-
-  /*
-   * Rodapé: quem elaborou.
-   *
-   * Sem emissor cadastrado o rodapé inteiro não sai. Imprimir de novo a
-   * empresa coberta aqui embaixo faria o documento parecer emitido por ela
-   * mesma, que é o oposto do que a capa está dizendo.
-   */
-  const linhasEmissor = ctx.emissorLinhas || [];
-  if (ctx.emissorNome) {
-    pdf.setDrawColor(200); pdf.setLineWidth(0.4);
-    pdf.line(MARGEM, 254, LARGURA - MARGEM, 254);
-
-    let xTexto = MARGEM;
-    if (ctx.emissorLogoDataUrl) {
-      try { pdf.addImage(ctx.emissorLogoDataUrl, "PNG", MARGEM, 258, 16, 16); xTexto = MARGEM + 21; }
-      catch { /* sem logo, o texto ocupa a margem inteira */ }
-    }
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
-    pdf.text(ctx.emissorNome, xTexto, 262);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(110);
-    linhasEmissor.forEach((linha, i) => {
-      pdf.text(pdf.splitTextToSize(linha, LARGURA - xTexto - MARGEM)[0] as string, xTexto, 267 + i * 4);
-    });
-  }
 
   pdf.setTextColor(0);
   pdf.addPage(); b.y = 15;
@@ -1040,6 +1009,15 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   const pages = pdf.getNumberOfPages();
   for (let p = 1; p <= pages; p++) {
     pdf.setPage(p);
+    /*
+     * A capa não leva rodapé de página.
+     *
+     * QR, hash, numeração e a nota de assinatura são aparato de documento
+     * técnico e pertencem ao miolo. Na capa eles disputavam espaço com a
+     * identificação e faziam a primeira página parecer a última. O QR segue
+     * em todas as outras — a validação não se perde, muda de lugar.
+     */
+    const ehCapa = p === 1;
     if (opts.comMarca) {
       const anyDoc = pdf as any;
       if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 })); }
@@ -1048,14 +1026,16 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 1 })); }
       pdf.setTextColor(0);
     }
-    pdf.setDrawColor(200); pdf.line(10, 283, 200, 283);
-    pdf.addImage(qrDataUrl, "PNG", 10, 285, 18, 18);
-    pdf.setFontSize(7); pdf.setFont("helvetica", "normal"); pdf.setTextColor(80);
-    pdf.text("QR Code de validação interna — abre o PGR no sistema (acesso restrito à empresa).", 30, 288);
-    pdf.text(opts.qrUrl, 30, 291);
-    pdf.text(`Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}  ·  Página ${p}/${pages}`, 30, 294);
-    pdf.text("Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.", 30, 297);
-    pdf.setTextColor(0);
+    if (!ehCapa) {
+      pdf.setDrawColor(200); pdf.line(10, 283, 200, 283);
+      pdf.addImage(qrDataUrl, "PNG", 10, 285, 18, 18);
+      pdf.setFontSize(7); pdf.setFont("helvetica", "normal"); pdf.setTextColor(80);
+      pdf.text("QR Code de validação interna — abre o PGR no sistema (acesso restrito à empresa).", 30, 288);
+      pdf.text(opts.qrUrl, 30, 291);
+      pdf.text(`Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}  ·  Página ${p}/${pages}`, 30, 294);
+      pdf.text("Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.", 30, 297);
+      pdf.setTextColor(0);
+    }
   }
 
   return pdf;
