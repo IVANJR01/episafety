@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { carregarLogoDataUrl } from "@/lib/logoParaPdf";
+import { carregarEmissor, linhasDoEmissor } from "@/lib/emissorDocumentos";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +76,9 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
 
   async function carregarContexto() {
     const [emp, uni, inv, acoes, evid, rev, ghes, textos] = await Promise.all([
-      (supabase.from as any)("empresa_config").select("nome, cnpj").eq("id", pgr.empresa_id).maybeSingle(),
+      (supabase.from as any)("empresa_config")
+        .select("nome, cnpj, logo_url, telefone, email, endereco, logradouro, numero, bairro, cidade, uf, cep")
+        .eq("id", pgr.empresa_id).maybeSingle(),
       pgr.unidade_id ? (supabase.from as any)("empresa_config").select("nome").eq("id", pgr.unidade_id).maybeSingle() : Promise.resolve({ data: null }),
       (supabase.from as any)("pgr_inventario_itens").select("*").eq("pgr_id", pgr.id).order("classificacao"),
       (supabase.from as any)("pgr_acoes").select("*").eq("pgr_id", pgr.id).order("prazo"),
@@ -92,52 +96,17 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
     const textosMap: Record<string, string> = {};
     (textos.data || []).forEach((t: any) => { textosMap[t.secao] = t.conteudo || ""; });
 
-    // Quadro sinóptico de EPIs
-    const gheIdsInv = Array.from(new Set((inv.data || []).map((i: any) => i.ghe_id).filter(Boolean))) as string[];
-    let quadroEpis: any[] = [];
-    if (gheIdsInv.length > 0) {
-      const [funcRes, riscosRes] = await Promise.all([
-        (supabase.from as any)("ghe_funcoes").select("ghe_id, nome_funcao").in("ghe_id", gheIdsInv),
-        (supabase.from as any)("ghe_riscos").select("ghe_id, epis_recomendados").in("ghe_id", gheIdsInv),
-      ]);
-      const controleMap = new Map<string, string>();
-      (inv.data || []).forEach((i: any) => {
-        if (i.ghe_id && i.controles_existentes && !controleMap.has(i.ghe_id)) controleMap.set(i.ghe_id, i.controles_existentes);
-      });
-      const funcMap = new Map<string, string[]>();
-      (funcRes.data || []).forEach((f: any) => {
-        if (!funcMap.has(f.ghe_id)) funcMap.set(f.ghe_id, []);
-        funcMap.get(f.ghe_id)!.push(f.nome_funcao);
-      });
-      const epiMap = new Map<string, Set<string>>();
-      (riscosRes.data || []).forEach((r: any) => {
-        const lst: string[] = Array.isArray(r.epis_recomendados) ? r.epis_recomendados : [];
-        if (!epiMap.has(r.ghe_id)) epiMap.set(r.ghe_id, new Set());
-        lst.forEach((e) => epiMap.get(r.ghe_id)!.add(String(e)));
-      });
-      quadroEpis = gheIdsInv.map((gid) => ({
-        ghe_codigo: ghesInfo[gid]?.codigo || "—",
-        ghe_nome: ghesInfo[gid]?.nome || "—",
-        // Mesma duplicidade da coluna Função: uma linha por cópia da função.
-        funcao: nomesUnicos(funcMap.get(gid)).join(", ") || "—",
-        medida_controle: controleMap.get(gid) || "—",
-        epis: Array.from(epiMap.get(gid) || []).join(", ") || "—",
-      }));
-    }
-
-    // Identificação completa (matriz + filiais), responsáveis e cenários de
-    // emergência — dados das Fases 1, 5 e 6 que o PDF passou a exigir.
+    // Identificação completa (matriz + filiais) e responsáveis técnicos —
+    // o que a NR-01 pede para identificar o estabelecimento e assinar.
     // Tolerantes a falha: se uma tabela ainda não existir no ambiente, o PDF
     // cai no comportamento antigo em vez de não ser gerado.
-    const [unidadesRes, respRes, cenariosRes] = await Promise.all([
+    const [unidadesRes, respRes] = await Promise.all([
       (supabase.from as any)("empresa_config")
         .select("id,nome,nome_fantasia,cnpj,cnae_principal,grau_risco,telefone,email,logradouro,numero,complemento,bairro,cidade,uf,cep,endereco,empresa_pai_id")
         .or(`id.eq.${pgr.empresa_id},empresa_pai_id.eq.${pgr.empresa_id}`),
       (supabase.from as any)("pgr_responsaveis")
         .select("papel,nome,cpf,profissao,registro_profissional,uf_registro,numero_art,ordem")
         .eq("pgr_id", pgr.id).order("ordem"),
-      (supabase.from as any)("pgr_cenarios_emergencia")
-        .select("*").eq("pgr_id", pgr.id).order("nome"),
     ]);
 
     // Matriz primeiro, filiais depois — a ordem do documento oficial.
@@ -232,10 +201,22 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
         : null,
     }));
 
+    // A capa é papel timbrado da empresa coberta pelo documento: logo no alto
+    // e no rodapé, endereço e contato embaixo do nome.
+    const logoDataUrl = await carregarLogoDataUrl(emp.data?.logo_url ?? null);
+    // Quem elaborou o documento vai no rodapé da capa, separado da empresa
+    // coberta — são pessoas jurídicas diferentes.
+    const emissor = await carregarEmissor();
+    const emissorLogoDataUrl = await carregarLogoDataUrl(emissor?.logo_url ?? null);
+
     return {
       doc: pgr,
       empresaNome: emp.data?.nome ?? null,
       empresaCnpj: emp.data?.cnpj ?? null,
+      logoDataUrl,
+      emissorNome: emissor?.nome?.trim() || null,
+      emissorLinhas: linhasDoEmissor(emissor),
+      emissorLogoDataUrl,
       unidadeNome: uni?.data?.nome ?? null,
       inventario: inv.data || [],
       acoes: acoesEnriquecidas,
@@ -248,10 +229,8 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
       assinaturas: assinaturas as any[],
       ghes: ghesMap,
       textos: textosMap,
-      quadroEpis,
       unidades,
       responsaveis: respRes.data || [],
-      cenarios: cenariosRes.data || [],
       ambientes, processos, setores, gesDetalhes, funcoes, atividades,
       // Código do documento: identificador estável e legível para arquivo físico.
       codigoDocumento: `PGR-${(pgr.data_vigencia_inicio || pgr.data_emissao || "")
@@ -322,7 +301,7 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" /> PDF técnico interno
+              <FileText className="h-4 w-4" /> Documento do PGR
             </CardTitle>
             <div className="flex flex-wrap gap-2">
               {!bloqueado && (
@@ -350,18 +329,22 @@ export default function PgrPdfTab({ pgr, canEdit, canExport, canAssinar }: Props
           </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-            <b>Documento técnico interno.</b> Assinatura ICP-Brasil não implementada nesta fase.
-            Hash SHA-256 + QR Code de validação interna.
-          </div>
-          {/* Sem esta linha os dois botões parecem o mesmo botão repetido, e a
-              pessoa usa "Gerar PDF" só para olhar — gastando uma versão. */}
-          <div className="rounded-md p-3 bg-slate-50 border border-slate-200 text-slate-700 text-xs">
-            <b>Ver como vai sair</b> abre o documento numa aba para conferência e não grava nada.
-            {" "}<b>Gerar PDF</b> cria uma versão numerada, guardada e rastreável — é a que vale como documento.
+          {/*
+            Antes eram duas tarjas coloridas empilhadas, uma delas só explicando
+            a diferença entre os botões. Instrução de botão é legenda, não
+            alerta: em cor de aviso, ela disputava atenção com a ressalva legal
+            e o documento ficava com cara de tutorial.
+          */}
+          <p className="text-xs text-muted-foreground">
+            <b>Ver como vai sair</b> abre o documento para conferência e não grava nada.
+            {" "}<b>Gerar PDF</b> cria a versão numerada e rastreável — é a que vale como documento.
             {status === "rascunho" || status === "em_revisao"
-              ? " Enquanto o PGR não for publicado, os dois saem com a marca d'água de rascunho."
+              ? " Enquanto o PGR não for publicado, os dois saem com marca d'água de rascunho."
               : ""}
+          </p>
+          <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+            <b>Documento técnico interno.</b> Assinatura ICP-Brasil não implementada nesta fase:
+            a validação é por hash SHA-256 e QR Code internos.
           </div>
           {desatualizado && (
             <div className="rounded-md p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-center gap-2">

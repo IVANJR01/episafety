@@ -24,7 +24,7 @@ import ScannerDocumento from "@/components/ScannerDocumento";
 import {
   garantirDocumento, publicarVersao, urlTemporaria, registrarAcesso, registrarEvento,
   historicoVersoes, arquivarDocumento, definirEmRenovacao, prepararAbertura,
-  PESO_SITUACAO, type SituacaoDocumento,
+  PESO_SITUACAO, descricaoDaValidade, type SituacaoDocumento,
 } from "@/lib/arquivoDigital";
 
 const TABELA_AUSENTE = new Set(["42P01", "PGRST205", "PGRST202"]);
@@ -50,7 +50,7 @@ interface Funcionario {
   data_admissao: string | null; data_demissao: string | null;
 }
 interface TipoDocumento {
-  id: string; nome: string; categoria: string; validade_meses: number | null;
+  id: string; nome: string; categoria: string; validade_meses: number | null; validade_dias: number | null;
   empresa_id: string | null; dias_aviso: number[] | null;
 }
 interface Requisito { tipo_documento_id: string; cargo: string | null; obrigatorio: boolean }
@@ -145,7 +145,7 @@ export default function DossieColaborador() {
   useEffect(() => {
     void (async () => {
       const { data, error } = await (supabase.from as any)("internal_document_types")
-        .select("id, nome, categoria, validade_meses, empresa_id, dias_aviso")
+        .select("id, nome, categoria, validade_meses, validade_dias, empresa_id, dias_aviso")
         .eq("ativo", true).order("nome");
       if (error) { if (ehTabelaAusente(error)) setIndisponivel(true); return; }
       setTipos((data || []) as TipoDocumento[]);
@@ -246,6 +246,7 @@ export default function DossieColaborador() {
       const versao = await publicarVersao({
         empresaId: empresaDoc, documentoId, colaboradorId: funcionario.id, file: arquivoSel,
         dataEmissao: envioData || hoje(), validadeMeses: envio.tipo.validade_meses,
+        validadeDias: envio.tipo.validade_dias,
         dataValidade: envioValidade || null,
         observacao: null, userId: user?.id,
         origemTabela: "dossie", origemId: funcionario.id,
@@ -382,31 +383,53 @@ export default function DossieColaborador() {
         <ArrowLeft className="w-4 h-4 mr-2" />Voltar para a lista
       </Button>
 
-      {/* ── Identificação do colaborador ── */}
+      {/* ── Identificação do colaborador ──
+        *
+        * O nome e o da empresa vinham com `truncate`. Num celular isso
+        * cortava justamente o que identifica a pessoa: "ADRIANA ALVES DO
+        * NASCI…", "Empresa: G91 NORDE…". Numa tela de dossiê, deixar o nome
+        * quebrar em duas linhas custa alguns pixels; cortá-lo custa a
+        * identificação.
+        *
+        * O retrato e o texto ficam lado a lado também no celular — empilhados,
+        * o círculo sozinho comia uma faixa inteira antes de qualquer dado.
+        */}
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <User className="w-6 h-6 text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold truncate">{funcionario.nome}</h1>
-              <Badge className={desligado
-                ? "bg-slate-100 text-slate-600 border-slate-300 border"
-                : "bg-green-100 text-green-800 border-green-300 border"}>
-                {desligado ? "Desligado" : "Ativo"}
-              </Badge>
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <p className="text-sm text-muted-foreground">
-              {funcionario.cargo || "Sem função"} • {funcionario.setor || "Sem setor"}
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
-              <span>CPF: {maskCpf(funcionario.cpf)}</span>
-              <span>Matrícula: {funcionario.matricula || "—"}</span>
-              <span className="truncate">Empresa: {empresaNome || "—"}</span>
-              <span className="truncate">Unidade: {unidadeNome || "—"}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-2 flex-wrap">
+                <h1 className="text-lg sm:text-xl font-bold leading-tight break-words">{funcionario.nome}</h1>
+                <Badge className={desligado
+                  ? "bg-slate-100 text-slate-600 border-slate-300 border shrink-0"
+                  : "bg-green-100 text-green-800 border-green-300 border shrink-0"}>
+                  {desligado ? "Desligado" : "Ativo"}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {funcionario.cargo || "Sem função"} • {funcionario.setor || "Sem setor"}
+              </p>
             </div>
           </div>
+
+          {/* Rótulo em cima do valor: o valor ganha a largura inteira da
+              célula e para de brigar com o nome do campo pelo espaço. */}
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t pt-3 text-xs sm:grid-cols-4">
+            {([
+              ["CPF", maskCpf(funcionario.cpf)],
+              ["Matrícula", funcionario.matricula || "—"],
+              ["Empresa", empresaNome || "—"],
+              ["Unidade", unidadeNome || "—"],
+            ] as [string, string][]).map(([rotulo, valor]) => (
+              <div key={rotulo} className="min-w-0">
+                <dt className="text-muted-foreground">{rotulo}</dt>
+                <dd className="font-medium break-words">{valor}</dd>
+              </div>
+            ))}
+          </dl>
         </CardContent>
       </Card>
 
@@ -419,12 +442,17 @@ export default function DossieColaborador() {
         </Card>
       )}
 
-      {/* ── Resumo por situação ── */}
-      <div className="flex flex-wrap gap-2">
+      {/* ── Resumo por situação ──
+        *
+        * A contagem vem antes do rótulo porque é assim que se lê: "1 não
+        * enviado". Depois da etiqueta, o número ficava solto ao lado dela,
+        * sem dizer do que era.
+        */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {(Object.keys(resumo) as SituacaoDocumento[]).map((s) => (
-          <span key={s} className="inline-flex items-center gap-1.5 text-xs">
+          <span key={s} className="inline-flex items-center gap-1.5">
+            <span className="text-sm font-semibold tabular-nums">{resumo[s]}</span>
             <SituacaoBadge situacao={s} />
-            <span className="text-muted-foreground">{resumo[s]}</span>
           </span>
         ))}
       </div>
@@ -457,7 +485,11 @@ export default function DossieColaborador() {
               const arquivado = l.situacao === "arquivado";
               const fatos: [string, React.ReactNode][] = [];
               if (l.doc?.data_emissao) fatos.push(["Emissão", dataBr(l.doc.data_emissao)]);
-              fatos.push(["Validade", l.doc?.data_validade ? dataBr(l.doc.data_validade) : (l.doc ? "Permanente" : "—")]);
+              // "Vencimento", e não "Validade": no mesmo cartão, logo acima,
+              // "Validade 12 meses" já diz o prazo do tipo de documento.
+              // Dois campos com o mesmo nome e sentidos diferentes deixavam
+              // quem lê sem saber qual era qual.
+              fatos.push(["Vencimento", l.doc?.data_validade ? dataBr(l.doc.data_validade) : (l.doc ? "Permanente" : "—")]);
               if (l.doc?.dias_para_vencer !== null && l.doc?.dias_para_vencer !== undefined) {
                 fatos.push(["Dias", (
                   <span className={l.doc.dias_para_vencer < 0 ? "text-destructive font-medium" : ""}>
@@ -475,18 +507,21 @@ export default function DossieColaborador() {
                     <div className="min-w-0">
                       <p className="font-medium text-sm">{l.tipo.nome}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
+                        {descricaoDaValidade(l.tipo, l.doc)}
                         {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
                       </p>
                     </div>
                     <div className="shrink-0"><SituacaoBadge situacao={l.situacao} /></div>
                   </div>
 
-                  <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  {/* Rótulo em cima do valor, como no cartão de cima: o
+                      nome do responsável é o campo mais longo daqui e vinha
+                      cortado por não caber ao lado do próprio rótulo. */}
+                  <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                     {fatos.map(([rotulo, valor]) => (
-                      <div key={rotulo} className="flex gap-1.5 min-w-0">
-                        <dt className="text-muted-foreground shrink-0">{rotulo}:</dt>
-                        <dd className="truncate">{valor}</dd>
+                      <div key={rotulo} className="min-w-0">
+                        <dt className="text-muted-foreground">{rotulo}</dt>
+                        <dd className="font-medium break-words">{valor}</dd>
                       </div>
                     ))}
                   </dl>
@@ -504,7 +539,7 @@ export default function DossieColaborador() {
                   <TableHead className="min-w-[200px]">Documento</TableHead>
                   <TableHead>Situação</TableHead>
                   <TableHead className="whitespace-nowrap">Emissão</TableHead>
-                  <TableHead className="whitespace-nowrap">Validade</TableHead>
+                  <TableHead className="whitespace-nowrap">Vencimento</TableHead>
                   <TableHead className="whitespace-nowrap">Dias</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead className="whitespace-nowrap">Versões</TableHead>
@@ -531,7 +566,7 @@ export default function DossieColaborador() {
                       <TableCell>
                         <div className="font-medium text-sm">{l.tipo.nome}</div>
                         <div className="text-[11px] text-muted-foreground">
-                          {l.tipo.validade_meses ? `Validade ${l.tipo.validade_meses} meses` : "Permanente"}
+                          {descricaoDaValidade(l.tipo, l.doc)}
                           {arquivado && l.doc?.arquivado_motivo ? ` · Motivo: ${l.doc.arquivado_motivo}` : ""}
                         </div>
                       </TableCell>
@@ -604,15 +639,19 @@ export default function DossieColaborador() {
               <Label>Data de emissão *</Label>
               <Input type="date" value={envioData} onChange={(e) => setEnvioData(e.target.value)} />
             </div>
-            {envio?.tipo.validade_meses ? (
+            {(envio?.tipo.validade_meses || envio?.tipo.validade_dias) ? (
               <div>
                 <Label>Validade personalizada</Label>
                 <div className="flex flex-col gap-2 mt-1">
                   <Input type="date" value={envioValidade} onChange={(e) => setEnvioValidade(e.target.value)} />
                   <div className="flex flex-wrap gap-1.5">
                     {[
-                      { l: "+30d", d: 30 }, { l: "+60d", d: 60 }, { l: "+90d", d: 90 }, { l: "+135d", d: 135 },
-                      { l: "+1 ano", m: 12 }, { l: "+2 anos", m: 24 }
+                      // 90 e 120 dias são os prazos de ASO que mais aparecem
+                      // fora do anual — dependem do risco e do tipo de exame,
+                      // e não de "N meses após a emissão".
+                      { l: "+30d", d: 30 }, { l: "+60d", d: 60 }, { l: "+90d", d: 90 },
+                      { l: "+120d", d: 120 }, { l: "+135d", d: 135 },
+                      { l: "+6 meses", m: 6 }, { l: "+1 ano", m: 12 }, { l: "+2 anos", m: 24 }
                     ].map(a => (
                       <button key={a.l} type="button" 
                         className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-muted focus:outline-none"
@@ -639,7 +678,12 @@ export default function DossieColaborador() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                  Deixe vazio para o sistema usar o padrão <strong>({envio.tipo.validade_meses} meses)</strong>, ou defina uma data manualmente se houver exceções (ex: 90 dias em ASO).
+                  Deixe vazio para o sistema usar o padrão do tipo{" "}
+                  <strong>
+                    ({envio.tipo.validade_dias
+                      ? `${envio.tipo.validade_dias} dias`
+                      : `${envio.tipo.validade_meses} meses`})
+                  </strong>, ou defina uma data manualmente se este documento for exceção.
                 </p>
               </div>
             ) : (

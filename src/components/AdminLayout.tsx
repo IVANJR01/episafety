@@ -13,6 +13,7 @@ import {
   Crown,
   Database,
   GitBranch,
+  Stamp,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import EmpresaQuerySync from "@/components/EmpresaQuerySync";
@@ -30,6 +31,7 @@ const adminNav: NavItem[] = [
   { path: "/admin/usuarios", label: "Usuários Liberados", icon: Shield, description: "Whitelist e permissões" },
   { path: "/admin/faturas", label: "Faturamento", icon: Receipt, description: "Cobrança e situação" },
   { path: "/admin/backups", label: "Backups", icon: HardDrive, description: "JSON / SQL semanal" },
+  { path: "/admin/emissor", label: "Emissor dos Documentos", icon: Stamp, description: "Marca no rodapé das capas" },
   { path: "/admin/cloud", label: "Infraestrutura", icon: Database, description: "Banco, edge functions, storage" },
 ];
 

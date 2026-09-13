@@ -2,10 +2,13 @@
 // Storage: Supabase Storage privado (default) ou Google Drive BYOK (opcional).
 // Banco recebe apenas hash SHA-256 + bucket/path + tamanho — nunca o binário.
 import jsPDF from "jspdf";
-import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { PgrDocumento, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
+import {
+  B, MARGEM, LARGURA, capaTimbrada, ensure, fmtDT, fmtDate, kv, para,
+  rodapePaginas, sub, sumario, tabela, title,
+} from "@/lib/pdfTimbrado";
 import {
   CLASSE_LABEL as CLASSIF_LABEL,
   CLASSE_HEX,
@@ -73,14 +76,6 @@ export interface PgrAssinaturaItem {
   mfa_verificado: boolean;
 }
 
-export interface PgrQuadroEpiLinha {
-  ghe_codigo: string;
-  ghe_nome: string;
-  funcao: string;
-  medida_controle: string;
-  epis: string;
-}
-
 /** Unidade (matriz ou filial) com os campos de identificação exigidos na Etapa 1. */
 export interface PgrUnidadeItem {
   id: string;
@@ -114,18 +109,15 @@ export interface PgrResponsavelItem {
   ordem: number;
 }
 
-export interface PgrCenarioItem {
-  nome: string;
-  tipo: string;
-  descricao?: string | null;
-  grande_magnitude: boolean;
-  procedimento_resposta?: string | null;
-  primeiros_socorros?: string | null;
-  meios_recursos?: string | null;
-  responsaveis?: string | null;
-  abandono_ponto_encontro?: string | null;
-  periodicidade_simulado?: string | null;
-  ultimo_simulado?: string | null;
+/**
+ * O número de revisão impresso na capa.
+ *
+ * Sem revisão registrada o documento está na elaboração, que é a revisão 00 —
+ * e é assim que o Controle de Revisões logo adiante já a chama. Duas casas
+ * porque é como a norma pede e como o mercado imprime: "REV. 00".
+ */
+export function numeroDaRevisao(revisoes?: { created_at: string }[] | null): string {
+  return String(revisoes?.length ?? 0).padStart(2, "0");
 }
 
 export interface PgrPdfContext {
@@ -140,11 +132,9 @@ export interface PgrPdfContext {
   assinaturas: PgrAssinaturaItem[];
   ghes: Record<string, string>;
   textos?: Record<string, string>;
-  quadroEpis?: PgrQuadroEpiLinha[];
   /** Matriz + filiais, para a seção de identificação. */
   unidades?: PgrUnidadeItem[];
   responsaveis?: PgrResponsavelItem[];
-  cenarios?: PgrCenarioItem[];
   /** Caracterização da estrutura, vinda do Núcleo Mestre. */
   ambientes?: any[];
   processos?: any[];
@@ -156,6 +146,16 @@ export interface PgrPdfContext {
   logoDataUrl?: string | null;
   /** Código interno do documento, impresso na capa e no rodapé. */
   codigoDocumento?: string | null;
+  /**
+   * Rodapé da capa: quem elaborou o documento.
+   *
+   * A capa leva a marca da empresa COBERTA no alto e o crédito de quem
+   * ELABOROU embaixo — são pessoas jurídicas diferentes, e misturar as duas
+   * faz o documento parecer emitido por quem não o emitiu.
+   */
+  emissorNome?: string | null;
+  emissorLinhas?: string[] | null;
+  emissorLogoDataUrl?: string | null;
 }
 
 /** Rótulos dos papéis de responsável, para o PDF (jsPDF não importa a UI). */
@@ -173,78 +173,8 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", buf);
   return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-const fmtDate = (s?: string | null) => s ? new Date(s.length <= 10 ? s + "T00:00:00" : s).toLocaleDateString("pt-BR") : "—";
-const fmtDT = (s?: string | null) => s ? new Date(s).toLocaleString("pt-BR") : "—";
-/** Dinheiro no formato daqui: R$ 18.000,00. */
 const fmtMoeda = (v: number) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-interface ItemSumario { titulo: string; pagina: number; }
-interface B { doc: jsPDF; y: number; toc: ItemSumario[]; }
-const ensure = (b: B, h: number) => { if (b.y + h > 278) { b.doc.addPage(); b.y = 15; } };
-
-/**
- * Abre uma seção e registra a página no sumário.
- *
- * O número é anotado DEPOIS do `ensure`: se o título não coubesse na página
- * atual, ele salta para a próxima e o sumário apontaria a página errada.
- */
-function title(b: B, t: string) {
-  ensure(b, 10);
-  b.toc.push({ titulo: t, pagina: b.doc.getCurrentPageInfo().pageNumber });
-  b.doc.setFillColor(15, 23, 42); b.doc.rect(10, b.y, 190, 6, "F");
-  b.doc.setTextColor(255); b.doc.setFontSize(10); b.doc.setFont("helvetica", "bold");
-  b.doc.text(t, 12, b.y + 4.2); b.doc.setTextColor(0); b.y += 8;
-}
-
-/** Subtítulo dentro de uma seção — não entra no sumário. */
-function sub(b: B, t: string) {
-  ensure(b, 8);
-  b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(9); b.doc.setTextColor(15, 23, 42);
-  b.doc.text(t, 12, b.y + 4); b.doc.setTextColor(0); b.y += 7;
-}
-
-/**
- * Cabeçalho de tabela que se repete a cada quebra de página.
- *
- * Devolve a função que desenha uma linha garantindo a repetição: sem isso, uma
- * tabela de 80 riscos vira 3 páginas de números sem nome de coluna.
- */
-function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]) {
-  const desenhaCabecalho = () => {
-    b.doc.setFillColor(240, 240, 240); b.doc.rect(10, b.y, 190, 6, "F");
-    b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(7.5); b.doc.setTextColor(30);
-    colunas.forEach((c) => b.doc.text(c.rotulo, c.x, b.y + 4));
-    b.doc.setTextColor(0); b.y += 7;
-  };
-  desenhaCabecalho();
-  return (celulas: string[]) => {
-    const textos = colunas.map((c, i) => b.doc.splitTextToSize(celulas[i] ?? "—", c.w));
-    const h = Math.max(...textos.map((t) => t.length)) * 3.4 + 3;
-    if (b.y + h > 278) { b.doc.addPage(); b.y = 15; desenhaCabecalho(); }
-    b.doc.setDrawColor(225); b.doc.line(10, b.y, 200, b.y);
-    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(7.5);
-    textos.forEach((t, i) => b.doc.text(t, colunas[i].x, b.y + 3.5));
-    b.y += h;
-  };
-}
-function kv(b: B, label: string, value: string, full = false) {
-  ensure(b, 7);
-  b.doc.setFontSize(7); b.doc.setFont("helvetica", "normal"); b.doc.setTextColor(110);
-  b.doc.text(label.toUpperCase(), 12, b.y);
-  b.doc.setTextColor(0); b.doc.setFontSize(9); b.doc.setFont("helvetica", "bold");
-  const lines = b.doc.splitTextToSize(value || "—", full ? 186 : 90);
-  b.doc.text(lines, 12, b.y + 4);
-  b.y += 4 + lines.length * 3.5 + 1;
-}
-function para(b: B, txt: string, size = 8, color: [number, number, number] = [60, 60, 60]) {
-  ensure(b, 6);
-  b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(size); b.doc.setTextColor(...color);
-  const lines = b.doc.splitTextToSize(txt, 186);
-  b.doc.text(lines, 12, b.y + 3);
-  b.y += 3 + lines.length * (size * 0.42);
-  b.doc.setTextColor(0);
-}
 
 function drawMatriz(b: B) {
   ensure(b, 70);
@@ -326,52 +256,42 @@ export async function renderPgrPdf(
   return render(ctx, opts);
 }
 
-async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: number; comMarca: boolean }): Promise<jsPDF> {
+/**
+ * Desenha o documento inteiro. Exportada para o teste conseguir olhar o que
+ * saiu impresso sem subir arquivo nem consumir número de versão.
+ */
+export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: number; comMarca: boolean }): Promise<jsPDF> {
   const { doc: pgr } = ctx;
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const b: B = { doc: pdf, y: 12, toc: [] };
 
-  // CAPA
-  pdf.setFillColor(15, 23, 42); pdf.rect(0, 0, 210, 65, "F");
-  // Logomarca da empresa, quando houver. Falha de imagem não pode derrubar a
-  // geração do documento inteiro — o PGR sai sem logo, e sai.
-  if (ctx.logoDataUrl) {
-    try { pdf.addImage(ctx.logoDataUrl, "PNG", 12, 8, 26, 26); }
-    catch { /* logo inválida: segue sem ela */ }
-  }
-  pdf.setTextColor(255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(22);
-  pdf.text("PGR", 105, 28, { align: "center" });
-  pdf.setFontSize(12); pdf.setFont("helvetica", "normal");
-  pdf.text("Programa de Gerenciamento de Riscos", 105, 36, { align: "center" });
-  pdf.setFontSize(10); pdf.text("Documento técnico interno — NR-01", 105, 44, { align: "center" });
-  pdf.setFontSize(9); pdf.text(`Versão do PGR: v${pgr.versao}  ·  Versão do PDF: v${opts.pdfVersao}  ·  ${PGR_STATUS_LABEL[pgr.status]}`, 105, 54, { align: "center" });
-  pdf.setTextColor(0); b.y = 75;
-
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(14);
-  pdf.text(ctx.empresaNome || "Empresa", 12, b.y); b.y += 7;
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10);
-  if (ctx.empresaCnpj) { pdf.text(`CNPJ: ${ctx.empresaCnpj}`, 12, b.y); b.y += 5; }
-  if (ctx.unidadeNome) { pdf.text(`Unidade: ${ctx.unidadeNome}`, 12, b.y); b.y += 5; }
-  if (ctx.codigoDocumento) { pdf.text(`Código do documento: ${ctx.codigoDocumento}`, 12, b.y); b.y += 5; }
-  b.y += 4;
-  /*
-   * O `||` de antes nunca entrava em acao: sem data de emissao, `fmtDate`
-   * devolve "—", que e texto valido — o lado direito era codigo morto e a capa
-   * saia com "Emitido em: —". A alternativa e testar o dado, nao o texto dele.
-   */
-  pdf.text(`Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`, 12, b.y); b.y += 5;
-  pdf.text(`Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`, 12, b.y); b.y += 5;
-  pdf.text(`Responsável Técnico: ${pgr.resp_tec_nome || "—"}`, 12, b.y); b.y += 5;
-  pdf.text(`Registro Profissional: ${pgr.resp_tec_registro || "—"}`, 12, b.y); b.y += 8;
-
-  // Aviso
-  pdf.setFillColor(254, 243, 199); pdf.rect(10, b.y, 190, 16, "F");
-  pdf.setTextColor(146, 64, 14); pdf.setFontSize(9); pdf.setFont("helvetica", "bold");
-  pdf.text("AVISO LEGAL", 12, b.y + 5);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-  pdf.text("Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.", 12, b.y + 10);
-  pdf.text("Validação por hash SHA-256 e QR Code de uso restrito à empresa.", 12, b.y + 14);
-  pdf.setTextColor(0); b.y += 20;
+  capaTimbrada(pdf, {
+    logoDataUrl: ctx.logoDataUrl,
+    revisao: `REV. ${numeroDaRevisao(ctx.revisoes)}`,
+    meta: `PGR v${pgr.versao} · PDF v${opts.pdfVersao} · ${PGR_STATUS_LABEL[pgr.status]}`,
+    sigla: "PGR",
+    titulo: "Programa de Gerenciamento de Riscos",
+    subtitulo: "Inventário de Riscos e Plano de Ação",
+    nota: "Documento técnico — NR-01",
+    empresaNome: ctx.empresaNome || "Empresa",
+    identificacao: [
+      ctx.empresaCnpj ? `CNPJ: ${ctx.empresaCnpj}` : null,
+      ctx.unidadeNome ? `Unidade: ${ctx.unidadeNome}` : null,
+      ctx.codigoDocumento ? `Código do documento: ${ctx.codigoDocumento}` : null,
+    ].filter(Boolean) as string[],
+    /*
+     * O `||` de antes nunca entrava em ação: sem data de emissão, `fmtDate`
+     * devolve "—", que é texto válido — o lado direito era código morto e a
+     * capa saía com "Emitido em: —". A alternativa é testar o dado, não o
+     * texto dele.
+     */
+    dados: [
+      `Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`,
+      `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`,
+      `Responsável Técnico: ${pgr.resp_tec_nome || "—"}`,
+      `Registro Profissional: ${pgr.resp_tec_registro || "—"}`,
+    ],
+  });
 
   pdf.addPage(); b.y = 15;
 
@@ -450,29 +370,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
         .filter(Boolean).join("  ·  ") || "Sim", true);
   }
 
-  // Elaboração e habilidade técnica — quem elaborou, revisou e aprovou.
-  title(b, "Elaboração e Habilidade Técnica");
   const T = ctx.textos || {};
-  const textoHab = (T["elaboracao_habilidade"] || "").trim();
-  if (textoHab) para(b, textoHab, 9, [40, 40, 40]);
-  const resps = ctx.responsaveis || [];
-  if (resps.length === 0) {
-    kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");
-    kv(b, "Registro Profissional", pgr.resp_tec_registro || "—");
-  } else {
-    resps.forEach((r) => {
-      ensure(b, 10);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-      pdf.text(`${PAPEL_PDF_LABEL[r.papel] || r.papel}: ${r.nome}`, 12, b.y + 4);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      const det = [
-        r.profissao,
-        r.registro_profissional ? `Registro ${r.registro_profissional}${r.uf_registro ? `/${r.uf_registro}` : ""}` : null,
-        r.numero_art ? `ART ${r.numero_art}` : null,
-      ].filter(Boolean).join("  ·  ");
-      if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
-    });
-  }
 
   // Textos institucionais editáveis, na ordem do documento oficial.
   // "registro_divulgacao" saiu daqui e foi para o fim: divulgar é o que se faz
@@ -495,47 +393,6 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     if (!conteudo) return;
     title(b, tit);
     para(b, conteudo, 9, [40, 40, 40]);
-  });
-
-  title(b, "Abrangência");
-  kv(b, "Escopo do PGR", pgr.escopo || "—", true);
-  if ((T["area_abrangencia"] || "").trim()) para(b, T["area_abrangencia"], 9, [40, 40, 40]);
-
-  // Referências normativas. Lista fixa das normas que regem o documento — não é
-  // dado da empresa, é o arcabouço legal, igual em qualquer PGR.
-  title(b, "Referências");
-  [
-    "NR-01 — Disposições Gerais e Gerenciamento de Riscos Ocupacionais",
-    "NR-04 — Serviços Especializados em Segurança e em Medicina do Trabalho",
-    "NR-05 — Comissão Interna de Prevenção de Acidentes e de Assédio",
-    "NR-06 — Equipamento de Proteção Individual",
-    "NR-07 — Programa de Controle Médico de Saúde Ocupacional",
-    "NR-09 — Avaliação e Controle das Exposições Ocupacionais a Agentes Físicos, Químicos e Biológicos",
-    "NR-15 — Atividades e Operações Insalubres",
-    "NR-16 — Atividades e Operações Perigosas",
-    "NR-17 — Ergonomia",
-    "Lei nº 8.213/1991 e Decreto nº 3.048/1999 — legislação previdenciária",
-  ].forEach((r) => { ensure(b, 5); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    pdf.text(`• ${r}`, 12, b.y + 3); b.y += 4.4; });
-  b.y += 2;
-
-  title(b, "Definições");
-  ([
-    ["Perigo", "Fonte com potencial de causar lesão ou agravo à saúde."],
-    ["Risco ocupacional", "Combinação da probabilidade de ocorrer um evento perigoso com a severidade da lesão ou agravo que ele pode causar."],
-    ["Fonte geradora", "Elemento, equipamento ou condição de onde o perigo se origina."],
-    ["Circunstância", "Situação em que o perigo se manifesta, ainda que a fonte esteja controlada."],
-    ["GES / GHE", "Grupo de trabalhadores que experimentam exposição semelhante, de modo que o resultado da avaliação de um representa a exposição de todos. Não é sinônimo de setor."],
-    ["Risco residual", "Risco que permanece após a implantação das medidas de prevenção."],
-    ["Medida de prevenção", "Ação adotada para eliminar o perigo ou reduzir o risco, seguindo a hierarquia da NR-01."],
-    ["Inventário de riscos", "Relação consolidada dos riscos identificados, avaliados e classificados."],
-  ] as [string, string][]).forEach(([termo, def]) => {
-    ensure(b, 9);
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.text(`${termo}:`, 12, b.y + 3);
-    pdf.setFont("helvetica", "normal"); pdf.setTextColor(60);
-    const ll = pdf.splitTextToSize(def, 186 - 2);
-    pdf.text(ll, 14, b.y + 7); pdf.setTextColor(0);
-    b.y += 7 + ll.length * 3.3 + 1;
   });
 
   // ── Caracterização da estrutura ────────────────────────────────────────────
@@ -655,26 +512,7 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   title(b, "Critérios da Matriz");
   drawMatriz(b);
 
-  // 3. Resumo quantitativo
-  title(b, "Resumo quantitativo dos riscos");
-  const counts: Record<string, number> = {};
-  let semAvaliacao = 0;
-  ctx.inventario.forEach((i) => {
-    if (i.classificacao) counts[i.classificacao] = (counts[i.classificacao] || 0) + 1;
-    else semAvaliacao++;
-  });
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
-  CLASSES_ORDENADAS.forEach((c, i) => {
-    pdf.text(`${CLASSIF_LABEL[c]}: ${counts[c] || 0}`, 12 + i * 37, b.y + 4);
-  });
-  b.y += 9;
-  if (semAvaliacao > 0) {
-    pdf.setFontSize(8); pdf.setTextColor(100);
-    pdf.text(`Itens sem avaliação de severidade/probabilidade: ${semAvaliacao}`, 12, b.y + 2);
-    pdf.setTextColor(0); b.y += 6;
-  }
-
-  // 4. Inventário por GHE
+  // Inventário de riscos — 1.5.7.1 "a" da NR-01.
   title(b, "Inventário de Riscos Ocupacionais");
   const byGhe = new Map<string, PgrInventarioItem[]>();
   ctx.inventario.forEach((i) => {
@@ -714,28 +552,9 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     b.y += 2;
   }
 
-  // Quadro Sinóptico de EPIs
-  if (ctx.quadroEpis && ctx.quadroEpis.length > 0) {
-    pdf.addPage(); b.y = 15;
-    title(b, "Quadro Sinóptico de Utilização de EPIs");
-    // Cabeçalho repetido a cada quebra: o quadro costuma passar de uma página,
-    // e sem repetir ninguém sabe qual coluna é "medida" e qual é "EPI".
-    const linha = tabela(b, [
-      { rotulo: "GES", x: 12, w: 41 },
-      { rotulo: "Função", x: 55, w: 43 },
-      { rotulo: "Medida de controle existente", x: 100, w: 53 },
-      { rotulo: "EPIs indicados", x: 155, w: 43 },
-    ]);
-    ctx.quadroEpis.forEach((l) => linha([
-      `${l.ghe_codigo}\n${l.ghe_nome}`, l.funcao, l.medida_controle, l.epis,
-    ]));
-  }
-
-  // 5. Plano de ação 5W2H
+  // Plano de ação — 1.5.7.1 "b" da NR-01.
   pdf.addPage(); b.y = 15;
   title(b, "Plano de Ação (5W2H)");
-  const hoje = new Date().toISOString().slice(0, 10);
-  const atrasadas = ctx.acoes.filter((a) => a.prazo && a.prazo < hoje && a.status !== "concluida" && a.status !== "cancelada");
   if (ctx.acoes.length === 0) para(b, "Nenhuma ação registrada.");
   ctx.acoes.forEach((a) => {
     ensure(b, 22);
@@ -801,56 +620,6 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
     b.y += 3;
   });
 
-  // Seções finais (textos padrão editáveis)
-  // Preparação e resposta a emergências (Etapa 7), antes das seções de fecho.
-  if (ctx.cenarios && ctx.cenarios.length > 0) {
-    title(b, "Preparação e Resposta a Emergências");
-    ctx.cenarios.forEach((c) => {
-      ensure(b, 16);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-      pdf.text(`• ${c.nome}${c.grande_magnitude ? "  (grande magnitude)" : ""}`, 12, b.y + 4);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-      b.y += 6;
-      const campos: Array<[string, string | null | undefined]> = [
-        ["Procedimento de resposta", c.procedimento_resposta],
-        ["Primeiros socorros", c.primeiros_socorros],
-        ["Meios e recursos", c.meios_recursos],
-        ["Responsáveis", c.responsaveis],
-        ["Abandono / ponto de encontro", c.abandono_ponto_encontro],
-        ["Simulados", [c.periodicidade_simulado,
-          c.ultimo_simulado ? `último em ${fmtDate(c.ultimo_simulado)}` : null]
-          .filter(Boolean).join("  ·  ") || null],
-      ];
-      campos.forEach(([rot, val]) => {
-        if (!val) return;
-        const ll = pdf.splitTextToSize(`${rot}: ${val}`, 184);
-        ensure(b, ll.length * 3.5 + 2);
-        pdf.text(ll, 14, b.y); b.y += ll.length * 3.3 + 1;
-      });
-      b.y += 2;
-    });
-  }
-
-  // Monitoramento e revisão: quando o programa precisa ser reavaliado. Sai dos
-  // campos reais do documento — periodicidade legal e gatilhos registrados.
-  title(b, "Monitoramento e Revisão");
-  kv(b, "Próxima revisão prevista", fmtDate(pgr.proxima_revisao));
-  kv(b, "Periodicidade máxima", pgr.sgsst_certificado
-    ? "3 anos — organização certificada em sistema de gestão de SST"
-    : "2 anos — NR-01 item 1.5.4.4.5");
-  if (pgr.sgsst_certificado) {
-    kv(b, "Certificação", [pgr.sgsst_norma, pgr.sgsst_certificadora,
-      pgr.sgsst_validade ? `válida até ${fmtDate(pgr.sgsst_validade)}` : null]
-      .filter(Boolean).join("  ·  ") || "—", true);
-  }
-  para(b,
-    "O programa é revisado antes do prazo sempre que ocorrer: alteração de processo, ambiente, "
-    + "máquina, produto, função ou atividade; acidente ou doença relacionada ao trabalho; "
-    + "constatação de ineficácia das medidas adotadas; alteração de requisito legal; resultado "
-    + "de avaliação ambiental que modifique a classificação de risco; mudança significativa na "
-    + "organização do trabalho; identificação de novos fatores psicossociais; ou por determinação "
-    + "da fiscalização ou do responsável técnico.", 8);
-
   const secoesFim: Array<[string, string]> = [
     // Divulgar é o que se faz DEPOIS de o programa existir: esta seção estava
     // no início do documento, antes mesmo da apresentação.
@@ -868,8 +637,29 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
 
   // Assinaturas fecham o documento, depois do encerramento — assinar é o
   // último ato, não algo que acontece no meio do texto.
-  // 8. Assinaturas visuais
   title(b, "Assinaturas");
+  // 1.5.7.2 da NR-01: os documentos do PGR são elaborados sob responsabilidade
+  // da organização, datados e assinados. Quem responde tecnicamente aparece
+  // aqui, junto das assinaturas — antes tinha seção própria, que repetia o
+  // mesmo dado da capa sem exigência que a justificasse.
+  const resps = ctx.responsaveis || [];
+  if (resps.length === 0) {
+    kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");
+    kv(b, "Registro Profissional", pgr.resp_tec_registro || "—");
+  } else {
+    resps.forEach((r) => {
+      ensure(b, 10);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+      pdf.text(`${PAPEL_PDF_LABEL[r.papel] || r.papel}: ${r.nome}`, 12, b.y + 4);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+      const det = [
+        r.profissao,
+        r.registro_profissional ? `Registro ${r.registro_profissional}${r.uf_registro ? `/${r.uf_registro}` : ""}` : null,
+        r.numero_art ? `ART ${r.numero_art}` : null,
+      ].filter(Boolean).join("  ·  ");
+      if (det) { pdf.text(det, 12, b.y + 8); b.y += 11; } else { b.y += 6; }
+    });
+  }
   para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
   if (ctx.assinaturas.length === 0) para(b, "Nenhuma assinatura visual registrada até a geração deste PDF.");
   ctx.assinaturas.forEach((a) => {
@@ -884,91 +674,19 @@ async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: numb
   });
 
 
-  // ANEXOS. Conteúdo de auditoria interna, separado do corpo do documento.
-  pdf.addPage(); b.y = 15;
-  // 6. Ações atrasadas
-  title(b, "Apêndice A — Ações atrasadas");
-  if (atrasadas.length === 0) para(b, "Nenhuma ação atrasada.");
-  else atrasadas.forEach((a) => {
-    ensure(b, 6);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    pdf.text(`• ${a.descricao} — prazo ${fmtDate(a.prazo)} — ${a.status}`, 12, b.y + 3);
-    b.y += 5;
+
+  sumario(pdf, b.toc);
+
+  await rodapePaginas(pdf, {
+    qrUrl: opts.qrUrl,
+    marca: opts.comMarca ? (pgr.status === "em_revisao" ? "EM REVISÃO" : "RASCUNHO") : null,
+    linhas: (p, total) => [
+      "QR Code de validação interna — abre o PGR no sistema (acesso restrito à empresa).",
+      opts.qrUrl,
+      `Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}  ·  Página ${p}/${total}`,
+      "Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.",
+    ],
   });
-
-  // 7. Revisões
-  title(b, "Apêndice B — Histórico de revisões");
-  if (ctx.revisoes.length === 0) para(b, "Sem revisões.");
-  ctx.revisoes.forEach((r) => {
-    ensure(b, 6);
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-    const linha = `${fmtDT(r.created_at)} · ${r.acao}` +
-      // "de v1 para v2" e nao "v1→v2": a fonte padrao nao desenha a seta.
-      (r.versao_anterior != null && r.versao_nova != null ? ` · de v${r.versao_anterior} para v${r.versao_nova}` : "") +
-      (r.user_email ? ` · ${r.user_email}` : "") + (r.motivo ? ` — ${r.motivo}` : "");
-    const ll = pdf.splitTextToSize(linha, 186);
-    pdf.text(ll, 12, b.y + 3); b.y += 3 + ll.length * 3.2;
-  });
-
-
-
-  // ── SUMÁRIO ───────────────────────────────────────────────────────────────
-  // Só dá para montar depois de tudo renderizado: antes disso não se sabe em que
-  // página cada seção caiu. A página é inserida na posição 2 (logo após a capa),
-  // o que empurra todo o resto — por isso cada número anotado ganha +1.
-  if (b.toc.length > 0) {
-    pdf.insertPage(2);
-    pdf.setPage(2);
-    const s: B = { doc: pdf, y: 15, toc: [] };
-    pdf.setFillColor(15, 23, 42); pdf.rect(10, s.y, 190, 6, "F");
-    pdf.setTextColor(255); pdf.setFontSize(10); pdf.setFont("helvetica", "bold");
-    pdf.text("Sumário", 12, s.y + 4.2); pdf.setTextColor(0); s.y += 11;
-
-    b.toc.forEach((item) => {
-      if (s.y > 272) { return; }
-      const pagina = String(item.pagina + 1);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(30);
-      const titulo = pdf.splitTextToSize(item.titulo, 160)[0];
-      pdf.text(titulo, 12, s.y);
-      const larguraTitulo = pdf.getTextWidth(titulo);
-      const larguraPagina = pdf.getTextWidth(pagina);
-      // Linha pontilhada ligando título e página, para o olho não se perder.
-      pdf.setTextColor(170);
-      const inicio = 12 + larguraTitulo + 2;
-      const fim = 198 - larguraPagina - 2;
-      if (fim > inicio) {
-        const pontos = ".".repeat(Math.max(0, Math.floor((fim - inicio) / pdf.getTextWidth("."))));
-        pdf.text(pontos, inicio, s.y);
-      }
-      pdf.setTextColor(30);
-      pdf.text(pagina, 198, s.y, { align: "right" });
-      s.y += 5.4;
-    });
-    pdf.setTextColor(0);
-  }
-
-  // Rodapé com QR + hash + marca d'água
-  const qrDataUrl = await QRCode.toDataURL(opts.qrUrl, { margin: 0, width: 220 });
-  const pages = pdf.getNumberOfPages();
-  for (let p = 1; p <= pages; p++) {
-    pdf.setPage(p);
-    if (opts.comMarca) {
-      const anyDoc = pdf as any;
-      if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 })); }
-      pdf.setTextColor(180, 50, 50); pdf.setFont("helvetica", "bold"); pdf.setFontSize(90);
-      pdf.text(pgr.status === "em_revisao" ? "EM REVISÃO" : "RASCUNHO", 105, 160, { align: "center", angle: 35 } as any);
-      if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 1 })); }
-      pdf.setTextColor(0);
-    }
-    pdf.setDrawColor(200); pdf.line(10, 283, 200, 283);
-    pdf.addImage(qrDataUrl, "PNG", 10, 285, 18, 18);
-    pdf.setFontSize(7); pdf.setFont("helvetica", "normal"); pdf.setTextColor(80);
-    pdf.text("QR Code de validação interna — abre o PGR no sistema (acesso restrito à empresa).", 30, 288);
-    pdf.text(opts.qrUrl, 30, 291);
-    pdf.text(`Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}  ·  Página ${p}/${pages}`, 30, 294);
-    pdf.text("Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.", 30, 297);
-    pdf.setTextColor(0);
-  }
 
   return pdf;
 }
