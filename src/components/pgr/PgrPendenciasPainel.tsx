@@ -47,15 +47,30 @@ export default function PgrPendenciasPainel({ pgrId, respTecNome, onIrParaEtapa 
   const { pendencias, resumo, isLoading } = usePgrPendencias(pgrId, respTecNome);
 
   const agrupadas = useMemo(() => {
+    // 1. Agrupa por categoria
     const m = new Map<string, Pendencia[]>();
-    // Bloqueios primeiro: são eles que impedem emitir.
-    [...pendencias]
-      .sort((a, b) => (a.severidade === b.severidade ? 0 : a.severidade === "bloqueio" ? -1 : 1))
-      .forEach((p) => {
-        if (!m.has(p.categoria)) m.set(p.categoria, []);
-        m.get(p.categoria)!.push(p);
+    pendencias.forEach((p) => {
+      if (!m.has(p.categoria)) m.set(p.categoria, []);
+      m.get(p.categoria)!.push(p);
+    });
+
+    // 2. Dentro de cada categoria, agrupa por título idêntico
+    const resultado = [...m.entries()].map(([cat, itens]) => {
+      const porTitulo = new Map<string, Pendencia[]>();
+      itens.forEach((p) => {
+        if (!porTitulo.has(p.titulo)) porTitulo.set(p.titulo, []);
+        porTitulo.get(p.titulo)!.push(p);
       });
-    return [...m.entries()];
+      
+      // 3. Ordena os grupos: bloqueios primeiro
+      const grupos = [...porTitulo.values()].sort((a, b) => {
+        if (a[0].severidade === b[0].severidade) return 0;
+        return a[0].severidade === "bloqueio" ? -1 : 1;
+      });
+      return { categoria: cat, grupos };
+    });
+    
+    return resultado;
   }, [pendencias]);
 
   if (isLoading) {
@@ -102,39 +117,60 @@ export default function PgrPendenciasPainel({ pgrId, respTecNome, onIrParaEtapa 
         </p>
       )}
 
-      {agrupadas.map(([categoria, itens]) => (
-        <section key={categoria} className="space-y-1.5">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            {categoria} · {itens.length}
-          </h3>
-          <ul className="space-y-1.5">
-            {itens.map((p) => (
-              <li key={p.id}>
-                <button
-                  onClick={() => onIrParaEtapa?.(p.etapa)}
-                  disabled={!onIrParaEtapa}
-                  className={`w-full text-left border rounded-lg p-3 flex items-start gap-3 ${
-                    onIrParaEtapa ? "hover:border-primary/50 transition" : "cursor-default"
-                  } ${p.severidade === "bloqueio" ? "border-red-200 bg-red-50/50" : ""}`}
-                >
-                  {p.severidade === "bloqueio"
-                    ? <TriangleAlert className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                    : <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />}
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{p.titulo}</span>
-                    {p.referencia && (
-                      <span className="block text-xs text-muted-foreground">{p.referencia}</span>
-                    )}
-                  </span>
-                  {onIrParaEtapa && (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      {agrupadas.map(({ categoria, grupos }) => {
+        const total = grupos.reduce((acc, g) => acc + g.length, 0);
+        return (
+          <section key={categoria} className="space-y-1.5">
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              {categoria} · {total}
+            </h3>
+            <ul className="space-y-1.5">
+              {grupos.map((grupo) => {
+                const p = grupo[0];
+                const quant = grupo.length;
+                // Pega os 3 primeiros nomes para dar contexto, se houver referência
+                const refs = grupo.map(g => g.referencia).filter(Boolean);
+                const refLimitada = refs.slice(0, 3).join(", ");
+                const mais = quant > 3 ? ` e mais ${quant - 3}` : "";
+                
+                return (
+                  <li key={p.titulo}>
+                    <button
+                      onClick={() => onIrParaEtapa?.(p.etapa)}
+                      disabled={!onIrParaEtapa}
+                      className={`w-full text-left border rounded-lg p-3 flex items-start gap-3 ${
+                        onIrParaEtapa ? "hover:border-primary/50 transition" : "cursor-default"
+                      } ${p.severidade === "bloqueio" ? "border-red-200 bg-red-50/50" : ""}`}
+                    >
+                      {p.severidade === "bloqueio"
+                        ? <TriangleAlert className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                        : <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          {p.titulo}
+                          {quant > 1 && (
+                            <Badge variant="outline" className={p.severidade === "bloqueio" ? "bg-red-100 border-red-300 text-red-700" : "bg-amber-100 border-amber-300 text-amber-700"}>
+                              {quant}x
+                            </Badge>
+                          )}
+                        </span>
+                        {refLimitada && (
+                          <span className="block text-xs text-muted-foreground mt-1">
+                            Ex: {refLimitada}{mais}
+                          </span>
+                        )}
+                      </span>
+                      {onIrParaEtapa && (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
 }
