@@ -128,6 +128,17 @@ export interface PgrCenarioItem {
   ultimo_simulado?: string | null;
 }
 
+/**
+ * O número de revisão impresso na capa.
+ *
+ * Sem revisão registrada o documento está na elaboração, que é a revisão 00 —
+ * e é assim que o Controle de Revisões logo adiante já a chama. Duas casas
+ * porque é como a norma pede e como o mercado imprime: "REV. 00".
+ */
+export function numeroDaRevisao(revisoes?: { created_at: string }[] | null): string {
+  return String(revisoes?.length ?? 0).padStart(2, "0");
+}
+
 export interface PgrPdfContext {
   doc: PgrDocumento;
   empresaNome: string | null;
@@ -156,6 +167,10 @@ export interface PgrPdfContext {
   logoDataUrl?: string | null;
   /** Código interno do documento, impresso na capa e no rodapé. */
   codigoDocumento?: string | null;
+  /** Endereço da empresa, em uma linha, para o rodapé da capa. */
+  empresaEndereco?: string | null;
+  /** Telefone e e-mail já unidos, para o rodapé da capa. */
+  empresaContato?: string | null;
 }
 
 /** Rótulos dos papéis de responsável, para o PDF (jsPDF não importa a UI). */
@@ -326,53 +341,112 @@ export async function renderPgrPdf(
   return render(ctx, opts);
 }
 
-async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: number; comMarca: boolean }): Promise<jsPDF> {
+/**
+ * Desenha o documento inteiro. Exportada para o teste conseguir olhar o que
+ * saiu impresso sem subir arquivo nem consumir número de versão.
+ */
+export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersao: number; comMarca: boolean }): Promise<jsPDF> {
   const { doc: pgr } = ctx;
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const b: B = { doc: pdf, y: 12, toc: [] };
 
-  // CAPA
-  pdf.setFillColor(15, 23, 42); pdf.rect(0, 0, 210, 65, "F");
-  // Logomarca da empresa, quando houver. Falha de imagem não pode derrubar a
-  // geração do documento inteiro — o PGR sai sem logo, e sai.
+  /*
+   * CAPA
+   *
+   * Papel timbrado, e não banner: marca e número de revisão no alto, título
+   * no corpo, identificação da empresa no rodapé. A faixa azul-marinho que
+   * ocupava o terço superior empurrava tudo para baixo e não dizia nada — o
+   * espaço passou a ser do título.
+   */
+  const MARGEM = 18;
+  const LARGURA = 210;
+
   if (ctx.logoDataUrl) {
-    try { pdf.addImage(ctx.logoDataUrl, "PNG", 12, 8, 26, 26); }
+    // Falha de imagem não pode derrubar a geração do documento inteiro: o PGR
+    // sai sem logo, e sai.
+    try { pdf.addImage(ctx.logoDataUrl, "PNG", MARGEM, 14, 24, 24); }
     catch { /* logo inválida: segue sem ela */ }
   }
-  pdf.setTextColor(255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(22);
-  pdf.text("PGR", 105, 28, { align: "center" });
-  pdf.setFontSize(12); pdf.setFont("helvetica", "normal");
-  pdf.text("Programa de Gerenciamento de Riscos", 105, 36, { align: "center" });
-  pdf.setFontSize(10); pdf.text("Documento técnico interno — NR-01", 105, 44, { align: "center" });
-  pdf.setFontSize(9); pdf.text(`Versão do PGR: v${pgr.versao}  ·  Versão do PDF: v${opts.pdfVersao}  ·  ${PGR_STATUS_LABEL[pgr.status]}`, 105, 54, { align: "center" });
-  pdf.setTextColor(0); b.y = 75;
 
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(14);
-  pdf.text(ctx.empresaNome || "Empresa", 12, b.y); b.y += 7;
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10);
-  if (ctx.empresaCnpj) { pdf.text(`CNPJ: ${ctx.empresaCnpj}`, 12, b.y); b.y += 5; }
-  if (ctx.unidadeNome) { pdf.text(`Unidade: ${ctx.unidadeNome}`, 12, b.y); b.y += 5; }
-  if (ctx.codigoDocumento) { pdf.text(`Código do documento: ${ctx.codigoDocumento}`, 12, b.y); b.y += 5; }
-  b.y += 4;
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(30);
+  pdf.text(`REV. ${numeroDaRevisao(ctx.revisoes)}`, LARGURA - MARGEM, 22, { align: "right" });
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(120);
+  pdf.text(
+    `PGR v${pgr.versao} · PDF v${opts.pdfVersao} · ${PGR_STATUS_LABEL[pgr.status]}`,
+    LARGURA - MARGEM, 27, { align: "right" },
+  );
+
+  pdf.setDrawColor(200); pdf.setLineWidth(0.4);
+  pdf.line(MARGEM, 42, LARGURA - MARGEM, 42);
+
+  // Título
+  pdf.setTextColor(15, 23, 42); pdf.setFont("helvetica", "bold"); pdf.setFontSize(46);
+  pdf.text("PGR", MARGEM, 96);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(14); pdf.setTextColor(40);
+  pdf.text("Programa de Gerenciamento de Riscos", MARGEM, 107);
+  pdf.setFontSize(11); pdf.setTextColor(110);
+  pdf.text("Inventário de Riscos e Plano de Ação", MARGEM, 114);
+  pdf.setFontSize(9);
+  pdf.text("Documento técnico — NR-01", MARGEM, 121);
+
+  // Empresa coberta pelo documento
+  pdf.setDrawColor(225); pdf.setLineWidth(0.3);
+  pdf.line(MARGEM, 134, LARGURA - MARGEM, 134);
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(15); pdf.setTextColor(15, 23, 42);
+  const nomeEmpresa = pdf.splitTextToSize(ctx.empresaNome || "Empresa", LARGURA - MARGEM * 2) as string[];
+  pdf.text(nomeEmpresa, MARGEM, 144);
+  let yDados = 144 + nomeEmpresa.length * 7;
+
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.setTextColor(60);
+  const identificacao: string[] = [];
+  if (ctx.empresaCnpj) identificacao.push(`CNPJ: ${ctx.empresaCnpj}`);
+  if (ctx.unidadeNome) identificacao.push(`Unidade: ${ctx.unidadeNome}`);
+  if (ctx.codigoDocumento) identificacao.push(`Código do documento: ${ctx.codigoDocumento}`);
+  identificacao.forEach((linha) => { pdf.text(linha, MARGEM, yDados); yDados += 5.5; });
+
+  yDados += 4;
   /*
    * O `||` de antes nunca entrava em acao: sem data de emissao, `fmtDate`
    * devolve "—", que e texto valido — o lado direito era codigo morto e a capa
    * saia com "Emitido em: —". A alternativa e testar o dado, nao o texto dele.
    */
-  pdf.text(`Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`, 12, b.y); b.y += 5;
-  pdf.text(`Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`, 12, b.y); b.y += 5;
-  pdf.text(`Responsável Técnico: ${pgr.resp_tec_nome || "—"}`, 12, b.y); b.y += 5;
-  pdf.text(`Registro Profissional: ${pgr.resp_tec_registro || "—"}`, 12, b.y); b.y += 8;
+  [
+    `Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`,
+    `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`,
+    `Responsável Técnico: ${pgr.resp_tec_nome || "—"}`,
+    `Registro Profissional: ${pgr.resp_tec_registro || "—"}`,
+  ].forEach((linha) => { pdf.text(linha, MARGEM, yDados); yDados += 5.5; });
 
-  // Aviso
-  pdf.setFillColor(254, 243, 199); pdf.rect(10, b.y, 190, 16, "F");
-  pdf.setTextColor(146, 64, 14); pdf.setFontSize(9); pdf.setFont("helvetica", "bold");
-  pdf.text("AVISO LEGAL", 12, b.y + 5);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
-  pdf.text("Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.", 12, b.y + 10);
-  pdf.text("Validação por hash SHA-256 e QR Code de uso restrito à empresa.", 12, b.y + 14);
-  pdf.setTextColor(0); b.y += 20;
+  /*
+   * O aviso saiu da caixa amarela e virou uma linha discreta acima do rodapé.
+   * Ele continua sendo verdade e precisa estar escrito, mas ocupava o meio da
+   * capa gritando em laranja o que é, no fundo, uma nota de rodapé.
+   */
+  pdf.setFontSize(7.5); pdf.setTextColor(130);
+  pdf.text(
+    "Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase. "
+    + "Validação por hash SHA-256 e QR Code de uso restrito à empresa.",
+    MARGEM, 248,
+  );
 
+  // Rodapé timbrado
+  pdf.setDrawColor(200); pdf.setLineWidth(0.4);
+  pdf.line(MARGEM, 254, LARGURA - MARGEM, 254);
+
+  let xTexto = MARGEM;
+  if (ctx.logoDataUrl) {
+    try { pdf.addImage(ctx.logoDataUrl, "PNG", MARGEM, 258, 16, 16); xTexto = MARGEM + 21; }
+    catch { /* sem logo, o texto ocupa a margem inteira */ }
+  }
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
+  pdf.text(ctx.empresaNome || "Empresa", xTexto, 263);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(110);
+  const rodape = [ctx.empresaEndereco, ctx.empresaContato].filter(Boolean) as string[];
+  rodape.forEach((linha, i) => {
+    pdf.text(pdf.splitTextToSize(linha, LARGURA - xTexto - MARGEM)[0] as string, xTexto, 268 + i * 4.5);
+  });
+
+  pdf.setTextColor(0);
   pdf.addPage(); b.y = 15;
 
   // Controle de revisões (visível logo após a capa)
