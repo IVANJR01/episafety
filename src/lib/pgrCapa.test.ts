@@ -10,10 +10,13 @@ import { render, numeroDaRevisao, type PgrPdfContext } from "./pgrPdf";
  * que aconteceu: sabotar a quebra do nome não derrubou nada até esta função
  * passar a olhar só a primeira página.
  */
-function trechosDaCapa(pdf: { internal: { pages: string[][] } }): string[] {
-  const pagina = (pdf.internal.pages[1] || []).join("\n");
+function trechosDaPagina(pdf: { internal: { pages: string[][] } }, n: number): string[] {
+  const pagina = (pdf.internal.pages[n] || []).join("\n");
   return (pagina.match(/\((?:\\.|[^\\()])*\)/g) ?? []).map((p) => p.slice(1, -1));
 }
+
+const trechosDaCapa = (pdf: { internal: { pages: string[][] } }) => trechosDaPagina(pdf, 1);
+const trechosDaCapa2 = trechosDaPagina;
 
 function contexto(extra: Partial<PgrPdfContext> = {}): PgrPdfContext {
   return {
@@ -85,35 +88,33 @@ describe("capa do PGR", () => {
     expect(t).toContain("CNPJ: 51.213.683/0001-04");
   });
 
-  it("credita quem elaborou o documento no rodapé", async () => {
+  it("fecha a capa com a identificação da empresa, e nada mais", async () => {
+    // A capa é capa: QR, hash, numeração e nota de assinatura são aparato de
+    // documento técnico e moram no miolo. Aqui eles disputavam espaço com a
+    // identificação e faziam a primeira página parecer a última.
     const t = await capa();
-    expect(t).toContain("3M CURSOS E TREINAMENTOS");
-    expect(t.some((s) => s.includes("Potiretama/CE"))).toBe(true);
-    expect(t.some((s) => s.includes("CNPJ 51.489.453/0001-64"))).toBe(true);
+    expect(t).toContain("LEONARDO A. DE ARAUJO LTDA");
+    expect(t.some((s) => s.includes("QR Code de validação"))).toBe(false);
+    expect(t.some((s) => s.includes("Assinatura ICP-Brasil"))).toBe(false);
+    expect(t.some((s) => s.includes("Página 1/"))).toBe(false);
+    expect(t.some((s) => s.includes("3M CURSOS"))).toBe(false);
   });
 
-  it("não credita a empresa coberta como quem elaborou", async () => {
-    // Repetir a empresa no rodapé faria o documento parecer emitido por ela
-    // mesma, que é o oposto do que a capa diz.
-    const t = await capa({ emissorNome: null, emissorLinhas: [] });
-    expect(t.filter((s) => s.trim() === "LEONARDO A. DE ARAUJO LTDA")).toHaveLength(1);
-  });
-
-  it("mantém o aviso legal, agora como nota e não como tarja", async () => {
-    // O aviso continua sendo verdade e precisa estar escrito. O que saiu foi
-    // a caixa amarela no meio da capa, não o texto.
-    const t = await capa();
-    expect(t.some((s) => s.includes("Assinatura ICP-Brasil não implementada"))).toBe(true);
-    expect(t).not.toContain("AVISO LEGAL");
+  it("mantém o QR e a nota de assinatura no miolo", async () => {
+    // Sair da capa não é sumir do documento: a validação e o aviso continuam
+    // no rodapé de todas as outras páginas.
+    const pdf = await render(contexto(), {
+      qrUrl: "https://safetysolucoes.com/pgr/validar/x", pdfVersao: 1, comMarca: true,
+    });
+    const p2 = trechosDaCapa2(pdf as any, 2);
+    expect(p2.some((s) => s.includes("QR Code de validação"))).toBe(true);
+    expect(p2.some((s) => s.includes("Assinatura ICP-Brasil não implementada"))).toBe(true);
   });
 
   it("sai inteira sem emissor cadastrado", async () => {
-    // Enquanto ninguém preencher a identificação de quem elabora, a capa
-    // perde só o rodapé — o documento continua saindo.
     const t = await capa({ emissorNome: null, emissorLinhas: [], emissorLogoDataUrl: null });
     expect(t).toContain("LEONARDO A. DE ARAUJO LTDA");
     expect(t).toContain("REV. 00");
-    expect(t.some((s) => s.includes("3M CURSOS"))).toBe(false);
   });
 
   it("não estoura com nome de empresa muito longo", async () => {
