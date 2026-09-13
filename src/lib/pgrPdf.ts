@@ -2,10 +2,13 @@
 // Storage: Supabase Storage privado (default) ou Google Drive BYOK (opcional).
 // Banco recebe apenas hash SHA-256 + bucket/path + tamanho — nunca o binário.
 import jsPDF from "jspdf";
-import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadDocumentoSeguro } from "@/lib/secureStorage";
 import { PgrDocumento, PGR_STATUS_LABEL } from "@/lib/pgrTypes";
+import {
+  B, MARGEM, LARGURA, capaTimbrada, ensure, fmtDT, fmtDate, kv, para,
+  rodapePaginas, sub, sumario, tabela, title,
+} from "@/lib/pdfTimbrado";
 import {
   CLASSE_LABEL as CLASSIF_LABEL,
   CLASSE_HEX,
@@ -170,78 +173,8 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   const d = await crypto.subtle.digest("SHA-256", buf);
   return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-const fmtDate = (s?: string | null) => s ? new Date(s.length <= 10 ? s + "T00:00:00" : s).toLocaleDateString("pt-BR") : "—";
-const fmtDT = (s?: string | null) => s ? new Date(s).toLocaleString("pt-BR") : "—";
-/** Dinheiro no formato daqui: R$ 18.000,00. */
 const fmtMoeda = (v: number) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-interface ItemSumario { titulo: string; pagina: number; }
-interface B { doc: jsPDF; y: number; toc: ItemSumario[]; }
-const ensure = (b: B, h: number) => { if (b.y + h > 278) { b.doc.addPage(); b.y = 15; } };
-
-/**
- * Abre uma seção e registra a página no sumário.
- *
- * O número é anotado DEPOIS do `ensure`: se o título não coubesse na página
- * atual, ele salta para a próxima e o sumário apontaria a página errada.
- */
-function title(b: B, t: string) {
-  ensure(b, 10);
-  b.toc.push({ titulo: t, pagina: b.doc.getCurrentPageInfo().pageNumber });
-  b.doc.setFillColor(15, 23, 42); b.doc.rect(10, b.y, 190, 6, "F");
-  b.doc.setTextColor(255); b.doc.setFontSize(10); b.doc.setFont("helvetica", "bold");
-  b.doc.text(t, 12, b.y + 4.2); b.doc.setTextColor(0); b.y += 8;
-}
-
-/** Subtítulo dentro de uma seção — não entra no sumário. */
-function sub(b: B, t: string) {
-  ensure(b, 8);
-  b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(9); b.doc.setTextColor(15, 23, 42);
-  b.doc.text(t, 12, b.y + 4); b.doc.setTextColor(0); b.y += 7;
-}
-
-/**
- * Cabeçalho de tabela que se repete a cada quebra de página.
- *
- * Devolve a função que desenha uma linha garantindo a repetição: sem isso, uma
- * tabela de 80 riscos vira 3 páginas de números sem nome de coluna.
- */
-function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]) {
-  const desenhaCabecalho = () => {
-    b.doc.setFillColor(240, 240, 240); b.doc.rect(10, b.y, 190, 6, "F");
-    b.doc.setFont("helvetica", "bold"); b.doc.setFontSize(7.5); b.doc.setTextColor(30);
-    colunas.forEach((c) => b.doc.text(c.rotulo, c.x, b.y + 4));
-    b.doc.setTextColor(0); b.y += 7;
-  };
-  desenhaCabecalho();
-  return (celulas: string[]) => {
-    const textos = colunas.map((c, i) => b.doc.splitTextToSize(celulas[i] ?? "—", c.w));
-    const h = Math.max(...textos.map((t) => t.length)) * 3.4 + 3;
-    if (b.y + h > 278) { b.doc.addPage(); b.y = 15; desenhaCabecalho(); }
-    b.doc.setDrawColor(225); b.doc.line(10, b.y, 200, b.y);
-    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(7.5);
-    textos.forEach((t, i) => b.doc.text(t, colunas[i].x, b.y + 3.5));
-    b.y += h;
-  };
-}
-function kv(b: B, label: string, value: string, full = false) {
-  ensure(b, 7);
-  b.doc.setFontSize(7); b.doc.setFont("helvetica", "normal"); b.doc.setTextColor(110);
-  b.doc.text(label.toUpperCase(), 12, b.y);
-  b.doc.setTextColor(0); b.doc.setFontSize(9); b.doc.setFont("helvetica", "bold");
-  const lines = b.doc.splitTextToSize(value || "—", full ? 186 : 90);
-  b.doc.text(lines, 12, b.y + 4);
-  b.y += 4 + lines.length * 3.5 + 1;
-}
-function para(b: B, txt: string, size = 8, color: [number, number, number] = [60, 60, 60]) {
-  ensure(b, 6);
-  b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(size); b.doc.setTextColor(...color);
-  const lines = b.doc.splitTextToSize(txt, 186);
-  b.doc.text(lines, 12, b.y + 3);
-  b.y += 3 + lines.length * (size * 0.42);
-  b.doc.setTextColor(0);
-}
 
 function drawMatriz(b: B) {
   ensure(b, 70);
@@ -332,80 +265,34 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const b: B = { doc: pdf, y: 12, toc: [] };
 
-  /*
-   * CAPA
-   *
-   * Papel timbrado, e não banner: marca e número de revisão no alto, título
-   * no corpo, identificação da empresa no rodapé. A faixa azul-marinho que
-   * ocupava o terço superior empurrava tudo para baixo e não dizia nada — o
-   * espaço passou a ser do título.
-   */
-  const MARGEM = 18;
-  const LARGURA = 210;
+  capaTimbrada(pdf, {
+    logoDataUrl: ctx.logoDataUrl,
+    revisao: `REV. ${numeroDaRevisao(ctx.revisoes)}`,
+    meta: `PGR v${pgr.versao} · PDF v${opts.pdfVersao} · ${PGR_STATUS_LABEL[pgr.status]}`,
+    sigla: "PGR",
+    titulo: "Programa de Gerenciamento de Riscos",
+    subtitulo: "Inventário de Riscos e Plano de Ação",
+    nota: "Documento técnico — NR-01",
+    empresaNome: ctx.empresaNome || "Empresa",
+    identificacao: [
+      ctx.empresaCnpj ? `CNPJ: ${ctx.empresaCnpj}` : null,
+      ctx.unidadeNome ? `Unidade: ${ctx.unidadeNome}` : null,
+      ctx.codigoDocumento ? `Código do documento: ${ctx.codigoDocumento}` : null,
+    ].filter(Boolean) as string[],
+    /*
+     * O `||` de antes nunca entrava em ação: sem data de emissão, `fmtDate`
+     * devolve "—", que é texto válido — o lado direito era código morto e a
+     * capa saía com "Emitido em: —". A alternativa é testar o dado, não o
+     * texto dele.
+     */
+    dados: [
+      `Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`,
+      `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`,
+      `Responsável Técnico: ${pgr.resp_tec_nome || "—"}`,
+      `Registro Profissional: ${pgr.resp_tec_registro || "—"}`,
+    ],
+  });
 
-  if (ctx.logoDataUrl) {
-    // Falha de imagem não pode derrubar a geração do documento inteiro: o PGR
-    // sai sem logo, e sai.
-    try { pdf.addImage(ctx.logoDataUrl, "PNG", MARGEM, 14, 24, 24); }
-    catch { /* logo inválida: segue sem ela */ }
-  }
-
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(30);
-  pdf.text(`REV. ${numeroDaRevisao(ctx.revisoes)}`, LARGURA - MARGEM, 22, { align: "right" });
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(120);
-  pdf.text(
-    `PGR v${pgr.versao} · PDF v${opts.pdfVersao} · ${PGR_STATUS_LABEL[pgr.status]}`,
-    LARGURA - MARGEM, 27, { align: "right" },
-  );
-
-  pdf.setDrawColor(200); pdf.setLineWidth(0.4);
-  pdf.line(MARGEM, 42, LARGURA - MARGEM, 42);
-
-  // Título
-  pdf.setTextColor(15, 23, 42); pdf.setFont("helvetica", "bold"); pdf.setFontSize(46);
-  pdf.text("PGR", MARGEM, 96);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(14); pdf.setTextColor(40);
-  pdf.text("Programa de Gerenciamento de Riscos", MARGEM, 107);
-  pdf.setFontSize(11); pdf.setTextColor(110);
-  pdf.text("Inventário de Riscos e Plano de Ação", MARGEM, 114);
-  pdf.setFontSize(9);
-  pdf.text("Documento técnico — NR-01", MARGEM, 121);
-
-  /*
-   * Identificação da empresa no pé da capa.
-   *
-   * Ela ficava logo abaixo do título, e o resto da página descia vazio até a
-   * borda. Aqui embaixo ela fecha a capa e o título fica com o espaço que
-   * pedia — é a proporção do modelo de referência.
-   */
-  pdf.setDrawColor(225); pdf.setLineWidth(0.3);
-  pdf.line(MARGEM, 228, LARGURA - MARGEM, 228);
-  pdf.setFont("helvetica", "bold"); pdf.setFontSize(15); pdf.setTextColor(15, 23, 42);
-  const nomeEmpresa = pdf.splitTextToSize(ctx.empresaNome || "Empresa", LARGURA - MARGEM * 2) as string[];
-  pdf.text(nomeEmpresa, MARGEM, 238);
-  let yDados = 238 + nomeEmpresa.length * 7;
-
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.setTextColor(60);
-  const identificacao: string[] = [];
-  if (ctx.empresaCnpj) identificacao.push(`CNPJ: ${ctx.empresaCnpj}`);
-  if (ctx.unidadeNome) identificacao.push(`Unidade: ${ctx.unidadeNome}`);
-  if (ctx.codigoDocumento) identificacao.push(`Código do documento: ${ctx.codigoDocumento}`);
-  identificacao.forEach((linha) => { pdf.text(linha, MARGEM, yDados); yDados += 5.5; });
-
-  yDados += 4;
-  /*
-   * O `||` de antes nunca entrava em acao: sem data de emissao, `fmtDate`
-   * devolve "—", que e texto valido — o lado direito era codigo morto e a capa
-   * saia com "Emitido em: —". A alternativa e testar o dado, nao o texto dele.
-   */
-  [
-    `Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`,
-    `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`,
-    `Responsável Técnico: ${pgr.resp_tec_nome || "—"}`,
-    `Registro Profissional: ${pgr.resp_tec_registro || "—"}`,
-  ].forEach((linha) => { pdf.text(linha, MARGEM, yDados); yDados += 5.5; });
-
-  pdf.setTextColor(0);
   pdf.addPage(); b.y = 15;
 
   // Controle de revisões (visível logo após a capa)
@@ -788,74 +675,18 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
 
 
 
-  // ── SUMÁRIO ───────────────────────────────────────────────────────────────
-  // Só dá para montar depois de tudo renderizado: antes disso não se sabe em que
-  // página cada seção caiu. A página é inserida na posição 2 (logo após a capa),
-  // o que empurra todo o resto — por isso cada número anotado ganha +1.
-  if (b.toc.length > 0) {
-    pdf.insertPage(2);
-    pdf.setPage(2);
-    const s: B = { doc: pdf, y: 15, toc: [] };
-    pdf.setFillColor(15, 23, 42); pdf.rect(10, s.y, 190, 6, "F");
-    pdf.setTextColor(255); pdf.setFontSize(10); pdf.setFont("helvetica", "bold");
-    pdf.text("Sumário", 12, s.y + 4.2); pdf.setTextColor(0); s.y += 11;
+  sumario(pdf, b.toc);
 
-    b.toc.forEach((item) => {
-      if (s.y > 272) { return; }
-      const pagina = String(item.pagina + 1);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(30);
-      const titulo = pdf.splitTextToSize(item.titulo, 160)[0];
-      pdf.text(titulo, 12, s.y);
-      const larguraTitulo = pdf.getTextWidth(titulo);
-      const larguraPagina = pdf.getTextWidth(pagina);
-      // Linha pontilhada ligando título e página, para o olho não se perder.
-      pdf.setTextColor(170);
-      const inicio = 12 + larguraTitulo + 2;
-      const fim = 198 - larguraPagina - 2;
-      if (fim > inicio) {
-        const pontos = ".".repeat(Math.max(0, Math.floor((fim - inicio) / pdf.getTextWidth("."))));
-        pdf.text(pontos, inicio, s.y);
-      }
-      pdf.setTextColor(30);
-      pdf.text(pagina, 198, s.y, { align: "right" });
-      s.y += 5.4;
-    });
-    pdf.setTextColor(0);
-  }
-
-  // Rodapé com QR + hash + marca d'água
-  const qrDataUrl = await QRCode.toDataURL(opts.qrUrl, { margin: 0, width: 220 });
-  const pages = pdf.getNumberOfPages();
-  for (let p = 1; p <= pages; p++) {
-    pdf.setPage(p);
-    /*
-     * A capa não leva rodapé de página.
-     *
-     * QR, hash, numeração e a nota de assinatura são aparato de documento
-     * técnico e pertencem ao miolo. Na capa eles disputavam espaço com a
-     * identificação e faziam a primeira página parecer a última. O QR segue
-     * em todas as outras — a validação não se perde, muda de lugar.
-     */
-    const ehCapa = p === 1;
-    if (opts.comMarca) {
-      const anyDoc = pdf as any;
-      if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 })); }
-      pdf.setTextColor(180, 50, 50); pdf.setFont("helvetica", "bold"); pdf.setFontSize(90);
-      pdf.text(pgr.status === "em_revisao" ? "EM REVISÃO" : "RASCUNHO", 105, 160, { align: "center", angle: 35 } as any);
-      if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 1 })); }
-      pdf.setTextColor(0);
-    }
-    if (!ehCapa) {
-      pdf.setDrawColor(200); pdf.line(10, 283, 200, 283);
-      pdf.addImage(qrDataUrl, "PNG", 10, 285, 18, 18);
-      pdf.setFontSize(7); pdf.setFont("helvetica", "normal"); pdf.setTextColor(80);
-      pdf.text("QR Code de validação interna — abre o PGR no sistema (acesso restrito à empresa).", 30, 288);
-      pdf.text(opts.qrUrl, 30, 291);
-      pdf.text(`Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}  ·  Página ${p}/${pages}`, 30, 294);
-      pdf.text("Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.", 30, 297);
-      pdf.setTextColor(0);
-    }
-  }
+  await rodapePaginas(pdf, {
+    qrUrl: opts.qrUrl,
+    marca: opts.comMarca ? (pgr.status === "em_revisao" ? "EM REVISÃO" : "RASCUNHO") : null,
+    linhas: (p, total) => [
+      "QR Code de validação interna — abre o PGR no sistema (acesso restrito à empresa).",
+      opts.qrUrl,
+      `Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}  ·  Página ${p}/${total}`,
+      "Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.",
+    ],
+  });
 
   return pdf;
 }

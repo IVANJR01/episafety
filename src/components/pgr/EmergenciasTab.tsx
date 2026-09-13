@@ -10,13 +10,18 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertTriangle, Edit2, Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Edit2, FileText, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { carregarLogoDataUrl } from "@/lib/logoParaPdf";
+import { previsualizarPre } from "@/lib/prePdf";
+import type { PgrDocumento } from "@/lib/pgrTypes";
 
 interface Props {
   pgrId: string;
   empresaId: string;
   canEdit: boolean;
+  /** O PGR de origem: identifica a empresa e o responsável técnico no PDF do PRE. */
+  pgr?: PgrDocumento;
 }
 
 const TIPO_LABEL: Record<string, string> = {
@@ -43,8 +48,9 @@ const vazio = {
   licoes_aprendidas: "",
 };
 
-export default function EmergenciasTab({ pgrId, empresaId, canEdit }: Props) {
+export default function EmergenciasTab({ pgrId, empresaId, canEdit, pgr }: Props) {
   const qc = useQueryClient();
+  const [gerando, setGerando] = useState(false);
   const [aberto, setAberto] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(vazio);
@@ -140,6 +146,37 @@ export default function EmergenciasTab({ pgrId, empresaId, canEdit }: Props) {
     );
   }
 
+  /*
+   * O PRE é documento próprio (NR-01 1.5.6), não capítulo do PGR — o FAQ
+   * GRO/PGR do MTE, pergunta 59, diz que a documentação de emergências fica na
+   * empresa "sem integrar o PGR". Por isso ele é gerado aqui, e não junto do
+   * PDF do PGR.
+   */
+  const gerarPre = async () => {
+    setGerando(true);
+    try {
+      const { data: emp } = await (supabase.from as any)("empresa_config")
+        .select("nome,nome_fantasia,cnpj,logo_url").eq("id", empresaId).maybeSingle();
+      await previsualizarPre({
+        pgrId,
+        status: pgr?.status ?? "rascunho",
+        dataEmissao: pgr?.data_emissao ?? null,
+        respTecNome: pgr?.resp_tec_nome ?? null,
+        respTecRegistro: pgr?.resp_tec_registro ?? null,
+        empresaNome: emp?.nome ?? null,
+        empresaCnpj: emp?.cnpj ?? null,
+        unidadeNome: null,
+        codigoDocumento: pgr ? `PGR v${pgr.versao}` : null,
+        logoDataUrl: await carregarLogoDataUrl(emp?.logo_url ?? null),
+        cenarios: cenarios as any[],
+      });
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao gerar o PRE.");
+    } finally {
+      setGerando(false);
+    }
+  };
+
   const Campo = ({ k, label, rows = 2, ph }: { k: string; label: string; rows?: number; ph?: string }) => (
     <div>
       <Label className="text-xs">{label}</Label>
@@ -154,15 +191,25 @@ export default function EmergenciasTab({ pgrId, empresaId, canEdit }: Props) {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center justify-between gap-2">
             <span>Preparação e resposta a emergências</span>
-            {canEdit && (
-              <Button size="sm" onClick={abrirNovo}>
-                <Plus className="h-4 w-4 mr-1" /> Novo cenário
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={gerarPre}
+                disabled={gerando || cenarios.length === 0}>
+                {gerando
+                  ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  : <FileText className="h-4 w-4 mr-1" />}
+                Gerar PRE
               </Button>
-            )}
+              {canEdit && (
+                <Button size="sm" onClick={abrirNovo}>
+                  <Plus className="h-4 w-4 mr-1" /> Novo cenário
+                </Button>
+              )}
+            </div>
           </CardTitle>
           <CardDescription>
             Cenários decorrentes dos riscos inventariados (NR-01 1.5.6). Um cenário sem
-            origem em risco identificado é apenas papel.
+            origem em risco identificado é apenas papel. O PRE sai como documento próprio,
+            fora do PDF do PGR.
           </CardDescription>
         </CardHeader>
       </Card>
