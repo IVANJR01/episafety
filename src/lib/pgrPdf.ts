@@ -514,40 +514,50 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
 
   // Inventário de riscos — 1.5.7.1 "a" da NR-01.
   title(b, "Inventário de Riscos Ocupacionais");
-  const byGhe = new Map<string, PgrInventarioItem[]>();
-  ctx.inventario.forEach((i) => {
-    const k = i.ghe_id || "_";
-    if (!byGhe.has(k)) byGhe.set(k, []);
-    byGhe.get(k)!.push(i);
-  });
-  if (byGhe.size === 0) para(b, "Nenhum item de inventário registrado.");
-  for (const [gid, items] of byGhe) {
-    ensure(b, 10);
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(15, 23, 42);
-    pdf.text(`GES: ${ctx.ghes[gid] || "Sem GHE"}  (${items.length} riscos)`, 12, b.y + 3);
-    pdf.setTextColor(0); b.y += 6;
-    items.forEach((i) => {
-      ensure(b, 14);
-      pdf.setDrawColor(220); pdf.line(12, b.y, 198, b.y);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
-      pdf.text(`• ${i.perigo_descricao} [${i.grupo}]`, 12, b.y + 4);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+
+  if (ctx.inventario.length === 0) {
+    para(b, "Nenhum item de inventário registrado.");
+  } else {
+    // Para caber no formato A4 retrato (190mm úteis), combinamos campos afins.
+    const addLinha = tabela(b, [
+      { rotulo: "GES / Expostos", x: 12, w: 30 },
+      { rotulo: "Perigo / Fonte", x: 44, w: 40 },
+      { rotulo: "Lesões", x: 86, w: 35 },
+      { rotulo: "Controles", x: 123, w: 45 },
+      { rotulo: "Avaliação", x: 170, w: 28 },
+    ]);
+
+    // Ordena por GHE para manter os itens do mesmo grupo próximos
+    const itensOrdenados = [...ctx.inventario].sort((a, b) => 
+      (ctx.ghes[a.ghe_id || ""] || "").localeCompare(ctx.ghes[b.ghe_id || ""] || "")
+    );
+
+    itensOrdenados.forEach((i) => {
+      const ges = ctx.ghes[i.ghe_id || ""] || "Sem GES";
+      const setor = ctx.setores[i.setor_id || ""] || "Sem setor";
+      const expostos = i.trabalhadores_expostos != null ? `${i.trabalhadores_expostos} expostos` : "";
+      
+      const colGes = [ges, expostos, setor].filter(Boolean).join("\\n");
+      const colPerigo = [`[${i.grupo}] ${i.perigo_descricao}`, i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : ""].filter(Boolean).join("\\n");
+      const colLesoes = i.lesoes || "—";
+      
+      const controlesStr = Array.isArray(i.controles_existentes) 
+        ? i.controles_existentes.join("; ") 
+        : (i.controles_existentes || "—");
+
       const cls = classeLabel(i.classificacao);
-      // Item sem avaliação imprimia "Sev null × Prob null = 0", que num documento
-      // legal sugere risco nulo. Sem nota, o texto diz que a avaliação falta.
       const temAval = i.severidade != null && i.probabilidade != null;
-      const aval = temAval
-        ? `Sev ${i.severidade} × Prob ${i.probabilidade} = ${i.severidade * i.probabilidade}  ·  ${cls}`
-        : "Sem avaliação de severidade e probabilidade";
-      pdf.text(`${aval}  ·  ${i.trabalhadores_expostos ?? 0} expostos`, 12, b.y + 8);
-      if (i.fonte_geradora) { pdf.text(`Fonte: ${i.fonte_geradora}`, 12, b.y + 11.5); b.y += 14; } else { b.y += 11; }
-      const controles = Array.isArray(i.controles_existentes)
-        ? i.controles_existentes.join("; ")
-        : i.controles_existentes;
-      if (controles) {
-        const ll = pdf.splitTextToSize(`Controles: ${controles}`, 186);
-        pdf.text(ll, 12, b.y); b.y += ll.length * 3.3 + 1;
-      }
+      const avalStr = temAval
+        ? `S${i.severidade} x P${i.probabilidade} = ${i.severidade * i.probabilidade}\\n${cls}`
+        : "Sem avaliação";
+
+      addLinha([
+        colGes,
+        colPerigo,
+        colLesoes,
+        controlesStr,
+        avalStr,
+      ]);
     });
     b.y += 2;
   }
