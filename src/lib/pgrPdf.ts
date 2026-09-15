@@ -412,23 +412,50 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   // ── Caracterização da estrutura ────────────────────────────────────────────
   if (ctx.ambientes && ctx.ambientes.length > 0) {
     title(b, "Caracterização dos Ambientes de Trabalho");
+    /*
+     * Tabela, e não uma ficha por ambiente.
+     *
+     * Em prosa, cada ambiente gastava título, linha de características, uma
+     * linha em branco e um parágrafo: perto de 30 mm por ambiente. Com 22
+     * ambientes, a seção sozinha ocupava três páginas e meia do PGR, e quem
+     * precisa comparar dois ambientes tinha que folhear. Aqui a mesma
+     * informação — toda ela, nada resumido — entra numa linha por ambiente,
+     * com o cabeçalho repetido a cada quebra de página.
+     */
+    /*
+     * Duas colunas, e a segunda larga.
+     *
+     * A primeira tentativa foi três colunas — nome, características,
+     * descrição — e medindo o resultado ela ocupava exatamente o mesmo
+     * espaço da prosa: 7 ambientes por página nos dois casos. O que gasta
+     * altura não é o formato, é a largura: o mesmo parágrafo quebrado em 86
+     * mm ocupa o dobro de linhas que em 164 mm. Juntar as duas colunas de
+     * texto foi o que de fato encolheu a seção.
+     */
+    const linhaAmb = tabela(b, [
+      { rotulo: "Ambiente", x: 12, w: 32 },
+      { rotulo: "Características e descrição", x: 46, w: 152 },
+    ]);
     ctx.ambientes.forEach((a: any) => {
-      sub(b, a.codigo ? `${a.codigo} — ${a.nome}` : a.nome);
       const campos: [string, any][] = [
         ["Tipo", a.tipo_ambiente], ["Localização", a.localizacao],
-        ["Área aproximada", a.area_m2 ? `${a.area_m2} m²` : null],
+        ["Área", a.area_m2 ? `${a.area_m2} m²` : null],
         ["Pé-direito", a.pe_direito], ["Piso", a.piso], ["Paredes", a.paredes],
         ["Cobertura", a.cobertura], ["Ventilação", a.ventilacao],
         ["Iluminação", a.iluminacao], ["Climatização", a.climatizacao],
         ["Máquinas e instalações", a.maquinas_instalacoes],
         ["Trabalhadores", a.qtd_trabalhadores],
       ];
-      const linha = campos.filter(([, v]) => v != null && String(v).trim())
-        .map(([r, v]) => `${r}: ${v}`).join("  ·  ");
-      if (linha) para(b, linha, 8);
-      if (a.descricao) para(b, a.descricao, 8);
-      b.y += 1;
+      const caracteristicas = campos
+        .filter(([, v]) => v != null && String(v).trim())
+        .map(([r, v]) => `${r}: ${v}`)
+        .join("  ·  ");
+      linhaAmb([
+        a.codigo ? `${a.codigo} — ${a.nome}` : a.nome,
+        [caracteristicas, a.descricao].filter(Boolean).join("\n") || "—",
+      ]);
     });
+    b.y += 3;
   }
 
   if (ctx.processos && ctx.processos.length > 0) {
@@ -495,30 +522,38 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     title(b, "Funções e Atividades");
     const setorNome = (id: string) =>
       (ctx.setores || []).find((s: any) => s.id === id)?.nome || "—";
+    /*
+     * Mesmo tratamento dos ambientes, pelo mesmo motivo: em prosa, 40 funções
+     * viravam cinco páginas em que cada função repetia o mesmo formato de
+     * "nome / setor / parágrafo". Em tabela, a lista de funções é o que ela
+     * é — uma lista.
+     */
+    const linhaFun = tabela(b, [
+      { rotulo: "Função", x: 12, w: 32 },
+      { rotulo: "Setor, jornada e atividades", x: 46, w: 152 },
+    ]);
     ctx.funcoes.forEach((f: any) => {
-      ensure(b, 12);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
-      pdf.text(`${f.nome}${f.cbo ? `  (CBO ${f.cbo})` : ""}`, 12, b.y + 3);
-      b.y += 5;
       const meta = [
-        `Setor: ${setorNome(f.setor_id)}`,
+        setorNome(f.setor_id),
         f.qtd_trabalhadores != null ? `${f.qtd_trabalhadores} trabalhador(es)` : null,
         f.jornada, f.turnos,
         [f.exige_nr10 && "NR-10", f.exige_nr33 && "NR-33", f.exige_nr35 && "NR-35"]
           .filter(Boolean).join(", ") || null,
       ].filter(Boolean).join("  ·  ");
-      para(b, meta, 8);
-      if (f.descricao_atividades) para(b, f.descricao_atividades, 8);
       const ats = (ctx.atividades || []).filter((a: any) => a.funcao_id === f.id);
-      ats.forEach((a: any) => {
+      const detalhes = ats.map((a: any) => {
         const det = [
           a.caracteristica, a.frequencia, a.duracao, a.postura_esforco,
           a.trabalhadores_envolvidos != null ? `${a.trabalhadores_envolvidos} envolvido(s)` : null,
         ].filter(Boolean).join(" · ");
-        para(b, `– ${a.nome}${det ? `  (${det})` : ""}`, 8);
+        return `– ${a.nome}${det ? `  (${det})` : ""}`;
       });
-      b.y += 1;
+      linhaFun([
+        `${f.nome}${f.cbo ? `\n(CBO ${f.cbo})` : ""}`,
+        [meta, f.descricao_atividades, ...detalhes].filter(Boolean).join("\n") || "—",
+      ]);
     });
+    b.y += 3;
   }
 
   title(b, "Metodologia de Avaliação");
