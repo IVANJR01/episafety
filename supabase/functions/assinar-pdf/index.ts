@@ -114,13 +114,24 @@ Deno.serve(async (req) => {
   try {
     const pfxB64 = Deno.env.get("CERT_A1_PFX_BASE64");
     const senha = Deno.env.get("CERT_A1_SENHA");
-    if (!pfxB64 || !senha) {
-      // Mensagem que diz o que fazer: sem isto, a falha vira "erro 500" e
-      // ninguém descobre que faltava cadastrar o certificado.
+    /*
+     * Qual dos dois falta, e não "algum dos dois".
+     *
+     * A mensagem antiga citava os dois nomes sempre, e quem estava
+     * configurando não tinha como saber se faltava o certificado, a senha ou
+     * os dois. Na configuração do A1 de verdade isso custou uma rodada de
+     * adivinhação: a resposta era a mesma nos três casos. Nomear o que falta
+     * troca essa rodada por uma correção direta.
+     */
+    const faltando = [
+      !pfxB64?.trim() ? "CERT_A1_PFX_BASE64 (conteúdo do .pfx em base64)" : null,
+      !senha ? "CERT_A1_SENHA (senha do certificado)" : null,
+    ].filter(Boolean);
+    if (faltando.length > 0) {
       return new Response(JSON.stringify({
         success: false,
         configuracaoAusente: true,
-        error: "Certificado A1 não configurado. Cadastre CERT_A1_PFX_BASE64 e CERT_A1_SENHA nos segredos do projeto.",
+        error: `Certificado A1 não configurado. Falta cadastrar nos segredos do projeto: ${faltando.join(" e ")}.`,
       }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
