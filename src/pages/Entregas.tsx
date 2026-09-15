@@ -1321,8 +1321,17 @@ export default function Entregas() {
         const { data: resp } = await supabase.functions.invoke("assinar-pdf", {
           body: {
             pdfBase64: b64,
-            motivo: `Ficha de EPI - ${func.nome}`,
-            nome: emp.nome || "SafetySoluções",
+            motivo: `Ficha de EPI - ${func.nome}${emp.nome ? ` - ${emp.nome}` : ""}`,
+            /*
+             * `nome` é o campo /Name do objeto de assinatura: quem a
+             * plataforma declara como responsável pela emissão. Estava
+             * recebendo a empresa do trabalhador, que não assina nada — quem
+             * assina é o certificado da plataforma.
+             *
+             * Isto NÃO muda a identidade exibida pelos leitores de PDF: essa
+             * vem do titular do certificado ICP-Brasil e não é editável.
+             */
+            nome: "Safety Soluções",
             local: emp.endereco || "Brasil",
           },
         });
