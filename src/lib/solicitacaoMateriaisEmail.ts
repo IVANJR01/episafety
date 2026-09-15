@@ -64,11 +64,15 @@ async function obterEmailsCompras(empresaId: string): Promise<string[]> {
     const daEmpresa = separarEmails(empresa?.email).validos;
     if (daEmpresa.length) return daEmpresa;
 
+    // O usuário principal é marcado em usuarios_liberados.is_principal — a
+    // mesma fonte que o AuthContext consulta. Não existe tabela
+    // "user_profiles", nem o papel "principal" em app_role.
     const { data: users } = await supabase
-      .from("user_profiles")
+      .from("usuarios_liberados")
       .select("email")
       .eq("empresa_id", empresaId)
-      .eq("role", "principal")
+      .eq("is_principal", true)
+      .eq("ativo", true)
       .limit(1);
 
     return separarEmails(users?.[0]?.email).validos;

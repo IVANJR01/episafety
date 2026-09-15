@@ -26,7 +26,7 @@ export default function OrdemServicoNovo() {
 
   const [empresas, setEmpresas] = useState<{ id: string; nome: string }[]>([]);
   const [ghes, setGhes] = useState<{ id: string; codigo: string; nome: string; empresa_id: string }[]>([]);
-  const [funcoes, setFuncoes] = useState<{ id: string; nome_funcao: string; ghe_id: string }[]>([]);
+  const [funcoes, setFuncoes] = useState<{ id: string; nome_funcao: string; ghe_id: string; descricao_atividade: string | null }[]>([]);
   const [funcionarios, setFuncionarios] = useState<{ id: string; nome: string; matricula: string | null; empresa_id: string }[]>([]);
 
   const [form, setForm] = useState<any>({
@@ -81,7 +81,7 @@ export default function OrdemServicoNovo() {
     (async () => {
       const { data, error } = await (supabase as any)
         .from("ghe_funcoes")
-        .select("id, nome_funcao, ghe_id, funcao_id")
+        .select("id, nome_funcao, ghe_id, descricao_atividade")
         .eq("ghe_id", form.ghe_id)
         .order("nome_funcao");
       
@@ -140,17 +140,10 @@ export default function OrdemServicoNovo() {
         ? funcoes.find((f: any) => f.id === funcaoId) 
         : null;
       
-      let atividadesFuncao = null;
-      if (fnSelecionada?.funcao_id) {
-        const { data: sstFn } = await (supabase as any)
-          .from("sst_funcoes")
-          .select("descricao_atividades")
-          .eq("id", fnSelecionada.funcao_id)
-          .maybeSingle();
-        if (sstFn?.descricao_atividades) {
-          atividadesFuncao = sstFn.descricao_atividades;
-        }
-      }
+      // A descrição vem da própria linha de ghe_funcoes. Não existe coluna
+      // ligando ghe_funcoes a sst_funcoes, então a consulta que ficava aqui
+      // nunca chegava a rodar.
+      const atividadesFuncao = fnSelecionada?.descricao_atividade || null;
       
       const atividades = atividadesFuncao || ficha.cabecalho.descricao_atividades || form.atividades;
       const medidas = [ficha.cabecalho.medidas_controle_existentes, ficha.cabecalho.medidas_controle_recomendadas]
@@ -226,10 +219,10 @@ export default function OrdemServicoNovo() {
           if (tipoId) {
             // Verifica se o requisito já existe para não dar erro de constraint
             const { data: reqs } = await (supabase as any).from("internal_document_requirements")
-              .select("id").eq("empresa_id", form.empresa_id).eq("tipo_documento_id", tipoId).eq("cargo", fn.nome);
+              .select("id").eq("empresa_id", form.empresa_id).eq("tipo_documento_id", tipoId).eq("cargo", fn.nome_funcao);
             if (!reqs || reqs.length === 0) {
               await (supabase as any).from("internal_document_requirements").insert({
-                empresa_id: form.empresa_id, tipo_documento_id: tipoId, cargo: fn.nome, obrigatorio: true, created_by: user?.id
+                empresa_id: form.empresa_id, tipo_documento_id: tipoId, cargo: fn.nome_funcao, obrigatorio: true, created_by: user?.id
               });
             }
           }
