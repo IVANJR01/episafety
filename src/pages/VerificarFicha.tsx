@@ -66,7 +66,14 @@ export default function VerificarFicha() {
   const verificar = async (valor: string) => {
     const limpo = limpar(valor);
     if (limpo.length !== 40) {
-      setErro("O código tem 40 caracteres. Confira se copiou inteiro.");
+      /*
+       * Campo vazio e código pela metade são enganos diferentes. "Confira se
+       * copiou inteiro" num campo em branco acusa quem ainda não digitou
+       * nada — foi o que a tela fez para quem só clicou em Verificar.
+       */
+      setErro(limpo.length === 0
+        ? "Digite ou cole o código que está impresso embaixo da assinatura."
+        : `Faltam ${40 - limpo.length} caracteres: o código tem 40.`);
       setResultado(null);
       setNaoAchou(false);
       return;
@@ -96,13 +103,13 @@ export default function VerificarFicha() {
   }, [codigoDaUrl]);
 
   return (
-    <div className="min-h-screen bg-muted/30 p-4 flex justify-center">
-      <div className="w-full max-w-lg space-y-4 py-6">
+    <div className="min-h-screen bg-muted/30 px-4 py-10 flex justify-center sm:items-center">
+      <div className="w-full max-w-xl space-y-4">
         <div className="flex items-center gap-3">
           <ShieldCheck className="h-10 w-10 text-primary shrink-0" />
           <div>
-            <h1 className="text-xl font-bold">Verificação de Ficha de EPI</h1>
-            <p className="text-xs text-muted-foreground">SafetySoluções — conferência de entrega assinada</p>
+            <h1 className="text-xl font-bold tracking-tight">Verificação de Ficha de EPI</h1>
+            <p className="text-sm text-muted-foreground">SafetySoluções — conferência de entrega assinada</p>
           </div>
         </div>
 
@@ -123,7 +130,17 @@ export default function VerificarFicha() {
                 spellCheck={false}
                 inputMode="text"
               />
-              <Button onClick={() => { navigate(`/verificar/${codigo}`); void verificar(codigo); }} disabled={buscando}>
+              <Button
+                onClick={() => {
+                  // Só troca a URL quando há código completo: senão a barra de
+                  // endereços passa a mostrar /verificar/abc, que não abre nada
+                  // se a pessoa compartilhar ou recarregar.
+                  if (limpar(codigo).length === 40) navigate(`/verificar/${limpar(codigo)}`);
+                  void verificar(codigo);
+                }}
+                disabled={buscando}
+                aria-label="Verificar"
+              >
                 {buscando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 <span className="ml-2 hidden sm:inline">Verificar</span>
               </Button>
@@ -206,16 +223,35 @@ export default function VerificarFicha() {
         )}
 
         {/*
-          * O limite fica escrito na própria página, e não só na documentação:
-          * quem consulta precisa saber o que este "confere" quer dizer, para
-          * não tomar a conferência por assinatura qualificada.
+          * O alcance de cada conferência fica escrito na própria página, e não
+          * só na documentação: são duas coisas distintas, e quem fiscaliza
+          * precisa saber qual delas está olhando.
+          *
+          * O texto mudou quando o A1 da ICP-Brasil entrou em produção: antes
+          * dizia que a ficha NÃO tinha assinatura qualificada, e passou a ter.
           */}
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          O nome do trabalhador aparece abreviado e nenhum dado pessoal além dos exibidos
-          acima é divulgado. Esta conferência mostra que a entrega existe no sistema com a
-          assinatura registrada, conforme a MP 2.200-2/01, Art. 10º, §2. Não é assinatura
-          qualificada ICP-Brasil e não substitui o validador oficial do ITI.
-        </p>
+        <div className="rounded-lg border bg-background/60 p-4 text-xs leading-relaxed text-muted-foreground space-y-2">
+          <p>
+            <b className="text-foreground">O que esta página confere:</b> que a entrega existe
+            no sistema com a assinatura do trabalhador registrada, conforme a MP 2.200-2/01,
+            Art. 10º, §2. O nome do trabalhador aparece abreviado e nenhum dado pessoal além
+            dos exibidos acima é divulgado.
+          </p>
+          <p>
+            <b className="text-foreground">O que o arquivo PDF traz:</b> assinatura digital
+            ICP-Brasil qualificada, do emissor da ficha. Essa parte se confere no validador
+            oficial do governo,{" "}
+            <a
+              href="https://validar.iti.gov.br"
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary underline underline-offset-2"
+            >
+              validar.iti.gov.br
+            </a>
+            , enviando o próprio arquivo.
+          </p>
+        </div>
       </div>
     </div>
   );
