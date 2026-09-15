@@ -9,6 +9,7 @@ import {
   B, MARGEM, LARGURA, capaTimbrada, ensure, fmtDT, fmtDate, kv, para,
   rodapePaginas, sub, sumario, tabela, title,
 } from "@/lib/pdfTimbrado";
+import { caracteristicasNaoRepetidas } from "@/lib/pgrCaracteristicas";
 import {
   CLASSE_LABEL as CLASSIF_LABEL,
   CLASSE_HEX,
@@ -446,10 +447,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
         ["Máquinas e instalações", a.maquinas_instalacoes],
         ["Trabalhadores", a.qtd_trabalhadores],
       ];
-      const caracteristicas = campos
-        .filter(([, v]) => v != null && String(v).trim())
-        .map(([r, v]) => `${r}: ${v}`)
-        .join("  ·  ");
+      // Só o que a descrição já não disse — senão cada ambiente sai com o
+      // mesmo conteúdo escrito duas vezes, uma em campo e outra em texto.
+      const caracteristicas = caracteristicasNaoRepetidas(campos, a.descricao).join("  ·  ");
       linhaAmb([
         a.codigo ? `${a.codigo} — ${a.nome}` : a.nome,
         [caracteristicas, a.descricao].filter(Boolean).join("\n") || "—",
@@ -482,18 +482,34 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     title(b, "Setores e Grupos de Exposição Semelhante");
     if (ctx.setores && ctx.setores.length > 0) {
       sub(b, "Setores");
-      const linha = tabela(b, [
-        { rotulo: "Setor", x: 12, w: 45 },
-        { rotulo: "Responsável", x: 60, w: 40 },
-        { rotulo: "Trabalhadores", x: 103, w: 22 },
-        { rotulo: "Jornada / turnos", x: 128, w: 68 },
-      ]);
-      ctx.setores.forEach((s: any) => linha([
-        s.codigo ? `${s.codigo} — ${s.nome}` : s.nome,
-        s.responsavel_setor || "—",
-        s.qtd_trabalhadores != null ? String(s.qtd_trabalhadores) : "—",
-        [s.jornada_turnos, s.turnos].filter(Boolean).join(" · ") || "—",
-      ]));
+      /*
+       * Coluna inteiramente vazia não é impressa.
+       *
+       * Responsável, trabalhadores e jornada raramente estão preenchidos, e a
+       * tabela saía com três colunas de travessão de ponta a ponta —
+       * ocupando metade da largura para informar que não há informação. O
+       * nome do setor sempre existe; o resto entra só se algum setor tiver.
+       */
+      const colunasSetor: Array<{
+        rotulo: string; largura: number; valor: (s: any) => string;
+      }> = [
+        { rotulo: "Setor", largura: 60,
+          valor: (s) => (s.codigo ? `${s.codigo} — ${s.nome}` : s.nome) },
+        { rotulo: "Responsável", largura: 45, valor: (s) => s.responsavel_setor || "" },
+        { rotulo: "Trabalhadores", largura: 25,
+          valor: (s) => (s.qtd_trabalhadores != null ? String(s.qtd_trabalhadores) : "") },
+        { rotulo: "Jornada / turnos", largura: 60,
+          valor: (s) => [s.jornada_turnos, s.turnos].filter(Boolean).join(" · ") },
+      ].filter((c, i) => i === 0 || ctx.setores!.some((s: any) => c.valor(s).trim() !== ""));
+
+      let xSetor = 12;
+      const linha = tabela(b, colunasSetor.map((c) => {
+        const col = { rotulo: c.rotulo, x: xSetor, w: c.largura - 3 };
+        xSetor += c.largura;
+        return col;
+      }));
+      ctx.setores.forEach((s: any) =>
+        linha(colunasSetor.map((c) => c.valor(s) || "—")));
       b.y += 3;
     }
     if (ctx.gesDetalhes && ctx.gesDetalhes.length > 0) {
@@ -533,13 +549,17 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       { rotulo: "Setor, jornada e atividades", x: 46, w: 152 },
     ]);
     ctx.funcoes.forEach((f: any) => {
-      const meta = [
-        setorNome(f.setor_id),
-        f.qtd_trabalhadores != null ? `${f.qtd_trabalhadores} trabalhador(es)` : null,
-        f.jornada, f.turnos,
-        [f.exige_nr10 && "NR-10", f.exige_nr33 && "NR-33", f.exige_nr35 && "NR-35"]
-          .filter(Boolean).join(", ") || null,
-      ].filter(Boolean).join("  ·  ");
+      const meta = caracteristicasNaoRepetidas(
+        [
+          ["Setor", setorNome(f.setor_id)],
+          ["Trabalhadores", f.qtd_trabalhadores],
+          ["Jornada", f.jornada],
+          ["Turnos", f.turnos],
+          ["Treinamentos", [f.exige_nr10 && "NR-10", f.exige_nr33 && "NR-33", f.exige_nr35 && "NR-35"]
+            .filter(Boolean).join(", ") || null],
+        ],
+        f.descricao_atividades,
+      ).join("  ·  ");
       const ats = (ctx.atividades || []).filter((a: any) => a.funcao_id === f.id);
       const detalhes = ats.map((a: any) => {
         const det = [
