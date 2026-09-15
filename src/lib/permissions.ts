@@ -86,6 +86,43 @@ export const MODULOS = [
 ] as const;
 
 /**
+ * Os módulos agrupados por assunto, na ordem em que a tela de permissões os
+ * mostra.
+ *
+ * São 24 módulos, e a lista corrida virava uma parede: quem precisava liberar
+ * "Estoque por Unidade" rolava por CAT, PPP e eSocial no caminho. O
+ * agrupamento é só apresentação — nenhuma permissão depende dele.
+ *
+ * Todo módulo precisa estar em exatamente um grupo. Um módulo esquecido aqui
+ * some da tela, e uma permissão que não aparece é uma permissão que ninguém
+ * revisa; `permissoes.grupos.test.ts` cobre isso.
+ */
+export const GRUPOS_MODULOS: { titulo: string; modulos: string[] }[] = [
+  { titulo: "Visão geral", modulos: ["dashboard", "relatorios"] },
+  {
+    titulo: "Controle de EPI",
+    modulos: ["epis", "estoque_contrato", "solicitacoes_materiais", "entregas"],
+  },
+  {
+    titulo: "Cadastros",
+    modulos: ["cadastro_empresas", "cadastro_funcionarios", "cadastro_usuarios"],
+  },
+  {
+    titulo: "Documentos e programas de SST",
+    modulos: ["pgr", "ltcat", "ppp", "cat", "esocial", "arquivo_digital"],
+  },
+  {
+    titulo: "Saúde ocupacional",
+    modulos: ["exames", "aso", "portal_rh", "rh"],
+  },
+  {
+    titulo: "Treinamentos e inspeções",
+    modulos: ["treinamentos", "dds", "video_treinamentos", "inspecoes_se"],
+  },
+  { titulo: "Comercial", modulos: ["comercial"] },
+];
+
+/**
  * Check if a user has a specific permission.
  * If modulosPermitidos is empty, user has full access (no restrictions).
  * Legacy bare key (e.g., "epis") grants all actions for that module.
