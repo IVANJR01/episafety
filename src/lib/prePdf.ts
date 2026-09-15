@@ -223,11 +223,10 @@ export async function render(
   await rodapePaginas(pdf, {
     qrUrl: opts.qrUrl,
     marca: opts.comMarca ? "RASCUNHO" : null,
-    linhas: (p, total) => [
-      "QR Code de validação interna — abre o documento no sistema (acesso restrito à empresa).",
-      opts.qrUrl,
-      `Gerado em ${fmtDT(new Date().toISOString())}  ·  Página ${p}/${total}`,
-      "Plano de Preparação para Emergências (NR-01 1.5.6). Documento próprio, não integra o PGR.",
+    linhas: () => [
+      `Validação interna: ${opts.qrUrl}`,
+      `Gerado em ${fmtDT(new Date().toISOString())}`,
+      "Plano de Preparação para Emergências (NR-01 1.5.6)  ·  documento próprio, não integra o PGR.",
     ],
   });
 

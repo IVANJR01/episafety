@@ -16,7 +16,13 @@ export const fmtDT = (s?: string | null) => s ? new Date(s).toLocaleString("pt-B
 
 export interface ItemSumario { titulo: string; pagina: number; }
 /** O bloco em construção: documento, altura corrente e o que já virou seção. */
-export interface B { doc: jsPDF; y: number; toc: ItemSumario[]; }
+export interface B {
+  doc: jsPDF;
+  y: number;
+  toc: ItemSumario[];
+  /** Contador de seções, preenchido por `title()`. Começa em 1. */
+  secao?: number;
+}
 
 export const ensure = (b: B, h: number) => { if (b.y + h > 278) { b.doc.addPage(); b.y = 15; } };
 
@@ -26,12 +32,34 @@ export const ensure = (b: B, h: number) => { if (b.y + h > 278) { b.doc.addPage(
  * O número é anotado DEPOIS do `ensure`: se o título não coubesse na página
  * atual, ele salta para a próxima e o sumário apontaria a página errada.
  */
+/**
+ * Abre uma seção numerada e registra a página no sumário.
+ *
+ * A faixa preta de ponta a ponta que havia aqui pesava a página inteira: num
+ * documento com onze seções, são onze tarjas pretas atravessando o A4, e o
+ * que devia hierarquizar acabava competindo com o texto. O lugar do peso é o
+ * número e o nome da seção; uma régua fina abaixo fecha o bloco.
+ *
+ * O número não é enfeite: documento técnico se cita por seção ("ver 4.2"), e
+ * sem numeração o sumário só serve para achar a página.
+ */
 export function title(b: B, t: string) {
-  ensure(b, 10);
-  b.toc.push({ titulo: t, pagina: b.doc.getCurrentPageInfo().pageNumber });
-  b.doc.setFillColor(15, 23, 42); b.doc.rect(10, b.y, 190, 6, "F");
-  b.doc.setTextColor(255); b.doc.setFontSize(10); b.doc.setFont("helvetica", "bold");
-  b.doc.text(t, 12, b.y + 4.2); b.doc.setTextColor(0); b.y += 8;
+  ensure(b, 14);
+  const n = b.secao ?? 1;
+  b.secao = n + 1;
+  const numerado = `${n}. ${t}`;
+  b.toc.push({ titulo: numerado, pagina: b.doc.getCurrentPageInfo().pageNumber });
+
+  b.y += 2;
+  b.doc.setFillColor(15, 23, 42);
+  b.doc.rect(10, b.y - 0.5, 3, 6, "F");
+  b.doc.setTextColor(15, 23, 42); b.doc.setFontSize(11.5); b.doc.setFont("helvetica", "bold");
+  b.doc.text(numerado, 16, b.y + 4.2);
+  b.y += 7;
+  b.doc.setDrawColor(200); b.doc.setLineWidth(0.3);
+  b.doc.line(10, b.y, 200, b.y);
+  b.doc.setTextColor(0);
+  b.y += 4;
 }
 
 /** Subtítulo dentro de uma seção — não entra no sumário. */
@@ -55,33 +83,72 @@ export function tabela(b: B, colunas: { rotulo: string; x: number; w: number }[]
     b.doc.setTextColor(0); b.y += 7;
   };
   desenhaCabecalho();
-  return (celulas: string[]) => {
+  /**
+   * Desenha uma linha. `corBarra` pinta uma tarja fina na margem esquerda —
+   * é como a classificação de risco aparece no inventário sem gastar uma
+   * coluna: a mesma cor da legenda da matriz, na altura da linha inteira.
+   */
+  return (celulas: string[], corBarra?: [number, number, number]) => {
     const textos = colunas.map((c, i) => b.doc.splitTextToSize(celulas[i] ?? "—", c.w));
     const h = Math.max(...textos.map((t) => t.length)) * 3.4 + 3;
     if (b.y + h > 278) { b.doc.addPage(); b.y = 15; desenhaCabecalho(); }
-    b.doc.setDrawColor(225); b.doc.line(10, b.y, 200, b.y);
+    b.doc.setDrawColor(225); b.doc.setLineWidth(0.2); b.doc.line(10, b.y, 200, b.y);
+    if (corBarra) {
+      b.doc.setFillColor(...corBarra);
+      b.doc.rect(10, b.y, 1.8, h, "F");
+    }
     b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(7.5);
     textos.forEach((t, i) => b.doc.text(t, colunas[i].x, b.y + 3.5));
     b.y += h;
   };
 }
 
+/**
+ * Rótulo em cima, valor embaixo — quebrando de página quando o valor é longo.
+ *
+ * Mesmo defeito que o parágrafo tinha: um `ensure` só, para o rótulo, e
+ * depois o valor inteiro de uma vez. O campo "Método" da Metodologia de
+ * Avaliação guarda um texto de vários parágrafos, e ele saía por cima do
+ * rodapé.
+ */
 export function kv(b: B, label: string, value: string, full = false) {
-  ensure(b, 7);
+  ensure(b, 9);
   b.doc.setFontSize(7); b.doc.setFont("helvetica", "normal"); b.doc.setTextColor(110);
   b.doc.text(label.toUpperCase(), 12, b.y);
-  b.doc.setTextColor(0); b.doc.setFontSize(9); b.doc.setFont("helvetica", "bold");
-  const lines = b.doc.splitTextToSize(value || "—", full ? 186 : 90);
-  b.doc.text(lines, 12, b.y + 4);
-  b.y += 4 + lines.length * 3.5 + 1;
+  b.doc.setFontSize(9); b.doc.setFont("helvetica", "bold");
+  const linhas = b.doc.splitTextToSize(value || "—", full ? 186 : 90) as string[];
+  b.y += 4;
+  linhas.forEach((linha) => {
+    ensure(b, 5);
+    b.doc.setTextColor(0); b.doc.setFontSize(9); b.doc.setFont("helvetica", "bold");
+    b.doc.text(linha, 12, b.y);
+    b.y += 3.5;
+  });
+  b.y += 1;
 }
 
+/**
+ * Parágrafo que quebra de página no meio, quando precisa.
+ *
+ * Antes o texto inteiro era escrito de uma vez depois de um único `ensure`:
+ * cabendo a primeira linha, as outras vinte iam junto — e passavam por cima
+ * do rodapé de validação. No PGR real isso aconteceu na Metodologia de
+ * Avaliação, com o texto do documento impresso em cima do QR Code.
+ *
+ * Agora a altura é conferida linha a linha, que é a unidade que de fato cabe
+ * ou não cabe.
+ */
 export function para(b: B, txt: string, size = 8, color: [number, number, number] = [60, 60, 60]) {
-  ensure(b, 6);
-  b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(size); b.doc.setTextColor(...color);
-  const lines = b.doc.splitTextToSize(txt, 186);
-  b.doc.text(lines, 12, b.y + 3);
-  b.y += 3 + lines.length * (size * 0.42);
+  b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(size);
+  const linhas = b.doc.splitTextToSize(txt, 186) as string[];
+  const alturaLinha = size * 0.42;
+  b.y += 3;
+  linhas.forEach((linha) => {
+    ensure(b, alturaLinha + 2);
+    b.doc.setFont("helvetica", "normal"); b.doc.setFontSize(size); b.doc.setTextColor(...color);
+    b.doc.text(linha, 12, b.y);
+    b.y += alturaLinha;
+  });
   b.doc.setTextColor(0);
 }
 
@@ -170,9 +237,11 @@ export function sumario(pdf: jsPDF, toc: ItemSumario[]) {
   pdf.insertPage(2);
   pdf.setPage(2);
   let y = 15;
-  pdf.setFillColor(15, 23, 42); pdf.rect(10, y, 190, 6, "F");
-  pdf.setTextColor(255); pdf.setFontSize(10); pdf.setFont("helvetica", "bold");
-  pdf.text("Sumário", 12, y + 4.2); pdf.setTextColor(0); y += 11;
+  pdf.setTextColor(15, 23, 42); pdf.setFontSize(13); pdf.setFont("helvetica", "bold");
+  pdf.text("Sumário", 10, y + 4);
+  y += 7;
+  pdf.setDrawColor(200); pdf.setLineWidth(0.3); pdf.line(10, y, 200, y);
+  pdf.setTextColor(0); y += 7;
 
   toc.forEach((item) => {
     if (y > 272) return;
@@ -220,18 +289,30 @@ export async function rodapePaginas(pdf: jsPDF, opts: RodapeOpts) {
   for (let p = 1; p <= total; p++) {
     pdf.setPage(p);
     if (opts.marca) {
+      /*
+       * Marca d'água discreta. A 18% ela atravessava o texto e o documento
+       * ficava com cara de cópia rasurada — quem lê precisa ler. A 8% ainda
+       * se vê de longe, que é o que a marca precisa fazer.
+       */
       const anyDoc = pdf as any;
-      if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 })); }
-      pdf.setTextColor(180, 50, 50); pdf.setFont("helvetica", "bold"); pdf.setFontSize(90);
-      pdf.text(opts.marca, 105, 160, { align: "center", angle: 35 } as any);
+      if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 0.08 })); }
+      pdf.setTextColor(150, 40, 40); pdf.setFont("helvetica", "bold"); pdf.setFontSize(78);
+      pdf.text(opts.marca, 105, 165, { align: "center", angle: 35 } as any);
       if (typeof anyDoc.GState === "function") { anyDoc.setGState(new anyDoc.GState({ opacity: 1 })); }
       pdf.setTextColor(0);
     }
     if (p === 1) continue;
-    pdf.setDrawColor(200); pdf.line(10, 283, 200, 283);
-    pdf.addImage(qrDataUrl, "PNG", 10, 285, 18, 18);
-    pdf.setFontSize(7); pdf.setFont("helvetica", "normal"); pdf.setTextColor(80);
-    opts.linhas(p, total).forEach((linha, i) => pdf.text(linha, 30, 288 + i * 3));
+    pdf.setDrawColor(215); pdf.setLineWidth(0.3); pdf.line(10, 284, 200, 284);
+    pdf.addImage(qrDataUrl, "PNG", 10, 286, 15, 15);
+    pdf.setFontSize(6.5); pdf.setFont("helvetica", "normal"); pdf.setTextColor(110);
+    /*
+     * Três linhas, não quatro, e a numeração fora delas: a página é o que
+     * mais se procura num documento impresso, e estava no meio de uma frase
+     * de 6,5pt entre o hash e o aviso de assinatura.
+     */
+    opts.linhas(p, total).slice(0, 3).forEach((linha, i) => pdf.text(linha, 28, 289 + i * 3));
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(60);
+    pdf.text(`Página ${p} de ${total}`, 200, 295, { align: "right" });
     pdf.setTextColor(0);
   }
 }

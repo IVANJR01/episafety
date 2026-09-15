@@ -32,6 +32,10 @@ export interface PgrInventarioItem {
   necessita_acao: boolean;
   trabalhadores_expostos: number | null;
   controles_existentes: string | null;
+  /* Vieram com a tabela do inventário e não estavam declarados: o `any`
+     implícito escondia erro de digitação em nome de coluna. */
+  setor_id?: string | null;
+  lesoes?: string | null;
 }
 export interface PgrAcaoItem {
   id: string;
@@ -285,12 +289,22 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
      * capa saía com "Emitido em: —". A alternativa é testar o dado, não o
      * texto dele.
      */
+    /*
+     * Campo sem dado não vai para a capa.
+     *
+     * Saía "Vigência: — a —" e "Registro Profissional: —" na primeira página
+     * de um documento que vai para fiscalização: travessão ali não informa
+     * nada e faz o documento parecer abandonado no meio do preenchimento. O
+     * que falta aparece nas pendências, antes de publicar.
+     */
     dados: [
       `Emitido em: ${fmtDate(pgr.data_emissao || new Date().toISOString())}`,
-      `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`,
-      `Responsável Técnico: ${pgr.resp_tec_nome || "—"}`,
-      `Registro Profissional: ${pgr.resp_tec_registro || "—"}`,
-    ],
+      pgr.data_vigencia_inicio && pgr.data_vigencia_fim
+        ? `Vigência: ${fmtDate(pgr.data_vigencia_inicio)} a ${fmtDate(pgr.data_vigencia_fim)}`
+        : null,
+      pgr.resp_tec_nome ? `Responsável Técnico: ${pgr.resp_tec_nome}` : null,
+      pgr.resp_tec_registro ? `Registro Profissional: ${pgr.resp_tec_registro}` : null,
+    ].filter(Boolean) as string[],
   });
 
   pdf.addPage(); b.y = 15;
@@ -534,11 +548,11 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
 
     itensOrdenados.forEach((i) => {
       const ges = ctx.ghes[i.ghe_id || ""] || "Sem GES";
-      const setor = ctx.setores[i.setor_id || ""] || "Sem setor";
+      const setor = (ctx.setores || []).find((x: any) => x.id === i.setor_id)?.nome || "Sem setor";
       const expostos = i.trabalhadores_expostos != null ? `${i.trabalhadores_expostos} expostos` : "";
       
-      const colGes = [ges, expostos, setor].filter(Boolean).join("\\n");
-      const colPerigo = [`[${i.grupo}] ${i.perigo_descricao}`, i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : ""].filter(Boolean).join("\\n");
+      const colGes = [ges, expostos, setor].filter(Boolean).join("\n");
+      const colPerigo = [`[${i.grupo}] ${i.perigo_descricao}`, i.fonte_geradora ? `Fonte: ${i.fonte_geradora}` : ""].filter(Boolean).join("\n");
       const colLesoes = i.lesoes || "—";
       
       const controlesStr = Array.isArray(i.controles_existentes) 
@@ -548,16 +562,13 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
       const cls = classeLabel(i.classificacao);
       const temAval = i.severidade != null && i.probabilidade != null;
       const avalStr = temAval
-        ? `S${i.severidade} x P${i.probabilidade} = ${i.severidade * i.probabilidade}\\n${cls}`
+        ? `S${i.severidade} x P${i.probabilidade} = ${i.severidade * i.probabilidade}\n${cls}`
         : "Sem avaliação";
 
-      addLinha([
-        colGes,
-        colPerigo,
-        colLesoes,
-        controlesStr,
-        avalStr,
-      ]);
+      // A cor é a mesma da legenda da matriz, logo acima: quem lê o inventário
+      // enxerga o nível de risco antes de ler a conta que levou até ele.
+      const cor = i.classificacao ? CLASSE_HEX[i.classificacao as PgrClasse] : undefined;
+      addLinha([colGes, colPerigo, colLesoes, controlesStr, avalStr], cor);
     });
     b.y += 2;
   }
@@ -573,18 +584,36 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     pdf.text(`• ${a.descricao}`, 12, b.y + 4);
     pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
     const risco = a.classe_risco ? classeLabel(a.classe_risco) : "—";
-    pdf.text(`Status: ${a.status}  ·  Risco: ${risco}  ·  Prazo: ${fmtDate(a.prazo)}  ·  Conclusão: ${fmtDate(a.data_conclusao)}`, 12, b.y + 8);
+    // Um ponto na cor da classe: a mesma legenda da matriz e do inventário,
+    // para o plano e o risco que o originou se lerem juntos.
+    if (a.classe_risco && CLASSE_HEX[a.classe_risco as PgrClasse]) {
+      const [cr, cg, cb] = CLASSE_HEX[a.classe_risco as PgrClasse];
+      pdf.setFillColor(cr, cg, cb);
+      pdf.circle(13.2, b.y + 6.9, 1.1, "F");
+    }
+    pdf.text(
+      `Status: ${a.status}  ·  Risco: ${risco}  ·  Prazo: ${fmtDate(a.prazo)}  ·  Conclusão: ${fmtDate(a.data_conclusao)}`,
+      a.classe_risco ? 16 : 12, b.y + 8,
+    );
+    /*
+     * 5W2H com os rótulos em português.
+     *
+     * O método se chama assim, mas o documento é brasileiro e vai para
+     * fiscalização: "Why", "Who", "Where" no meio de um texto em português
+     * fazem o plano parecer planilha importada pela metade. O nome do método
+     * fica no título da seção; as linhas dizem o que perguntam.
+     */
     const linhas = [
-      a.what && `What: ${a.what}`,
-      a.why && `Why: ${a.why}`,
-      a.who && `Who: ${a.who}`,
-      a.where_local && `Where: ${a.where_local}`,
-      a.prazo && `When: até ${fmtDate(a.prazo)}`,
-      a.how && `How: ${a.how}`,
+      a.what && `O que será feito: ${a.what}`,
+      a.why && `Por quê: ${a.why}`,
+      a.who && `Responsável: ${a.who}`,
+      a.where_local && `Onde: ${a.where_local}`,
+      a.prazo && `Quando: até ${fmtDate(a.prazo)}`,
+      a.how && `Como: ${a.how}`,
       // `toFixed` escreve no formato americano: "R$ 18000.00". Num documento em
       // português, com valores que chegam à casa dos milhares, isso se lê
       // errado — o ponto vira separador de milhar aos olhos de quem assina.
-      a.how_much != null && `How much: ${fmtMoeda(a.how_much)}`,
+      a.how_much != null && `Quanto custa: ${fmtMoeda(a.how_much)}`,
     ].filter(Boolean) as string[];
     b.y += 11;
     linhas.forEach((l) => {
@@ -655,7 +684,9 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   const resps = ctx.responsaveis || [];
   if (resps.length === 0) {
     kv(b, "Responsável Técnico", pgr.resp_tec_nome || "—");
-    kv(b, "Registro Profissional", pgr.resp_tec_registro || "—");
+    // Registro em branco vira "REGISTRO PROFISSIONAL —" logo abaixo do nome
+    // de quem assina: um campo vazio anunciado no fecho do documento.
+    if (pgr.resp_tec_registro) kv(b, "Registro Profissional", pgr.resp_tec_registro);
   } else {
     resps.forEach((r) => {
       ensure(b, 10);
@@ -671,7 +702,33 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
     });
   }
   para(b, "Assinatura visual com hash SHA-256 e MFA verificado. Não constitui assinatura digital ICP-Brasil.");
-  if (ctx.assinaturas.length === 0) para(b, "Nenhuma assinatura visual registrada até a geração deste PDF.");
+  /*
+   * Sem assinatura registrada, o documento ganha as linhas para assinar à
+   * mão.
+   *
+   * Antes o fecho era a frase "Nenhuma assinatura visual registrada" e mais
+   * nada — um PGR impresso para levar à fiscalização terminava sem lugar
+   * onde assinar, e o item 1.5.7.2 da NR-01 pede documento datado e assinado.
+   * As duas linhas são as duas responsabilidades que a norma distingue: quem
+   * elabora tecnicamente e a organização, que responde pelo programa.
+   */
+  if (ctx.assinaturas.length === 0) {
+    para(b, "Nenhuma assinatura eletrônica registrada até a geração deste PDF.");
+    ensure(b, 34);
+    b.y += 10;
+    const linhaAssinatura = (x: number, nome: string, papel: string) => {
+      pdf.setDrawColor(120); pdf.setLineWidth(0.3);
+      pdf.line(x, b.y, x + 78, b.y);
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5); pdf.setTextColor(15, 23, 42);
+      pdf.text(nome, x, b.y + 4);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.setTextColor(110);
+      pdf.text(papel, x, b.y + 7.5);
+      pdf.setTextColor(0);
+    };
+    linhaAssinatura(12, pgr.resp_tec_nome || "", "Responsável técnico pela elaboração");
+    linhaAssinatura(110, ctx.empresaNome || "", "Pela organização (NR-01, item 1.5.7.2)");
+    b.y += 14;
+  }
   ctx.assinaturas.forEach((a) => {
     ensure(b, 18);
     pdf.setDrawColor(180); pdf.line(12, b.y + 12, 100, b.y + 12);
@@ -690,11 +747,15 @@ export async function render(ctx: PgrPdfContext, opts: { qrUrl: string; pdfVersa
   await rodapePaginas(pdf, {
     qrUrl: opts.qrUrl,
     marca: opts.comMarca ? (pgr.status === "em_revisao" ? "EM REVISÃO" : "RASCUNHO") : null,
-    linhas: (p, total) => [
-      "QR Code de validação interna — abre o PGR no sistema (acesso restrito à empresa).",
-      opts.qrUrl,
-      `Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}  ·  Página ${p}/${total}`,
-      "Documento técnico interno. Assinatura ICP-Brasil não implementada nesta fase.",
+    /*
+     * Três linhas em vez de quatro: a explicação do que é um QR Code ocupava
+     * a linha mais larga do rodapé para dizer o que o próprio QR ao lado já
+     * diz. O endereço fica, porque quem tem o papel na mão precisa digitá-lo.
+     */
+    linhas: () => [
+      `Validação interna: ${opts.qrUrl}`,
+      `Gerado em ${fmtDT(new Date().toISOString())}  ·  PDF v${opts.pdfVersao}  ·  PGR v${pgr.versao}`,
+      "Documento técnico interno  ·  assinatura ICP-Brasil não aplicada a este documento.",
     ],
   });
 
