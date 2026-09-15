@@ -100,6 +100,80 @@ function lerDadosDoCertificado(pfx: Uint8Array, senha: string): { titular: strin
   }
 }
 
+/**
+ * O certificado guardado no Vault, quando o segredo do painel está vazio.
+ *
+ * O .pfx em base64 tem ~5.400 caracteres, e colar isso no campo de segredo do
+ * painel falhou três vezes na configuração real — o valor simplesmente não
+ * era salvo. O Vault guarda o mesmo conteúdo criptografado e aceita ser
+ * preenchido por SQL. A leitura passa pela RPC `certificado_a1_pfx_base64`,
+ * que só a service_role executa.
+ *
+ * A senha continua fora daqui, como segredo de ambiente: guardar o arquivo e
+ * a senha no mesmo lugar é o que transforma um vazamento de banco numa
+ * assinatura falsificada.
+ *
+ * Falha de rede devolve null, e o chamador trata como "não configurado" — o
+ * que nunca acontece é o conteúdo aparecer em log.
+ */
+async function certificadoDoVault(): Promise<string | null> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const chave = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !chave) return null;
+  try {
+    const r = await fetch(`${url}/rest/v1/rpc/certificado_a1_pfx_base64`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: chave,
+        Authorization: `Bearer ${chave}`,
+      },
+      body: "{}",
+    });
+    if (!r.ok) {
+      console.error("[assinar-pdf] Vault respondeu", r.status);
+      return null;
+    }
+    const valor = await r.json();
+    return typeof valor === "string" && valor.trim() ? valor.trim() : null;
+  } catch (e) {
+    console.error("[assinar-pdf] falha ao ler o Vault:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+/** O texto do erro do node-forge quando a senha não abre o arquivo. */
+const ERRO_SENHA = /MAC could not be verified/i;
+
+/**
+ * Assina, tolerando o espaço invisível que a colagem deixa na senha.
+ *
+ * Senha copiada de um PDF ou de um e-mail chega com "\n" ou espaço no fim, e
+ * o PKCS#12 rejeita igual a uma senha errada — mesma mensagem, mesma tela.
+ * A segunda tentativa só acontece quando há o que aparar, e só depois de a
+ * primeira falhar exatamente por senha: a senha cadastrada continua sendo a
+ * verdade, isto apenas evita perder uma rodada por um caractere que ninguém
+ * vê.
+ */
+async function assinar(
+  pdf: Uint8Array, pfx: Uint8Array, senha: string,
+): Promise<{ assinado: Buffer; senhaUsada: string }> {
+  const tentar = (p: string) =>
+    new SignPdf().sign(Buffer.from(pdf), new P12Signer(Buffer.from(pfx), { passphrase: p }));
+  try {
+    return { assinado: await tentar(senha), senhaUsada: senha };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const aparada = senha.trim();
+    if (aparada && aparada !== senha && ERRO_SENHA.test(msg)) {
+      // Devolve a senha que funcionou: quem lê a validade do certificado logo
+      // adiante precisa da mesma, senão o aviso de vencimento some sem motivo.
+      return { assinado: await tentar(aparada), senhaUsada: aparada };
+    }
+    throw e;
+  }
+}
+
 Deno.serve(async (req) => {
   const corsHeaders = resolveCors(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -112,7 +186,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const pfxB64 = Deno.env.get("CERT_A1_PFX_BASE64");
+    // Segredo do painel primeiro, Vault como reserva: quem administra pode
+    // trocar o certificado pelo painel sem mexer no banco, e quem não
+    // consegue colar 5.400 caracteres ali tem o outro caminho.
+    const pfxB64 = Deno.env.get("CERT_A1_PFX_BASE64")?.trim() || await certificadoDoVault();
     const senha = Deno.env.get("CERT_A1_SENHA");
     /*
      * Qual dos dois falta, e não "algum dos dois".
@@ -124,7 +201,7 @@ Deno.serve(async (req) => {
      * troca essa rodada por uma correção direta.
      */
     const faltando = [
-      !pfxB64?.trim() ? "CERT_A1_PFX_BASE64 (conteúdo do .pfx em base64)" : null,
+      !pfxB64 ? "CERT_A1_PFX_BASE64 (conteúdo do .pfx em base64, no painel ou no Vault)" : null,
       !senha ? "CERT_A1_SENHA (senha do certificado)" : null,
     ].filter(Boolean);
     if (faltando.length > 0) {
@@ -170,13 +247,12 @@ Deno.serve(async (req) => {
       pfxB64,
       "O segredo CERT_A1_PFX_BASE64 (cole o conteúdo do arquivo .base64, não o caminho dele)",
     );
-    const signer = new P12Signer(Buffer.from(pfxBytes), { passphrase: senha });
-    const assinado = await new SignPdf().sign(Buffer.from(comPlaceholder), signer);
+    const { assinado, senhaUsada } = await assinar(comPlaceholder, pfxBytes, senha);
 
     return new Response(JSON.stringify({
       success: true,
       pdfBase64: bytesParaBase64(new Uint8Array(assinado)),
-      certificado: lerDadosDoCertificado(pfxBytes, senha),
+      certificado: lerDadosDoCertificado(pfxBytes, senhaUsada),
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -186,8 +262,17 @@ Deno.serve(async (req) => {
      * lança "PKCS#12 MAC could not be verified" quando a senha está errada, e
      * é justamente isso que quem configurou precisa ler.
      */
-    const msg = e instanceof Error ? e.message : "Falha desconhecida ao assinar";
-    console.error("[assinar-pdf]", msg);
+    const bruto = e instanceof Error ? e.message : "Falha desconhecida ao assinar";
+    console.error("[assinar-pdf]", bruto);
+    /*
+     * "PKCS#12 MAC could not be verified. Invalid password?" é a frase certa
+     * para quem programa e inútil para quem administra: não diz qual segredo
+     * corrigir nem que a senha do certificado anterior não serve para o novo.
+     */
+    const msg = ERRO_SENHA.test(bruto)
+      ? "A senha cadastrada em CERT_A1_SENHA não abre este certificado. "
+        + "Confira se é a senha do arquivo .pfx atual — a senha de um certificado anterior não serve."
+      : bruto;
     return new Response(JSON.stringify({ success: false, error: msg }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
