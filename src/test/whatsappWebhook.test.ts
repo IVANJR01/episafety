@@ -4,6 +4,8 @@ import {
   dentroDaJanela24h,
   extrairMensagens,
   extrairStatus,
+  marcadoresDoTexto,
+  parametrosParaMarcadores,
   variantesBrasil,
 } from "../../supabase/functions/_shared/whatsapp";
 
@@ -216,5 +218,52 @@ describe("dentroDaJanela24h", () => {
   it("contato que nunca escreveu está fora da janela", () => {
     expect(dentroDaJanela24h(null, agora)).toBe(false);
     expect(dentroDaJanela24h("data torta", agora)).toBe(false);
+  });
+});
+
+/*
+ * O aviso automático de vencimento sai por template, porque quem recebe quase
+ * nunca escreveu nas últimas 24h. Casar os marcadores do template com os
+ * valores do alerta é o passo que decide entre a mensagem certa, a mensagem com
+ * os números trocados e nenhuma mensagem.
+ */
+describe("parametrosParaMarcadores", () => {
+  const valores = { empresa: "3M Cursos", vencidos: "4", vencendo: "7" };
+  const ordem = ["empresa", "vencidos", "vencendo"];
+
+  it("preenche o template numerado na ordem combinada", () => {
+    expect(parametrosParaMarcadores(["1", "2", "3"], valores, ordem)).toEqual([
+      { valor: "3M Cursos" },
+      { valor: "4" },
+      { valor: "7" },
+    ]);
+  });
+
+  it("usa só o que o template pede, quando ele pede menos", () => {
+    // Template aprovado com dois campos continua funcionando: não é motivo
+    // para o aviso do dia não sair.
+    expect(parametrosParaMarcadores(["1", "2"], valores, ordem)).toEqual([
+      { valor: "3M Cursos" },
+      { valor: "4" },
+    ]);
+  });
+
+  it("template nomeado recebe pelo nome, não pela posição", () => {
+    expect(parametrosParaMarcadores(["vencendo", "empresa"], valores, ordem)).toEqual([
+      { valor: "7", nome: "vencendo" },
+      { valor: "3M Cursos", nome: "empresa" },
+    ]);
+  });
+
+  it("recusa quando o template pede um campo que o alerta não tem", () => {
+    // null quer dizer "não envie": a Meta recusa parâmetro vazio e a tentativa
+    // é gasta do mesmo jeito.
+    expect(parametrosParaMarcadores(["1", "2", "3", "4"], valores, ordem)).toBeNull();
+    expect(parametrosParaMarcadores(["responsavel"], valores, ordem)).toBeNull();
+  });
+
+  it("lê os marcadores do texto do template", () => {
+    expect(marcadoresDoTexto("Olá {{1}}, você tem {{2}} vencidos")).toEqual(["1", "2"]);
+    expect(marcadoresDoTexto("sem campo nenhum")).toEqual([]);
   });
 });

@@ -31,6 +31,11 @@ export interface ConfigLinha {
   automacao_ativa: boolean;
   prompt_extra: string | null;
   saudacao: string | null;
+  /** Resumo diário de vencimentos por WhatsApp, além do e-mail. */
+  alertas_ativos: boolean;
+  numeros_alerta: string[];
+  template_alerta: string | null;
+  template_alerta_idioma: string;
 }
 
 export interface Contato {

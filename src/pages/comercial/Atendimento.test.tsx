@@ -26,6 +26,10 @@ const config: ConfigLinha = {
   automacao_ativa: true,
   prompt_extra: null,
   saudacao: null,
+  alertas_ativos: false,
+  numeros_alerta: [],
+  template_alerta: null,
+  template_alerta_idioma: "pt_BR",
 };
 
 const agora = Date.now();

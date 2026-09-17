@@ -1,5 +1,8 @@
 /**
- * A janela de 24 horas da Meta, do lado da tela.
+ * As contas pequenas do WhatsApp do lado da tela: a janela de 24h, a hora da
+ * mensagem e o formato dos telefones.
+ *
+ * A janela de 24 horas da Meta, primeiro.
  *
  * A Meta só aceita mensagem de texto livre até 24h depois da última mensagem
  * DO CLIENTE. Passou disso, só template aprovado — e a tentativa de texto livre
@@ -81,4 +84,24 @@ export function telefoneLegivel(waId: string): string {
   if (semDdi.length === 11) return `(${semDdi.slice(0, 2)}) ${semDdi.slice(2, 7)}-${semDdi.slice(7)}`;
   if (semDdi.length === 10) return `(${semDdi.slice(0, 2)}) ${semDdi.slice(2, 6)}-${semDdi.slice(6)}`;
   return `+${d}`;
+}
+
+/**
+ * "85 99999-0000, 85 98888-1111" vira a lista de números que a Meta entende.
+ *
+ * Quem digita não põe DDI — o 55 entra aqui. Menos de dez dígitos é descartado
+ * em vez de virar um número torto: a Meta aceitaria o envio e ele simplesmente
+ * não chegaria a ninguém.
+ */
+export function partirNumeros(texto: string): string[] {
+  return texto
+    .split(/[,;\n]+/)
+    .map((n) => n.replace(/\D+/g, ""))
+    .filter((n) => n.length >= 10)
+    .map((n) => (n.startsWith("55") ? n : `55${n}`));
+}
+
+/** De volta para a caixa de texto. */
+export function juntarNumeros(numeros: string[] | null | undefined): string {
+  return (numeros ?? []).join(", ");
 }

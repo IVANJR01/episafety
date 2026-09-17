@@ -347,6 +347,44 @@ export interface ComponenteTemplate {
   texto?: string;
 }
 
+/**
+ * Os marcadores de um texto de template, na ordem e sem repetir.
+ *
+ * Gêmeo de `marcadores` em `src/lib/templatesWhatsapp.ts`. São seis linhas
+ * repetidas de propósito: aquele arquivo roda no navegador e este roda em Deno,
+ * e importar um do outro levaria o código de envio da Meta para dentro do
+ * pacote do front. Se um mudar, o outro muda junto — os dois leem o mesmo
+ * formato, que quem define é a Meta.
+ */
+export function marcadoresDoTexto(texto: string | null | undefined): string[] {
+  if (!texto) return [];
+  return [...new Set([...texto.matchAll(/\{\{\s*([^}\s]+)\s*\}\}/g)].map((m) => m[1]))];
+}
+
+/**
+ * Casa os marcadores de um template com os valores que quem chama tem em mãos.
+ *
+ * Template numerado recebe na ordem de `ordem`; template nomeado recebe pelo
+ * nome do marcador. Devolve `null` quando falta valor para algum marcador — e
+ * `null` aqui significa "não envie": a Meta recusa parâmetro vazio, e mandar
+ * assim gasta a tentativa sem entregar mensagem nenhuma.
+ */
+export function parametrosParaMarcadores(
+  marcadores: string[],
+  valores: Record<string, string>,
+  ordem: string[],
+): ParametroTemplate[] | null {
+  const saida: ParametroTemplate[] = [];
+  for (const marcador of marcadores) {
+    const nomeado = !/^\d+$/.test(marcador);
+    const chave = nomeado ? marcador : ordem[Number(marcador) - 1];
+    const valor = (chave && valores[chave] ? valores[chave] : "").trim();
+    if (!valor) return null;
+    saida.push(nomeado ? { valor, nome: marcador } : { valor });
+  }
+  return saida;
+}
+
 export interface TemplateAprovado {
   nome: string;
   idioma: string;

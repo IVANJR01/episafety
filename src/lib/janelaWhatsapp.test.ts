@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { horaDaMensagem, janelaAberta, telefoneLegivel, tempoRestanteJanela } from "./janelaWhatsapp";
+import {
+  horaDaMensagem,
+  janelaAberta,
+  juntarNumeros,
+  partirNumeros,
+  telefoneLegivel,
+  tempoRestanteJanela,
+} from "./janelaWhatsapp";
 
 /*
  * A janela de 24h decide se o campo de escrita fica liberado. Errar para mais
@@ -62,5 +69,26 @@ describe("telefoneLegivel", () => {
   it("não põe máscara de DDD em número de fora do Brasil", () => {
     // Tem 11 dígitos como um celular daqui; a máscara inventaria um telefone.
     expect(telefoneLegivel("13235551234")).toBe("+13235551234");
+  });
+});
+
+describe("partirNumeros", () => {
+  it("separa por vírgula e põe o DDI que ninguém digita", () => {
+    expect(partirNumeros("85 99999-0000, 85 98888-1111")).toEqual(["5585999990000", "5585988881111"]);
+  });
+
+  it("não duplica o DDI de quem já digitou", () => {
+    expect(partirNumeros("+55 85 99999-0000")).toEqual(["5585999990000"]);
+  });
+
+  it("descarta o que não é número de telefone", () => {
+    // Virar "5512345" seria um envio aceito que não chega a ninguém.
+    expect(partirNumeros("12345, , 85 99999-0000")).toEqual(["5585999990000"]);
+    expect(partirNumeros("")).toEqual([]);
+  });
+
+  it("volta para a caixa de texto do jeito que dá para reeditar", () => {
+    expect(juntarNumeros(["5585999990000", "5585988881111"])).toBe("5585999990000, 5585988881111");
+    expect(juntarNumeros(null)).toBe("");
   });
 });

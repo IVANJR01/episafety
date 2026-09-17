@@ -14,6 +14,7 @@ import {
 } from "@/lib/whatsappDados";
 import { assinarTabela } from "@/lib/realtimeTabelas";
 import { horaDaMensagem, janelaAberta, telefoneLegivel, tempoRestanteJanela } from "@/lib/janelaWhatsapp";
+import ConfiguracaoWhatsappDialog from "@/components/comercial/ConfiguracaoWhatsappDialog";
 import EnviarTemplateDialog from "@/components/comercial/EnviarTemplateDialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -134,18 +135,6 @@ export default function Atendimento() {
       qc.invalidateQueries({ queryKey: ["whatsapp_contatos", empresaId] });
     },
     onError: (e: Error) => toast.error(e.message || "Não foi possível mudar quem responde"),
-  });
-
-  const salvarConfig = useMutation({
-    mutationFn: async (mudancas: Partial<ConfigLinha>) => {
-      if (!config?.id) throw new Error("Linha ainda não cadastrada");
-      await salvarConfigWhatsapp(config.id, mudancas);
-    },
-    onSuccess: () => {
-      toast.success("Configuração salva");
-      qc.invalidateQueries({ queryKey: ["whatsapp_config", empresaId] });
-    },
-    onError: (e: Error) => toast.error(e.message || "Não foi possível salvar"),
   });
 
   // ---- estado derivado ----
@@ -418,113 +407,13 @@ export default function Atendimento() {
         nomeDoContato={contato ? contato.nome || telefoneLegivel(contato.wa_id) : ""}
       />
 
-      {/* ---------- configuração ---------- */}
-      <Dialog open={configAberta} onOpenChange={setConfigAberta}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Configuração da linha</DialogTitle>
-            <DialogDescription>
-              O identificador da linha vem da Meta e não se inventa aqui. As instruções são o que a IA
-              usa para responder no lugar da sua equipe.
-            </DialogDescription>
-          </DialogHeader>
+      <ConfiguracaoWhatsappDialog
+        aberto={configAberta}
+        aoFechar={() => setConfigAberta(false)}
+        config={config ?? null}
+        podeTrocarLinha={isSuperAdmin}
+      />
 
-          {config && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-md border p-3">
-                <div className="pr-3">
-                  <Label className="text-sm">Automação ligada</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Desligada, as mensagens continuam chegando e ninguém responde automaticamente.
-                  </p>
-                </div>
-                <Switch
-                  checked={config.automacao_ativa}
-                  onCheckedChange={(v) => salvarConfig.mutate({ automacao_ativa: v })}
-                  disabled={salvarConfig.isPending}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="numero">Número exibido</Label>
-                <Input
-                  id="numero"
-                  defaultValue={config.numero_exibicao ?? ""}
-                  onBlur={(e) => {
-                    if (e.target.value !== (config.numero_exibicao ?? "")) {
-                      salvarConfig.mutate({ numero_exibicao: e.target.value });
-                    }
-                  }}
-                  placeholder="+55 85 99999-9999"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="waba">Conta do WhatsApp Business (WABA ID)</Label>
-                <Input
-                  id="waba"
-                  defaultValue={config.waba_id ?? ""}
-                  onBlur={(e) => {
-                    if (e.target.value !== (config.waba_id ?? "")) {
-                      salvarConfig.mutate({ waba_id: e.target.value || null });
-                    }
-                  }}
-                  placeholder="102290129340398"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Sem ele não dá para listar os templates aprovados. Aparece no painel da Meta, em
-                  WhatsApp → Configuração da API.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="saudacao">Saudação (primeira mensagem de quem nunca falou)</Label>
-                <Textarea
-                  id="saudacao"
-                  defaultValue={config.saudacao ?? ""}
-                  onBlur={(e) => {
-                    if (e.target.value !== (config.saudacao ?? "")) {
-                      salvarConfig.mutate({ saudacao: e.target.value || null });
-                    }
-                  }}
-                  placeholder="Olá! Aqui é da Safety Soluções, segurança do trabalho. Como posso ajudar?"
-                  className="min-h-[70px]"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="prompt">Instruções para a IA</Label>
-                <Textarea
-                  id="prompt"
-                  defaultValue={config.prompt_extra ?? ""}
-                  onBlur={(e) => {
-                    if (e.target.value !== (config.prompt_extra ?? "")) {
-                      salvarConfig.mutate({ prompt_extra: e.target.value || null });
-                    }
-                  }}
-                  placeholder="Serviços que vendemos, região atendida, prazo de orçamento, o que nunca prometer."
-                  className="min-h-[140px]"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  É o que separa um atendente genérico do atendente da sua operação. Vale escrever com
-                  calma: serviços, região, prazo, e o que a IA não pode prometer.
-                </p>
-              </div>
-
-              <div className="text-xs text-muted-foreground border-t pt-3">
-                Identificador da linha na Meta: <code>{config.phone_number_id}</code>
-                {!isSuperAdmin && " · trocar a linha é coisa de administrador do sistema."}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfigAberta(false)}>
-              Fechar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

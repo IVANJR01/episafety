@@ -281,13 +281,70 @@ a function aceita o secret `WHATSAPP_WABA_ID`.
 
 **Enviar template não reabre a janela de 24h.** Só a resposta do cliente reabre.
 
+## Aviso de vencimento por WhatsApp
+
+A `alertas-vencimento-sst` roda uma vez por dia e manda, por empresa, o resumo do
+que venceu e do que está para vencer. Agora o mesmo resumo pode sair também por
+WhatsApp. **Os dois convivem**: o e-mail leva a tabela inteira, com nome de
+colaborador e data; o WhatsApp leva o número e o empurrão para abrir o sistema.
+E-mail de resumo diário é o tipo de mensagem que se acumula sem ser aberta.
+
+Vem **desligado**. Mensagem iniciada pela empresa é cobrada por conversa pela
+Meta, e ninguém deve começar a pagar por causa de uma migration.
+
+### Criar o template na Meta
+
+Em *WhatsApp → Modelos de mensagem*, categoria **Utilidade** (mais barata que
+Marketing e aprovada mais rápido). Um texto que funciona:
+
+```
+Vencimentos SST — {{1}}: {{2}} documento(s) vencido(s) e {{3}} vencendo.
+Abra o sistema para ver a lista.
+```
+
+Os campos numerados são preenchidos **nesta ordem**, sempre:
+
+| Campo | Conteúdo |
+| --- | --- |
+| `{{1}}` | Nome da empresa |
+| `{{2}}` | Quantos vencidos |
+| `{{3}}` | Quantos vencendo |
+| `{{4}}` | Total dos dois |
+| `{{5}}` | Data de hoje |
+
+Não precisa usar todos: se o seu template tiver dois campos, ele recebe os dois
+primeiros. O sistema consulta o template na Meta antes de enviar e preenche o
+que ele pedir — inclusive templates de parâmetro **nomeado**, onde o campo
+`{{vencidos}}` recebe o valor de mesmo nome.
+
+Se o template pedir um campo que o aviso não tem, **nada é enviado** e o motivo
+fica no resumo da execução. Enviar com campo vazio a Meta recusa, e a tentativa
+é cobrada do mesmo jeito.
+
+### Ligar
+
+Em *Comercial → Atendimento WhatsApp → Configuração*:
+
+1. Ligue **Avisar vencimentos por WhatsApp**.
+2. Preencha **quem recebe** — números separados por vírgula; o DDI 55 entra
+   sozinho.
+3. Escolha o **template do aviso** na lista dos aprovados.
+
+Exige o `waba_id` preenchido (é de lá que sai a lista de templates).
+
+O aviso enviado **entra no histórico** do contato, como qualquer outra mensagem.
+É de propósito: quem receber e responder cai na tela de atendimento com o aviso
+logo acima da resposta. Sem isso, a resposta chegaria sem contexto nenhum.
+
+Se o WhatsApp falhar — Meta fora do ar, template reprovado —, **o e-mail sai
+assim mesmo**. O aviso do dia não pode deixar de existir por causa do canal
+novo. O motivo da falha fica no campo `whatsapp_motivo` do resumo que a função
+devolve.
+
 ## O que ainda não existe
 
 - **Template com cabeçalho de mídia.** Imagem, vídeo ou documento no cabeçalho
   exigem enviar um arquivo como parâmetro; a tela oferece só os de texto, e
   ignora os outros em vez de montar um envio que a Meta recusaria.
-- **Disparo automático de aviso de vencimento por WhatsApp.** A
-  `alertas-vencimento-sst` continua mandando e-mail; passar a mandar WhatsApp é
-  chamar a `whatsapp-enviar` com um template aprovado.
 - **Verificação do negócio na Meta.** Sem ela, a conta fica no limite de 250
   conversas iniciadas por dia e no número de teste.
